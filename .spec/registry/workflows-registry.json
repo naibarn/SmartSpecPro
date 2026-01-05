@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:18:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "workflows": [
+    {
+      "name": "Specification-Driven Generation Workflow",
+      "description": "End-to-end workflow from spec definition to deployable artifact",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "steps": [
+        "Define or update specifications",
+        "Generate plans and tasks",
+        "Execute AI-driven generation workflows",
+        "Validate outputs against specs",
+        "Produce deployable artifacts"
+      ],
+      "governance_level": "system"
+    },
+    {
+      "name": "Spec Iteration Workflow",
+      "description": "Safe iteration process for updating specs with traceable changes",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "steps": [
+        "Identify spec change requirements",
+        "Update specification",
+        "Validate against governance rules",
+        "Generate diff and impact analysis",
+        "Review and approve changes",
+        "Update registry"
+      ],
+      "governance_level": "system"
+    },
+    {
+      "name": "Validation Workflow",
+      "description": "Validation process to ensure generated artifacts meet spec requirements",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "steps": [
+        "Extract test requirements from spec",
+        "Execute automated tests",
+        "Verify evidence completeness",
+        "Check observability requirements",
+        "Generate validation report"
+      ],
+      "governance_level": "system"
+    }
+  ]
+}

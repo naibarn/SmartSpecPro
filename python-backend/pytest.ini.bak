@@ -1,0 +1,42 @@
+[pytest]
+# Pytest configuration for SmartSpec Pro
+
+# Test discovery
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+
+# Test paths
+testpaths = tests
+
+# Markers
+markers =
+    unit: Unit tests
+    integration: Integration tests
+    e2e: End-to-end tests
+    slow: Slow tests
+    auth: Authentication tests
+    payments: Payment tests
+    dashboard: Dashboard tests
+    llm: LLM proxy tests
+    credits: Credit system tests
+
+# Coverage
+addopts =
+    --verbose
+    --strict-markers
+    --tb=short
+    --cov=app
+    --cov-report=html
+    --cov-report=term-missing
+    --cov-fail-under=80
+    -ra
+
+# Async support
+asyncio_mode = auto
+
+# Warnings
+filterwarnings =
+    error
+    ignore::UserWarning
+    ignore::DeprecationWarning

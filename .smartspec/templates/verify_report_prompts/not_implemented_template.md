@@ -1,0 +1,237 @@
+# Implementation Prompt: Not Implemented Tasks
+
+**Category:** Not Implemented  
+**Priority:** {{priority}}  
+**Generated:** {{timestamp}}  
+**Report:** {{report_path}}
+
+---
+
+## Overview
+
+The following tasks have no implementation or test files. This prompt provides detailed instructions for implementing each task from scratch.
+
+**Tasks in this category:** {{task_count}}
+
+---
+
+{{#each tasks}}
+## Task {{task_number}}: {{task_id}} - {{title}}
+
+### Problem
+No implementation or test files exist for this task.
+
+### Files to Create
+
+#### 1. Implementation File
+**Path:** `{{code_path}}`
+
+{{#if code_symbol}}
+**Required Symbol:** `{{code_symbol}}`
+{{/if}}
+
+{{#if code_contains}}
+**Required Content:** `{{code_contains}}`
+{{/if}}
+
+**Implementation Template:**
+```python
+{{#if code_symbol}}
+class {{code_symbol}}:
+    """{{title}}"""
+    
+    def __init__(self):
+        # TODO: Initialize
+        pass
+    
+    # TODO: Add methods
+{{else}}
+# TODO: Implement {{title}}
+{{/if}}
+```
+
+#### 2. Test File
+**Path:** `{{test_path}}`
+
+{{#if test_symbol}}
+**Required Test:** `{{test_symbol}}`
+{{/if}}
+
+{{#if test_contains}}
+**Required Content:** `{{test_contains}}`
+{{/if}}
+
+**Test Template:**
+```python
+import pytest
+{{#if code_path}}
+from {{code_module}} import {{code_symbol}}
+{{/if}}
+
+{{#if test_symbol}}
+def {{test_symbol}}():
+    """Test {{title}}"""
+    # TODO: Add test implementation
+    pass
+{{else}}
+def test_{{task_id_lower}}():
+    """Test {{title}}"""
+    # TODO: Add test implementation
+    pass
+{{/if}}
+```
+
+### Implementation Steps
+
+1. **Create implementation file:**
+   ```bash
+   touch {{code_path}}
+   ```
+
+2. **Add basic structure:**
+   - Import required dependencies
+   - Define {{code_symbol}} class/function
+   - Add docstrings
+   - Implement core functionality
+
+3. **Create test file:**
+   ```bash
+   touch {{test_path}}
+   ```
+
+4. **Add tests:**
+   - Import implementation
+   - Write unit tests
+   - Test edge cases
+   - Test error handling
+
+5. **Run tests:**
+   ```bash
+   pytest {{test_path}} -v
+   ```
+
+6. **Add evidence hooks:**
+   - Ensure {{code_symbol}} is defined
+   - Ensure {{test_symbol}} is defined
+   - Add required content/regex matches
+
+### Suggestions from Report
+
+{{suggestions}}
+
+### Verification
+
+After implementation, verify with:
+```bash
+/smartspec_verify_tasks_progress_strict {{tasks_path}} --json
+```
+
+**Expected result:** `{{task_id}}` verified ✅
+
+---
+
+{{/each}}
+
+## Summary
+
+**Total tasks:** {{task_count}}  
+**Priority:** {{priority}}  
+**Category:** Not Implemented
+
+### Next Steps
+
+1. Review each task above
+2. Implement files in order
+3. Run tests after each implementation
+4. Verify all tasks pass
+
+### Verification Command
+
+```bash
+# Verify all tasks
+/smartspec_verify_tasks_progress_strict {{tasks_path}} --json
+
+# Expected: {{task_count}} tasks verified
+```
+
+
+
+### What's Next?
+
+After fixing these issues:
+
+1. **Re-run verification** to check if there are other issues
+2. **Generate new prompts** for remaining issues
+3. **Execute prompts** (batch or manual)
+
+```bash
+# Step 1: Verify again
+/smartspec_verify_tasks_progress_strict {{tasks_path}} \
+  --out .spec/reports/verify-tasks-progress/latest \
+  --json
+
+# Step 2: Generate prompts for remaining issues
+/smartspec_report_implement_prompter \
+  --verify-report .spec/reports/verify-tasks-progress/latest/summary.json \
+  --tasks {{tasks_path}} \
+  --out .spec/prompts/latest
+
+# Step 3: Check how many prompts generated
+cat .spec/prompts/latest/README.md
+
+# Step 4: Execute (choose based on count)
+# - If 1-4 tasks: Manual execution (read prompts one by one)
+# - If 5+ tasks: Batch execution (recommended)
+
+python3 .smartspec/scripts/execute_prompts_batch.py \
+  --prompts-dir .spec/prompts/latest/ \
+  --tasks {{tasks_path}} \
+  --checkpoint
+```
+
+📖 **See:** `.smartspec/AFTER_PROMPT_GENERATION_GUIDE.md` for complete workflow
+
+
+
+
+### What's Next?
+
+After fixing these issues:
+
+1. **Re-run verification** to check if there are other issues
+2. **Generate new prompts** for remaining issues
+3. **Execute prompts** (batch or manual)
+
+```bash
+# Step 1: Verify again
+/smartspec_verify_tasks_progress_strict {{tasks_path}} \
+  --out .spec/reports/verify-tasks-progress/latest \
+  --json
+
+# Step 2: Generate prompts for remaining issues
+/smartspec_report_implement_prompter \
+  --verify-report .spec/reports/verify-tasks-progress/latest/summary.json \
+  --tasks {{tasks_path}} \
+  --out .spec/prompts/latest
+
+# Step 3: Check how many prompts generated
+cat .spec/prompts/latest/README.md
+
+# Step 4: Execute (choose based on count)
+# - If 1-4 tasks: Manual execution (read prompts one by one)
+# - If 5+ tasks: Batch execution (recommended)
+
+python3 .smartspec/scripts/execute_prompts_batch.py \
+  --prompts-dir .spec/prompts/latest/ \
+  --tasks {{tasks_path}} \
+  --checkpoint
+```
+
+📖 **See:** `.smartspec/AFTER_PROMPT_GENERATION_GUIDE.md` for complete workflow
+
+
+---
+
+**Generated by:** smartspec_report_implement_prompter v7.1.0  
+**Template:** not_implemented_template.md  
+**Date:** {{timestamp}}

@@ -1,0 +1,39 @@
+direction: down
+
+# Main Components
+User: User
+SmartSpecAPI: "SmartSpec API (FastAPI)"
+Orchestrator: "Workflow Orchestrator (LangGraph)"
+MemoryService: "Memory Service"
+LLMProxy: "LLM Proxy"
+
+# Data Stores
+Postgres: "PostgreSQL"
+Redis: "Redis"
+VectorDB: "Vector DB (Chroma)"
+
+# Connections
+User -> SmartSpecAPI: "HTTP Request"
+
+SmartSpecAPI -> Orchestrator: "execute_workflow()"
+
+Orchestrator -> LLMProxy: "LLMRequest"
+Orchestrator -> MemoryService: "Retrieve/Store Memory"
+Orchestrator -> Postgres: "Checkpoints (AsyncPostgresSaver)"
+
+MemoryService -> Postgres: "Semantic Memory (Facts/Preferences)"
+MemoryService -> VectorDB: "Episodic Memory (Embeddings)"
+MemoryService -> Redis: "Cache"
+
+LLMProxy -> "External LLMs"
+
+# Styling
+User.shape: person
+SmartSpecAPI.shape: cloud
+Postgres.shape: database
+Redis.shape: database
+VectorDB.shape: database
+
+Orchestrator.style.fill: "#D6EAF8"
+MemoryService.style.fill: "#D5F5E3"
+LLMProxy.style.fill: "#FADBD8"

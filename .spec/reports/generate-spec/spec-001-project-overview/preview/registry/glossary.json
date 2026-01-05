@@ -1,0 +1,86 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:43:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "terms": [
+    {
+      "term": "Spec",
+      "definition": "A formal, versioned description of system behavior",
+      "category": "core_concept",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Registry",
+      "definition": "Authoritative index of specs and governance metadata",
+      "category": "core_concept",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Generation Run",
+      "definition": "A single execution of a spec-driven workflow",
+      "category": "core_concept",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Artifact",
+      "definition": "Any generated output (code, docs, configs)",
+      "category": "core_concept",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Builder",
+      "definition": "Creates specs and generates applications",
+      "category": "persona",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Project Owner",
+      "definition": "Oversees cost, quality, and delivery",
+      "category": "persona",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Platform Admin",
+      "definition": "Manages providers, credits, and governance",
+      "category": "persona",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "User",
+      "definition": "Core identity representing an individual user of the platform",
+      "category": "identity",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Project",
+      "definition": "Core identity representing a project or workspace",
+      "category": "identity",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Workspace",
+      "definition": "Core identity representing a workspace container",
+      "category": "identity",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "LLM Gateway",
+      "definition": "Centralized proxy for all Large Language Model requests",
+      "category": "component",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Credit System",
+      "definition": "System for managing and tracking usage-based costs",
+      "category": "component",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Orchestrator",
+      "definition": "Component responsible for managing and executing complex code generation workflows",
+      "category": "component",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:18:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "glossary": [
+    {
+      "term": "Spec",
+      "definition": "A formal, versioned description of system behavior",
+      "category": "Core Concept",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Registry",
+      "definition": "Authoritative index of specs and governance metadata",
+      "category": "Governance",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Generation Run",
+      "definition": "A single execution of a spec-driven workflow",
+      "category": "Workflow",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Artifact",
+      "definition": "Any generated output (code, docs, configs)",
+      "category": "Output",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Builder",
+      "definition": "User persona who creates specs and generates applications",
+      "category": "Persona",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Project Owner",
+      "definition": "User persona who oversees cost, quality, and delivery",
+      "category": "Persona",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Platform Admin",
+      "definition": "User persona who manages providers, credits, and governance",
+      "category": "Persona",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "User",
+      "definition": "Core identity representing a user in the system",
+      "category": "Identity",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Project",
+      "definition": "Core identity representing a project",
+      "category": "Identity",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Workspace",
+      "definition": "Core identity representing a workspace",
+      "category": "Identity",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "LLM Gateway",
+      "definition": "Centralized service for all AI/LLM access, providing abstraction and cost control",
+      "category": "Service",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Orchestrator",
+      "definition": "Workflow orchestration service that manages generation and validation workflows",
+      "category": "Service",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Credit",
+      "definition": "Unit of usage measurement for cost control and billing",
+      "category": "Billing",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Credit-based usage",
+      "definition": "Usage model where AI operations consume credits for cost control and auditing",
+      "category": "Business Model",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Spec-first workflow",
+      "definition": "Development approach where specifications are created before any code generation",
+      "category": "Methodology",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    },
+    {
+      "term": "Registry governance",
+      "definition": "System of rules and controls enforced through the registry to prevent duplication and ensure consistency",
+      "category": "Governance",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW"
+    }
+  ]
+}

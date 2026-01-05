@@ -1,0 +1,73 @@
+{
+  "discovery_timestamp": "2026-01-01T15:41:00Z",
+  "current_spec": "SPEC-001-PROJECT-OVERVIEW",
+  "total_specs_found": 8,
+  "specs": [
+    {
+      "spec_id": "SPEC-001-PROJECT-OVERVIEW",
+      "path": "specs/feature/SPEC-001-PROJECT-OVERVIEW/spec.md",
+      "status": "complete",
+      "title": "SmartSpec Pro — Project Overview",
+      "scope_hint": "High-level architecture, vision, and cross-cutting concerns"
+    },
+    {
+      "spec_id": "SPEC-002-BACKEND-API",
+      "path": "specs/feature/SPEC-002-BACKEND-API/spec.md.md",
+      "status": "placeholder",
+      "title": "Backend API",
+      "scope_hint": "API endpoints, data models, and backend services"
+    },
+    {
+      "spec_id": "SPEC-003-AUTH-CREDITS",
+      "path": "specs/feature/SPEC-003-AUTH-CREDITS/spec.md.md",
+      "status": "placeholder",
+      "title": "Authentication & Credit System",
+      "scope_hint": "Auth flows, credit system, and payment integration"
+    },
+    {
+      "spec_id": "SPEC-004-LLM-GATEWAY",
+      "path": "specs/feature/SPEC-004-LLM-GATEWAY/spec.md.md",
+      "status": "placeholder",
+      "title": "LLM Gateway",
+      "scope_hint": "LLM gateway, provider routing, and cost tracking"
+    },
+    {
+      "spec_id": "SPEC-005-WEB-DASHBOARD",
+      "path": "specs/feature/SPEC-005-WEB-DASHBOARD/spec.md.md",
+      "status": "placeholder",
+      "title": "Web Dashboard",
+      "scope_hint": "Web dashboard, UI components, and frontend"
+    },
+    {
+      "spec_id": "SPEC-006-DESKTOP-APP",
+      "path": "specs/feature/SPEC-006-DESKTOP-APP/spec.md.md",
+      "status": "placeholder",
+      "title": "Desktop Application",
+      "scope_hint": "Desktop app, Tauri, and Kilo Code CLI"
+    },
+    {
+      "spec_id": "SPEC-007-ORCHESTRATOR",
+      "path": "specs/feature/SPEC-007-ORCHESTRATOR/spec.md.md",
+      "status": "placeholder",
+      "title": "Orchestrator",
+      "scope_hint": "Orchestrator, workflows, and LangGraph"
+    },
+    {
+      "spec_id": "SPEC-008-TESTING",
+      "path": "specs/feature/SPEC-008-TESTING/",
+      "status": "planned",
+      "title": "Testing Strategy",
+      "scope_hint": "Testing, coverage, and quality assurance"
+    }
+  ],
+  "scope_boundaries": {
+    "SPEC-001": ["vision", "architecture", "cross-cutting concerns", "NFRs"],
+    "SPEC-002": ["API endpoints", "data models", "backend services"],
+    "SPEC-003": ["authentication", "authorization", "credits", "payments"],
+    "SPEC-004": ["LLM gateway", "provider routing", "cost tracking"],
+    "SPEC-005": ["web dashboard", "UI components", "frontend"],
+    "SPEC-006": ["desktop app", "Tauri", "Kilo Code CLI"],
+    "SPEC-007": ["orchestrator", "workflows", "LangGraph"],
+    "SPEC-008": ["testing", "coverage", "quality assurance"]
+  }
+}

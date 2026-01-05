@@ -1,0 +1,4 @@
+# Additional requirements for bug fixes
+
+# H2 Fix: Proper token counting for OpenAI models
+tiktoken==0.5.2

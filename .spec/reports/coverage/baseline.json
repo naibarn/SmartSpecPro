@@ -1,0 +1,125 @@
+{
+  "version": "1.0.0",
+  "created_at": "2026-01-01T17:26:19.955790Z",
+  "updated_at": "2026-01-01T17:26:19.955831Z",
+  "description": "Coverage baseline for SmartSpec python-backend",
+  "source": {
+    "report_path": ".spec/reports/coverage/coverage.json",
+    "tool": "pytest-cov",
+    "python_version": "3.11"
+  },
+  "overall": {
+    "covered_lines": 3160,
+    "total_lines": 7159,
+    "percent_covered": 39.33,
+    "covered_branches": 199,
+    "total_branches": 1382,
+    "branch_coverage": 5.66
+  },
+  "thresholds": {
+    "new_code_threshold": 80,
+    "overall_threshold": 50,
+    "critical_path_threshold": 90
+  },
+  "critical_paths": [
+    {
+      "path": "app/services/oauth_service.py",
+      "coverage": 0.0,
+      "covered_lines": 0,
+      "total_lines": 150
+    },
+    {
+      "path": "app/core/auth.py",
+      "coverage": 32.467532467532465,
+      "covered_lines": 25,
+      "total_lines": 61
+    },
+    {
+      "path": "app/api/auth.py",
+      "coverage": 33.72093023255814,
+      "covered_lines": 58,
+      "total_lines": 136
+    },
+    {
+      "path": "app/core/auth_enhanced.py",
+      "coverage": 34.50704225352113,
+      "covered_lines": 47,
+      "total_lines": 114
+    },
+    {
+      "path": "app/api/payments.py",
+      "coverage": 47.36842105263158,
+      "covered_lines": 81,
+      "total_lines": 159
+    },
+    {
+      "path": "app/services/payment_service.py",
+      "coverage": 53.10344827586207,
+      "covered_lines": 71,
+      "total_lines": 129
+    },
+    {
+      "path": "app/core/security_enhanced.py",
+      "coverage": 61.224489795918366,
+      "covered_lines": 54,
+      "total_lines": 78
+    },
+    {
+      "path": "app/api/credits.py",
+      "coverage": 63.91752577319588,
+      "covered_lines": 62,
+      "total_lines": 93
+    },
+    {
+      "path": "app/services/auth_service.py",
+      "coverage": 90.9090909090909,
+      "covered_lines": 107,
+      "total_lines": 113
+    },
+    {
+      "path": "app/core/security.py",
+      "coverage": 91.53439153439153,
+      "covered_lines": 133,
+      "total_lines": 141
+    },
+    {
+      "path": "app/services/credit_service.py",
+      "coverage": 92.1259842519685,
+      "covered_lines": 103,
+      "total_lines": 111
+    },
+    {
+      "path": "app/models/payment.py",
+      "coverage": 96.55172413793103,
+      "covered_lines": 28,
+      "total_lines": 29
+    },
+    {
+      "path": "app/core/credits.py",
+      "coverage": 100.0,
+      "covered_lines": 15,
+      "total_lines": 15
+    },
+    {
+      "path": "app/models/credit.py",
+      "coverage": 100.0,
+      "covered_lines": 24,
+      "total_lines": 24
+    },
+    {
+      "path": "app/models/oauth.py",
+      "coverage": 100.0,
+      "covered_lines": 19,
+      "total_lines": 19
+    }
+  ],
+  "history": [
+    {
+      "date": "2026-01-01",
+      "coverage": 39.33,
+      "tests_passed": 370,
+      "tests_failed": 0,
+      "commit": "baseline"
+    }
+  ]
+}

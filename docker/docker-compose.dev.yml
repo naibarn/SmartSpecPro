@@ -1,0 +1,211 @@
+# SmartSpec Pro - Development Docker Compose
+# Full development stack with Kilo Code CLI support
+#
+# Usage:
+#   docker-compose -f docker/docker-compose.dev.yml up -d
+#   docker-compose -f docker/docker-compose.dev.yml exec dev bash
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Main Development Container
+  # Ubuntu-based environment for running Kilo Code CLI commands
+  # ==========================================================================
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        USER_UID: ${USER_UID:-1000}
+        USER_GID: ${USER_GID:-1000}
+    container_name: smartspec-dev
+    hostname: smartspec-dev
+    
+    # Mount project directory
+    volumes:
+      - ..:/workspace:cached
+      # Persist bash history
+      - dev_bash_history:/home/devuser/.bash_history_dir
+      # Persist npm/pip cache
+      - dev_npm_cache:/home/devuser/.npm
+      - dev_pip_cache:/home/devuser/.cache/pip
+      # Mount SSH keys (optional, for git)
+      - ${HOME}/.ssh:/home/devuser/.ssh:ro
+      # Mount git config (optional)
+      - ${HOME}/.gitconfig:/home/devuser/.gitconfig:ro
+    
+    # Environment variables
+    environment:
+      # Application
+      - NODE_ENV=development
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      
+      # Database connections (use service names)
+      - DATABASE_URL=postgresql://smartspec:smartspec@postgres:5432/smartspec
+      - REDIS_URL=redis://redis:6379/0
+      
+      # API Keys (from host environment or .env file)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      
+      # Kilo Code settings
+      - KILO_WORKSPACE=/workspace
+      - KILO_SKILLS_DIR=/workspace/.kilocode/skills
+      
+      # Timezone
+      - TZ=Asia/Bangkok
+    
+    # Network
+    networks:
+      - smartspec-network
+    
+    # Keep container running
+    tty: true
+    stdin_open: true
+    
+    # Dependencies
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    
+    # Working directory
+    working_dir: /workspace
+
+  # ==========================================================================
+  # PostgreSQL Database
+  # ==========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartspec-postgres
+    hostname: postgres
+    
+    environment:
+      POSTGRES_USER: smartspec
+      POSTGRES_PASSWORD: smartspec
+      POSTGRES_DB: smartspec
+    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Init scripts (optional)
+      - ./init-scripts/postgres:/docker-entrypoint-initdb.d:ro
+    
+    ports:
+      - "5432:5432"
+    
+    networks:
+      - smartspec-network
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartspec -d smartspec"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ==========================================================================
+  # Redis Cache
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: smartspec-redis
+    hostname: redis
+    
+    command: redis-server --appendonly yes
+    
+    volumes:
+      - redis_data:/data
+    
+    ports:
+      - "6379:6379"
+    
+    networks:
+      - smartspec-network
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # ChromaDB Vector Database
+  # ==========================================================================
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: smartspec-chromadb
+    hostname: chromadb
+    
+    volumes:
+      - chromadb_data:/chroma/chroma
+    
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    
+    ports:
+      - "8000:8000"
+    
+    networks:
+      - smartspec-network
+
+  # ==========================================================================
+  # Ollama (Local LLM - Optional)
+  # ==========================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: smartspec-ollama
+    hostname: ollama
+    
+    volumes:
+      - ollama_data:/root/.ollama
+    
+    ports:
+      - "11434:11434"
+    
+    networks:
+      - smartspec-network
+    
+    # GPU support (uncomment if you have NVIDIA GPU)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    
+    profiles:
+      - ollama  # Only start with: docker-compose --profile ollama up
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+networks:
+  smartspec-network:
+    driver: bridge
+    name: smartspec-network
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+volumes:
+  postgres_data:
+    name: smartspec-postgres-data
+  redis_data:
+    name: smartspec-redis-data
+  chromadb_data:
+    name: smartspec-chromadb-data
+  ollama_data:
+    name: smartspec-ollama-data
+  dev_bash_history:
+    name: smartspec-dev-bash-history
+  dev_npm_cache:
+    name: smartspec-dev-npm-cache
+  dev_pip_cache:
+    name: smartspec-dev-pip-cache

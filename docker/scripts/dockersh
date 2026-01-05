@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# =============================================================================
+# SmartSpec Pro - Docker Shell Wrapper (dockersh)
+# =============================================================================
+# Purpose: Execute commands inside the development Docker container
+# Usage:   ./dockersh "command to run"
+#          ./dockersh npm test
+#          ./dockersh python -m pytest
+#
+# This script enables Kilo Code CLI (running on host) to execute commands
+# inside the Docker container, ensuring consistency with production environment.
+# =============================================================================
+
+set -e
+
+# Configuration
+CONTAINER_NAME="${SMARTSPEC_CONTAINER:-smartspec-dev}"
+WORKDIR="${SMARTSPEC_WORKDIR:-/workspace}"
+USER="${SMARTSPEC_USER:-devuser}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Functions
+log_info() {
+    echo -e "${GREEN}[dockersh]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[dockersh]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[dockersh]${NC} $1" >&2
+}
+
+# Check if container is running
+check_container() {
+    if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+        log_error "Container '${CONTAINER_NAME}' is not running!"
+        log_info "Start it with: docker-compose -f docker/docker-compose.dev.yml up -d"
+        exit 1
+    fi
+}
+
+# Show help
+show_help() {
+    cat << EOF
+SmartSpec Pro - Docker Shell Wrapper
+
+Usage:
+    dockersh [options] <command>
+    dockersh "command with arguments"
+
+Options:
+    -h, --help      Show this help message
+    -i, --interactive   Run in interactive mode (with TTY)
+    -r, --root      Run as root user
+    -w, --workdir   Set working directory (default: /workspace)
+    -c, --container Set container name (default: smartspec-dev)
+
+Examples:
+    dockersh "npm test"
+    dockersh python -m pytest tests/
+    dockersh -i bash
+    dockersh -r "apt-get update"
+    dockersh -w /workspace/python-backend "python -m pytest"
+
+Environment Variables:
+    SMARTSPEC_CONTAINER  Container name (default: smartspec-dev)
+    SMARTSPEC_WORKDIR    Working directory (default: /workspace)
+    SMARTSPEC_USER       User to run as (default: devuser)
+
+EOF
+}
+
+# Parse arguments
+INTERACTIVE=""
+RUN_AS_ROOT=false
+CUSTOM_WORKDIR=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -i|--interactive)
+            INTERACTIVE="-it"
+            shift
+            ;;
+        -r|--root)
+            RUN_AS_ROOT=true
+            shift
+            ;;
+        -w|--workdir)
+            CUSTOM_WORKDIR="$2"
+            shift 2
+            ;;
+        -c|--container)
+            CONTAINER_NAME="$2"
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Check if command provided
+if [ $# -eq 0 ]; then
+    log_error "No command provided!"
+    show_help
+    exit 1
+fi
+
+# Check container
+check_container
+
+# Build command
+EXEC_USER="${USER}"
+if [ "$RUN_AS_ROOT" = true ]; then
+    EXEC_USER="root"
+fi
+
+EXEC_WORKDIR="${CUSTOM_WORKDIR:-$WORKDIR}"
+
+# Combine all arguments into a single command
+CMD="$*"
+
+# Log execution
+log_info "Executing in container '${CONTAINER_NAME}':"
+log_info "  User: ${EXEC_USER}"
+log_info "  Workdir: ${EXEC_WORKDIR}"
+log_info "  Command: ${CMD}"
+echo ""
+
+# Execute command
+# Use bash -lc to load full environment (PATH, aliases, etc.)
+docker exec ${INTERACTIVE} \
+    --user "${EXEC_USER}" \
+    --workdir "${EXEC_WORKDIR}" \
+    "${CONTAINER_NAME}" \
+    bash -lc "${CMD}"

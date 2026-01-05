@@ -1,0 +1,75 @@
+stateDiagram-v2
+    [*] --> Created: create_session()
+    
+    state "🆕 Created" as Created {
+        [*] --> Initializing
+        Initializing --> Ready: CLI verified
+        Initializing --> Error: CLI not found
+    }
+    
+    Created --> Idle: Session ready
+    
+    state "⏸️ Idle" as Idle {
+        [*] --> WaitingForTask
+        WaitingForTask --> TaskReceived: execute_task()
+    }
+    
+    Idle --> Running: Task submitted
+    
+    state "🔄 Running" as Running {
+        [*] --> Executing
+        Executing --> ProcessingOutput: CLI returns
+        ProcessingOutput --> ParsingJSON: Parse output
+        ParsingJSON --> [*]: Complete
+    }
+    
+    Running --> Idle: Task complete
+    Running --> Error: Task failed
+    Running --> Timeout: Timeout exceeded
+    
+    state "⚠️ Error" as Error {
+        [*] --> RecordingError
+        RecordingError --> Recoverable: Can retry
+        RecordingError --> Fatal: Cannot recover
+    }
+    
+    Error --> Idle: Retry successful
+    Error --> Stopped: Fatal error
+    
+    state "⏱️ Timeout" as Timeout {
+        [*] --> KillingProcess
+        KillingProcess --> CleaningUp
+        CleaningUp --> [*]
+    }
+    
+    Timeout --> Idle: Process killed
+    
+    state "🛑 Stopped" as Stopped {
+        [*] --> Closing
+        Closing --> Closed: Resources freed
+    }
+    
+    Idle --> Stopped: close_session()
+    Running --> Stopped: Force close
+    Stopped --> [*]
+    
+    note right of Created
+        Session created with:
+        - session_id
+        - workspace
+        - mode (code/architect/debug)
+    end note
+    
+    note right of Running
+        Kilo CLI executing:
+        - --autonomous mode
+        - --json-output
+        - Timeout monitoring
+    end note
+    
+    note right of Idle
+        Ready for:
+        - New tasks
+        - Checkpoint operations
+        - State queries
+    end note

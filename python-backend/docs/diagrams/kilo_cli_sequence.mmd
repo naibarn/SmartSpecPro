@@ -1,0 +1,91 @@
+sequenceDiagram
+    autonumber
+    
+    participant WF as 🔄 Workflow<br/>Orchestrator
+    participant SM as 🧠 Session<br/>Manager
+    participant SKM as 💡 Skill<br/>Manager
+    participant SS as 🔗 State<br/>Sync
+    participant CLI as ⚡ Kilo<br/>CLI
+    participant GIT as 📦 Git<br/>Repository
+    participant MEM as 💾 Memory<br/>Services
+
+    rect rgb(79, 70, 229, 0.1)
+        Note over WF,CLI: 🚀 Session Initialization
+        WF->>SM: check_cli_available()
+        SM->>CLI: kilocode --version
+        CLI-->>SM: version info
+        SM-->>WF: True
+        
+        WF->>SM: create_session(workspace, mode)
+        SM->>SM: Generate session_id
+        SM-->>WF: KiloSession
+        
+        WF->>SS: create_sync_state(execution_id, workspace)
+        SS-->>WF: SyncState
+    end
+
+    rect rgb(16, 185, 129, 0.1)
+        Note over WF,MEM: 💡 Skill Injection
+        WF->>MEM: get semantic memories<br/>(preferences, facts, skills)
+        MEM-->>WF: List[SemanticMemory]
+        
+        WF->>SKM: inject_smartspec_context(workspace, memories)
+        SKM->>SKM: Create .kilocode/skills/smartspec-context/
+        SKM->>SKM: Write SKILL.md
+        SKM-->>WF: skill_path
+        
+        WF->>SKM: setup_project_skills(workspace, templates)
+        SKM->>SKM: Inject template skills
+        SKM-->>WF: List[skill_paths]
+    end
+
+    rect rgb(245, 158, 11, 0.1)
+        Note over WF,CLI: ⚡ Task Execution
+        WF->>SM: execute_task(session, prompt)
+        SM->>SM: Build command args
+        SM->>CLI: kilocode --autonomous<br/>--json-output<br/>--mode code<br/>"prompt"
+        
+        Note right of CLI: Kilo executes task<br/>autonomously
+        
+        CLI->>GIT: Make changes
+        GIT-->>CLI: Changes committed
+        CLI-->>SM: JSON result<br/>{success, output, tokens, cost}
+        
+        SM->>SM: Parse JSON output
+        SM->>SM: Update session state
+        SM-->>WF: KiloResult
+    end
+
+    rect rgb(139, 92, 246, 0.1)
+        Note over WF,SS: 🔄 State Synchronization
+        WF->>SM: get_checkpoints(session)
+        SM->>GIT: git log --oneline
+        GIT-->>SM: commit list
+        SM-->>WF: List[KiloCheckpoint]
+        
+        WF->>SS: record_checkpoint(execution_id, step_id, hash)
+        SS->>SS: Add CheckpointMapping
+        SS-->>WF: CheckpointMapping
+        
+        WF->>SS: record_task(execution_id, step_id, task_id, prompt)
+        SS->>SS: Add TaskMapping
+        SS->>SS: Save state to file
+        SS-->>WF: TaskMapping
+    end
+
+    rect rgb(236, 72, 153, 0.1)
+        Note over WF,MEM: 💾 Episode Storage
+        WF->>MEM: store_code_episode(code, language, context)
+        MEM->>MEM: Generate embedding
+        MEM->>MEM: Store in ChromaDB
+        MEM-->>WF: episode_id
+    end
+
+    rect rgb(107, 114, 128, 0.1)
+        Note over WF,SM: 🧹 Cleanup
+        WF->>SM: close_session(session)
+        SM->>SM: Update status = STOPPED
+        SM-->>WF: void
+        
+        WF->>WF: Remove from _kilo_sessions
+    end

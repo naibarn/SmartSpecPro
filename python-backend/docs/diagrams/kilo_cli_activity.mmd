@@ -1,0 +1,75 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4F46E5', 'primaryTextColor': '#fff', 'primaryBorderColor': '#4338CA', 'lineColor': '#6366F1', 'secondaryColor': '#818CF8', 'tertiaryColor': '#C7D2FE'}}}%%
+
+flowchart TB
+    subgraph INIT["🚀 Initialization Phase"]
+        START((Start)) --> CHECK_CLI{Check Kilo CLI<br/>Available?}
+        CHECK_CLI -->|Yes| CREATE_SESSION[Create Kilo Session]
+        CHECK_CLI -->|No| FALLBACK_LLM[Fallback to LLM<br/>Execution]
+        CREATE_SESSION --> INIT_SYNC[Initialize<br/>Sync State]
+    end
+
+    subgraph SKILL["💡 Skill Injection Phase"]
+        INIT_SYNC --> GET_MEMORY[Get Semantic Memories<br/>• User Preferences<br/>• Project Facts<br/>• Skills & Rules]
+        GET_MEMORY --> HAS_MEMORY{Has<br/>Memories?}
+        HAS_MEMORY -->|Yes| INJECT_CONTEXT[Inject SmartSpec<br/>Context Skill]
+        HAS_MEMORY -->|No| SETUP_DEFAULT[Setup Default<br/>Project Skills]
+        INJECT_CONTEXT --> SETUP_DEFAULT
+        SETUP_DEFAULT --> INJECT_TEMPLATES[Inject Skill Templates<br/>• project_conventions<br/>• api_design<br/>• security_practices]
+    end
+
+    subgraph EXEC["⚡ Execution Phase"]
+        INJECT_TEMPLATES --> RECEIVE_TASK[Receive Task<br/>from Workflow]
+        RECEIVE_TASK --> BUILD_CMD[Build Kilo Command<br/>--autonomous<br/>--json-output<br/>--mode code]
+        BUILD_CMD --> EXECUTE[Execute Kilo CLI<br/>Subprocess]
+        EXECUTE --> WAIT_RESULT{Wait for<br/>Result}
+        WAIT_RESULT -->|Timeout| HANDLE_TIMEOUT[Handle Timeout<br/>Kill Process]
+        WAIT_RESULT -->|Complete| PARSE_OUTPUT[Parse JSON<br/>Output]
+    end
+
+    subgraph RESULT["📊 Result Processing"]
+        PARSE_OUTPUT --> CHECK_SUCCESS{Task<br/>Successful?}
+        HANDLE_TIMEOUT --> RECORD_ERROR[Record Error<br/>in State]
+        CHECK_SUCCESS -->|Yes| EXTRACT_RESULT[Extract Result<br/>• Output<br/>• Tokens Used<br/>• Cost]
+        CHECK_SUCCESS -->|No| RECORD_ERROR
+        EXTRACT_RESULT --> UPDATE_METRICS[Update Metrics<br/>in State Manager]
+    end
+
+    subgraph SYNC["🔄 State Synchronization"]
+        UPDATE_METRICS --> GET_CHECKPOINT[Get Latest<br/>Git Checkpoint]
+        RECORD_ERROR --> GET_CHECKPOINT
+        GET_CHECKPOINT --> HAS_CHECKPOINT{New<br/>Checkpoint?}
+        HAS_CHECKPOINT -->|Yes| RECORD_CHECKPOINT[Record Checkpoint<br/>Mapping]
+        HAS_CHECKPOINT -->|No| RECORD_TASK[Record Task<br/>Mapping]
+        RECORD_CHECKPOINT --> RECORD_TASK
+        RECORD_TASK --> SAVE_STATE[Save Sync State<br/>to File]
+    end
+
+    subgraph STORE["💾 Memory Storage"]
+        SAVE_STATE --> STORE_EPISODE{Store<br/>Episode?}
+        STORE_EPISODE -->|Yes| SAVE_EPISODIC[Save to<br/>Episodic Memory<br/>ChromaDB]
+        STORE_EPISODE -->|No| CHECK_MORE
+        SAVE_EPISODIC --> CHECK_MORE{More<br/>Tasks?}
+        CHECK_MORE -->|Yes| RECEIVE_TASK
+        CHECK_MORE -->|No| CLEANUP
+    end
+
+    subgraph CLEANUP["🧹 Cleanup Phase"]
+        CLEANUP[Sync Final State] --> CLOSE_SESSION[Close Kilo<br/>Session]
+        CLOSE_SESSION --> REMOVE_TRACKING[Remove from<br/>Session Tracking]
+        REMOVE_TRACKING --> END_SUCCESS((End<br/>Success))
+    end
+
+    FALLBACK_LLM --> END_FALLBACK((End<br/>Fallback))
+
+    classDef initPhase fill:#4F46E5,stroke:#4338CA,color:#fff
+    classDef skillPhase fill:#10B981,stroke:#059669,color:#fff
+    classDef execPhase fill:#F59E0B,stroke:#D97706,color:#fff
+    classDef resultPhase fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    classDef syncPhase fill:#06B6D4,stroke:#0891B2,color:#fff
+    classDef storePhase fill:#EC4899,stroke:#DB2777,color:#fff
+    classDef cleanupPhase fill:#6B7280,stroke:#4B5563,color:#fff
+    classDef decision fill:#FEF3C7,stroke:#F59E0B,color:#92400E
+    classDef endpoint fill:#1F2937,stroke:#111827,color:#fff
+
+    class START,END_SUCCESS,END_FALLBACK endpoint
+    class CHECK_CLI,HAS_MEMORY,WAIT_RESULT,CHECK_SUCCESS,HAS_CHECKPOINT,STORE_EPISODE,CHECK_MORE decision

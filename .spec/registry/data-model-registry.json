@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:18:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "data_models": [
+    {
+      "name": "User",
+      "description": "Core identity representing a user in the system",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "fields": [],
+      "note": "High-level concept defined in root spec, detailed schema in child specs"
+    },
+    {
+      "name": "Project",
+      "description": "Core identity representing a project",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "fields": [],
+      "note": "High-level concept defined in root spec, detailed schema in child specs"
+    },
+    {
+      "name": "Workspace",
+      "description": "Core identity representing a workspace",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "fields": [],
+      "note": "High-level concept defined in root spec, detailed schema in child specs"
+    },
+    {
+      "name": "Generation Run",
+      "description": "Core identity representing a single execution of a spec-driven workflow",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "fields": [],
+      "note": "High-level concept defined in root spec, detailed schema in child specs"
+    }
+  ]
+}

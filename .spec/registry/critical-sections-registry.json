@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:18:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "critical_sections": [
+    {
+      "name": "System Principles (Global Rules)",
+      "section": "Section 6",
+      "description": "Global rules that apply to all components and specs, including LLM Gateway access, credit auditing, reproducibility, observability, and registry governance",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "immutable": true,
+      "rationale": "These are non-negotiable system-wide principles that ensure consistency and governance across the entire platform"
+    },
+    {
+      "name": "Cross-Spec Rules (Non-Negotiable)",
+      "section": "Section 15",
+      "description": "Rules governing how child specs interact with the root spec, preventing redefinition and ensuring inheritance of cross-cutting rules",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "immutable": true,
+      "rationale": "These rules maintain the authority of the root spec and prevent conflicts between specifications"
+    },
+    {
+      "name": "Spec Governance & Registry Authority",
+      "section": "Section 14",
+      "description": "Defines the registry as the single source of truth for spec inventory, ownership, status, and lifecycle",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "immutable": true,
+      "rationale": "Establishes the governance model and ensures registry authority across all specifications"
+    },
+    {
+      "name": "Cross-Cutting Requirements",
+      "section": "Section 7",
+      "description": "Policy-level requirements for security, observability, and compliance that apply across all components",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "immutable": true,
+      "rationale": "These requirements ensure baseline security, observability, and compliance standards are met platform-wide"
+    },
+    {
+      "name": "Governance & Quality Bar",
+      "section": "Section 12",
+      "description": "Quality requirements for generated code including mandatory tests, evidence provision, and production-ready standards",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "immutable": true,
+      "rationale": "Establishes the quality bar for all generated artifacts to ensure production readiness"
+    }
+  ]
+}

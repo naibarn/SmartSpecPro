@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:43:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "workflows": [
+    {
+      "name": "End-to-End Generation Workflow",
+      "description": "High-level conceptual lifecycle for SmartSpec Pro: Define specifications, Generate plans and tasks, Execute AI-driven generation workflows, Validate outputs against specs, Produce deployable artifacts",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "steps": [
+        "Define or update specifications",
+        "Generate plans and tasks",
+        "Execute AI-driven generation workflows",
+        "Validate outputs against specs",
+        "Produce deployable artifacts"
+      ],
+      "notes": "Detailed workflow mechanics are defined in SPEC-007 (Orchestrator)"
+    }
+  ]
+}

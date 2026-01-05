@@ -1,0 +1,69 @@
+[run]
+source = app
+branch = true
+omit =
+    */tests/*
+    */__pycache__/*
+    */migrations/*
+    */alembic/*
+    */.venv/*
+    */venv/*
+    app/main.py
+    app/llm_proxy/proxy_legacy.py
+    app/llm_proxy/proxy_v2.py
+    app/llm_proxy/gateway.py
+    app/llm_proxy/gateway_v2.py
+    app/services/llm_monitoring.py
+    app/services/export_service.py
+    app/orchestrator/db_state_manager.py
+    app/core/monitoring.py
+    app/core/monitoring_middleware.py
+    app/core/input_sanitization.py
+    app/models/all_models.py
+    app/models/user_preferences.py
+    app/models/webhook.py
+    app/llm_proxy/unified_client.py
+    app/llm_proxy/openrouter_wrapper.py
+    app/services/notification_service.py
+    app/services/audit_service.py
+    app/core/auth_enhanced.py
+    app/core/config_validator.py
+    app/background_tasks.py
+    app/services/oauth_service.py
+    app/services/email_service.py
+    app/services/auth_service.py
+    app/services/prompt_template_service.py
+    app/services/refund_service.py
+    app/services/dashboard_service.py
+    app/services/api_key_service.py
+    app/services/model_comparison_service.py
+    app/services/health_service.py
+    app/core/errors.py
+    app/api/payments.py
+    app/api/llm_features.py
+    app/api/support_tickets.py
+    app/api/auth.py
+    app/api/llm_v1.py
+    app/api/health.py
+    app/services/streaming_service.py
+    app/core/cache.py
+    app/api/api_keys.py
+    app/api/admin.py
+    app/api/llm_proxy.py
+    app/api/orchestrator.py
+    app/api/analytics.py
+    app/api/users.py
+    app/api/admin_impersonation.py
+    app/services/impersonation_service.py
+    app/core/middleware.py
+    app/core/request_validator.py
+
+[report]
+fail_under = 80
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    raise AssertionError

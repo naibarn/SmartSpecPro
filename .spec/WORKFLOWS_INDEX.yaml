@@ -1,0 +1,540 @@
+# SmartSpec Workflow Registry (v6.5.0)
+# Canonical list of workflows, their write scopes, and platform support.
+
+release_line: 6.5.0
+
+registry:
+  canonical_config: .spec/smartspec.config.yaml
+  canonical_spec_index: .spec/SPEC_INDEX.json
+  canonical_workflow_index: .spec/WORKFLOWS_INDEX.yaml
+
+universal_flags: [--config, --lang, --platform, --apply, --out, --json, --quiet]
+
+write_scopes:
+  # none: no writes
+  # reports: safe outputs under .spec/reports/**
+  # prompts: safe outputs under .smartspec/prompts/**
+  # scripts: safe outputs under .smartspec/generated-scripts/**
+  # specs: governed artifacts under specs/** (requires --apply)
+  # spec-index: governed artifact .spec/SPEC_INDEX.json (requires --apply)
+  # workflow-index: governed artifact .spec/WORKFLOWS_INDEX.yaml (requires --apply)
+  # tasks-checkboxes: governed artifact tasks.md checkbox-only (requires --apply)
+  allowed: [none, reports, prompts, scripts, specs, spec-index, workflow-index, tasks-checkboxes]
+
+workflows:
+  # ---------------------------------------------------------------------------
+  # Core Development (5)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_generate_spec
+    purpose: Refine spec.md with deterministic preview/diff and completeness checks.
+    category: core_development
+
+  - name: /smartspec_generate_spec_from_prompt
+    purpose: Generate a draft spec.md from a natural language prompt.
+    category: core_development
+
+  - name: /smartspec_generate_plan
+    purpose: Convert spec.md to plan.md with dependency awareness.
+    category: core_development
+
+  - name: /smartspec_generate_tasks
+    purpose: Convert spec.md or plan.md to a verification-ready tasks.md.
+    category: core_development
+
+  - name: /smartspec_implement_tasks
+    purpose: Implement code and other artifacts based on a tasks.md.
+    category: core_development
+
+  # ---------------------------------------------------------------------------
+  # Production & Operations (8)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_deployment_planner
+    purpose: Plan deployment strategy and generate release artifacts.
+    category: production_and_operations
+
+  - name: /smartspec_release_tagger
+    purpose: Create and push version tags for releases.
+    category: production_and_operations
+
+  - name: /smartspec_production_monitor
+    purpose: Monitor production health and alert on SLO breaches.
+    category: production_and_operations
+
+  - name: /smartspec_observability_configurator
+    purpose: Configure monitoring, logging, and tracing.
+    category: production_and_operations
+
+  - name: /smartspec_incident_response
+    purpose: Manage production incidents from triage to post-mortem.
+    category: production_and_operations
+
+  - name: /smartspec_hotfix_assistant
+    purpose: Guide the creation and deployment of emergency hotfixes.
+    category: production_and_operations
+
+  - name: /smartspec_rollback
+    purpose: Plan and execute safe, automated deployment rollbacks.
+    category: production_and_operations
+
+  - name: /smartspec_feedback_aggregator
+    purpose: Aggregate production feedback into the development cycle.
+    category: production_and_operations
+
+  # ---------------------------------------------------------------------------
+  # Maintenance & Optimization (8)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_dependency_updater
+    purpose: Scan for outdated dependencies and plan safe updates.
+    category: maintenance_and_optimization
+
+  - name: /smartspec_refactor_planner
+    purpose: Detect code smells and plan refactoring efforts.
+    category: maintenance_and_optimization
+
+  - name: /smartspec_performance_profiler
+    purpose: Profile code to find and plan performance optimizations.
+    category: maintenance_and_optimization
+
+  - name: /smartspec_data_migration_generator
+    purpose: Generate database migration scripts from data model changes.
+    category: maintenance_and_optimization
+
+  - name: /smartspec_design_system_migration_assistant
+    purpose: Assist in migrating to a new design system or component library.
+    category: maintenance_and_optimization
+
+  - name: /smartspec_reindex_specs
+    purpose: Rebuild the spec index for improved search and reuse.
+    category: maintenance_and_optimization
+
+  - name: /smartspec_reindex_workflows
+    purpose: Rebuild the workflow index for the copilot.
+    category: maintenance_and_optimization
+
+  - name: /smartspec_validate_index
+    purpose: Validate the integrity of spec and workflow indexes.
+    category: maintenance_and_optimization
+
+  # ---------------------------------------------------------------------------
+  # Quality & Testing (12)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_generate_tests
+    purpose: Generate unit, integration, and E2E tests from a spec.md.
+    category: quality_and_testing
+
+  - name: /smartspec_test_suite_runner
+    purpose: Run a specified test suite and generate a report.
+    category: quality_and_testing
+
+  - name: /smartspec_test_report_analyzer
+    purpose: Analyze test reports to identify failure patterns.
+    category: quality_and_testing
+
+  - name: /smartspec_quality_gate
+    purpose: Act as a CI gatekeeper, failing builds that don't meet quality standards.
+    category: quality_and_testing
+
+  - name: /smartspec_verify_tasks_progress_strict
+    purpose: Strict evidence-only verification using parseable evidence hooks.
+    category: quality_and_testing
+
+  - name: /smartspec_sync_tasks_checkboxes
+    purpose: Synchronize tasks.md checkbox markers to match the latest verification report.
+    category: quality_and_testing
+
+  - name: /smartspec_api_contract_validator
+    purpose: Validate API implementation against its OpenAPI/Swagger contract.
+    category: quality_and_testing
+
+  - name: /smartspec_data_model_validator
+    purpose: Validate database schema against the defined data models.
+    category: quality_and_testing
+
+  - name: /smartspec_ui_component_audit
+    purpose: Audit UI components for consistency and adherence to design system.
+    category: quality_and_testing
+
+  - name: /smartspec_ui_validation
+    purpose: Validate UI implementation against design mockups or specs.
+    category: quality_and_testing
+
+  - name: /smartspec_nfr_perf_planner
+    purpose: Plan performance tests based on Non-Functional Requirements.
+    category: quality_and_testing
+
+  - name: /smartspec_nfr_perf_verifier
+    purpose: Verify system performance against NFRs.
+    category: quality_and_testing
+
+  # ---------------------------------------------------------------------------
+  # Security (2)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_security_audit_reporter
+    purpose: Scan code for vulnerabilities and generate an audit report.
+    category: security
+
+  - name: /smartspec_security_threat_modeler
+    purpose: Analyze specs to identify and model potential security threats.
+    category: security
+
+  # ---------------------------------------------------------------------------
+  # Project Management & Support (5)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_project_copilot
+    purpose: The read-only front door into a SmartSpec-enabled repo.
+    category: project_management_and_support
+
+  - name: /smartspec_code_assistant
+    purpose: A single, consolidated helper workflow for various assistance tasks.
+    category: project_management_and_support
+
+  - name: /smartspec_report_implement_prompter
+    purpose: Generate implementation prompt packs from verification reports.
+    category: project_management_and_support
+
+  - name: /smartspec_docs_generator
+    purpose: Generate project documentation from specs and code comments.
+    category: project_management_and_support
+
+  - name: /smartspec_docs_publisher
+    purpose: Publish generated documentation to a static site or wiki.
+    category: project_management_and_support
+
+  # ---------------------------------------------------------------------------
+  # UI Generation (A2UI Integration) (1)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_generate_ui_spec
+    purpose: Generate A2UI-compliant UI specification from natural language requirements.
+    category: ui_generation
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [reports, specs, spec-index]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_implement_ui_from_spec
+    purpose: Generate platform-specific UI implementation code from A2UI specification.
+    category: ui_generation
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [code, tests, reports]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_verify_ui_implementation
+    purpose: Verify that UI implementation matches the A2UI specification.
+    category: ui_generation
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [reports]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_manage_ui_catalog
+    purpose: Manage the UI component catalog for A2UI workflows.
+    category: ui_generation
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [catalog, reports]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_generate_multiplatform_ui
+    purpose: Generate UI implementation for multiple platforms simultaneously from a single A2UI specification.
+    category: ui_generation
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [code, tests, reports]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_ui_agent
+    purpose: Interactive AI agent for conversational UI design and iterative refinement.
+    category: ui_generation
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [reports, specs, sessions]
+    status: active
+    version: "6.0.0"
+
+  # ---------------------------------------------------------------------------
+  # UI Optimization & Analytics (A2UI Phase 5) (4)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_optimize_ui_catalog
+    purpose: Optimize UI catalog performance with caching and indexing.
+    category: ui_optimization_and_analytics
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [catalog, reports]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_ui_accessibility_audit
+    purpose: Comprehensive WCAG accessibility audit for UI components.
+    category: ui_optimization_and_analytics
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [reports]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_ui_performance_test
+    purpose: Performance testing for UI components (bundle size, render time, metrics).
+    category: ui_optimization_and_analytics
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [reports]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_ui_analytics_reporter
+    purpose: Track UI component usage, adoption metrics, and quality indicators.
+    category: ui_optimization_and_analytics
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [reports]
+    status: active
+    version: "6.0.0"
+
+  - name: /smartspec_export_catalog
+    purpose: Export SmartSpec UI catalog to standard A2UI v0.8 format for interoperability.
+    category: ui_optimization_and_analytics
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [none]
+    status: active
+    version: "6.2.0"
+
+  # ---------------------------------------------------------------------------
+  # UI Theming & Design (A2UI Phase 6) (5)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_manage_theme
+    purpose: Manage design system theme (colors, typography, spacing, component variants) for A2UI applications.
+    category: ui_theming_and_design
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [theme, reports]
+    status: active
+    version: "6.2.0"
+
+  - name: /smartspec_import_penpot_tokens
+    purpose: Import design tokens from Penpot design files into SmartSpec theme system.
+    category: ui_theming_and_design
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [theme, reports]
+    status: active
+    version: "6.2.0"
+
+  - name: /smartspec_generate_rjsf_schema
+    purpose: Generate JSON Schema and UI Schema for React JSON Schema Form (RJSF) from natural language prompts.
+    category: ui_generation
+    requires_a2ui: false
+    platform_support: [cli, kilo]
+    write_scopes: [none]
+    status: active
+    version: "6.3.0"
+
+  - name: /smartspec_resolve_themes
+    purpose: Merge multiple theme files into a single resolved theme based on hierarchy (System > Company > User).
+    category: ui_theming_and_design
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [theme]
+    status: active
+    version: "6.3.0"
+
+  - name: /smartspec_generate_component_registry
+    purpose: Automatically scan component library and generate component registry file for JSON-driven UI renderer.
+    category: project_management_and_support
+    requires_a2ui: false
+    platform_support: [cli, kilo]
+    write_scopes: [code]
+    status: active
+    version: "6.3.0"
+
+  # ---------------------------------------------------------------------------
+  # AI Feedback & Optimization (A2UI Phase 6) (1)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_refine_agent_prompts
+    purpose: Analyze UI analytics data and suggest improvements to AI agent prompts for better A2UI output quality.
+    category: ai_feedback_and_optimization
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [reports, prompts]
+    status: active
+    version: "6.2.0"
+
+  # ---------------------------------------------------------------------------
+  # Testing & Validation (A2UI Phase 6) (2)
+  # ---------------------------------------------------------------------------
+  - name: /smartspec_migrate_evidence_hooks
+    purpose: Convert descriptive evidence in tasks.md to standardized evidence hooks using AI.
+    category: testing_and_validation
+    requires_a2ui: false
+    platform_support: [cli, kilo]
+    write_scopes: [specs]
+    status: active
+    version: "6.3.0"
+
+  - name: /smartspec_validate_golden_tests
+    purpose: Validate A2UI JSON output against golden test cases to ensure quality and compliance.
+    category: testing_and_validation
+    requires_a2ui: true
+    platform_support: [cli, kilo]
+    write_scopes: [reports]
+    status: active
+    version: "6.2.0"
+
+  # ---------------------------------------------------------------------------
+  # Autopilot (Advanced Workflow Execution) (4)
+  # ---------------------------------------------------------------------------
+  - name: /autopilot_run
+    purpose: Execute workflows with advanced features (checkpointing, parallel execution, human-in-the-loop).
+    category: autopilot
+    requires_a2ui: false
+    platform_support: [cli, kilo]
+    write_scopes: [reports, specs, checkpoints]
+    status: active
+    version: "6.5.0"
+    flags:
+      - name: --checkpoint
+        description: Enable checkpointing for workflow state persistence and resume capability
+        required: false
+      - name: --parallel
+        description: Enable parallel execution for multi-task workflows
+        required: false
+      - name: --max-workers
+        description: Set maximum number of parallel workers (default: 4)
+        required: false
+        default: 4
+      - name: --resume
+        description: Resume workflow from a specific checkpoint ID
+        required: false
+      - name: --human-approval
+        description: Require human approval at critical workflow steps
+        required: false
+    features:
+      - parallel_execution
+      - checkpointing
+      - progress_streaming
+      - human_in_the_loop
+      - dynamic_routing
+      - error_recovery
+
+  - name: /autopilot_status
+    purpose: Check workflow status, progress, and available checkpoints.
+    category: autopilot
+    requires_a2ui: false
+    platform_support: [cli, kilo]
+    write_scopes: [none]
+    status: active
+    version: "6.5.0"
+    outputs:
+      - workflow_state
+      - progress_percentage
+      - current_step
+      - pending_interrupts
+      - available_checkpoints
+
+  - name: /autopilot_ask
+    purpose: Respond to human interrupt requests (approval, review, input, decision).
+    category: autopilot
+    requires_a2ui: false
+    platform_support: [cli, kilo]
+    write_scopes: [checkpoints]
+    status: active
+    version: "6.5.0"
+    flags:
+      - name: --action
+        description: Action to take (approve, reject, modify)
+        required: true
+        values: [approve, reject, modify]
+      - name: --modifications
+        description: JSON object containing modifications to apply (required if action is modify)
+        required: false
+    interrupt_types:
+      - APPROVAL
+      - INPUT
+      - REVIEW
+      - DECISION
+
+  - name: /smartspec_fix_naming_issues
+    purpose: Fix naming issues by automatically updating evidence paths in tasks.md based on verification report.
+    category: autopilot
+    requires_a2ui: false
+    platform_support: [cli, kilo]
+    write_scopes: [specs]
+    status: active
+    version: "1.0.0"
+    flags:
+      - name: <tasks.md>
+        description: Path to tasks.md file
+        required: true
+      - name: --from-report
+        description: Path to verification report (JSON or Markdown)
+        required: true
+      - name: --apply
+        description: Apply changes immediately (default: preview only)
+        required: false
+    features:
+      - naming_issue_detection
+      - evidence_path_update
+      - preview_mode
+      - batch_update
+    outputs:
+      - updated_tasks_md
+      - change_summary
+    script: .smartspec/scripts/fix_naming_issues.py
+    examples:
+      - description: Preview naming issue fixes
+        command: /smartspec_fix_naming_issues tasks.md --from-report .spec/reports/batch-execution/batch_execution.md
+      - description: Apply naming issue fixes
+        command: /smartspec_fix_naming_issues tasks.md --from-report .spec/reports/batch-execution/batch_execution.md --apply
+
+  - name: /smartspec_execute_prompts_batch
+    purpose: Execute multiple generated prompts in batch with progress tracking and checkpoint support.
+    category: autopilot
+    requires_a2ui: false
+    platform_support: [cli, kilo]
+    write_scopes: [specs, reports]
+    status: active
+    version: "6.5.0"
+    flags:
+      - name: --prompts-dir
+        description: Directory containing generated prompt files
+        required: true
+      - name: --tasks
+        description: Path to tasks.md file
+        required: true
+      - name: --dry-run
+        description: Preview execution plan without making changes
+        required: false
+      - name: --checkpoint
+        description: Enable checkpointing for resume capability
+        required: false
+      - name: --max-failures
+        description: Maximum number of failures before stopping (default 3)
+        required: false
+        default: 3
+      - name: --skip-category
+        description: Categories to skip (comma-separated)
+        required: false
+      - name: --only-category
+        description: Only execute specific categories (comma-separated)
+        required: false
+      - name: --verify-after-each
+        description: Run verification after each category
+        required: false
+    features:
+      - batch_execution
+      - priority_ordering
+      - progress_tracking
+      - checkpoint_support
+      - category_filtering
+      - error_handling
+    outputs:
+      - execution_report
+      - success_count
+      - failure_count
+      - duration

@@ -1,0 +1,73 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:43:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "critical_sections": [
+    {
+      "name": "System Principles (Global Rules)",
+      "section_id": "6",
+      "description": "Global principles that apply to all components and specs",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "rules": [
+        "All AI access must go through the LLM Gateway",
+        "All credit usage must be auditable and attributable",
+        "All generated artifacts must be reproducible from specs",
+        "Failures must be observable and diagnosable",
+        "No component may bypass registry governance"
+      ],
+      "immutable": true,
+      "notes": "These principles are non-negotiable and apply to all components"
+    },
+    {
+      "name": "Cross-Cutting Requirements",
+      "section_id": "7",
+      "description": "Cross-cutting requirements for security, observability, and compliance",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "rules": [
+        "Centralized authentication and authorization",
+        "Strict tenant and project isolation",
+        "No secrets embedded in specs or generated code",
+        "Structured logging with correlation IDs",
+        "Metrics for cost, latency, and failure modes",
+        "Traceability from spec → task → artifact",
+        "Clear ownership of generated artifacts",
+        "Configurable data retention policies",
+        "No training on customer data by default"
+      ],
+      "immutable": true,
+      "notes": "These requirements are policy-level and apply across all specs"
+    },
+    {
+      "name": "Cross-Spec Rules (Non-Negotiable)",
+      "section_id": "15",
+      "description": "Non-negotiable rules governing cross-spec relationships",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "rules": [
+        "Child specs must not redefine concepts owned by SPEC-001",
+        "No API, schema, or UI detail may appear in this document",
+        "Cross-cutting rules are inherited, not overridden"
+      ],
+      "immutable": true,
+      "notes": "These rules prevent conflicts and ensure consistency across specs"
+    },
+    {
+      "name": "What This Spec Is / Is Not",
+      "section_id": "16",
+      "description": "Clear boundaries of what SPEC-001 covers",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "in_scope": [
+        "Vision and intent",
+        "System-level rules",
+        "Cross-cutting constraints"
+      ],
+      "out_of_scope": [
+        "An API specification",
+        "A database schema",
+        "A UI or workflow implementation guide"
+      ],
+      "immutable": true,
+      "notes": "These boundaries prevent scope creep and maintain spec clarity"
+    }
+  ]
+}

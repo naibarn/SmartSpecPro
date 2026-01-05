@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:43:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "services": []
+}

@@ -1,0 +1,124 @@
+# SmartSpec Pro - Development Dockerfile
+# Ubuntu-based environment for Kilo Code CLI integration
+# Supports both Approach A (Kilo outside) and Approach B (Kilo inside)
+
+FROM ubuntu:22.04
+
+LABEL maintainer="SmartSpec Team"
+LABEL description="SmartSpec Pro Development Environment with Kilo Code CLI support"
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Bangkok
+
+# Set locale
+RUN apt-get update && apt-get install -y locales && \
+    locale-gen en_US.UTF-8 && \
+    update-locale LANG=en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    # Basic tools
+    git \
+    curl \
+    wget \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    software-properties-common \
+    # Build essentials
+    build-essential \
+    gcc \
+    g++ \
+    make \
+    cmake \
+    # Python
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev \
+    python3-pip \
+    # Node.js (via NodeSource)
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    # Database clients
+    postgresql-client \
+    redis-tools \
+    # Additional tools
+    jq \
+    vim \
+    nano \
+    htop \
+    tree \
+    unzip \
+    zip \
+    rsync \
+    openssh-client \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pnpm globally
+RUN npm install -g pnpm@latest
+
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
+# Upgrade pip
+RUN python -m pip install --upgrade pip setuptools wheel
+
+# Install global Python packages for development
+RUN pip install --no-cache-dir \
+    poetry \
+    pipenv \
+    black \
+    flake8 \
+    mypy \
+    pytest \
+    pytest-asyncio \
+    pytest-cov \
+    httpx \
+    ipython
+
+# Create workspace directory
+WORKDIR /workspace
+
+# Create non-root user with same UID as typical host user
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+RUN groupadd --gid $USER_GID devuser && \
+    useradd --uid $USER_UID --gid $USER_GID -m devuser && \
+    chown -R devuser:devuser /workspace
+
+# Setup sudo for devuser (optional, for debugging)
+RUN apt-get update && apt-get install -y sudo && \
+    echo "devuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    rm -rf /var/lib/apt/lists/*
+
+# Switch to non-root user
+USER devuser
+
+# Set home directory
+ENV HOME=/home/devuser
+
+# Create directories for Kilo Code skills
+RUN mkdir -p $HOME/.kilocode/skills $HOME/.claude/skills
+
+# Add local bin to PATH
+ENV PATH="$HOME/.local/bin:$PATH"
+
+# Install user-level Python packages
+RUN pip install --user --no-cache-dir \
+    langchain \
+    langchain-openai \
+    langchain-anthropic \
+    chromadb \
+    openai \
+    anthropic
+
+# Default command - keep container running
+CMD ["bash", "-lc", "sleep infinity"]

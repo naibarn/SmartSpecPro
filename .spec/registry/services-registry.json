@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:18:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "services": [
+    {
+      "name": "LLM Gateway",
+      "description": "Centralized gateway for all AI/LLM access, providing abstraction, routing, and cost control",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "responsibilities": [
+        "Abstract LLM provider access",
+        "Route requests to appropriate providers",
+        "Enforce cost control and quotas",
+        "Provide unified API for AI services"
+      ],
+      "dependencies": ["LLM Providers"],
+      "governance_level": "system"
+    },
+    {
+      "name": "Orchestrator",
+      "description": "Workflow orchestration service that manages generation and validation workflows",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "responsibilities": [
+        "Coordinate generation workflows",
+        "Manage task execution",
+        "Handle validation steps",
+        "Produce deployable artifacts"
+      ],
+      "dependencies": ["LLM Gateway", "Registry"],
+      "governance_level": "system"
+    },
+    {
+      "name": "Registry",
+      "description": "Authoritative index and governance system for specs and artifacts",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "responsibilities": [
+        "Maintain spec inventory",
+        "Track ownership and status",
+        "Enforce governance rules",
+        "Resolve spec conflicts"
+      ],
+      "dependencies": [],
+      "governance_level": "system"
+    }
+  ]
+}

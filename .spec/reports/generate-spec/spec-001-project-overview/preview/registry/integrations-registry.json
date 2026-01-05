@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-01T15:43:00Z",
+  "source": "smartspec_generate_spec",
+  "specs_included": ["SPEC-001-PROJECT-OVERVIEW"],
+  "integrations": [
+    {
+      "name": "LLM Providers",
+      "type": "external_service",
+      "provider": "Multiple (OpenAI, Anthropic, Google, Groq, Ollama)",
+      "description": "External LLM providers abstracted through the LLM Gateway",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "notes": "Detailed provider integration is defined in SPEC-004 (LLM Gateway)"
+    },
+    {
+      "name": "Payment and Billing Providers",
+      "type": "payment",
+      "provider": "TBD",
+      "description": "Payment processing and billing integration for credit purchases",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "notes": "Detailed payment integration is defined in SPEC-003 (Authentication & Credits)"
+    },
+    {
+      "name": "Authentication and Identity Services",
+      "type": "identity",
+      "provider": "TBD",
+      "description": "Authentication and identity management services",
+      "owner_spec": "SPEC-001-PROJECT-OVERVIEW",
+      "notes": "Detailed auth integration is defined in SPEC-003 (Authentication & Credits)"
+    }
+  ]
+}
