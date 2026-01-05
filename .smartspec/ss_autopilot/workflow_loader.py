@@ -18,6 +18,38 @@ from .error_handler import (
 )
 
 
+_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+
+
+def _parse_frontmatter(text: str) -> Dict[str, str]:
+    """Parse a minimal YAML frontmatter block.
+
+    We intentionally keep this lightweight to avoid adding YAML runtime deps.
+    Supported:
+    - `key: value` lines
+    - simple indented continuations (multi-line values)
+    """
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        return {}
+    body = m.group(1)
+    out: Dict[str, str] = {}
+    last_key: Optional[str] = None
+    for raw in body.splitlines():
+        line = raw.rstrip("\n")
+        if not line.strip():
+            continue
+        if ":" in line and not line.startswith(" ") and not line.startswith("\t"):
+            k, v = line.split(":", 1)
+            last_key = k.strip()
+            out[last_key] = v.strip().strip('"').strip("'")
+            continue
+        # Indented continuation for previous key
+        if last_key and (line.startswith(" ") or line.startswith("\t")):
+            out[last_key] = (out.get(last_key, "") + " " + line.strip()).strip()
+    return out
+
+
 class Workflow:
     """Represents a SmartSpec workflow"""
     
@@ -53,11 +85,30 @@ class Workflow:
                 return
             
             self.content = result["content"]
+
+            # --- Frontmatter (P0) ---
+            # Many workflows store canonical metadata in YAML frontmatter.
+            fm = _parse_frontmatter(self.content)
+            if fm:
+                # Keep original keys, but also provide normalized aliases.
+                self.metadata.update(fm)
+                self.metadata.setdefault("workflow_slug", fm.get("workflow"))
+                self.metadata.setdefault("version", fm.get("version"))
+                self.metadata.setdefault("category", fm.get("category"))
+                self.metadata.setdefault("description", fm.get("description"))
+            
+            # Workflow identifiers
+            self.metadata.setdefault("workflow_key", self.name)
+            self.metadata.setdefault("kilo_command", f"/{self.name}.md")
+            self.metadata.setdefault(
+                "kind",
+                "production" if self.metadata.get("workflow_slug") else "legacy",
+            )
             
             # Extract title (first # heading)
             try:
                 title_match = re.search(r'^#\s+(.+?)$', self.content, re.MULTILINE)
-                self.metadata['title'] = title_match.group(1) if title_match else self.name
+                self.metadata['title'] = title_match.group(1) if title_match else self.metadata.get('title', self.name)
             except Exception as e:
                 self.metadata['title'] = self.name
                 self.errors.append(f"Failed to extract title: {str(e)}")
@@ -65,9 +116,10 @@ class Workflow:
             # Extract description (first paragraph after title)
             try:
                 desc_match = re.search(r'^#.+?\n\n(.+?)(?:\n\n|\n#)', self.content, re.MULTILINE | re.DOTALL)
-                self.metadata['description'] = desc_match.group(1).strip() if desc_match else ""
+                if not self.metadata.get('description'):
+                    self.metadata['description'] = desc_match.group(1).strip() if desc_match else ""
             except Exception as e:
-                self.metadata['description'] = ""
+                self.metadata.setdefault('description', "")
                 self.errors.append(f"Failed to extract description: {str(e)}")
             
             # Extract purpose
@@ -156,9 +208,18 @@ class Workflow:
 
 
 class WorkflowCatalog:
-    """Catalog of all SmartSpec workflows"""
+    """Catalog of SmartSpec workflows.
+
+    P0 standard:
+    - workflow_key = file stem (e.g. smartspec_generate_spec)
+    - Kilo command = `/{workflow_key}.md`
+
+    By default this catalog loads *production* workflows (`smartspec_*.md`).
+    Set `include_legacy=True` to also load legacy/chat-router workflows
+    such as `autopilot_*.md`.
+    """
     
-    def __init__(self, workflows_dir: str = "/home/ubuntu/SmartSpec/.smartspec/workflows"):
+    def __init__(self, workflows_dir: str = ".smartspec/workflows", include_legacy: bool = False):
         """
         Initialize Workflow Catalog.
         
@@ -168,6 +229,7 @@ class WorkflowCatalog:
         self.workflows_dir = Path(workflows_dir)
         self.workflows: Dict[str, Workflow] = {}
         self.errors = []
+        self.include_legacy = include_legacy
         self.load_all()
     
     def load_all(self):
@@ -184,23 +246,31 @@ class WorkflowCatalog:
             loaded_count = 0
             failed_count = 0
             
-            for workflow_file in self.workflows_dir.glob("smartspec_*.md"):
-                try:
-                    name = workflow_file.stem  # e.g., "smartspec_generate_spec"
-                    workflow = Workflow(name, workflow_file)
-                    self.workflows[name] = workflow
-                    loaded_count += 1
-                    
-                    # Track workflow-level errors
-                    if workflow.errors:
-                        self.errors.extend([f"{name}: {err}" for err in workflow.errors])
+            patterns = ["smartspec_*.md"]
+            if self.include_legacy:
+                patterns.append("autopilot_*.md")
+
+            for pattern in patterns:
+                for workflow_file in self.workflows_dir.glob(pattern):
+                    # Ignore Windows ADS artifacts (`:Zone.Identifier`) and other invalid names
+                    if ":" in workflow_file.name:
+                        continue
+                    try:
+                        name = workflow_file.stem  # e.g., "smartspec_generate_spec"
+                        workflow = Workflow(name, workflow_file)
+                        self.workflows[name] = workflow
+                        loaded_count += 1
+
+                        # Track workflow-level errors
+                        if workflow.errors:
+                            self.errors.extend([f"{name}: {err}" for err in workflow.errors])
+                            failed_count += 1
+
+                    except Exception as e:
+                        error_msg = f"Failed to load workflow {workflow_file.name}: {str(e)}"
+                        self.errors.append(error_msg)
                         failed_count += 1
-                
-                except Exception as e:
-                    error_msg = f"Failed to load workflow {workflow_file.name}: {str(e)}"
-                    self.errors.append(error_msg)
-                    failed_count += 1
-            
+
             print(f"Loaded {loaded_count} workflows ({failed_count} with errors)")
         
         except Exception as e:

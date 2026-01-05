@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from app.orchestrator import (
     orchestrator,
+    factory_orchestrator,
     state_manager,
     checkpoint_manager,
     ExecutionState,
@@ -29,6 +30,16 @@ class ExecuteWorkflowRequest(BaseModel):
     project_path: Optional[str] = None
     parallel_config: Optional[ParallelExecution] = None
     validation_rules: Optional[List[dict]] = None
+
+
+class RunFactoryRequest(BaseModel):
+    """Run Phase 4 SaaS Factory loop against a Control Plane session."""
+
+    session_id: str
+    workspace: str
+    goal: str
+    apply: bool = False
+    max_iterations: int = 10
 
 
 @router.post("/execute", response_model=ExecutionState, status_code=status.HTTP_200_OK)
@@ -60,6 +71,32 @@ async def execute_workflow(request: ExecuteWorkflowRequest):
             detail=f"Workflow execution failed: {str(e)}"
         )
 
+
+@router.post("/factory/run", status_code=status.HTTP_200_OK)
+async def run_factory(request: RunFactoryRequest):
+    """Run the Phase 4 SaaS Factory orchestrator.
+
+    This endpoint loops until gates pass (or max_iterations reached) using:
+    - Kilo CLI for execution
+    - Control Plane for state + gate evaluation
+    - LangGraph checkpoints for resume
+    """
+    try:
+        result = await factory_orchestrator.run(
+            session_id=request.session_id,
+            workspace=request.workspace,
+            goal=request.goal,
+            apply=request.apply,
+            max_iterations=request.max_iterations,
+        )
+        return {"status": "ok", "result": result}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Factory run failed: {str(e)}",
+        )
 
 @router.get("/status/{execution_id}", response_model=ExecutionState, status_code=status.HTTP_200_OK)
 async def get_execution_status(execution_id: str):

@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  control-plane-db:
+    image: postgres:16
+    container_name: smartspec-control-plane-db
+    environment:
+      POSTGRES_USER: smartspec
+      POSTGRES_PASSWORD: smartspec
+      POSTGRES_DB: smartspec_control_plane
+    ports:
+      - "5433:5432"
+    volumes:
+      - control_plane_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartspec -d smartspec_control_plane"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  control-plane:
+    image: node:20
+    container_name: smartspec-control-plane
+    working_dir: /app/control-plane
+    volumes:
+      - ..:/app
+    env_file:
+      - ../control-plane/.env.example
+    environment:
+      # override DB URL to talk to the container
+      DATABASE_URL: postgresql://smartspec:smartspec@control-plane-db:5432/smartspec_control_plane?schema=public
+    ports:
+      - "7070:7070"
+    depends_on:
+      control-plane-db:
+        condition: service_healthy
+    command: bash -lc "corepack enable && npm i -g pnpm && pnpm install --dir control-plane && pnpm --dir control-plane prisma:generate && pnpm --dir control-plane prisma:migrate && pnpm --dir control-plane dev"
+
+volumes:
+  control_plane_pgdata:

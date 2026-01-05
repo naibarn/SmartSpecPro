@@ -17,6 +17,7 @@ import { GenerationPanel, PublicGallery, SDKCodeViewer } from "./components/gene
 import { AdminDashboard } from "./components/admin";
 import { WorkflowsView } from "./components/workflows";
 import { HistoryView } from "./components/history";
+import { FactoryPanel } from "./components/FactoryPanel";
 import { useWorkflows } from "./hooks/useWorkflows";
 import { useWorkflowExecution } from "./hooks/useWorkflowExecution";
 import type { Workflow, WorkflowArgs } from "./types/workflow";
@@ -95,6 +96,9 @@ function App() {
 
       case "workflows":
         return <WorkflowsView />;
+
+      case "factory":
+        return <FactoryPanel />;
 
       case "skills":
         return (

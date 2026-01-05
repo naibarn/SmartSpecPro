@@ -23,25 +23,27 @@ class ReportEnhancer:
     """Post-process workflow reports to add Autopilot metadata"""
     
     # Workflow sequence and next steps
+    # P0: Align with actual workflow filenames in `.smartspec/workflows/`.
+    # This sequence is used only for UX hints in enhanced reports.
     WORKFLOW_SEQUENCE = {
-        "smartspec_generate_spec": "smartspec_plan_implementation",
-        "smartspec_plan_implementation": "smartspec_create_tasks",
-        "smartspec_create_tasks": "smartspec_implement_tasks",
+        "smartspec_generate_spec": "smartspec_generate_plan",
+        "smartspec_generate_plan": "smartspec_generate_tasks",
+        "smartspec_generate_tasks": "smartspec_implement_tasks",
         "smartspec_implement_tasks": "smartspec_sync_tasks_checkboxes",
-        "smartspec_sync_tasks_checkboxes": "smartspec_verify_implementation",
-        "smartspec_verify_implementation": "smartspec_sync_spec",
-        "smartspec_sync_spec": None,  # Complete
+        "smartspec_sync_tasks_checkboxes": "smartspec_test_suite_runner",
+        "smartspec_test_suite_runner": "smartspec_quality_gate",
+        "smartspec_quality_gate": None,  # Complete
     }
     
     # Time estimates for each workflow
     TIME_ESTIMATES = {
         "smartspec_generate_spec": "5-10 minutes",
-        "smartspec_plan_implementation": "5-10 minutes",
-        "smartspec_create_tasks": "3-5 minutes",
+        "smartspec_generate_plan": "5-10 minutes",
+        "smartspec_generate_tasks": "3-5 minutes",
         "smartspec_implement_tasks": "10-30 minutes",
         "smartspec_sync_tasks_checkboxes": "1-2 minutes",
-        "smartspec_verify_implementation": "5-15 minutes",
-        "smartspec_sync_spec": "2-3 minutes",
+        "smartspec_test_suite_runner": "5-15 minutes",
+        "smartspec_quality_gate": "2-3 minutes",
     }
     
     def __init__(self, reports_dir: str):
@@ -167,7 +169,7 @@ class ReportEnhancer:
             try:
                 if workflow == "implement-tasks":
                     metadata.update(self._infer_implement_metadata(report_dir))
-                elif workflow == "create-tasks":
+                elif workflow == "generate-tasks":
                     metadata.update(self._infer_tasks_metadata(report_dir))
                 elif workflow == "sync-tasks":
                     metadata.update(self._infer_sync_metadata(report_dir))
@@ -199,12 +201,12 @@ class ReportEnhancer:
         try:
             mapping = {
                 "generate-spec": "smartspec_generate_spec",
-                "generate-plan": "smartspec_plan_implementation",
-                "create-tasks": "smartspec_create_tasks",
+                "generate-plan": "smartspec_generate_plan",
+                "generate-tasks": "smartspec_generate_tasks",
                 "implement-tasks": "smartspec_implement_tasks",
                 "sync-tasks": "smartspec_sync_tasks_checkboxes",
-                "verify-implementation": "smartspec_verify_implementation",
-                "sync-spec": "smartspec_sync_spec",
+                "test-suite": "smartspec_test_suite_runner",
+                "quality-gate": "smartspec_quality_gate",
             }
             return mapping.get(workflow_dir, f"smartspec_{workflow_dir.replace('-', '_')}")
         except Exception:

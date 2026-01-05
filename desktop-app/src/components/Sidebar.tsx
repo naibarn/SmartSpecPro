@@ -223,6 +223,7 @@ export function Sidebar({
 export const defaultNavigationItems: NavigationItem[] = [
   { id: "chat", label: "Chat", icon: <Icons.Chat /> },
   { id: "workflows", label: "Workflows", icon: <Icons.Workflow /> },
+  { id: "factory", label: "SaaS Factory", icon: <Icons.Workflow /> },
   { id: "skills", label: "Skills", icon: <Icons.Skills /> },
   { id: "auth-generator", label: "Auth Generator", icon: <Icons.AuthGenerator /> },
   { id: "generation", label: "AI Generation", icon: <Icons.Generation /> },

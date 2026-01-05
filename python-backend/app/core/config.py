@@ -92,6 +92,14 @@ class Settings(BaseSettings):
     # Kilo Code CLI
     KILO_CLI_PATH: str = "kilo"
     KILO_CLI_TIMEOUT: int = 300
+
+    # Control Plane (Phase 1-4)
+    # Base URL for Control Plane service (Fastify) used for authoritative state
+    CONTROL_PLANE_URL: str = "http://localhost:7070"
+    # API key used to mint short-lived JWTs (Control Plane: POST /api/v1/auth/token)
+    CONTROL_PLANE_API_KEY: str = ""
+    # HTTP timeout when calling Control Plane
+    CONTROL_PLANE_TIMEOUT_SECONDS: int = 20
     
     # Auth Generator
     AUTH_GENERATOR_PATH: str = "../auth-generator/dist/cli/index.js"

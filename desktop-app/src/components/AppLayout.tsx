@@ -2,7 +2,7 @@ import { useState, ReactNode } from "react";
 import { Sidebar, defaultNavigationItems } from "./Sidebar";
 import type { NavigationItem } from "./Sidebar";
 
-export type ViewType = "chat" | "workflows" | "skills" | "auth-generator" | "generation" | "gallery" | "sdk" | "memory" | "history" | "admin" | "settings";
+export type ViewType = "chat" | "workflows" | "factory" | "skills" | "auth-generator" | "generation" | "gallery" | "sdk" | "memory" | "history" | "admin" | "settings";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -62,6 +62,7 @@ export function AppLayout({
 export const viewTitles: Record<ViewType, string> = {
   chat: "Chat",
   workflows: "Workflows",
+  factory: "SaaS Factory",
   skills: "Skills",
   "auth-generator": "Auth Generator",
   generation: "AI Generation",
@@ -77,6 +78,7 @@ export const viewTitles: Record<ViewType, string> = {
 export const viewDescriptions: Record<ViewType, string> = {
   chat: "Chat with AI assistant",
   workflows: "Manage and run workflows",
+  factory: "Control Plane session + gates + orchestrator",
   skills: "Configure Kilo Code skills",
   "auth-generator": "Generate authentication systems",
   generation: "Generate images, videos, and audio with AI",

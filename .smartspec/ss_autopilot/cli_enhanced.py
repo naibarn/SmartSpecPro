@@ -53,10 +53,14 @@ def load_config() -> Dict[str, Any]:
         },
         "commands": {
             "kilo": {
-                "generate_spec": "/smartspec_generate_spec.md --platform kilo",
-                "generate_plan": "/smartspec_generate_plan.md --platform kilo",
-                "generate_tasks": "/smartspec_generate_tasks.md --platform kilo",
-                "implement_tasks": "/smartspec_implement_tasks.md --platform kilo",
+                # P0: keys here are workflow file stems (workflow_key)
+                "smartspec_generate_spec": "/smartspec_generate_spec.md --platform kilo",
+                "smartspec_generate_plan": "/smartspec_generate_plan.md --platform kilo",
+                "smartspec_generate_tasks": "/smartspec_generate_tasks.md --platform kilo",
+                "smartspec_implement_tasks": "/smartspec_implement_tasks.md --platform kilo",
+                "smartspec_sync_tasks_checkboxes": "/smartspec_sync_tasks_checkboxes.md --platform kilo",
+                "smartspec_test_suite_runner": "/smartspec_test_suite_runner.md --platform kilo",
+                "smartspec_quality_gate": "/smartspec_quality_gate.md --platform kilo",
             }
         },
         "defaults": {
@@ -178,24 +182,25 @@ def cmd_run(args):
         return
     
     # Generate command
+    # P0: workflow_key = filename stem of the workflow in `.smartspec/workflows/`
     workflow_key = {
-        "SPEC": "generate_spec",
-        "PLAN": "generate_plan",
-        "TASKS": "generate_tasks",
-        "IMPLEMENT": "implement_tasks",
-        "SYNC_TASKS": "sync_tasks_checkboxes",
-        "TEST_SUITE": "test_suite_runner",
-        "QUALITY_GATE": "quality_gate",
+        "SPEC": "smartspec_generate_spec",
+        "PLAN": "smartspec_generate_plan",
+        "TASKS": "smartspec_generate_tasks",
+        "IMPLEMENT": "smartspec_implement_tasks",
+        "SYNC_TASKS": "smartspec_sync_tasks_checkboxes",
+        "TEST_SUITE": "smartspec_test_suite_runner",
+        "QUALITY_GATE": "smartspec_quality_gate",
     }.get(next_step)
     
     # Build command
     if workflow_key:
-        outdir = default_out_dir(workflow_key.replace("_", "-"), args.spec_id)
+        outdir = default_out_dir(workflow_key, args.spec_id)
         
         # Build args based on workflow
-        if workflow_key == "implement_tasks":
+        if workflow_key == "smartspec_implement_tasks":
             cmd_args = [state["tasks_path"], "--apply", "--out", outdir, "--json"]
-        elif workflow_key == "sync_tasks_checkboxes":
+        elif workflow_key == "smartspec_sync_tasks_checkboxes":
             cmd_args = [state["tasks_path"], "--out", outdir, "--json", "--apply"]
         else:
             cmd_args = [state["spec_path"], "--out", outdir, "--json"]
