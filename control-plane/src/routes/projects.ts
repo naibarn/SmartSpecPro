@@ -1,39 +1,21 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { prisma } from "../db.js";
+import { auditLog } from "../audit";
+import { requireRole } from "../auth";
 
-const CreateProject = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-});
+const CreateProjectSchema = z.object({ name: z.string().min(1) });
 
 export async function registerProjectRoutes(app: FastifyInstance) {
-  app.post("/api/v1/projects", { preHandler: async (req) => app.requireAuth(req) }, async (request) => {
-    const body = CreateProject.parse(request.body ?? {});
-    const project = await prisma.project.create({ data: { name: body.name, description: body.description } });
-    await prisma.auditLog.create({
-      data: {
-        actorType: request.user?.actorType ?? "SYSTEM",
-        actorId: request.user?.sub,
-        action: "project.create",
-        targetType: "Project",
-        targetId: project.id,
-        meta: { name: project.name },
-      },
-    });
+  app.post("/api/v1/projects", { preHandler: [requireRole(app, ["admin", "user"])] }, async (req: any) => {
+    const body = CreateProjectSchema.parse(req.body);
+    const project = await app.prisma.project.create({ data: { name: body.name } });
+    await auditLog(app.prisma, { actorSub: req.user.sub, action: "project.create", projectId: project.id });
     return { project };
   });
 
-  app.get("/api/v1/projects/:projectId", { preHandler: async (req) => app.requireAuth(req) }, async (request, reply) => {
-    const projectId = (request.params as any).projectId as string;
-    const project = await prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) return reply.code(404).send({ error: "not_found" });
+  app.get("/api/v1/projects/:projectId", { preHandler: [requireRole(app, ["admin", "user", "runner"])] }, async (req) => {
+    const { projectId } = req.params as any;
+    const project = await app.prisma.project.findUnique({ where: { id: projectId } });
     return { project };
   });
-}
-
-declare module "fastify" {
-  interface FastifyRequest {
-    user?: any;
-  }
 }

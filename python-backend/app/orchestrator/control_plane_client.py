@@ -1,99 +1,107 @@
-"""Control Plane client (Phase 4)
-
-This module provides a small async client used by the LangGraph orchestrator
-to read/write authoritative state (projects/sessions/tasks/reports/gates).
-
-Design goals:
-- Keep Control Plane as the source of truth
-- Use short-lived JWT minted from a static API key
-- Be resilient to partial rollouts: network failures should be surfaced
-"""
-
-from __future__ import annotations
-
-from dataclasses import dataclass
+import os
+import time
+import hashlib
+import json
 from typing import Any, Dict, Optional
-
-import httpx
-import structlog
-
-logger = structlog.get_logger()
-
-
-@dataclass
-class ControlPlaneAuth:
-    """Holds token state."""
-
-    token: str
-
+import requests
 
 class ControlPlaneClient:
-    """Async HTTP client for Control Plane."""
-
-    def __init__(self, base_url: str, api_key: str, timeout_seconds: int = 20):
+    def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
-        self.timeout_seconds = timeout_seconds
-        self._auth: Optional[ControlPlaneAuth] = None
+        self._token: Optional[str] = None
+        self._token_exp: float = 0.0
 
-    async def _get_jwt(self) -> str:
-        if self._auth is not None:
-            return self._auth.token
-        if not self.api_key:
-            raise ValueError("CONTROL_PLANE_API_KEY is required to mint JWT")
+    def _mint(self, role: str = "runner", project_id: Optional[str] = None, session_id: Optional[str] = None, ttl: int = 900) -> str:
+        resp = requests.post(
+            f"{self.base_url}/api/v1/auth/token",
+            json={"apiKey": self.api_key, "scope": {"role": role, "projectId": project_id, "sessionId": session_id}, "ttlSeconds": ttl},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        self._token = data["token"]
+        self._token_exp = time.time() + (data.get("expiresInSeconds", ttl) - 30)
+        return self._token
 
-        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            r = await client.post(
-                f"{self.base_url}/api/v1/auth/token",
-                json={"apiKey": self.api_key},
-            )
-            r.raise_for_status()
-            data = r.json()
-            token = data.get("token")
-            if not token:
-                raise ValueError("Control Plane did not return token")
-            self._auth = ControlPlaneAuth(token=token)
-            return token
+    def token(self, project_id: Optional[str] = None, session_id: Optional[str] = None) -> str:
+        if not self._token or time.time() >= self._token_exp:
+            return self._mint(project_id=project_id, session_id=session_id)
+        return self._token
 
-    async def _request(self, method: str, path: str, *, json: Any | None = None, params: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        token = await self._get_jwt()
-        headers = {"Authorization": f"Bearer {token}"}
-        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            r = await client.request(
-                method,
-                f"{self.base_url}{path}",
-                headers=headers,
-                json=json,
-                params=params,
-            )
-            # If token expired, clear and retry once
-            if r.status_code == 401:
-                self._auth = None
-                token = await self._get_jwt()
-                headers = {"Authorization": f"Bearer {token}"}
-                r = await client.request(
-                    method,
-                    f"{self.base_url}{path}",
-                    headers=headers,
-                    json=json,
-                    params=params,
-                )
-            r.raise_for_status()
-            return r.json()
+    def _h(self, project_id=None, session_id=None) -> Dict[str, str]:
+        return {"Authorization": f"Bearer {self.token(project_id, session_id)}"}
 
-    # ---------- Phase 3/4 primitives ----------
+    def create_project(self, name: str) -> Dict[str, Any]:
+        r = requests.post(f"{self.base_url}/api/v1/projects", json={"name": name}, headers=self._h(), timeout=30)
+        r.raise_for_status()
+        return r.json()["project"]
 
-    async def upsert_task(self, session_id: str, task: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("PUT", f"/api/v1/sessions/{session_id}/tasks", json=task)
+    def create_session(self, project_id: str, name: str = "") -> Dict[str, Any]:
+        r = requests.post(f"{self.base_url}/api/v1/projects/{project_id}/sessions", json={"name": name or None}, headers=self._h(project_id=project_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["session"]
 
-    async def record_test_run(self, session_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", f"/api/v1/sessions/{session_id}/test-runs", json=payload)
+    def create_iteration(self, session_id: str, project_id: str) -> Dict[str, Any]:
+        r = requests.post(f"{self.base_url}/api/v1/sessions/{session_id}/iterations", headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["iteration"]
 
-    async def record_coverage_run(self, session_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", f"/api/v1/sessions/{session_id}/coverage-runs", json=payload)
+    def upsert_task(self, session_id: str, project_id: str, task: Dict[str, Any]) -> Dict[str, Any]:
+        r = requests.put(f"{self.base_url}/api/v1/sessions/{session_id}/tasks", json=task, headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["task"]
 
-    async def record_security_check(self, session_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", f"/api/v1/sessions/{session_id}/security-checks", json=payload)
+    def record_test_run(self, session_id: str, project_id: str, passed: bool, artifact_key: Optional[str] = None, summary: Optional[Dict[str, Any]] = None):
+        r = requests.post(f"{self.base_url}/api/v1/sessions/{session_id}/test-runs",
+                          json={"passed": passed, "artifactKey": artifact_key, "summary": summary},
+                          headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["testRun"]
 
-    async def evaluate_gates(self, session_id: str) -> Dict[str, Any]:
-        return await self._request("GET", f"/api/v1/sessions/{session_id}/gates/evaluate")
+    def record_coverage_run(self, session_id: str, project_id: str, percent: float, artifact_key: Optional[str] = None, summary: Optional[Dict[str, Any]] = None):
+        r = requests.post(f"{self.base_url}/api/v1/sessions/{session_id}/coverage-runs",
+                          json={"percent": percent, "artifactKey": artifact_key, "summary": summary},
+                          headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["coverageRun"]
+
+    def record_security_check(self, session_id: str, project_id: str, status: str = "pass", artifact_key: Optional[str] = None, summary: Optional[Dict[str, Any]] = None):
+        r = requests.post(f"{self.base_url}/api/v1/sessions/{session_id}/security-checks",
+                          json={"status": status, "artifactKey": artifact_key, "summary": summary},
+                          headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["securityCheck"]
+
+    def evaluate_gates(self, session_id: str, project_id: str):
+        r = requests.get(f"{self.base_url}/api/v1/sessions/{session_id}/gates/evaluate", headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["evaluation"]
+
+    def presign_put(self, session_id: str, project_id: str, name: str, content_type: str, size_bytes: int, iteration: int = 0):
+        r = requests.post(f"{self.base_url}/api/v1/sessions/{session_id}/artifacts/presign-put",
+                          json={"iteration": iteration, "name": name, "contentType": content_type, "sizeBytes": size_bytes},
+                          headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    def artifacts_complete(self, session_id: str, project_id: str, key: str, sha256: str, size_bytes: int):
+        r = requests.post(f"{self.base_url}/api/v1/sessions/{session_id}/artifacts/complete",
+                          json={"key": key, "sha256": sha256, "sizeBytes": size_bytes},
+                          headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["artifact"]
+
+    def create_report(self, session_id: str, project_id: str, title: str, artifact_key: str, kind: str = "workflow_report", summary: Optional[Dict[str, Any]] = None):
+        r = requests.post(f"{self.base_url}/api/v1/sessions/{session_id}/reports",
+                          json={"title": title, "artifactKey": artifact_key, "kind": kind, "summary": summary},
+                          headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()["report"]
+
+    def consume_apply_approval(self, session_id: str, project_id: str, token: str):
+        r = requests.post(f"{self.base_url}/api/v1/sessions/{session_id}/approvals/apply/consume",
+                          json={"token": token},
+                          headers=self._h(project_id=project_id, session_id=session_id), timeout=30)
+        r.raise_for_status()
+        return r.json()

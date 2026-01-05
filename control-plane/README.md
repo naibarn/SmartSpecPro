@@ -1,34 +1,28 @@
-# Control Plane — Phase 3 Additions (Task Registry + Gates)
+# Control Plane (Unified P1–P3 + Security Hardening)
 
-This patch adds Phase 3 primitives on top of the Control Plane:
-- Task Registry with deterministic dedupe
+This service is the **authoritative state** for SmartSpec sessions.
+It provides:
+- Projects / Sessions / Iterations
+- Task Registry (+ deterministic dedupe)
+- Reports + Artifacts (R2/S3 presigned PUT/GET) with DB ownership checks
+- Test/Coverage/Security result intake
 - Gate Evaluator (tasks/tests/coverage/security)
-- Endpoints to record latest test run, coverage run, and security check
+- Apply approval tokens (audited, one-time)
+- Audit log + per-token rate limiting + log redaction
 
-## New/Updated Endpoints
+## Quick Start (Docker)
+Use `docker/docker-compose.control-plane.yml` (Postgres + Control Plane).
+Then:
+1) `pnpm i`
+2) `pnpm prisma migrate dev`
+3) `pnpm dev`
 
-### Tasks
-- `GET /api/v1/sessions/:sessionId/tasks`
-- `PUT /api/v1/sessions/:sessionId/tasks` (upsert by `dedupeKey`)
+## Auth
+- Server-to-server API key is used ONLY to mint scoped JWT.
+- Client MUST NOT have API key.
+- Mint:
+  `POST /api/v1/auth/token` body `{ apiKey, scope: { projectId?, sessionId?, role } }`
 
-### Test Runs
-- `POST /api/v1/sessions/:sessionId/test-runs`
-- `GET /api/v1/sessions/:sessionId/test-runs/latest`
-
-### Coverage Runs
-- `POST /api/v1/sessions/:sessionId/coverage-runs`
-- `GET /api/v1/sessions/:sessionId/coverage-runs/latest`
-
-### Security Checks
-- `POST /api/v1/sessions/:sessionId/security-checks`
-- `GET /api/v1/sessions/:sessionId/security-checks/latest`
-
-### Gate Evaluation
-- `GET /api/v1/sessions/:sessionId/gates/evaluate`
-  - `tasks`: OK when no planned/doing/blocked tasks remain
-  - `tests`: OK when latest testRun.passed == true
-  - `coverage`: OK when latest coverage >= COVERAGE_MIN_PERCENT (default 70)
-  - `security`: OK when latest status == pass (default pass if none recorded)
-
-## Notes
-- This phase focuses on contracts and evaluation; how tests/coverage are produced is runner/CI responsibility.
+## Important
+- Presign-get requires the artifact to exist in DB and belong to the session.
+- Presign-put creates a pending artifact record; finalize with `/artifacts/complete`.

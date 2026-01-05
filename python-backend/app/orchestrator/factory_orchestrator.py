@@ -1,312 +1,152 @@
-"""Phase 4: SaaS Factory Orchestrator (LangGraph)
-
-This is the first production-intent loop (Phase 4) that ties together:
-- Kilo CLI execution (as the executor)
-- Control Plane (authoritative state + gate evaluation)
-- Checkpointing (LangGraph Postgres saver)
-
-The loop is intentionally minimal and opinionated so it can be evolved safely.
-"""
-
-from __future__ import annotations
-
+import os
 import json
-import re
+import hashlib
+import mimetypes
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, Optional, List
+import requests
 
-import structlog
-from langgraph.graph import END, StateGraph
+from .control_plane_client import ControlPlaneClient
+from .task_contract import load_tasks_registry, parse_tasks_from_markdown
+from .sandbox import validate_workspace, sanitize_env
 
-from app.core.config import settings
-from app.core.checkpointer import CheckpointerFactory
-from app.orchestrator.control_plane_client import ControlPlaneClient
-from app.services.kilo_session_manager import KiloMode, get_kilo_session_manager
-
-logger = structlog.get_logger()
-
-
-class FactoryState(TypedDict, total=False):
-    session_id: str
-    workspace: str
-    goal: str
-    apply: bool
-    max_iterations: int
-    iteration: int
-    last_gate: Dict[str, Any]
-    logs: List[str]
-
-
-@dataclass
-class FactoryConfig:
-    """Configurable workflow keys.
-
-    These correspond to file names in `.smartspec/workflows` without extension.
-    Kilo command format: `/{workflow_key}.md`.
-    """
-
-    sync_tasks_workflow: str = "sync-tasks"
-    implement_workflow: str = "implement"
-    test_workflow: str = "test-suite"
-    coverage_workflow: str = "coverage"
-
-
-def _append_log(state: FactoryState, msg: str) -> FactoryState:
-    logs = list(state.get("logs", []))
-    logs.append(msg)
-    state["logs"] = logs
-    return state
-
-
-def _extract_tasks_from_text(text: str) -> List[Dict[str, Any]]:
-    """Best-effort parse tasks from markdown/text output.
-
-    Supports:
-    - JSON blocks containing `tasks: [...]`
-    - Markdown checklists: `- [ ] title ...`
-    """
-
-    # 1) Try JSON
-    try:
-        data = json.loads(text)
-        if isinstance(data, dict) and isinstance(data.get("tasks"), list):
-            tasks: List[Dict[str, Any]] = []
-            for t in data["tasks"]:
-                if isinstance(t, dict) and t.get("title"):
-                    tasks.append(t)
-            if tasks:
-                return tasks
-    except Exception:
-        pass
-
-    # 2) Try fenced JSON block
-    m = re.search(r"```json\s+(\{.*?\})\s+```", text, flags=re.S)
-    if m:
-        try:
-            data = json.loads(m.group(1))
-            if isinstance(data, dict) and isinstance(data.get("tasks"), list):
-                return [t for t in data["tasks"] if isinstance(t, dict) and t.get("title")]
-        except Exception:
-            pass
-
-    # 3) Markdown checklist
-    tasks: List[Dict[str, Any]] = []
-    for line in text.splitlines():
-        mm = re.match(r"^\s*[-*]\s*\[\s*\]\s+(.*)$", line)
-        if mm:
-            title = mm.group(1).strip()
-            if title:
-                tasks.append({"title": title, "status": "planned"})
-    return tasks
-
-
-def _run_pytest(workspace: str) -> Dict[str, Any]:
-    """Run pytest and return a minimal result payload."""
-    try:
-        proc = subprocess.run(
-            ["pytest", "-q"],
-            cwd=workspace,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=900,
-        )
-        out = proc.stdout[-20000:]
-        return {"passed": proc.returncode == 0, "output": out}
-    except Exception as e:
-        return {"passed": False, "output": f"pytest_failed: {e}"}
-
-
-def _run_coverage(workspace: str) -> Dict[str, Any]:
-    """Try to run coverage via pytest-cov; returns percent if parseable."""
-    try:
-        proc = subprocess.run(
-            ["pytest", "--cov=.", "--cov-report=term-missing"],
-            cwd=workspace,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=1200,
-        )
-        out = proc.stdout[-40000:]
-        # Parse a line like: TOTAL ... 85%
-        mm = re.search(r"^TOTAL\s+\d+\s+\d+\s+(\d+)%", out, flags=re.M)
-        percent = float(mm.group(1)) if mm else 0.0
-        return {"ok": proc.returncode == 0, "percent": percent, "output": out}
-    except Exception as e:
-        return {"ok": False, "percent": 0.0, "output": f"coverage_failed: {e}"}
-
+def sha256_file(p: Path) -> str:
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 class SaaSFactoryOrchestrator:
-    """Phase 4 orchestrator that loops until gates pass."""
+    def __init__(self, cp: ControlPlaneClient, workspace: str, workspace_root: str = "", max_report_bytes: int = 10 * 1024 * 1024):
+        self.cp = cp
+        self.workspace = validate_workspace(workspace, workspace_root)
+        self.max_report_bytes = max_report_bytes
 
-    def __init__(self, config: Optional[FactoryConfig] = None):
-        self.config = config or FactoryConfig()
+    def _run_cmd(self, cmd: List[str], cwd: str) -> subprocess.CompletedProcess:
+        env = sanitize_env(dict(os.environ))
+        return subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=60 * 30)
 
-    def _control_plane(self) -> ControlPlaneClient:
-        return ControlPlaneClient(
-            base_url=settings.CONTROL_PLANE_URL,
-            api_key=settings.CONTROL_PLANE_API_KEY,
-            timeout_seconds=settings.CONTROL_PLANE_TIMEOUT_SECONDS,
-        )
+    def _upload_reports(self, project_id: str, session_id: str, iteration: int = 0) -> List[Dict[str, Any]]:
+        reports_dir = Path(self.workspace) / ".spec" / "reports"
+        if not reports_dir.exists():
+            return []
 
-    async def run(self, *, session_id: str, workspace: str, goal: str, apply: bool = False, max_iterations: int = 10) -> Dict[str, Any]:
-        """Run the factory loop.
+        uploaded = []
+        for p in sorted(reports_dir.glob("**/*")):
+            if not p.is_file():
+                continue
+            size = p.stat().st_size
+            if size <= 0 or size > self.max_report_bytes:
+                continue
 
-        Returns a dict that includes latest gate evaluation and a short log.
-        """
+            name = str(p.relative_to(reports_dir)).replace("\\", "/")
+            ctype, _ = mimetypes.guess_type(p.name)
+            ctype = ctype or "application/octet-stream"
 
-        # Validate workspace exists
-        ws = str(Path(workspace).resolve())
-        if not Path(ws).exists():
-            raise ValueError(f"workspace not found: {ws}")
+            pres = self.cp.presign_put(session_id=session_id, project_id=project_id, name=f"reports/{name}", content_type=ctype, size_bytes=size, iteration=iteration)
+            url = pres["url"]
+            key = pres["key"]
 
-        checkpointer = await CheckpointerFactory.create(use_postgres=True)
+            with p.open("rb") as f:
+                r = requests.put(url, data=f, headers={"Content-Type": ctype}, timeout=120)
+                r.raise_for_status()
 
-        graph = await self._build_graph(checkpointer)
-        thread_id = f"factory:{session_id}"
-        config = {"configurable": {"thread_id": thread_id}}
+            digest = sha256_file(p)
+            self.cp.artifacts_complete(session_id=session_id, project_id=project_id, key=key, sha256=digest, size_bytes=size)
 
-        init: FactoryState = {
-            "session_id": session_id,
-            "workspace": ws,
-            "goal": goal,
-            "apply": apply,
-            "max_iterations": max_iterations,
-            "iteration": 0,
-            "logs": [],
-        }
+            rep = self.cp.create_report(session_id=session_id, project_id=project_id, title=f"Report: {name}", artifact_key=key, kind="workflow_report", summary={"path": name})
+            uploaded.append({"artifactKey": key, "reportId": rep["id"], "path": name})
+        return uploaded
 
-        final_state: FactoryState = init
-        async for event in graph.astream(init, config=config):
-            # LangGraph emits partial state updates; keep last snapshot.
-            if isinstance(event, dict):
-                final_state = {**final_state, **event}
+    def _upsert_tasks_from_registry(self, project_id: str, session_id: str) -> int:
+        # Deterministic contract: prefer .spec/registry/tasks.json
+        reg = Path(self.workspace) / ".spec" / "registry" / "tasks.json"
+        tasks = load_tasks_registry(str(reg)) if reg.exists() else []
 
-        return {
-            "sessionId": session_id,
-            "iteration": final_state.get("iteration", 0),
-            "gate": final_state.get("last_gate"),
-            "logs": final_state.get("logs", [])[-200:],
-        }
+        # fallback parse from latest markdown report
+        if not tasks:
+            latest = None
+            repdir = Path(self.workspace) / ".spec" / "reports"
+            if repdir.exists():
+                md_files = sorted(repdir.glob("**/*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if md_files:
+                    latest = md_files[0]
+            if latest:
+                tasks = parse_tasks_from_markdown(latest.read_text(encoding="utf-8", errors="ignore"))
 
-    async def _build_graph(self, checkpointer: Any):
-        cp = self._control_plane()
-        kilo = await get_kilo_session_manager()
+        count = 0
+        for t in tasks:
+            payload = {
+                "title": t.get("title", "Untitled"),
+                "originatingSpec": t.get("originatingSpec"),
+                "acceptanceCriteria": t.get("acceptanceCriteria"),
+                "mappedFiles": t.get("mappedFiles", []) or [],
+                "mappedTests": t.get("mappedTests", []) or [],
+                "status": t.get("status", "planned"),
+            }
+            self.cp.upsert_task(session_id=session_id, project_id=project_id, task=payload)
+            count += 1
+        return count
 
-        workflow = StateGraph(FactoryState)
+    def run(self, project_id: str, session_id: str, apply: bool = False, apply_approval_token: Optional[str] = None, max_iterations: int = 8) -> Dict[str, Any]:
+        # If apply requested, require approval token and consume it first.
+        if apply:
+            if not apply_approval_token:
+                raise ValueError("apply_requires_approval_token")
+            self.cp.consume_apply_approval(session_id=session_id, project_id=project_id, token=apply_approval_token)
 
-        async def node_sync_tasks(state: FactoryState) -> FactoryState:
-            iteration = int(state.get("iteration", 0))
-            _append_log(state, f"[iter {iteration}] sync tasks")
-            session = await kilo.create_session(workspace=state["workspace"], mode=KiloMode.ORCHESTRATOR)
-            apply_flag = " --apply" if state.get("apply") else ""
-            prompt = f"/{self.config.sync_tasks_workflow}.md{apply_flag} {state['goal']}"
-            res = await kilo.execute_task(session=session, prompt=prompt)
-            _append_log(state, f"sync_tasks exit={res.exit_code} success={res.success}")
-            tasks = []
-            if res.json_data and isinstance(res.json_data, dict):
-                tasks = res.json_data.get("tasks") or []
-            if not tasks:
-                tasks = _extract_tasks_from_text(res.output)
-            posted = 0
-            for t in tasks:
-                if not isinstance(t, dict):
-                    continue
-                if not t.get("title"):
-                    continue
-                await cp.upsert_task(state["session_id"], {
-                    "title": t.get("title"),
-                    "originatingSpec": t.get("originatingSpec"),
-                    "acceptanceCriteria": t.get("acceptanceCriteria"),
-                    "mappedFiles": t.get("mappedFiles", []),
-                    "mappedTests": t.get("mappedTests", []),
-                    "status": t.get("status", "planned"),
-                    "notes": t.get("notes"),
-                })
-                posted += 1
-            _append_log(state, f"tasks_upserted={posted}")
-            return state
+        gates_history = []
+        for i in range(max_iterations):
+            self.cp.create_iteration(session_id=session_id, project_id=project_id)
 
-        async def node_implement(state: FactoryState) -> FactoryState:
-            iteration = int(state.get("iteration", 0))
-            _append_log(state, f"[iter {iteration}] implement")
-            session = await kilo.create_session(workspace=state["workspace"], mode=KiloMode.ORCHESTRATOR)
-            apply_flag = " --apply" if state.get("apply") else ""
-            prompt = f"/{self.config.implement_workflow}.md{apply_flag} {state['goal']}"
-            res = await kilo.execute_task(session=session, prompt=prompt)
-            _append_log(state, f"implement exit={res.exit_code} success={res.success}")
-            return state
+            # 1) Sync tasks (Kilo workflow) - allowlist command
+            # NOTE: replace with your actual runner invocation if needed.
+            # For safety we do not allow arbitrary cmd from user input.
+            sync = self._run_cmd(["python", "-m", "ss_autopilot.cli_enhanced", "/sync-tasks.md"], cwd=self.workspace)
 
-        async def node_tests(state: FactoryState) -> FactoryState:
-            iteration = int(state.get("iteration", 0))
-            _append_log(state, f"[iter {iteration}] tests")
-            # Prefer local pytest for determinism; Kilo workflow can be added later.
-            result = _run_pytest(state["workspace"])
-            await cp.record_test_run(state["session_id"], {
-                "iteration": iteration,
-                "passed": bool(result["passed"]),
-                "summary": {"runner": "pytest", "tail": result["output"][-2000:]},
-            })
-            _append_log(state, f"tests passed={result['passed']}")
-            return state
+            # 2) Upload reports + record reports
+            uploaded = self._upload_reports(project_id, session_id, iteration=i)
 
-        async def node_coverage(state: FactoryState) -> FactoryState:
-            iteration = int(state.get("iteration", 0))
-            _append_log(state, f"[iter {iteration}] coverage")
-            cov = _run_coverage(state["workspace"])
-            await cp.record_coverage_run(state["session_id"], {
-                "iteration": iteration,
-                "percent": float(cov.get("percent", 0.0)),
-                "summary": {"runner": "pytest-cov", "ok": bool(cov.get("ok")), "tail": cov.get("output", "")[-2000:]},
-            })
-            _append_log(state, f"coverage percent={cov.get('percent', 0.0)}")
-            return state
+            # 3) Upsert tasks (deterministic)
+            tasks_upserted = self._upsert_tasks_from_registry(project_id, session_id)
 
-        async def node_eval_gates(state: FactoryState) -> FactoryState:
-            iteration = int(state.get("iteration", 0))
-            _append_log(state, f"[iter {iteration}] evaluate gates")
-            gate = await cp.evaluate_gates(state["session_id"])
-            state["last_gate"] = gate.get("evaluation") if isinstance(gate, dict) else gate
-            ok = bool(state["last_gate"].get("ok")) if isinstance(state.get("last_gate"), dict) else False
-            _append_log(state, f"gates ok={ok}")
-            return state
+            # 4) Run tests + coverage (allowlist)
+            test = self._run_cmd(["pytest", "-q"], cwd=self.workspace)
+            passed = (test.returncode == 0)
+            self.cp.record_test_run(session_id, project_id, passed=passed, summary={"returncode": test.returncode})
 
-        def should_continue(state: FactoryState) -> str:
-            iteration = int(state.get("iteration", 0))
-            max_it = int(state.get("max_iterations", 10))
-            gate = state.get("last_gate")
-            ok = bool(gate.get("ok")) if isinstance(gate, dict) else False
-            if ok:
-                return "done"
-            if iteration + 1 >= max_it:
-                return "done"
-            return "loop"
+            # coverage best-effort if pytest-cov present
+            cov_percent = 0.0
+            cov = self._run_cmd(["pytest", "-q", "--cov=.", "--cov-report=term-missing"], cwd=self.workspace)
+            # naive parse: look for TOTAL line "TOTAL ... 85%"
+            for line in cov.stdout.splitlines():
+                if line.strip().startswith("TOTAL") and "%" in line:
+                    try:
+                        cov_percent = float(line.split()[-1].replace("%", ""))
+                    except Exception:
+                        pass
+            if cov_percent > 0:
+                self.cp.record_coverage_run(session_id, project_id, percent=cov_percent, summary={"parsedFrom": "pytest-cov"})
 
-        async def node_inc_iter(state: FactoryState) -> FactoryState:
-            state["iteration"] = int(state.get("iteration", 0)) + 1
-            return state
+            # 5) Security check placeholder (default pass) - can be extended to secret scan, etc.
+            self.cp.record_security_check(session_id, project_id, status="pass", summary={"note": "placeholder"})
 
-        # Graph wiring
-        workflow.add_node("sync_tasks", node_sync_tasks)
-        workflow.add_node("implement", node_implement)
-        workflow.add_node("tests", node_tests)
-        workflow.add_node("coverage", node_coverage)
-        workflow.add_node("eval_gates", node_eval_gates)
-        workflow.add_node("inc_iter", node_inc_iter)
+            # 6) Evaluate gates
+            evaluation = self.cp.evaluate_gates(session_id, project_id)
+            evaluation["iteration"] = i
+            evaluation["tasksUpserted"] = tasks_upserted
+            evaluation["reportsUploaded"] = len(uploaded)
+            evaluation["syncOutputTail"] = sync.stdout[-2000:]
+            evaluation["testOutputTail"] = test.stdout[-2000:]
+            gates_history.append(evaluation)
 
-        workflow.set_entry_point("sync_tasks")
-        workflow.add_edge("sync_tasks", "implement")
-        workflow.add_edge("implement", "tests")
-        workflow.add_edge("tests", "coverage")
-        workflow.add_edge("coverage", "eval_gates")
-        workflow.add_conditional_edges("eval_gates", should_continue, {"loop": "inc_iter", "done": END})
-        workflow.add_edge("inc_iter", "sync_tasks")
+            if evaluation.get("ok"):
+                return {"ok": True, "iterations": i + 1, "gates": evaluation, "history": gates_history}
 
-        return workflow.compile(checkpointer=checkpointer)
+            # If not ok, run implement/fix workflow - apply controls whether it can mutate
+            implement_cmd = "/implement.md" if apply else "/implement.md --plan-only"
+            _ = self._run_cmd(["python", "-m", "ss_autopilot.cli_enhanced", implement_cmd], cwd=self.workspace)
 
-
-# Convenience singleton
-factory_orchestrator = SaaSFactoryOrchestrator()
+        return {"ok": False, "iterations": max_iterations, "history": gates_history}

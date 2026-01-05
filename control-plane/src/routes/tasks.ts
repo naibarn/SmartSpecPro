@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { computeDedupeKey } from "../services/dedupe";
+import { auditLog } from "../audit";
+import { requireRole, requireSessionScope } from "../auth";
 
 const TaskUpsertSchema = z.object({
   dedupeKey: z.string().min(16).optional(),
@@ -15,23 +17,19 @@ const TaskUpsertSchema = z.object({
 });
 
 export async function registerTaskRoutes(app: FastifyInstance) {
-  app.get("/api/v1/sessions/:sessionId/tasks", { preHandler: [app.authenticate] }, async (req) => {
-    const { sessionId } = req.params as { sessionId: string };
+  app.get("/api/v1/sessions/:sessionId/tasks", { preHandler: [requireRole(app, ["admin", "user", "runner"]), requireSessionScope(app)] }, async (req) => {
+    const { sessionId } = req.params as any;
     const tasks = await app.prisma.task.findMany({ where: { sessionId }, orderBy: { createdAt: "asc" } });
     return { tasks };
   });
 
-  app.put("/api/v1/sessions/:sessionId/tasks", { preHandler: [app.authenticate] }, async (req) => {
-    const { sessionId } = req.params as { sessionId: string };
+  app.put("/api/v1/sessions/:sessionId/tasks", { preHandler: [requireRole(app, ["admin", "user", "runner"]), requireSessionScope(app)] }, async (req: any) => {
+    const { sessionId } = req.params as any;
     const body = TaskUpsertSchema.parse(req.body);
 
     const dedupeKey =
       body.dedupeKey ??
-      computeDedupeKey({
-        originatingSpec: body.originatingSpec ?? null,
-        title: body.title,
-        acceptanceCriteria: body.acceptanceCriteria ?? null,
-      });
+      computeDedupeKey({ originatingSpec: body.originatingSpec ?? null, title: body.title, acceptanceCriteria: body.acceptanceCriteria ?? null });
 
     const task = await app.prisma.task.upsert({
       where: { sessionId_dedupeKey: { sessionId, dedupeKey } },
@@ -58,6 +56,8 @@ export async function registerTaskRoutes(app: FastifyInstance) {
         notes: body.notes ?? null,
       },
     });
+
+    await auditLog(app.prisma, { actorSub: req.user.sub, action: "task.upsert", sessionId, resource: task.id, metadata: { dedupeKey } });
 
     return { task };
   });
