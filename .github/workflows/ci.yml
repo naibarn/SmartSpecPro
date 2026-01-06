@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run Python tests (backend + runtime)
+        run: bash scripts/ci/python_tests.sh
+      - name: Upload Python coverage.xml
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-python
+          path: python-backend/coverage.xml
+
+  api_generator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test api-generator (coverage)
+        run: bash scripts/ci/node_tests.sh api-generator
+      - name: Upload api-generator coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-api-generator
+          path: api-generator/coverage/coverage-summary.json
+
+  control_plane:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test control-plane (coverage)
+        run: bash scripts/ci/node_tests.sh control-plane
+      - name: Upload control-plane coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-control-plane
+          path: control-plane/coverage/coverage-summary.json
+      - name: Upload control-plane policy snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-plane-policy-snapshot
+          path: control-plane/coverage/control_plane_policy_snapshot.json
+
+  desktop_app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test desktop-app (coverage)
+        run: bash scripts/ci/node_tests.sh desktop-app
+      - name: Upload desktop-app coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-desktop-app
+          path: desktop-app/coverage/coverage-summary.json
+
+  coverage_summary:
+    runs-on: ubuntu-latest
+    needs: [python, api_generator, control_plane, desktop_app]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-python
+          path: _cov/python
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-api-generator
+          path: _cov/api-generator/coverage
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-control-plane
+          path: _cov/control-plane/coverage
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-desktop-app
+          path: _cov/desktop-app/coverage
+      - uses: actions/download-artifact@v4
+        with:
+          name: control-plane-policy-snapshot
+          path: _cov/control-plane
+
+      - name: Generate repo coverage summary + badge JSONs
+        run: |
+          python3 scripts/ci/coverage_summary.py             --python-xml _cov/python/coverage.xml             --api-generator _cov/api-generator/coverage/coverage-summary.json             --control-plane _cov/control-plane/coverage/coverage-summary.json             --desktop-app _cov/desktop-app/coverage/coverage-summary.json             --out-json _cov/coverage_summary.json             --out-md _cov/coverage_summary.md             --fail-on-missing
+          python3 scripts/ci/coverage_badge.py --in _cov/coverage_summary.json --out _cov/badges/coverage.json --mode min
+          python3 scripts/ci/security_badge.py --source python-backend/app/api/llm_openai_compat.py --out _cov/badges/security.json
+          PYTHONPATH=python-backend python3 scripts/ci/policy_snapshot.py --out _cov/policy_snapshot.json
+          PYTHONPATH=python-backend python3 scripts/ci/policy_badge.py --in _cov/policy_snapshot.json --out _cov/badges/policy.json
+          PYTHONPATH=python-backend python3 scripts/ci/approval_badge.py --in _cov/policy_snapshot.json --out _cov/badges/approval.json
+          PYTHONPATH=python-backend python3 scripts/ci/approval_flow_probe.py --out _cov/approval_flow_snapshot.json
+          python3 scripts/ci/approval_flow_badge.py --in _cov/approval_flow_snapshot.json --out _cov/badges/approval-flow.json
+          python3 scripts/ci/control_plane_runtime_badges.py --in _cov/control-plane/control_plane_policy_snapshot.json --outdir _cov/badges
+          cat _cov/coverage_summary.md >> $GITHUB_STEP_SUMMARY
+          echo "
+---
+Badge tip: run python3 scripts/ci/update_readme_badges.py --repo $GITHUB_REPOSITORY" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload aggregated coverage summary + badges
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: _cov/**
+
+      - name: Publish badge JSONs to badges branch (default branch pushes only)
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          rm -rf _badges_worktree
+          git fetch origin badges:badges || true
+          if git show-ref --verify --quiet refs/heads/badges; then
+            git worktree add _badges_worktree badges
+          else
+            git worktree add -b badges _badges_worktree
+          fi
+
+          mkdir -p _badges_worktree/badges
+          cp -f _cov/badges/coverage.json _badges_worktree/badges/coverage.json
+          cp -f _cov/badges/security.json _badges_worktree/badges/security.json
+          cp -f _cov/badges/policy.json _badges_worktree/badges/policy.json
+          cp -f _cov/badges/approval.json _badges_worktree/badges/approval.json
+          cp -f _cov/badges/approval-flow.json _badges_worktree/badges/approval-flow.json
+          cp -f _cov/badges/control-plane.json _badges_worktree/badges/control-plane.json
+          cp -f _cov/badges/presign.json _badges_worktree/badges/presign.json
+          cp -f _cov/badges/artifacts.json _badges_worktree/badges/artifacts.json
+          cp -f _cov/badges/max-size.json _badges_worktree/badges/max-size.json
+          cp -f _cov/badges/authz.json _badges_worktree/badges/authz.json
+
+          pushd _badges_worktree >/dev/null
+          git add badges/coverage.json badges/security.json badges/policy.json badges/approval.json badges/approval-flow.json badges/control-plane.json badges/presign.json badges/artifacts.json badges/max-size.json badges/authz.json
+          if git diff --cached --quiet; then
+            echo "No badge changes."
+          else
+            git commit -m "chore: update badges"
+            git push origin badges
+          fi
+          popd >/dev/null

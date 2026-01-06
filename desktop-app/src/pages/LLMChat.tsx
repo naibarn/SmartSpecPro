@@ -1,9 +1,12 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   approveTool,
   buildUserMessageWithOptionalImage,
   chatStream,
   ChatMessage,
+  fetchPolicy,
+  PolicySummary,
+  ProxyStatus,
   ToolApprovalRequired,
   ToolStatus,
 } from "../services/llmOpenAI";
@@ -14,6 +17,7 @@ type UIMessage = { role: "user" | "assistant" | "system"; text: string };
 
 type ToolActivity = {
   ts: number;
+  kind: "tool" | "proxy";
   phase: string;
   name?: string;
   ok?: boolean;
@@ -43,6 +47,8 @@ export default function LLMChatPage() {
   const [activity, setActivity] = useState<ToolActivity[]>([]);
   const [runningTool, setRunningTool] = useState<string>("");
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
+  const [policy, setPolicy] = useState<PolicySummary | null>(null);
+  const [policyErr, setPolicyErr] = useState<string>("");
 
   const chatMessages: ChatMessage[] = useMemo(
     () => msgs.map((m) => ({ role: m.role, content: m.text })) as ChatMessage[],
@@ -50,6 +56,36 @@ export default function LLMChatPage() {
   );
 
   const assistantDraftRef = useRef<string>("");
+
+  async function refreshPolicy() {
+    setPolicyErr("");
+    try {
+      const p = await fetchPolicy(traceId || undefined);
+      setPolicy(p);
+    } catch (e: any) {
+      setPolicy(null);
+      setPolicyErr(String(e?.message || e));
+    }
+  }
+
+  useEffect(() => {
+    refreshPolicy();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleProxyStatus(s: ProxyStatus) {
+    setActivity((prev) =>
+      [
+        {
+          ts: Date.now(),
+          kind: "proxy",
+          phase: s.phase,
+          message: s.message,
+        },
+        ...prev,
+      ].slice(0, 200)
+    );
+  }
 
   function handleToolStatus(s: ToolStatus) {
     if (s.phase === "start" && s.name) setRunningTool(s.name);
@@ -59,6 +95,7 @@ export default function LLMChatPage() {
       [
         {
           ts: Date.now(),
+          kind: "tool",
           phase: s.phase,
           name: s.name,
           ok: s.ok,
@@ -126,7 +163,15 @@ export default function LLMChatPage() {
     await chatStream({
       messages: [...chatMessages, userMsg],
       handlers: {
-        onTrace: (id) => setTraceId(id),
+        onTrace: async (id) => {
+          setTraceId(id);
+          try {
+            const p = await fetchPolicy(id);
+            setPolicy(p);
+            setPolicyErr("");
+          } catch {}
+        },
+        onProxyStatus: handleProxyStatus,
         onToolStatus: handleToolStatus,
         onToolApprovalRequired: handleApprovalRequired,
         onToken: (tok) => {
@@ -157,6 +202,9 @@ export default function LLMChatPage() {
     });
   }
 
+  const proxyPolicy = policy?.proxy;
+  const mcpPolicy = policy?.mcp as any;
+
   return (
     <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -183,6 +231,7 @@ export default function LLMChatPage() {
         >
           Clear
         </button>
+        <button onClick={refreshPolicy}>Refresh Policy</button>
         {traceId ? (
           <div style={{ fontSize: 12, opacity: 0.8 }}>
             traceId: <code>{traceId}</code>
@@ -203,7 +252,49 @@ export default function LLMChatPage() {
 
         <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, display: "grid", gap: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontWeight: 800 }}>Tool Activity</div>
+            <div style={{ fontWeight: 800 }}>Policy</div>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>{policy ? "loaded" : policyErr ? "error" : "…"}</div>
+          </div>
+
+          {policyErr ? <div style={{ fontSize: 12, color: "#b91c1c" }}>{policyErr}</div> : null}
+
+          {proxyPolicy ? (
+            <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 10, display: "grid", gap: 6 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700 }}>Proxy</div>
+              <div style={{ fontSize: 12 }}>
+                localhostOnly: <code>{String(proxyPolicy.localhostOnly)}</code> • autoMcpTools:{" "}
+                <code>{String(proxyPolicy.autoMcpTools)}</code>
+              </div>
+              <div style={{ fontSize: 12 }}>
+                throttling: maxConcurrentPerTrace:{" "}
+                <code>{String(proxyPolicy.throttling?.maxConcurrentPerTrace ?? "-")}</code> • wait:{" "}
+                <code>{String(proxyPolicy.throttling?.concurrencyWaitSeconds ?? "-")}</code>s
+              </div>
+              <div style={{ fontSize: 12 }}>
+                rateLimit: <code>{String(proxyPolicy.throttling?.rateLimitCount ?? "-")}</code> /{" "}
+                <code>{String(proxyPolicy.throttling?.rateLimitWindowSeconds ?? "-")}</code>s
+              </div>
+              <div style={{ fontSize: 12 }}>
+                approvalTools: <code>{(proxyPolicy.approval?.approvalTools || []).join(",") || "-"}</code>
+              </div>
+            </div>
+          ) : null}
+
+          {mcpPolicy ? (
+            <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 10, display: "grid", gap: 6 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700 }}>MCP</div>
+              <div style={{ fontSize: 12 }}>
+                enableWrite: <code>{String(mcpPolicy.enableWrite)}</code> • writeTokenRequired:{" "}
+                <code>{String(mcpPolicy.writeTokenRequired)}</code>
+              </div>
+              <div style={{ fontSize: 12 }}>
+                pathDenylist: <code>{(mcpPolicy.pathDenylist || []).join(",") || "-"}</code>
+              </div>
+            </div>
+          ) : null}
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+            <div style={{ fontWeight: 800 }}>Activity</div>
             {runningTool ? (
               <div style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, border: "1px solid #ddd" }}>
                 running: <code>{runningTool}</code>
@@ -213,75 +304,25 @@ export default function LLMChatPage() {
             )}
           </div>
 
-          {approvals.length > 0 ? (
-            <div style={{ border: "1px solid #f0f0f0", borderRadius: 12, padding: 10 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Write Approval Required</div>
-              <div style={{ display: "grid", gap: 10 }}>
-                {approvals.map((a, idx) => (
-                  <div key={idx} style={{ border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                      {a.name || "tool"} • callId: <code>{a.toolCallId}</code>
-                    </div>
-                    {a.reason ? <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>reason: {a.reason}</div> : null}
-                    <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <input
-                        placeholder="writeToken (ถ้าตั้ง MCP_WRITE_TOKEN)"
-                        value={a.writeToken || ""}
-                        onChange={(e) =>
-                          setApprovals((prev) =>
-                            prev.map((p) =>
-                              p.traceId === a.traceId && p.toolCallId === a.toolCallId ? { ...p, writeToken: e.target.value } : p
-                            )
-                          )
-                        }
-                        style={{ minWidth: 240 }}
-                      />
-                      <button disabled={a.status !== "pending"} onClick={() => doApprove(a, true)}>
-                        Approve
-                      </button>
-                      <button disabled={a.status !== "pending"} onClick={() => doApprove(a, false)}>
-                        Deny
-                      </button>
-                      <div style={{ fontSize: 12, opacity: 0.75 }}>
-                        status: <code>{a.status}</code>
-                        {a.error ? ` • ${a.error}` : ""}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
           {activity.length === 0 ? (
-            <div style={{ opacity: 0.7, fontSize: 12 }}>No tool activity yet.</div>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>No activity yet.</div>
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
               {activity.map((a, i) => (
                 <div key={i} style={{ border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
                   <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                    {a.phase}
+                    {a.kind === "proxy" ? "proxy" : "tool"} • {a.phase}
                     {a.name ? ` • ${a.name}` : ""}
                     {a.ok === true ? " • ok" : a.ok === false ? " • error" : ""}
                   </div>
                   {a.message ? <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{a.message}</div> : null}
-                  {a.argsHash ? (
-                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 6 }}>
-                      argsHash: <code>{a.argsHash}</code>
-                    </div>
-                  ) : null}
-                  {a.resultHash ? (
-                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                      resultHash: <code>{a.resultHash}</code>
-                    </div>
-                  ) : null}
                 </div>
               ))}
             </div>
           )}
 
           <div style={{ fontSize: 12, opacity: 0.75 }}>
-            Write tools ต้อง approval ผ่าน SSE event <code>tool_approval_required</code> + POST <code>/v1/tool-approve</code>.
+            ถ้าโดน rate limit จะเห็น <code>proxy • rate_limited</code> ใน Activity และ chat จะจบอย่างสุภาพ ([DONE]).
           </div>
         </div>
       </div>

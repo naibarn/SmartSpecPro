@@ -1,7 +1,7 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 import jwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
-import { loadEnv } from "./config";
+import { loadEnv, type Env } from "./config";
 import { createPrisma } from "./db";
 import { registerAuth } from "./auth";
 
@@ -15,10 +15,13 @@ import { registerGateRoutes } from "./routes/gates";
 import { registerApprovalRoutes } from "./routes/approvals";
 import { registerAuditRoutes } from "./routes/audit";
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 declare module "fastify" {
   interface FastifyInstance {
     prisma: ReturnType<typeof createPrisma>;
-    env: ReturnType<typeof loadEnv>;
+    env: Env;
     authenticate: any;
   }
 }
@@ -31,16 +34,22 @@ const REDACT_PATHS = [
   "req.body.token",
 ];
 
-async function main() {
-  const env = loadEnv();
+export type BuildAppOptions = {
+  env?: Env;
+  prisma?: any;
+  logger?: boolean;
+};
+
+export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInstance> {
+  const env = opts.env ?? loadEnv();
   const app = Fastify({
-    logger: {
-      redact: { paths: REDACT_PATHS, censor: "[REDACTED]" },
-    },
+    logger: opts.logger
+      ? { redact: { paths: REDACT_PATHS, censor: "[REDACTED]" } }
+      : false,
   });
 
-  app.env = env;
-  app.prisma = createPrisma();
+  app.env = env as any;
+  app.prisma = (opts.prisma ?? createPrisma()) as any;
 
   await app.register(jwt, {
     secret: env.JWT_SECRET,
@@ -53,7 +62,6 @@ async function main() {
     timeWindow: env.RATE_LIMIT_TIME_WINDOW,
     keyGenerator: (req) => {
       try {
-        // if already verified
         const user = (req as any).user;
         if (user?.sub) return `sub:${user.sub}`;
       } catch {}
@@ -76,10 +84,22 @@ async function main() {
 
   app.get("/healthz", async () => ({ ok: true }));
 
-  await app.listen({ host: "0.0.0.0", port: env.PORT });
+  return app;
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function main() {
+  const app = await buildApp({ logger: true });
+  await app.listen({ host: "0.0.0.0", port: app.env.PORT });
+}
+
+// ESM "main" detection: only auto-start when executed directly.
+const __filename = fileURLToPath(import.meta.url);
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename);
+
+if (isMain) {
+  main().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    process.exit(1);
+  });
+}

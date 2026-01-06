@@ -54,3 +54,20 @@ def mock_spec_id():
 def mock_workflow_name():
     """Mock workflow name for testing"""
     return "smartspec_generate_spec"
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "integration: Integration tests that require running services")
+    config.addinivalue_line("markers", "e2e: End-to-end tests")
+    config.addinivalue_line("markers", "slow: Slow tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    # Skip integration/e2e unless explicitly enabled
+    run_integration = os.getenv("RUN_INTEGRATION_TESTS", "0") == "1"
+    if run_integration:
+        return
+
+    skip_integration = pytest.mark.skip(reason="integration tests disabled (set RUN_INTEGRATION_TESTS=1)")
+    for item in items:
+        if "integration" in item.keywords or "e2e" in item.keywords:
+            item.add_marker(skip_integration)

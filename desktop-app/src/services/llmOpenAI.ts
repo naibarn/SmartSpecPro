@@ -19,12 +19,60 @@ export type ToolStatus = {
   message?: string;
 };
 
+export type ProxyStatus = {
+  traceId: string;
+  phase: "queued" | "acquired" | "rejected" | "released" | "rate_limited";
+  message?: string;
+};
+
 export type ToolApprovalRequired = {
   traceId: string;
   toolCallId: string;
   name?: string;
   reason?: string;
 };
+
+export type ProxyPolicy = {
+  localhostOnly: boolean;
+  autoMcpTools: boolean;
+  mcpToolAllowlist: string[];
+  maxToolIters: number;
+  mcpTimeoutSeconds: number;
+  gatewayTimeoutSeconds: number;
+  approval: {
+    approvalTools: string[];
+    timeoutSeconds: number;
+    autoApproveNonstream: boolean;
+    redisEnabled: boolean;
+    pollInterval: number;
+    keyPrefix: string;
+  };
+  audit: { path: string; rotateDaily: boolean; retentionDays: number };
+  throttling?: {
+    maxConcurrentPerTrace: number;
+    concurrencyWaitSeconds: number;
+    traceSemIdleTtlSeconds: number;
+    rateLimitCount?: number;
+    rateLimitWindowSeconds?: number;
+    traceRateIdleTtlSeconds?: number;
+  };
+};
+
+export type McpPolicy = {
+  workspaceRoot: string;
+  enableWrite: boolean;
+  writeTokenRequired: boolean;
+  maxReadBytes: number;
+  maxWriteBytes: number;
+  readExtAllowlist: string[];
+  writeExtAllowlist: string[];
+  pathAllowlist: string[];
+  pathDenylist: string[];
+  controlPlaneConfigured: boolean;
+  audit?: { path: string; rotateDaily: boolean; retentionDays: number };
+};
+
+export type PolicySummary = { proxy: ProxyPolicy; mcp?: McpPolicy | null };
 
 export type StreamHandlers = {
   onToken: (token: string) => void;
@@ -33,6 +81,7 @@ export type StreamHandlers = {
   onTrace?: (traceId: string) => void;
   onToolStatus?: (s: ToolStatus) => void;
   onToolApprovalRequired?: (a: ToolApprovalRequired) => void;
+  onProxyStatus?: (s: ProxyStatus) => void;
 };
 
 function parseSseBuffer(buf: string): { events: string[]; rest: string } {
@@ -50,6 +99,15 @@ function parseEventBlock(block: string): { event?: string; dataLines: string[] }
     if (l.startsWith("data:")) dataLines.push(l.replace(/^data:\s?/, ""));
   }
   return { event, dataLines };
+}
+
+export async function fetchPolicy(traceId?: string): Promise<PolicySummary> {
+  const res = await fetch(`${BASE}/v1/policy`, { headers: traceId ? { "x-trace-id": traceId } : undefined });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`policy_failed:${res.status}:${text}`);
+  }
+  return (await res.json()) as PolicySummary;
 }
 
 export async function approveTool(params: { traceId: string; toolCallId: string; approved: boolean; writeToken?: string }) {
@@ -119,6 +177,14 @@ export async function chatStream(params: {
             try {
               const obj = JSON.parse(d);
               if (obj?.traceId && params.handlers.onTrace) params.handlers.onTrace(String(obj.traceId));
+            } catch {}
+            continue;
+          }
+
+          if (event === "proxy_status") {
+            try {
+              const obj = JSON.parse(d);
+              if (params.handlers.onProxyStatus) params.handlers.onProxyStatus(obj);
             } catch {}
             continue;
           }

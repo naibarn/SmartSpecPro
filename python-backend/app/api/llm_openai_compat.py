@@ -6,12 +6,13 @@ import os
 import time
 import uuid
 import hashlib
+from collections import deque
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple, AsyncIterator, Callable
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["llm-openai-compat"])
@@ -34,57 +35,31 @@ APPROVAL_TOOLS = [t.strip() for t in os.getenv("LLM_PROXY_APPROVAL_TOOLS", "work
 APPROVAL_TIMEOUT_SECONDS = float(os.getenv("LLM_PROXY_APPROVAL_TIMEOUT_SECONDS", "120"))
 AUTO_APPROVE_NONSTREAM = os.getenv("LLM_PROXY_AUTO_APPROVE_NONSTREAM", "0") == "1"
 
+# Approval store (multi-instance)
+APPROVAL_REDIS_URL = os.getenv("LLM_PROXY_APPROVAL_REDIS_URL", "").strip()
+APPROVAL_POLL_INTERVAL = float(os.getenv("LLM_PROXY_APPROVAL_POLL_INTERVAL", "0.5"))
+APPROVAL_KEY_PREFIX = os.getenv("LLM_PROXY_APPROVAL_KEY_PREFIX", "approval").strip() or "approval"
+
 # Audit log (rotation + retention)
 AUDIT_LOG_PATH = os.getenv("LLM_AUDIT_LOG_PATH", "").strip() or "logs/llm_tool_audit.jsonl"
 AUDIT_ROTATE_DAILY = os.getenv("LLM_AUDIT_ROTATE_DAILY", "1") != "0"
 AUDIT_RETENTION_DAYS = int(os.getenv("LLM_AUDIT_RETENTION_DAYS", "30"))
 
-# In-memory approval store (best for single-process dev; for production use redis/db)
-_APPROVAL_LOCK = asyncio.Lock()
-_APPROVALS: Dict[str, Dict[str, Any]] = {}  # key -> {"event": asyncio.Event, "approved": bool|None, "writeToken": str|None}
+# Concurrency / throttling
+MAX_CONCURRENT_PER_TRACE = int(os.getenv("LLM_PROXY_MAX_CONCURRENT_PER_TRACE", "2"))
+CONCURRENCY_WAIT_SECONDS = float(os.getenv("LLM_PROXY_CONCURRENCY_WAIT_SECONDS", "10"))
+TRACE_SEM_IDLE_TTL_SECONDS = float(os.getenv("LLM_PROXY_TRACE_SEM_IDLE_TTL_SECONDS", "600"))
 
+# Rate limiting (per trace sliding window)
+RATE_LIMIT_COUNT = int(os.getenv("LLM_PROXY_RATE_LIMIT_COUNT", "30"))
+RATE_LIMIT_WINDOW_SECONDS = float(os.getenv("LLM_PROXY_RATE_LIMIT_WINDOW_SECONDS", "60"))
+TRACE_RATE_IDLE_TTL_SECONDS = float(os.getenv("LLM_PROXY_TRACE_RATE_IDLE_TTL_SECONDS", "600"))
 
-def _approval_key(trace_id: str, tool_call_id: str) -> str:
-    return f"{trace_id}:{tool_call_id}"
+_TRACE_SEMS: Dict[str, Tuple[asyncio.Semaphore, float]] = {}
+_TRACE_SEMS_LOCK = asyncio.Lock()
 
-
-async def _approval_wait(trace_id: str, tool_call_id: str) -> Dict[str, Any]:
-    key = _approval_key(trace_id, tool_call_id)
-    async with _APPROVAL_LOCK:
-        entry = _APPROVALS.get(key)
-        if not entry:
-            entry = {"event": asyncio.Event(), "approved": None, "writeToken": None, "created": time.time()}
-            _APPROVALS[key] = entry
-
-    try:
-        await asyncio.wait_for(entry["event"].wait(), timeout=APPROVAL_TIMEOUT_SECONDS)
-    except asyncio.TimeoutError:
-        return {"approved": False, "reason": "approval_timeout"}
-
-    approved = entry.get("approved")
-    tok = entry.get("writeToken")
-    return {"approved": bool(approved), "writeToken": tok}
-
-
-async def _approval_set(trace_id: str, tool_call_id: str, approved: bool, write_token: Optional[str]) -> None:
-    key = _approval_key(trace_id, tool_call_id)
-    async with _APPROVAL_LOCK:
-        entry = _APPROVALS.get(key)
-        if not entry:
-            entry = {"event": asyncio.Event(), "approved": None, "writeToken": None, "created": time.time()}
-            _APPROVALS[key] = entry
-        entry["approved"] = bool(approved)
-        entry["writeToken"] = write_token
-        entry["event"].set()
-
-
-async def _approval_gc() -> None:
-    now = time.time()
-    async with _APPROVAL_LOCK:
-        for k in list(_APPROVALS.keys()):
-            entry = _APPROVALS[k]
-            if now - float(entry.get("created", now)) > (APPROVAL_TIMEOUT_SECONDS + 60):
-                _APPROVALS.pop(k, None)
+_TRACE_RATES: Dict[str, Tuple[deque, float]] = {}  # traceId -> (timestamps deque, last_seen)
+_TRACE_RATES_LOCK = asyncio.Lock()
 
 
 def _localhost_only(request: Request):
@@ -157,10 +132,6 @@ def _audit_retention_cleanup(base_path: str):
 
 
 def _audit(event: Dict[str, Any]):
-    """
-    Best-effort append JSONL.
-    We intentionally do NOT log raw tool arguments/results; only hashes + metadata.
-    """
     try:
         path = _audit_resolve_path(AUDIT_LOG_PATH)
         _ensure_dir_for_file(path)
@@ -169,6 +140,18 @@ def _audit(event: Dict[str, Any]):
         _audit_retention_cleanup(AUDIT_LOG_PATH)
     except Exception:
         pass
+
+
+def _audit_throttle(trace_id: str, event: str, detail: Dict[str, Any]):
+    # event: "rate_limited" | "concurrency_rejected"
+    payload = {
+        "ts": int(time.time() * 1000),
+        "traceId": trace_id,
+        "event": event,
+        "ok": False,
+        **(detail or {}),
+    }
+    _audit(payload)
 
 
 def _gateway_headers(trace_id: str) -> Dict[str, str]:
@@ -198,6 +181,112 @@ class ToolApproveRequest(BaseModel):
     toolCallId: str
     approved: bool
     writeToken: Optional[str] = None
+
+
+def _approval_key(trace_id: str, tool_call_id: str) -> str:
+    return f"{APPROVAL_KEY_PREFIX}:{trace_id}:{tool_call_id}"
+
+
+# In-memory approval store fallback (single-process)
+_APPROVAL_LOCK = asyncio.Lock()
+_APPROVALS: Dict[str, Dict[str, Any]] = {}
+
+
+async def _mem_wait(trace_id: str, tool_call_id: str) -> Dict[str, Any]:
+    key = _approval_key(trace_id, tool_call_id)
+    async with _APPROVAL_LOCK:
+        entry = _APPROVALS.get(key)
+        if not entry:
+            entry = {"event": asyncio.Event(), "approved": None, "writeToken": None, "created": time.time()}
+            _APPROVALS[key] = entry
+    try:
+        await asyncio.wait_for(entry["event"].wait(), timeout=APPROVAL_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError:
+        return {"approved": False, "reason": "approval_timeout"}
+    return {"approved": bool(entry.get("approved")), "writeToken": entry.get("writeToken")}
+
+
+async def _mem_set(trace_id: str, tool_call_id: str, approved: bool, write_token: Optional[str]) -> None:
+    key = _approval_key(trace_id, tool_call_id)
+    async with _APPROVAL_LOCK:
+        entry = _APPROVALS.get(key)
+        if not entry:
+            entry = {"event": asyncio.Event(), "approved": None, "writeToken": None, "created": time.time()}
+            _APPROVALS[key] = entry
+        entry["approved"] = bool(approved)
+        entry["writeToken"] = write_token
+        entry["event"].set()
+
+
+async def _mem_gc() -> None:
+    now = time.time()
+    async with _APPROVAL_LOCK:
+        for k in list(_APPROVALS.keys()):
+            entry = _APPROVALS[k]
+            if now - float(entry.get("created", now)) > (APPROVAL_TIMEOUT_SECONDS + 60):
+                _APPROVALS.pop(k, None)
+
+
+# Redis approval store (multi-instance)
+_redis_client = None
+
+
+def _redis_enabled() -> bool:
+    return bool(APPROVAL_REDIS_URL)
+
+
+async def _get_redis():
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    try:
+        import redis.asyncio as redis  # type: ignore
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"redis_not_installed:{e}")
+    _redis_client = redis.from_url(APPROVAL_REDIS_URL, encoding="utf-8", decode_responses=True)
+    return _redis_client
+
+
+async def _redis_set(trace_id: str, tool_call_id: str, approved: bool, write_token: Optional[str]) -> None:
+    r = await _get_redis()
+    key = _approval_key(trace_id, tool_call_id)
+    payload = json.dumps({"approved": bool(approved), "writeToken": write_token}, ensure_ascii=False)
+    ttl = int(APPROVAL_TIMEOUT_SECONDS + 300)
+    await r.set(key, payload, ex=ttl)
+
+
+async def _redis_wait(trace_id: str, tool_call_id: str) -> Dict[str, Any]:
+    r = await _get_redis()
+    key = _approval_key(trace_id, tool_call_id)
+    deadline = time.time() + APPROVAL_TIMEOUT_SECONDS
+    while time.time() < deadline:
+        val = await r.get(key)
+        if val:
+            try:
+                obj = json.loads(val)
+                return {"approved": bool(obj.get("approved")), "writeToken": obj.get("writeToken")}
+            except Exception:
+                return {"approved": False, "reason": "approval_corrupt"}
+        await asyncio.sleep(max(0.05, APPROVAL_POLL_INTERVAL))
+    return {"approved": False, "reason": "approval_timeout"}
+
+
+async def _approval_wait(trace_id: str, tool_call_id: str) -> Dict[str, Any]:
+    if _redis_enabled():
+        return await _redis_wait(trace_id, tool_call_id)
+    return await _mem_wait(trace_id, tool_call_id)
+
+
+async def _approval_set(trace_id: str, tool_call_id: str, approved: bool, write_token: Optional[str]) -> None:
+    if _redis_enabled():
+        return await _redis_set(trace_id, tool_call_id, approved, write_token)
+    return await _mem_set(trace_id, tool_call_id, approved, write_token)
+
+
+async def _approval_gc() -> None:
+    if _redis_enabled():
+        return
+    await _mem_gc()
 
 
 def _extract_tool_calls(resp_json: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -270,6 +359,21 @@ async def _fetch_mcp_tools(trace_id: str) -> Optional[List[Dict[str, Any]]]:
         return out
 
 
+async def _fetch_mcp_policy(trace_id: str) -> Optional[Dict[str, Any]]:
+    if not SMARTSPEC_WEB_GATEWAY_URL:
+        return None
+    url = f"{SMARTSPEC_WEB_GATEWAY_URL}/api/mcp/policy"
+    async with httpx.AsyncClient(timeout=5) as client:
+        try:
+            r = await client.get(url, headers=_gateway_headers(trace_id))
+            if r.status_code >= 400:
+                return None
+            data = r.json()
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
+
+
 async def _call_mcp_tool(name: str, arguments: Any, trace_id: str) -> Tuple[bool, str, str]:
     _require_gateway()
     if MCP_ALLOWLIST and name not in MCP_ALLOWLIST:
@@ -312,6 +416,88 @@ def _parse_arguments(arg_str: Any) -> Any:
 
 def _sse_event(event: str, data: Dict[str, Any]) -> bytes:
     return (f"event: {event}\n" + f"data: {json.dumps(data, ensure_ascii=False)}\n\n").encode("utf-8")
+
+
+def _openai_error_chunk(model: str, msg: str) -> bytes:
+    chunk = {
+        "id": "chatcmpl_proxy_error",
+        "object": "chat.completion.chunk",
+        "created": int(time.time()),
+        "model": model,
+        "choices": [{"index": 0, "delta": {"content": msg}, "finish_reason": "stop"}],
+    }
+    return (f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n").encode("utf-8")
+
+
+async def _get_trace_semaphore(trace_id: str) -> asyncio.Semaphore:
+    if MAX_CONCURRENT_PER_TRACE <= 0:
+        return asyncio.Semaphore(10_000_000)
+    async with _TRACE_SEMS_LOCK:
+        now = time.time()
+        for k in list(_TRACE_SEMS.keys()):
+            sem, last = _TRACE_SEMS[k]
+            if now - last > TRACE_SEM_IDLE_TTL_SECONDS:
+                _TRACE_SEMS.pop(k, None)
+        if trace_id in _TRACE_SEMS:
+            sem, _ = _TRACE_SEMS[trace_id]
+            _TRACE_SEMS[trace_id] = (sem, now)
+            return sem
+        sem = asyncio.Semaphore(MAX_CONCURRENT_PER_TRACE)
+        _TRACE_SEMS[trace_id] = (sem, now)
+        return sem
+
+
+async def _rate_limit_check(trace_id: str) -> Tuple[bool, float]:
+    """
+    Sliding window: allow up to RATE_LIMIT_COUNT per RATE_LIMIT_WINDOW_SECONDS per trace.
+    Returns (allowed, retry_after_seconds).
+    """
+    if RATE_LIMIT_COUNT <= 0 or RATE_LIMIT_WINDOW_SECONDS <= 0:
+        return True, 0.0
+
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW_SECONDS
+
+    async with _TRACE_RATES_LOCK:
+        for k in list(_TRACE_RATES.keys()):
+            _, last = _TRACE_RATES[k]
+            if now - last > TRACE_RATE_IDLE_TTL_SECONDS:
+                _TRACE_RATES.pop(k, None)
+
+        dq, _last = _TRACE_RATES.get(trace_id, (deque(), now))
+        while dq and dq[0] < window_start:
+            dq.popleft()
+
+        if len(dq) >= RATE_LIMIT_COUNT:
+            retry_after = max(0.0, (dq[0] + RATE_LIMIT_WINDOW_SECONDS) - now)
+            _TRACE_RATES[trace_id] = (dq, now)
+            return False, retry_after
+
+        dq.append(now)
+        _TRACE_RATES[trace_id] = (dq, now)
+        return True, 0.0
+
+
+class _TraceGuard:
+    def __init__(self, sem: asyncio.Semaphore):
+        self.sem = sem
+        self.acquired = False
+
+    async def acquire(self, timeout_s: float) -> bool:
+        try:
+            await asyncio.wait_for(self.sem.acquire(), timeout=timeout_s)
+            self.acquired = True
+            return True
+        except asyncio.TimeoutError:
+            return False
+
+    def release(self):
+        if self.acquired:
+            try:
+                self.sem.release()
+            except Exception:
+                pass
+            self.acquired = False
 
 
 async def _require_approval_if_needed(tool_name: str, trace_id: str, tool_call_id: str, emit: Callable[[bytes], None], is_stream: bool) -> Dict[str, Any]:
@@ -392,6 +578,49 @@ async def _tool_loop_with_status(payload: Dict[str, Any], trace_id: str, emit: C
     emit(_sse_event("tool_status", {"traceId": trace_id, "phase": "limit", "message": "max_tool_iters_reached"}))
 
 
+@router.get("/v1/policy")
+async def policy(request: Request):
+    _localhost_only(request)
+    trace_id = request.headers.get("x-trace-id") or uuid.uuid4().hex
+
+    mcp_policy = await _fetch_mcp_policy(trace_id)
+
+    return JSONResponse(
+        {
+            "proxy": {
+                "localhostOnly": LOCALHOST_ONLY,
+                "autoMcpTools": AUTO_MCP_TOOLS,
+                "mcpToolAllowlist": MCP_ALLOWLIST,
+                "maxToolIters": MAX_TOOL_ITERS,
+                "mcpTimeoutSeconds": MCP_TIMEOUT_SECONDS,
+                "gatewayTimeoutSeconds": GATEWAY_TIMEOUT_SECONDS,
+                "approval": {
+                    "approvalTools": APPROVAL_TOOLS,
+                    "timeoutSeconds": APPROVAL_TIMEOUT_SECONDS,
+                    "autoApproveNonstream": AUTO_APPROVE_NONSTREAM,
+                    "redisEnabled": bool(APPROVAL_REDIS_URL),
+                    "pollInterval": APPROVAL_POLL_INTERVAL,
+                    "keyPrefix": APPROVAL_KEY_PREFIX,
+                },
+                "audit": {
+                    "path": AUDIT_LOG_PATH,
+                    "rotateDaily": AUDIT_ROTATE_DAILY,
+                    "retentionDays": AUDIT_RETENTION_DAYS,
+                },
+                "throttling": {
+                    "maxConcurrentPerTrace": MAX_CONCURRENT_PER_TRACE,
+                    "concurrencyWaitSeconds": CONCURRENCY_WAIT_SECONDS,
+                    "traceSemIdleTtlSeconds": TRACE_SEM_IDLE_TTL_SECONDS,
+                    "rateLimitCount": RATE_LIMIT_COUNT,
+                    "rateLimitWindowSeconds": RATE_LIMIT_WINDOW_SECONDS,
+                    "traceRateIdleTtlSeconds": TRACE_RATE_IDLE_TTL_SECONDS,
+                },
+            },
+            "mcp": mcp_policy,
+        }
+    )
+
+
 @router.post("/v1/tool-approve")
 async def tool_approve(req: ToolApproveRequest, request: Request):
     _localhost_only(request)
@@ -404,6 +633,15 @@ async def tool_approve(req: ToolApproveRequest, request: Request):
 async def chat_completions(req: OpenAIChatRequest, request: Request):
     _localhost_only(request)
     trace_id = request.headers.get("x-trace-id") or uuid.uuid4().hex
+
+    # Rate limit early (per trace)
+    allowed, retry_after = await _rate_limit_check(trace_id)
+    if not allowed and not req.stream:
+        _audit_throttle(trace_id, "rate_limited", {"retryAfterSeconds": float(f"{retry_after:.3f}")})
+        raise HTTPException(status_code=429, detail=f"rate_limited:retry_after={retry_after:.2f}")
+
+    sem = await _get_trace_semaphore(trace_id)
+    guard = _TraceGuard(sem)
 
     payload = req.model_dump(exclude={"extra"}, by_alias=True)
     payload.update(req.extra)
@@ -419,40 +657,89 @@ async def chat_completions(req: OpenAIChatRequest, request: Request):
                 payload["tool_choice"] = "auto"
 
     if not req.stream:
-        await _tool_loop_with_status(payload, trace_id, emit=lambda _: None, is_stream=False)
-        payload["stream"] = False
-        return await _call_gateway_chat(payload, trace_id)
+        ok = await guard.acquire(CONCURRENCY_WAIT_SECONDS)
+        if not ok:
+            _audit_throttle(trace_id, "concurrency_rejected", {"maxConcurrentPerTrace": MAX_CONCURRENT_PER_TRACE, "waitSeconds": CONCURRENCY_WAIT_SECONDS})
+            raise HTTPException(status_code=429, detail="concurrency_limit")
+        try:
+            await _tool_loop_with_status(payload, trace_id, emit=lambda _: None, is_stream=False)
+            payload["stream"] = False
+            return await _call_gateway_chat(payload, trace_id)
+        finally:
+            guard.release()
 
+    # Stream mode:
     payload["stream"] = False
 
     async def gen():
         yield _sse_event("trace", {"traceId": trace_id})
 
-        q: List[bytes] = []
+        # Rate limited in stream: emit status + audit + end gracefully
+        if not allowed:
+            _audit_throttle(trace_id, "rate_limited", {"retryAfterSeconds": float(f"{retry_after:.3f}")})
+            yield _sse_event("proxy_status", {"traceId": trace_id, "phase": "rate_limited", "message": f"retry_after={retry_after:.2f}"})
+            yield _openai_error_chunk(req.model, f"Error: rate limited. Retry after {retry_after:.1f}s.")
+            yield b"data: [DONE]\n\n"
+            return
+
+        acquired = await guard.acquire(0.01)
+        if not acquired:
+            yield _sse_event("proxy_status", {"traceId": trace_id, "phase": "queued", "message": "waiting_for_concurrency_slot"})
+            acquired = await guard.acquire(CONCURRENCY_WAIT_SECONDS)
+
+        if not acquired:
+            _audit_throttle(trace_id, "concurrency_rejected", {"maxConcurrentPerTrace": MAX_CONCURRENT_PER_TRACE, "waitSeconds": CONCURRENCY_WAIT_SECONDS})
+            yield _sse_event("proxy_status", {"traceId": trace_id, "phase": "rejected", "message": "concurrency_limit"})
+            yield _openai_error_chunk(req.model, "Error: concurrency limit exceeded. Please retry.")
+            yield b"data: [DONE]\n\n"
+            return
+
+        yield _sse_event("proxy_status", {"traceId": trace_id, "phase": "acquired", "message": "concurrency_slot_acquired"})
+
+        q: "asyncio.Queue[Optional[bytes]]" = asyncio.Queue()
 
         def emit(b: bytes):
-            q.append(b)
+            try:
+                q.put_nowait(b)
+            except Exception:
+                pass
 
-        await _tool_loop_with_status(payload, trace_id, emit=emit, is_stream=True)
-        while q:
-            yield q.pop(0)
+        async def run_tools():
+            try:
+                await _tool_loop_with_status(payload, trace_id, emit=emit, is_stream=True)
+            finally:
+                await q.put(None)
 
-        payload["stream"] = True
+        tool_task = asyncio.create_task(run_tools())
+
         try:
-            async for chunk in _stream_gateway_chat(payload, trace_id):
-                yield chunk
-        except Exception:
-            payload["stream"] = False
-            resp = await _call_gateway_chat(payload, trace_id)
-            chunk = {
-                "id": resp.get("id", "chatcmpl_fallback"),
-                "object": "chat.completion.chunk",
-                "created": resp.get("created", 0),
-                "model": resp.get("model", req.model),
-                "choices": [{"index": 0, "delta": {"content": resp.get("choices", [{}])[0].get("message", {}).get("content", "")}, "finish_reason": "stop"}],
-            }
-            yield (f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n").encode("utf-8")
-            yield b"data: [DONE]\n\n"
+            while True:
+                item = await q.get()
+                if item is None:
+                    break
+                yield item
+
+            await tool_task
+
+            payload["stream"] = True
+            try:
+                async for chunk in _stream_gateway_chat(payload, trace_id):
+                    yield chunk
+            except Exception:
+                payload["stream"] = False
+                resp = await _call_gateway_chat(payload, trace_id)
+                chunk = {
+                    "id": resp.get("id", "chatcmpl_fallback"),
+                    "object": "chat.completion.chunk",
+                    "created": resp.get("created", 0),
+                    "model": resp.get("model", req.model),
+                    "choices": [{"index": 0, "delta": {"content": resp.get("choices", [{}])[0].get("message", {}).get("content", "")}, "finish_reason": "stop"}],
+                }
+                yield (f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n").encode("utf-8")
+                yield b"data: [DONE]\n\n"
+        finally:
+            guard.release()
+            yield _sse_event("proxy_status", {"traceId": trace_id, "phase": "released", "message": "concurrency_slot_released"})
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 
