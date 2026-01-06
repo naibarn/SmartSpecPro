@@ -8,10 +8,31 @@ export type ChatMessage = {
   tool_call_id?: string;
 };
 
+export type ToolStatus = {
+  traceId: string;
+  phase: "start" | "end" | "limit";
+  name?: string;
+  toolCallId?: string;
+  ok?: boolean;
+  argsHash?: string;
+  resultHash?: string;
+  message?: string;
+};
+
+export type ToolApprovalRequired = {
+  traceId: string;
+  toolCallId: string;
+  name?: string;
+  reason?: string;
+};
+
 export type StreamHandlers = {
   onToken: (token: string) => void;
   onDone: () => void;
   onError: (err: string) => void;
+  onTrace?: (traceId: string) => void;
+  onToolStatus?: (s: ToolStatus) => void;
+  onToolApprovalRequired?: (a: ToolApprovalRequired) => void;
 };
 
 function parseSseBuffer(buf: string): { events: string[]; rest: string } {
@@ -20,11 +41,28 @@ function parseSseBuffer(buf: string): { events: string[]; rest: string } {
   return { events: parts, rest };
 }
 
-function extractDataLines(evt: string): string[] {
-  return evt
-    .split("\n")
-    .filter(l => l.startsWith("data:"))
-    .map(l => l.replace(/^data:\s?/, ""));
+function parseEventBlock(block: string): { event?: string; dataLines: string[] } {
+  const lines = block.split("\n");
+  let event: string | undefined;
+  const dataLines: string[] = [];
+  for (const l of lines) {
+    if (l.startsWith("event:")) event = l.replace(/^event:\s?/, "").trim();
+    if (l.startsWith("data:")) dataLines.push(l.replace(/^data:\s?/, ""));
+  }
+  return { event, dataLines };
+}
+
+export async function approveTool(params: { traceId: string; toolCallId: string; approved: boolean; writeToken?: string }) {
+  const res = await fetch(`${BASE}/v1/tool-approve`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`approve_failed:${res.status}:${text}`);
+  }
+  return await res.json().catch(() => ({ ok: true }));
 }
 
 export async function chatStream(params: {
@@ -69,23 +107,44 @@ export async function chatStream(params: {
       const { events, rest } = parseSseBuffer(buffer);
       buffer = rest;
 
-      for (const evt of events) {
-        const lines = extractDataLines(evt);
-        for (const d of lines) {
+      for (const block of events) {
+        const { event, dataLines } = parseEventBlock(block);
+        for (const d of dataLines) {
           if (d === "[DONE]") {
             params.handlers.onDone();
             return;
           }
+
+          if (event === "trace") {
+            try {
+              const obj = JSON.parse(d);
+              if (obj?.traceId && params.handlers.onTrace) params.handlers.onTrace(String(obj.traceId));
+            } catch {}
+            continue;
+          }
+
+          if (event === "tool_status") {
+            try {
+              const obj = JSON.parse(d);
+              if (params.handlers.onToolStatus) params.handlers.onToolStatus(obj);
+            } catch {}
+            continue;
+          }
+
+          if (event === "tool_approval_required") {
+            try {
+              const obj = JSON.parse(d);
+              if (params.handlers.onToolApprovalRequired) params.handlers.onToolApprovalRequired(obj);
+            } catch {}
+            continue;
+          }
+
           try {
             const obj = JSON.parse(d);
             const delta = obj?.choices?.[0]?.delta;
             const tok = delta?.content;
-            if (typeof tok === "string" && tok.length) {
-              params.handlers.onToken(tok);
-            }
-          } catch {
-            // ignore
-          }
+            if (typeof tok === "string" && tok.length) params.handlers.onToken(tok);
+          } catch {}
         }
       }
     }
