@@ -1,348 +1,276 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  approveTool,
-  buildUserMessageWithOptionalImage,
-  chatStream,
-  ChatMessage,
-  fetchPolicy,
-  PolicySummary,
-  ProxyStatus,
-  ToolApprovalRequired,
-  ToolStatus,
-} from "../services/llmOpenAI";
+import { chatCompletionsStream, type Message, type ContentPart } from "../services/llmOpenAI";
+import { uploadToArtifactStorage } from "../services/artifacts";
+import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
 
 const DEFAULT_WORKSPACE = import.meta.env.VITE_WORKSPACE_PATH || "";
 
-type UIMessage = { role: "user" | "assistant" | "system"; text: string };
-
-type ToolActivity = {
-  ts: number;
-  kind: "tool" | "proxy";
-  phase: string;
-  name?: string;
-  ok?: boolean;
-  toolCallId?: string;
-  argsHash?: string;
-  resultHash?: string;
-  message?: string;
+type Attachment = {
+  kind: "image" | "video" | "file";
+  name: string;
+  mime: string;
+  artifactKey: string;
+  url: string; // presigned GET (LLM-accessible)
 };
 
-type PendingApproval = {
-  traceId: string;
-  toolCallId: string;
-  name?: string;
-  reason?: string;
-  writeToken?: string;
-  status?: "pending" | "approved" | "denied" | "error";
-  error?: string;
-};
+function isImage(m?: string) {
+  return !!m && m.startsWith("image/");
+}
+function isVideo(m?: string) {
+  return !!m && m.startsWith("video/");
+}
+
+function pickFile(accept: string): Promise<File | null> {
+  return new Promise((resolve) => {
+    const el = document.createElement("input");
+    el.type = "file";
+    el.accept = accept;
+    el.onchange = () => resolve(el.files?.[0] ?? null);
+    el.click();
+  });
+}
 
 export default function LLMChatPage() {
   const [workspace, setWorkspace] = useState(DEFAULT_WORKSPACE);
   const [input, setInput] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [msgs, setMsgs] = useState<UIMessage[]>([{ role: "system", text: "You are an assistant. Reply concisely." }]);
-  const [streaming, setStreaming] = useState(false);
-  const [traceId, setTraceId] = useState<string>("");
-  const [activity, setActivity] = useState<ToolActivity[]>([]);
-  const [runningTool, setRunningTool] = useState<string>("");
-  const [approvals, setApprovals] = useState<PendingApproval[]>([]);
-  const [policy, setPolicy] = useState<PolicySummary | null>(null);
-  const [policyErr, setPolicyErr] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    { role: "system", content: "You are a helpful assistant. If the user provides images or videos, analyze them carefully." },
+  ]);
+  const [streamingText, setStreamingText] = useState<string>("");
+  const abortRef = useRef<AbortController | null>(null);
 
-  const chatMessages: ChatMessage[] = useMemo(
-    () => msgs.map((m) => ({ role: m.role, content: m.text })) as ChatMessage[],
-    [msgs]
-  );
-
-  const assistantDraftRef = useRef<string>("");
-
-  async function refreshPolicy() {
-    setPolicyErr("");
-    try {
-      const p = await fetchPolicy(traceId || undefined);
-      setPolicy(p);
-    } catch (e: any) {
-      setPolicy(null);
-      setPolicyErr(String(e?.message || e));
-    }
-  }
+  const [tokenInput, setTokenInput] = useState<string>("");
+  const [tokenHint, setTokenHint] = useState<string>("");
 
   useEffect(() => {
-    refreshPolicy();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    (async () => {
+      await loadProxyToken();
+      setTokenHint(getProxyTokenHint());
+    })();
   }, []);
 
-  function handleProxyStatus(s: ProxyStatus) {
-    setActivity((prev) =>
-      [
-        {
-          ts: Date.now(),
-          kind: "proxy",
-          phase: s.phase,
-          message: s.message,
-        },
-        ...prev,
-      ].slice(0, 200)
-    );
-  }
 
-  function handleToolStatus(s: ToolStatus) {
-    if (s.phase === "start" && s.name) setRunningTool(s.name);
-    if (s.phase === "end" || s.phase === "limit") setRunningTool("");
+  const display = useMemo(() => messages.filter((m) => m.role !== "system"), [messages]);
 
-    setActivity((prev) =>
-      [
-        {
-          ts: Date.now(),
-          kind: "tool",
-          phase: s.phase,
-          name: s.name,
-          ok: s.ok,
-          toolCallId: s.toolCallId,
-          argsHash: s.argsHash,
-          resultHash: s.resultHash,
-          message: s.message,
-        },
-        ...prev,
-      ].slice(0, 200)
-    );
-  }
+  const onSaveToken = async () => {
+    await setProxyToken(tokenInput.trim());
+    setTokenInput("");
+    setTokenHint(getProxyTokenHint());
+    alert("Saved proxy token locally (OS keychain when available).");
+  };
 
-  function handleApprovalRequired(a: ToolApprovalRequired) {
-    setApprovals((prev) => {
-      const exists = prev.some((p) => p.traceId === a.traceId && p.toolCallId === a.toolCallId);
-      if (exists) return prev;
-      return [{ traceId: a.traceId, toolCallId: a.toolCallId, name: a.name, reason: a.reason, status: "pending" }, ...prev].slice(0, 50);
-    });
-  }
+  const onInsertImage = async () => {
+    const file = await pickFile("image/*");
+    if (!file) return;
+    if (!isImage(file.type)) return alert("Selected file is not an image.");
+    if (!workspace) return alert("Workspace is required (for artifact session binding).");
 
-  async function doApprove(item: PendingApproval, approved: boolean) {
-    setApprovals((prev) =>
-      prev.map((p) =>
-        p.traceId === item.traceId && p.toolCallId === item.toolCallId ? { ...p, status: approved ? "approved" : "denied" } : p
-      )
-    );
+    setBusy(true);
     try {
-      await approveTool({
-        traceId: item.traceId,
-        toolCallId: item.toolCallId,
-        approved,
-        writeToken: item.writeToken,
-      });
-    } catch (e: any) {
-      setApprovals((prev) =>
-        prev.map((p) =>
-          p.traceId === item.traceId && p.toolCallId === item.toolCallId
-            ? { ...p, status: "error", error: String(e?.message || e) }
-            : p
-        )
-      );
+      const up = await uploadToArtifactStorage({ workspace, file, iteration: 0 });
+      setAttachments((prev) => [
+        ...prev,
+        { kind: "image", name: up.name, mime: up.contentType, artifactKey: up.key, url: up.getUrl },
+      ]);
+    } finally {
+      setBusy(false);
     }
-  }
+  };
 
-  async function send() {
-    if (!workspace) return;
-    if (!input.trim() && !file) return;
-    if (streaming) return;
+  const onInsertVideo = async () => {
+    const file = await pickFile("video/*");
+    if (!file) return;
+    if (!isVideo(file.type)) return alert("Selected file is not a video.");
+    if (!workspace) return alert("Workspace is required (for artifact session binding).");
 
-    setStreaming(true);
-    setActivity([]);
-    setTraceId("");
-    setRunningTool("");
-    setApprovals([]);
+    setBusy(true);
+    try {
+      const up = await uploadToArtifactStorage({ workspace, file, iteration: 0 });
+      setAttachments((prev) => [
+        ...prev,
+        { kind: "video", name: up.name, mime: up.contentType, artifactKey: up.key, url: up.getUrl },
+      ]);
+    } finally {
+      setBusy(false);
+    }
+  };
 
-    setMsgs((prev) => [...prev, { role: "user", text: file ? `${input}\n[image attached: ${file.name}]` : input }]);
+  const onCancelStream = () => abortRef.current?.abort();
 
-    const built = await buildUserMessageWithOptionalImage({ workspace, text: input, file });
-    const userMsg = built.message;
+  const onSend = async () => {
+    const text = input.trim();
+    if (!text && attachments.length === 0) return;
 
-    assistantDraftRef.current = "";
-    setMsgs((prev) => [...prev, { role: "assistant", text: "" }]);
+    const parts: ContentPart[] = [];
+    if (text) parts.push({ type: "text", text });
 
-    await chatStream({
-      messages: [...chatMessages, userMsg],
-      handlers: {
-        onTrace: async (id) => {
-          setTraceId(id);
-          try {
-            const p = await fetchPolicy(id);
-            setPolicy(p);
-            setPolicyErr("");
-          } catch {}
-        },
-        onProxyStatus: handleProxyStatus,
-        onToolStatus: handleToolStatus,
-        onToolApprovalRequired: handleApprovalRequired,
-        onToken: (tok) => {
-          assistantDraftRef.current += tok;
-          setMsgs((prev) => {
-            const copy = [...prev];
-            for (let i = copy.length - 1; i >= 0; i--) {
-              if (copy[i].role === "assistant") {
-                copy[i] = { ...copy[i], text: assistantDraftRef.current };
-                break;
-              }
-            }
-            return copy;
-          });
-        },
-        onDone: () => {
-          setStreaming(false);
-          setInput("");
-          setFile(null);
-          setRunningTool("");
-        },
-        onError: (err) => {
-          setStreaming(false);
-          setRunningTool("");
-          setMsgs((prev) => [...prev, { role: "assistant", text: `Error: ${err}` }]);
-        },
-      },
-    });
-  }
+    for (const a of attachments) {
+      if (a.kind === "image") {
+        parts.push({ type: "image_url", image_url: { url: a.url, detail: "auto" } });
+      } else {
+        parts.push({ type: "file_url", file_url: { url: a.url, mime_type: a.mime, name: a.name } });
+      }
+    }
 
-  const proxyPolicy = policy?.proxy;
-  const mcpPolicy = policy?.mcp as any;
+    const userMsg: Message = {
+      role: "user",
+      content: parts.length === 1 && parts[0].type === "text" ? text : parts,
+    };
+
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
+    setInput("");
+    setAttachments([]);
+    setStreamingText("");
+
+    setBusy(true);
+    abortRef.current = new AbortController();
+
+    try {
+      let acc = "";
+      for await (const ev of chatCompletionsStream({
+        model: "gpt-4o-mini",
+        messages: nextMessages,
+        temperature: 0.3,
+        max_tokens: 2000,
+      })) {
+        if (abortRef.current?.signal.aborted) break;
+        if (ev.text) {
+          acc += ev.text;
+          setStreamingText(acc);
+        }
+      }
+
+      const finalText = acc || "No response";
+      setMessages((prev) => [...prev, { role: "assistant", content: finalText }]);
+      setStreamingText("");
+    } catch (e: any) {
+      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e?.message || "Unknown error"}` }]);
+      setStreamingText("");
+    } finally {
+      setBusy(false);
+      abortRef.current = null;
+    }
+  };
+
+  const canSend = !busy && (input.trim().length > 0 || attachments.length > 0);
 
   return (
-    <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: 1200, margin: "0 auto" }}>
+    <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <h2 style={{ margin: 0 }}>LLM Chat (Streaming • Vision • MCP tools • Audit/Trace)</h2>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>
-          {streaming ? "streaming…" : ""}
-          {runningTool ? ` • tool: ${runningTool}…` : ""}
+        <h2 style={{ margin: 0 }}>LLM Chat (Streaming + Multi‑modal via Artifact Storage)</h2>
+        <div style={{ fontSize: 12, opacity: 0.75 }}>
+          Desktop → python-backend <code>/v1/chat/completions</code> → SmartSpecWeb Gateway
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <label style={{ fontSize: 12, opacity: 0.9 }}>Workspace</label>
-        <input value={workspace} onChange={(e) => setWorkspace(e.target.value)} style={{ minWidth: 520 }} />
-        <button
-          onClick={() => {
-            setMsgs([{ role: "system", text: "You are an assistant. Reply concisely." }]);
-            setInput("");
-            setFile(null);
-            setActivity([]);
-            setTraceId("");
-            setRunningTool("");
-            setApprovals([]);
-          }}
-        >
-          Clear
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <label style={{ fontSize: 12, opacity: 0.9 }}>Proxy token</label>
+        <input
+          value={tokenInput}
+          onChange={(e) => setTokenInput(e.target.value)}
+          placeholder={tokenHint ? `saved (${tokenHint})` : "paste SMARTSPEC_PROXY_TOKEN"}
+          style={{ minWidth: 320 }}
+          type="password"
+        />
+        <button onClick={onSaveToken} disabled={busy}>
+          Save Token
         </button>
-        <button onClick={refreshPolicy}>Refresh Policy</button>
-        {traceId ? (
-          <div style={{ fontSize: 12, opacity: 0.8 }}>
-            traceId: <code>{traceId}</code>
-          </div>
+
+        <span style={{ fontSize: 12, opacity: 0.6 }}>
+          (runtime local only — avoid baking secrets in build)
+        </span>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <label style={{ fontSize: 12, opacity: 0.9 }}>Workspace</label>
+        <input
+          value={workspace}
+          onChange={(e) => setWorkspace(e.target.value)}
+          placeholder="/path/to/workspace"
+          style={{ minWidth: 520 }}
+        />
+        <button onClick={onInsertImage} disabled={busy || !workspace}>
+          Insert Picture
+        </button>
+        <button onClick={onInsertVideo} disabled={busy || !workspace}>
+          Insert Video
+        </button>
+        {busy ? (
+          <button onClick={onCancelStream} style={{ marginLeft: 8 }}>
+            Cancel
+          </button>
         ) : null}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, alignItems: "start" }}>
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, display: "grid", gap: 10 }}>
-          {msgs.map((m, idx) => (
-            <div key={idx} style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", opacity: 0.7 }}>{m.role}</div>
-              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.35 }}>{m.text}</div>
-              <div style={{ borderBottom: "1px dashed #eee" }} />
-            </div>
-          ))}
-        </div>
-
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, display: "grid", gap: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontWeight: 800 }}>Policy</div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>{policy ? "loaded" : policyErr ? "error" : "…"}</div>
-          </div>
-
-          {policyErr ? <div style={{ fontSize: 12, color: "#b91c1c" }}>{policyErr}</div> : null}
-
-          {proxyPolicy ? (
-            <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 10, display: "grid", gap: 6 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700 }}>Proxy</div>
-              <div style={{ fontSize: 12 }}>
-                localhostOnly: <code>{String(proxyPolicy.localhostOnly)}</code> • autoMcpTools:{" "}
-                <code>{String(proxyPolicy.autoMcpTools)}</code>
-              </div>
-              <div style={{ fontSize: 12 }}>
-                throttling: maxConcurrentPerTrace:{" "}
-                <code>{String(proxyPolicy.throttling?.maxConcurrentPerTrace ?? "-")}</code> • wait:{" "}
-                <code>{String(proxyPolicy.throttling?.concurrencyWaitSeconds ?? "-")}</code>s
-              </div>
-              <div style={{ fontSize: 12 }}>
-                rateLimit: <code>{String(proxyPolicy.throttling?.rateLimitCount ?? "-")}</code> /{" "}
-                <code>{String(proxyPolicy.throttling?.rateLimitWindowSeconds ?? "-")}</code>s
-              </div>
-              <div style={{ fontSize: 12 }}>
-                approvalTools: <code>{(proxyPolicy.approval?.approvalTools || []).join(",") || "-"}</code>
-              </div>
-            </div>
-          ) : null}
-
-          {mcpPolicy ? (
-            <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 10, display: "grid", gap: 6 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700 }}>MCP</div>
-              <div style={{ fontSize: 12 }}>
-                enableWrite: <code>{String(mcpPolicy.enableWrite)}</code> • writeTokenRequired:{" "}
-                <code>{String(mcpPolicy.writeTokenRequired)}</code>
-              </div>
-              <div style={{ fontSize: 12 }}>
-                pathDenylist: <code>{(mcpPolicy.pathDenylist || []).join(",") || "-"}</code>
-              </div>
-            </div>
-          ) : null}
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-            <div style={{ fontWeight: 800 }}>Activity</div>
-            {runningTool ? (
-              <div style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, border: "1px solid #ddd" }}>
-                running: <code>{runningTool}</code>
-              </div>
-            ) : (
-              <div style={{ fontSize: 12, opacity: 0.7 }}>idle</div>
-            )}
-          </div>
-
-          {activity.length === 0 ? (
-            <div style={{ opacity: 0.7, fontSize: 12 }}>No activity yet.</div>
-          ) : (
-            <div style={{ display: "grid", gap: 8 }}>
-              {activity.map((a, i) => (
-                <div key={i} style={{ border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                    {a.kind === "proxy" ? "proxy" : "tool"} • {a.phase}
-                    {a.name ? ` • ${a.name}` : ""}
-                    {a.ok === true ? " • ok" : a.ok === false ? " • error" : ""}
-                  </div>
-                  {a.message ? <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{a.message}</div> : null}
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, minHeight: 360 }}>
+        {display.length === 0 && !streamingText ? (
+          <div style={{ opacity: 0.7 }}>No messages yet.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {display.map((m, idx) => (
+              <div key={idx} style={{ display: "grid", gap: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.8 }}>{m.role}</div>
+                <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+                  {typeof m.content === "string" ? m.content : JSON.stringify(m.content, null, 2)}
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
 
-          <div style={{ fontSize: 12, opacity: 0.75 }}>
-            ถ้าโดน rate limit จะเห็น <code>proxy • rate_limited</code> ใน Activity และ chat จะจบอย่างสุภาพ ([DONE]).
+            {streamingText ? (
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.8 }}>assistant (streaming)</div>
+                <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{streamingText}</div>
+              </div>
+            ) : null}
           </div>
-        </div>
+        )}
       </div>
 
-      <div style={{ display: "grid", gap: 8 }}>
+      {attachments.length > 0 ? (
+        <div style={{ border: "1px dashed #e5e7eb", borderRadius: 14, padding: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>Attachments</div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {attachments.map((a, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontFamily: "monospace", fontSize: 12, opacity: 0.85 }}>
+                  {a.name} • {a.mime}
+                </div>
+                <a href={a.url} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
+                  open
+                </a>
+                {a.kind === "image" ? (
+                  <img src={a.url} alt={a.name} style={{ height: 44, borderRadius: 10, border: "1px solid #e5e7eb" }} />
+                ) : a.kind === "video" ? (
+                  <video src={a.url} controls style={{ height: 64, borderRadius: 10, border: "1px solid #e5e7eb" }} />
+                ) : null}
+                <button onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))} disabled={busy}>
+                  remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "start" }}>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message…"
           rows={4}
-          style={{ width: "100%", borderRadius: 12, border: "1px solid #e5e7eb", padding: 10 }}
+          placeholder="Type your message…"
+          disabled={busy}
+          style={{ width: "100%", borderRadius: 14, padding: 12, border: "1px solid #e5e7eb" }}
         />
+        <button onClick={onSend} disabled={!canSend} style={{ height: 48 }}>
+          {busy ? "Sending..." : "Send"}
+        </button>
+      </div>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-          {file ? <div style={{ fontSize: 12, opacity: 0.8 }}>Attached: {file.name}</div> : null}
-          <button disabled={streaming || (!input.trim() && !file)} onClick={send}>
-            Send
-          </button>
-        </div>
+      <div style={{ fontSize: 12, opacity: 0.75 }}>
+        Multi‑modal flow: Insert media → <code>presign PUT</code> → upload → <code>presign GET</code> → send as <code>image_url/file_url</code>.
       </div>
     </div>
   );

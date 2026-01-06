@@ -3,7 +3,7 @@
 Plan ID: **SSP-WEB-003-PLAN**  
 Linked Spec: **SSP-WEB-003**  
 Code boundary (MUST): changes only in `SmartSpecWeb/`  
-Last updated: 2026-01-04
+Last updated: 2026-01-06
 
 ## Strategy
 - Freeze & protect current site features first (non-breaking)
@@ -12,62 +12,40 @@ Last updated: 2026-01-04
 
 ---
 
-## Phase 0 — Baseline stability + Security guardrails
-- Add CI path-guard for `SmartSpecWeb/`
-- Add env validation (required vars, min secret length)
-- Add production security middleware baseline (helmet, size limits, rate limit)
-- Confirm admin guards and auth pages behavior
+## Phase 0 — Baseline stability + Security guardrails (DONE)
+- ✅ Basic security headers + disable x-powered-by
+- ✅ LLM/MCP rate limiting (in-memory)
+- ✅ LLM max body size + MCP size limits
+- ✅ MCP audit log (JSONL)
 
-Deliverable: “เว็บเดิมไม่พัง + ปลอดภัยพื้นฐาน”
-
----
-
-## Phase 1 — Auth expansion for Desktop/Runner (Bearer tokens)
-- Add token issuance endpoint for desktop/runner
-- Add token validation middleware + scopes/roles
-- Document CSRF policy for cookie endpoints (and implement if needed)
-
-Deliverable: shared auth usable by desktop/runner without changing web cookie sessions
+Deliverable: “เว็บไม่พัง + ปลอดภัยพื้นฐาน” + “gateway/mcp ใช้งานจริง”
 
 ---
 
-## Phase 2 — Control Plane API + Postgres foundation
-- Add Postgres connection + migration tooling (keep MySQL for gallery)
-- Implement versioned endpoints for Project/Session/Iteration/TaskRegistry/Report
-- Add audit logs for mutations
-
-Deliverable: authoritative state surface (API-first)
+## Phase 1 — OpenAI-compatible LLM Gateway (DONE)
+- ✅ `/v1/chat/completions` (SSE passthrough)
+- ✅ `/v1/models` minimal
+- ✅ UI wrappers `/api/llm/chat`, `/api/llm/stream`
 
 ---
 
-## Phase 3 — R2 Presigned Artifacts/Reports
-- Implement presign PUT/GET endpoints + strict key prefix policy
-- Store artifact metadata in Postgres + retention policy
-
-Deliverable: runner uploads bundles, UI/desktop download bundles
-
----
-
-## Phase 4 — LLM Gateway (OpenAI-compatible) + Costing (REQUIRED)
-- Implement `/v1/chat/completions` compatible gateway
-- Provider routing + policy enforcement + rate limiting
-- Usage extraction + pricing table + persist cost
-- Return usage/cost metadata to clients
-
-Deliverable: Kilo proxy can call LLM via website and billing is authoritative
+## Phase 2 — MCP server (DONE)
+- ✅ `/api/mcp/*` + `/mcp/*`
+- ✅ tool allowlist + workspace guard + optional write token
+- ✅ unit tests for auth + traversal blocking
 
 ---
 
-## Phase 5 — MCP Gateway (optional)
-- Expose selected tools behind auth (allowlist)
-- Audit logs + contract tests
-
-Deliverable: unified tool gateway
+## Phase 3 — Token issuance + scope (NEXT)
+- Add bearer token issuance (short-lived JWT) + scopes (read/write/tools)
+- Align with control-plane policy model (approval/write gates)
 
 ---
 
-## Phase 6 — LangGraph integration
-- LangGraph uses Control Plane API only (no DB direct)
-- Persist gates/DoD status in iteration/report so UI/desktop can read
+## Phase 4 — Cost accounting (NEXT)
+- Extract usage + cost (persist) + budgets/quotas
 
-Deliverable: observable orchestration loop
+---
+
+## Phase 5 — Postgres Control Plane (NEXT)
+- Add DB + schema + versioned endpoints

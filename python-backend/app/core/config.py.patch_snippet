@@ -1,0 +1,2 @@
+Add settings:
+  SMARTSPEC_LOCALHOST_ONLY: bool = True

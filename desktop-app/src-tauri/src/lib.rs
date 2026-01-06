@@ -3,6 +3,7 @@ mod database;
 mod models;
 mod repository;
 mod git_manager;
+mod secure_store;
 
 use python_bridge::{OutputMessage, PythonBridge, WorkflowArgs};
 use tokio::sync::Mutex;
@@ -162,6 +163,9 @@ pub fn run() {
             git_push_branch,
             git_has_changes,
             git_list_branches,
+            secure_store::set_proxy_token,
+            secure_store::get_proxy_token,
+            secure_store::delete_proxy_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

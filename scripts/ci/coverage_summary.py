@@ -8,8 +8,6 @@ Reads:
 Emits:
 - coverage_summary.json
 - coverage_summary.md
-
-Optionally fails if any coverage file is missing/unparseable.
 """
 
 from __future__ import annotations
@@ -77,19 +75,38 @@ def main() -> int:
     ap.add_argument("--api-generator", required=True)
     ap.add_argument("--control-plane", required=True)
     ap.add_argument("--desktop-app", required=True)
+    ap.add_argument("--smartspecweb", required=False, default="")
     ap.add_argument("--out-json", default="coverage_summary.json")
     ap.add_argument("--out-md", default="coverage_summary.md")
-    ap.add_argument("--fail-on-missing", action="store_true", help="Fail (exit non-zero) if any coverage file is missing/unparseable")
+    ap.add_argument("--fail-on-missing", action="store_true", help="nonzero exit if any coverage input is missing")
     args = ap.parse_args()
 
+    missing = []
+
     covs = []
-    covs.append(parse_python_coverage_xml(args.python_xml) if os.path.exists(args.python_xml) else Cov("python-backend", None, source=f"missing:{args.python_xml}"))
+    if os.path.exists(args.python_xml):
+        covs.append(parse_python_coverage_xml(args.python_xml))
+    else:
+        covs.append(Cov("python-backend", None, source=f"missing:{args.python_xml}"))
+        missing.append(args.python_xml)
+
     for name, path in [
         ("api-generator", args.api_generator),
         ("control-plane", args.control_plane),
         ("desktop-app", args.desktop_app),
     ]:
-        covs.append(parse_js_coverage_summary(path, name) if os.path.exists(path) else Cov(name, None, source=f"missing:{path}"))
+        if os.path.exists(path):
+            covs.append(parse_js_coverage_summary(path, name))
+        else:
+            covs.append(Cov(name, None, source=f"missing:{path}"))
+            missing.append(path)
+
+    if args.smartspecweb:
+        if os.path.exists(args.smartspecweb):
+            covs.append(parse_js_coverage_summary(args.smartspecweb, "SmartSpecWeb"))
+        else:
+            covs.append(Cov("SmartSpecWeb", None, source=f"missing:{args.smartspecweb}"))
+            missing.append(args.smartspecweb)
 
     out: Dict[str, Any] = {"packages": [c.__dict__ for c in covs]}
     with open(args.out_json, "w", encoding="utf-8") as f:
@@ -100,7 +117,9 @@ def main() -> int:
     md.append("| Package | Lines | Statements | Functions | Branches | Source |\n")
     md.append("|---|---:|---:|---:|---:|---|\n")
     for c in covs:
-        md.append(f"| {c.name} | {fmt_pct(c.lines_pct)} | {fmt_pct(c.statements_pct)} | {fmt_pct(c.functions_pct)} | {fmt_pct(c.branches_pct)} | {c.source} |\n")
+        md.append(
+            f"| {c.name} | {fmt_pct(c.lines_pct)} | {fmt_pct(c.statements_pct)} | {fmt_pct(c.functions_pct)} | {fmt_pct(c.branches_pct)} | {c.source} |\n"
+        )
     md.append("\n> Notes: Coverage thresholds are enforced in each package's test command. This report aggregates outputs.\n")
     with open(args.out_md, "w", encoding="utf-8") as f:
         f.write("".join(md))
@@ -108,9 +127,10 @@ def main() -> int:
     for c in covs:
         print(f"{c.name}: lines={fmt_pct(c.lines_pct)} branches={fmt_pct(c.branches_pct)}")
 
-    missing = [c for c in covs if c.lines_pct is None]
     if args.fail_on_missing and missing:
-        print("ERROR: Missing/unparseable coverage for:", ", ".join([m.name for m in missing]))
+        print("ERROR: missing coverage inputs:")
+        for m in missing:
+            print(f"  - {m}")
         return 2
 
     return 0

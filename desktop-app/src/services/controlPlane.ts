@@ -1,26 +1,39 @@
+import { getProxyToken } from "./authStore";
+
 type Json = Record<string, any>;
 
 /**
  * Desktop App:
  * Control Plane access MUST go through python-backend proxy:
  *  - Never ship CONTROL_PLANE_API_KEY to the client bundle
- *  - python-backend mints a short-lived token and proxies localhost-only traffic
- *
- * Proxy base:
- *   python-backend: /api/v1/control-plane/{path:path}
- * Control-plane actual paths include /api/v1/...
- * So call via:
- *   /api/v1/control-plane/api/v1/...
  */
-
 const BACKEND_URL = (import.meta as any).env?.VITE_PY_BACKEND_URL ?? "http://localhost:8000";
 
+/**
+ * Legacy query-key is risky (leaks in logs). Disabled by default.
+ */
+const ALLOW_LEGACY_KEY = (import.meta as any).env?.VITE_ALLOW_LEGACY_KEY === "1";
+const LEGACY_KEY = (import.meta as any).env?.VITE_ORCHESTRATOR_KEY ?? "";
+
+function authHeaders(extra?: Record<string, string>) {
+  const h: Record<string, string> = { ...(extra || {}) };
+  const token = getProxyToken();
+  if (token) {
+    h["authorization"] = `Bearer ${token}`;
+    h["x-proxy-token"] = token;
+  }
+  return h;
+}
+
 export async function proxyRequest<T = Json>(path: string, init?: RequestInit): Promise<T> {
-  const url = `${BACKEND_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-  const res = await fetch(url, {
+  const url = new URL(`${BACKEND_URL}${path.startsWith("/") ? "" : "/"}${path}`);
+  if (ALLOW_LEGACY_KEY && LEGACY_KEY) url.searchParams.set("key", LEGACY_KEY);
+
+  const res = await fetch(url.toString(), {
     ...init,
     headers: {
       ...(init?.headers ?? {}),
+      ...authHeaders(),
       "content-type": (init?.headers as any)?.["content-type"] ?? "application/json",
     },
   });

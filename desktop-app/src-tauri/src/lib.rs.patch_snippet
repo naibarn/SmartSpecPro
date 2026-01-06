@@ -1,0 +1,7 @@
+1) Add module:
+   mod secure_store;
+
+2) Add commands to invoke_handler list:
+   secure_store::set_proxy_token,
+   secure_store::get_proxy_token,
+   secure_store::delete_proxy_token,

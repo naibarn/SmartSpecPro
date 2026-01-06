@@ -1,21 +1,13 @@
 # tasks.md — 007-python-backend-service
 
-Last updated: 2026-01-05
+Tasks ID: **SSP-PY-007-TASKS**  
+Last updated: 2026-01-06
 
-## P0 (ทำให้รัน/ดีบักได้ชัวร์)
-- [ ] ตรวจ README ให้มีคำสั่ง run ที่ใช้งานได้จริง (uvicorn, env, db migrate)
-- [ ] เพิ่ม healthcheck: db/redis/connectivity + provider readiness
-- [ ] เพิ่ม logging correlation id (request id) เพื่อ trace
+## P0
+- ✅ Forward `/v1/chat/completions` to SmartSpecWeb gateway (JSON + SSE)
+- ✅ MCP adapter: list_tools + call_tool via SmartSpecWeb `/mcp/*`
+- ⬜ Integrate existing tool-loop engine to use MCP adapter (หากมี executor แยกไฟล์)
 
-## P1 (LLM/credits)
-- [ ] ทำ test สำหรับ credit deduction + insufficient balance
-- [ ] ทำ streaming path ให้มี backpressure/timeout ที่เหมาะสม
-- [ ] ทำ provider fallback ที่ deterministic
-
-## P1 (Orchestrator)
-- [ ] เพิ่ม integration tests สำหรับ execute → checkpoint → resume
-- [ ] นิยาม state schema versioning (ป้องกัน breaking change)
-
-## P2 (ลด placeholder)
-- [ ] จัดสถานะ router ที่ not_implemented (workflows/autopilot) ว่าจะ implement หรือ deprecate
-- [ ] รวมเอกสาร API surfaces ให้ชัดว่าใช้กับ desktop/web อันไหน
+## P1
+- ⬜ Add retry/backoff for MCP calls + timeouts
+- ⬜ Pass through `x-trace-id` for end-to-end audit correlation

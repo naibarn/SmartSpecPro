@@ -3,7 +3,7 @@
 Spec ID: **SSP-WEB-003**  
 Spec folder: `specs/feature/003-smartspec-website/`  
 Code boundary: **`SmartSpecWeb/` (ทั้งหมดของเว็บแอป)**  
-Last updated: 2026-01-05
+Last updated: 2026-01-06
 
 ---
 
@@ -11,66 +11,99 @@ Last updated: 2026-01-05
 **SmartSpecWeb** คือเว็บแอปหลักของแพลตฟอร์ม (Website + Web App) ที่รวมทั้ง:
 - **Client (React/Vite)** สำหรับหน้าใช้งานและหน้าแอดมิน
 - **Web Server (Node/Express)** สำหรับเสิร์ฟเว็บ + API (tRPC) + OAuth routes
+- **Gateway endpoints (OpenAI-compatible)** สำหรับให้ LLM proxy เรียกใช้งานผ่านเว็บ
+- **MCP server endpoints** (tool allowlist + audit) เพื่อให้ proxy เรียก tool ผ่านเว็บอย่างปลอดภัย
 - **Shared code** (types/const) ใช้ร่วม client/server
 - **DB schema & migrations** (Drizzle)
 
-> หมายเหตุ: ใน code ปัจจุบัน SmartSpecWeb เป็น **full‑stack Node** (ไม่ใช่ “frontend-only”).
+> หมายเหตุ: SmartSpecWeb เป็น **full‑stack Node** (ไม่ใช่ “frontend-only”).
 
 ---
 
 ## 2) Code locations
 - Root: `SmartSpecWeb/`
 - Client: `SmartSpecWeb/client/`
-- Server runtime entry: `SmartSpecWeb/server/_core/index.ts` (รันด้วย `pnpm dev`)
+- Server runtime entry: `SmartSpecWeb/server/_core/index.ts`
 - Server routers (tRPC): `SmartSpecWeb/server/routers.ts`
+- Gateway routes: `SmartSpecWeb/server/_core/llmRoutes.ts`
+- MCP routes: `SmartSpecWeb/server/_core/mcpRoutes.ts`
 - Shared: `SmartSpecWeb/shared/`
 - DB (Drizzle): `SmartSpecWeb/drizzle/`
 
-Scripts ที่เกี่ยวข้อง (จาก `SmartSpecWeb/package.json`):
+Scripts ที่เกี่ยวข้อง:
 - `pnpm dev` → `tsx watch server/_core/index.ts`
-- `pnpm build` → `vite build` + `esbuild server/_core/index.ts ... -> dist`
+- `pnpm build` → `vite build` + `esbuild ... -> dist`
 - `pnpm start` → `node dist/index.js`
 
 ---
 
 ## 3) Public interface (runtime)
-- Web server default port: `PORT` (default 3000; มี logic หา port ว่าง)
-- API: tRPC ที่ `"/api/trpc"` (mount ใน `server/_core/index.ts`)
-- OAuth callback routes ภายใต้ `"/api/oauth/*"` (register ใน `server/_core/index.ts`)
+
+### 3.1 Web + tRPC
+- Web server default port: `PORT` (default 3000)
+- API: tRPC ที่ `"/api/trpc"`
+
+### 3.2 OAuth
+- OAuth callback routes ภายใต้ `"/api/oauth/*"`
+
+### 3.3 OpenAI-compatible Gateway (LLM)
+- `POST /v1/chat/completions` (รองรับ `stream: true` แบบ SSE passthrough)
+- `GET /v1/models` (ขั้นต่ำสำหรับ OpenAI-compatible clients)
+- UI wrappers:
+  - `POST /api/llm/chat`
+  - `POST /api/llm/stream`
+
+**Auth**: รองรับทั้ง
+- cookie session (browser/UI)
+- bearer token สำหรับ non-browser callers (LLM proxy)
+
+ENV ที่เกี่ยวข้อง:
+- `BUILT_IN_FORGE_API_URL`, `BUILT_IN_FORGE_API_KEY` (upstream LLM proxy)
+- `SMARTSPEC_WEB_GATEWAY_TOKEN` (bearer token)
+
+### 3.4 MCP Server (tools)
+- `GET /api/mcp/tools` / `POST /api/mcp/call`
+- alias: `GET /mcp/tools` / `POST /mcp/call`
+
+Tools ที่ expose (allowlist):
+- `artifact_get_url`
+- `workspace_read_file`
+- `workspace_write_file` (optional write-token)
+
+ENV ที่เกี่ยวข้อง:
+- `SMARTSPEC_MCP_TOKEN` (bearer token)
+- `WORKSPACE_ROOT`, `MCP_EXT_ALLOWLIST`, `MCP_MAX_READ_BYTES`, `MCP_MAX_WRITE_BYTES`
+- `MCP_REQUIRE_WRITE_TOKEN`, `MCP_WRITE_TOKEN`
+
+Audit log:
+- `logs/mcp_audit.log` (JSONL)
 
 ---
 
-## 4) Relationships to other specs (ทำให้ไม่สับสน)
+## 4) UI routes ที่สำคัญ
+- `/chat` — หน้า Chat (streaming + insert image/video)
+  - รูปส่งให้ LLM ด้วย OpenAI-compatible `image_url`
+  - วิดีโอ: upload แล้วส่ง URL ในข้อความ (ยังไม่ส่ง video input แบบ native)
+
+---
+
+## 5) Relationships to other specs (ทำให้ไม่สับสน)
 **003 เป็นเว็บแอปแบบ self-contained** และมี server ของตัวเอง
 
 ### 003 ↔ 007 (python-backend-service)
-- **สถานะปัจจุบัน:** SmartSpecWeb **ไม่ได้เรียกใช้** `python-backend/` ในเส้นทางหลัก (ใช้ tRPC + node server ของตัวเอง)
-- **อนาคต (optional):** ถ้าต้องการให้ web เรียก python backend ให้ทำเป็น “integration” เพิ่มเติม (เช่น REST client จาก node ไป python)
-
-### 003 ↔ 005 (api-generator)
-- **แนวทางที่แนะนำ:** ให้ **server ของ 003** เป็นตัวเรียก `api-generator/` (spawn CLI) เพื่อทำ “generate code ผ่านหน้าเว็บ”
-- 005 ยังคงเป็น CLI standalone และไม่ผูกกับ UI โดยตรง
+- 003 ไม่ได้เป็น dependency โดยตรงของ 007
+- 007/LLM proxy สามารถเรียก 003 ผ่าน `/v1/chat/completions` และ `/mcp/*` ได้ (OpenAI-compatible + MCP)
 
 ### 003 ↔ 006 (docker deploy)
-- 006 เป็นวิธี run/deploy สำหรับ SmartSpecWeb (รวม DB/Redis/อื่น ๆ ตามต้องการ)
-
-### 003 ↔ 002 (auth-generator template)
-- 002 เป็น “generator/template สำหรับลูกค้า” ไม่ใช่ runtime auth ของ 003
-- ถ้าจะเปิด feature generate auth scaffolding ผ่านเว็บ ให้ server ของ 003 เป็นคนเรียก CLI ของ 002 (หรือเรียกผ่าน 007 หากเลือกแนวนั้น)
+- 006 เป็นวิธี run/deploy สำหรับ SmartSpecWeb (รวม env สำหรับ gateway/mcp ตาม `.env.example`)
 
 ### 003 ↔ 004 (desktop-app)
-- 003 เป็น web app; 004 เป็น desktop app คนละแพลตฟอร์ม
-- ทั้งสองอาจแชร์ “แนวคิด/โปรโตคอล” แต่ไม่ควรแชร์ runtime dependency ตรง ๆ
-
----
-
-## 5) Non-goals
-- ไม่ทำให้ `python-backend/` เป็น dependency หลักของ SmartSpecWeb ในสภาพปัจจุบัน
-- ไม่ย้าย business logic ออกจาก SmartSpecWeb server ไปที่ที่อื่นโดยไม่จำเป็น
+- Desktop สามารถ embed/เปิดหน้าเว็บ `/chat` หรือเรียก gateway ผ่าน proxy ตามสถาปัตยกรรม
 
 ---
 
 ## 6) Definition of Done
 - โค้ดของเว็บทั้งหมดอยู่ใน `SmartSpecWeb/`
 - เส้นทาง API หลักของเว็บคือ `tRPC (/api/trpc)`
-- เอกสารความสัมพันธ์ (ข้อ 4) ชัดเจน และสอดคล้องกับโค้ดใน repo
+- มี gateway OpenAI-compatible (`/v1/chat/completions`) และ MCP (`/mcp/*`)
+- เอกสารความสัมพันธ์ (ข้อ 5) ชัดเจน และสอดคล้องกับโค้ดใน repo
