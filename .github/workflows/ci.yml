@@ -109,11 +109,13 @@ jobs:
           PYTHONPATH=python-backend python3 scripts/ci/approval_badge.py --in _cov/policy_snapshot.json --out _cov/badges/approval.json
           PYTHONPATH=python-backend python3 scripts/ci/approval_flow_probe.py --out _cov/approval_flow_snapshot.json
           python3 scripts/ci/approval_flow_badge.py --in _cov/approval_flow_snapshot.json --out _cov/badges/approval-flow.json
+          PYTHONPATH=python-backend python3 scripts/ci/streaming_probe.py --out _cov/streaming_snapshot.json
+          python3 scripts/ci/streaming_badge.py --in _cov/streaming_snapshot.json --out _cov/badges/streaming.json
+          PYTHONPATH=python-backend python3 scripts/ci/tool_status_probe.py --out _cov/tool_status_snapshot.json
+          python3 scripts/ci/tool_status_badge.py --in _cov/tool_status_snapshot.json --out _cov/badges/tool-status.json
           python3 scripts/ci/control_plane_runtime_badges.py --in _cov/control-plane/control_plane_policy_snapshot.json --outdir _cov/badges
           cat _cov/coverage_summary.md >> $GITHUB_STEP_SUMMARY
-          echo "
----
-Badge tip: run python3 scripts/ci/update_readme_badges.py --repo $GITHUB_REPOSITORY" >> $GITHUB_STEP_SUMMARY
+          echo "\n---\nBadge tip: run python3 scripts/ci/update_readme_badges.py --repo $GITHUB_REPOSITORY" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload aggregated coverage summary + badges
         uses: actions/upload-artifact@v4
@@ -142,6 +144,8 @@ Badge tip: run python3 scripts/ci/update_readme_badges.py --repo $GITHUB_REPOSIT
           cp -f _cov/badges/policy.json _badges_worktree/badges/policy.json
           cp -f _cov/badges/approval.json _badges_worktree/badges/approval.json
           cp -f _cov/badges/approval-flow.json _badges_worktree/badges/approval-flow.json
+          cp -f _cov/badges/streaming.json _badges_worktree/badges/streaming.json
+          cp -f _cov/badges/tool-status.json _badges_worktree/badges/tool-status.json
           cp -f _cov/badges/control-plane.json _badges_worktree/badges/control-plane.json
           cp -f _cov/badges/presign.json _badges_worktree/badges/presign.json
           cp -f _cov/badges/artifacts.json _badges_worktree/badges/artifacts.json
@@ -149,7 +153,7 @@ Badge tip: run python3 scripts/ci/update_readme_badges.py --repo $GITHUB_REPOSIT
           cp -f _cov/badges/authz.json _badges_worktree/badges/authz.json
 
           pushd _badges_worktree >/dev/null
-          git add badges/coverage.json badges/security.json badges/policy.json badges/approval.json badges/approval-flow.json badges/control-plane.json badges/presign.json badges/artifacts.json badges/max-size.json badges/authz.json
+          git add badges/coverage.json badges/security.json badges/policy.json badges/approval.json badges/approval-flow.json badges/streaming.json badges/tool-status.json badges/control-plane.json badges/presign.json badges/artifacts.json badges/max-size.json badges/authz.json
           if git diff --cached --quiet; then
             echo "No badge changes."
           else

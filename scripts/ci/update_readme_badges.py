@@ -12,6 +12,8 @@ Badges:
 - policy
 - approval
 - approval-flow
+- streaming
+- tool-status
 - control-plane
 - presign
 - artifacts
@@ -45,7 +47,20 @@ def build_badges(repo: str) -> str:
     def shields(raw_url: str) -> str:
         return "https://img.shields.io/endpoint?url=" + quote(raw_url, safe="")
 
-    names = ["coverage", "security", "policy", "approval", "approval-flow", "control-plane", "presign", "artifacts", "max-size", "authz"]
+    names = [
+        "coverage",
+        "security",
+        "policy",
+        "approval",
+        "approval-flow",
+        "streaming",
+        "tool-status",
+        "control-plane",
+        "presign",
+        "artifacts",
+        "max-size",
+        "authz",
+    ]
     parts = [f"[![CI]({ci_badge})]({ci_link})"]
     for n in names:
         r = raw(n)
@@ -56,11 +71,11 @@ def build_badges(repo: str) -> str:
             label = "MaxSize"
         if n == "approval-flow":
             label = "ApprovalFlow"
+        if n == "tool-status":
+            label = "ToolStatus"
         parts.append(f"[![{label}]({shields(r)})]({r})")
 
-    return f"{BADGES_START}
-" + " ".join(parts) + "
-" + f"{BADGES_END}"
+    return f"{BADGES_START}\n" + " ".join(parts) + "\n" + f"{BADGES_END}"
 
 
 def replace_block(text: str, new_block: str) -> Tuple[str, bool]:
@@ -90,14 +105,9 @@ def main() -> int:
         m = re.search(r"^# .+?$", out, flags=re.M)
         if m:
             idx = m.end()
-            out = out[:idx] + "
-
-" + new_block + "
-" + out[idx:]
+            out = out[:idx] + "\n\n" + new_block + "\n" + out[idx:]
         else:
-            out = new_block + "
-
-" + out
+            out = new_block + "\n\n" + out
 
     with open(args.readme, "w", encoding="utf-8") as f:
         f.write(out)
