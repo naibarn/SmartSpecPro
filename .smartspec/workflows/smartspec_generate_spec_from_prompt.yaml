@@ -1,0 +1,4 @@
+name: smartspec_generate_spec_from_prompt
+description: smartspec_generate_spec_from_prompt
+args: []
+example: /smartspec_generate_spec_from_prompt

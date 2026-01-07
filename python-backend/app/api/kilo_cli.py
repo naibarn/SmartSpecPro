@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import json
 import asyncio
+import yaml
 from pathlib import Path
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
@@ -88,19 +89,98 @@ async def job_events(req: Request, job_id: str):
     return StreamingResponse(gen(), media_type="text/plain")
 
 
+class WorkflowArg(BaseModel):
+    name: str
+    type: str = "string"
+    values: list[str] | None = None
+    required: bool = False
+
+
+class WorkflowSchema(BaseModel):
+    name: str
+    description: str | None = None
+    example: str | None = None
+    args: list[WorkflowArg] | None = None
+
+
 @router.get("/workflows")
-async def list_workflows(req: Request):
+async def list_workflows(req: Request, workspace: str | None = None):
+    """
+    List available Kilo workflows.
+
+    - Looks for YAML files in "<workspace>/.smartspec/workflows"
+    - Returns simple list of workflow names
+    - Optionally returns schema information parsed from each YAML file
+    """
     reject_legacy_key_http(req)
     _require_localhost(req)
     _require_proxy_token(req)
 
     root = Path(WORKSPACE_ROOT or os.getcwd())
+
+    # If the caller passes an explicit workspace, validate and use it.
+    if workspace:
+        validated = validate_workspace(workspace, WORKSPACE_ROOT or "")
+        root = Path(validated)
+
     wf_dir = root / ".smartspec" / "workflows"
-    names = []
+    names: list[str] = []
+    schemas: list[dict] = []
+
     if wf_dir.exists() and wf_dir.is_dir():
-        for p in wf_dir.glob("*.yaml"):
-            names.append(p.stem)
-        for p in wf_dir.glob("*.yml"):
-            if p.stem not in names:
-                names.append(p.stem)
-    return {"workflows": sorted(names)}
+        for p in sorted(wf_dir.glob("*.yaml")) + sorted(wf_dir.glob("*.yml")):
+            try:
+                raw = yaml.safe_load(p.read_text(encoding="utf-8"))
+            except Exception:
+                raw = None
+
+            schema_name = p.stem
+            if isinstance(raw, dict) and raw.get("name"):
+                schema_name = str(raw["name"])
+
+            if schema_name not in names:
+                names.append(schema_name)
+
+            if isinstance(raw, dict) and raw.get("name"):
+                try:
+                    schema = WorkflowSchema(**raw)
+                    schemas.append(schema.model_dump())
+                except Exception:
+                    # Ignore invalid schema definitions but still expose the workflow name.
+                    pass
+
+    return {"workflows": sorted(names), "schemas": schemas}
+
+
+class StdinRequest(BaseModel):
+    text: str
+
+
+@router.post("/jobs/{job_id}/input")
+async def job_input(req: Request, job_id: str, body: StdinRequest):
+    """
+    Send a single line of stdin text to a running job.
+    """
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+
+    ok = JOB_MANAGER.send_input(job_id, body.text)
+    if not ok:
+        raise HTTPException(status_code=404, detail="job_not_found_or_not_running")
+    return {"ok": True}
+
+
+@router.post("/jobs/{job_id}/cancel")
+async def job_cancel(req: Request, job_id: str):
+    """
+    Request cancellation of a running job.
+    """
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+
+    ok = JOB_MANAGER.cancel(job_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="job_not_found_or_not_running")
+    return {"ok": True}

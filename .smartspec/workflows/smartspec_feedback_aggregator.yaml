@@ -1,0 +1,4 @@
+name: smartspec_feedback_aggregator
+description: smartspec_feedback_aggregator
+args: []
+example: /smartspec_feedback_aggregator \

@@ -1,0 +1,4 @@
+name: smartspec_resolve_themes
+description: 1. Overview
+args: []
+example: /smartspec_resolve_themes \

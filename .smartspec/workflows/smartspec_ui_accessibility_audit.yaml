@@ -1,0 +1,4 @@
+name: smartspec_ui_accessibility_audit
+description: smartspec_ui_accessibility_audit
+args: []
+example: /smartspec_ui_accessibility_audit \

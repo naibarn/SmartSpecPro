@@ -1,0 +1,4 @@
+name: smartspec_production_monitor
+description: smartspec_production_monitor
+args: []
+example: /smartspec_production_monitor \

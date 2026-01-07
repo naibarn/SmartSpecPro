@@ -1,0 +1,4 @@
+name: smartspec_project_copilot
+description: smartspec_project_copilot
+args: []
+example: /smartspec_project_copilot "<question>" \

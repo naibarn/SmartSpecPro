@@ -1,0 +1,4 @@
+name: smartspec_ui_performance_test
+description: smartspec_ui_performance_test
+args: []
+example: /smartspec_ui_performance_test \

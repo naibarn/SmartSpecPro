@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.2.0"
     SITE_URL: str = "https://smartspec.pro"
     SITE_NAME: str = "SmartSpec Pro"
+    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
@@ -127,6 +128,19 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_BURST: int = 10
+
+    
+    @validator("SECRET_KEY")
+    def validate_secret_key(cls, v: str, values):
+        """Ensure SECRET_KEY is secure in production."""
+        env = values.get("ENVIRONMENT", "development")
+        if env != "production":
+            return v
+        if not v or v == "change-this-in-production":
+            raise ValueError("SECRET_KEY must be set to a secure value in production")
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters in production")
+        return v
 
     @validator("CORS_ORIGINS", pre=True)
     def parse_cors_origins(cls, v):

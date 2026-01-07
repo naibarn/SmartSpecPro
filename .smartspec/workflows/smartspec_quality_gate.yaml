@@ -1,0 +1,4 @@
+name: smartspec_quality_gate
+description: smartspec_quality_gate
+args: []
+example: /smartspec_quality_gate \

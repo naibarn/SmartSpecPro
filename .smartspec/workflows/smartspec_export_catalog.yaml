@@ -1,0 +1,4 @@
+name: smartspec_export_catalog
+description: smartspec_export_catalog
+args: []
+example: /smartspec_export_catalog \

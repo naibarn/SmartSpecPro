@@ -1,0 +1,4 @@
+name: smartspec_verify_ui_implementation
+description: smartspec_verify_ui_implementation
+args: []
+example: /smartspec_verify_ui_implementation \

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, StreamMessage } from "../services/kiloCli";
+import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, StreamMessage, WorkflowSchema } from "../services/kiloCli";
 import { Terminal } from "../components/Terminal";
+import { CommandPalette } from "../components/CommandPalette";
 
 const DEFAULT_WORKSPACE = import.meta.env.VITE_WORKSPACE_PATH || "";
 const LS_KEY = "smartspec.kilo.history.v1";
@@ -10,6 +11,8 @@ type HistoryItem = { command: string; ts: number };
 export default function KiloCliPage() {
   const [workspace, setWorkspace] = useState(DEFAULT_WORKSPACE);
   const [workflows, setWorkflows] = useState<string[]>([]);
+  const [workflowSchemas, setWorkflowSchemas] = useState<WorkflowSchema[]>([]);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [command, setCommand] = useState("/sync-tasks.md");
   const [jobId, setJobId] = useState("");
   const [status, setStatus] = useState<string>("-");
@@ -34,8 +37,10 @@ export default function KiloCliPage() {
     try {
       const res = await kiloListWorkflows(workspace);
       setWorkflows(res.workflows || []);
+      setWorkflowSchemas(res.schemas || []);
     } catch {
       setWorkflows([]);
+      setWorkflowSchemas([]);
     }
   }
 
@@ -145,9 +150,26 @@ export default function KiloCliPage() {
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <label style={{ fontSize: 12, opacity: 0.9 }}>Command</label>
-          <input value={command} onChange={(e) => setCommand(e.target.value)} placeholder="/workflow.md [args...]" style={{ minWidth: 720 }} />
+          <input
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            placeholder="/workflow.md [args...]"
+            style={{ minWidth: 720 }}
+          />
           <button onClick={() => setCommand("/sync-tasks.md")}>/sync-tasks.md</button>
+          <button type="button" onClick={() => setIsPaletteOpen((prev) => !prev)}>Command Palette</button>
+          <span style={{ fontSize: 11, opacity: 0.7 }}>Ctrl+K</span>
         </div>
+        <CommandPalette
+          isOpen={isPaletteOpen}
+          onClose={() => setIsPaletteOpen(false)}
+          workflows={workflows}
+          schemas={workflowSchemas}
+          onApplyCommand={(cmd) => {
+            setCommand(cmd);
+            setIsPaletteOpen(false);
+          }}
+        />
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button disabled={!workspace || !command} onClick={() => run(false)}>Run</button>

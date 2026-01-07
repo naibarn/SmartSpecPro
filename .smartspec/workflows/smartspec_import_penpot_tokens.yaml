@@ -1,0 +1,4 @@
+name: smartspec_import_penpot_tokens
+description: smartspec_import_penpot_tokens
+args: []
+example: /smartspec_import_penpot_tokens \

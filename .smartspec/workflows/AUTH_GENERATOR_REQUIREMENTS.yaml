@@ -1,0 +1,4 @@
+name: AUTH_GENERATOR_REQUIREMENTS
+description: Auth Generator Requirements
+args: []
+example: '// Found: GET /api/todos, POST /api/todos, ...'

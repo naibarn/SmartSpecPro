@@ -1,0 +1,4 @@
+name: smartspec_validate_golden_tests
+description: smartspec_validate_golden_tests
+args: []
+example: /smartspec_validate_golden_tests

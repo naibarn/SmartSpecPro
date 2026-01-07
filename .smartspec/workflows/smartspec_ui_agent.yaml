@@ -1,0 +1,4 @@
+name: smartspec_ui_agent
+description: smartspec_ui_agent
+args: []
+example: /smartspec_ui_agent \

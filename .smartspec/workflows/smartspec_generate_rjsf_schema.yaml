@@ -1,0 +1,4 @@
+name: smartspec_generate_rjsf_schema
+description: 1. Overview
+args: []
+example: /smartspec_generate_rjsf_schema \

@@ -1,0 +1,4 @@
+name: smartspec_generate_tests
+description: /smartspec_generate_tests (v6.1.1)
+args: []
+example: /smartspec_generate_tests \

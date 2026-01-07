@@ -1,0 +1,4 @@
+name: smartspec_ui_analytics_reporter
+description: smartspec_ui_analytics_reporter
+args: []
+example: /smartspec_ui_analytics_reporter \

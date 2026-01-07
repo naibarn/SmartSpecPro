@@ -1,0 +1,4 @@
+name: smartspec_reindex_workflows
+description: smartspec_reindex_workflows
+args: []
+example: /smartspec_reindex_workflows [--apply] [--json]

@@ -1,0 +1,4 @@
+name: smartspec_test_suite_runner
+description: smartspec_test_suite_runner
+args: []
+example: /smartspec_test_suite_runner \

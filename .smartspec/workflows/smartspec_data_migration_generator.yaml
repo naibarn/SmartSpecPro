@@ -1,0 +1,4 @@
+name: smartspec_data_migration_generator
+description: smartspec_data_migration_generator
+args: []
+example: /smartspec_data_migration_generator \

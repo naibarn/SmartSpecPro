@@ -1,0 +1,4 @@
+name: smartspec_security_audit_reporter
+description: smartspec_security_audit_reporter
+args: []
+example: /smartspec_security_audit_reporter \

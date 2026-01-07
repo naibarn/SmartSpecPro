@@ -1,0 +1,11 @@
+name: autopilot_ask
+description: Autopilot Ask - Natural Language Query
+args:
+- name: platform
+  type: enum
+  required: true
+  values:
+  - kilo
+  - antigravity
+  - claude
+example: /autopilot_ask.md "What is the current status?" --platform kilo

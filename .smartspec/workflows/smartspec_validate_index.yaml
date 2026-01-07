@@ -1,0 +1,4 @@
+name: smartspec_validate_index
+description: smartspec_validate_index
+args: []
+example: /smartspec_validate_index \

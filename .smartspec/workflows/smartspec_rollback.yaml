@@ -1,0 +1,4 @@
+name: smartspec_rollback
+description: smartspec_rollback
+args: []
+example: /smartspec_rollback \

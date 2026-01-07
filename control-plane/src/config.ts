@@ -38,7 +38,25 @@ export function loadEnv(): Env {
     console.error(parsed.error.format());
     throw new Error("Invalid environment variables");
   }
-  return parsed.data;
+  const env = parsed.data;
+
+  // Extra safety: do not allow known placeholder secrets in production
+  const placeholderSecrets = new Set([
+    "change_me_long_random",
+    "change_me_long_random_at_least_16_chars",
+    "change_me_long_random_change_me_long_random",
+  ]);
+
+  if (env.NODE_ENV === "production") {
+    if (placeholderSecrets.has(env.CONTROL_PLANE_API_KEY)) {
+      throw new Error("CONTROL_PLANE_API_KEY must be overridden in production");
+    }
+    if (placeholderSecrets.has(env.JWT_SECRET)) {
+      throw new Error("JWT_SECRET must be overridden in production");
+    }
+  }
+
+  return env;
 }
 
 export function allowedContentTypes(env: Env): Set<string> {

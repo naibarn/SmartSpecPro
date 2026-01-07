@@ -1,0 +1,4 @@
+name: smartspec_validate_ui_spec
+description: smartspec_validate_ui_spec
+args: []
+example: /smartspec_generate_ui_spec \

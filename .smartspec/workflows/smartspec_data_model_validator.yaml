@@ -1,0 +1,4 @@
+name: smartspec_data_model_validator
+description: smartspec_data_model_validator
+args: []
+example: /smartspec_data_model_validator \

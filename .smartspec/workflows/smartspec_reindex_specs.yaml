@@ -1,0 +1,4 @@
+name: smartspec_reindex_specs
+description: smartspec_reindex_specs
+args: []
+example: /smartspec_reindex_specs [--apply] [--json]

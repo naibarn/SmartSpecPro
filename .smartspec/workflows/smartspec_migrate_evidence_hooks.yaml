@@ -1,0 +1,4 @@
+name: smartspec_migrate_evidence_hooks
+description: Governance
+args: []
+example: /smartspec_migrate_evidence_hooks --tasks-file specs/core/spec-core-001-authentication/tasks.md

@@ -1,0 +1,4 @@
+name: smartspec_generate_tasks
+description: /smartspec_generate_tasks
+args: []
+example: /smartspec_generate_tasks specs/<category>/<spec-id>/spec.md --validate-only

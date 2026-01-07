@@ -1,0 +1,4 @@
+name: smartspec_enrich_tasks
+description: smartspec_enrich_tasks
+args: []
+example: /smartspec_enrich_tasks \

@@ -1,0 +1,4 @@
+name: smartspec_nfr_perf_verifier
+description: /smartspec_nfr_perf_verifier (v6.1.1)
+args: []
+example: /smartspec_nfr_perf_verifier \

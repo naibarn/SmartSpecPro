@@ -1,0 +1,4 @@
+name: smartspec_report_implement_prompter
+description: smartspec_report_implement_prompter
+args: []
+example: /smartspec_verify_tasks_progress_strict tasks.md \

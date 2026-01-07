@@ -1,0 +1,4 @@
+name: smartspec_generate_multiplatform_ui
+description: smartspec_generate_multiplatform_ui
+args: []
+example: /smartspec_generate_multiplatform_ui \

@@ -1,0 +1,4 @@
+name: smartspec_fix_evidence_type
+description: 'SmartSpec Workflow: Fix Evidence Type'
+args: []
+example: /path/to/repo

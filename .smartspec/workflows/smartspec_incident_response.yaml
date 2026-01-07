@@ -1,0 +1,4 @@
+name: smartspec_incident_response
+description: smartspec_incident_response
+args: []
+example: /smartspec_incident_response \

@@ -1,0 +1,4 @@
+name: smartspec_sync_tasks_checkboxes
+description: smartspec_sync_tasks_checkboxes
+args: []
+example: /smartspec_sync_tasks_checkboxes <path/to/tasks.md> \

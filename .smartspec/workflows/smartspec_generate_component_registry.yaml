@@ -1,0 +1,4 @@
+name: smartspec_generate_component_registry
+description: 1. Overview
+args: []
+example: /smartspec_generate_component_registry \

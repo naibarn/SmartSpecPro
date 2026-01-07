@@ -1,0 +1,4 @@
+name: smartspec_manage_theme
+description: smartspec_manage_theme
+args: []
+example: /smartspec_manage_theme --action init

@@ -1,0 +1,4 @@
+name: API_GENERATOR_REQUIREMENTS
+description: API Generator Requirements
+args: []
+example: // {{entity.name}}.controller.ts

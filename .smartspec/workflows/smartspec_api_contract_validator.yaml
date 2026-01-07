@@ -1,0 +1,4 @@
+name: smartspec_api_contract_validator
+description: smartspec_api_contract_validator
+args: []
+example: /smartspec_api_contract_validator \

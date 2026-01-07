@@ -1,0 +1,4 @@
+name: smartspec_test_report_analyzer
+description: smartspec_test_report_analyzer
+args: []
+example: /smartspec_test_report_analyzer \

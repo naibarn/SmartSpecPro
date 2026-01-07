@@ -1,0 +1,4 @@
+name: smartspec_implement_tasks
+description: 0) Non-Removable Invariants (DO NOT DELETE OR WEAKEN)
+args: []
+example: /smartspec_implement_tasks \

@@ -1,0 +1,14 @@
+name: autopilot_status
+description: Autopilot Status Query
+args:
+- name: query
+  type: string
+  required: false
+- name: platform
+  type: enum
+  required: true
+  values:
+  - kilo
+  - antigravity
+  - claude
+example: /autopilot_status.md spec-core-001-authentication --platform kilo

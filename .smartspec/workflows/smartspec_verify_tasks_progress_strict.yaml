@@ -1,0 +1,5 @@
+name: smartspec_verify_tasks_progress_strict
+description: smartspec_verify_tasks_progress_strict
+args: []
+example: /smartspec_verify_tasks_progress_strict <path/to/tasks.md> [--report-format
+  <md|json|both>] [--out <reports-root>] [--json]

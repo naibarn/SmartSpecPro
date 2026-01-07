@@ -1,0 +1,4 @@
+name: smartspec_execute_prompts_batch
+description: smartspec_execute_prompts_batch
+args: []
+example: /smartspec_execute_prompts_batch \
