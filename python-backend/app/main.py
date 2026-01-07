@@ -161,10 +161,10 @@ app.include_router(auth_generator.router, prefix="/api/v1", tags=["Auth Generato
 
 # OpenAI-compatible surface for desktop/runner/proxy (forwarded to SmartSpecWeb gateway)
 app.include_router(openai_compat.router)
-    app.include_router(kilo_cli.router)
-    app.include_router(kilo_pty.router)
-    app.include_router(kilo_media.router)
-    app.include_router(ws_ticket.router)
+app.include_router(kilo_cli.router)
+app.include_router(kilo_pty.router)
+app.include_router(kilo_media.router)
+app.include_router(ws_ticket.router)
 
 @app.get("/")
 async def root():

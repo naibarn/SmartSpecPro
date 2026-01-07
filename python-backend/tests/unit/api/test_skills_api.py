@@ -10,11 +10,19 @@ from app.api.v1.skills import router
 from app.services.kilo_skill_manager import Skill, SkillScope, SkillMode
 
 
-# Create a test app
-from fastapi import FastAPI
-app = FastAPI()
-app.include_router(router, prefix="/api/v1")
-client = TestClient(app)
+
+@pytest.fixture
+def app():
+    """Create a test app"""
+    from fastapi import FastAPI
+    _app = FastAPI()
+    _app.include_router(router, prefix="/api/v1")
+    return _app
+
+@pytest.fixture
+def client(app):
+    """Create a test client"""
+    return TestClient(app)
 
 
 class TestSkillsAPI:
@@ -52,7 +60,7 @@ class TestSkillsAPI:
 class TestListSkills(TestSkillsAPI):
     """Tests for GET /skills endpoint."""
 
-    def test_list_skills_success(self, mock_skill_manager, sample_skill):
+    def test_list_skills_success(self, client, mock_skill_manager, sample_skill):
         """Test listing skills successfully."""
         with patch("app.api.v1.skills.get_kilo_skill_manager", return_value=mock_skill_manager):
             response = client.get("/api/v1/skills", params={"workspace": "/workspace"})
@@ -63,7 +71,7 @@ class TestListSkills(TestSkillsAPI):
             assert len(data["skills"]) == 1
             assert data["skills"][0]["name"] == "test-skill"
 
-    def test_list_skills_with_mode_filter(self, mock_skill_manager):
+    def test_list_skills_with_mode_filter(self, client, mock_skill_manager):
         """Test listing skills with mode filter."""
         with patch("app.api.v1.skills.get_kilo_skill_manager", return_value=mock_skill_manager):
             response = client.get(
@@ -74,7 +82,7 @@ class TestListSkills(TestSkillsAPI):
             assert response.status_code == 200
             mock_skill_manager.list_skills.assert_called_once()
 
-    def test_list_skills_missing_workspace(self):
+    def test_list_skills_missing_workspace(self, client):
         """Test listing skills without workspace parameter."""
         response = client.get("/api/v1/skills")
         assert response.status_code == 422  # Validation error
@@ -83,7 +91,7 @@ class TestListSkills(TestSkillsAPI):
 class TestGetSkill(TestSkillsAPI):
     """Tests for GET /skills/{skill_name} endpoint."""
 
-    def test_get_skill_success(self, mock_skill_manager, sample_skill):
+    def test_get_skill_success(self, client, mock_skill_manager, sample_skill):
         """Test getting a skill successfully."""
         with patch("app.api.v1.skills.get_kilo_skill_manager", return_value=mock_skill_manager):
             response = client.get(
@@ -96,7 +104,7 @@ class TestGetSkill(TestSkillsAPI):
             assert data["name"] == "test-skill"
             assert data["description"] == "A test skill"
 
-    def test_get_skill_not_found(self, mock_skill_manager):
+    def test_get_skill_not_found(self, client, mock_skill_manager):
         """Test getting a non-existent skill."""
         mock_skill_manager.get_skill = AsyncMock(return_value=None)
         
@@ -112,7 +120,7 @@ class TestGetSkill(TestSkillsAPI):
 class TestCreateSkill(TestSkillsAPI):
     """Tests for POST /skills endpoint."""
 
-    def test_create_skill_success(self, mock_skill_manager):
+    def test_create_skill_success(self, client, mock_skill_manager):
         """Test creating a skill successfully."""
         with patch("app.api.v1.skills.get_kilo_skill_manager", return_value=mock_skill_manager):
             response = client.post(
@@ -132,7 +140,7 @@ class TestCreateSkill(TestSkillsAPI):
             data = response.json()
             assert data["name"] == "new-skill"
 
-    def test_create_skill_invalid_data(self):
+    def test_create_skill_invalid_data(self, client):
         """Test creating a skill with invalid data."""
         response = client.post(
             "/api/v1/skills",
@@ -149,7 +157,7 @@ class TestCreateSkill(TestSkillsAPI):
 class TestUpdateSkill(TestSkillsAPI):
     """Tests for PUT /skills/{skill_name} endpoint."""
 
-    def test_update_skill_success(self, mock_skill_manager, sample_skill):
+    def test_update_skill_success(self, client, mock_skill_manager, sample_skill):
         """Test updating a skill successfully."""
         with patch("app.api.v1.skills.get_kilo_skill_manager", return_value=mock_skill_manager):
             response = client.put(
@@ -162,7 +170,7 @@ class TestUpdateSkill(TestSkillsAPI):
             
             assert response.status_code == 200
 
-    def test_update_skill_not_found(self, mock_skill_manager):
+    def test_update_skill_not_found(self, client, mock_skill_manager):
         """Test updating a non-existent skill."""
         mock_skill_manager.get_skill = AsyncMock(return_value=None)
         
@@ -179,7 +187,7 @@ class TestUpdateSkill(TestSkillsAPI):
 class TestDeleteSkill(TestSkillsAPI):
     """Tests for DELETE /skills/{skill_name} endpoint."""
 
-    def test_delete_skill_success(self, mock_skill_manager):
+    def test_delete_skill_success(self, client, mock_skill_manager):
         """Test deleting a skill successfully."""
         with patch("app.api.v1.skills.get_kilo_skill_manager", return_value=mock_skill_manager):
             response = client.delete(
@@ -191,7 +199,7 @@ class TestDeleteSkill(TestSkillsAPI):
             data = response.json()
             assert data["success"] is True
 
-    def test_delete_skill_not_found(self, mock_skill_manager):
+    def test_delete_skill_not_found(self, client, mock_skill_manager):
         """Test deleting a non-existent skill."""
         mock_skill_manager.delete_skill = AsyncMock(return_value=False)
         
@@ -207,7 +215,7 @@ class TestDeleteSkill(TestSkillsAPI):
 class TestTemplates(TestSkillsAPI):
     """Tests for template endpoints."""
 
-    def test_list_templates(self):
+    def test_list_templates(self, client):
         """Test listing templates."""
         from app.services.kilo_skill_manager import SKILL_TEMPLATES
         
@@ -219,7 +227,7 @@ class TestTemplates(TestSkillsAPI):
         assert "total" in data
         assert data["total"] == len(SKILL_TEMPLATES)
 
-    def test_get_template_success(self):
+    def test_get_template_success(self, client):
         """Test getting a specific template."""
         from app.services.kilo_skill_manager import SKILL_TEMPLATES
         
@@ -231,7 +239,7 @@ class TestTemplates(TestSkillsAPI):
         data = response.json()
         assert data["name"] == template_name
 
-    def test_get_template_not_found(self):
+    def test_get_template_not_found(self, client):
         """Test getting a non-existent template."""
         response = client.get("/api/v1/skills/templates/nonexistent-template")
         assert response.status_code == 404
@@ -240,7 +248,7 @@ class TestTemplates(TestSkillsAPI):
 class TestInjectTemplate(TestSkillsAPI):
     """Tests for POST /skills/inject/template endpoint."""
 
-    def test_inject_template_success(self, mock_skill_manager):
+    def test_inject_template_success(self, client, mock_skill_manager):
         """Test injecting a template successfully."""
         from app.services.kilo_skill_manager import SKILL_TEMPLATES
         
@@ -258,7 +266,7 @@ class TestInjectTemplate(TestSkillsAPI):
             data = response.json()
             assert data["success"] is True
 
-    def test_inject_template_not_found(self):
+    def test_inject_template_not_found(self, client):
         """Test injecting a non-existent template."""
         response = client.post(
             "/api/v1/skills/inject/template",
@@ -272,7 +280,7 @@ class TestInjectTemplate(TestSkillsAPI):
 class TestInjectContext(TestSkillsAPI):
     """Tests for POST /skills/inject/context endpoint."""
 
-    def test_inject_context_success(self, mock_skill_manager):
+    def test_inject_context_success(self, client, mock_skill_manager):
         """Test injecting SmartSpec context successfully."""
         with patch("app.api.v1.skills.get_kilo_skill_manager", return_value=mock_skill_manager):
             response = client.post(
@@ -293,7 +301,7 @@ class TestInjectContext(TestSkillsAPI):
 class TestSetupProject(TestSkillsAPI):
     """Tests for POST /skills/setup-project endpoint."""
 
-    def test_setup_project_success(self, mock_skill_manager):
+    def test_setup_project_success(self, client, mock_skill_manager):
         """Test setting up project skills successfully."""
         with patch("app.api.v1.skills.get_kilo_skill_manager", return_value=mock_skill_manager):
             response = client.post(
@@ -306,7 +314,7 @@ class TestSetupProject(TestSkillsAPI):
             assert "results" in data
             assert "message" in data
 
-    def test_setup_project_with_custom_templates(self, mock_skill_manager):
+    def test_setup_project_with_custom_templates(self, client, mock_skill_manager):
         """Test setting up project with custom templates."""
         from app.services.kilo_skill_manager import SKILL_TEMPLATES
         
@@ -323,3 +331,46 @@ class TestSetupProject(TestSkillsAPI):
             )
             
             assert response.status_code == 200
+
+    def test_sync_skills_success(self, client):
+        """Test syncing skills successfully."""
+        with patch("app.services.kilo_skill_manager_v2.SkillConverter.sync_directory", return_value={"skill1": True}):
+            response = client.post(
+                "/api/v1/skills/sync",
+                params={"workspace": "/workspace"},
+                json={"source_format": "kilo"}
+            )
+            assert response.status_code == 200
+            assert response.json()["synced_count"] == 1
+
+    def test_diff_skills_success(self, client):
+        """Test getting skills diff."""
+        with patch("pathlib.Path.exists", return_value=True), \
+             patch("pathlib.Path.iterdir", return_value=[]):
+            response = client.get("/api/v1/skills/diff", params={"workspace": "/workspace"})
+            assert response.status_code == 200
+            assert "synced" in response.json()
+
+    def test_convert_skill_success(self, client, mock_skill_manager):
+        """Test converting a skill."""
+        # Using mock_skill_manager for convert endpoint
+        with patch("app.services.kilo_skill_manager_v2.KiloSkillManager", return_value=mock_skill_manager):
+            # Mock get_skill to return a mock skill
+            mock_skill = MagicMock()
+            mock_skill.name = "test-skill"
+            mock_skill_manager.get_skill.return_value = mock_skill
+            # Mock create_skill to return success for target format
+            from app.services.kilo_skill_manager_v2 import SkillFormat
+            mock_skill_manager.create_skill.return_value = {SkillFormat.CLAUDE: "/path/to/claude/skill"}
+            
+            response = client.post(
+                "/api/v1/skills/convert",
+                params={
+                    "skill_name": "test-skill",
+                    "workspace": "/workspace",
+                    "source_format": "kilo",
+                    "target_format": "claude"
+                }
+            )
+            assert response.status_code == 200
+            assert response.json()["success"] is True

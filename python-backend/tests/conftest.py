@@ -218,7 +218,7 @@ def mock_redis(monkeypatch):
     """Mock Redis client for tests that don't need actual Redis."""
     mock_client = MockRedisClient()
     
-    async def from_url(*args, **kwargs):
+    def from_url(*args, **kwargs):
         return mock_client
     
     monkeypatch.setattr("redis.asyncio.from_url", from_url)

@@ -4,7 +4,7 @@ Track and visualize rate limits and usage
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import redis.asyncio as redis
@@ -26,7 +26,7 @@ class RateLimitService:
     async def _get_redis(self):
         """Get Redis client"""
         if not self.redis_client:
-            self.redis_client = await redis.from_url(
+            self.redis_client = redis.from_url(
                 settings.REDIS_URL,
                 encoding="utf-8",
                 decode_responses=True
@@ -66,7 +66,7 @@ class RateLimitService:
             )
         return limits
 
-    async def check_rate_limit(self, user_id: str, scope: str) -> (bool, int, int):
+    async def check_rate_limit(self, user_id: str, scope: str) -> tuple[bool, int, int]:
         """
         Check if a request is within the rate limit for a given scope.
 
@@ -99,3 +99,49 @@ class RateLimitService:
         ttl = await redis_client.ttl(key)
 
         return True, remaining, ttl
+
+    async def get_rate_limit_status(self, user_id: str, endpoint: Optional[str] = None) -> Dict[str, Any]:
+        """Get current rate limit status for a user/endpoint."""
+        # Simple implementation for now to satisfy API
+        limit = await self._get_limit_for_scope(endpoint or "default")
+        redis_client = await self._get_redis()
+        
+        key = f"rate_limit:{user_id}:{endpoint or 'default'}"
+        current = await redis_client.get(key)
+        current = int(current) if current else 0
+        ttl = await redis_client.ttl(key)
+        
+        return {
+            "user_id": user_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "rate_limits": {
+                endpoint or "default": {
+                    "current": current,
+                    "limit": limit.requests,
+                    "window_seconds": limit.seconds,
+                    "reset_in_seconds": max(0, ttl),
+                    "percentage": (current / limit.requests * 100) if limit.requests > 0 else 0
+                }
+            }
+        }
+
+    async def get_rate_limit_history(self, user_id: str, hours: int = 24) -> List[Any]:
+        """Get rate limit history (Stub)."""
+        return []
+
+    async def get_global_rate_limit_stats(self, user_id: str) -> Dict[str, Any]:
+        """Get global stats (Stub)."""
+        return {
+            "user_id": user_id,
+            "total_requests_current_window": 0,
+            "active_endpoints": 0,
+            "top_endpoints": [],
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    async def get_api_key_rate_limits(self, api_key_id: str) -> Dict[str, Any]:
+        """Get API key limits (Stub)."""
+        return {
+            "api_key_id": api_key_id,
+            "rate_limits": {}
+        }
