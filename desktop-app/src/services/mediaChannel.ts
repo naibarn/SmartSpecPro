@@ -1,7 +1,7 @@
 export type MediaEvent =
-  | { sessionId: string; type: "image"; title?: string; url: string; mime?: string; meta?: any; artifactKey?: string }
-  | { sessionId: string; type: "video"; title?: string; url: string; mime?: string; meta?: any; artifactKey?: string }
-  | { sessionId: string; type: "file"; title?: string; url: string; mime?: string; meta?: any; artifactKey?: string };
+  | { sessionId: string; type: "image"; title?: string; url: string; mime?: string; meta?: any }
+  | { sessionId: string; type: "video"; title?: string; url: string; mime?: string; meta?: any }
+  | { sessionId: string; type: "file"; title?: string; url: string; mime?: string; meta?: any };
 
 export type MediaMessage =
   | { type: "event"; seq: number; event: MediaEvent }
@@ -10,11 +10,10 @@ export type MediaMessage =
   | { type: "error"; message: string };
 
 const BASE = import.meta.env.VITE_PY_BACKEND_URL || "http://localhost:8000";
-const KEY = import.meta.env.VITE_ORCHESTRATOR_KEY || "";
 
-export function openMediaWs(): WebSocket {
+export function openMediaWs(ticket: string): WebSocket {
   const url = new URL(`${BASE.replace(/^http/, "ws")}/api/v1/kilo/media/ws`);
-  if (KEY) url.searchParams.set("key", KEY);
+  url.searchParams.set("ticket", ticket);
   return new WebSocket(url.toString());
 }
 
@@ -24,4 +23,8 @@ export function mediaAttach(ws: WebSocket, sessionId: string, fromSeq = 0) {
 
 export function mediaEmit(ws: WebSocket, event: MediaEvent) {
   ws.send(JSON.stringify({ type: "emit", event }));
+}
+
+export function mediaPoll(ws: WebSocket) {
+  ws.send(JSON.stringify({ type: "poll" }));
 }

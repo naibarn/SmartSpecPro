@@ -1,120 +1,106 @@
 from __future__ import annotations
+
 import os
 import json
-import time
+import asyncio
 from pathlib import Path
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from app.core.config import settings
 from app.kilo.job_manager import JOB_MANAGER
 from app.orchestrator.sandbox import validate_workspace
+from app.core.legacy_key import reject_legacy_key_http
+
 
 router = APIRouter(prefix="/api/v1/kilo", tags=["kilo"])
 
 WORKSPACE_ROOT = os.getenv("WORKSPACE_ROOT", "")
-ORCHESTRATOR_API_KEY = os.getenv("ORCHESTRATOR_API_KEY", "")
 
-def _localhost_only(request: Request):
-    host = request.client.host if request.client else ""
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        raise HTTPException(status_code=403, detail="localhost_only")
 
-def _require_key(request: Request):
-    if not ORCHESTRATOR_API_KEY:
-        return
-    key = request.headers.get("x-orchestrator-key", "")
-    if key != ORCHESTRATOR_API_KEY:
-        raise HTTPException(status_code=401, detail="invalid_key")
-
-class RunPayload(BaseModel):
+class RunReq(BaseModel):
     workspace: str
     command: str
 
-class InputPayload(BaseModel):
-    text: str
+
+def _require_localhost(req: Request):
+    if getattr(settings, "SMARTSPEC_LOCALHOST_ONLY", False):
+        host = (req.client.host if req.client else "") or ""
+        if host not in ("127.0.0.1", "::1", "localhost"):
+            raise HTTPException(status_code=403, detail="Forbidden (localhost only)")
+
+
+def _require_proxy_token(req: Request):
+    if not settings.DEBUG and not settings.SMARTSPEC_PROXY_TOKEN:
+        raise HTTPException(status_code=500, detail="SMARTSPEC_PROXY_TOKEN is required in production")
+
+    if not settings.SMARTSPEC_PROXY_TOKEN:
+        return
+
+    h = (req.headers.get("authorization") or "").strip()
+    token = ""
+    if h.lower().startswith("bearer "):
+        token = h.split(" ", 1)[1].strip()
+    if not token:
+        token = (req.headers.get("x-proxy-token") or "").strip()
+
+    if token != settings.SMARTSPEC_PROXY_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 
 @router.post("/run")
-def run(payload: RunPayload, request: Request):
-    _localhost_only(request)
-    _require_key(request)
-    cwd = validate_workspace(payload.workspace, WORKSPACE_ROOT)
-    job = JOB_MANAGER.start(command=payload.command, cwd=cwd)
+async def run(req: Request, body: RunReq):
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+
+    validate_workspace(WORKSPACE_ROOT, body.workspace)
+    job = JOB_MANAGER.start(command=body.command, cwd=body.workspace)
     return {"jobId": job.job_id}
 
-@router.post("/cancel/{job_id}")
-def cancel(job_id: str, request: Request):
-    _localhost_only(request)
-    _require_key(request)
-    ok = JOB_MANAGER.cancel(job_id)
-    return {"ok": ok}
 
-@router.post("/input/{job_id}")
-def send_input(job_id: str, payload: InputPayload, request: Request):
-    _localhost_only(request)
-    _require_key(request)
-    ok = JOB_MANAGER.send_input(job_id, payload.text)
-    return {"ok": ok}
+@router.get("/jobs/{job_id}/events")
+async def job_events(req: Request, job_id: str):
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
 
-@router.get("/status/{job_id}")
-def status(job_id: str, request: Request):
-    _localhost_only(request)
-    _require_key(request)
-    job = JOB_MANAGER.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="not_found")
-    return {"jobId": job.job_id, "status": job.status, "returncode": job.returncode, "command": job.command, "createdAt": job.created_at}
-
-@router.get("/stream/{job_id}")
-def stream_ndjson(job_id: str, request: Request):
-    """NDJSON streaming (fetch-friendly). Supports reconnect with `?from=<seq>`."""
-    _localhost_only(request)
-    _require_key(request)
-
-    job = JOB_MANAGER.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="not_found")
-
-    try:
-        from_seq = int((request.query_params.get("from") or "0"))
-    except Exception:
-        from_seq = 0
-
-    def gen():
-        buffered = JOB_MANAGER.buffer_since(job_id, from_seq)
-        for seq, line in buffered:
-            yield json.dumps({"type": "stdout", "seq": seq, "line": line}, ensure_ascii=False) + "\n"
-
+    async def gen():
+        seq = 0
         while True:
-            chunk = JOB_MANAGER.pop_output(job_id)
-            for seq, line in chunk:
-                yield json.dumps({"type": "stdout", "seq": seq, "line": line}, ensure_ascii=False) + "\n"
+            job = JOB_MANAGER.get(job_id)
+            if not job:
+                yield json.dumps({"type": "error", "message": "job_not_found"}) + "\n"
+                return
 
-            j = JOB_MANAGER.get(job_id)
-            if j and j.status in ("completed", "failed", "cancelled"):
-                yield json.dumps({"type": "done", "status": j.status, "returncode": j.returncode, "lastSeq": j._seq}) + "\n"
-                break
+            rows = JOB_MANAGER.pop_output(job_id, timeout=0.2)
+            for s, line in rows:
+                seq = max(seq, s)
+                yield json.dumps({"type": "stdout", "seq": s, "data": line}) + "\n"
 
-            time.sleep(0.1)
+            if job.status != "running":
+                yield json.dumps({"type": "status", "status": job.status, "returncode": job.returncode, "seq": seq}) + "\n"
+                return
 
-    return StreamingResponse(gen(), media_type="application/x-ndjson")
+            await asyncio.sleep(0.05)
+
+    return StreamingResponse(gen(), media_type="text/plain")
+
 
 @router.get("/workflows")
-def list_workflows(workspace: str, request: Request):
-    """Discover workflow commands for autocomplete: returns [/name.md, ...]."""
-    _localhost_only(request)
-    _require_key(request)
-    cwd = validate_workspace(workspace, WORKSPACE_ROOT)
-    wf_dir = Path(cwd) / ".smartspec" / "workflows"
-    if not wf_dir.exists():
-        return {"workflows": []}
+async def list_workflows(req: Request):
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
 
-    items = []
-    for p in wf_dir.glob("*.md"):
-        name = p.name
-        if ":Zone.Identifier" in name:
-            continue
-        items.append("/" + name)
-
-    items.sort()
-    return {"workflows": items}
+    root = Path(WORKSPACE_ROOT or os.getcwd())
+    wf_dir = root / ".smartspec" / "workflows"
+    names = []
+    if wf_dir.exists() and wf_dir.is_dir():
+        for p in wf_dir.glob("*.yaml"):
+            names.append(p.stem)
+        for p in wf_dir.glob("*.yml"):
+            if p.stem not in names:
+                names.append(p.stem)
+    return {"workflows": sorted(names)}

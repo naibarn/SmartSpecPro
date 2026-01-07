@@ -6,16 +6,13 @@ from typing import Any, Dict, Optional
 
 from app.core.config import settings
 from app.clients.web_gateway import forward_chat_json, forward_chat_stream, forward_models
+from app.core.legacy_key import reject_legacy_key_http
 
 
 router = APIRouter(tags=["OpenAI Compatible"])
 
 
 def _require_proxy_token(req: Request):
-    """Protect Python proxy surface.
-    - In production (DEBUG=false), require SMARTSPEC_PROXY_TOKEN.
-    - In development, token is optional.
-    """
     if not settings.DEBUG and not settings.SMARTSPEC_PROXY_TOKEN:
         raise HTTPException(status_code=500, detail="SMARTSPEC_PROXY_TOKEN is required in production")
 
@@ -45,6 +42,7 @@ def _trace_id(req: Request) -> Optional[str]:
 
 @router.post("/v1/chat/completions")
 async def chat_completions(req: Request):
+    reject_legacy_key_http(req)
     _require_localhost(req)
     _require_proxy_token(req)
 
@@ -71,6 +69,7 @@ async def chat_completions(req: Request):
 
 @router.get("/v1/models")
 async def models(req: Request):
+    reject_legacy_key_http(req)
     _require_localhost(req)
     _require_proxy_token(req)
 

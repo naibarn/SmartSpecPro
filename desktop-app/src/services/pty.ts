@@ -6,11 +6,10 @@ export type PtyMessage =
   | { type: "error"; message: string };
 
 const BASE = import.meta.env.VITE_PY_BACKEND_URL || "http://localhost:8000";
-const KEY = import.meta.env.VITE_ORCHESTRATOR_KEY || "";
 
-export function openPtyWs(): WebSocket {
+export function openPtyWs(ticket: string): WebSocket {
   const url = new URL(`${BASE.replace(/^http/, "ws")}/api/v1/kilo/pty/ws`);
-  if (KEY) url.searchParams.set("key", KEY);
+  url.searchParams.set("ticket", ticket);
   return new WebSocket(url.toString());
 }
 
@@ -28,6 +27,10 @@ export function ptyInput(ws: WebSocket, data: string) {
 
 export function ptySignal(ws: WebSocket, name: string) {
   ws.send(JSON.stringify({ type: "signal", name }));
+}
+
+export function ptyCancel(ws: WebSocket) {
+  ws.send(JSON.stringify({ type: "cancel" }));
 }
 
 export function ptyPoll(ws: WebSocket) {

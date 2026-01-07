@@ -1,90 +1,95 @@
 from __future__ import annotations
-import os
+
 import json
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
-from pydantic import BaseModel
+import os
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+from app.core.config import settings
+from app.core.ws_tickets import consume_ws_ticket
+from app.core.legacy_key import reject_legacy_key_ws
 from app.kilo.pty_manager import PTY_MANAGER
+
 
 router = APIRouter(prefix="/api/v1/kilo", tags=["kilo-media"])
 
-ORCHESTRATOR_API_KEY = os.getenv("ORCHESTRATOR_API_KEY", "")
+WORKSPACE_ROOT = os.getenv("WORKSPACE_ROOT", "")
 
-def _check_localhost(ws: WebSocket):
-    host = (ws.client.host if ws.client else "")
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        raise HTTPException(status_code=403, detail="localhost_only")
 
-def _check_key(ws: WebSocket):
-    if not ORCHESTRATOR_API_KEY:
-        return
-    key = ws.query_params.get("key", "")
-    if key != ORCHESTRATOR_API_KEY:
-        raise HTTPException(status_code=401, detail="invalid_key")
+def _is_localhost(host: str) -> bool:
+    return host in ("127.0.0.1", "::1", "localhost")
 
-class MediaEvent(BaseModel):
-    sessionId: str
-    type: str  # image|video|file
-    title: str | None = None
-    url: str
-    mime: str | None = None
-    meta: dict | None = None
+
+async def _preflight(ws: WebSocket, channel: str):
+    if not await reject_legacy_key_ws(ws):
+        return False
+
+    if getattr(settings, "SMARTSPEC_LOCALHOST_ONLY", False):
+        host = (ws.client.host if ws.client else "") or ""
+        if not _is_localhost(host):
+            await ws.close(code=1008)
+            return False
+
+    ticket = (ws.query_params.get("ticket") or "").strip()
+    ok = await consume_ws_ticket(ticket=ticket, channel=channel)
+    if not ok:
+        await ws.close(code=1008)
+        return False
+    return True
+
 
 @router.websocket("/media/ws")
 async def media_ws(ws: WebSocket):
-    _check_localhost(ws)
-    _check_key(ws)
+    if not await _preflight(ws, "media"):
+        return
     await ws.accept()
 
-    session_id = None
+    session_id: str | None = None
     last_seq = 0
 
-    async def flush():
+    async def send_buffered():
         nonlocal last_seq
         if not session_id:
             return
-        buf = await PTY_MANAGER.media_since(session_id, last_seq)
-        for seq, ev in buf:
-            await ws.send_text(json.dumps({"type": "event", "seq": seq, "event": ev}, ensure_ascii=False))
-            last_seq = seq
+        rows = await PTY_MANAGER.media_since(session_id, last_seq)
+        for seq, ev in rows:
+            last_seq = max(last_seq, seq)
+            await ws.send_text(json.dumps({"type": "event", "seq": seq, "event": ev}))
+        s = await PTY_MANAGER.get(session_id)
+        if s:
+            await ws.send_text(json.dumps({"type": "status", "mediaSeq": getattr(s, "media_seq", 0)}))
 
     try:
         while True:
             raw = await ws.receive_text()
-            try:
-                obj = json.loads(raw)
-            except Exception:
-                await ws.send_text(json.dumps({"type": "error", "message": "invalid_json"}))
-                continue
+            msg = json.loads(raw or "{}")
+            t = msg.get("type")
 
-            t = obj.get("type")
             if t == "attach":
-                sid = obj.get("sessionId")
-                from_seq = int(obj.get("from", 0) or 0)
-                s = await PTY_MANAGER.get(sid)
-                if not s:
-                    await ws.send_text(json.dumps({"type": "error", "message": "session_not_found"}))
-                    continue
-                session_id = sid
-                last_seq = from_seq
-                await flush()
-                await ws.send_text(json.dumps({"type": "status", "mediaSeq": s.media_seq}))
+                session_id = str(msg.get("sessionId") or "")
+                last_seq = int(msg.get("from") or 0)
+                await ws.send_text(json.dumps({"type": "ack", "seq": last_seq}))
+                await send_buffered()
+
             elif t == "emit":
-                try:
-                    ev = MediaEvent(**(obj.get("event") or {})).dict()
-                except Exception as e:
-                    await ws.send_text(json.dumps({"type": "error", "message": str(e)}))
+                if not session_id:
+                    await ws.send_text(json.dumps({"type": "error", "message": "no_session"}))
                     continue
-                sid = ev["sessionId"]
-                s = await PTY_MANAGER.get(sid)
-                if not s:
-                    await ws.send_text(json.dumps({"type": "error", "message": "session_not_found"}))
-                    continue
-                seq = await PTY_MANAGER.append_media_event(sid, ev)
-                await ws.send_text(json.dumps({"type": "ack", "seq": seq}))
-                if session_id == sid:
-                    await flush()
+                event = msg.get("event") or {}
+                await PTY_MANAGER.append_media_event(session_id, event)
+                await ws.send_text(json.dumps({"type": "ack", "seq": last_seq}))
+                await send_buffered()
+
+            elif t == "poll":
+                await send_buffered()
+
             else:
-                await flush()
+                await ws.send_text(json.dumps({"type": "error", "message": f"unknown_type:{t}"}))
 
     except WebSocketDisconnect:
+        return
+    except Exception as e:
+        try:
+            await ws.send_text(json.dumps({"type": "error", "message": str(e)}))
+        except Exception:
+            pass
         return
