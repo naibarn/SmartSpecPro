@@ -1,0 +1,141 @@
+# Gitleaks configuration for SmartSpec Pro
+# https://github.com/gitleaks/gitleaks
+
+title = "SmartSpec Pro Secret Scanning Configuration"
+
+# ============================================================================
+# API Key Patterns
+# ============================================================================
+
+[[rules]]
+id = "openrouter-api-key"
+description = "OpenRouter API Key"
+regex = '''sk-or-v1-[a-zA-Z0-9]{64,}'''
+tags = ["api-key", "openrouter"]
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{48,}'''
+tags = ["api-key", "openai"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-[a-zA-Z0-9\-_]{95,}'''
+tags = ["api-key", "anthropic"]
+
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''AIza[0-9A-Za-z\-_]{35}'''
+tags = ["api-key", "google"]
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|apikey|api[_-]?secret)['":\s=]+[a-zA-Z0-9\-_]{20,}'''
+tags = ["api-key"]
+
+[[rules]]
+id = "jwt-token"
+description = "JWT Token"
+regex = '''eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*'''
+tags = ["token", "jwt"]
+
+[[rules]]
+id = "generic-secret"
+description = "Generic Secret"
+regex = '''(?i)(secret|password|passwd|pwd)['":\s=]+[a-zA-Z0-9\-_!@#$%^&*()+=]{8,}'''
+tags = ["secret"]
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----'''
+tags = ["private-key"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws", "access-key"]
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Access Key"
+regex = '''(?i)aws_secret_access_key['":\s=]+[a-zA-Z0-9/+=]{40}'''
+tags = ["aws", "secret"]
+
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = '''ghp_[0-9a-zA-Z]{36}'''
+tags = ["github", "token"]
+
+[[rules]]
+id = "github-oauth"
+description = "GitHub OAuth Token"
+regex = '''gho_[0-9a-zA-Z]{36}'''
+tags = ["github", "oauth"]
+
+[[rules]]
+id = "slack-token"
+description = "Slack Token"
+regex = '''xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,}'''
+tags = ["slack", "token"]
+
+[[rules]]
+id = "database-connection-string"
+description = "Database Connection String"
+regex = '''(?i)(postgres|mysql|mongodb|redis)://[a-zA-Z0-9\-_.]+:[a-zA-Z0-9\-_.!@#$%^&*()+=]+@'''
+tags = ["database", "connection-string"]
+
+# ============================================================================
+# Allowlist - Files and patterns to ignore
+# ============================================================================
+
+[allowlist]
+description = "Allowed patterns and files"
+regexes = [
+    # Allow example/template files
+    '''\.example$''',
+    '''\.template$''',
+    '''\.sample$''',
+
+    # Allow test fixtures with dummy data
+    '''^tests?/.*fixtures?/''',
+    '''^tests?/.*mocks?/''',
+]
+
+paths = [
+    # Allow all markdown documentation files
+    '''.*\.md$''',
+
+    # Allow example/template files
+    '''.*\.example$''',
+    '''.*\.template$''',
+    '''.*\.sample$''',
+
+    # Allow .env.example files
+    '''^\.env\.example$''',
+    '''^.*\.env\.example$''',
+
+    # Allow package lock files
+    '''package-lock\.json$''',
+    '''yarn\.lock$''',
+    '''poetry\.lock$''',
+
+    # Allow this config file itself
+    '''\.gitleaks\.toml$''',
+]
+
+# Files to always ignore
+stopwords = [
+    "example",
+    "examples",
+    "test",
+    "tests",
+    "demo",
+    "sample",
+]

@@ -45,50 +45,59 @@ export default function KiloPtyPage() {
   useEffect(() => { refreshWorkflows(); }, [refreshWorkflows]);
 
   useEffect(() => {
-    const pTicket = await createWsTicket("pty");
-    const pws = openPtyWs(pTicket.ticket);
-    const mTicket = await createWsTicket("media");
-    const mws = openMediaWs(mTicket.ticket);
-    ptyWsRef.current = pws;
-    mediaWsRef.current = mws;
+    let pws: WebSocket | null = null;
+    let mws: WebSocket | null = null;
 
-    pws.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data) as PtyMessage;
+    const initWebSockets = async () => {
+      const pTicket = await createWsTicket("pty");
+      pws = openPtyWs(pTicket.ticket);
+      const mTicket = await createWsTicket("media");
+      mws = openMediaWs(mTicket.ticket);
+      ptyWsRef.current = pws;
+      mediaWsRef.current = mws;
 
-      if (msg.type === "created") {
-        const sid = msg.sessionId;
-        setTabs(prev => [{ id: sid, title: sid.slice(0, 6), command, status: "running", seq: 0, mediaSeq: 0, media: [] }, ...prev]);
-        setActive(sid);
-        if (mws.readyState === 1) mediaAttach(mws, sid, 0);
-        return;
-      }
+      pws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data) as PtyMessage;
 
-      if (!activeTab) return;
+        if (msg.type === "created") {
+          const sid = msg.sessionId;
+          setTabs(prev => [{ id: sid, title: sid.slice(0, 6), command, status: "running", seq: 0, mediaSeq: 0, media: [] }, ...prev]);
+          setActive(sid);
+          if (mws && mws.readyState === 1) mediaAttach(mws, sid, 0);
+          return;
+        }
 
-      if (msg.type === "stdout") {
-        // write to xterm
-        window.__ptyWrite?.(msg.data);
+        if (!activeTab) return;
 
-        // track seq for reconnect
-        setTabs(prev => prev.map(t => t.id === active ? { ...t, seq: msg.seq } : t));
-      } else if (msg.type === "status") {
-        setTabs(prev => prev.map(t => t.id === active ? { ...t, status: msg.status, seq: msg.seq } : t));
-      }
+        if (msg.type === "stdout") {
+          // write to xterm
+          window.__ptyWrite?.(msg.data);
+
+          // track seq for reconnect
+          setTabs(prev => prev.map(t => t.id === active ? { ...t, seq: msg.seq } : t));
+        } else if (msg.type === "status") {
+          setTabs(prev => prev.map(t => t.id === active ? { ...t, status: msg.status, seq: msg.seq } : t));
+        }
+      };
+
+      mws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data) as MediaMessage;
+        if (msg.type === "event") {
+          const e = msg.event;
+          setTabs(prev => prev.map(t => t.id === e.sessionId ? { ...t, mediaSeq: msg.seq, media: [e, ...t.media].slice(0, 200) } : t));
+        }
+      };
     };
 
-    mws.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data) as MediaMessage;
-      if (msg.type === "event") {
-        const e = msg.event;
-        setTabs(prev => prev.map(t => t.id === e.sessionId ? { ...t, mediaSeq: msg.seq, media: [e, ...t.media].slice(0, 200) } : t));
-      }
-    };
+    initWebSockets();
 
     return () => {
       try {
-    await loadProxyToken(); pws.close(); } catch {}
+        if (pws) pws.close();
+      } catch {}
       try {
-    await loadProxyToken(); mws.close(); } catch {}
+        if (mws) mws.close();
+      } catch {}
     };
   }, [active, command, activeTab]);
 

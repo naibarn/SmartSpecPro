@@ -1,0 +1,185 @@
+# ============================================================================
+# SECURITY - CRITICAL: Prevent API keys and secrets from being committed
+# ============================================================================
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+*.env
+*.env.*
+
+# API Keys and credentials
+*apikey*
+*api_key*
+*API_KEY*
+*secret*
+*SECRET*
+*password*
+*PASSWORD*
+*token*
+*TOKEN*
+credentials.json
+secrets.json
+config.secret.json
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+id_rsa*
+*.ppk
+
+# Cloud provider credentials
+.aws/
+.gcp/
+.azure/
+
+# Database files with potential secrets
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================================================
+# Python
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+ENV/
+env/
+
+# ============================================================================
+# Node / JavaScript / TypeScript
+# ============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/
+dist/
+build/
+*.tsbuildinfo
+.next/
+out/
+.nuxt
+.cache
+.parcel-cache
+
+# ============================================================================
+# IDEs and Editors
+# ============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ============================================================================
+# Logs and temporary files
+# ============================================================================
+*.log
+logs/
+*.tmp
+*.temp
+.cache/
+
+# ============================================================================
+# Data and uploads (may contain sensitive information)
+# ============================================================================
+data/
+uploads/
+downloads/
+media/
+*.csv
+*.xlsx
+*.xls
+
+# ============================================================================
+# Backups
+# ============================================================================
+*.bak
+*.backup
+*.old
+
+# ============================================================================
+# OS-specific
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================================================
+# Git-secrets and security scanning
+# ============================================================================
+.git-secrets
+# Note: .gitleaks.toml should be committed so the configuration is shared
+
+# ============================================================================
+# Coverage and testing
+# ============================================================================
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+.pytest_cache/
+.tox/
+
+# ============================================================================
+# Docker
+# ============================================================================
+.dockerignore
+docker-compose.override.yml
+
+# ============================================================================
+# Compiled files
+# ============================================================================
+*.pyc
+*.pyo
+*.so
+*.dll
+*.exe
+*.out
+*.class
+
+# ============================================================================
+# SmartSpec-specific
+# ============================================================================
+.smartspec/cache/
+.smartspec/temp/
+checkpoints/
+state/

@@ -113,8 +113,12 @@ function getLanguageFromFilename(filename: string): string | undefined {
 
 type ViewMode = "rendered" | "raw";
 
+const MAX_PREVIEW_CHARS = 200_000;
+
 export function ArtifactCanvas({ attachment }: ArtifactCanvasProps) {
   const [textContent, setTextContent] = useState<string | null>(null);
+  const [truncated, setTruncated] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("rendered");
@@ -125,6 +129,18 @@ export function ArtifactCanvas({ attachment }: ArtifactCanvasProps) {
     () => getLanguageFromFilename(attachment.name),
     [attachment.name],
   );
+
+  const onCopy = async () => {
+    if (!textContent) return;
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(textContent);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     if (kind === "markdown" || kind === "code" || kind === "text") {
@@ -141,7 +157,10 @@ export function ArtifactCanvas({ attachment }: ArtifactCanvasProps) {
         })
         .then((txt) => {
           if (!cancelled) {
-            setTextContent(txt);
+            const tooLong = txt.length > MAX_PREVIEW_CHARS;
+            const slice = tooLong ? txt.slice(0, MAX_PREVIEW_CHARS) : txt;
+            setTextContent(slice);
+            setTruncated(tooLong);
             setLoading(false);
           }
         })
@@ -231,31 +250,47 @@ export function ArtifactCanvas({ attachment }: ArtifactCanvasProps) {
 
       return (
         <div className="mt-2 flex flex-col gap-2">
-          <div className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/70 p-1 text-[11px]">
-            <button
-              type="button"
-              onClick={() => setViewMode("rendered")}
-              className={
-                "px-2 py-0.5 rounded-full " +
-                (viewMode === "rendered"
-                  ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-                  : "text-gray-600 dark:text-gray-300")
-              }
-            >
-              Rendered
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("raw")}
-              className={
-                "px-2 py-0.5 rounded-full " +
-                (viewMode === "raw"
-                  ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-                  : "text-gray-600 dark:text-gray-300")
-              }
-            >
-              Raw
-            </button>
+          <div className="inline-flex items-center gap-2 justify-between">
+            <div className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/70 p-1 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setViewMode("rendered")}
+                className={
+                  "px-2 py-0.5 rounded-full " +
+                  (viewMode === "rendered"
+                    ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+                    : "text-gray-600 dark:text-gray-300")
+                }
+              >
+                Rendered
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("raw")}
+                className={
+                  "px-2 py-0.5 rounded-full " +
+                  (viewMode === "raw"
+                    ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+                    : "text-gray-600 dark:text-gray-300")
+                }
+              >
+                Raw
+              </button>
+            </div>
+            <div className="flex items-center gap-2 text-[11px]">
+              <button
+                type="button"
+                onClick={onCopy}
+                className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                {copied ? "Copied" : "Copy"}
+              </button>
+              {truncated && (
+                <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                  Preview truncated. Download to see full file.
+                </span>
+              )}
+            </div>
           </div>
           {viewMode === "rendered" ? (
             <div className="prose prose-sm dark:prose-invert max-w-none max-h-80 overflow-auto border border-gray-100 dark:border-gray-800 rounded-lg p-3 bg-white/80 dark:bg-gray-900/60">
@@ -284,6 +319,20 @@ export function ArtifactCanvas({ attachment }: ArtifactCanvasProps) {
 
     return (
       <div className="mt-2 max-h-80 overflow-auto border border-gray-100 dark:border-gray-800 rounded-lg bg-white/80 dark:bg-gray-900/60">
+        <div className="flex items-center justify-between px-3 pt-2 text-[11px]">
+          <button
+            type="button"
+            onClick={onCopy}
+            className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+          {truncated && (
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              Preview truncated. Download to see full file.
+            </span>
+          )}
+        </div>
         <pre className="text-xs text-gray-900 dark:text-gray-100 whitespace-pre-wrap font-mono p-3">
           {textContent}
         </pre>

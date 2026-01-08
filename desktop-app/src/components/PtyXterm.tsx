@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Terminal } from "xterm";
-import { FitAddon } from "xterm-addon-fit";
+import { FitAddon } from "@xterm/addon-fit";
 import "xterm/css/xterm.css";
 
 type Props = {
@@ -18,6 +18,8 @@ export default function PtyXterm({ onData, onKey }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (!ref.current) return;
+
     const term = new Terminal({
       convertEol: true,
       cursorBlink: true,
@@ -28,18 +30,28 @@ export default function PtyXterm({ onData, onKey }: Props) {
     const fit = new FitAddon();
     term.loadAddon(fit);
 
-    if (ref.current) {
-      term.open(ref.current);
-      fit.fit();
-      term.focus();
-    }
+    term.open(ref.current);
+
+    // Wait for terminal to be ready before fitting
+    setTimeout(() => {
+      try {
+        fit.fit();
+        term.focus();
+      } catch (e) {
+        console.error("Error fitting terminal:", e);
+      }
+    }, 0);
 
     window.__ptyWrite = (data: string) => term.write(data);
 
     const dispos = term.onData(onData);
 
     const resize = () => {
-      try { fit.fit(); } catch {}
+      try {
+        fit.fit();
+      } catch (e) {
+        console.error("Error resizing terminal:", e);
+      }
     };
     window.addEventListener("resize", resize);
 
