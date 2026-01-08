@@ -1,0 +1,3 @@
+name: test_hello
+description: ทดสอบ Kilo CLI ด้วย workflow ง่ายๆ
+example: /test_hello

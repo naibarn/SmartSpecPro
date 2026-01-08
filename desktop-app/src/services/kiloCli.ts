@@ -66,15 +66,30 @@ export async function kiloListWorkflows(workspace: string): Promise<WorkflowList
     url.searchParams.set("workspace", workspace);
   }
 
-  const res = await fetch(url.toString(), { headers: authHeaders() });
-  if (!res.ok) {
-    return { workflows: [] };
+  console.log("🔍 Fetching workflows from:", url.toString());
+  console.log("🔑 Headers:", authHeaders());
+
+  try {
+    const res = await fetch(url.toString(), { headers: authHeaders() });
+    console.log("📡 Response status:", res.status, res.statusText);
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("❌ API Error:", res.status, text);
+      throw new Error(`Failed to fetch workflows (${res.status}): ${text}`);
+    }
+
+    const data = await res.json();
+    console.log("✅ Got data:", data);
+
+    if (!data.workflows) {
+      data.workflows = [];
+    }
+    return data as WorkflowList;
+  } catch (err) {
+    console.error("❌ Fetch error:", err);
+    throw err;
   }
-  const data = await res.json();
-  if (!data.workflows) {
-    data.workflows = [];
-  }
-  return data as WorkflowList;
 }
 
 // Backwards compatible alias used by older code paths.

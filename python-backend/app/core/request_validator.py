@@ -19,8 +19,12 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next):
         """Validate request before processing"""
-        
+
         try:
+            # Skip validation for OPTIONS requests (CORS preflight)
+            if request.method == "OPTIONS":
+                return await call_next(request)
+
             # Validate request size
             content_length = request.headers.get("content-length")
             if content_length and int(content_length) > self.MAX_REQUEST_SIZE:

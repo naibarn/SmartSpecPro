@@ -180,13 +180,21 @@ def setup_cors(app):
         origins=origins,
         debug=settings.DEBUG
     )
-    
+
+    # In development, also allow local network IPs
+    allow_origin_regex = None
+    if settings.DEBUG:
+        # Allow localhost and local network IPs (172.x.x.x, 192.168.x.x, 10.x.x.x)
+        allow_origin_regex = r"http://(localhost|127\.0\.0\.1|172\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+"
+        logger.info("cors_allow_origin_regex_enabled", regex=allow_origin_regex)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
+        allow_origin_regex=allow_origin_regex,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
+        allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "X-Proxy-Token"],
         max_age=600,  # Cache preflight requests for 10 minutes
     )
 

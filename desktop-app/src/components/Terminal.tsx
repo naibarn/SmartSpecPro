@@ -9,6 +9,10 @@ export function Terminal({ lines }: { lines: string[] }) {
     el.scrollTop = el.scrollHeight;
   }, [lines]);
 
+  const content = lines.length > 0
+    ? lines.join("")
+    : "Terminal ready. Set workspace path and run a command to see output here.";
+
   return (
     <div
       ref={ref}
@@ -25,7 +29,7 @@ export function Terminal({ lines }: { lines: string[] }) {
         lineHeight: 1.4,
       }}
     >
-      {lines.join("")}
+      {content}
     </div>
   );
 }
