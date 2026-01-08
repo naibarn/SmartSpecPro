@@ -34,6 +34,30 @@ import shlex
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 from enum import Enum
+
+DENY_DIRS = {".git", ".venv", "node_modules", "__pycache__", ".spec", ".smartspec"}
+DENY_FILES_PREFIX = {".env", "id_rsa", "id_ed25519"}
+
+
+def _is_path_allowed(path: Path) -> bool:
+    """Return False for obviously sensitive or internal paths.
+
+    This is a local safety net to avoid inspecting secrets by mistake.
+    """
+    try:
+        p = path.resolve()
+    except Exception:
+        return False
+
+    for part in p.parts:
+        if part in DENY_DIRS:
+            return False
+
+    for prefix in DENY_FILES_PREFIX:
+        if p.name.startswith(prefix):
+            return False
+
+    return True
 from difflib import SequenceMatcher
 import logging
 
@@ -247,6 +271,8 @@ def _match_regex(text: str, pattern: str) -> bool:
 def _bounded_walk(root: Path, max_files: int = 2500) -> Iterable[Path]:
     count = 0
     for p in root.rglob("*"):
+        if not _is_path_allowed(p):
+            continue
         if p.is_file():
             yield p
             count += 1
@@ -280,6 +306,10 @@ def find_similar_files(repo_root: Path, target_path: str, threshold: float = 0.6
 def get_file_info(repo_root: Path, path_str: str) -> FileInfo:
     """Get detailed information about a file"""
     path = repo_root / path_str
+
+    # Safety: avoid inspecting obviously sensitive paths
+    if not _is_path_allowed(path):
+        return FileInfo(exists=False, size=None, path=None, similar_files=[])
     
     if path.exists():
         if path.is_file():

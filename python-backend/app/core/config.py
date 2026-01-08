@@ -129,7 +129,6 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_BURST: int = 10
 
-    
     @validator("SECRET_KEY")
     def validate_secret_key(cls, v: str, values):
         """Ensure SECRET_KEY is secure in production."""

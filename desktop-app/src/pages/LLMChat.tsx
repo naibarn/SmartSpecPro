@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { chatCompletionsStream, type Message, type ContentPart } from "../services/llmOpenAI";
 import { uploadToArtifactStorage } from "../services/artifacts";
 import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
+import { ArtifactCanvas } from "../components/ArtifactCanvas";
 
 const DEFAULT_WORKSPACE = import.meta.env.VITE_WORKSPACE_PATH || "";
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
 type Attachment = {
   kind: "image" | "video" | "file";
@@ -66,6 +69,9 @@ export default function LLMChatPage() {
     if (!file) return;
     if (!isImage(file.type)) return alert("Selected file is not an image.");
     if (!workspace) return alert("Workspace is required (for artifact session binding).");
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return alert("Image is too large. Please keep uploads under 10 MB for a smooth experience.");
+    }
 
     setBusy(true);
     try {
@@ -84,6 +90,9 @@ export default function LLMChatPage() {
     if (!file) return;
     if (!isVideo(file.type)) return alert("Selected file is not a video.");
     if (!workspace) return alert("Workspace is required (for artifact session binding).");
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return alert("Video is too large. Please keep uploads under 10 MB for a smooth experience.");
+    }
 
     setBusy(true);
     try {
@@ -91,6 +100,26 @@ export default function LLMChatPage() {
       setAttachments((prev) => [
         ...prev,
         { kind: "video", name: up.name, mime: up.contentType, artifactKey: up.key, url: up.getUrl },
+      ]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onInsertFile = async () => {
+    const file = await pickFile("*/*");
+    if (!file) return;
+    if (!workspace) return alert("Workspace is required (for artifact session binding).");
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return alert("File is too large. Please keep uploads under 10 MB for a smooth experience.");
+    }
+
+    setBusy(true);
+    try {
+      const up = await uploadToArtifactStorage({ workspace, file, iteration: 0 });
+      setAttachments((prev) => [
+        ...prev,
+        { kind: "file", name: up.name, mime: up.contentType, artifactKey: up.key, url: up.getUrl },
       ]);
     } finally {
       setBusy(false);
@@ -198,6 +227,9 @@ export default function LLMChatPage() {
         <button onClick={onInsertVideo} disabled={busy || !workspace}>
           Insert Video
         </button>
+        <button onClick={onInsertFile} disabled={busy || !workspace}>
+          Attach File
+        </button>
         {busy ? (
           <button onClick={onCancelStream} style={{ marginLeft: 8 }}>
             Cancel
@@ -234,21 +266,30 @@ export default function LLMChatPage() {
           <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>Attachments</div>
           <div style={{ display: "grid", gap: 10 }}>
             {attachments.map((a, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ fontFamily: "monospace", fontSize: 12, opacity: 0.85 }}>
-                  {a.name} • {a.mime}
+              <div key={i} style={{ display: "grid", gap: 6 }}>
+                <ArtifactCanvas
+                  attachment={{
+                    kind: a.kind,
+                    name: a.name,
+                    mime: a.mime,
+                    url: a.url,
+                  }}
+                />
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    disabled={busy}
+                    style={{
+                      fontSize: 11,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      border: "1px solid #e5e7eb",
+                      background: "#fafafa",
+                    }}
+                  >
+                    remove
+                  </button>
                 </div>
-                <a href={a.url} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
-                  open
-                </a>
-                {a.kind === "image" ? (
-                  <img src={a.url} alt={a.name} style={{ height: 44, borderRadius: 10, border: "1px solid #e5e7eb" }} />
-                ) : a.kind === "video" ? (
-                  <video src={a.url} controls style={{ height: 64, borderRadius: 10, border: "1px solid #e5e7eb" }} />
-                ) : null}
-                <button onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))} disabled={busy}>
-                  remove
-                </button>
               </div>
             ))}
           </div>

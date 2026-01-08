@@ -45,6 +45,27 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 import logging
 
+DENY_DIRS = {".git", ".venv", "node_modules", "__pycache__", ".spec", ".smartspec"}
+DENY_FILES_PREFIX = {".env", "id_rsa", "id_ed25519"}
+
+
+def _is_path_allowed(path: Path) -> bool:
+    """Return False for obviously sensitive or internal paths."""
+    try:
+        p = path.resolve()
+    except Exception:
+        return False
+
+    for part in p.parts:
+        if part in DENY_DIRS:
+            return False
+
+    for prefix in DENY_FILES_PREFIX:
+        if p.name.startswith(prefix):
+            return False
+
+    return True
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -185,6 +206,8 @@ def _match_regex(text: str, pattern: str) -> bool:
 def _bounded_walk(root: Path, max_files: int = 2500) -> Iterable[Path]:
     count = 0
     for p in root.rglob("*"):
+        if not _is_path_allowed(p):
+            continue
         if p.is_file():
             yield p
             count += 1
@@ -231,6 +254,8 @@ def _verify_directory(root: Path, contains: Optional[str], regex: Optional[str],
 def verify_code(repo_root: Path, ev: Evidence) -> EvidenceResult:
     raw_path = ev.kv["path"]
     path = repo_root / raw_path
+    if not _is_path_allowed(path):
+        return EvidenceResult(False, f"path not allowed: {raw_path}", ev)
 
     symbol = ev.kv.get("symbol")
     contains = ev.kv.get("contains")
@@ -252,6 +277,8 @@ def verify_code(repo_root: Path, ev: Evidence) -> EvidenceResult:
 
 def verify_docs(repo_root: Path, ev: Evidence) -> EvidenceResult:
     path = repo_root / ev.kv["path"]
+    if not _is_path_allowed(path):
+        return EvidenceResult(False, f"path not allowed: {ev.kv['path']}", ev)
     if not path.exists() or not path.is_file():
         return EvidenceResult(False, f"file not found: {ev.kv['path']}", ev)
 
@@ -288,6 +315,8 @@ def verify_test(repo_root: Path, ev: Evidence) -> EvidenceResult:
 
 def verify_ui(repo_root: Path, ev: Evidence) -> EvidenceResult:
     path = repo_root / ev.kv["path"]
+    if not _is_path_allowed(path):
+        return EvidenceResult(False, f"path not allowed: {ev.kv['path']}", ev)
     if not path.exists() or not path.is_file():
         return EvidenceResult(False, f"file not found: {ev.kv['path']}", ev)
 

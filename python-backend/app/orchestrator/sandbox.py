@@ -9,7 +9,7 @@ def is_within(base: Path, target: Path) -> bool:
     try:
         base = base.resolve()
         target = target.resolve()
-        # Use pathlib.relative_to to avoid prefix tricks like /foo/bar vs /foo/bar2
+        # Use pathlib.relative_to to avoid prefix tricks
         target.relative_to(base)
         return True
     except Exception:
@@ -26,12 +26,10 @@ def is_path_allowed(path: Path) -> bool:
     except Exception:
         return False
 
-    # Block any path that lives inside denied directories
     for part in p.parts:
         if part in DENY_DIRS:
             return False
 
-    # Block files with sensitive prefixes
     for prefix in DENY_FILES_PREFIX:
         if p.name.startswith(prefix):
             return False
