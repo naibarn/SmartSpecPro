@@ -13,6 +13,7 @@ from .support_ticket import SupportTicket, TicketMessage
 from .user import User
 from .execution import ExecutionModel, CheckpointModel, ExecutionStatus
 from .semantic_memory import SemanticMemory, MemoryType, MemoryScope
+from .provider_config import ProviderConfig
 
 __all__ = [
     "AuditLog",
@@ -33,4 +34,5 @@ __all__ = [
     "SemanticMemory",
     "MemoryType",
     "MemoryScope",
+    "ProviderConfig",
 ]

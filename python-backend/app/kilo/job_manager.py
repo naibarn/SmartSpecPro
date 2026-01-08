@@ -51,9 +51,21 @@ class JobManager:
         job_id = uuid.uuid4().hex
         job = Job(job_id=job_id, command=command, cwd=cwd)
 
-        argv = ["python", "-m", "ss_autopilot.cli_enhanced", command]
+        # Build command: run as Python module with proper PYTHONPATH
+        # This is needed because cli_enhanced.py uses relative imports
+        python_exe = "python3"
+        argv = [python_exe, "-m", "ss_autopilot.cli_enhanced", command]
+
         env = dict(os.environ)
         env["CI"] = "1"
+
+        # CRITICAL: Add .smartspec directory to PYTHONPATH so "ss_autopilot" package can be found
+        smartspec_dir = os.path.join(cwd, ".smartspec")
+        existing_pythonpath = env.get("PYTHONPATH", "")
+        if existing_pythonpath:
+            env["PYTHONPATH"] = smartspec_dir + os.pathsep + existing_pythonpath
+        else:
+            env["PYTHONPATH"] = smartspec_dir
 
         proc = subprocess.Popen(
             argv,

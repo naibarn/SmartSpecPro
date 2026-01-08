@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowSchema } from "../services/kiloCli";
 
 type CommandPaletteProps = {
@@ -23,6 +23,7 @@ export function CommandPalette(props: CommandPaletteProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
   const [argValues, setArgValues] = useState<Record<string, string>>({});
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset internal state whenever palette is opened
   useEffect(() => {
@@ -31,6 +32,8 @@ export function CommandPalette(props: CommandPaletteProps) {
     setActiveIndex(0);
     setSelectedWorkflow(null);
     setArgValues({});
+    // Focus the input when palette opens
+    setTimeout(() => inputRef.current?.focus(), 0);
   }, [isOpen]);
 
   const schemaMap = useMemo(() => {
@@ -178,6 +181,7 @@ export function CommandPalette(props: CommandPaletteProps) {
     >
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <input
+          ref={inputRef}
           autoFocus
           value={query}
           onChange={(e) => {

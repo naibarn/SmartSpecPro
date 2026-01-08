@@ -25,7 +25,14 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://localhost:1420",  # Tauri desktop app
+        "http://172.22.241.100:1420",  # Tauri desktop app (network)
+        "tauri://localhost",  # Tauri protocol
+    ]
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/smartspec.db"

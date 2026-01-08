@@ -45,6 +45,7 @@ from app.api import (
     kilo_pty,
     kilo_media,
     ws_ticket,
+    admin_provider_config,
 )
 from app.api.v1 import skills, auth_generator
 
@@ -143,6 +144,7 @@ app.include_router(payments.router, prefix="/api", tags=["Payments"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 app.include_router(users.router, tags=["Users"])
 app.include_router(admin.router, tags=["Admin"])
+app.include_router(admin_provider_config.router, tags=["Admin - Provider Config"])
 app.include_router(llm_proxy.router, prefix="/api/v1/llm", tags=["LLM Proxy"])
 app.include_router(llm_v1.router, tags=["LLM v1"])
 app.include_router(llm_features.router, tags=["LLM Features"])

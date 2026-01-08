@@ -284,6 +284,9 @@ export default function KiloCliPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && workspace && command) {
                 run(false);
+              } else if (e.key === "/") {
+                e.preventDefault();
+                setIsPaletteOpen(true);
               }
             }}
           />

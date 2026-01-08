@@ -15,13 +15,15 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from .platform import detect_platform, get_platform_info
 from .router import decide_next
 from .commands import build_slash_command, default_out_dir
 from .status_writer import StatusWriter
 from .report_enhancer import ReportEnhancer
+from .workflow_loader import WorkflowCatalog, WorkflowNotFoundError
+from .error_handler import with_error_handling, safe_file_read
 
 
 def load_config() -> Dict[str, Any]:
@@ -298,8 +300,173 @@ def cmd_init(args):
     print("  3. Follow the instructions!")
 
 
+def cmd_workflow(args):
+    """Execute a workflow by name (e.g., /smartspec_project_copilot)"""
+
+    # Normalize workflow name
+    workflow_name = args.workflow
+    if workflow_name.startswith('/'):
+        workflow_name = workflow_name[1:]
+
+    # Remove .md extension if present
+    if workflow_name.endswith('.md'):
+        workflow_name = workflow_name[:-3]
+
+    print(f"🔍 Executing workflow: {workflow_name}")
+
+    # Show additional arguments if any
+    additional_args = getattr(args, 'additional_args', [])
+    if additional_args:
+        print(f"📝 Additional arguments: {' '.join(additional_args)}")
+    
+    # Load workflow catalog (include legacy workflows like autopilot_*)
+    catalog = WorkflowCatalog(include_legacy=True)
+    
+    # Check for errors
+    if catalog.errors:
+        print("⚠️  Workflow catalog has errors:")
+        for error in catalog.errors[:5]:
+            print(f"  - {error}")
+    
+    # Find the workflow
+    try:
+        result = catalog.get(workflow_name)
+
+        # Handle wrapped result from @with_error_handling decorator
+        if isinstance(result, dict):
+            if result.get("success") and "result" in result:
+                workflow = result["result"]
+            elif result.get("error"):
+                print(f"❌ Error loading workflow: {result.get('message')}")
+                sys.exit(1)
+            else:
+                workflow = result
+        else:
+            workflow = result
+
+    except WorkflowNotFoundError:
+        # Try to find by slug
+        for w in catalog.workflows.values():
+            if w.metadata.get('workflow_slug') == f"/{workflow_name}":
+                workflow = w
+                break
+        else:
+            print(f"❌ Workflow not found: {workflow_name}")
+            print(f"\nAvailable workflows:")
+            for name in sorted(catalog.workflows.keys())[:20]:
+                print(f"  - {name}")
+            if len(catalog.workflows) > 20:
+                print(f"  ... and {len(catalog.workflows) - 20} more")
+            sys.exit(1)
+    
+    # Display workflow info
+    print(f"\n📋 {workflow.metadata.get('title', workflow.name)}")
+    if workflow.metadata.get('description'):
+        desc = workflow.metadata['description'][:200]
+        print(f"   {desc}...")
+    
+    # Check workflow metadata
+    purpose = workflow.metadata.get('purpose', '')
+    if purpose:
+        print(f"\n🎯 Purpose: {purpose[:100]}...")
+    
+    # Read workflow content
+    result = safe_file_read(str(workflow.path))
+    if result.get("error"):
+        print(f"❌ Failed to read workflow: {result.get('message')}")
+        sys.exit(1)
+    
+    content = result["content"]
+    
+    # Write to output if specified
+    out_path = args.out
+    if out_path:
+        out_file = Path(out_path)
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_file, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"\n✅ Workflow written to: {out_path}")
+    
+    # Print relevant sections based on aspect
+    aspect = getattr(args, 'aspect', None) or "all"
+
+    if aspect in ("all", "status"):
+        print(f"\n📊 Workflow Status: READY")
+        print(f"   Category: {workflow.metadata.get('category', 'unknown')}")
+        print(f"   Version: {workflow.metadata.get('version', 'unknown')}")
+
+    if aspect in ("all", "roadmap"):
+        # Look for invocation section
+        if "## Invocation" in content or "### CLI" in content:
+            print(f"\n🛣️  To use this workflow, run:")
+            # Extract example command
+            import re
+            example_match = re.search(r'```bash\s*(.+?)```', content, re.DOTALL)
+            if example_match:
+                cmd = example_match.group(1).strip()
+                print(f"   {cmd}")
+
+    # **IMPORTANT**: In a real Kilo CLI implementation, this workflow content
+    # should be sent to an LLM (Claude/OpenRouter) along with the user's arguments
+    additional_args = getattr(args, 'additional_args', [])
+    if additional_args:
+        print(f"\n💡 TO IMPLEMENT: This workflow should be sent to LLM with:")
+        print(f"   - Workflow content: {len(content)} characters")
+        print(f"   - User input: {' '.join(additional_args)}")
+        print(f"   - Platform: {getattr(args, 'platform', 'kilo')}")
+        print(f"\n🚧 Currently, this script only displays workflow metadata.")
+        print(f"   For full execution, integrate with LLM Gateway.")
+
+    print(f"\n✅ Workflow processed successfully!")
+    return 0
+
+
 def main():
     """Main CLI entry point"""
+
+    # SPECIAL CASE: If first arg starts with '/', treat it as a workflow command
+    # This allows direct invocation like: python -m ss_autopilot.cli_enhanced /workflow_name --args
+    if len(sys.argv) > 1 and sys.argv[1].startswith('/'):
+        # Parse workflow command - but allow unknown args to pass through as workflow arguments
+        workflow_parser = argparse.ArgumentParser(add_help=False)
+        workflow_parser.add_argument("workflow", help="Workflow name")
+
+        # Collect remaining arguments as workflow_args (for things like positional question, etc.)
+        # We'll parse known flags but keep unknown ones
+        known_args, remaining_args = workflow_parser.parse_known_args(sys.argv[1:])
+
+        # Add remaining args as additional_args attribute
+        known_args.additional_args = remaining_args
+
+        # Parse known optional flags from remaining args
+        optional_parser = argparse.ArgumentParser(add_help=False)
+        optional_parser.add_argument("--aspect", choices=["status", "roadmap", "security", "ci", "ui", "perf", "all"], help="Aspect to show")
+        optional_parser.add_argument("--out", help="Output file path")
+        optional_parser.add_argument("--lang", choices=["en", "th", "auto"], help="Language")
+        optional_parser.add_argument("--platform", choices=["kilo", "antigravity", "claude", "ci"], help="Platform")
+        optional_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+        optional_args, final_remaining = optional_parser.parse_known_args(remaining_args)
+
+        # Merge all parsed args
+        for key, value in vars(optional_args).items():
+            if value is not None:
+                setattr(known_args, key, value)
+            elif not hasattr(known_args, key):
+                setattr(known_args, key, None)
+
+        # Store truly unknown args (after parsing both workflow name and known flags)
+        known_args.additional_args = final_remaining
+
+        try:
+            result = cmd_workflow(known_args)
+            sys.exit(0 if result is None else result)
+        except Exception as e:
+            print(f"❌ Workflow execution failed: {e}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+
     parser = argparse.ArgumentParser(
         description="SmartSpec Autopilot - Automated workflow orchestration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -307,41 +474,57 @@ def main():
 Examples:
   # Initialize Autopilot in current project
   ss-autopilot run --spec-id <spec-id> --init
-  
+
   # Run Autopilot to determine next step
   ss-autopilot run --spec-id spec-core-001-authentication
-  
+
   # Run with specific platform
   ss-autopilot run --spec-id spec-core-001-authentication --platform kilo
-  
+
   # Show current status
   ss-autopilot status --spec-id spec-core-001-authentication
+
+  # Execute a workflow directly
+  ss-autopilot /workflow_name --out output.txt
 """
     )
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
-    
+
     # init command
     parser_init = subparsers.add_parser("init", help="Initialize Autopilot in current project")
     parser_init.set_defaults(func=cmd_init)
-    
+
     # run command
     parser_run = subparsers.add_parser("run", help="Run Autopilot to determine next step")
     parser_run.add_argument("--spec-id", required=True, help="Spec ID (e.g., spec-core-001-authentication)")
     parser_run.add_argument("--platform", choices=["kilo", "antigravity", "claude"], help="Platform (auto-detect if not specified)")
     parser_run.set_defaults(func=cmd_run)
-    
+
     # status command
     parser_status = subparsers.add_parser("status", help="Show current status")
     parser_status.add_argument("--spec-id", required=True, help="Spec ID")
     parser_status.set_defaults(func=cmd_status)
-    
+
+    # workflow command (for Kilo slash commands like /smartspec_project_copilot)
+    parser_workflow = subparsers.add_parser("workflow", help="Execute a workflow by name", add_help=False)
+    parser_workflow.add_argument("workflow", help="Workflow name (with or without leading / and .md)")
+    parser_workflow.add_argument("--aspect", choices=["status", "roadmap", "security", "ci", "ui", "perf", "all"], help="Aspect to show")
+    parser_workflow.add_argument("--out", help="Output file path")
+    parser_workflow.set_defaults(func=cmd_workflow)
+
+    # Add common flags that work with any command
+    for p in [parser_init, parser_run, parser_status]:
+        p.add_argument("--lang", choices=["en", "th", "auto"], help="Language")
+        p.add_argument("--platform", choices=["kilo", "antigravity", "claude", "ci"], help="Platform")
+        p.add_argument("--json", action="store_true", help="Output as JSON")
+
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         sys.exit(1)
-    
+
     args.func(args)
 
 

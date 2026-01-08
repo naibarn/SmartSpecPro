@@ -36,20 +36,20 @@ class User(Base):
     oauth_connections = relationship("OAuthConnection", back_populates="user", lazy="dynamic")
     semantic_memories = relationship("SemanticMemory", back_populates="user", lazy="dynamic")
     
-    # Generation relationships
-    generation_tasks = relationship("GenerationTask", back_populates="user", lazy="dynamic")
-    generation_api_keys = relationship("GenerationAPIKey", back_populates="user", lazy="dynamic")
-    provider_credentials = relationship("ProviderCredential", back_populates="user", lazy="dynamic")
+    # Generation relationships (commented out - models not yet defined)
+    # generation_tasks = relationship("GenerationTask", back_populates="user", lazy="dynamic")
+    # generation_api_keys = relationship("GenerationAPIKey", back_populates="user", lazy="dynamic")
+    # provider_credentials = relationship("ProviderCredential", back_populates="user", lazy="dynamic")
+
+    # Gallery relationships (commented out - model not yet defined)
+    # gallery_items = relationship("GalleryItem", back_populates="user", lazy="dynamic")
     
-    # Gallery relationships
-    gallery_items = relationship("GalleryItem", back_populates="user", lazy="dynamic")
-    
-    # Enhanced API Key v2 relationships
-    api_keys_v2 = relationship("APIKeyV2", back_populates="user", lazy="dynamic")
-    
-    # Credits and Usage relationships
-    credits_balance_record = relationship("CreditsBalance", back_populates="user", uselist=False)
-    usage_records = relationship("UsageRecord", back_populates="user", lazy="dynamic")
+    # Enhanced API Key v2 relationships (commented out - model not yet defined)
+    # api_keys_v2 = relationship("APIKeyV2", back_populates="user", lazy="dynamic")
+
+    # Credits and Usage relationships (commented out - models not yet defined)
+    # credits_balance_record = relationship("CreditsBalance", back_populates="user", uselist=False)
+    # usage_records = relationship("UsageRecord", back_populates="user", lazy="dynamic")
     
     def __repr__(self):
         return f"<User {self.email}>"
