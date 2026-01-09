@@ -98,14 +98,19 @@ class ProviderFactory:
         zai_provider = self.create_zai_provider()
         if zai_provider:
             providers["zai"] = zai_provider
-        
+
+        # Kilo Code
+        kilocode_provider = self.create_kilocode_provider()
+        if kilocode_provider:
+            providers["kilocode"] = kilocode_provider
+
         enabled_count = len([p for p in providers.values() if p.enabled])
         logger.info(
             "Provider factory created providers",
             total=len(providers),
             enabled=enabled_count
         )
-        
+
         return providers
     
     def create_openai_provider(self) -> Optional[OpenAIProvider]:
@@ -337,6 +342,57 @@ class ProviderFactory:
         
         logger.info(f"Z.AI provider created (endpoint: {base_url})")
         return ZAIProvider(config)
+
+    def create_kilocode_provider(self) -> Optional[BaseLLMProvider]:
+        """Create Kilo Code provider if API key is available."""
+        api_key = getattr(self.settings, 'KILOCODE_API_KEY', None)
+        if not api_key:
+            return None
+
+        # Import here to avoid circular imports
+        from app.llm_proxy.providers.kilocode_provider import KiloCodeProvider
+
+        base_url = getattr(
+            self.settings,
+            'KILOCODE_BASE_URL',
+            'https://api.kilo.ai/api/openrouter'
+        )
+
+        config = ProviderConfig(
+            name="Kilo Code",
+            type="kilocode",
+            api_key=api_key,
+            base_url=base_url,
+            models=[
+                "minimax/minimax-m2.1:free",
+                "anthropic/claude-3-5-sonnet",
+                "openai/gpt-4o",
+                "openai/gpt-4o-mini",
+                "google/gemini-flash-1.5",
+                "meta-llama/llama-3.1-70b-instruct"
+            ],
+            cost_per_1k_tokens={
+                "minimax/minimax-m2.1:free": 0.0,  # Free model
+                "anthropic/claude-3-5-sonnet": 0.003,
+                "openai/gpt-4o": 0.005,
+                "openai/gpt-4o-mini": 0.0002,
+                "google/gemini-flash-1.5": 0.00008,
+                "meta-llama/llama-3.1-70b-instruct": 0.0005
+            },
+            max_tokens={
+                "minimax/minimax-m2.1:free": 16384,
+                "anthropic/claude-3-5-sonnet": 200000,
+                "openai/gpt-4o": 128000,
+                "openai/gpt-4o-mini": 128000,
+                "google/gemini-flash-1.5": 1000000,
+                "meta-llama/llama-3.1-70b-instruct": 131072
+            },
+            capabilities=["planning", "code_generation", "analysis", "decision", "simple"],
+            enabled=True
+        )
+
+        logger.info(f"Kilo Code provider created (endpoint: {base_url})")
+        return KiloCodeProvider(config)
 
 
 # =============================================================================

@@ -1,14 +1,25 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { getUser, logout, isTokenExpired } from "../services/authService";
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const userStr = localStorage.getItem("user");
-  const user = userStr ? JSON.parse(userStr) : null;
+  const [user, setUser] = useState(getUser());
+
+  // Check token expiry periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isTokenExpired()) {
+        console.log("Token expired, logging out...");
+        logout(navigate);
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user");
-    navigate("/login");
+    logout(navigate);
   };
   const linkStyle = ({ isActive }: { isActive: boolean }) => ({
     display: "block",

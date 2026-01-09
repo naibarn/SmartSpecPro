@@ -46,6 +46,7 @@ from app.api import (
     kilo_media,
     ws_ticket,
     admin_provider_config,
+    internal_provider,
 )
 from app.api.v1 import skills, auth_generator
 
@@ -89,8 +90,11 @@ async def lifespan(app: FastAPI):
     # Initialize LLM Proxy
     try:
         from app.llm_proxy.unified_client import unified_client
+        from app.core.database import AsyncSessionLocal
 
-        await unified_client.initialize()
+        # Create database session to load provider configs
+        async with AsyncSessionLocal() as session:
+            await unified_client.initialize(db=session)
         logger.info("LLM Proxy initialized successfully")
     except Exception as e:
         logger.warning("LLM Proxy initialization failed", error=str(e))
@@ -145,6 +149,7 @@ app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 app.include_router(users.router, tags=["Users"])
 app.include_router(admin.router, tags=["Admin"])
 app.include_router(admin_provider_config.router, tags=["Admin - Provider Config"])
+app.include_router(internal_provider.router, tags=["Internal - Provider"])
 app.include_router(llm_proxy.router, prefix="/api/v1/llm", tags=["LLM Proxy"])
 app.include_router(llm_v1.router, tags=["LLM v1"])
 app.include_router(llm_features.router, tags=["LLM Features"])

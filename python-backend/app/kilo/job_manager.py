@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import shlex
 import subprocess
 import threading
 import time
@@ -54,7 +55,10 @@ class JobManager:
         # Build command: run as Python module with proper PYTHONPATH
         # This is needed because cli_enhanced.py uses relative imports
         python_exe = "python3"
-        argv = [python_exe, "-m", "ss_autopilot.cli_enhanced", command]
+        # Split command into arguments using shlex to properly handle quoted strings and spaces
+        command_args = shlex.split(command)
+        # Use -u flag to unbuffer Python output so we get real-time streaming
+        argv = [python_exe, "-u", "-m", "ss_autopilot.cli_enhanced"] + command_args
 
         env = dict(os.environ)
         env["CI"] = "1"

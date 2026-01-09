@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     ZAI_API_KEY: str = ""
     ZAI_USE_CODING_ENDPOINT: bool = False  # Use coding endpoint for GLM Coding Plan
 
+    KILOCODE_API_KEY: str = ""
+    KILOCODE_BASE_URL: str = "https://api.kilo.ai/api/openrouter"
+
     # Stripe Payment
     STRIPE_PUBLISHABLE_KEY: str = ""
     STRIPE_SECRET_KEY: str = ""
@@ -75,7 +78,8 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = "change-this-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+    ENCRYPTION_MASTER_KEY: str = "change-this-in-production-32-chars-min"  # For encrypting provider API keys
 
     # ============================================================
     # SmartSpecWeb Gateway Integration (OpenAI-compatible)

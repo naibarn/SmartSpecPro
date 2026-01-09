@@ -6,6 +6,7 @@ Combines all providers with intelligent routing and fallbacks
 from typing import Optional, List, Dict, Any, Literal
 from decimal import Decimal
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm_proxy.openrouter_wrapper import OpenRouterWrapper, create_openrouter_client
 from app.llm_proxy.models import LLMRequest, LLMResponse, LLMProvider
@@ -20,7 +21,8 @@ class UnifiedLLMClient:
     - OpenRouter (420+ models, load balancing, fallbacks)
     - Z.AI (GLM-4.7, Chinese LLM)
     - Direct providers (OpenAI, Anthropic, Google, Groq, Ollama)
-    
+    - Database-backed provider configs (from Admin UI)
+
     Features:
     - Automatic provider selection
     - Load balancing
@@ -28,24 +30,169 @@ class UnifiedLLMClient:
     - Cost optimization
     - Privacy controls
     - Monitoring และ logging
+    - Dynamic provider configuration from database
     """
-    
+
     def __init__(self):
         """Initialize unified LLM client"""
         self.openrouter_client: Optional[OpenRouterWrapper] = None
         self.direct_providers: Dict[str, Any] = {}
+        self.provider_configs: Dict[str, Dict] = {}  # Provider configs from database
+        self.default_models: Dict[str, str] = {}  # Default models per provider
+        self.model_to_provider: Dict[str, str] = {}  # Map model strings to their provider names
         self._initialized = False
-        
+
         logger.info("unified_llm_client_created")
-    
-    async def initialize(self):
-        """Async initialization of LLM clients"""
+
+    async def initialize(self, db: Optional[AsyncSession] = None):
+        """
+        Async initialization of LLM clients
+
+        Args:
+            db: Optional database session for loading provider configs
+        """
         if self._initialized:
             return
-        
+
+        # Load from .env (backward compatibility)
         self._initialize_clients()
+
+        # Load from database (if available)
+        if db:
+            await self._initialize_from_database(db)
+
         self._initialized = True
         logger.info("unified_llm_client_initialized")
+
+    async def _initialize_from_database(self, db: AsyncSession):
+        """
+        Initialize providers from database configurations
+
+        Args:
+            db: Database session
+        """
+        try:
+            from app.services.provider_config_service import get_provider_config_service
+
+            service = get_provider_config_service()
+            configs = await service.get_all_provider_configs(db)
+
+            self.provider_configs = configs
+
+            # Extract default models
+            for provider_name, config in configs.items():
+                if config.get("default_model"):
+                    default_model = config["default_model"]
+                    self.default_models[provider_name] = default_model
+                    # Map the model string to its provider
+                    self.model_to_provider[default_model] = provider_name
+
+            # Initialize provider clients from database configs
+            for provider_name, config in configs.items():
+                await self._initialize_provider_from_config(provider_name, config)
+
+            logger.info(
+                "providers_loaded_from_database",
+                count=len(configs),
+                providers=list(configs.keys()),
+                models=self.default_models
+            )
+        except Exception as e:
+            logger.error(
+                "failed_to_load_providers_from_database",
+                error=str(e)
+            )
+
+    async def _initialize_provider_from_config(
+        self,
+        provider_name: str,
+        config: Dict
+    ):
+        """
+        Initialize a provider client from database config
+
+        Args:
+            provider_name: Provider identifier
+            config: Provider configuration dict
+        """
+        api_key = config.get("api_key")
+        base_url = config.get("base_url")
+
+        if not api_key:
+            logger.warning(
+                "provider_missing_api_key",
+                provider=provider_name
+            )
+            return
+
+        # Initialize based on provider type
+        if provider_name == "openai":
+            from openai import OpenAI
+            self.direct_providers['openai'] = OpenAI(
+                api_key=api_key,
+                base_url=base_url or "https://api.openai.com/v1"
+            )
+            logger.info("openai_initialized_from_db")
+
+        elif provider_name == "anthropic":
+            import anthropic
+            self.direct_providers['anthropic'] = anthropic.Anthropic(
+                api_key=api_key
+            )
+            logger.info("anthropic_initialized_from_db")
+
+        elif provider_name == "openrouter":
+            self.openrouter_client = create_openrouter_client(
+                api_key=api_key,
+                site_url=config.get("site_url", "https://smartspec.pro"),
+                site_name=config.get("site_name", "SmartSpec Pro")
+            )
+            logger.info("openrouter_initialized_from_db")
+
+        elif provider_name == "kilocode":
+            # Kilo Code uses OpenRouter-compatible API
+            # Must send headers to appear as Kilo Code CLI
+            from openai import OpenAI
+            self.direct_providers['kilocode'] = OpenAI(
+                api_key=api_key,
+                base_url=base_url or "https://api.kilo.ai/api/openrouter",
+                default_headers={
+                    "HTTP-Referer": "https://kilo.ai",
+                    "X-Title": "SmartSpec Kilo CLI Proxy",
+                    "User-Agent": "kilo-code-cli/1.0.0"
+                }
+            )
+            logger.info("kilocode_initialized_from_db", base_url=base_url)
+
+        elif provider_name == "groq":
+            from openai import OpenAI
+            self.direct_providers['groq'] = OpenAI(
+                api_key=api_key,
+                base_url=base_url or "https://api.groq.com/openai/v1"
+            )
+            logger.info("groq_initialized_from_db")
+
+        elif provider_name == "ollama":
+            from openai import OpenAI
+            self.direct_providers['ollama'] = OpenAI(
+                api_key="ollama",  # Ollama doesn't require real API key
+                base_url=base_url or "http://localhost:11434/v1"
+            )
+            logger.info("ollama_initialized_from_db")
+
+        else:
+            # Generic OpenAI-compatible provider
+            # Support any provider that has OpenAI-compatible API
+            from openai import OpenAI
+            self.direct_providers[provider_name] = OpenAI(
+                api_key=api_key,
+                base_url=base_url
+            )
+            logger.info(
+                "generic_openai_provider_initialized_from_db",
+                provider=provider_name,
+                base_url=base_url
+            )
     
     def _initialize_clients(self):
         """Initialize all LLM clients"""
@@ -131,18 +278,45 @@ class UnifiedLLMClient:
         # Step 1: Select model
         if not model:
             model = self._select_model(task_type, budget_priority)
-        
+
+        # Check if model has a configured provider
+        provider_name = None
+
+        # First check if this model is mapped to a provider (from database config)
+        if model in self.model_to_provider:
+            provider_name = self.model_to_provider[model]
+        # Otherwise, try to extract provider from model string
+        elif "/" in model:
+            provider_name = model.split("/")[0]
+
+        # Check if the provider is available in direct_providers
+        provider_in_direct = provider_name and provider_name in self.direct_providers
+
         logger.info(
             "unified_llm_chat",
             model=model,
             task_type=task_type,
             budget_priority=budget_priority,
-            use_openrouter=use_openrouter
+            use_openrouter=use_openrouter,
+            provider_name=provider_name,
+            provider_in_direct=provider_in_direct
         )
-        
+
         # Step 2: Route to appropriate client
         try:
-            if use_openrouter and self.openrouter_client:
+            # If model's provider is in direct_providers, use direct even if use_openrouter=True
+            if provider_in_direct:
+                # Use direct provider (configured in database)
+                logger.info("using_direct_provider", provider=provider_name, model=model)
+                response = await self._chat_direct(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    provider_name=provider_name,
+                    **kwargs
+                )
+            elif use_openrouter and self.openrouter_client:
                 # Use OpenRouter (primary)
                 response = await self._chat_openrouter(
                     model=model,
@@ -235,33 +409,55 @@ class UnifiedLLMClient:
         messages: List[Dict[str, str]],
         temperature: float,
         max_tokens: Optional[int],
+        provider_name: Optional[str] = None,
         **kwargs
     ) -> LLMResponse:
         """Chat via direct provider (fallback)"""
-        
-        # Parse provider from model
-        if "/" in model:
-            provider_name = model.split("/")[0]
-            model_name = model.split("/")[1]
+
+        # If provider_name is explicitly provided, use it
+        if provider_name:
+            # Provider explicitly specified
+            # For OpenRouter-compatible providers (kilocode, openrouter), keep full model string
+            if provider_name in ["kilocode", "openrouter"]:
+                model_name = model  # Keep full format like "minimax/minimax-m2.1:free"
+            else:
+                # For other providers, extract model name from full model string
+                if "/" in model:
+                    model_name = model.split("/", 1)[1]  # Everything after first /
+                else:
+                    model_name = model
         else:
-            provider_name = "openai"  # Default
-            model_name = model
-        
+            # Parse provider from model string
+            if "/" in model:
+                provider_name = model.split("/")[0]
+                model_name = model.split("/")[1]
+            else:
+                provider_name = "openai"  # Default
+                model_name = model
+
         if provider_name not in self.direct_providers:
             raise ValueError(f"Provider {provider_name} not available")
-        
+
         client = self.direct_providers[provider_name]
-        
-        # Call provider
-        if provider_name == "openai":
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
+
+        # Use default model from config if available
+        if not model_name and provider_name in self.default_models:
+            model_name = self.default_models[provider_name]
+            logger.info(
+                "using_default_model",
+                provider=provider_name,
+                model=model_name
             )
-        elif provider_name == "anthropic":
+
+        logger.info(
+            "calling_provider_api",
+            provider=provider_name,
+            model=model_name
+        )
+
+        # Call provider
+        if provider_name == "anthropic":
+            # Anthropic uses different API
             response = client.messages.create(
                 model=model_name,
                 messages=messages,
@@ -270,8 +466,16 @@ class UnifiedLLMClient:
                 **kwargs
             )
         else:
-            raise ValueError(f"Provider {provider_name} not supported")
-        
+            # All other providers use OpenAI-compatible API
+            # (openai, kilocode, groq, ollama, minimax, deepseek, etc.)
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **kwargs
+            )
+
         return self._convert_to_llm_response(response)
     
     def _select_model(
@@ -281,21 +485,32 @@ class UnifiedLLMClient:
     ) -> str:
         """
         Select appropriate model based on task type and budget priority
-        
+
         Task Types:
         - code_generation: Claude 3.5 Sonnet, GPT-4o
         - analysis: GPT-4o, Claude 3.5 Sonnet
         - planning: GPT-4o, Claude 3.5 Sonnet
         - simple: GPT-4o-mini, Gemini Flash
         - decision: GPT-4o, Claude 3.5 Sonnet
-        
+
         Budget Priority:
         - quality: Best models (Claude 3.5 Sonnet, GPT-4o)
         - speed: Fast models (Gemini Flash, GPT-4o-mini)
         - cost: Cheap models (Llama 3.1, Gemini Flash)
         - balanced: Good balance (GPT-4o, Claude 3.5 Sonnet)
         """
-        
+
+        # Check for database-configured providers first
+        if self.default_models:
+            # Use the first available default model from enabled providers
+            default_model = next(iter(self.default_models.values()))
+            logger.info(
+                "using_database_default_model",
+                model=default_model,
+                provider=self.model_to_provider.get(default_model, "unknown")
+            )
+            return default_model
+
         # Model selection matrix
         model_matrix = {
             "code_generation": {

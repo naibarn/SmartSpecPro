@@ -80,6 +80,14 @@ VALUES
         NULL,
         FALSE,
         'GLM series models from Z.AI'
+    ),
+    (
+        gen_random_uuid()::text,
+        'kilocode',
+        'Kilo Code',
+        'https://api.kilo.ai/api/openrouter',
+        FALSE,
+        'Access multiple LLM models through Kilo Code API (OpenRouter-compatible)'
     )
 ON CONFLICT (provider_name) DO NOTHING;
 

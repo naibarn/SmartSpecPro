@@ -24,9 +24,10 @@ export type WorkflowList = {
 };
 
 export type StreamMessage = {
-  type: "stdout" | "done" | "error" | string;
+  type: "stdout" | "done" | "error" | "status" | string;
   seq: number;
   line?: string;
+  data?: string;  // Backend sends 'data' field for stdout
   status?: string;
   returncode?: number;
   message?: string;

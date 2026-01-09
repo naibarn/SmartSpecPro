@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import { FactoryPanel } from "./components/FactoryPanel";
@@ -8,26 +9,25 @@ import LLMChatPage from "./pages/LLMChat";
 import TestPage from "./pages/TestPage";
 import AdminSettings from "./pages/AdminSettings";
 import Login from "./pages/Login";
+import { initializeAuth, getAuthToken, isAdmin, isTokenExpired } from "./services/authService";
 
 // Protected Route wrapper
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
-  const token = localStorage.getItem("auth_token");
-  const userStr = localStorage.getItem("user");
+  const token = getAuthToken();
 
-  if (!token) {
+  // Check if token exists and not expired
+  if (!token || isTokenExpired()) {
     return <Navigate to="/login" replace />;
   }
 
-  if (requireAdmin && userStr) {
-    const user = JSON.parse(userStr);
-    if (!user.is_admin) {
-      return (
-        <div style={{ padding: 24 }}>
-          <h2>Access Denied</h2>
-          <p>You need admin privileges to access this page.</p>
-        </div>
-      );
-    }
+  // Check admin requirement
+  if (requireAdmin && !isAdmin()) {
+    return (
+      <div style={{ padding: 24 }}>
+        <h2>Access Denied</h2>
+        <p>You need admin privileges to access this page.</p>
+      </div>
+    );
   }
 
   return <>{children}</>;
@@ -35,6 +35,12 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
 
 export default function App() {
   console.log("App component rendering");
+
+  // Initialize auth on app start
+  useEffect(() => {
+    initializeAuth().catch(console.error);
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

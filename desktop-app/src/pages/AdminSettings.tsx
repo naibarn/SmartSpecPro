@@ -27,43 +27,57 @@ const PROVIDER_TEMPLATES = [
     provider_name: "openai",
     display_name: "OpenAI",
     base_url: "https://api.openai.com/v1",
+    default_model: "gpt-4o-mini",
     description: "GPT-4, GPT-3.5, and other OpenAI models",
   },
   {
     provider_name: "anthropic",
     display_name: "Anthropic Claude",
     base_url: "https://api.anthropic.com",
+    default_model: "claude-3-5-sonnet-20241022",
     description: "Claude 3 Opus, Sonnet, and Haiku models",
   },
   {
     provider_name: "google",
     display_name: "Google AI (Gemini)",
     base_url: "",
+    default_model: "gemini-pro",
     description: "Gemini Pro and other Google AI models",
   },
   {
     provider_name: "groq",
     display_name: "Groq",
     base_url: "https://api.groq.com/openai/v1",
+    default_model: "llama-3.1-70b-versatile",
     description: "Ultra-fast LLM inference",
   },
   {
     provider_name: "ollama",
     display_name: "Ollama (Local)",
     base_url: "http://localhost:11434",
+    default_model: "llama3",
     description: "Run models locally with Ollama",
   },
   {
     provider_name: "openrouter",
     display_name: "OpenRouter",
-    base_url: "",
+    base_url: "https://openrouter.ai/api/v1",
+    default_model: "anthropic/claude-3-5-sonnet",
     description: "Access 420+ models with unified API",
   },
   {
     provider_name: "zai",
     display_name: "Z.AI (GLM)",
     base_url: "",
+    default_model: "glm-4.7",
     description: "GLM series models from Z.AI",
+  },
+  {
+    provider_name: "kilocode",
+    display_name: "Kilo Code",
+    base_url: "https://api.kilo.ai/api/openrouter",
+    default_model: "minimax/minimax-m2.1:free",
+    description: "Access multiple LLM models through Kilo Code API (OpenRouter-compatible)",
   },
 ];
 
@@ -142,7 +156,9 @@ export default function AdminSettings() {
       base_url: template.base_url,
       is_enabled: true,
       description: template.description,
-      config_json: {},
+      config_json: {
+        default_model: template.default_model || "",
+      },
     });
   };
 
@@ -159,7 +175,12 @@ export default function AdminSettings() {
       }
 
       const existingProvider = providers.find((p) => p.provider_name === editingProvider);
-      const url = `${API_BASE_URL}/api/v1/admin/provider-configs/${editingProvider}`;
+
+      // Different URLs for create vs update
+      const url = existingProvider
+        ? `${API_BASE_URL}/api/v1/admin/provider-configs/${editingProvider}`  // PUT with provider name in path
+        : `${API_BASE_URL}/api/v1/admin/provider-configs/`;  // POST without provider name in path
+
       const method = existingProvider ? "PUT" : "POST";
 
       const payload: any = {
@@ -343,6 +364,11 @@ export default function AdminSettings() {
                         <strong>Base URL:</strong> {provider.base_url}
                       </p>
                     )}
+                    {provider.config_json?.default_model && (
+                      <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0" }}>
+                        <strong>Default Model:</strong> {provider.config_json.default_model}
+                      </p>
+                    )}
                     {provider.description && (
                       <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0" }}>
                         {provider.description}
@@ -452,6 +478,32 @@ export default function AdminSettings() {
                 style={inputStyle}
                 placeholder="https://api.example.com/v1"
               />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 500 }}>
+                Default Model
+                <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 400 }}>
+                  {" "}
+                  (required - e.g., minimax/minimax-m2.1:free)
+                </span>
+              </label>
+              <input
+                type="text"
+                value={formData.config_json?.default_model || ""}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  config_json: {
+                    ...formData.config_json,
+                    default_model: e.target.value
+                  }
+                })}
+                style={inputStyle}
+                placeholder="e.g., minimax/minimax-m2.1:free"
+              />
+              <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                Model name to use when calling this provider's API
+              </p>
             </div>
 
             <div>

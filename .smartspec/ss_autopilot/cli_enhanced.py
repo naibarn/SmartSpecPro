@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -24,6 +25,7 @@ from .status_writer import StatusWriter
 from .report_enhancer import ReportEnhancer
 from .workflow_loader import WorkflowCatalog, WorkflowNotFoundError
 from .error_handler import with_error_handling, safe_file_read
+from .llm_client import LLMClient, LLMError, InsufficientCreditsError, AuthenticationError, GatewayError
 
 
 def load_config() -> Dict[str, Any]:
@@ -406,16 +408,76 @@ def cmd_workflow(args):
                 cmd = example_match.group(1).strip()
                 print(f"   {cmd}")
 
-    # **IMPORTANT**: In a real Kilo CLI implementation, this workflow content
-    # should be sent to an LLM (Claude/OpenRouter) along with the user's arguments
+    # Execute workflow with LLM if user provides input
     additional_args = getattr(args, 'additional_args', [])
     if additional_args:
-        print(f"\n💡 TO IMPLEMENT: This workflow should be sent to LLM with:")
-        print(f"   - Workflow content: {len(content)} characters")
-        print(f"   - User input: {' '.join(additional_args)}")
-        print(f"   - Platform: {getattr(args, 'platform', 'kilo')}")
-        print(f"\n🚧 Currently, this script only displays workflow metadata.")
-        print(f"   For full execution, integrate with LLM Gateway.")
+        user_input = ' '.join(additional_args)
+        platform = getattr(args, 'platform', 'kilo')
+
+        print(f"\n🚀 Executing workflow with LLM...")
+        print(f"   - Workflow: {workflow.name}")
+        print(f"   - User input: {user_input}")
+        print(f"   - Platform: {platform}")
+
+        try:
+            # Initialize LLM client
+            llm_client = LLMClient.from_env()
+
+            # Execute workflow
+            response = llm_client.execute_workflow(
+                workflow_content=content,
+                user_input=user_input,
+                platform=platform,
+                spec_id=None  # Could be extracted from args if needed
+            )
+
+            # Print LLM response
+            print(f"\n{'='*80}")
+            print(f"🤖 LLM Response:")
+            print(f"{'='*80}\n")
+            print(response['content'])
+            print(f"\n{'='*80}")
+
+            # Print metadata
+            if response.get('usage'):
+                usage = response['usage']
+                print(f"\n📊 Usage Statistics:")
+                print(f"   - Prompt tokens: {usage.get('prompt_tokens', 'N/A')}")
+                print(f"   - Completion tokens: {usage.get('completion_tokens', 'N/A')}")
+                print(f"   - Total tokens: {usage.get('total_tokens', 'N/A')}")
+
+            print(f"\n✅ Workflow executed successfully!")
+            return 0
+
+        except InsufficientCreditsError as e:
+            print(f"\n❌ Insufficient Credits: {e}", file=sys.stderr)
+            print(f"\n💡 Please top up your account to continue.", file=sys.stderr)
+            return 402
+
+        except AuthenticationError as e:
+            print(f"\n❌ Authentication Failed: {e}", file=sys.stderr)
+            print(f"\n💡 Please check your SMARTSPEC_PROXY_TOKEN environment variable.", file=sys.stderr)
+            return 401
+
+        except GatewayError as e:
+            print(f"\n❌ Gateway Error: {e}", file=sys.stderr)
+            print(f"\n💡 The LLM gateway is not configured properly.", file=sys.stderr)
+            print(f"   Check SMARTSPEC_USE_WEB_GATEWAY and SMARTSPEC_WEB_GATEWAY_URL in backend .env", file=sys.stderr)
+            return 500
+
+        except LLMError as e:
+            print(f"\n❌ LLM Error: {e}", file=sys.stderr)
+            return 500
+
+        except Exception as e:
+            print(f"\n❌ Unexpected error: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            return 1
+    else:
+        # No user input - just show workflow metadata
+        print(f"\n💡 To execute this workflow with LLM, provide input:")
+        print(f"   Example: /{workflow.name} your question or task here")
 
     print(f"\n✅ Workflow processed successfully!")
     return 0
@@ -424,48 +486,7 @@ def cmd_workflow(args):
 def main():
     """Main CLI entry point"""
 
-    # SPECIAL CASE: If first arg starts with '/', treat it as a workflow command
-    # This allows direct invocation like: python -m ss_autopilot.cli_enhanced /workflow_name --args
-    if len(sys.argv) > 1 and sys.argv[1].startswith('/'):
-        # Parse workflow command - but allow unknown args to pass through as workflow arguments
-        workflow_parser = argparse.ArgumentParser(add_help=False)
-        workflow_parser.add_argument("workflow", help="Workflow name")
-
-        # Collect remaining arguments as workflow_args (for things like positional question, etc.)
-        # We'll parse known flags but keep unknown ones
-        known_args, remaining_args = workflow_parser.parse_known_args(sys.argv[1:])
-
-        # Add remaining args as additional_args attribute
-        known_args.additional_args = remaining_args
-
-        # Parse known optional flags from remaining args
-        optional_parser = argparse.ArgumentParser(add_help=False)
-        optional_parser.add_argument("--aspect", choices=["status", "roadmap", "security", "ci", "ui", "perf", "all"], help="Aspect to show")
-        optional_parser.add_argument("--out", help="Output file path")
-        optional_parser.add_argument("--lang", choices=["en", "th", "auto"], help="Language")
-        optional_parser.add_argument("--platform", choices=["kilo", "antigravity", "claude", "ci"], help="Platform")
-        optional_parser.add_argument("--json", action="store_true", help="Output as JSON")
-
-        optional_args, final_remaining = optional_parser.parse_known_args(remaining_args)
-
-        # Merge all parsed args
-        for key, value in vars(optional_args).items():
-            if value is not None:
-                setattr(known_args, key, value)
-            elif not hasattr(known_args, key):
-                setattr(known_args, key, None)
-
-        # Store truly unknown args (after parsing both workflow name and known flags)
-        known_args.additional_args = final_remaining
-
-        try:
-            result = cmd_workflow(known_args)
-            sys.exit(0 if result is None else result)
-        except Exception as e:
-            print(f"❌ Workflow execution failed: {e}")
-            import traceback
-            traceback.print_exc()
-            sys.exit(1)
+    # REMOVED OLD CODE - now handled after argument parser definition below
 
     parser = argparse.ArgumentParser(
         description="SmartSpec Autopilot - Automated workflow orchestration",
@@ -514,11 +535,181 @@ Examples:
     parser_workflow.set_defaults(func=cmd_workflow)
 
     # Add common flags that work with any command
-    for p in [parser_init, parser_run, parser_status]:
+    # Note: parser_run already has --platform defined above, so skip it here
+    for p in [parser_init, parser_status]:
         p.add_argument("--lang", choices=["en", "th", "auto"], help="Language")
         p.add_argument("--platform", choices=["kilo", "antigravity", "claude", "ci"], help="Platform")
         p.add_argument("--json", action="store_true", help="Output as JSON")
 
+    # Handle direct workflow execution (e.g., "/workflow.md arg1 arg2")
+    # This is for backward compatibility with Desktop App
+    if len(sys.argv) > 1 and sys.argv[1].startswith("/"):
+        # Direct workflow execution mode
+        workflow_cmd = sys.argv[1]
+        additional_args = sys.argv[2:] if len(sys.argv) > 2 else []
+
+        print(f"🔍 Executing workflow: {workflow_cmd.replace('/', '').replace('.md', '')}")
+        if additional_args:
+            print(f"📝 Additional arguments: {' '.join(additional_args)}")
+
+        # Load workflow and execute
+        try:
+            from pathlib import Path
+
+            # Find workflow file
+            workflow_name = workflow_cmd.replace('/', '').replace('.md', '')
+            workflow_dir = Path(os.getcwd()) / ".smartspec" / "workflows"
+
+            # Try with and without .md extension
+            possible_paths = [
+                workflow_dir / f"{workflow_name}.md",
+                workflow_dir / workflow_name
+            ]
+
+            workflow_path = None
+            for p in possible_paths:
+                if p.exists():
+                    workflow_path = p
+                    break
+
+            if not workflow_path:
+                print(f"❌ Error: Workflow not found: {workflow_name}")
+                print(f"🔍 Looked in: {workflow_dir}")
+                sys.exit(1)
+
+            print(f"✅ Found workflow: {workflow_path}")
+
+            # Read workflow content
+            with open(workflow_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Parse frontmatter to detect workflow type
+            import re
+            import yaml
+
+            frontmatter_match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+            is_ai_workflow = False
+
+            if frontmatter_match:
+                try:
+                    frontmatter = yaml.safe_load(frontmatter_match.group(1))
+                    # Check if this is an AI workflow (advisor/governance/router role)
+                    role = frontmatter.get('role', '')
+                    write_guard = frontmatter.get('write_guard', '')
+                    category = frontmatter.get('category', '')
+
+                    if any(keyword in role.lower() for keyword in ['advisor', 'governance', 'router', 'copilot']):
+                        is_ai_workflow = True
+                    elif write_guard == 'NO-WRITE' and category == 'utility':
+                        is_ai_workflow = True
+                except:
+                    pass
+
+            # Check if bash blocks look like documentation (contain [...] or <...>)
+            bash_blocks = re.findall(r'```bash\n(.*?)\n```', content, re.DOTALL)
+            if bash_blocks and not is_ai_workflow:
+                # Check if bash blocks are documentation style
+                first_block = bash_blocks[0]
+                if '[--' in first_block or '<' in first_block and '>' in first_block:
+                    is_ai_workflow = True
+
+            if is_ai_workflow:
+                # This is an AI workflow - send to LLM
+                print("🤖 AI Workflow detected - sending to LLM")
+
+                # Call LLM client
+                user_question = ' '.join(additional_args) if additional_args else "Execute this workflow"
+
+                try:
+                    from .llm_client import LLMClient
+
+                    client = LLMClient.from_env()
+
+                    # Build messages for LLM
+                    messages = [
+                        {
+                            "role": "system",
+                            "content": f"You are executing the SmartSpec workflow: {workflow_name}\n\nWorkflow content:\n{content}\n\nFollow the workflow instructions and provide a helpful response."
+                        },
+                        {
+                            "role": "user",
+                            "content": user_question
+                        }
+                    ]
+
+                    print(f"\n{'─' * 60}")
+                    print("🔄 Calling LLM...")
+                    print("💡 Using provider configured in Admin Settings")
+                    print(f"{'─' * 60}\n")
+
+                    # Don't specify model - let backend use Admin Settings configuration
+                    response = client.chat(messages, model=None)
+                    # Extract content from response
+                    content_text = response.get('content', '') or response.get('choices', [{}])[0].get('message', {}).get('content', '')
+                    print(content_text)
+
+                    print(f"\n{'─' * 60}")
+                    print("✅ LLM response completed")
+                    print(f"{'─' * 60}")
+
+                except ImportError as e:
+                    print("❌ Error: LLM client not available")
+                    print("💡 This workflow requires LLM integration")
+                    print(f"\nDetails: {e}")
+                    sys.exit(1)
+                except Exception as e:
+                    error_msg = str(e)
+                    print(f"❌ Error calling LLM: {error_msg}")
+
+                    # Provide helpful suggestions based on error
+                    if "Provider" in error_msg and "not available" in error_msg:
+                        print("\n💡 LLM Provider not configured. Please configure one of:")
+                        print("   1. OpenRouter: Set OPENROUTER_API_KEY in .env")
+                        print("   2. OpenAI: Set OPENAI_API_KEY in .env")
+                        print("   3. SmartSpecWeb Gateway: Enable SMARTSPEC_USE_WEB_GATEWAY")
+                    elif "Kilo Code" in error_msg:
+                        print("\n💡 Kilo Code API token only works inside Kilo Code extension.")
+                        print("   Please use OpenRouter or OpenAI for standalone usage.")
+                    elif "401" in error_msg or "Authentication" in error_msg:
+                        print("\n💡 Authentication failed. Check SMARTSPEC_PROXY_TOKEN.")
+                    elif "402" in error_msg or "credits" in error_msg:
+                        print("\n💡 Insufficient credits. Please top up your account.")
+
+                    sys.exit(1)
+            elif bash_blocks:
+                # This is a bash workflow - execute code blocks
+                print(f"📦 Found {len(bash_blocks)} bash code blocks")
+                for i, block in enumerate(bash_blocks, 1):
+                    print(f"\n🔨 Executing block {i}:")
+                    print("─" * 40)
+                    # Execute bash commands
+                    import subprocess
+                    try:
+                        result = subprocess.run(
+                            block,
+                            shell=True,
+                            capture_output=False,
+                            text=True,
+                            cwd=os.getcwd()
+                        )
+                        if result.returncode != 0:
+                            print(f"\n⚠️ Block {i} exited with code {result.returncode}")
+                    except Exception as e:
+                        print(f"❌ Error executing block {i}: {e}")
+                print("\n" + "─" * 40)
+                print("✅ Workflow execution completed")
+            else:
+                print("⚠️ No executable content found in workflow")
+                print("💡 This workflow may require LLM integration")
+
+            sys.exit(0)
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+
+    # Normal argparse mode
     args = parser.parse_args()
 
     if not args.command:

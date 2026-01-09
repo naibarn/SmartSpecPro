@@ -166,6 +166,23 @@ async def create_provider_config(
             detail=f"Provider '{data.provider_name}' already exists"
         )
 
+    # Validate default_model is set
+    if not data.config_json or not data.config_json.get("default_model"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="default_model is required in config_json"
+        )
+
+    # Validate model format for specific providers
+    default_model = data.config_json.get("default_model", "")
+    if data.provider_name in ["kilocode", "openrouter"]:
+        # OpenRouter format: provider/model or provider/model:variant
+        if "/" not in default_model:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Model for {data.provider_name} must be in format 'provider/model' or 'provider/model:variant' (e.g., 'minimax/minimax-m2.1:free')"
+            )
+
     # Encrypt API key if provided
     api_key_encrypted = None
     if data.api_key:
@@ -224,6 +241,25 @@ async def update_provider_config(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider config '{provider_name}' not found"
         )
+
+    # Validate config_json if being updated
+    if data.config_json is not None:
+        # Validate default_model is set
+        if not data.config_json.get("default_model"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="default_model is required in config_json"
+            )
+
+        # Validate model format for specific providers
+        default_model = data.config_json.get("default_model", "")
+        if provider_name in ["kilocode", "openrouter"]:
+            # OpenRouter format: provider/model or provider/model:variant
+            if "/" not in default_model:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Model for {provider_name} must be in format 'provider/model' or 'provider/model:variant' (e.g., 'minimax/minimax-m2.1:free')"
+                )
 
     # Update fields
     if data.display_name is not None:

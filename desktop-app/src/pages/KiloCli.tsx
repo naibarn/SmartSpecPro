@@ -110,10 +110,18 @@ export default function KiloCliPage() {
       (m: StreamMessage) => {
         if (m.type === "stdout") {
           setLastSeq(m.seq);
-          append(m.line);
+          const text = m.data || m.line || "";
+          append(text);
+        } else if (m.type === "status") {
+          // Backend sends type "status" when job completes
+          setStatus(m.status || "done");
+          append(`\n[done] status=${m.status} rc=${m.returncode}\n`);
         } else if (m.type === "done") {
           setStatus(m.status || "done");
           append(`\n[done] status=${m.status} rc=${m.returncode}\n`);
+        } else if (m.type === "error") {
+          setStatus("error");
+          append(`\n[error] ${m.message}\n`);
         }
       },
       ac.signal
