@@ -37,6 +37,7 @@ export default function KiloPtyPage() {
   const mediaWsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activeSessionRef = useRef<string>("");  // Track active session without closure issues
 
   const activeTab = useMemo(() => tabs.find(t => t.id === active), [tabs, active]);
@@ -147,34 +148,61 @@ export default function KiloPtyPage() {
   }, [active, connectionStatus]);
 
   const connectWebSockets = useCallback(async () => {
-    if (isConnecting) return;
+    if (isConnecting) {
+      console.log("Already connecting, skipping...");
+      return;
+    }
     setIsConnecting(true);
     setConnectionStatus("connecting");
     setErrorMessage("");
+
+    // Clear any existing connection timeout
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+    }
 
     try {
       // Close existing connections
       if (ptyWsRef.current) {
         try { ptyWsRef.current.close(); } catch {}
+        ptyWsRef.current = null;
       }
       if (mediaWsRef.current) {
         try { mediaWsRef.current.close(); } catch {}
+        mediaWsRef.current = null;
       }
 
       console.log("Creating WebSocket tickets...");
       const pTicket = await createWsTicket("pty");
       console.log("PTY ticket created:", pTicket);
       const pws = openPtyWs(pTicket.ticket);
+      console.log("PTY WebSocket created, readyState:", pws.readyState);
       
       const mTicket = await createWsTicket("media");
       console.log("Media ticket created:", mTicket);
       const mws = openMediaWs(mTicket.ticket);
+      console.log("Media WebSocket created, readyState:", mws.readyState);
       
       ptyWsRef.current = pws;
       mediaWsRef.current = mws;
 
+      // Set connection timeout (10 seconds)
+      connectionTimeoutRef.current = setTimeout(() => {
+        console.error("WebSocket connection timeout");
+        if (pws.readyState !== 1) {
+          setConnectionStatus("error");
+          setErrorMessage("Connection timeout. Please check if the backend is running.");
+          setIsConnecting(false);
+          try { pws.close(); } catch {}
+          try { mws.close(); } catch {}
+        }
+      }, 10000);
+
       pws.onopen = () => {
-        console.log("PTY WebSocket connected");
+        console.log("PTY WebSocket onopen triggered, readyState:", pws.readyState);
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+        }
         setConnectionStatus("connected");
         setErrorMessage("");
         setIsConnecting(false);
@@ -182,6 +210,9 @@ export default function KiloPtyPage() {
 
       pws.onclose = (event) => {
         console.log("PTY WebSocket closed:", event.code, event.reason);
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+        }
         setConnectionStatus("disconnected");
         setIsConnecting(false);
         // Auto-reconnect after 3 seconds
@@ -189,19 +220,23 @@ export default function KiloPtyPage() {
           clearTimeout(reconnectTimeoutRef.current);
         }
         reconnectTimeoutRef.current = setTimeout(() => {
+          console.log("Auto-reconnecting...");
           connectWebSockets();
         }, 3000);
       };
 
       pws.onerror = (error) => {
         console.error("PTY WebSocket error:", error);
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+        }
         setConnectionStatus("error");
         setErrorMessage("WebSocket connection error. Make sure the backend is running on port 8000.");
         setIsConnecting(false);
       };
 
       pws.onmessage = (ev) => {
-        console.log("PTY message received:", ev.data);
+        console.log("PTY message received:", ev.data.slice(0, 200));
         const msg = JSON.parse(ev.data) as PtyMessage;
 
         if (msg.type === "created") {
@@ -227,12 +262,10 @@ export default function KiloPtyPage() {
         if (msg.type === "stdout") {
           // Write to terminal - this is the key fix!
           console.log("Writing to terminal:", msg.data.length, "chars, seq:", msg.seq);
-          console.log("Data preview:", JSON.stringify(msg.data.slice(0, 100)));
           
           // Write to xterm
           if (window.__ptyWrite) {
             window.__ptyWrite(msg.data);
-            console.log("Data written to xterm successfully");
           } else {
             console.error("__ptyWrite not available!");
           }
@@ -253,6 +286,10 @@ export default function KiloPtyPage() {
         }
       };
 
+      mws.onopen = () => {
+        console.log("Media WebSocket connected");
+      };
+
       mws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data) as MediaMessage;
         if (msg.type === "event") {
@@ -260,8 +297,16 @@ export default function KiloPtyPage() {
           setTabs(prev => prev.map(t => t.id === e.sessionId ? { ...t, mediaSeq: msg.seq, media: [e, ...t.media].slice(0, 200) } : t));
         }
       };
+
+      mws.onerror = (error) => {
+        console.error("Media WebSocket error:", error);
+      };
+
     } catch (err) {
       console.error("Connection error:", err);
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
       setConnectionStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Failed to connect");
       setIsConnecting(false);
@@ -269,14 +314,21 @@ export default function KiloPtyPage() {
   }, [command, isConnecting]);
 
   useEffect(() => {
-    connectWebSockets();
+    // Delay initial connection slightly to ensure component is mounted
+    const initTimeout = setTimeout(() => {
+      connectWebSockets();
+    }, 100);
 
     return () => {
+      clearTimeout(initTimeout);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
+      }
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
       }
       try {
         if (ptyWsRef.current) ptyWsRef.current.close();
@@ -573,8 +625,10 @@ export default function KiloPtyPage() {
             ❌ Close Tab
           </button>
           <button
-            onClick={connectWebSockets}
-            disabled={isConnecting}
+            onClick={() => {
+              setIsConnecting(false);  // Reset connecting state
+              connectWebSockets();
+            }}
             style={connectionStatus !== "connected" ? primaryButtonStyle : buttonStyle}
           >
             🔌 {isConnecting ? "Connecting..." : "Reconnect"}
@@ -680,8 +734,10 @@ export default function KiloPtyPage() {
               </div>
               {connectionStatus !== "connected" && (
                 <button
-                  onClick={connectWebSockets}
-                  disabled={isConnecting}
+                  onClick={() => {
+                    setIsConnecting(false);
+                    connectWebSockets();
+                  }}
                   style={{ ...primaryButtonStyle, marginTop: 8 }}
                 >
                   🔌 {isConnecting ? "Connecting..." : "Connect Now"}
