@@ -84,13 +84,12 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     term.open(containerRef.current);
     console.log("PtyXterm: Terminal opened");
 
-    // Write function - write directly to terminal
+    // Write function - write directly to terminal (no refresh needed, xterm handles it)
     const writeToTerminal = (data: string) => {
       console.log("PtyXterm: writeToTerminal called with", data.length, "chars");
       try {
         term.write(data);
-        // Force refresh after write
-        term.refresh(0, term.rows - 1);
+        // xterm.js automatically renders after write(), no need to call refresh()
       } catch (e) {
         console.error("PtyXterm: Error writing to terminal:", e);
       }
@@ -123,9 +122,16 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       }
       
       try {
-        // Check if terminal core is ready
+        // Check if terminal core is ready by checking element
         if (!term.element) {
           console.log("PtyXterm: Terminal element not ready");
+          return false;
+        }
+        
+        // Check if terminal has a viewport (required for fit)
+        const viewport = term.element.querySelector('.xterm-viewport');
+        if (!viewport) {
+          console.log("PtyXterm: Terminal viewport not ready");
           return false;
         }
         
@@ -145,8 +151,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
           }
         }
         
-        // Refresh terminal display after fit
-        term.refresh(0, term.rows - 1);
         return true;
       } catch (e) {
         console.log("PtyXterm: Fit error (will retry):", e);
