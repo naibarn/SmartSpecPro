@@ -33,20 +33,41 @@ def _require_localhost(req: Request):
 
 
 async def _preflight(ws: WebSocket, channel: str):
-    if not await reject_legacy_key_ws(ws):
+    logger.info(f"PTY preflight check for channel: {channel}")
+    
+    # Check legacy key
+    legacy_ok = await reject_legacy_key_ws(ws)
+    if not legacy_ok:
+        logger.warning("PTY preflight failed: legacy key present")
         return False
 
+    # Check localhost restriction
     if getattr(settings, "SMARTSPEC_LOCALHOST_ONLY", False):
         host = (ws.client.host if ws.client else "") or ""
+        logger.info(f"PTY preflight localhost check: host={host}")
         if not _is_localhost(host):
+            logger.warning(f"PTY preflight failed: not localhost (host={host})")
             await ws.close(code=1008)
             return False
 
+    # Check ticket
     ticket = (ws.query_params.get("ticket") or "").strip()
-    ok = await consume_ws_ticket(ticket=ticket, channel=channel)
-    if not ok:
+    logger.info(f"PTY preflight ticket check: ticket={ticket[:20]}..." if ticket else "PTY preflight: no ticket")
+    
+    if not ticket:
+        logger.warning("PTY preflight failed: no ticket provided")
         await ws.close(code=1008)
         return False
+    
+    ok = await consume_ws_ticket(ticket=ticket, channel=channel)
+    logger.info(f"PTY preflight ticket consume result: {ok}")
+    
+    if not ok:
+        logger.warning(f"PTY preflight failed: invalid or expired ticket")
+        await ws.close(code=1008)
+        return False
+    
+    logger.info("PTY preflight passed")
     return True
 
 
@@ -87,8 +108,12 @@ async def cleanup_pty_session(session_id: str, req: Request):
 
 @router.websocket("/pty/ws")
 async def pty_ws(ws: WebSocket):
+    logger.info("PTY WebSocket connection attempt")
+    
     if not await _preflight(ws, "pty"):
+        logger.warning("PTY WebSocket preflight failed, connection rejected")
         return
+    
     await ws.accept()
     logger.info("PTY WebSocket connection accepted")
 
