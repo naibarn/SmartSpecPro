@@ -8,12 +8,35 @@ export type PtyMessage =
 const BASE = import.meta.env.VITE_PY_BACKEND_URL || "http://localhost:8000";
 
 export function openPtyWs(ticket: string): WebSocket {
-  const url = new URL(`${BASE.replace(/^http/, "ws")}/api/v1/kilo/pty/ws`);
+  const wsBase = BASE.replace(/^http/, "ws");
+  const url = new URL(`${wsBase}/api/v1/kilo/pty/ws`);
   url.searchParams.set("ticket", ticket);
-  return new WebSocket(url.toString());
+  
+  const wsUrl = url.toString();
+  console.log("Opening PTY WebSocket:", wsUrl);
+  console.log("BASE URL:", BASE);
+  console.log("WS BASE:", wsBase);
+  
+  const ws = new WebSocket(wsUrl);
+  
+  // Add debug listeners
+  ws.addEventListener("open", () => {
+    console.log("PTY WebSocket OPEN event fired");
+  });
+  
+  ws.addEventListener("error", (e) => {
+    console.error("PTY WebSocket ERROR event:", e);
+  });
+  
+  ws.addEventListener("close", (e) => {
+    console.log("PTY WebSocket CLOSE event:", e.code, e.reason, e.wasClean);
+  });
+  
+  return ws;
 }
 
 export function ptyCreate(ws: WebSocket, workspace: string, command: string) {
+  console.log("ptyCreate:", { workspace, command, readyState: ws.readyState });
   ws.send(JSON.stringify({ type: "create", workspace, command }));
 }
 
