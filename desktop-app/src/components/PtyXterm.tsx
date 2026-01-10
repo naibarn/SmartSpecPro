@@ -21,7 +21,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const isReadyRef = useRef<boolean>(false);
-  const isFittingRef = useRef<boolean>(false);
   const pendingWritesRef = useRef<string[]>([]);
   const lastSizeRef = useRef<{ rows: number; cols: number } | null>(null);
   const initDoneRef = useRef<boolean>(false);
@@ -79,31 +78,9 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
 
     term.open(containerRef.current);
 
-    // Function to safely write to terminal
-    const safeWrite = (data: string) => {
-      if (!termRef.current) {
-        console.warn("Terminal not available, buffering data");
-        pendingWritesRef.current.push(data);
-        return;
-      }
-      
-      if (!isReadyRef.current) {
-        console.log("Terminal not ready, buffering data:", data.length, "chars");
-        pendingWritesRef.current.push(data);
-        return;
-      }
-      
-      try {
-        termRef.current.write(data);
-      } catch (e) {
-        console.error("Error writing to terminal:", e);
-        pendingWritesRef.current.push(data);
-      }
-    };
-
     // Function to flush pending writes
     const flushPendingWrites = () => {
-      if (!isReadyRef.current || !termRef.current) return;
+      if (!termRef.current) return;
       
       const pending = pendingWritesRef.current;
       if (pending.length > 0) {
@@ -119,63 +96,106 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       }
     };
 
-    // Safe fit function that prevents concurrent calls
-    const safeFit = (): boolean => {
-      if (isFittingRef.current) {
-        return false;
+    // Function to safely write to terminal - always try to write
+    const safeWrite = (data: string) => {
+      const t = termRef.current;
+      if (!t) {
+        pendingWritesRef.current.push(data);
+        return;
       }
       
-      if (!fitRef.current || !termRef.current) {
+      // If terminal is ready, write directly
+      if (isReadyRef.current) {
+        try {
+          t.write(data);
+        } catch (e) {
+          console.error("Error writing to terminal:", e);
+          pendingWritesRef.current.push(data);
+        }
+        return;
+      }
+      
+      // Terminal not ready yet, buffer and schedule flush
+      pendingWritesRef.current.push(data);
+      
+      // Try to initialize if not ready
+      if (!isReadyRef.current) {
+        requestAnimationFrame(() => {
+          tryInitialize();
+        });
+      }
+    };
+
+    // Safe fit function
+    const safeFit = (): boolean => {
+      const t = termRef.current;
+      const f = fitRef.current;
+      
+      if (!t || !f) return false;
+      
+      // Check if terminal element has dimensions
+      const el = containerRef.current;
+      if (!el || el.clientWidth === 0 || el.clientHeight === 0) {
         return false;
       }
       
       try {
-        isFittingRef.current = true;
-        fitRef.current.fit();
+        f.fit();
         
-        const newRows = termRef.current.rows;
-        const newCols = termRef.current.cols;
+        const newRows = t.rows;
+        const newCols = t.cols;
         
-        // Only notify if size actually changed
-        const lastSize = lastSizeRef.current;
-        if (!lastSize || lastSize.rows !== newRows || lastSize.cols !== newCols) {
-          lastSizeRef.current = { rows: newRows, cols: newCols };
-          
-          if (onResize && isReadyRef.current) {
-            onResize(newRows, newCols);
+        if (newRows > 0 && newCols > 0) {
+          const lastSize = lastSizeRef.current;
+          if (!lastSize || lastSize.rows !== newRows || lastSize.cols !== newCols) {
+            lastSizeRef.current = { rows: newRows, cols: newCols };
+            if (onResize && isReadyRef.current) {
+              onResize(newRows, newCols);
+            }
           }
+          return true;
         }
-        
-        return true;
-      } catch (e) {
-        console.error("Error fitting terminal:", e);
         return false;
-      } finally {
-        isFittingRef.current = false;
+      } catch (e) {
+        // Ignore fit errors during initialization
+        return false;
       }
     };
 
-    // Initialize terminal with delay
-    const initTerminal = () => {
-      if (isReadyRef.current) return;
+    // Try to initialize terminal
+    const tryInitialize = () => {
+      if (isReadyRef.current) {
+        flushPendingWrites();
+        return;
+      }
       
       const success = safeFit();
       if (success) {
         isReadyRef.current = true;
-        
-        // Focus terminal
+        console.log("Terminal initialized successfully");
         term.focus();
-        
-        // Flush any pending writes after a short delay
-        setTimeout(flushPendingWrites, 50);
-      } else {
-        // Retry
-        setTimeout(initTerminal, 100);
+        flushPendingWrites();
       }
     };
     
-    // Start initialization after DOM is ready
-    setTimeout(initTerminal, 100);
+    // Initialize with multiple retries
+    let initAttempts = 0;
+    const maxAttempts = 20;
+    
+    const initLoop = () => {
+      if (isReadyRef.current || initAttempts >= maxAttempts) return;
+      initAttempts++;
+      
+      requestAnimationFrame(() => {
+        tryInitialize();
+        if (!isReadyRef.current) {
+          setTimeout(initLoop, 50);
+        }
+      });
+    };
+    
+    // Start initialization
+    setTimeout(initLoop, 50);
 
     // Global write function
     window.__ptyWrite = safeWrite;
@@ -187,7 +207,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
 
     // Handle terminal input
     const dataDispos = term.onData((data) => {
-      console.log("Terminal onData:", JSON.stringify(data));
       onData(data);
     });
 
