@@ -409,10 +409,27 @@ export default function KiloPtyPage() {
     ptyInput(ws, data);
   }, []);
 
+  // Debounce resize to prevent too many WebSocket messages
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastResizeRef = useRef<{ rows: number; cols: number } | null>(null);
+  
   const onTermResize = useCallback((rows: number, cols: number) => {
-    const ws = ptyWsRef.current;
-    if (!ws || ws.readyState !== 1) return;
-    ptyResize(ws, rows, cols);
+    // Skip if same size
+    if (lastResizeRef.current && lastResizeRef.current.rows === rows && lastResizeRef.current.cols === cols) {
+      return;
+    }
+    lastResizeRef.current = { rows, cols };
+    
+    // Debounce resize messages
+    if (resizeTimeoutRef.current) {
+      clearTimeout(resizeTimeoutRef.current);
+    }
+    resizeTimeoutRef.current = setTimeout(() => {
+      const ws = ptyWsRef.current;
+      if (!ws || ws.readyState !== 1) return;
+      console.log("Sending resize:", rows, cols);
+      ptyResize(ws, rows, cols);
+    }, 200);
   }, []);
 
   const onKey = useCallback((e: KeyboardEvent) => {

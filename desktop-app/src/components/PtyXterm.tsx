@@ -21,7 +21,10 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const isReadyRef = useRef<boolean>(false);
+  const isFittingRef = useRef<boolean>(false);
   const pendingWritesRef = useRef<string[]>([]);
+  const lastSizeRef = useRef<{ rows: number; cols: number } | null>(null);
+  const initDoneRef = useRef<boolean>(false);
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -30,7 +33,8 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   }));
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || initDoneRef.current) return;
+    initDoneRef.current = true;
 
     const term = new Terminal({
       convertEol: true,
@@ -93,14 +97,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         termRef.current.write(data);
       } catch (e) {
         console.error("Error writing to terminal:", e);
-        // Try again after a short delay
-        setTimeout(() => {
-          try {
-            termRef.current?.write(data);
-          } catch (e2) {
-            console.error("Retry write failed:", e2);
-          }
-        }, 100);
+        pendingWritesRef.current.push(data);
       }
     };
 
@@ -122,37 +119,67 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       }
     };
 
-    // Wait for terminal to be ready before fitting
-    const initFit = () => {
+    // Safe fit function that prevents concurrent calls
+    const safeFit = (): boolean => {
+      if (isFittingRef.current) {
+        return false;
+      }
+      
+      if (!fitRef.current || !termRef.current) {
+        return false;
+      }
+      
       try {
-        fit.fit();
+        isFittingRef.current = true;
+        fitRef.current.fit();
         
-        // Mark as ready after fit completes
-        isReadyRef.current = true;
-        console.log("Terminal is ready, rows:", term.rows, "cols:", term.cols);
+        const newRows = termRef.current.rows;
+        const newCols = termRef.current.cols;
         
-        term.focus();
-        
-        // Flush any pending writes
-        flushPendingWrites();
-        
-        // Notify about initial size
-        if (onResize) {
-          onResize(term.rows, term.cols);
+        // Only notify if size actually changed
+        const lastSize = lastSizeRef.current;
+        if (!lastSize || lastSize.rows !== newRows || lastSize.cols !== newCols) {
+          lastSizeRef.current = { rows: newRows, cols: newCols };
+          console.log("Terminal size:", newRows, "rows x", newCols, "cols");
+          
+          if (onResize && isReadyRef.current) {
+            onResize(newRows, newCols);
+          }
         }
+        
+        return true;
       } catch (e) {
         console.error("Error fitting terminal:", e);
-        // Retry after a short delay
-        setTimeout(initFit, 100);
+        return false;
+      } finally {
+        isFittingRef.current = false;
+      }
+    };
+
+    // Initialize terminal with delay
+    const initTerminal = () => {
+      if (isReadyRef.current) return;
+      
+      const success = safeFit();
+      if (success) {
+        isReadyRef.current = true;
+        console.log("Terminal is ready");
+        
+        // Focus terminal
+        term.focus();
+        
+        // Flush any pending writes after a short delay
+        setTimeout(flushPendingWrites, 50);
+      } else {
+        // Retry
+        setTimeout(initTerminal, 100);
       }
     };
     
-    // Use requestAnimationFrame and setTimeout for better timing
-    requestAnimationFrame(() => {
-      setTimeout(initFit, 50);
-    });
+    // Start initialization after DOM is ready
+    setTimeout(initTerminal, 100);
 
-    // Global write function with safety checks
+    // Global write function
     window.__ptyWrite = safeWrite;
 
     // Global focus function
@@ -160,39 +187,29 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       term.focus();
     };
 
-    // Handle terminal input - this is the key part!
+    // Handle terminal input
     const dataDispos = term.onData((data) => {
       console.log("Terminal onData:", JSON.stringify(data));
       onData(data);
     });
 
-    const resize = () => {
-      if (!isReadyRef.current) return;
-      
-      try {
-        fit.fit();
-        if (onResize) {
-          onResize(term.rows, term.cols);
-        }
-      } catch (e) {
-        console.error("Error resizing terminal:", e);
-      }
-    };
-    
-    // Debounce resize events
-    let resizeTimeout: NodeJS.Timeout | null = null;
-    const debouncedResize = () => {
+    // Debounced resize handler
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+    const handleResize = () => {
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
       }
-      resizeTimeout = setTimeout(resize, 100);
+      resizeTimeout = setTimeout(() => {
+        if (isReadyRef.current) {
+          safeFit();
+        }
+      }, 150);
     };
     
-    window.addEventListener("resize", debouncedResize);
+    window.addEventListener("resize", handleResize);
 
-    // Only handle specific keyboard shortcuts, let terminal handle the rest
+    // Only handle specific keyboard shortcuts
     const keyHandler = (e: KeyboardEvent) => {
-      // Only intercept our custom shortcuts
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "t") {
         onKey(e);
       } else if (e.ctrlKey && e.key.toLowerCase() === "w") {
@@ -201,22 +218,15 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     };
     window.addEventListener("keydown", keyHandler);
 
-    // Handle terminal resize events
-    const termResizeDispos = term.onResize(({ rows, cols }) => {
-      if (onResize) {
-        onResize(rows, cols);
-      }
-    });
-
     return () => {
       isReadyRef.current = false;
-      window.removeEventListener("resize", debouncedResize);
+      initDoneRef.current = false;
+      window.removeEventListener("resize", handleResize);
       window.removeEventListener("keydown", keyHandler);
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
       }
       dataDispos.dispose();
-      termResizeDispos.dispose();
       term.dispose();
       delete window.__ptyWrite;
       delete window.__ptyFocus;
