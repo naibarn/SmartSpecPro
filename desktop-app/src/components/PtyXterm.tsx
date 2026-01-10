@@ -22,7 +22,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   const fitRef = useRef<FitAddon | null>(null);
   const lastSizeRef = useRef<{ rows: number; cols: number } | null>(null);
   const initDoneRef = useRef<boolean>(false);
-  const fitDoneRef = useRef<boolean>(false);
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -34,6 +33,10 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     if (!containerRef.current || initDoneRef.current) return;
     initDoneRef.current = true;
 
+    console.log("PtyXterm: Initializing terminal...");
+    console.log("PtyXterm: Container dimensions:", containerRef.current.clientWidth, containerRef.current.clientHeight);
+
+    // Create terminal with explicit initial dimensions
     const term = new Terminal({
       convertEol: true,
       cursorBlink: true,
@@ -44,6 +47,8 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       scrollback: 10000,
       allowProposedApi: true,
       disableStdin: false,
+      cols: 80,  // Initial columns
+      rows: 24,  // Initial rows
       theme: {
         background: "#0b0f14",
         foreground: "#d1d5db",
@@ -75,24 +80,57 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     termRef.current = term;
     fitRef.current = fit;
 
-    // Open terminal immediately
+    // Open terminal
     term.open(containerRef.current);
-    
-    // Terminal is ready to write immediately after open()
-    // fit() is only needed for proper sizing, not for writing
+    console.log("PtyXterm: Terminal opened");
 
-    // Safe fit function - only for sizing
+    // Write function - write directly to terminal
+    const writeToTerminal = (data: string) => {
+      console.log("PtyXterm: writeToTerminal called with", data.length, "chars");
+      try {
+        term.write(data);
+        // Force refresh after write
+        term.refresh(0, term.rows - 1);
+      } catch (e) {
+        console.error("PtyXterm: Error writing to terminal:", e);
+      }
+    };
+
+    // Global write function - set immediately after open
+    window.__ptyWrite = writeToTerminal;
+    console.log("PtyXterm: __ptyWrite registered");
+
+    // Global focus function
+    window.__ptyFocus = () => {
+      term.focus();
+    };
+
+    // Handle terminal input - send to backend
+    const dataDispos = term.onData((data) => {
+      console.log("PtyXterm: User input:", JSON.stringify(data));
+      onData(data);
+    });
+
+    // Safe fit function with proper error handling
     const safeFit = () => {
-      if (fitDoneRef.current) return;
-      
       const el = containerRef.current;
-      if (!el || el.clientWidth === 0 || el.clientHeight === 0) {
-        return;
+      if (!el) return false;
+      
+      // Wait for container to have dimensions
+      if (el.clientWidth === 0 || el.clientHeight === 0) {
+        console.log("PtyXterm: Container has no dimensions yet");
+        return false;
       }
       
       try {
+        // Check if terminal core is ready
+        if (!term.element) {
+          console.log("PtyXterm: Terminal element not ready");
+          return false;
+        }
+        
         fit.fit();
-        fitDoneRef.current = true;
+        console.log("PtyXterm: Fit successful, rows:", term.rows, "cols:", term.cols);
         
         const newRows = term.rows;
         const newCols = term.cols;
@@ -106,48 +144,41 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
             }
           }
         }
+        
+        // Refresh terminal display after fit
+        term.refresh(0, term.rows - 1);
+        return true;
       } catch (e) {
-        // Ignore fit errors - terminal still works without proper sizing
+        console.log("PtyXterm: Fit error (will retry):", e);
+        return false;
       }
     };
 
-    // Write function - write directly to terminal
-    const writeToTerminal = (data: string) => {
-      try {
-        term.write(data);
-      } catch (e) {
-        console.error("Error writing to terminal:", e);
-      }
-    };
-
-    // Global write function
-    window.__ptyWrite = writeToTerminal;
-
-    // Global focus function
-    window.__ptyFocus = () => {
-      term.focus();
-    };
-
-    // Handle terminal input
-    const dataDispos = term.onData((data) => {
-      onData(data);
-    });
-
-    // Delayed fit - try multiple times
+    // Delayed fit with retries
     let fitAttempts = 0;
+    const maxFitAttempts = 20;
+    let fitSuccess = false;
+    
     const tryFit = () => {
-      if (fitDoneRef.current || fitAttempts >= 10) return;
+      if (fitSuccess || fitAttempts >= maxFitAttempts) return;
       fitAttempts++;
-      safeFit();
-      if (!fitDoneRef.current) {
-        setTimeout(tryFit, 100);
+      
+      if (safeFit()) {
+        fitSuccess = true;
+        console.log("PtyXterm: Fit completed after", fitAttempts, "attempts");
+      } else {
+        // Retry with increasing delay
+        setTimeout(tryFit, 50 + fitAttempts * 20);
       }
     };
     
-    // Start fit attempts after a delay
+    // Start fit attempts after a short delay
+    setTimeout(tryFit, 100);
+    
+    // Focus terminal
     setTimeout(() => {
-      tryFit();
       term.focus();
+      console.log("PtyXterm: Terminal focused");
     }, 200);
 
     // Debounced resize handler
@@ -157,8 +188,9 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         clearTimeout(resizeTimeout);
       }
       resizeTimeout = setTimeout(() => {
-        fitDoneRef.current = false; // Allow re-fit
-        safeFit();
+        fitSuccess = false;
+        fitAttempts = 0;
+        tryFit();
       }, 150);
     };
     
@@ -175,8 +207,8 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     window.addEventListener("keydown", keyHandler);
 
     return () => {
+      console.log("PtyXterm: Cleanup");
       initDoneRef.current = false;
-      fitDoneRef.current = false;
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("keydown", keyHandler);
       if (resizeTimeout) {
