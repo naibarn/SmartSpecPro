@@ -4,16 +4,23 @@ import os
 import time
 import uuid
 import shutil
+import select
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Tuple, Any
+from typing import Dict, Optional, List, Tuple, Any, Callable, Set
 
 import subprocess
 
 IS_WINDOWS = os.name == "nt"
 try:
     import pty  # POSIX only
+    import fcntl
+    import struct
+    import termios
 except Exception:
     pty = None  # type: ignore
+    fcntl = None
+    struct = None
+    termios = None
 
 
 @dataclass
@@ -35,6 +42,9 @@ class PtySession:
     media_seq: int = 0
     media_buffer: List[Tuple[int, Dict[str, Any]]] = field(default_factory=list)
     media_buffer_max: int = 2000
+    
+    # Subscribers for real-time output
+    subscribers: Set[Callable[[int, str], None]] = field(default_factory=set)
 
 
 class PtyManager:
@@ -62,11 +72,6 @@ class PtyManager:
     def _build_command(self, command: str) -> List[str]:
         """
         Build command arguments based on the command type.
-        
-        Supports:
-        - Empty command: Open interactive shell
-        - Shell commands: Execute via shell
-        - Workflow files (*.md): Execute via ss_autopilot if available
         """
         shell = self._get_shell()
         
@@ -74,13 +79,13 @@ class PtyManager:
         if not command or command.strip() == "":
             if IS_WINDOWS:
                 return [shell]
-            return [shell, "-i"]
+            # Use login shell for better environment
+            return [shell, "-l"]
         
         command = command.strip()
         
         # Check if it's a workflow file (for ss_autopilot)
         if command.endswith(".md"):
-            # Check if ss_autopilot is available
             try:
                 result = subprocess.run(
                     ["python", "-c", "import ss_autopilot"],
@@ -91,7 +96,6 @@ class PtyManager:
                     return ["python", "-m", "ss_autopilot.cli_enhanced", command]
             except Exception:
                 pass
-            # Fallback: just cat the file
             return [shell, "-c", f"cat {command}"]
         
         # Regular shell command
@@ -99,23 +103,20 @@ class PtyManager:
             return [shell, "/c", command]
         return [shell, "-c", command]
 
+    def _set_nonblocking(self, fd: int):
+        """Set file descriptor to non-blocking mode"""
+        if fcntl is None:
+            return
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
     async def create(self, workspace: str, command: str) -> PtySession:
-        """
-        Create a new PTY session.
-        
-        Args:
-            workspace: Working directory for the session
-            command: Command to execute (empty for interactive shell)
-        
-        Returns:
-            PtySession object
-        """
+        """Create a new PTY session."""
         sid = uuid.uuid4().hex
         sess = PtySession(session_id=sid, workspace=workspace, command=command)
 
         # Validate workspace
         if workspace and not os.path.isdir(workspace):
-            # Create workspace if it doesn't exist
             try:
                 os.makedirs(workspace, exist_ok=True)
             except Exception:
@@ -129,20 +130,22 @@ class PtyManager:
         env["CI"] = "0"
         env["TERM"] = "xterm-256color"
         env["COLORTERM"] = "truecolor"
+        env["LANG"] = env.get("LANG", "en_US.UTF-8")
+        env["LC_ALL"] = env.get("LC_ALL", "en_US.UTF-8")
+        # Force color output
+        env["CLICOLOR"] = "1"
+        env["CLICOLOR_FORCE"] = "1"
 
         if (not IS_WINDOWS) and pty is not None:
             master_fd, slave_fd = pty.openpty()
             
             # Set terminal size
-            try:
-                import fcntl
-                import struct
-                import termios
-                # Default size: 24 rows, 80 cols
-                winsize = struct.pack("HHHH", 24, 80, 0, 0)
-                fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
-            except Exception:
-                pass
+            if termios and struct and fcntl:
+                try:
+                    winsize = struct.pack("HHHH", 30, 120, 0, 0)
+                    fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
+                except Exception:
+                    pass
             
             proc = subprocess.Popen(
                 argv,
@@ -152,8 +155,13 @@ class PtyManager:
                 stdout=slave_fd,
                 stderr=slave_fd,
                 close_fds=True,
+                start_new_session=True,
             )
             os.close(slave_fd)
+            
+            # Set master to non-blocking
+            self._set_nonblocking(master_fd)
+            
             sess.master_fd = master_fd
             sess.proc = proc
         else:
@@ -166,14 +174,14 @@ class PtyManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                bufsize=1,
-                universal_newlines=True,
+                bufsize=0,
             )
             sess.proc = proc
 
         async with self._lock:
             self._sessions[sid] = sess
 
+        # Start reader loop
         asyncio.create_task(self._reader_loop(sid))
         return sess
 
@@ -227,7 +235,8 @@ class PtyManager:
             try:
                 os.write(s.master_fd, data.encode("utf-8"))
                 return True
-            except Exception:
+            except Exception as e:
+                print(f"PTY write error: {e}")
                 return False
         if s.proc.stdin is None:
             return False
@@ -244,13 +253,10 @@ class PtyManager:
         if not s or s.master_fd is None:
             return False
         
-        if IS_WINDOWS:
+        if IS_WINDOWS or termios is None or struct is None or fcntl is None:
             return False
         
         try:
-            import fcntl
-            import struct
-            import termios
             winsize = struct.pack("HHHH", rows, cols, 0, 0)
             fcntl.ioctl(s.master_fd, termios.TIOCSWINSZ, winsize)
             return True
@@ -266,6 +272,20 @@ class PtyManager:
             return True
         except Exception:
             return False
+
+    def subscribe(self, sid: str, callback: Callable[[int, str], None]) -> bool:
+        """Subscribe to real-time output from a session"""
+        if sid not in self._sessions:
+            return False
+        self._sessions[sid].subscribers.add(callback)
+        return True
+
+    def unsubscribe(self, sid: str, callback: Callable[[int, str], None]) -> bool:
+        """Unsubscribe from session output"""
+        if sid not in self._sessions:
+            return False
+        self._sessions[sid].subscribers.discard(callback)
+        return True
 
     async def append_media_event(self, sid: str, event: Dict[str, Any]) -> Optional[int]:
         s = await self.get(sid)
@@ -295,7 +315,6 @@ class PtyManager:
             if sid in self._sessions:
                 s = self._sessions[sid]
                 if s.status in ("completed", "failed", "cancelled", "killed"):
-                    # Close master_fd if open
                     if s.master_fd is not None:
                         try:
                             os.close(s.master_fd)
@@ -305,34 +324,69 @@ class PtyManager:
                     return True
         return False
 
+    def _notify_subscribers(self, s: PtySession, seq: int, data: str):
+        """Notify all subscribers of new output"""
+        for callback in list(s.subscribers):
+            try:
+                callback(seq, data)
+            except Exception:
+                s.subscribers.discard(callback)
+
     async def _reader_loop(self, sid: str):
+        """Read output from PTY and buffer it"""
         s = await self.get(sid)
         if not s or not s.proc:
             return
 
         if (not IS_WINDOWS) and s.master_fd is not None:
             loop = asyncio.get_event_loop()
-            while True:
-                await asyncio.sleep(0)
-                try:
-                    chunk = await loop.run_in_executor(None, os.read, s.master_fd, 4096)
-                except Exception:
-                    chunk = b""
-                if not chunk:
+            
+            while s.status == "running":
+                # Check if process is still running
+                if s.proc.poll() is not None:
                     break
-                text = chunk.decode("utf-8", errors="ignore")
-                s.seq += 1
-                s.buffer.append((s.seq, text))
-                if len(s.buffer) > s.buffer_max:
-                    s.buffer = s.buffer[-s.buffer_max:]
-            s.proc.wait()
+                
+                try:
+                    # Use select to check if data is available
+                    readable, _, _ = select.select([s.master_fd], [], [], 0.1)
+                    
+                    if readable:
+                        try:
+                            chunk = os.read(s.master_fd, 4096)
+                            if chunk:
+                                text = chunk.decode("utf-8", errors="replace")
+                                s.seq += 1
+                                s.buffer.append((s.seq, text))
+                                if len(s.buffer) > s.buffer_max:
+                                    s.buffer = s.buffer[-s.buffer_max:]
+                                # Notify subscribers
+                                self._notify_subscribers(s, s.seq, text)
+                        except OSError as e:
+                            if e.errno == 5:  # Input/output error - PTY closed
+                                break
+                            raise
+                    else:
+                        # No data available, yield to other tasks
+                        await asyncio.sleep(0.05)
+                        
+                except Exception as e:
+                    print(f"PTY reader error: {e}")
+                    break
+            
+            # Wait for process to finish
+            try:
+                s.proc.wait(timeout=1)
+            except Exception:
+                pass
         else:
-            assert s.proc.stdout is not None
-            for line in s.proc.stdout:
-                s.seq += 1
-                s.buffer.append((s.seq, line))
-                if len(s.buffer) > s.buffer_max:
-                    s.buffer = s.buffer[-s.buffer_max:]
+            # Windows/fallback - line-based reading
+            if s.proc.stdout:
+                for line in s.proc.stdout:
+                    s.seq += 1
+                    s.buffer.append((s.seq, line))
+                    if len(s.buffer) > s.buffer_max:
+                        s.buffer = s.buffer[-s.buffer_max:]
+                    self._notify_subscribers(s, s.seq, line)
             s.proc.wait()
 
         s.returncode = s.proc.returncode

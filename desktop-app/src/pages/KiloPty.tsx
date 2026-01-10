@@ -3,7 +3,7 @@ import PtyXterm from "../components/PtyXterm";
 import MediaGallery from "../components/MediaGallery";
 import { openPtyWs, ptyAttach, ptyCreate, ptyInput, ptySignal, ptyKill, ptyResize, PtyMessage, ptyPoll } from "../services/pty";
 import { createWsTicket } from "../services/wsTicket";
-import { loadProxyToken, getProxyTokenHint, setProxyToken, getProxyToken } from "../services/authStore";
+import { loadProxyToken, getProxyTokenHint, setProxyToken } from "../services/authStore";
 import { openMediaWs, mediaAttach, mediaEmit, MediaMessage, MediaEvent } from "../services/mediaChannel";
 import { kiloListWorkflows } from "../services/kiloCli";
 
@@ -35,6 +35,8 @@ export default function KiloPtyPage() {
   const ptyWsRef = useRef<WebSocket | null>(null);
   const mediaWsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const terminalRef = useRef<{ focus: () => void } | null>(null);
 
   const activeTab = useMemo(() => tabs.find(t => t.id === active), [tabs, active]);
 
@@ -109,6 +111,29 @@ export default function KiloPtyPage() {
 
   useEffect(() => { refreshWorkflows(); }, [refreshWorkflows]);
 
+  // Start polling when we have an active session
+  useEffect(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
+    if (active && connectionStatus === "connected") {
+      pollIntervalRef.current = setInterval(() => {
+        const ws = ptyWsRef.current;
+        if (ws && ws.readyState === 1) {
+          ptyPoll(ws);
+        }
+      }, 200); // Poll every 200ms
+    }
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [active, connectionStatus]);
+
   const connectWebSockets = useCallback(async () => {
     setConnectionStatus("connecting");
     setErrorMessage("");
@@ -160,19 +185,28 @@ export default function KiloPtyPage() {
           setTabs(prev => [{ id: sid, title: sid.slice(0, 6), command, status: "running", seq: 0, mediaSeq: 0, media: [] }, ...prev]);
           setActive(sid);
           if (mws && mws.readyState === 1) mediaAttach(mws, sid, 0);
+          // Focus terminal after creation
+          setTimeout(() => {
+            window.__ptyWrite?.("\r\n");  // Send a newline to trigger prompt
+          }, 300);
           return;
         }
 
         if (msg.type === "error") {
+          console.error("PTY error:", msg.message);
           setErrorMessage(msg.message);
           return;
         }
 
         if (msg.type === "stdout") {
+          // Write to terminal
           window.__ptyWrite?.(msg.data);
+          // Update seq for the active tab
           setTabs(prev => prev.map(t => t.id === active ? { ...t, seq: msg.seq } : t));
         } else if (msg.type === "status") {
           setTabs(prev => prev.map(t => t.id === active ? { ...t, status: msg.status, seq: msg.seq } : t));
+        } else if (msg.type === "ack") {
+          // Acknowledgment received
         }
       };
 
@@ -195,6 +229,9 @@ export default function KiloPtyPage() {
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
       }
       try {
         if (ptyWsRef.current) ptyWsRef.current.close();
@@ -241,7 +278,11 @@ export default function KiloPtyPage() {
 
   const onTermData = useCallback((data: string) => {
     const ws = ptyWsRef.current;
-    if (!ws || ws.readyState !== 1) return;
+    if (!ws || ws.readyState !== 1) {
+      console.log("Cannot send data: WebSocket not connected");
+      return;
+    }
+    console.log("Sending input:", JSON.stringify(data));
     ptyInput(ws, data);
   }, []);
 
@@ -252,25 +293,25 @@ export default function KiloPtyPage() {
   }, []);
 
   const onKey = useCallback((e: KeyboardEvent) => {
+    // Don't handle keys if terminal should handle them
+    // Only handle specific shortcuts
     const ws = ptyWsRef.current;
     if (!ws || ws.readyState !== 1) return;
     if (!activeTab) return;
 
-    if (e.ctrlKey && e.key.toLowerCase() === "c") {
-      e.preventDefault();
-      ptySignal(ws, "SIGINT");
-      return;
-    }
+    // Ctrl+Shift+T for new tab
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
       createSession();
       return;
     }
+    // Ctrl+W for close tab
     if (e.ctrlKey && e.key.toLowerCase() === "w") {
       e.preventDefault();
       closeTab(activeTab.id);
       return;
     }
+    // Don't intercept Ctrl+C - let xterm handle it
   }, [activeTab, createSession, closeTab]);
 
   const insertMedia = async (kind: "image" | "video") => {
@@ -397,8 +438,8 @@ export default function KiloPtyPage() {
           </div>
           <div style={{ fontSize: 11, opacity: 0.7 }}>
             💡 <strong>Interactive Shell:</strong> เว้นว่าง Command แล้วกด New Tab เพื่อเปิด shell แบบ interactive<br/>
-            ⌨️ <strong>พิมพ์คำสั่ง:</strong> พิมพ์ในหน้าต่าง Terminal ด้านล่างได้โดยตรง (เช่น <code>ls -la</code>, <code>cd /path</code>)<br/>
-            🔧 <strong>Shortcuts:</strong> Ctrl+C (interrupt), Ctrl+Shift+T (new tab), Ctrl+W (close tab)
+            ⌨️ <strong>พิมพ์คำสั่ง:</strong> คลิกที่หน้าต่าง Terminal สีดำด้านล่าง แล้วพิมพ์คำสั่งได้เลย (เช่น <code>ls -la</code>, <code>cd /path</code>)<br/>
+            🔧 <strong>Shortcuts:</strong> Ctrl+Shift+T (new tab), Ctrl+W (close tab)
           </div>
         </div>
       </div>
@@ -598,7 +639,8 @@ export default function KiloPtyPage() {
                   <>
                     <strong>Session:</strong> <span style={{ fontFamily: "monospace" }}>{activeTab.id}</span> |{" "}
                     <strong>Status:</strong> <span style={{ color: getTabStatusColor(activeTab.status) }}>{activeTab.status}</span> |{" "}
-                    <strong>Command:</strong> {activeTab.command || "(interactive shell)"}
+                    <strong>Command:</strong> {activeTab.command || "(interactive shell)"} |{" "}
+                    <strong>Tip:</strong> คลิกที่หน้าต่างสีดำด้านบนเพื่อพิมพ์คำสั่ง
                   </>
                 ) : (
                   <span style={{ opacity: 0.6 }}>Select a tab to view session details</span>

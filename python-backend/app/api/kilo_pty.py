@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 import os
 import signal
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Request, Depends
-from typing import Optional
+import asyncio
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Request
+from typing import Optional, List, Tuple
 
 from app.core.config import settings
 from app.core.ws_tickets import consume_ws_ticket
 from app.core.legacy_key import reject_legacy_key_http, reject_legacy_key_ws
 from app.kilo.pty_manager import PTY_MANAGER
-from app.orchestrator.sandbox import validate_workspace
 
 
 router = APIRouter(prefix="/api/v1/kilo", tags=["kilo-pty"])
@@ -89,10 +89,68 @@ async def pty_ws(ws: WebSocket):
         return
     await ws.accept()
 
-    session_id: str | None = None
+    session_id: Optional[str] = None
     last_seq = 0
+    output_queue: asyncio.Queue[Tuple[int, str]] = asyncio.Queue()
+    poll_task: Optional[asyncio.Task] = None
+
+    async def output_callback(seq: int, data: str):
+        """Callback for real-time output"""
+        await output_queue.put((seq, data))
+
+    async def send_output():
+        """Send queued output to client"""
+        while True:
+            try:
+                seq, data = await asyncio.wait_for(output_queue.get(), timeout=0.1)
+                await ws.send_text(json.dumps({"type": "stdout", "seq": seq, "data": data}))
+            except asyncio.TimeoutError:
+                pass
+            except Exception:
+                break
+
+    async def poll_loop():
+        """Periodically poll for new output and status"""
+        nonlocal last_seq
+        while True:
+            try:
+                await asyncio.sleep(0.1)  # Poll every 100ms
+                if not session_id:
+                    continue
+                
+                s = await PTY_MANAGER.get(session_id)
+                if not s:
+                    continue
+                
+                # Get new output since last_seq
+                rows = await PTY_MANAGER.buffer_since(session_id, last_seq)
+                for seq, data in rows:
+                    if seq > last_seq:
+                        last_seq = seq
+                        try:
+                            await ws.send_text(json.dumps({"type": "stdout", "seq": seq, "data": data}))
+                        except Exception:
+                            return
+                
+                # Send status update
+                try:
+                    await ws.send_text(json.dumps({
+                        "type": "status",
+                        "status": s.status,
+                        "returncode": s.returncode,
+                        "seq": s.seq
+                    }))
+                except Exception:
+                    return
+                    
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"Poll loop error: {e}")
+                await asyncio.sleep(0.5)
 
     async def send_buffered():
+        """Send all buffered output since last_seq"""
         nonlocal last_seq
         if not session_id:
             return
@@ -102,7 +160,15 @@ async def pty_ws(ws: WebSocket):
             await ws.send_text(json.dumps({"type": "stdout", "seq": seq, "data": data}))
         s = await PTY_MANAGER.get(session_id)
         if s:
-            await ws.send_text(json.dumps({"type": "status", "status": s.status, "returncode": s.returncode, "seq": s.seq}))
+            await ws.send_text(json.dumps({
+                "type": "status",
+                "status": s.status,
+                "returncode": s.returncode,
+                "seq": s.seq
+            }))
+
+    # Start polling task
+    poll_task = asyncio.create_task(poll_loop())
 
     try:
         while True:
@@ -114,9 +180,10 @@ async def pty_ws(ws: WebSocket):
                 workspace = str(msg.get("workspace") or "")
                 command = str(msg.get("command") or "")
                 
-                # Validate workspace if WORKSPACE_ROOT is set
+                # Validate workspace
                 if WORKSPACE_ROOT and workspace:
                     try:
+                        from app.orchestrator.sandbox import validate_workspace
                         validate_workspace(WORKSPACE_ROOT, workspace)
                     except Exception as e:
                         await ws.send_text(json.dumps({"type": "error", "message": f"Invalid workspace: {str(e)}"}))
@@ -129,15 +196,18 @@ async def pty_ws(ws: WebSocket):
                 sess = await PTY_MANAGER.create(workspace=workspace, command=command)
                 session_id = sess.session_id
                 last_seq = 0
+                
                 await ws.send_text(json.dumps({"type": "created", "sessionId": session_id}))
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
+                
+                # Small delay to let shell initialize
+                await asyncio.sleep(0.2)
                 await send_buffered()
 
             elif t == "attach":
                 session_id = str(msg.get("sessionId") or "")
                 last_seq = int(msg.get("from") or 0)
                 
-                # Check if session exists
                 sess = await PTY_MANAGER.get(session_id)
                 if not sess:
                     await ws.send_text(json.dumps({"type": "error", "message": "Session not found"}))
@@ -156,6 +226,8 @@ async def pty_ws(ws: WebSocket):
                     await ws.send_text(json.dumps({"type": "error", "message": "write_failed"}))
                     continue
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
+                # Small delay to let shell process input
+                await asyncio.sleep(0.05)
                 await send_buffered()
 
             elif t == "resize":
@@ -175,6 +247,7 @@ async def pty_ws(ws: WebSocket):
                 sig = _sig_from_name(name)
                 await PTY_MANAGER.send_signal(session_id, sig)
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
+                await asyncio.sleep(0.1)
                 await send_buffered()
 
             elif t == "cancel":
@@ -196,10 +269,17 @@ async def pty_ws(ws: WebSocket):
                 await ws.send_text(json.dumps({"type": "error", "message": f"unknown_type:{t}"}))
 
     except WebSocketDisconnect:
-        return
+        pass
     except Exception as e:
         try:
             await ws.send_text(json.dumps({"type": "error", "message": str(e)}))
         except Exception:
             pass
-        return
+    finally:
+        # Cleanup
+        if poll_task:
+            poll_task.cancel()
+            try:
+                await poll_task
+            except asyncio.CancelledError:
+                pass

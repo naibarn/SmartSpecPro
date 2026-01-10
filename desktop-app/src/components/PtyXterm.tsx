@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { Terminal } from "xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "xterm/css/xterm.css";
@@ -12,16 +12,23 @@ type Props = {
 declare global {
   interface Window {
     __ptyWrite?: (data: string) => void;
+    __ptyFocus?: () => void;
   }
 }
 
-export default function PtyXterm({ onData, onKey, onResize }: Props) {
-  const ref = useRef<HTMLDivElement | null>(null);
+const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onResize }, ref) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
 
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      termRef.current?.focus();
+    }
+  }));
+
   useEffect(() => {
-    if (!ref.current) return;
+    if (!containerRef.current) return;
 
     const term = new Terminal({
       convertEol: true,
@@ -32,6 +39,7 @@ export default function PtyXterm({ onData, onKey, onResize }: Props) {
       lineHeight: 1.2,
       scrollback: 10000,
       allowProposedApi: true,
+      disableStdin: false,
       theme: {
         background: "#0b0f14",
         foreground: "#d1d5db",
@@ -63,7 +71,7 @@ export default function PtyXterm({ onData, onKey, onResize }: Props) {
     termRef.current = term;
     fitRef.current = fit;
 
-    term.open(ref.current);
+    term.open(containerRef.current);
 
     // Wait for terminal to be ready before fitting
     const initFit = () => {
@@ -83,9 +91,21 @@ export default function PtyXterm({ onData, onKey, onResize }: Props) {
     // Use requestAnimationFrame for better timing
     requestAnimationFrame(initFit);
 
-    window.__ptyWrite = (data: string) => term.write(data);
+    // Global write function
+    window.__ptyWrite = (data: string) => {
+      term.write(data);
+    };
 
-    const dispos = term.onData(onData);
+    // Global focus function
+    window.__ptyFocus = () => {
+      term.focus();
+    };
+
+    // Handle terminal input - this is the key part!
+    const dataDispos = term.onData((data) => {
+      console.log("Terminal onData:", JSON.stringify(data));
+      onData(data);
+    });
 
     const resize = () => {
       try {
@@ -109,7 +129,15 @@ export default function PtyXterm({ onData, onKey, onResize }: Props) {
     
     window.addEventListener("resize", debouncedResize);
 
-    const keyHandler = (e: KeyboardEvent) => onKey(e);
+    // Only handle specific keyboard shortcuts, let terminal handle the rest
+    const keyHandler = (e: KeyboardEvent) => {
+      // Only intercept our custom shortcuts
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "t") {
+        onKey(e);
+      } else if (e.ctrlKey && e.key.toLowerCase() === "w") {
+        onKey(e);
+      }
+    };
     window.addEventListener("keydown", keyHandler);
 
     // Handle terminal resize events
@@ -125,25 +153,36 @@ export default function PtyXterm({ onData, onKey, onResize }: Props) {
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
       }
-      dispos.dispose();
+      dataDispos.dispose();
       termResizeDispos.dispose();
       term.dispose();
       delete window.__ptyWrite;
+      delete window.__ptyFocus;
     };
   }, [onData, onKey, onResize]);
 
+  const handleClick = () => {
+    termRef.current?.focus();
+  };
+
   return (
     <div
-      ref={ref}
+      ref={containerRef}
+      onClick={handleClick}
       style={{
         height: "60vh",
         minHeight: 400,
         borderRadius: 12,
         overflow: "hidden",
         backgroundColor: "#0b0f14",
-        border: "1px solid #374151",
-        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+        border: "2px solid #374151",
+        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        cursor: "text"
       }}
     />
   );
-}
+});
+
+PtyXterm.displayName = "PtyXterm";
+
+export default PtyXterm;
