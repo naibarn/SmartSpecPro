@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 import os
 import signal
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Request, Depends
+from typing import Optional
 
 from app.core.config import settings
 from app.core.ws_tickets import consume_ws_ticket
-from app.core.legacy_key import reject_legacy_key_ws
+from app.core.legacy_key import reject_legacy_key_http, reject_legacy_key_ws
 from app.kilo.pty_manager import PTY_MANAGER
 from app.orchestrator.sandbox import validate_workspace
 
@@ -19,6 +20,14 @@ WORKSPACE_ROOT = os.getenv("WORKSPACE_ROOT", "")
 
 def _is_localhost(host: str) -> bool:
     return host in ("127.0.0.1", "::1", "localhost")
+
+
+def _require_localhost(req: Request):
+    """Check if request is from localhost (if required)"""
+    if getattr(settings, "SMARTSPEC_LOCALHOST_ONLY", False):
+        host = (req.client.host if req.client else "") or ""
+        if not _is_localhost(host):
+            raise HTTPException(status_code=403, detail="Forbidden (localhost only)")
 
 
 async def _preflight(ws: WebSocket, channel: str):
@@ -52,6 +61,28 @@ def _sig_from_name(name: str) -> int:
     return signal.SIGINT
 
 
+@router.get("/pty/sessions")
+async def list_pty_sessions(req: Request):
+    """List all active PTY sessions"""
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    
+    sessions = await PTY_MANAGER.list_sessions()
+    return {"sessions": sessions}
+
+
+@router.delete("/pty/sessions/{session_id}")
+async def cleanup_pty_session(session_id: str, req: Request):
+    """Cleanup a completed PTY session"""
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    
+    success = await PTY_MANAGER.cleanup_session(session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found or still running")
+    return {"ok": True, "message": "Session cleaned up"}
+
+
 @router.websocket("/pty/ws")
 async def pty_ws(ws: WebSocket):
     if not await _preflight(ws, "pty"):
@@ -82,7 +113,19 @@ async def pty_ws(ws: WebSocket):
             if t == "create":
                 workspace = str(msg.get("workspace") or "")
                 command = str(msg.get("command") or "")
-                validate_workspace(WORKSPACE_ROOT, workspace)
+                
+                # Validate workspace if WORKSPACE_ROOT is set
+                if WORKSPACE_ROOT and workspace:
+                    try:
+                        validate_workspace(WORKSPACE_ROOT, workspace)
+                    except Exception as e:
+                        await ws.send_text(json.dumps({"type": "error", "message": f"Invalid workspace: {str(e)}"}))
+                        continue
+                
+                # Use home directory if no workspace specified
+                if not workspace:
+                    workspace = os.path.expanduser("~")
+                
                 sess = await PTY_MANAGER.create(workspace=workspace, command=command)
                 session_id = sess.session_id
                 last_seq = 0
@@ -93,6 +136,13 @@ async def pty_ws(ws: WebSocket):
             elif t == "attach":
                 session_id = str(msg.get("sessionId") or "")
                 last_seq = int(msg.get("from") or 0)
+                
+                # Check if session exists
+                sess = await PTY_MANAGER.get(session_id)
+                if not sess:
+                    await ws.send_text(json.dumps({"type": "error", "message": "Session not found"}))
+                    continue
+                
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
                 await send_buffered()
 
@@ -101,9 +151,21 @@ async def pty_ws(ws: WebSocket):
                     await ws.send_text(json.dumps({"type": "error", "message": "no_session"}))
                     continue
                 data = str(msg.get("data") or "")
-                await PTY_MANAGER.write(session_id, data)
+                success = await PTY_MANAGER.write(session_id, data)
+                if not success:
+                    await ws.send_text(json.dumps({"type": "error", "message": "write_failed"}))
+                    continue
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
                 await send_buffered()
+
+            elif t == "resize":
+                if not session_id:
+                    await ws.send_text(json.dumps({"type": "error", "message": "no_session"}))
+                    continue
+                rows = int(msg.get("rows") or 24)
+                cols = int(msg.get("cols") or 80)
+                success = await PTY_MANAGER.resize(session_id, rows, cols)
+                await ws.send_text(json.dumps({"type": "ack", "ok": success}))
 
             elif t == "signal":
                 if not session_id:
@@ -118,6 +180,12 @@ async def pty_ws(ws: WebSocket):
             elif t == "cancel":
                 if session_id:
                     await PTY_MANAGER.cancel(session_id)
+                await ws.send_text(json.dumps({"type": "ack", "ok": True}))
+                await send_buffered()
+
+            elif t == "kill":
+                if session_id:
+                    await PTY_MANAGER.kill(session_id)
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
                 await send_buffered()
 

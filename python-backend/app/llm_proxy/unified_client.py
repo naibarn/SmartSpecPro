@@ -605,20 +605,62 @@ class UnifiedLLMClient:
             ]
     
     def _convert_to_llm_response(self, response: Any) -> LLMResponse:
-        """Convert provider response to LLMResponse"""
+        """Convert provider response to LLMResponse
+        
+        OpenRouter returns cost in 'credits' where 1 credit = $0.000001 USD
+        We convert this to USD for credit deduction.
+        """
 
-        # OpenAI-compatible response
+        # OpenAI-compatible response (OpenRouter, OpenAI, KiloCode, etc.)
         if hasattr(response, 'choices') and hasattr(response, 'model'):
             tokens_used = None
+            cost = None
+            prompt_tokens = None
+            completion_tokens = None
+            
             if hasattr(response, 'usage') and response.usage:
                 tokens_used = response.usage.total_tokens
+                prompt_tokens = getattr(response.usage, 'prompt_tokens', None)
+                completion_tokens = getattr(response.usage, 'completion_tokens', None)
+                
+                # OpenRouter returns cost in credits (1 credit = $0.000001 USD)
+                # The cost field is in credits, so we convert to USD
+                openrouter_cost = getattr(response.usage, 'cost', None)
+                if openrouter_cost is not None:
+                    # Convert OpenRouter credits to USD
+                    # OpenRouter cost is in credits where 1 credit = $0.000001
+                    cost = float(openrouter_cost) * 0.000001
+                    logger.info(
+                        "openrouter_cost_extracted",
+                        cost_credits=openrouter_cost,
+                        cost_usd=cost,
+                        tokens_used=tokens_used
+                    )
+            
+            # If no cost from OpenRouter, estimate based on model pricing
+            if cost is None and prompt_tokens and completion_tokens:
+                model_name = response.model
+                estimated_cost = self.estimate_cost(model_name, prompt_tokens, completion_tokens)
+                cost = float(estimated_cost)
+                logger.info(
+                    "cost_estimated_from_tokens",
+                    model=model_name,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    cost_usd=cost
+                )
+            
+            # Extract provider from model string if possible
+            provider = "openrouter"
+            if hasattr(response, 'model') and "/" in response.model:
+                provider = response.model.split("/")[0]
 
             return LLMResponse(
                 content=response.choices[0].message.content,
                 model=response.model,
-                provider="openrouter",  # or extract from model
+                provider=provider,
                 tokens_used=tokens_used,
-                cost=None,  # Will be calculated later if needed
+                cost=cost,
                 latency_ms=None,
                 finish_reason=response.choices[0].finish_reason
             )
@@ -626,15 +668,23 @@ class UnifiedLLMClient:
         # Anthropic response
         elif hasattr(response, 'content') and hasattr(response, 'model'):
             tokens_used = None
+            cost = None
+            
             if hasattr(response, 'usage'):
-                tokens_used = response.usage.input_tokens + response.usage.output_tokens
+                input_tokens = response.usage.input_tokens
+                output_tokens = response.usage.output_tokens
+                tokens_used = input_tokens + output_tokens
+                
+                # Estimate cost for Anthropic
+                estimated_cost = self.estimate_cost(response.model, input_tokens, output_tokens)
+                cost = float(estimated_cost)
 
             return LLMResponse(
                 content=response.content[0].text,
                 model=response.model,
                 provider="anthropic",
                 tokens_used=tokens_used,
-                cost=None,
+                cost=cost,
                 latency_ms=None,
                 finish_reason=response.stop_reason
             )

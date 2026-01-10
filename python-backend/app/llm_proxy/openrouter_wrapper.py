@@ -232,10 +232,15 @@ class OpenRouterWrapper:
         zdr: Optional[bool] = None,
         require_parameters: bool = False,
         quantizations: Optional[List[str]] = None,
-        max_price: Optional[Dict[str, float]] = None
+        max_price: Optional[Dict[str, float]] = None,
+        include_usage: bool = True
     ) -> Dict[str, Any]:
         """Build extra_body for OpenRouter request"""
         extra_body = {}
+        
+        # Enable usage accounting to get cost information
+        if include_usage:
+            extra_body["usage"] = {"include": True}
         
         # Provider options
         provider_opts = {}

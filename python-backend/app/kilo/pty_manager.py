@@ -3,6 +3,7 @@ import asyncio
 import os
 import time
 import uuid
+import shutil
 from dataclasses import dataclass, field
 from typing import Dict, Optional, List, Tuple, Any
 
@@ -41,15 +42,108 @@ class PtyManager:
         self._sessions: Dict[str, PtySession] = {}
         self._lock = asyncio.Lock()
 
+    def _get_shell(self) -> str:
+        """Get the default shell for the system"""
+        if IS_WINDOWS:
+            return os.environ.get("COMSPEC", "cmd.exe")
+        
+        # Try to get user's preferred shell
+        shell = os.environ.get("SHELL")
+        if shell and shutil.which(shell):
+            return shell
+        
+        # Fallback to common shells
+        for sh in ["/bin/bash", "/bin/sh", "/usr/bin/bash", "/usr/bin/sh"]:
+            if os.path.exists(sh):
+                return sh
+        
+        return "sh"
+
+    def _build_command(self, command: str) -> List[str]:
+        """
+        Build command arguments based on the command type.
+        
+        Supports:
+        - Empty command: Open interactive shell
+        - Shell commands: Execute via shell
+        - Workflow files (*.md): Execute via ss_autopilot if available
+        """
+        shell = self._get_shell()
+        
+        # Empty command - open interactive shell
+        if not command or command.strip() == "":
+            if IS_WINDOWS:
+                return [shell]
+            return [shell, "-i"]
+        
+        command = command.strip()
+        
+        # Check if it's a workflow file (for ss_autopilot)
+        if command.endswith(".md"):
+            # Check if ss_autopilot is available
+            try:
+                result = subprocess.run(
+                    ["python", "-c", "import ss_autopilot"],
+                    capture_output=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    return ["python", "-m", "ss_autopilot.cli_enhanced", command]
+            except Exception:
+                pass
+            # Fallback: just cat the file
+            return [shell, "-c", f"cat {command}"]
+        
+        # Regular shell command
+        if IS_WINDOWS:
+            return [shell, "/c", command]
+        return [shell, "-c", command]
+
     async def create(self, workspace: str, command: str) -> PtySession:
+        """
+        Create a new PTY session.
+        
+        Args:
+            workspace: Working directory for the session
+            command: Command to execute (empty for interactive shell)
+        
+        Returns:
+            PtySession object
+        """
         sid = uuid.uuid4().hex
         sess = PtySession(session_id=sid, workspace=workspace, command=command)
 
+        # Validate workspace
+        if workspace and not os.path.isdir(workspace):
+            # Create workspace if it doesn't exist
+            try:
+                os.makedirs(workspace, exist_ok=True)
+            except Exception:
+                workspace = os.path.expanduser("~")
+        
+        if not workspace:
+            workspace = os.path.expanduser("~")
+
+        argv = self._build_command(command)
+        env = dict(os.environ)
+        env["CI"] = "0"
+        env["TERM"] = "xterm-256color"
+        env["COLORTERM"] = "truecolor"
+
         if (not IS_WINDOWS) and pty is not None:
             master_fd, slave_fd = pty.openpty()
-            argv = ["python", "-m", "ss_autopilot.cli_enhanced", command]
-            env = dict(os.environ)
-            env["CI"] = "0"
+            
+            # Set terminal size
+            try:
+                import fcntl
+                import struct
+                import termios
+                # Default size: 24 rows, 80 cols
+                winsize = struct.pack("HHHH", 24, 80, 0, 0)
+                fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
+            except Exception:
+                pass
+            
             proc = subprocess.Popen(
                 argv,
                 cwd=workspace,
@@ -64,9 +158,6 @@ class PtyManager:
             sess.proc = proc
         else:
             # Windows/fallback
-            argv = ["python", "-m", "ss_autopilot.cli_enhanced", command]
-            env = dict(os.environ)
-            env["CI"] = "0"
             proc = subprocess.Popen(
                 argv,
                 cwd=workspace,
@@ -90,6 +181,21 @@ class PtyManager:
         async with self._lock:
             return self._sessions.get(sid)
 
+    async def list_sessions(self) -> List[Dict[str, Any]]:
+        """List all active sessions"""
+        async with self._lock:
+            return [
+                {
+                    "session_id": s.session_id,
+                    "workspace": s.workspace,
+                    "command": s.command,
+                    "status": s.status,
+                    "created_at": s.created_at,
+                    "returncode": s.returncode
+                }
+                for s in self._sessions.values()
+            ]
+
     async def cancel(self, sid: str) -> bool:
         s = await self.get(sid)
         if not s or not s.proc or s.status != "running":
@@ -97,6 +203,18 @@ class PtyManager:
         s.status = "cancelled"
         try:
             s.proc.terminate()
+            return True
+        except Exception:
+            return False
+
+    async def kill(self, sid: str) -> bool:
+        """Force kill a session"""
+        s = await self.get(sid)
+        if not s or not s.proc:
+            return False
+        try:
+            s.proc.kill()
+            s.status = "killed"
             return True
         except Exception:
             return False
@@ -116,6 +234,25 @@ class PtyManager:
         try:
             s.proc.stdin.write(data)
             s.proc.stdin.flush()
+            return True
+        except Exception:
+            return False
+
+    async def resize(self, sid: str, rows: int, cols: int) -> bool:
+        """Resize the terminal"""
+        s = await self.get(sid)
+        if not s or s.master_fd is None:
+            return False
+        
+        if IS_WINDOWS:
+            return False
+        
+        try:
+            import fcntl
+            import struct
+            import termios
+            winsize = struct.pack("HHHH", rows, cols, 0, 0)
+            fcntl.ioctl(s.master_fd, termios.TIOCSWINSZ, winsize)
             return True
         except Exception:
             return False
@@ -151,6 +288,22 @@ class PtyManager:
         if not s:
             return []
         return [(seq, ev) for (seq, ev) in s.media_buffer if seq > since_seq]
+
+    async def cleanup_session(self, sid: str) -> bool:
+        """Remove a completed/cancelled session from memory"""
+        async with self._lock:
+            if sid in self._sessions:
+                s = self._sessions[sid]
+                if s.status in ("completed", "failed", "cancelled", "killed"):
+                    # Close master_fd if open
+                    if s.master_fd is not None:
+                        try:
+                            os.close(s.master_fd)
+                        except Exception:
+                            pass
+                    del self._sessions[sid]
+                    return True
+        return False
 
     async def _reader_loop(self, sid: str):
         s = await self.get(sid)
