@@ -31,12 +31,12 @@ export default function KiloPtyPage() {
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [tokenInput, setTokenInput] = useState<string>("");
   const [tokenHint, setTokenHint] = useState<string>("");
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const ptyWsRef = useRef<WebSocket | null>(null);
   const mediaWsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const terminalRef = useRef<{ focus: () => void } | null>(null);
 
   const activeTab = useMemo(() => tabs.find(t => t.id === active), [tabs, active]);
 
@@ -50,6 +50,12 @@ export default function KiloPtyPage() {
     fontSize: "14px",
     fontWeight: 500 as const,
     transition: "all 0.2s",
+  };
+
+  const disabledButtonStyle = {
+    ...buttonStyle,
+    opacity: 0.5,
+    cursor: "not-allowed",
   };
 
   const primaryButtonStyle = {
@@ -135,6 +141,8 @@ export default function KiloPtyPage() {
   }, [active, connectionStatus]);
 
   const connectWebSockets = useCallback(async () => {
+    if (isConnecting) return;
+    setIsConnecting(true);
     setConnectionStatus("connecting");
     setErrorMessage("");
 
@@ -147,22 +155,29 @@ export default function KiloPtyPage() {
         try { mediaWsRef.current.close(); } catch {}
       }
 
+      console.log("Creating WebSocket tickets...");
       const pTicket = await createWsTicket("pty");
+      console.log("PTY ticket created:", pTicket);
       const pws = openPtyWs(pTicket.ticket);
       
       const mTicket = await createWsTicket("media");
+      console.log("Media ticket created:", mTicket);
       const mws = openMediaWs(mTicket.ticket);
       
       ptyWsRef.current = pws;
       mediaWsRef.current = mws;
 
       pws.onopen = () => {
+        console.log("PTY WebSocket connected");
         setConnectionStatus("connected");
         setErrorMessage("");
+        setIsConnecting(false);
       };
 
-      pws.onclose = () => {
+      pws.onclose = (event) => {
+        console.log("PTY WebSocket closed:", event.code, event.reason);
         setConnectionStatus("disconnected");
+        setIsConnecting(false);
         // Auto-reconnect after 3 seconds
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
@@ -172,12 +187,15 @@ export default function KiloPtyPage() {
         }, 3000);
       };
 
-      pws.onerror = () => {
+      pws.onerror = (error) => {
+        console.error("PTY WebSocket error:", error);
         setConnectionStatus("error");
         setErrorMessage("WebSocket connection error. Make sure the backend is running on port 8000.");
+        setIsConnecting(false);
       };
 
       pws.onmessage = (ev) => {
+        console.log("PTY message received:", ev.data);
         const msg = JSON.parse(ev.data) as PtyMessage;
 
         if (msg.type === "created") {
@@ -200,6 +218,7 @@ export default function KiloPtyPage() {
 
         if (msg.type === "stdout") {
           // Write to terminal
+          console.log("Writing to terminal:", msg.data.length, "bytes");
           window.__ptyWrite?.(msg.data);
           // Update seq for the active tab
           setTabs(prev => prev.map(t => t.id === active ? { ...t, seq: msg.seq } : t));
@@ -207,6 +226,7 @@ export default function KiloPtyPage() {
           setTabs(prev => prev.map(t => t.id === active ? { ...t, status: msg.status, seq: msg.seq } : t));
         } else if (msg.type === "ack") {
           // Acknowledgment received
+          console.log("ACK received");
         }
       };
 
@@ -218,10 +238,12 @@ export default function KiloPtyPage() {
         }
       };
     } catch (err) {
+      console.error("Connection error:", err);
       setConnectionStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Failed to connect");
+      setIsConnecting(false);
     }
-  }, [active, command]);
+  }, [active, command, isConnecting]);
 
   useEffect(() => {
     connectWebSockets();
@@ -245,13 +267,16 @@ export default function KiloPtyPage() {
   const createSession = useCallback(() => {
     const ws = ptyWsRef.current;
     if (!ws || ws.readyState !== 1) {
-      setErrorMessage("Not connected. Please wait for reconnection.");
+      setErrorMessage("Not connected. Click 'Reconnect' to try again.");
+      // Try to reconnect
+      connectWebSockets();
       return;
     }
     const ws_path = workspace || "";
+    console.log("Creating PTY session:", { workspace: ws_path, command });
     ptyCreate(ws, ws_path, command);
     setCommand(""); // Clear command after creating session
-  }, [workspace, command]);
+  }, [workspace, command, connectWebSockets]);
 
   const attachTab = useCallback((id: string) => {
     setActive(id);
@@ -365,6 +390,9 @@ export default function KiloPtyPage() {
     }
   };
 
+  // Check if button should be enabled
+  const isNewTabEnabled = connectionStatus === "connected" && !isConnecting;
+
   return (
     <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: "1400px", margin: "0 auto" }}>
       <h2 style={{ margin: 0, fontSize: "24px", fontWeight: 600, color: "#111827" }}>
@@ -385,7 +413,7 @@ export default function KiloPtyPage() {
           <button
             onClick={onSaveToken}
             disabled={!tokenInput.trim()}
-            style={tokenInput.trim() ? primaryButtonStyle : buttonStyle}
+            style={tokenInput.trim() ? primaryButtonStyle : disabledButtonStyle}
           >
             Save Token
           </button>
@@ -474,7 +502,7 @@ export default function KiloPtyPage() {
             placeholder="Enter command (empty = interactive shell)"
             style={{ ...inputStyle, flex: 1, minWidth: 400, fontFamily: "monospace" }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && connectionStatus === "connected") {
+              if (e.key === "Enter") {
                 createSession();
               }
             }}
@@ -493,11 +521,10 @@ export default function KiloPtyPage() {
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <button
-            disabled={connectionStatus !== "connected"}
             onClick={createSession}
-            style={connectionStatus === "connected" ? { ...successButtonStyle, fontSize: "16px", padding: "10px 24px" } : buttonStyle}
+            style={isNewTabEnabled ? { ...successButtonStyle, fontSize: "16px", padding: "10px 24px" } : { ...disabledButtonStyle, fontSize: "16px", padding: "10px 24px" }}
           >
-            ▶️ New Tab
+            ▶️ New Tab {!isNewTabEnabled && `(${connectionStatus})`}
           </button>
           <button
             disabled={!activeTab || activeTab.status !== "running"}
@@ -505,23 +532,23 @@ export default function KiloPtyPage() {
               const ws = ptyWsRef.current;
               if (ws && ws.readyState === 1) ptySignal(ws, "SIGINT");
             }}
-            style={activeTab && activeTab.status === "running" ? dangerButtonStyle : buttonStyle}
+            style={activeTab && activeTab.status === "running" ? dangerButtonStyle : disabledButtonStyle}
           >
             ⏹️ Interrupt (Ctrl+C)
           </button>
           <button
             disabled={!activeTab}
             onClick={() => activeTab && closeTab(activeTab.id)}
-            style={activeTab ? buttonStyle : buttonStyle}
+            style={activeTab ? buttonStyle : disabledButtonStyle}
           >
             ❌ Close Tab
           </button>
           <button
             onClick={connectWebSockets}
-            disabled={connectionStatus === "connecting"}
+            disabled={isConnecting}
             style={connectionStatus !== "connected" ? primaryButtonStyle : buttonStyle}
           >
-            🔌 Reconnect
+            🔌 {isConnecting ? "Connecting..." : "Reconnect"}
           </button>
 
           <div style={{ width: 1, height: 24, background: "#d1d5db", margin: "0 4px" }} />
@@ -529,14 +556,14 @@ export default function KiloPtyPage() {
           <button
             disabled={!workspace}
             onClick={refreshWorkflows}
-            style={workspace ? primaryButtonStyle : buttonStyle}
+            style={workspace ? primaryButtonStyle : disabledButtonStyle}
           >
             🔄 Refresh workflows
           </button>
-          <button disabled={!activeTab} onClick={() => insertMedia("image")} style={activeTab ? buttonStyle : buttonStyle}>
+          <button disabled={!activeTab} onClick={() => insertMedia("image")} style={activeTab ? buttonStyle : disabledButtonStyle}>
             🖼️ Insert Image
           </button>
-          <button disabled={!activeTab} onClick={() => insertMedia("video")} style={activeTab ? buttonStyle : buttonStyle}>
+          <button disabled={!activeTab} onClick={() => insertMedia("video")} style={activeTab ? buttonStyle : disabledButtonStyle}>
             🎬 Insert Video
           </button>
         </div>
@@ -622,6 +649,15 @@ export default function KiloPtyPage() {
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 8 }}>
                 Connection: <span style={{ color: getStatusColor(connectionStatus) }}>{getStatusText(connectionStatus)}</span>
               </div>
+              {connectionStatus !== "connected" && (
+                <button
+                  onClick={connectWebSockets}
+                  disabled={isConnecting}
+                  style={{ ...primaryButtonStyle, marginTop: 8 }}
+                >
+                  🔌 {isConnecting ? "Connecting..." : "Connect Now"}
+                </button>
+              )}
             </div>
           ) : (
             <>
