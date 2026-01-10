@@ -140,7 +140,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         const lastSize = lastSizeRef.current;
         if (!lastSize || lastSize.rows !== newRows || lastSize.cols !== newCols) {
           lastSizeRef.current = { rows: newRows, cols: newCols };
-          console.log("Terminal size:", newRows, "rows x", newCols, "cols");
           
           if (onResize && isReadyRef.current) {
             onResize(newRows, newCols);
@@ -163,7 +162,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       const success = safeFit();
       if (success) {
         isReadyRef.current = true;
-        console.log("Terminal is ready");
         
         // Focus terminal
         term.focus();

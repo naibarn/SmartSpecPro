@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PtyXterm from "../components/PtyXterm";
 import MediaGallery from "../components/MediaGallery";
-import { openPtyWs, ptyAttach, ptyCreate, ptyInput, ptySignal, ptyKill, ptyResize, PtyMessage, ptyPoll } from "../services/pty";
+import { openPtyWs, ptyCreate, ptyAttach, ptyInput, ptySignal, ptyKill, ptyResize, PtyMessage } from "../services/pty";
 import { createWsTicket } from "../services/wsTicket";
 import { loadProxyToken, getProxyTokenHint, setProxyToken } from "../services/authStore";
 import { openMediaWs, mediaAttach, mediaEmit, MediaMessage, MediaEvent } from "../services/mediaChannel";
@@ -36,7 +36,7 @@ export default function KiloPtyPage() {
   const ptyWsRef = useRef<WebSocket | null>(null);
   const mediaWsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activeSessionRef = useRef<string>("");  // Track active session without closure issues
 
@@ -124,28 +124,7 @@ export default function KiloPtyPage() {
 
   useEffect(() => { refreshWorkflows(); }, [refreshWorkflows]);
 
-  // Start polling when we have an active session
-  useEffect(() => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-
-    if (active && connectionStatus === "connected") {
-      pollIntervalRef.current = setInterval(() => {
-        const ws = ptyWsRef.current;
-        if (ws && ws.readyState === 1) {
-          ptyPoll(ws);
-        }
-      }, 200); // Poll every 200ms
-    }
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, [active, connectionStatus]);
+  // No need for frontend polling - backend pushes data via WebSocket
 
   const connectWebSockets = useCallback(async () => {
     if (isConnecting) {
@@ -341,9 +320,7 @@ export default function KiloPtyPage() {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
+
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
       }

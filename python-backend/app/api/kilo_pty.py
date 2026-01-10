@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import json
 import os
@@ -119,12 +118,12 @@ async def pty_ws(ws: WebSocket):
 
     session_id: Optional[str] = None
     last_seq = 0
+    last_status: Optional[str] = None
     poll_task: Optional[asyncio.Task] = None
 
     async def poll_loop():
-        """Periodically poll for new output and status"""
-        nonlocal last_seq
-        poll_count = 0
+        """Periodically poll for new output only"""
+        nonlocal last_seq, last_status
         while True:
             try:
                 await asyncio.sleep(0.1)  # Poll every 100ms
@@ -142,24 +141,24 @@ async def pty_ws(ws: WebSocket):
                         last_seq = seq
                         try:
                             await ws.send_text(json.dumps({"type": "stdout", "seq": seq, "data": data}))
-                            poll_count += 1
-                            if poll_count <= 10:
-                                logger.debug(f"Sent stdout seq={seq}, {len(data)} bytes")
                         except Exception as e:
                             logger.error(f"Failed to send stdout: {e}")
                             return
                 
-                # Send status update periodically
-                try:
-                    await ws.send_text(json.dumps({
-                        "type": "status",
-                        "status": s.status,
-                        "returncode": s.returncode,
-                        "seq": s.seq
-                    }))
-                except Exception as e:
-                    logger.error(f"Failed to send status: {e}")
-                    return
+                # Only send status if it changed
+                current_status = f"{s.status}:{s.returncode}"
+                if current_status != last_status:
+                    last_status = current_status
+                    try:
+                        await ws.send_text(json.dumps({
+                            "type": "status",
+                            "status": s.status,
+                            "returncode": s.returncode,
+                            "seq": s.seq
+                        }))
+                    except Exception as e:
+                        logger.error(f"Failed to send status: {e}")
+                        return
                     
             except asyncio.CancelledError:
                 break
@@ -169,16 +168,18 @@ async def pty_ws(ws: WebSocket):
 
     async def send_buffered():
         """Send all buffered output since last_seq"""
-        nonlocal last_seq
+        nonlocal last_seq, last_status
         if not session_id:
             return
         rows = await PTY_MANAGER.buffer_since(session_id, last_seq)
-        logger.debug(f"send_buffered: {len(rows)} rows since seq {last_seq}")
         for seq, data in rows:
             last_seq = max(last_seq, seq)
             await ws.send_text(json.dumps({"type": "stdout", "seq": seq, "data": data}))
         s = await PTY_MANAGER.get(session_id)
         if s:
+            current_status = f"{s.status}:{s.returncode}"
+            # Always send status after buffered output
+            last_status = current_status
             await ws.send_text(json.dumps({
                 "type": "status",
                 "status": s.status,
@@ -194,7 +195,6 @@ async def pty_ws(ws: WebSocket):
             raw = await ws.receive_text()
             msg = json.loads(raw or "{}")
             t = msg.get("type")
-            logger.debug(f"Received message type: {t}")
 
             if t == "create":
                 workspace = str(msg.get("workspace") or "")
@@ -218,6 +218,7 @@ async def pty_ws(ws: WebSocket):
                 sess = await PTY_MANAGER.create(workspace=workspace, command=command)
                 session_id = sess.session_id
                 last_seq = 0
+                last_status = None
                 
                 logger.info(f"PTY session created: {session_id}")
                 await ws.send_text(json.dumps({"type": "created", "sessionId": session_id}))
@@ -230,6 +231,7 @@ async def pty_ws(ws: WebSocket):
             elif t == "attach":
                 session_id = str(msg.get("sessionId") or "")
                 last_seq = int(msg.get("from") or 0)
+                last_status = None
                 logger.info(f"Attaching to session: {session_id}, from seq: {last_seq}")
                 
                 sess = await PTY_MANAGER.get(session_id)
@@ -245,16 +247,12 @@ async def pty_ws(ws: WebSocket):
                     await ws.send_text(json.dumps({"type": "error", "message": "no_session"}))
                     continue
                 data = str(msg.get("data") or "")
-                logger.debug(f"Input to session {session_id}: {repr(data)}")
                 success = await PTY_MANAGER.write(session_id, data)
                 if not success:
                     logger.warning(f"Failed to write to session {session_id}")
                     await ws.send_text(json.dumps({"type": "error", "message": "write_failed"}))
                     continue
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
-                # Wait a bit for shell to process and respond
-                await asyncio.sleep(0.05)
-                await send_buffered()
 
             elif t == "resize":
                 if not session_id:
@@ -263,7 +261,6 @@ async def pty_ws(ws: WebSocket):
                 rows = int(msg.get("rows") or 24)
                 cols = int(msg.get("cols") or 80)
                 success = await PTY_MANAGER.resize(session_id, rows, cols)
-                logger.debug(f"Resize session {session_id} to {rows}x{cols}: {success}")
                 await ws.send_text(json.dumps({"type": "ack", "ok": success}))
 
             elif t == "signal":
@@ -275,22 +272,18 @@ async def pty_ws(ws: WebSocket):
                 logger.info(f"Sending signal {name} to session {session_id}")
                 await PTY_MANAGER.send_signal(session_id, sig)
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
-                await asyncio.sleep(0.1)
-                await send_buffered()
 
             elif t == "cancel":
                 if session_id:
                     logger.info(f"Cancelling session {session_id}")
                     await PTY_MANAGER.cancel(session_id)
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
-                await send_buffered()
 
             elif t == "kill":
                 if session_id:
                     logger.info(f"Killing session {session_id}")
                     await PTY_MANAGER.kill(session_id)
                 await ws.send_text(json.dumps({"type": "ack", "ok": True}))
-                await send_buffered()
 
             elif t == "poll":
                 await send_buffered()
