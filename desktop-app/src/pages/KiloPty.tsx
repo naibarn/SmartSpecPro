@@ -37,8 +37,14 @@ export default function KiloPtyPage() {
   const mediaWsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const activeSessionRef = useRef<string>("");  // Track active session without closure issues
 
   const activeTab = useMemo(() => tabs.find(t => t.id === active), [tabs, active]);
+
+  // Update ref when active changes
+  useEffect(() => {
+    activeSessionRef.current = active;
+  }, [active]);
 
   // Styles matching KiloCli.tsx
   const buttonStyle = {
@@ -200,13 +206,15 @@ export default function KiloPtyPage() {
 
         if (msg.type === "created") {
           const sid = msg.sessionId;
-          setTabs(prev => [{ id: sid, title: sid.slice(0, 6), command, status: "running", seq: 0, mediaSeq: 0, media: [] }, ...prev]);
+          console.log("Session created:", sid);
+          // Add new tab and set as active
+          setTabs(prev => {
+            const newTabs = [{ id: sid, title: sid.slice(0, 6), command, status: "running", seq: 0, mediaSeq: 0, media: [] }, ...prev];
+            return newTabs;
+          });
           setActive(sid);
+          activeSessionRef.current = sid;  // Update ref immediately
           if (mws && mws.readyState === 1) mediaAttach(mws, sid, 0);
-          // Focus terminal after creation
-          setTimeout(() => {
-            window.__ptyWrite?.("\r\n");  // Send a newline to trigger prompt
-          }, 300);
           return;
         }
 
@@ -217,13 +225,28 @@ export default function KiloPtyPage() {
         }
 
         if (msg.type === "stdout") {
-          // Write to terminal
-          console.log("Writing to terminal:", msg.data.length, "bytes");
-          window.__ptyWrite?.(msg.data);
-          // Update seq for the active tab
-          setTabs(prev => prev.map(t => t.id === active ? { ...t, seq: msg.seq } : t));
+          // Write to terminal - this is the key fix!
+          console.log("Writing to terminal:", msg.data.length, "chars, seq:", msg.seq);
+          console.log("Data preview:", JSON.stringify(msg.data.slice(0, 100)));
+          
+          // Write to xterm
+          if (window.__ptyWrite) {
+            window.__ptyWrite(msg.data);
+            console.log("Data written to xterm successfully");
+          } else {
+            console.error("__ptyWrite not available!");
+          }
+          
+          // Update seq for the session (use ref to avoid closure issues)
+          const currentSession = activeSessionRef.current;
+          if (currentSession) {
+            setTabs(prev => prev.map(t => t.id === currentSession ? { ...t, seq: msg.seq } : t));
+          }
         } else if (msg.type === "status") {
-          setTabs(prev => prev.map(t => t.id === active ? { ...t, status: msg.status, seq: msg.seq } : t));
+          const currentSession = activeSessionRef.current;
+          if (currentSession) {
+            setTabs(prev => prev.map(t => t.id === currentSession ? { ...t, status: msg.status, seq: msg.seq } : t));
+          }
         } else if (msg.type === "ack") {
           // Acknowledgment received
           console.log("ACK received");
@@ -243,7 +266,7 @@ export default function KiloPtyPage() {
       setErrorMessage(err instanceof Error ? err.message : "Failed to connect");
       setIsConnecting(false);
     }
-  }, [active, command, isConnecting]);
+  }, [command, isConnecting]);
 
   useEffect(() => {
     connectWebSockets();
@@ -280,6 +303,7 @@ export default function KiloPtyPage() {
 
   const attachTab = useCallback((id: string) => {
     setActive(id);
+    activeSessionRef.current = id;  // Update ref
     const ws = ptyWsRef.current;
     const mws = mediaWsRef.current;
     const tab = tabs.find(t => t.id === id);
@@ -298,7 +322,12 @@ export default function KiloPtyPage() {
     }
     
     setTabs(prev => prev.filter(t => t.id !== id));
-    if (active === id) setActive(tabs.find(t => t.id !== id)?.id || "");
+    if (active === id) {
+      const remaining = tabs.filter(t => t.id !== id);
+      const newActive = remaining[0]?.id || "";
+      setActive(newActive);
+      activeSessionRef.current = newActive;
+    }
   }, [active, tabs]);
 
   const onTermData = useCallback((data: string) => {
