@@ -5,10 +5,13 @@ import time
 import uuid
 import shutil
 import select
+import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional, List, Tuple, Any, Callable, Set
 
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 IS_WINDOWS = os.name == "nt"
 try:
@@ -70,10 +73,9 @@ class PtyManager:
         return "sh"
 
     def _build_command(self, command: str) -> List[str]:
-        """
-        Build command arguments based on the command type.
-        """
+        """Build command arguments based on the command type."""
         shell = self._get_shell()
+        logger.info(f"Using shell: {shell}")
         
         # Empty command - open interactive shell
         if not command or command.strip() == "":
@@ -114,6 +116,7 @@ class PtyManager:
         """Create a new PTY session."""
         sid = uuid.uuid4().hex
         sess = PtySession(session_id=sid, workspace=workspace, command=command)
+        logger.info(f"Creating PTY session {sid} with command: '{command}' in workspace: '{workspace}'")
 
         # Validate workspace
         if workspace and not os.path.isdir(workspace):
@@ -126,17 +129,21 @@ class PtyManager:
             workspace = os.path.expanduser("~")
 
         argv = self._build_command(command)
+        logger.info(f"Command argv: {argv}")
+        
         env = dict(os.environ)
         env["CI"] = "0"
         env["TERM"] = "xterm-256color"
         env["COLORTERM"] = "truecolor"
         env["LANG"] = env.get("LANG", "en_US.UTF-8")
         env["LC_ALL"] = env.get("LC_ALL", "en_US.UTF-8")
-        # Force color output
         env["CLICOLOR"] = "1"
         env["CLICOLOR_FORCE"] = "1"
+        # Force PS1 for bash
+        env["PS1"] = r"\u@\h:\w\$ "
 
         if (not IS_WINDOWS) and pty is not None:
+            logger.info("Creating PTY with pty.openpty()")
             master_fd, slave_fd = pty.openpty()
             
             # Set terminal size
@@ -144,28 +151,38 @@ class PtyManager:
                 try:
                     winsize = struct.pack("HHHH", 30, 120, 0, 0)
                     fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
-                except Exception:
-                    pass
+                    logger.info("Set terminal size to 30x120")
+                except Exception as e:
+                    logger.warning(f"Failed to set terminal size: {e}")
             
-            proc = subprocess.Popen(
-                argv,
-                cwd=workspace,
-                env=env,
-                stdin=slave_fd,
-                stdout=slave_fd,
-                stderr=slave_fd,
-                close_fds=True,
-                start_new_session=True,
-            )
+            try:
+                proc = subprocess.Popen(
+                    argv,
+                    cwd=workspace,
+                    env=env,
+                    stdin=slave_fd,
+                    stdout=slave_fd,
+                    stderr=slave_fd,
+                    close_fds=True,
+                    start_new_session=True,
+                )
+                logger.info(f"Process started with PID: {proc.pid}")
+            except Exception as e:
+                logger.error(f"Failed to start process: {e}")
+                os.close(master_fd)
+                os.close(slave_fd)
+                raise
+            
             os.close(slave_fd)
             
             # Set master to non-blocking
             self._set_nonblocking(master_fd)
+            logger.info(f"Master FD: {master_fd}, set to non-blocking")
             
             sess.master_fd = master_fd
             sess.proc = proc
         else:
-            # Windows/fallback
+            logger.info("Creating process without PTY (Windows/fallback)")
             proc = subprocess.Popen(
                 argv,
                 cwd=workspace,
@@ -183,6 +200,7 @@ class PtyManager:
 
         # Start reader loop
         asyncio.create_task(self._reader_loop(sid))
+        logger.info(f"PTY session {sid} created successfully")
         return sess
 
     async def get(self, sid: str) -> Optional[PtySession]:
@@ -230,13 +248,15 @@ class PtyManager:
     async def write(self, sid: str, data: str) -> bool:
         s = await self.get(sid)
         if not s or not s.proc or s.status != "running":
+            logger.warning(f"Cannot write to session {sid}: session not found or not running")
             return False
         if (not IS_WINDOWS) and s.master_fd is not None:
             try:
-                os.write(s.master_fd, data.encode("utf-8"))
+                written = os.write(s.master_fd, data.encode("utf-8"))
+                logger.debug(f"Wrote {written} bytes to PTY {sid}: {repr(data)}")
                 return True
             except Exception as e:
-                print(f"PTY write error: {e}")
+                logger.error(f"PTY write error: {e}")
                 return False
         if s.proc.stdin is None:
             return False
@@ -259,6 +279,7 @@ class PtyManager:
         try:
             winsize = struct.pack("HHHH", rows, cols, 0, 0)
             fcntl.ioctl(s.master_fd, termios.TIOCSWINSZ, winsize)
+            logger.debug(f"Resized PTY {sid} to {rows}x{cols}")
             return True
         except Exception:
             return False
@@ -336,19 +357,25 @@ class PtyManager:
         """Read output from PTY and buffer it"""
         s = await self.get(sid)
         if not s or not s.proc:
+            logger.error(f"Reader loop: session {sid} not found")
             return
+
+        logger.info(f"Starting reader loop for session {sid}")
 
         if (not IS_WINDOWS) and s.master_fd is not None:
             loop = asyncio.get_event_loop()
+            read_count = 0
             
             while s.status == "running":
                 # Check if process is still running
-                if s.proc.poll() is not None:
+                poll_result = s.proc.poll()
+                if poll_result is not None:
+                    logger.info(f"Process {sid} exited with code {poll_result}")
                     break
                 
                 try:
-                    # Use select to check if data is available
-                    readable, _, _ = select.select([s.master_fd], [], [], 0.1)
+                    # Use select to check if data is available (with timeout)
+                    readable, _, _ = select.select([s.master_fd], [], [], 0.05)
                     
                     if readable:
                         try:
@@ -359,19 +386,32 @@ class PtyManager:
                                 s.buffer.append((s.seq, text))
                                 if len(s.buffer) > s.buffer_max:
                                     s.buffer = s.buffer[-s.buffer_max:]
+                                read_count += 1
+                                if read_count <= 5:  # Log first 5 reads
+                                    logger.info(f"PTY {sid} read #{read_count}: {len(chunk)} bytes, seq={s.seq}")
                                 # Notify subscribers
                                 self._notify_subscribers(s, s.seq, text)
+                            else:
+                                # Empty read might mean EOF
+                                logger.debug(f"PTY {sid}: empty read")
                         except OSError as e:
                             if e.errno == 5:  # Input/output error - PTY closed
+                                logger.info(f"PTY {sid}: I/O error (PTY closed)")
                                 break
-                            raise
-                    else:
-                        # No data available, yield to other tasks
-                        await asyncio.sleep(0.05)
+                            elif e.errno == 11:  # EAGAIN - no data available
+                                pass
+                            else:
+                                logger.error(f"PTY {sid} read error: {e}")
+                                break
+                    
+                    # Yield to other tasks
+                    await asyncio.sleep(0.01)
                         
                 except Exception as e:
-                    print(f"PTY reader error: {e}")
+                    logger.error(f"PTY {sid} reader error: {e}")
                     break
+            
+            logger.info(f"Reader loop for {sid} ended, total reads: {read_count}")
             
             # Wait for process to finish
             try:
@@ -392,6 +432,7 @@ class PtyManager:
         s.returncode = s.proc.returncode
         if s.status == "running":
             s.status = "completed" if (s.proc.returncode == 0) else "failed"
+        logger.info(f"Session {sid} finished with status: {s.status}, returncode: {s.returncode}")
 
 
 PTY_MANAGER = PtyManager()
