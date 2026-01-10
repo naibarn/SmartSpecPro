@@ -20,6 +20,8 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   const containerRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const isReadyRef = useRef<boolean>(false);
+  const pendingWritesRef = useRef<string[]>([]);
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -73,11 +75,66 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
 
     term.open(containerRef.current);
 
+    // Function to safely write to terminal
+    const safeWrite = (data: string) => {
+      if (!termRef.current) {
+        console.warn("Terminal not available, buffering data");
+        pendingWritesRef.current.push(data);
+        return;
+      }
+      
+      if (!isReadyRef.current) {
+        console.log("Terminal not ready, buffering data:", data.length, "chars");
+        pendingWritesRef.current.push(data);
+        return;
+      }
+      
+      try {
+        termRef.current.write(data);
+      } catch (e) {
+        console.error("Error writing to terminal:", e);
+        // Try again after a short delay
+        setTimeout(() => {
+          try {
+            termRef.current?.write(data);
+          } catch (e2) {
+            console.error("Retry write failed:", e2);
+          }
+        }, 100);
+      }
+    };
+
+    // Function to flush pending writes
+    const flushPendingWrites = () => {
+      if (!isReadyRef.current || !termRef.current) return;
+      
+      const pending = pendingWritesRef.current;
+      if (pending.length > 0) {
+        console.log("Flushing", pending.length, "pending writes");
+        pendingWritesRef.current = [];
+        for (const data of pending) {
+          try {
+            termRef.current.write(data);
+          } catch (e) {
+            console.error("Error flushing write:", e);
+          }
+        }
+      }
+    };
+
     // Wait for terminal to be ready before fitting
     const initFit = () => {
       try {
         fit.fit();
+        
+        // Mark as ready after fit completes
+        isReadyRef.current = true;
+        console.log("Terminal is ready, rows:", term.rows, "cols:", term.cols);
+        
         term.focus();
+        
+        // Flush any pending writes
+        flushPendingWrites();
         
         // Notify about initial size
         if (onResize) {
@@ -85,16 +142,18 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         }
       } catch (e) {
         console.error("Error fitting terminal:", e);
+        // Retry after a short delay
+        setTimeout(initFit, 100);
       }
     };
     
-    // Use requestAnimationFrame for better timing
-    requestAnimationFrame(initFit);
+    // Use requestAnimationFrame and setTimeout for better timing
+    requestAnimationFrame(() => {
+      setTimeout(initFit, 50);
+    });
 
-    // Global write function
-    window.__ptyWrite = (data: string) => {
-      term.write(data);
-    };
+    // Global write function with safety checks
+    window.__ptyWrite = safeWrite;
 
     // Global focus function
     window.__ptyFocus = () => {
@@ -108,6 +167,8 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     });
 
     const resize = () => {
+      if (!isReadyRef.current) return;
+      
       try {
         fit.fit();
         if (onResize) {
@@ -148,6 +209,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     });
 
     return () => {
+      isReadyRef.current = false;
       window.removeEventListener("resize", debouncedResize);
       window.removeEventListener("keydown", keyHandler);
       if (resizeTimeout) {
