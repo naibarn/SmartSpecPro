@@ -19,18 +19,8 @@ export function openPtyWs(ticket: string): WebSocket {
   
   const ws = new WebSocket(wsUrl);
   
-  // Add debug listeners
-  ws.addEventListener("open", () => {
-    console.log("PTY WebSocket OPEN event fired");
-  });
-  
-  ws.addEventListener("error", (e) => {
-    console.error("PTY WebSocket ERROR event:", e);
-  });
-  
-  ws.addEventListener("close", (e) => {
-    console.log("PTY WebSocket CLOSE event:", e.code, e.reason, e.wasClean);
-  });
+  // Note: Don't add event listeners here as they will be overwritten by KiloPty.tsx
+  // The caller is responsible for setting up event handlers
   
   return ws;
 }

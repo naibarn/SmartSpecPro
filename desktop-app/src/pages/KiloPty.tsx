@@ -175,12 +175,15 @@ export default function KiloPtyPage() {
       console.log("Creating WebSocket tickets...");
       const pTicket = await createWsTicket("pty");
       console.log("PTY ticket created:", pTicket);
-      const pws = openPtyWs(pTicket.ticket);
-      console.log("PTY WebSocket created, readyState:", pws.readyState);
       
       const mTicket = await createWsTicket("media");
       console.log("Media ticket created:", mTicket);
+      
+      // Create WebSocket connections
+      const pws = openPtyWs(pTicket.ticket);
       const mws = openMediaWs(mTicket.ticket);
+      
+      console.log("PTY WebSocket created, readyState:", pws.readyState);
       console.log("Media WebSocket created, readyState:", mws.readyState);
       
       ptyWsRef.current = pws;
@@ -188,8 +191,8 @@ export default function KiloPtyPage() {
 
       // Set connection timeout (10 seconds)
       connectionTimeoutRef.current = setTimeout(() => {
-        console.error("WebSocket connection timeout");
-        if (pws.readyState !== 1) {
+        console.error("WebSocket connection timeout, readyState:", pws.readyState);
+        if (pws.readyState !== WebSocket.OPEN) {
           setConnectionStatus("error");
           setErrorMessage("Connection timeout. Please check if the backend is running.");
           setIsConnecting(false);
@@ -198,15 +201,29 @@ export default function KiloPtyPage() {
         }
       }, 10000);
 
-      pws.onopen = () => {
-        console.log("PTY WebSocket onopen triggered, readyState:", pws.readyState);
+      // Helper function to handle successful connection
+      const handleConnected = () => {
+        console.log("PTY WebSocket connected successfully");
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
         }
         setConnectionStatus("connected");
         setErrorMessage("");
         setIsConnecting(false);
       };
+
+      // PTY WebSocket event handlers
+      pws.onopen = () => {
+        console.log("PTY WebSocket onopen triggered, readyState:", pws.readyState);
+        handleConnected();
+      };
+
+      // Check if already connected (in case onopen fired before we set the handler)
+      if (pws.readyState === WebSocket.OPEN) {
+        console.log("PTY WebSocket already open!");
+        handleConnected();
+      }
 
       pws.onclose = (event) => {
         console.log("PTY WebSocket closed:", event.code, event.reason);
