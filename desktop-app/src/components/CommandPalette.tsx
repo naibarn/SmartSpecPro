@@ -238,6 +238,22 @@ export function CommandPalette(props: CommandPaletteProps) {
                   onClick={() => {
                     setSelectedWorkflow(name);
                   }}
+                  onDoubleClick={() => {
+                    // Double-click: select and apply immediately if possible
+                    setSelectedWorkflow(name);
+
+                    // Check if this workflow has required args
+                    const schema = schemaMap.get(name);
+                    const hasRequiredArgs = schema?.args?.some(arg => arg.required);
+
+                    // If no required args, apply immediately
+                    if (!hasRequiredArgs) {
+                      const cmd = `/${name}`;
+                      onApplyCommand(cmd);
+                      onClose();
+                    }
+                    // Otherwise, just select it so user can fill in required args
+                  }}
                   style={{
                     padding: "6px 10px",
                     fontSize: 13,

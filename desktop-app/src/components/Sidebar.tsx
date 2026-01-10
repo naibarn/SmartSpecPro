@@ -49,7 +49,7 @@ export default function Sidebar() {
         <NavLink to="/factory" style={linkStyle}>SaaS Factory</NavLink>
         <NavLink to="/chat" style={linkStyle}>LLM Chat (Vision)</NavLink>
         <NavLink to="/terminal" style={linkStyle}>Terminal (PTY)</NavLink>
-        <NavLink to="/kilo" style={linkStyle}>Kilo CLI (Compat)</NavLink>
+        <NavLink to="/kilo" style={linkStyle}>CLI (Terminal)</NavLink>
 
         {user?.is_admin && (
           <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 8, paddingTop: 8 }}>

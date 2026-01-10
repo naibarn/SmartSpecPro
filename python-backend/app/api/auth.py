@@ -101,26 +101,26 @@ async def register(
 ):
     """
     Register new user
-    
-    - Creates new user account with 0 credits
+
+    - Creates new user account with 10,000 credits ($10 USD trial)
     - Returns JWT access token
     """
     # Check if user already exists
     result = await db.execute(select(User).where(User.email == request.email))
     existing_user = result.scalar_one_or_none()
-    
+
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Create new user
     user = User(
         email=request.email,
         password_hash=get_password_hash(request.password),
         full_name=request.full_name,
-        credits_balance=0,  # Start with 0 credits
+        credits_balance=10000,  # Start with 10,000 credits ($10 USD) for trial
         is_active=True,
         is_admin=False,
         email_verified=False

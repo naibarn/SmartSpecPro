@@ -345,7 +345,7 @@ class UnifiedLLMClient:
                 "unified_llm_success",
                 model=model,
                 model_used=response.model,
-                tokens=response.usage.total_tokens if response.usage else 0
+                tokens=response.tokens_used or 0
             )
             
             return response
@@ -606,49 +606,39 @@ class UnifiedLLMClient:
     
     def _convert_to_llm_response(self, response: Any) -> LLMResponse:
         """Convert provider response to LLMResponse"""
-        
+
         # OpenAI-compatible response
         if hasattr(response, 'choices') and hasattr(response, 'model'):
-            from app.llm_proxy.models import LLMUsageStats
-            
-            usage = None
+            tokens_used = None
             if hasattr(response, 'usage') and response.usage:
-                usage = LLMUsageStats(
-                    prompt_tokens=response.usage.prompt_tokens,
-                    completion_tokens=response.usage.completion_tokens,
-                    total_tokens=response.usage.total_tokens
-                )
-            
+                tokens_used = response.usage.total_tokens
+
             return LLMResponse(
                 content=response.choices[0].message.content,
                 model=response.model,
                 provider="openrouter",  # or extract from model
-                usage=usage,
-                finish_reason=response.choices[0].finish_reason,
-                raw_response=response
+                tokens_used=tokens_used,
+                cost=None,  # Will be calculated later if needed
+                latency_ms=None,
+                finish_reason=response.choices[0].finish_reason
             )
-        
+
         # Anthropic response
         elif hasattr(response, 'content') and hasattr(response, 'model'):
-            from app.llm_proxy.models import LLMUsageStats
-            
-            usage = None
+            tokens_used = None
             if hasattr(response, 'usage'):
-                usage = LLMUsageStats(
-                    prompt_tokens=response.usage.input_tokens,
-                    completion_tokens=response.usage.output_tokens,
-                    total_tokens=response.usage.input_tokens + response.usage.output_tokens
-                )
-            
+                tokens_used = response.usage.input_tokens + response.usage.output_tokens
+
             return LLMResponse(
                 content=response.content[0].text,
                 model=response.model,
                 provider="anthropic",
-                usage=usage,
-                finish_reason=response.stop_reason,
-                raw_response=response
+                tokens_used=tokens_used,
+                cost=None,
+                latency_ms=None,
+                finish_reason=response.stop_reason
             )
-        
+
         else:
             raise ValueError(f"Unknown response type: {type(response)}")
     

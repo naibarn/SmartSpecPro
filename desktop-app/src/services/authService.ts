@@ -113,6 +113,12 @@ export async function verifyToken(): Promise<boolean> {
  * Auto-logout on 401/403 responses
  */
 export function setupAuthInterceptor() {
+  // Prevent duplicate setup
+  if ((window as any).__authInterceptorSetup) {
+    return;
+  }
+  (window as any).__authInterceptorSetup = true;
+
   // Store original fetch
   const originalFetch = window.fetch;
 
@@ -124,10 +130,19 @@ export function setupAuthInterceptor() {
     if (response.status === 401 || response.status === 403) {
       // Check if this is an auth-related endpoint
       const url = args[0] instanceof Request ? args[0].url : args[0].toString();
-      
-      if (!url.includes('/auth/login')) {
-        console.warn('Auth error detected, logging out...');
-        logout();
+
+      // Only logout if:
+      // 1. Not a login endpoint
+      // 2. User has a token (not first time visitor)
+      // 3. Not already on login page
+      if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
+        const hasToken = !!getAuthToken();
+        const onLoginPage = window.location.pathname === '/login';
+
+        if (hasToken && !onLoginPage) {
+          console.warn('Auth error detected, logging out...');
+          logout();
+        }
       }
     }
 
@@ -149,6 +164,13 @@ export function isAdmin(): boolean {
 export async function initializeAuth(): Promise<void> {
   // Setup interceptor
   setupAuthInterceptor();
+
+  // Only check token if it exists
+  const token = getAuthToken();
+  if (!token) {
+    // No token, don't do anything (let routes handle redirect)
+    return;
+  }
 
   // Check if token is expired
   if (isTokenExpired()) {

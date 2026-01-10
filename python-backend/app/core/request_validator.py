@@ -13,10 +13,16 @@ logger = structlog.get_logger()
 
 class RequestValidationMiddleware(BaseHTTPMiddleware):
     """Middleware to validate all incoming requests"""
-    
+
     MAX_REQUEST_SIZE = 10 * 1024 * 1024  # 10MB
     MAX_JSON_DEPTH = 20
-    
+
+    # Paths that allow non-JSON content (binary uploads)
+    BINARY_UPLOAD_PATHS = [
+        "/api/artifacts/upload/",
+        "/api/kilo/media/",
+    ]
+
     async def dispatch(self, request: Request, call_next):
         """Validate request before processing"""
 
@@ -24,6 +30,12 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             # Skip validation for OPTIONS requests (CORS preflight)
             if request.method == "OPTIONS":
                 return await call_next(request)
+
+            # Check if this is a binary upload endpoint
+            is_binary_upload = any(
+                request.url.path.startswith(path)
+                for path in self.BINARY_UPLOAD_PATHS
+            )
 
             # Validate request size
             content_length = request.headers.get("content-length")
@@ -41,11 +53,11 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
                         "max_size": self.MAX_REQUEST_SIZE
                     }
                 )
-            
-            # Validate content type for POST/PUT/PATCH
-            if request.method in ["POST", "PUT", "PATCH"]:
+
+            # Validate content type for POST/PUT/PATCH (skip for binary uploads)
+            if request.method in ["POST", "PUT", "PATCH"] and not is_binary_upload:
                 content_type = request.headers.get("content-type", "")
-                
+
                 if not content_type:
                     logger.warning(
                         "Missing content-type header",
@@ -58,7 +70,7 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
                             "error": "Missing Content-Type header"
                         }
                     )
-                
+
                 # Only allow JSON
                 if "application/json" not in content_type:
                     logger.warning(

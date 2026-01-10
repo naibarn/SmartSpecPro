@@ -51,35 +51,32 @@ export type PresignGetResponse = { artifact: { key: string; url: string; expires
 
 export const cp = {
   createProject: (name: string, description?: string) =>
-    proxyRequest("/api/v1/control-plane/api/v1/projects", {
-      method: "POST",
-      body: JSON.stringify({ name, description: description ?? null }),
-    }),
+    // For now, we don't need projects - simplified
+    Promise.resolve({ project: { id: "default", name, description } }),
 
   createSession: (projectId: string, name: string) =>
-    proxyRequest(`/api/v1/control-plane/api/v1/projects/${projectId}/sessions`, {
+    proxyRequest(`/api/artifacts/sessions`, {
       method: "POST",
       body: JSON.stringify({ name }),
     }),
 
   createIteration: (sessionId: string, number: number) =>
-    proxyRequest(`/api/v1/control-plane/api/v1/sessions/${sessionId}/iterations`, {
-      method: "POST",
-      body: JSON.stringify({ number }),
-    }),
+    // Iterations are handled implicitly in artifacts API
+    Promise.resolve({ iteration: { id: number, sessionId, number } }),
 
   getSession: (sessionId: string) =>
-    proxyRequest(`/api/v1/control-plane/api/v1/sessions/${sessionId}`, { method: "GET" }),
+    // Simplified - sessions exist implicitly
+    Promise.resolve({ session: { id: sessionId } }),
 
   presignPut: (sessionId: string, iteration: number, name: string, contentType?: string) =>
-    proxyRequest<PresignPutResponse>(`/api/v1/control-plane/api/v1/sessions/${sessionId}/artifacts/presign-put`, {
+    proxyRequest<PresignPutResponse>(`/api/artifacts/sessions/${sessionId}/artifacts/presign-put`, {
       method: "POST",
       body: JSON.stringify({ iteration, name, contentType: contentType ?? undefined }),
     }),
 
   presignGet: (sessionId: string, key: string) =>
     proxyRequest<PresignGetResponse>(
-      `/api/v1/control-plane/api/v1/sessions/${sessionId}/artifacts/presign-get?` + new URLSearchParams({ key }).toString(),
+      `/api/artifacts/sessions/${sessionId}/artifacts/presign-get?` + new URLSearchParams({ key }).toString(),
       { method: "GET" }
     ),
 };

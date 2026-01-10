@@ -38,9 +38,9 @@ class LLMResponse(BaseModel):
     content: str
     provider: str
     model: str
-    tokens_used: int
-    cost: float
-    latency_ms: int
+    tokens_used: Optional[int] = None
+    cost: Optional[float] = None
+    latency_ms: Optional[int] = None
     finish_reason: Optional[str] = None
     credits_used: Optional[int] = None  # Credits deducted for this request
     credits_balance: Optional[int] = None  # User's remaining credit balance

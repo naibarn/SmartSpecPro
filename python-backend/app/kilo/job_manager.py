@@ -11,17 +11,40 @@ from typing import Dict, Optional, List, Tuple
 
 SAFE_PREFIXES = ("/",)
 DISALLOWED_TOKENS = [";", "|", "&", "`", "$(", "${", ">", "<"]
+DEFAULT_WORKFLOW = "/smartspec_project_copilot.md"
 
-def _validate_command(cmd: str) -> None:
+def _validate_command(cmd: str) -> str:
+    """
+    Validate and normalize command.
+    Supports both:
+    1. Workflow commands: /workflow_name args
+    2. Natural language: any question/command (routes to default copilot)
+
+    Returns normalized command.
+    """
     c = cmd.strip()
-    if not c.startswith(SAFE_PREFIXES):
-        raise ValueError("command_must_start_with_slash")
-    first = c.split()[0]
-    if not first.endswith(".md"):
-        raise ValueError("command_must_target_/name.md")
+
+    # Check for disallowed tokens first (security)
     for bad in DISALLOWED_TOKENS:
         if bad in c:
             raise ValueError(f"disallowed_token:{bad}")
+
+    # If starts with /, treat as workflow command
+    if c.startswith(SAFE_PREFIXES):
+        # Auto-add .md extension if missing
+        parts = c.split(maxsplit=1)
+        first = parts[0]
+        rest = parts[1] if len(parts) > 1 else ""
+
+        if not first.endswith(".md"):
+            first = first + ".md"
+            c = first + (" " + rest if rest else "")
+
+        return c
+
+    # Otherwise, treat as natural language and route to default copilot
+    # Wrap the entire input as an argument to the copilot
+    return f'{DEFAULT_WORKFLOW} "{c}"'
 
 @dataclass
 class Job:
@@ -48,15 +71,16 @@ class JobManager:
         self._lock = threading.Lock()
 
     def start(self, command: str, cwd: str) -> Job:
-        _validate_command(command)
+        # Validate and normalize command (auto-adds .md extension)
+        normalized_command = _validate_command(command)
         job_id = uuid.uuid4().hex
-        job = Job(job_id=job_id, command=command, cwd=cwd)
+        job = Job(job_id=job_id, command=normalized_command, cwd=cwd)
 
         # Build command: run as Python module with proper PYTHONPATH
         # This is needed because cli_enhanced.py uses relative imports
         python_exe = "python3"
         # Split command into arguments using shlex to properly handle quoted strings and spaces
-        command_args = shlex.split(command)
+        command_args = shlex.split(normalized_command)
         # Use -u flag to unbuffer Python output so we get real-time streaming
         argv = [python_exe, "-u", "-m", "ss_autopilot.cli_enhanced"] + command_args
 

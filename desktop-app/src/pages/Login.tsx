@@ -67,14 +67,9 @@ export default function Login() {
 
       console.log("✅ Stored token and user, redirecting...");
 
-      // Redirect based on admin status
-      if (data.user.is_admin) {
-        console.log("Redirecting to /admin/settings");
-        navigate("/admin/settings");
-      } else {
-        console.log("Redirecting to /");
-        navigate("/");
-      }
+      // Redirect to dashboard for all users
+      console.log(`Redirecting to dashboard (user: ${data.user.email}, admin: ${data.user.is_admin})`);
+      navigate("/");
     } catch (err: any) {
       console.error("❌ Login error:", err);
       console.error("Error stack:", err.stack);

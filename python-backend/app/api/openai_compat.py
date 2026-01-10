@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from fastapi.responses import StreamingResponse
 from typing import Any, Dict, Optional
@@ -12,26 +13,51 @@ from app.clients.web_gateway import forward_chat_json, forward_chat_stream, forw
 from app.core.legacy_key import reject_legacy_key_http
 from app.llm_proxy.unified_client import get_unified_client
 from app.core.database import get_db
+from app.core.auth import verify_token
+from app.models.user import User
+from app.services.credit_service import CreditService
+from sqlalchemy import select
+import structlog
 
+logger = structlog.get_logger()
 
 router = APIRouter(tags=["OpenAI Compatible"])
 
 
 def _require_proxy_token(req: Request):
+    """
+    Check for valid proxy token OR valid auth token (JWT)
+    - Proxy token: matches SMARTSPEC_PROXY_TOKEN (for unauthenticated access)
+    - Auth token: valid JWT token (for authenticated users)
+    """
     if not settings.DEBUG and not settings.SMARTSPEC_PROXY_TOKEN:
         raise HTTPException(status_code=500, detail="SMARTSPEC_PROXY_TOKEN is required in production")
 
     if not settings.SMARTSPEC_PROXY_TOKEN:
         return
 
+    # Get token from headers
     h = (req.headers.get("authorization") or "").strip()
     if h.lower().startswith("bearer "):
         token = h.split(" ", 1)[1].strip()
     else:
         token = req.headers.get("x-proxy-token", "").strip()
 
-    if token != settings.SMARTSPEC_PROXY_TOKEN:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # Check 1: Is it a valid proxy token?
+    if token == settings.SMARTSPEC_PROXY_TOKEN:
+        return
+
+    # Check 2: Is it a valid auth token (JWT)?
+    try:
+        payload = verify_token(token)
+        if payload and "user_id" in payload:
+            # Valid auth token - allow access
+            return
+    except Exception:
+        pass
+
+    # Neither valid proxy token nor valid auth token
+    raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 def _require_localhost(req: Request):
@@ -43,6 +69,37 @@ def _require_localhost(req: Request):
 
 def _trace_id(req: Request) -> Optional[str]:
     return req.headers.get("x-trace-id") or req.headers.get("x-request-id")
+
+
+async def _get_user_from_token(req: Request, db: AsyncSession) -> Optional[User]:
+    """
+    Get user from auth token (optional)
+
+    Args:
+        req: Request object
+        db: Database session
+
+    Returns:
+        User object if valid token, None otherwise
+    """
+    auth_header = req.headers.get("authorization", "")
+    if not auth_header.lower().startswith("bearer "):
+        return None
+
+    token = auth_header.split(" ", 1)[1].strip()
+    payload = verify_token(token)
+
+    if not payload or "user_id" not in payload:
+        return None
+
+    try:
+        result = await db.execute(
+            select(User).where(User.id == payload["user_id"])
+        )
+        return result.scalar_one_or_none()
+    except Exception as e:
+        logger.error("failed_to_get_user_from_token", error=str(e))
+        return None
 
 
 def _convert_to_openai_format(llm_response, model: str) -> Dict[str, Any]:
@@ -110,6 +167,9 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
         temperature = payload.get("temperature", 0.7)
         max_tokens = payload.get("max_tokens", 4000)
 
+        # Get user from auth token (optional - for credit tracking)
+        user = await _get_user_from_token(req, db)
+
         # Initialize client with database session to load provider configs
         client = get_unified_client()
         await client.initialize(db=db)
@@ -118,7 +178,6 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
         if not model_requested:
             # Get default model from enabled provider configs
             from app.models.provider_config import ProviderConfig
-            from sqlalchemy import select
 
             result = await db.execute(
                 select(ProviderConfig).where(ProviderConfig.is_enabled == True).limit(1)
@@ -149,8 +208,61 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
                 use_openrouter=True  # Default to OpenRouter if available
             )
 
+            # Track credit usage if user is authenticated
+            credits_used = None
+            credits_balance = None
+
+            if user and response.cost and response.cost > 0:
+                try:
+                    credit_service = CreditService(db)
+
+                    # Deduct credits based on actual LLM cost
+                    transaction = await credit_service.deduct_credits(
+                        user_id=str(user.id),
+                        llm_cost_usd=Decimal(str(response.cost)),
+                        description=f"LLM usage: {model}",
+                        metadata={
+                            "model": model,
+                            "provider": response.provider,
+                            "tokens_used": response.tokens_used,
+                            "endpoint": "/v1/chat/completions"
+                        }
+                    )
+
+                    credits_used = transaction.amount
+                    credits_balance = transaction.balance_after
+
+                    logger.info(
+                        "credits_deducted",
+                        user_id=str(user.id),
+                        cost_usd=float(response.cost),
+                        credits_used=credits_used,
+                        credits_balance=credits_balance,
+                        model=model
+                    )
+
+                except Exception as e:
+                    # Log error but don't fail the request
+                    logger.error(
+                        "failed_to_deduct_credits",
+                        user_id=str(user.id),
+                        error=str(e),
+                        cost_usd=float(response.cost) if response.cost else 0
+                    )
+
+            # Update response with credit info
+            if credits_used is not None:
+                response.credits_used = credits_used
+                response.credits_balance = credits_balance
+
             # Convert to OpenAI format
             openai_response = _convert_to_openai_format(response, model)
+
+            # Add credit info to response metadata if available
+            if credits_used is not None:
+                openai_response["credits_used"] = credits_used
+                openai_response["credits_balance"] = credits_balance
+                openai_response["cost_usd"] = float(response.cost) if response.cost else 0
 
             return openai_response
 

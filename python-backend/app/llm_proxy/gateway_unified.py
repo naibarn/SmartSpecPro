@@ -256,7 +256,7 @@ class LLMGateway:
                 model_requested=request.preferred_model,
                 model_used=response.model,
                 provider=response.provider,
-                tokens=response.usage.total_tokens if response.usage else 0,
+                tokens=response.tokens_used or 0,
             )
             
             return response
@@ -449,22 +449,14 @@ class LLMGateway:
         if hasattr(response, 'cost') and response.cost:
             return Decimal(str(response.cost))
         
-        # If no usage stats, estimate based on content length
-        if not response.usage:
+        # If no tokens_used, estimate based on content length
+        if not response.tokens_used:
             content_length = len(response.content) if response.content else 0
             estimated_tokens = content_length // 4
             return Decimal(str(estimated_tokens / 1000 * 0.01))
-        
-        # Calculate cost using unified client
-        if use_openrouter and self.unified_client.openrouter_client:
-            return self.unified_client.estimate_cost(
-                model=response.model,
-                prompt_tokens=response.usage.prompt_tokens,
-                completion_tokens=response.usage.completion_tokens
-            )
-        
-        # Fallback: use response tokens_used if available
-        tokens = response.usage.total_tokens if response.usage else response.tokens_used or 0
+
+        # Use response tokens_used
+        tokens = response.tokens_used or 0
         return Decimal(str(tokens / 1000 * 0.01))
     
     async def get_user_balance(self, user: User) -> Dict[str, Any]:

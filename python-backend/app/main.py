@@ -47,6 +47,7 @@ from app.api import (
     ws_ticket,
     admin_provider_config,
     internal_provider,
+    artifacts,
 )
 from app.api.v1 import skills, auth_generator
 
@@ -172,6 +173,7 @@ app.include_router(kilo_cli.router)
 app.include_router(kilo_pty.router)
 app.include_router(kilo_media.router)
 app.include_router(ws_ticket.router)
+app.include_router(artifacts.router)
 
 @app.get("/")
 async def root():

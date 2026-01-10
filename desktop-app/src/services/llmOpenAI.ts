@@ -1,4 +1,5 @@
 import { getProxyToken } from "./authStore";
+import { getAuthToken } from "./authService";
 
 export type Role = "system" | "user" | "assistant" | "tool";
 
@@ -55,10 +56,17 @@ function authHeaders(extra?: Record<string, string>) {
     ...(extra || {}),
   };
 
-  const token = getProxyToken();
+  // Prefer auth token (for credit tracking) over proxy token
+  const authToken = getAuthToken();
+  const proxyToken = getProxyToken();
+
+  const token = authToken || proxyToken;
   if (token) {
     h["authorization"] = `Bearer ${token}`;
-    h["x-proxy-token"] = token;
+    // Keep x-proxy-token for backward compatibility
+    if (proxyToken) {
+      h["x-proxy-token"] = proxyToken;
+    }
   }
   return h;
 }
