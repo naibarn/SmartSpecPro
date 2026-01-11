@@ -22,6 +22,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   const fitRef = useRef<FitAddon | null>(null);
   const lastSizeRef = useRef<{ rows: number; cols: number } | null>(null);
   const initDoneRef = useRef<boolean>(false);
+  const disposedRef = useRef<boolean>(false);
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -32,9 +33,9 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   useEffect(() => {
     if (!containerRef.current || initDoneRef.current) return;
     initDoneRef.current = true;
+    disposedRef.current = false;
 
     console.log("PtyXterm: Initializing terminal...");
-    console.log("PtyXterm: Container dimensions:", containerRef.current.clientWidth, containerRef.current.clientHeight);
 
     // Create terminal with explicit initial dimensions
     const term = new Terminal({
@@ -47,8 +48,8 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       scrollback: 10000,
       allowProposedApi: true,
       disableStdin: false,
-      cols: 80,  // Initial columns
-      rows: 24,  // Initial rows
+      cols: 80,
+      rows: 24,
       theme: {
         background: "#0b0f14",
         foreground: "#d1d5db",
@@ -84,137 +85,98 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     term.open(containerRef.current);
     console.log("PtyXterm: Terminal opened");
 
-    // Write function - write directly to terminal (no refresh needed, xterm handles it)
+    // Write function
     const writeToTerminal = (data: string) => {
+      if (disposedRef.current) return;
       console.log("PtyXterm: writeToTerminal called with", data.length, "chars");
       try {
         term.write(data);
-        // xterm.js automatically renders after write(), no need to call refresh()
       } catch (e) {
         console.error("PtyXterm: Error writing to terminal:", e);
       }
     };
 
-    // Global write function - set immediately after open
     window.__ptyWrite = writeToTerminal;
     console.log("PtyXterm: __ptyWrite registered");
 
-    // Global focus function
     window.__ptyFocus = () => {
-      term.focus();
+      if (!disposedRef.current) term.focus();
     };
 
-    // Handle terminal input - send to backend
+    // Handle terminal input
     const dataDispos = term.onData((data) => {
+      if (disposedRef.current) return;
       console.log("PtyXterm: User input:", JSON.stringify(data));
       onData(data);
     });
 
-    // Safe fit function with proper error handling
+    // Safe fit function - completely wrapped in try-catch
     const safeFit = () => {
-      const el = containerRef.current;
-      if (!el) return false;
-      
-      // Wait for container to have dimensions
-      if (el.clientWidth === 0 || el.clientHeight === 0) {
-        console.log("PtyXterm: Container has no dimensions yet");
-        return false;
-      }
+      if (disposedRef.current) return;
       
       try {
-        // Check if terminal core is ready by checking element
-        if (!term.element) {
-          console.log("PtyXterm: Terminal element not ready");
-          return false;
-        }
+        const el = containerRef.current;
+        if (!el || el.clientWidth === 0 || el.clientHeight === 0) return;
+        if (!term.element) return;
         
-        // Check if terminal has a viewport (required for fit)
-        const viewport = term.element.querySelector('.xterm-viewport');
-        if (!viewport) {
-          console.log("PtyXterm: Terminal viewport not ready");
-          return false;
-        }
+        // Direct fit call with error suppression
+        fit.fit();
+        console.log("PtyXterm: Fit successful, rows:", term.rows, "cols:", term.cols);
         
-        // Check viewport dimensions
-        const viewportRect = viewport.getBoundingClientRect();
-        if (viewportRect.width === 0 || viewportRect.height === 0) {
-          console.log("PtyXterm: Viewport has no dimensions");
-          return false;
-        }
+        const newRows = term.rows;
+        const newCols = term.cols;
         
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-          try {
-            fit.fit();
-            console.log("PtyXterm: Fit successful, rows:", term.rows, "cols:", term.cols);
-            
-            const newRows = term.rows;
-            const newCols = term.cols;
-            
-            if (newRows > 0 && newCols > 0) {
-              const lastSize = lastSizeRef.current;
-              if (!lastSize || lastSize.rows !== newRows || lastSize.cols !== newCols) {
-                lastSizeRef.current = { rows: newRows, cols: newCols };
-                if (onResize) {
-                  onResize(newRows, newCols);
-                }
-              }
+        if (newRows > 0 && newCols > 0) {
+          const lastSize = lastSizeRef.current;
+          if (!lastSize || lastSize.rows !== newRows || lastSize.cols !== newCols) {
+            lastSizeRef.current = { rows: newRows, cols: newCols };
+            if (onResize) {
+              onResize(newRows, newCols);
             }
-          } catch (e) {
-            console.log("PtyXterm: Fit error in RAF:", e);
           }
-        });
-        
-        return true;
-      } catch (e) {
-        console.log("PtyXterm: Fit error (will retry):", e);
-        return false;
+        }
+      } catch {
+        // Silently ignore fit errors - they don't affect functionality
       }
     };
 
-    // Delayed fit with retries - start after longer delay
+    // Delayed fit with retries
     let fitAttempts = 0;
-    const maxFitAttempts = 20;
-    let fitSuccess = false;
+    const maxFitAttempts = 10;
     
     const tryFit = () => {
-      if (fitSuccess || fitAttempts >= maxFitAttempts) return;
+      if (disposedRef.current || fitAttempts >= maxFitAttempts) return;
       fitAttempts++;
-      
-      if (safeFit()) {
-        fitSuccess = true;
-        console.log("PtyXterm: Fit completed after", fitAttempts, "attempts");
-      } else {
-        // Retry with increasing delay
-        setTimeout(tryFit, 100 + fitAttempts * 50);
+      safeFit();
+      if (fitAttempts < maxFitAttempts) {
+        setTimeout(tryFit, 200);
       }
     };
     
-    // Start fit attempts after a longer delay (300ms)
-    setTimeout(tryFit, 300);
+    // Start fit attempts after delay
+    const fitTimer = setTimeout(tryFit, 500);
     
-    // Focus terminal after delay
-    setTimeout(() => {
-      term.focus();
-      console.log("PtyXterm: Terminal focused");
-    }, 350);
+    // Focus terminal
+    const focusTimer = setTimeout(() => {
+      if (!disposedRef.current) {
+        term.focus();
+        console.log("PtyXterm: Terminal focused");
+      }
+    }, 600);
 
-    // Debounced resize handler
+    // Resize handler
     let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
     const handleResize = () => {
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
-        fitSuccess = false;
         fitAttempts = 0;
         tryFit();
-      }, 200);
+      }, 250);
     };
     
     window.addEventListener("resize", handleResize);
 
-    // Only handle specific keyboard shortcuts
+    // Keyboard shortcuts
     const keyHandler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "t") {
         onKey(e);
@@ -226,12 +188,13 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
 
     return () => {
       console.log("PtyXterm: Cleanup");
+      disposedRef.current = true;
       initDoneRef.current = false;
+      clearTimeout(fitTimer);
+      clearTimeout(focusTimer);
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("keydown", keyHandler);
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       dataDispos.dispose();
       term.dispose();
       delete window.__ptyWrite;
@@ -239,14 +202,10 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     };
   }, [onData, onKey, onResize]);
 
-  const handleClick = () => {
-    termRef.current?.focus();
-  };
-
   return (
     <div
       ref={containerRef}
-      onClick={handleClick}
+      onClick={() => termRef.current?.focus()}
       style={{
         height: "60vh",
         minHeight: 400,
