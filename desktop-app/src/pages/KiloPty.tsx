@@ -409,27 +409,39 @@ export default function KiloPtyPage() {
     }, 200);
   }, []);
 
+  // Use refs for callbacks to avoid re-creating them
+  const createSessionRef = useRef(createSession);
+  const closeTabRef = useRef(closeTab);
+  const activeTabRef = useRef(activeTab);
+  
+  useEffect(() => {
+    createSessionRef.current = createSession;
+    closeTabRef.current = closeTab;
+    activeTabRef.current = activeTab;
+  }, [createSession, closeTab, activeTab]);
+
   const onKey = useCallback((e: KeyboardEvent) => {
     // Don't handle keys if terminal should handle them
     // Only handle specific shortcuts
     const ws = ptyWsRef.current;
     if (!ws || ws.readyState !== 1) return;
-    if (!activeTab) return;
+    const tab = activeTabRef.current;
+    if (!tab) return;
 
     // Ctrl+Shift+T for new tab
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
-      createSession();
+      createSessionRef.current();
       return;
     }
     // Ctrl+W for close tab
     if (e.ctrlKey && e.key.toLowerCase() === "w") {
       e.preventDefault();
-      closeTab(activeTab.id);
+      closeTabRef.current(tab.id);
       return;
     }
     // Don't intercept Ctrl+C - let xterm handle it
-  }, [activeTab, createSession, closeTab]);
+  }, []); // Empty deps - stable callback
 
   const insertMedia = async (kind: "image" | "video") => {
     if (!activeTab) return;
@@ -757,7 +769,7 @@ export default function KiloPtyPage() {
             </div>
           ) : (
             <>
-              <PtyXterm onData={onTermData} onKey={onKey} onResize={onTermResize} />
+              <PtyXterm key="pty-terminal" onData={onTermData} onKey={onKey} onResize={onTermResize} />
               <div style={{
                 fontSize: 12,
                 opacity: 0.8,
