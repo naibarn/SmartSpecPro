@@ -454,12 +454,24 @@ export default function KiloPtyPage() {
       const url = URL.createObjectURL(f);
 
       const ev: MediaEvent = { sessionId: activeTab.id, type: kind, title: f.name, url, mime: f.type, meta: { size: f.size } };
+      
+      // Add to local state immediately for instant feedback
+      setTabs(prev => prev.map(t => 
+        t.id === activeTab.id 
+          ? { ...t, media: [ev, ...t.media].slice(0, 200) }
+          : t
+      ));
+      
+      // Also send to backend for persistence
       const mws = mediaWsRef.current;
-      if (mws && mws.readyState === 1) mediaEmit(mws, ev);
+      if (mws && mws.readyState === 1) {
+        mediaEmit(mws, ev);
+      }
 
+      // Optionally notify terminal about the media
       const pws = ptyWsRef.current;
       if (pws && pws.readyState === 1) {
-        ptyInput(pws, `\n@media type=${kind} name="${f.name}" mime="${f.type}" size=${f.size}\n`);
+        ptyInput(pws, `\n# Media inserted: ${kind} - ${f.name} (${(f.size / 1024).toFixed(1)} KB)\n`);
       }
     };
     input.click();
