@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PtyXterm from "../components/PtyXterm";
 import MediaGallery from "../components/MediaGallery";
-import { openPtyWs, ptyCreate, ptyAttach, ptyInput, ptySignal, ptyKill, ptyResize, PtyMessage } from "../services/pty";
+import { openPtyWs, ptyCreate, ptyAttach, ptyInput, ptySignal, ptyKill, ptyResize, ptyPoll, PtyMessage } from "../services/pty";
 import { createWsTicket } from "../services/wsTicket";
 import { loadProxyToken, getProxyTokenHint, setProxyToken } from "../services/authStore";
 import { openMediaWs, mediaAttach, mediaEmit, MediaMessage, MediaEvent } from "../services/mediaChannel";
@@ -366,11 +366,13 @@ export default function KiloPtyPage() {
       const tab = tabs.find(t => t.id === id);
       if (!ws || ws.readyState !== 1 || !tab) return;
       
-      console.log("Attaching to tab:", id, "from seq:", tab.seq);
-      ptyAttach(ws, id, tab.seq);
-      if (mws && mws.readyState === 1) mediaAttach(mws, id, tab.mediaSeq);
+      // Use from: 0 to replay entire buffer when switching tabs
+      // This ensures the new terminal instance gets all previous output
+      console.log("Attaching to tab:", id, "replaying from seq: 0");
+      ptyAttach(ws, id, 0);  // Always replay from beginning
+      if (mws && mws.readyState === 1) mediaAttach(mws, id, 0);
       ptyPoll(ws);
-    }, 500); // Wait for PtyXterm to mount and register __ptyWrite
+    }, 600); // Wait for PtyXterm to mount and register __ptyWrite
   }, [tabs]);
 
   const closeTab = useCallback((id: string) => {
