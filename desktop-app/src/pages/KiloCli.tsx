@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, StreamMessage, WorkflowSchema } from "../services/kiloCli";
+import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, kiloRecordResponse, StreamMessage, WorkflowSchema, ConversationMessage, ConversationContext } from "../services/kiloCli";
 import { Terminal } from "../components/Terminal";
 import { CommandPalette } from "../components/CommandPalette";
 import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
@@ -18,6 +18,10 @@ type Tab = {
   lines: string[];
   lastSeq: number;
   isWaiting: boolean;
+  // Context management
+  sessionId: string;  // Session ID for context continuity
+  conversationHistory: ConversationMessage[];  // Local conversation history
+  contextUsagePercent: number;  // Current context usage percentage
 };
 
 export default function KiloCliPage() {
@@ -144,6 +148,53 @@ export default function KiloCliPage() {
     );
   }
 
+  // Connect to stream and collect response content for history
+  async function connectStreamWithResponse(
+    tabId: string, 
+    jobId: string, 
+    from: number,
+    onComplete: (content: string) => void
+  ) {
+    const existingAc = abortRefs.current.get(tabId);
+    if (existingAc) {
+      try { existingAc.abort(); } catch {}
+    }
+
+    const ac = new AbortController();
+    abortRefs.current.set(tabId, ac);
+
+    let collectedContent = '';
+
+    await kiloStreamNdjson(
+      jobId,
+      from,
+      (m: StreamMessage) => {
+        if (m.type === "stdout") {
+          updateTab(tabId, { lastSeq: m.seq });
+          const text = m.data || m.line || "";
+          appendToTab(tabId, text);
+          // Collect content for history (limit to prevent huge history)
+          if (collectedContent.length < 50000) {
+            collectedContent += text;
+          }
+        } else if (m.type === "status" || m.type === "done") {
+          updateTab(tabId, { 
+            status: m.status || "done", 
+            isWaiting: false 
+          });
+          appendToTab(tabId, `\n[done] status=${m.status} rc=${m.returncode}\n`);
+          // Call completion callback with collected content
+          onComplete(collectedContent.trim());
+        } else if (m.type === "error") {
+          updateTab(tabId, { status: "error", isWaiting: false });
+          appendToTab(tabId, `\n[error] ${m.message}\n`);
+          onComplete(collectedContent.trim());
+        }
+      },
+      ac.signal
+    );
+  }
+
   // Run in active tab (continue context) or create new tab if none exists
   async function runInActiveTab(planOnly = false) {
     if (!workspace) {
@@ -170,11 +221,24 @@ export default function KiloCliPage() {
     updateTab(tabId, { status: "starting", isWaiting: true });
     setCommand(""); // Clear for next command
 
+    // Add user message to conversation history
+    const userMessage: ConversationMessage = {
+      role: "user",
+      content: cmd,
+      timestamp: Date.now()
+    };
+    const updatedHistory = [...activeTab.conversationHistory, userMessage];
+    updateTab(tabId, { conversationHistory: updatedHistory });
+
     // Add separator and new command header
+    const contextInfo = activeTab.contextUsagePercent > 0 
+      ? `📊 Context: ${activeTab.contextUsagePercent.toFixed(1)}%\n` 
+      : '';
     const header = [
       `\n${"─".repeat(80)}\n`,
       `📝 Command: ${cmd}\n`,
       `⏰ Time: ${new Date().toLocaleString('th-TH')}\n`,
+      contextInfo,
       `${"─".repeat(80)}\n\n`,
       `⏳ Processing... please wait\n\n`
     ];
@@ -182,11 +246,43 @@ export default function KiloCliPage() {
     header.forEach(line => appendToTab(tabId, line));
 
     try {
-      const res = await kiloRun(workspace, cmd);
-      console.log("✅ Got jobId:", res.jobId);
+      // Build context for API call
+      const context: ConversationContext = {
+        sessionId: activeTab.sessionId,
+        recentMessages: updatedHistory.slice(-10), // Keep last 10 messages
+      };
+
+      const res = await kiloRun(workspace, cmd, context);
+      console.log("✅ Got jobId:", res.jobId, "sessionId:", res.sessionId);
       
-      updateTab(tabId, { jobId: res.jobId, status: "running", command: cmd });
-      await connectStream(tabId, res.jobId, 0);
+      // Update session ID and context info
+      updateTab(tabId, { 
+        jobId: res.jobId, 
+        status: "running", 
+        command: cmd,
+        sessionId: res.sessionId || activeTab.sessionId,
+        contextUsagePercent: res.contextInfo?.usagePercent || activeTab.contextUsagePercent
+      });
+
+      // Connect to stream and collect response
+      let responseContent = '';
+      await connectStreamWithResponse(tabId, res.jobId, 0, (content) => {
+        responseContent = content;
+      });
+
+      // Record assistant response in history
+      if (responseContent) {
+        const assistantMessage: ConversationMessage = {
+          role: "assistant",
+          content: responseContent,
+          timestamp: Date.now()
+        };
+        updateTab(tabId, { 
+          conversationHistory: [...updatedHistory, assistantMessage] 
+        });
+        // Also record on backend
+        await kiloRecordResponse(res.jobId, responseContent).catch(console.warn);
+      }
     } catch (err) {
       console.error("❌ Error running workflow:", err);
       updateTab(tabId, { status: "error", isWaiting: false });
@@ -208,9 +304,16 @@ export default function KiloCliPage() {
     const cmd = planOnly ? `${command} --plan-only` : command;
     saveHistory(cmd);
 
-    // Create new tab
+    // Create new tab with fresh session
     const tabId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
     const tabTitle = cmd.length > 30 ? cmd.substring(0, 27) + "..." : cmd;
+    
+    // Initial user message for history
+    const initialHistory: ConversationMessage[] = [{
+      role: "user",
+      content: cmd,
+      timestamp: Date.now()
+    }];
     
     const newTab: Tab = {
       id: tabId,
@@ -221,6 +324,9 @@ export default function KiloCliPage() {
       lines: [],
       lastSeq: 0,
       isWaiting: true,
+      sessionId: "",  // Will be set from API response
+      conversationHistory: initialHistory,
+      contextUsagePercent: 0
     };
 
     setTabs(prev => [...prev, newTab]);
@@ -233,6 +339,7 @@ export default function KiloCliPage() {
       `📝 Command: ${cmd}\n`,
       `⏰ Time: ${new Date().toLocaleString('th-TH')}\n`,
       `📁 Workspace: ${workspace}\n`,
+      `🆕 New Session (fresh context)\n`,
       `${"=".repeat(80)}\n\n`,
       `⏳ Starting workflow... please wait\n\n`
     ];
@@ -240,11 +347,36 @@ export default function KiloCliPage() {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lines: header } : t));
 
     try {
+      // No context for new tab - fresh start
       const res = await kiloRun(workspace, cmd);
-      console.log("✅ Got jobId:", res.jobId);
+      console.log("✅ Got jobId:", res.jobId, "sessionId:", res.sessionId);
       
-      updateTab(tabId, { jobId: res.jobId, status: "running" });
-      await connectStream(tabId, res.jobId, 0);
+      updateTab(tabId, { 
+        jobId: res.jobId, 
+        status: "running",
+        sessionId: res.sessionId || "",
+        contextUsagePercent: res.contextInfo?.usagePercent || 0
+      });
+
+      // Connect to stream and collect response
+      let responseContent = '';
+      await connectStreamWithResponse(tabId, res.jobId, 0, (content) => {
+        responseContent = content;
+      });
+
+      // Record assistant response in history
+      if (responseContent) {
+        const assistantMessage: ConversationMessage = {
+          role: "assistant",
+          content: responseContent,
+          timestamp: Date.now()
+        };
+        updateTab(tabId, { 
+          conversationHistory: [...initialHistory, assistantMessage] 
+        });
+        // Also record on backend
+        await kiloRecordResponse(res.jobId, responseContent).catch(console.warn);
+      }
     } catch (err) {
       console.error("❌ Error running workflow:", err);
       updateTab(tabId, { status: "error", isWaiting: false });
@@ -316,6 +448,9 @@ export default function KiloCliPage() {
       lines: [],
       lastSeq: 0,
       isWaiting: false,
+      sessionId: "",
+      conversationHistory: [],
+      contextUsagePercent: 0
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(tabId);

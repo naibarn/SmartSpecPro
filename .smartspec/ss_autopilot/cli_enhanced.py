@@ -26,6 +26,7 @@ from .report_enhancer import ReportEnhancer
 from .workflow_loader import WorkflowCatalog, WorkflowNotFoundError
 from .error_handler import with_error_handling, safe_file_read
 from .llm_client import LLMClient, LLMError, InsufficientCreditsError, AuthenticationError, GatewayError
+from .context_aware_llm import ContextAwareLLMClient, ConversationContext
 
 
 def load_config() -> Dict[str, Any]:
@@ -420,8 +421,8 @@ def cmd_workflow(args):
         print(f"   - Platform: {platform}")
 
         try:
-            # Initialize LLM client
-            llm_client = LLMClient.from_env()
+            # Initialize context-aware LLM client
+            llm_client = ContextAwareLLMClient.from_env()
 
             # Execute workflow
             response = llm_client.execute_workflow(
@@ -621,9 +622,9 @@ Examples:
                 user_question = ' '.join(additional_args) if additional_args else "Execute this workflow"
 
                 try:
-                    from .llm_client import LLMClient
+                    from .context_aware_llm import ContextAwareLLMClient
 
-                    client = LLMClient.from_env()
+                    client = ContextAwareLLMClient.from_env()
 
                     # Build messages for LLM
                     messages = [

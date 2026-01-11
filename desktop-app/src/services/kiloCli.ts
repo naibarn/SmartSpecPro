@@ -1,6 +1,14 @@
 import { getProxyToken, loadProxyToken } from "./authStore";
 
-export type KiloRunResult = { jobId: string };
+export type KiloRunResult = { 
+  jobId: string;
+  sessionId?: string;
+  contextInfo?: {
+    totalTokens: number;
+    wasTruncated: boolean;
+    usagePercent: number;
+  };
+};
 
 export type WorkflowArgType = "string" | "enum";
 
@@ -33,6 +41,29 @@ export type StreamMessage = {
   message?: string;
 };
 
+// Conversation context types
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp?: number;
+}
+
+export interface ConversationContext {
+  sessionId?: string;
+  recentMessages?: ConversationMessage[];
+  summary?: string;
+}
+
+export interface SessionContextInfo {
+  sessionId: string;
+  messageCount: number;
+  totalTokens: number;
+  effectiveLimit: number;
+  usagePercent: number;
+  hasSummary: boolean;
+  reservedForOutput: number;
+}
+
 const BASE = import.meta.env.VITE_PY_BACKEND_URL || "http://localhost:8000";
 
 function authHeaders(): Record<string, string> {
@@ -45,17 +76,89 @@ async function ensureToken() {
   if (!getProxyToken()) await loadProxyToken();
 }
 
-export async function kiloRun(workspace: string, command: string): Promise<KiloRunResult> {
+/**
+ * Run a Kilo CLI command with optional conversation context.
+ * 
+ * @param workspace - The workspace directory
+ * @param command - The command to run
+ * @param context - Optional conversation context for multi-turn conversations
+ */
+export async function kiloRun(
+  workspace: string, 
+  command: string,
+  context?: ConversationContext
+): Promise<KiloRunResult> {
   await ensureToken();
+  
+  const body: Record<string, unknown> = { workspace, command };
+  
+  // Add session and context if provided
+  if (context?.sessionId) {
+    body.session_id = context.sessionId;
+  }
+  if (context) {
+    body.conversation_context = {
+      session_id: context.sessionId,
+      recent_messages: context.recentMessages?.map(m => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp
+      })),
+      summary: context.summary
+    };
+  }
+  
   const res = await fetch(`${BASE}/api/v1/kilo/run`, {
     method: "POST",
     headers: { "content-type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ workspace, command }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`kiloRun failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+/**
+ * Record assistant response for context tracking.
+ * Called after job completes to store the response in conversation history.
+ */
+export async function kiloRecordResponse(
+  jobId: string, 
+  response: string
+): Promise<void> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/jobs/${encodeURIComponent(jobId)}/response`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ response }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.warn(`kiloRecordResponse failed (${res.status}): ${text}`);
+    // Don't throw - this is not critical
+  }
+}
+
+/**
+ * Get context usage information for a session.
+ */
+export async function kiloGetSessionContext(
+  sessionId: string
+): Promise<SessionContextInfo> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/sessions/${encodeURIComponent(sessionId)}/context`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloGetSessionContext failed (${res.status}): ${text}`);
   }
   return res.json();
 }

@@ -5,9 +5,10 @@ import subprocess
 import threading
 import time
 import uuid
+import json
 from dataclasses import dataclass, field
 from queue import Queue, Empty
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List, Tuple, Any
 
 SAFE_PREFIXES = ("/",)
 DISALLOWED_TOKENS = [";", "|", "&", "`", "$(", "${", ">", "<"]
@@ -51,6 +52,8 @@ class Job:
     job_id: str
     command: str
     cwd: str
+    session_id: Optional[str] = None  # Session ID for context continuity
+    context: Optional[Dict[str, Any]] = None  # Prepared context for LLM
     created_at: float = field(default_factory=time.time)
     status: str = "running"  # running|completed|failed|cancelled
     returncode: Optional[int] = None
@@ -70,11 +73,23 @@ class JobManager:
         self._jobs: Dict[str, Job] = {}
         self._lock = threading.Lock()
 
-    def start(self, command: str, cwd: str) -> Job:
+    def start(
+        self, 
+        command: str, 
+        cwd: str,
+        session_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Job:
         # Validate and normalize command (auto-adds .md extension)
         normalized_command = _validate_command(command)
         job_id = uuid.uuid4().hex
-        job = Job(job_id=job_id, command=normalized_command, cwd=cwd)
+        job = Job(
+            job_id=job_id, 
+            command=normalized_command, 
+            cwd=cwd,
+            session_id=session_id,
+            context=context
+        )
 
         # Build command: run as Python module with proper PYTHONPATH
         # This is needed because cli_enhanced.py uses relative imports
@@ -86,6 +101,15 @@ class JobManager:
 
         env = dict(os.environ)
         env["CI"] = "1"
+        
+        # Pass session_id and context via environment variables
+        if session_id:
+            env["KILO_SESSION_ID"] = session_id
+        
+        if context:
+            # Pass context as JSON via environment variable
+            # This allows the CLI to access conversation history
+            env["KILO_CONTEXT"] = json.dumps(context)
 
         # CRITICAL: Add .smartspec directory to PYTHONPATH so "ss_autopilot" package can be found
         smartspec_dir = os.path.join(cwd, ".smartspec")
