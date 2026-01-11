@@ -301,7 +301,7 @@ export default function KiloPtyPage() {
       setErrorMessage(err instanceof Error ? err.message : "Failed to connect");
       setIsConnecting(false);
     }
-  }, [command, isConnecting]);
+  }, [isConnecting]);
 
   useEffect(() => {
     // Delay initial connection slightly to ensure component is mounted
