@@ -5,7 +5,7 @@ import { openPtyWs, ptyCreate, ptyAttach, ptyInput, ptySignal, ptyKill, ptyResiz
 import { createWsTicket } from "../services/wsTicket";
 import { loadProxyToken, getProxyTokenHint, setProxyToken } from "../services/authStore";
 import { openMediaWs, mediaAttach, mediaEmit, MediaMessage, MediaEvent } from "../services/mediaChannel";
-import { kiloListWorkflows } from "../services/kiloCli";
+
 
 const DEFAULT_WORKSPACE = import.meta.env.VITE_WORKSPACE_PATH || "";
 
@@ -23,8 +23,6 @@ type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 
 export default function KiloPtyPage() {
   const [workspace, setWorkspace] = useState(DEFAULT_WORKSPACE);
-  const [workflows, setWorkflows] = useState<string[]>([]);
-  const [command, setCommand] = useState("");
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [active, setActive] = useState<string>("");
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
@@ -111,18 +109,7 @@ export default function KiloPtyPage() {
     setTokenHint(getProxyTokenHint());
   };
 
-  const refreshWorkflows = useCallback(async () => {
-    if (!workspace) return;
-    try {
-      await loadProxyToken();
-      const res = await kiloListWorkflows(workspace);
-      setWorkflows(res.workflows || []);
-    } catch {
-      setWorkflows([]);
-    }
-  }, [workspace]);
 
-  useEffect(() => { refreshWorkflows(); }, [refreshWorkflows]);
 
   // No need for frontend polling - backend pushes data via WebSocket
 
@@ -349,10 +336,9 @@ export default function KiloPtyPage() {
       return;
     }
     const ws_path = workspace || "";
-    console.log("Creating PTY session:", { workspace: ws_path, command });
-    ptyCreate(ws, ws_path, command);
-    setCommand(""); // Clear command after creating session
-  }, [workspace, command, connectWebSockets]);
+    console.log("Creating PTY session:", { workspace: ws_path });
+    ptyCreate(ws, ws_path, "");  // Always create interactive shell
+  }, [workspace, connectWebSockets]);
 
   const attachTab = useCallback((id: string) => {
     setActive(id);
@@ -464,12 +450,51 @@ export default function KiloPtyPage() {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = kind === "image" ? "image/*" : "video/*";
-    input.onchange = () => {
+    input.onchange = async () => {
       const f = input.files?.[0];
       if (!f) return;
-      const url = URL.createObjectURL(f);
+      
+      // Create blob URL for preview
+      const blobUrl = URL.createObjectURL(f);
+      
+      // Determine save path in workspace
+      const mediaDir = workspace ? `${workspace}/.media` : ".media";
+      const timestamp = Date.now();
+      const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = `${mediaDir}/${timestamp}_${safeName}`;
+      
+      // Try to upload file to workspace via backend
+      let serverPath = filePath;
+      try {
+        const formData = new FormData();
+        formData.append("file", f);
+        formData.append("path", filePath);
+        
+        const BASE = import.meta.env.VITE_PY_BACKEND_URL || "http://localhost:8000";
+        const res = await fetch(`${BASE}/api/v1/kilo/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          serverPath = data.path || filePath;
+          console.log("File uploaded to:", serverPath);
+        } else {
+          console.warn("Upload failed, using local path:", filePath);
+        }
+      } catch (err) {
+        console.warn("Upload error, using local path:", err);
+      }
 
-      const ev: MediaEvent = { sessionId: activeTab.id, type: kind, title: f.name, url, mime: f.type, meta: { size: f.size } };
+      const ev: MediaEvent = { 
+        sessionId: activeTab.id, 
+        type: kind, 
+        title: f.name, 
+        url: blobUrl, 
+        mime: f.type, 
+        meta: { size: f.size, path: serverPath } 
+      };
       
       // Add to local state immediately for instant feedback
       setTabs(prev => prev.map(t => 
@@ -484,10 +509,10 @@ export default function KiloPtyPage() {
         mediaEmit(mws, ev);
       }
 
-      // Optionally notify terminal about the media
+      // Notify terminal about the media with full path
       const pws = ptyWsRef.current;
       if (pws && pws.readyState === 1) {
-        ptyInput(pws, `\n# Media inserted: ${kind} - ${f.name} (${(f.size / 1024).toFixed(1)} KB)\n`);
+        ptyInput(pws, `\n# Media inserted: ${kind}\n# Path: ${serverPath}\n# Size: ${(f.size / 1024).toFixed(1)} KB\n`);
       }
     };
     input.click();
@@ -624,83 +649,49 @@ export default function KiloPtyPage() {
         </div>
       )}
 
-      {/* Command Input Section */}
-      <div style={{ display: "grid", gap: 8, background: "#f9fafb", padding: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <label style={{ fontSize: 13, opacity: 0.9, fontWeight: 600 }}>Command</label>
-          <input
-            value={command}
-            onChange={(e) => setCommand(e.target.value)}
-            placeholder="Enter command (empty = interactive shell)"
-            style={{ ...inputStyle, flex: 1, minWidth: 400, fontFamily: "monospace" }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                createSession();
-              }
-            }}
-          />
-          {workflows.length > 0 && (
-            <select
-              value=""
-              onChange={(e) => e.target.value && setCommand(e.target.value)}
-              style={{ ...inputStyle, minWidth: 200 }}
-            >
-              <option value="">(select workflow)</option>
-              {workflows.map((w) => <option key={w} value={w}>{w}</option>)}
-            </select>
-          )}
-        </div>
+      {/* Action Buttons */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", background: "#f9fafb", padding: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}>
+        <button
+          onClick={createSession}
+          style={isNewTabEnabled ? { ...successButtonStyle, fontSize: "16px", padding: "10px 24px" } : { ...disabledButtonStyle, fontSize: "16px", padding: "10px 24px" }}
+        >
+          ▶️ New Tab {!isNewTabEnabled && `(${connectionStatus})`}
+        </button>
+        <button
+          disabled={!activeTab || activeTab.status !== "running"}
+          onClick={() => {
+            const ws = ptyWsRef.current;
+            if (ws && ws.readyState === 1) ptySignal(ws, "SIGINT");
+          }}
+          style={activeTab && activeTab.status === "running" ? dangerButtonStyle : disabledButtonStyle}
+        >
+          ⏹️ Interrupt (Ctrl+C)
+        </button>
+        <button
+          disabled={!activeTab}
+          onClick={() => activeTab && closeTab(activeTab.id)}
+          style={activeTab ? buttonStyle : disabledButtonStyle}
+        >
+          ❌ Close Tab
+        </button>
+        <button
+          onClick={() => {
+            setIsConnecting(false);  // Reset connecting state
+            connectWebSockets();
+          }}
+          style={connectionStatus !== "connected" ? primaryButtonStyle : buttonStyle}
+        >
+          🔌 {isConnecting ? "Connecting..." : "Reconnect"}
+        </button>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <button
-            onClick={createSession}
-            style={isNewTabEnabled ? { ...successButtonStyle, fontSize: "16px", padding: "10px 24px" } : { ...disabledButtonStyle, fontSize: "16px", padding: "10px 24px" }}
-          >
-            ▶️ New Tab {!isNewTabEnabled && `(${connectionStatus})`}
-          </button>
-          <button
-            disabled={!activeTab || activeTab.status !== "running"}
-            onClick={() => {
-              const ws = ptyWsRef.current;
-              if (ws && ws.readyState === 1) ptySignal(ws, "SIGINT");
-            }}
-            style={activeTab && activeTab.status === "running" ? dangerButtonStyle : disabledButtonStyle}
-          >
-            ⏹️ Interrupt (Ctrl+C)
-          </button>
-          <button
-            disabled={!activeTab}
-            onClick={() => activeTab && closeTab(activeTab.id)}
-            style={activeTab ? buttonStyle : disabledButtonStyle}
-          >
-            ❌ Close Tab
-          </button>
-          <button
-            onClick={() => {
-              setIsConnecting(false);  // Reset connecting state
-              connectWebSockets();
-            }}
-            style={connectionStatus !== "connected" ? primaryButtonStyle : buttonStyle}
-          >
-            🔌 {isConnecting ? "Connecting..." : "Reconnect"}
-          </button>
+        <div style={{ width: 1, height: 24, background: "#d1d5db", margin: "0 4px" }} />
 
-          <div style={{ width: 1, height: 24, background: "#d1d5db", margin: "0 4px" }} />
-
-          <button
-            disabled={!workspace}
-            onClick={refreshWorkflows}
-            style={workspace ? primaryButtonStyle : disabledButtonStyle}
-          >
-            🔄 Refresh workflows
-          </button>
-          <button disabled={!activeTab} onClick={() => insertMedia("image")} style={activeTab ? buttonStyle : disabledButtonStyle}>
-            🖼️ Insert Image
-          </button>
-          <button disabled={!activeTab} onClick={() => insertMedia("video")} style={activeTab ? buttonStyle : disabledButtonStyle}>
-            🎬 Insert Video
-          </button>
-        </div>
+        <button disabled={!activeTab} onClick={() => insertMedia("image")} style={activeTab ? buttonStyle : disabledButtonStyle}>
+          🖼️ Insert Image
+        </button>
+        <button disabled={!activeTab} onClick={() => insertMedia("video")} style={activeTab ? buttonStyle : disabledButtonStyle}>
+          🎬 Insert Video
+        </button>
       </div>
 
       {/* Tabs */}

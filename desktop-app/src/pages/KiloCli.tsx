@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, StreamMessage, WorkflowSchema } from "../services/kiloCli";
 import { Terminal } from "../components/Terminal";
 import { CommandPalette } from "../components/CommandPalette";
@@ -9,20 +9,30 @@ const LS_KEY = "smartspec.kilo.history.v1";
 
 type HistoryItem = { command: string; ts: number };
 
+type Tab = {
+  id: string;
+  title: string;
+  command: string;
+  jobId: string;
+  status: string;
+  lines: string[];
+  lastSeq: number;
+  isWaiting: boolean;
+};
+
 export default function KiloCliPage() {
   const [workspace, setWorkspace] = useState(DEFAULT_WORKSPACE);
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [workflowSchemas, setWorkflowSchemas] = useState<WorkflowSchema[]>([]);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
-  const [command, setCommand] = useState("/test_hello.md");
-  const [jobId, setJobId] = useState("");
-  const [status, setStatus] = useState<string>("-");
-  const [lines, setLines] = useState<string[]>([]);
+  const [command, setCommand] = useState("");
   const [stdin, setStdin] = useState<string>("");
-  const [isWaitingForFirstOutput, setIsWaitingForFirstOutput] = useState(false);
 
-  const [lastSeq, setLastSeq] = useState<number>(0);
-  const abortRef = useRef<AbortController | null>(null);
+  // Multi-tab state
+  const [tabs, setTabs] = useState<Tab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>("");
+
+  const abortRefs = useRef<Map<string, AbortController>>(new Map());
 
   const [tokenInput, setTokenInput] = useState<string>("");
   const [tokenHint, setTokenHint] = useState<string>("");
@@ -35,7 +45,15 @@ export default function KiloCliPage() {
     }
   }, []);
 
-  const append = (s: string) => setLines((prev) => [...prev, s]);
+  const activeTab = useMemo(() => tabs.find(t => t.id === activeTabId), [tabs, activeTabId]);
+
+  const updateTab = useCallback((tabId: string, updates: Partial<Tab>) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, ...updates } : t));
+  }, []);
+
+  const appendToTab = useCallback((tabId: string, text: string) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lines: [...t.lines, text] } : t));
+  }, []);
 
   async function refreshWorkflows() {
     if (!workspace) {
@@ -48,14 +66,8 @@ export default function KiloCliPage() {
       console.log("✅ Got workflows:", res);
       setWorkflows(res.workflows || []);
       setWorkflowSchemas(res.schemas || []);
-      if (res.workflows && res.workflows.length > 0) {
-        append(`Found ${res.workflows.length} workflows\n`);
-      } else {
-        append(`No workflows found in ${workspace}/.smartspec/workflows/\n`);
-      }
     } catch (err) {
       console.error("❌ Error refreshing workflows:", err);
-      append(`Error: ${err}\n`);
       setWorkflows([]);
       setWorkflowSchemas([]);
     }
@@ -76,21 +88,20 @@ export default function KiloCliPage() {
 
   useEffect(() => {
     return () => {
-      try { abortRef.current?.abort(); } catch {}
+      // Cleanup all abort controllers
+      abortRefs.current.forEach(ac => {
+        try { ac.abort(); } catch {}
+      });
     };
   }, []);
 
   const onSaveToken = async () => {
     const token = tokenInput.trim();
-    if (!token) {
-      append("❌ Error: Token cannot be empty\n");
-      return;
-    }
+    if (!token) return;
     console.log("💾 Saving token:", token.substring(0, 10) + "...");
     await setProxyToken(token);
     setTokenInput("");
     setTokenHint(getProxyTokenHint());
-    append(`✅ Token saved: ${token.substring(0, 10)}...\n`);
     alert("Saved proxy token locally (OS keychain when available).");
   };
 
@@ -100,34 +111,33 @@ export default function KiloCliPage() {
     localStorage.setItem(LS_KEY, JSON.stringify(next));
   }
 
-  async function connectStream(currentJobId: string, from: number) {
-    abortRef.current?.abort();
+  async function connectStream(tabId: string, jobId: string, from: number) {
+    // Abort existing stream for this tab
+    const existingAc = abortRefs.current.get(tabId);
+    if (existingAc) {
+      try { existingAc.abort(); } catch {}
+    }
+
     const ac = new AbortController();
-    abortRef.current = ac;
+    abortRefs.current.set(tabId, ac);
 
     await kiloStreamNdjson(
-      currentJobId,
+      jobId,
       from,
       (m: StreamMessage) => {
         if (m.type === "stdout") {
-          setLastSeq(m.seq);
+          updateTab(tabId, { lastSeq: m.seq });
           const text = m.data || m.line || "";
-          append(text);
-        } else if (m.type === "status") {
-          // Backend sends type "status" when job completes - close overlay here
-          setStatus(m.status || "done");
-          append(`\n[done] status=${m.status} rc=${m.returncode}\n`);
-          setIsWaitingForFirstOutput(false);
-        } else if (m.type === "done") {
-          // Job completed - close overlay here
-          setStatus(m.status || "done");
-          append(`\n[done] status=${m.status} rc=${m.returncode}\n`);
-          setIsWaitingForFirstOutput(false);
+          appendToTab(tabId, text);
+        } else if (m.type === "status" || m.type === "done") {
+          updateTab(tabId, { 
+            status: m.status || "done", 
+            isWaiting: false 
+          });
+          appendToTab(tabId, `\n[done] status=${m.status} rc=${m.returncode}\n`);
         } else if (m.type === "error") {
-          // Error occurred - close overlay here
-          setStatus("error");
-          append(`\n[error] ${m.message}\n`);
-          setIsWaitingForFirstOutput(false);
+          updateTab(tabId, { status: "error", isWaiting: false });
+          appendToTab(tabId, `\n[error] ${m.message}\n`);
         }
       },
       ac.signal
@@ -136,71 +146,131 @@ export default function KiloCliPage() {
 
   async function run(planOnly = false) {
     if (!workspace) {
-      append("❌ Error: Please set workspace path\n");
+      alert("Please set workspace path");
       return;
     }
     if (!command) {
-      append("❌ Error: Please enter a command\n");
+      alert("Please enter a command");
       return;
     }
-
-    console.log("▶️ Running:", { workspace, command, planOnly });
-    setLines([]);
-    setStatus("starting");
-    setLastSeq(0);
-    setIsWaitingForFirstOutput(true);  // Set waiting state
 
     const cmd = planOnly ? `${command} --plan-only` : command;
     saveHistory(cmd);
 
+    // Create new tab
+    const tabId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+    const tabTitle = cmd.length > 30 ? cmd.substring(0, 27) + "..." : cmd;
+    
+    const newTab: Tab = {
+      id: tabId,
+      title: tabTitle,
+      command: cmd,
+      jobId: "",
+      status: "starting",
+      lines: [],
+      lastSeq: 0,
+      isWaiting: true,
+    };
+
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(tabId);
+    setCommand(""); // Clear for next command
+
+    // Add header to tab
+    const header = [
+      `\n${"=".repeat(80)}\n`,
+      `📝 Command: ${cmd}\n`,
+      `⏰ Time: ${new Date().toLocaleString('th-TH')}\n`,
+      `📁 Workspace: ${workspace}\n`,
+      `${"=".repeat(80)}\n\n`,
+      `⏳ Starting workflow... please wait\n\n`
+    ];
+    
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lines: header } : t));
+
     try {
-      // Add separator and command header for easy scrollback reference
-      append(`\n${"=".repeat(80)}\n`);
-      append(`📝 Command: ${cmd}\n`);
-      append(`⏰ Time: ${new Date().toLocaleString('th-TH')}\n`);
-      append(`📁 Workspace: ${workspace}\n`);
-      append(`${"=".repeat(80)}\n\n`);
-      append(`⏳ Starting workflow... please wait\n\n`);
-
-      // Clear command input for next command (Kilo Code CLI behavior)
-      setCommand("");
-
       const res = await kiloRun(workspace, cmd);
       console.log("✅ Got jobId:", res.jobId);
-      setJobId(res.jobId);
-      setStatus("running");
-
-      await connectStream(res.jobId, 0);
+      
+      updateTab(tabId, { jobId: res.jobId, status: "running" });
+      await connectStream(tabId, res.jobId, 0);
     } catch (err) {
       console.error("❌ Error running workflow:", err);
-      append(`\n❌ Error: ${err}\n`);
-      setStatus("error");
-      setIsWaitingForFirstOutput(false);
+      updateTab(tabId, { status: "error", isWaiting: false });
+      appendToTab(tabId, `\n❌ Error: ${err}\n`);
     }
   }
 
   async function reconnect() {
-    if (!jobId) return;
-    setStatus("reconnecting");
-    await connectStream(jobId, lastSeq);
-    setStatus("running");
+    if (!activeTab || !activeTab.jobId) return;
+    updateTab(activeTab.id, { status: "reconnecting" });
+    await connectStream(activeTab.id, activeTab.jobId, activeTab.lastSeq);
+    updateTab(activeTab.id, { status: "running" });
   }
 
   async function cancel() {
-    if (!jobId) return;
-    await kiloCancel(jobId);
-    setStatus("cancelled");
-    abortRef.current?.abort();
-    append("\n[cancel requested]\n");
+    if (!activeTab || !activeTab.jobId) return;
+    await kiloCancel(activeTab.jobId);
+    updateTab(activeTab.id, { status: "cancelled", isWaiting: false });
+    
+    const ac = abortRefs.current.get(activeTab.id);
+    if (ac) {
+      try { ac.abort(); } catch {}
+    }
+    
+    appendToTab(activeTab.id, "\n[cancel requested]\n");
   }
 
   async function sendInput() {
-    if (!jobId || !stdin.trim()) return;
+    if (!activeTab || !activeTab.jobId || !stdin.trim()) return;
     const text = stdin;
     setStdin("");
-    append(`\n> ${text}\n`);
-    await kiloSendInput(jobId, text);
+    appendToTab(activeTab.id, `\n> ${text}\n`);
+    await kiloSendInput(activeTab.jobId, text);
   }
+
+  function closeTab(tabId: string) {
+    // Abort stream
+    const ac = abortRefs.current.get(tabId);
+    if (ac) {
+      try { ac.abort(); } catch {}
+      abortRefs.current.delete(tabId);
+    }
+
+    setTabs(prev => {
+      const newTabs = prev.filter(t => t.id !== tabId);
+      // If closing active tab, switch to another
+      if (tabId === activeTabId && newTabs.length > 0) {
+        setActiveTabId(newTabs[newTabs.length - 1].id);
+      } else if (newTabs.length === 0) {
+        setActiveTabId("");
+      }
+      return newTabs;
+    });
+  }
+
+  function clearActiveTab() {
+    if (!activeTab) return;
+    updateTab(activeTab.id, { lines: [] });
+  }
+
+  const getStatusColor = (status: string) => {
+    if (status === "running" || status === "starting") return "#10b981";
+    if (status === "done" || status === "completed") return "#3b82f6";
+    if (status === "error") return "#ef4444";
+    if (status === "cancelled") return "#f59e0b";
+    return "#6b7280";
+  };
+
+  const getStatusIcon = (status: string) => {
+    if (status === "starting") return "⏳";
+    if (status === "running") return "⚡";
+    if (status === "reconnecting") return "🔄";
+    if (status === "done" || status === "completed") return "✅";
+    if (status === "error") return "❌";
+    if (status === "cancelled") return "⏹️";
+    return "○";
+  };
 
   const buttonStyle = {
     padding: "8px 16px",
@@ -209,7 +279,7 @@ export default function KiloCliPage() {
     background: "#ffffff",
     cursor: "pointer",
     fontSize: "14px",
-    fontWeight: 500,
+    fontWeight: 500 as const,
     transition: "all 0.2s",
   };
 
@@ -220,11 +290,24 @@ export default function KiloCliPage() {
     border: "1px solid #2563eb",
   };
 
+  const successButtonStyle = {
+    ...buttonStyle,
+    background: "#10b981",
+    color: "#ffffff",
+    border: "1px solid #059669",
+  };
+
   const dangerButtonStyle = {
     ...buttonStyle,
     background: "#ef4444",
     color: "#ffffff",
     border: "1px solid #dc2626",
+  };
+
+  const disabledButtonStyle = {
+    ...buttonStyle,
+    opacity: 0.5,
+    cursor: "not-allowed",
   };
 
   const inputStyle = {
@@ -234,6 +317,9 @@ export default function KiloCliPage() {
     fontSize: "14px",
     outline: "none",
   };
+
+  // Check if any tab is waiting
+  const isAnyTabWaiting = tabs.some(t => t.isWaiting);
 
   return (
     <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: "1400px", margin: "0 auto" }}>
@@ -271,46 +357,40 @@ export default function KiloCliPage() {
           />
         </div>
 
-        <div style={{
-          fontSize: 12,
-          padding: "12px",
-          background: "#f9fafb",
-          borderRadius: "8px",
-          border: "1px solid #e5e7eb"
-        }}>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
-            <div>
-              <strong>Job ID:</strong> <span style={{ fontFamily: "monospace", color: "#6366f1" }}>{jobId || "-"}</span>
+        {/* Active Tab Info */}
+        {activeTab && (
+          <div style={{
+            fontSize: 12,
+            padding: "12px",
+            background: "#f9fafb",
+            borderRadius: "8px",
+            border: "1px solid #e5e7eb"
+          }}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
+              <div>
+                <strong>Job ID:</strong> <span style={{ fontFamily: "monospace", color: "#6366f1" }}>{activeTab.jobId || "-"}</span>
+              </div>
+              <div>
+                <strong>Status:</strong>{" "}
+                <span style={{ fontFamily: "monospace", color: getStatusColor(activeTab.status) }}>
+                  {getStatusIcon(activeTab.status)} {activeTab.status}
+                </span>
+              </div>
+              <div>
+                <strong>Last Seq:</strong> <span style={{ fontFamily: "monospace" }}>{activeTab.lastSeq}</span>
+              </div>
             </div>
-            <div>
-              <strong>Status:</strong>{" "}
-              <span style={{
-                fontFamily: "monospace",
-                color: status === "running" || status === "starting" ? "#10b981" : status === "done" || status === "completed" ? "#3b82f6" : "#6b7280"
-              }}>
-                {status === "starting" && "⏳ Starting..."}
-                {status === "running" && "⚡ Running..."}
-                {status === "reconnecting" && "🔄 Reconnecting..."}
-                {(status === "done" || status === "completed") && "✅ Completed"}
-                {status === "error" && "❌ Error"}
-                {status === "cancelled" && "⏹️ Cancelled"}
-                {!["starting", "running", "reconnecting", "done", "completed", "error", "cancelled"].includes(status) && status}
-              </span>
-            </div>
-            <div>
-              <strong>Last Seq:</strong> <span style={{ fontFamily: "monospace" }}>{lastSeq}</span>
+            <div style={{ fontSize: 11, opacity: 0.7 }}>
+              💡 <strong>Natural language supported:</strong> พิมพ์คำถามหรือคำสั่งเป็นภาษาธรรมดาได้เลย ระบบจะ route ไปที่ SmartSpec Copilot อัตโนมัติ<br/>
+              📋 <strong>Workflows:</strong> ใช้ <code>/workflow_name</code> เพื่อเรียกใช้ workflow เฉพาะ<br/>
+              ⌨️ <strong>Interactive mode:</strong> ใช้ช่อง stdin ด้านล่างเพื่อส่งข้อมูลเข้า workflow ที่กำลังรันอยู่
             </div>
           </div>
-          <div style={{ fontSize: 11, opacity: 0.7 }}>
-            💡 <strong>Natural language supported:</strong> พิมพ์คำถามหรือคำสั่งเป็นภาษาธรรมดาได้เลย ระบบจะ route ไปที่ SmartSpec Copilot อัตโนมัติ<br/>
-            📋 <strong>Workflows:</strong> ใช้ <code>/workflow_name</code> เพื่อเรียกใช้ workflow เฉพาะ<br/>
-            ⌨️ <strong>Interactive mode:</strong> ใช้ช่อง stdin ด้านล่างเพื่อส่งข้อมูลเข้า workflow ที่กำลังรันอยู่
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Loading indicator overlay */}
-      {isWaitingForFirstOutput && (
+      {isAnyTabWaiting && (
         <div style={{
           position: "fixed",
           top: 0,
@@ -364,7 +444,9 @@ export default function KiloCliPage() {
               color: "#6b7280",
               fontFamily: "monospace"
             }}>
-              Job ID: {jobId || "กำลังสร้าง..."}
+              {tabs.filter(t => t.isWaiting).map(t => (
+                <div key={t.id}>Job: {t.jobId || "กำลังสร้าง..."}</div>
+              ))}
             </div>
           </div>
         </div>
@@ -377,9 +459,64 @@ export default function KiloCliPage() {
         }
       `}</style>
 
-      <Terminal lines={lines} />
+      {/* Tabs */}
+      {tabs.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "8px 0" }}>
+          {tabs.map(t => (
+            <div key={t.id} style={{ display: "flex", alignItems: "center" }}>
+              <button
+                onClick={() => setActiveTabId(t.id)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "8px 0 0 8px",
+                  border: "1px solid #d1d5db",
+                  borderRight: "none",
+                  background: t.id === activeTabId ? "#111827" : "white",
+                  color: t.id === activeTabId ? "white" : "#111827",
+                  fontFamily: "ui-monospace, monospace",
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                title={t.command}
+              >
+                <span style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  backgroundColor: getStatusColor(t.status)
+                }} />
+                <span>{t.title}</span>
+                <span style={{ opacity: 0.7, fontSize: 11 }}>{getStatusIcon(t.status)}</span>
+              </button>
+              <button
+                onClick={() => closeTab(t.id)}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: "0 8px 8px 0",
+                  border: "1px solid #d1d5db",
+                  background: t.id === activeTabId ? "#374151" : "#f3f4f6",
+                  color: t.id === activeTabId ? "white" : "#6b7280",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  transition: "all 0.2s"
+                }}
+                title="Close tab"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Command input section - moved below terminal for natural typing experience */}
+      {/* Terminal */}
+      <Terminal lines={activeTab?.lines || []} />
+
+      {/* Command input section */}
       <div style={{ display: "grid", gap: 8, background: "#f9fafb", padding: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <label style={{ fontSize: 13, opacity: 0.9, fontWeight: 600 }}>Command</label>
@@ -391,15 +528,12 @@ export default function KiloCliPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && workspace && command) {
                 run(false);
-              } else if (e.key === "/") {
+              } else if (e.key === "/" && command === "") {
                 e.preventDefault();
                 setIsPaletteOpen(true);
               }
             }}
           />
-          <button onClick={() => setCommand("/test_hello.md")} style={buttonStyle}>
-            /test_hello
-          </button>
           <button type="button" onClick={() => setIsPaletteOpen((prev) => !prev)} style={buttonStyle}>
             📋 Command Palette
           </button>
@@ -421,25 +555,44 @@ export default function KiloCliPage() {
           <button
             disabled={!workspace || !command}
             onClick={() => run(false)}
-            style={workspace && command ? { ...primaryButtonStyle, fontSize: "16px", padding: "10px 24px" } : buttonStyle}
+            style={workspace && command ? { ...successButtonStyle, fontSize: "16px", padding: "10px 24px" } : disabledButtonStyle}
           >
-            ▶️ Run
+            ▶️ Run (New Tab)
           </button>
           <button
             disabled={!workspace || !command}
             onClick={() => run(true)}
-            style={workspace && command ? buttonStyle : buttonStyle}
+            style={workspace && command ? buttonStyle : disabledButtonStyle}
           >
             📝 Plan-only
           </button>
-          <button disabled={!jobId} onClick={cancel} style={jobId ? dangerButtonStyle : buttonStyle}>
+          <button 
+            disabled={!activeTab || !activeTab.jobId || activeTab.status !== "running"} 
+            onClick={cancel} 
+            style={activeTab && activeTab.jobId && activeTab.status === "running" ? dangerButtonStyle : disabledButtonStyle}
+          >
             ⏹️ Cancel
           </button>
-          <button disabled={!jobId} onClick={reconnect} style={jobId ? buttonStyle : buttonStyle}>
+          <button 
+            disabled={!activeTab || !activeTab.jobId} 
+            onClick={reconnect} 
+            style={activeTab && activeTab.jobId ? buttonStyle : disabledButtonStyle}
+          >
             🔌 Reconnect
           </button>
-          <button onClick={() => setLines([])} style={buttonStyle}>
+          <button 
+            disabled={!activeTab}
+            onClick={clearActiveTab} 
+            style={activeTab ? buttonStyle : disabledButtonStyle}
+          >
             🗑️ Clear
+          </button>
+          <button
+            disabled={!activeTab}
+            onClick={() => activeTab && closeTab(activeTab.id)}
+            style={activeTab ? buttonStyle : disabledButtonStyle}
+          >
+            ❌ Close Tab
           </button>
 
           <div style={{ width: 1, height: 24, background: "#d1d5db", margin: "0 4px" }} />
@@ -447,7 +600,7 @@ export default function KiloCliPage() {
           <button
             disabled={!workspace}
             onClick={refreshWorkflows}
-            style={workspace ? primaryButtonStyle : buttonStyle}
+            style={workspace ? primaryButtonStyle : disabledButtonStyle}
           >
             🔄 Refresh workflows
           </button>
@@ -457,7 +610,6 @@ export default function KiloCliPage() {
             onChange={(e) => {
               const v = e.target.value;
               if (v) {
-                // Auto-add / and .md if needed
                 let cmd = v;
                 if (!cmd.startsWith("/")) cmd = "/" + cmd;
                 if (!cmd.endsWith(".md")) cmd = cmd + ".md";
@@ -486,9 +638,9 @@ export default function KiloCliPage() {
             }}
           />
           <button
-            disabled={!jobId || !stdin.trim()}
+            disabled={!activeTab || !activeTab.jobId || !stdin.trim()}
             onClick={sendInput}
-            style={jobId && stdin.trim() ? primaryButtonStyle : buttonStyle}
+            style={activeTab && activeTab.jobId && stdin.trim() ? primaryButtonStyle : disabledButtonStyle}
           >
             📤 Send
           </button>
