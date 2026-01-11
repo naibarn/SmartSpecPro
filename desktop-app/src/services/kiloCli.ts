@@ -269,3 +269,302 @@ export async function kiloSendInput(jobId: string, text: string): Promise<void> 
     throw new Error(`kiloSendInput failed (${res.status}): ${t}`);
   }
 }
+
+
+// ==================== Long-term Memory API ====================
+
+export type MemoryType = 
+  | "decision" 
+  | "plan" 
+  | "architecture" 
+  | "component" 
+  | "task" 
+  | "code_knowledge";
+
+export interface Memory {
+  id: string;
+  project_id: string;
+  type: MemoryType;
+  title: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  importance: number;
+  source?: string;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+  is_active: boolean;
+  tags: string[];
+  relevance_score?: number;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  workspace_path?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MemoryStats {
+  total_memories: number;
+  by_type: Record<string, { count: number; avg_importance: number }>;
+}
+
+/**
+ * Create or get a project by name/workspace path.
+ * Projects are used to scope memories across sessions.
+ */
+export async function kiloGetOrCreateProject(
+  name: string,
+  workspacePath?: string
+): Promise<Project> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/project`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ name, workspace_path: workspacePath }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloGetOrCreateProject failed (${res.status}): ${text}`);
+  }
+  
+  const data = await res.json();
+  return data.project;
+}
+
+/**
+ * Save a memory to the long-term memory store.
+ */
+export async function kiloSaveMemory(
+  projectId: string,
+  type: MemoryType,
+  title: string,
+  content: string,
+  options?: {
+    metadata?: Record<string, unknown>;
+    importance?: number;
+    tags?: string[];
+    source?: string;
+  }
+): Promise<Memory> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/memory/save`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({
+      project_id: projectId,
+      type,
+      title,
+      content,
+      metadata: options?.metadata,
+      importance: options?.importance ?? 5,
+      tags: options?.tags,
+      source: options?.source,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloSaveMemory failed (${res.status}): ${text}`);
+  }
+  
+  const data = await res.json();
+  return data.memory;
+}
+
+/**
+ * Get a memory by ID.
+ */
+export async function kiloGetMemory(memoryId: string): Promise<Memory> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/memory/${encodeURIComponent(memoryId)}`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloGetMemory failed (${res.status}): ${text}`);
+  }
+  
+  const data = await res.json();
+  return data.memory;
+}
+
+/**
+ * Delete a memory (soft delete by default).
+ */
+export async function kiloDeleteMemory(
+  memoryId: string, 
+  soft: boolean = true
+): Promise<void> {
+  await ensureToken();
+  
+  const url = new URL(`${BASE}/api/v1/kilo/memory/${encodeURIComponent(memoryId)}`);
+  url.searchParams.set("soft", String(soft));
+  
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloDeleteMemory failed (${res.status}): ${text}`);
+  }
+}
+
+/**
+ * Search memories using full-text search.
+ */
+export async function kiloSearchMemories(
+  projectId: string,
+  query: string,
+  options?: {
+    types?: MemoryType[];
+    tags?: string[];
+    minImportance?: number;
+    limit?: number;
+  }
+): Promise<Memory[]> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/memory/search`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({
+      project_id: projectId,
+      query,
+      types: options?.types,
+      tags: options?.tags,
+      min_importance: options?.minImportance,
+      limit: options?.limit ?? 20,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloSearchMemories failed (${res.status}): ${text}`);
+  }
+  
+  const data = await res.json();
+  return data.memories;
+}
+
+/**
+ * Extract memories from a conversation using LLM.
+ */
+export async function kiloExtractMemories(
+  projectId: string,
+  conversation: ConversationMessage[],
+  source?: string
+): Promise<Memory[]> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/memory/extract`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({
+      project_id: projectId,
+      conversation,
+      source,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloExtractMemories failed (${res.status}): ${text}`);
+  }
+  
+  const data = await res.json();
+  return data.memories;
+}
+
+/**
+ * Get memories relevant to a query using hybrid search.
+ * Returns both memories and formatted context string.
+ */
+export async function kiloGetRelevantMemories(
+  projectId: string,
+  query: string,
+  options?: {
+    types?: MemoryType[];
+    limit?: number;
+  }
+): Promise<{ memories: Memory[]; context: string }> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/memory/relevant`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({
+      project_id: projectId,
+      query,
+      types: options?.types,
+      limit: options?.limit ?? 10,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloGetRelevantMemories failed (${res.status}): ${text}`);
+  }
+  
+  return res.json();
+}
+
+/**
+ * Get all memories for a project.
+ */
+export async function kiloGetProjectMemories(
+  projectId: string,
+  options?: {
+    type?: MemoryType;
+    limit?: number;
+  }
+): Promise<Memory[]> {
+  await ensureToken();
+  
+  const url = new URL(`${BASE}/api/v1/kilo/project/${encodeURIComponent(projectId)}/memories`);
+  if (options?.type) {
+    url.searchParams.set("type", options.type);
+  }
+  if (options?.limit) {
+    url.searchParams.set("limit", String(options.limit));
+  }
+  
+  const res = await fetch(url.toString(), {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloGetProjectMemories failed (${res.status}): ${text}`);
+  }
+  
+  const data = await res.json();
+  return data.memories;
+}
+
+/**
+ * Get memory statistics for a project.
+ */
+export async function kiloGetMemoryStats(projectId: string): Promise<MemoryStats> {
+  await ensureToken();
+  
+  const res = await fetch(`${BASE}/api/v1/kilo/project/${encodeURIComponent(projectId)}/stats`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`kiloGetMemoryStats failed (${res.status}): ${text}`);
+  }
+  
+  return res.json();
+}

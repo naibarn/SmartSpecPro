@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, kiloRecordResponse, StreamMessage, WorkflowSchema, ConversationMessage, ConversationContext } from "../services/kiloCli";
+import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, kiloRecordResponse, StreamMessage, WorkflowSchema, ConversationMessage, ConversationContext, kiloGetOrCreateProject, kiloGetRelevantMemories, kiloExtractMemories, kiloGetProjectMemories, Memory, MemoryType, Project } from "../services/kiloCli";
 import { Terminal } from "../components/Terminal";
 import { CommandPalette } from "../components/CommandPalette";
 import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
@@ -22,6 +22,8 @@ type Tab = {
   sessionId: string;  // Session ID for context continuity
   conversationHistory: ConversationMessage[];  // Local conversation history
   contextUsagePercent: number;  // Current context usage percentage
+  // Long-term memory
+  projectId: string;  // Project ID for memory scoping (shared across tabs)
 };
 
 export default function KiloCliPage() {
@@ -35,6 +37,10 @@ export default function KiloCliPage() {
   // Multi-tab state
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>("");
+  
+  // Project-level state (shared across all tabs)
+  const [project, setProject] = useState<Project | null>(null);
+  const [projectMemories, setProjectMemories] = useState<Memory[]>([]);
 
   const abortRefs = useRef<Map<string, AbortController>>(new Map());
 
@@ -88,6 +94,28 @@ export default function KiloCliPage() {
   useEffect(() => {
     refreshWorkflows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace]);
+
+  // Initialize project when workspace changes
+  useEffect(() => {
+    const initProject = async () => {
+      if (!workspace) return;
+      try {
+        // Get or create project for this workspace
+        const projectName = workspace.split('/').pop() || 'default';
+        const proj = await kiloGetOrCreateProject(projectName, workspace);
+        setProject(proj);
+        console.log('📁 Project initialized:', proj.id, proj.name);
+        
+        // Load existing memories for this project
+        const memories = await kiloGetProjectMemories(proj.id, { limit: 50 });
+        setProjectMemories(memories);
+        console.log('🧠 Loaded', memories.length, 'memories for project');
+      } catch (err) {
+        console.error('❌ Failed to initialize project:', err);
+      }
+    };
+    initProject();
   }, [workspace]);
 
   useEffect(() => {
@@ -246,10 +274,24 @@ export default function KiloCliPage() {
     header.forEach(line => appendToTab(tabId, line));
 
     try {
+      // Fetch relevant long-term memories if context is getting low
+      let memoryContext = '';
+      if (project?.id && activeTab.contextUsagePercent < 50) {
+        try {
+          const { context: memCtx } = await kiloGetRelevantMemories(project.id, cmd, { limit: 3 });
+          if (memCtx) {
+            memoryContext = memCtx;
+          }
+        } catch (memErr) {
+          console.warn('Failed to retrieve memories:', memErr);
+        }
+      }
+
       // Build context for API call
       const context: ConversationContext = {
         sessionId: activeTab.sessionId,
         recentMessages: updatedHistory.slice(-10), // Keep last 10 messages
+        summary: memoryContext || undefined  // Include memory context
       };
 
       const res = await kiloRun(workspace, cmd, context);
@@ -277,11 +319,30 @@ export default function KiloCliPage() {
           content: responseContent,
           timestamp: Date.now()
         };
+        const newHistory = [...updatedHistory, assistantMessage];
         updateTab(tabId, { 
-          conversationHistory: [...updatedHistory, assistantMessage] 
+          conversationHistory: newHistory 
         });
         // Also record on backend
         await kiloRecordResponse(res.jobId, responseContent).catch(console.warn);
+        
+        // Extract memories periodically (every 5 messages or when response is substantial)
+        if (project?.id && (newHistory.length % 5 === 0 || responseContent.length > 500)) {
+          try {
+            const recentConvo = newHistory.slice(-6); // Last 3 exchanges
+            const extractedMemories = await kiloExtractMemories(
+              project.id,
+              recentConvo,
+              activeTab.sessionId
+            );
+            if (extractedMemories.length > 0) {
+              console.log('🧠 Extracted', extractedMemories.length, 'memories');
+              setProjectMemories(prev => [...extractedMemories, ...prev].slice(0, 100));
+            }
+          } catch (memErr) {
+            console.warn('Failed to extract memories:', memErr);
+          }
+        }
       }
     } catch (err) {
       console.error("❌ Error running workflow:", err);
@@ -326,7 +387,8 @@ export default function KiloCliPage() {
       isWaiting: true,
       sessionId: "",  // Will be set from API response
       conversationHistory: initialHistory,
-      contextUsagePercent: 0
+      contextUsagePercent: 0,
+      projectId: project?.id || ""  // Share project across all tabs
     };
 
     setTabs(prev => [...prev, newTab]);
@@ -347,8 +409,27 @@ export default function KiloCliPage() {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lines: header } : t));
 
     try {
-      // No context for new tab - fresh start
-      const res = await kiloRun(workspace, cmd);
+      // Fetch relevant long-term memories for the command
+      let memoryContext = '';
+      if (project?.id) {
+        try {
+          const { context } = await kiloGetRelevantMemories(project.id, cmd, { limit: 5 });
+          if (context) {
+            memoryContext = context;
+            appendToTab(tabId, `🧠 Retrieved ${context.split('\n').length} relevant memories from project history\n\n`);
+          }
+        } catch (memErr) {
+          console.warn('Failed to retrieve memories:', memErr);
+        }
+      }
+
+      // Build context with long-term memory
+      const context: ConversationContext = {
+        recentMessages: initialHistory,
+        summary: memoryContext || undefined  // Include memory context as summary
+      };
+
+      const res = await kiloRun(workspace, cmd, context);
       console.log("✅ Got jobId:", res.jobId, "sessionId:", res.sessionId);
       
       updateTab(tabId, { 
@@ -376,6 +457,23 @@ export default function KiloCliPage() {
         });
         // Also record on backend
         await kiloRecordResponse(res.jobId, responseContent).catch(console.warn);
+        
+        // Extract and save important memories from this conversation
+        if (project?.id && responseContent.length > 100) {
+          try {
+            const extractedMemories = await kiloExtractMemories(
+              project.id,
+              [...initialHistory, assistantMessage],
+              tabId
+            );
+            if (extractedMemories.length > 0) {
+              console.log('🧠 Extracted', extractedMemories.length, 'memories from conversation');
+              setProjectMemories(prev => [...extractedMemories, ...prev].slice(0, 100));
+            }
+          } catch (memErr) {
+            console.warn('Failed to extract memories:', memErr);
+          }
+        }
       }
     } catch (err) {
       console.error("❌ Error running workflow:", err);
@@ -450,7 +548,8 @@ export default function KiloCliPage() {
       isWaiting: false,
       sessionId: "",
       conversationHistory: [],
-      contextUsagePercent: 0
+      contextUsagePercent: 0,
+      projectId: project?.id || ""  // Share project across all tabs
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(tabId);

@@ -281,3 +281,284 @@ async def job_cancel(req: Request, job_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail="job_not_found_or_not_running")
     return {"ok": True}
+
+
+# ==================== Long-term Memory API ====================
+
+from app.kilo.memory_store import (
+    get_memory_store, MemoryStore, Memory, MemoryType
+)
+from app.kilo.memory_extractor import get_memory_extractor, MemoryExtractor
+
+
+class MemoryRequest(BaseModel):
+    """Request body for saving a memory"""
+    project_id: str
+    type: str  # decision, plan, architecture, component, task, code_knowledge
+    title: str
+    content: str
+    metadata: Optional[Dict[str, Any]] = None
+    importance: int = 5
+    tags: Optional[List[str]] = None
+    source: Optional[str] = None
+
+
+class MemorySearchRequest(BaseModel):
+    """Request body for searching memories"""
+    project_id: str
+    query: str
+    types: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    min_importance: Optional[int] = None
+    limit: int = 20
+
+
+class ExtractMemoriesRequest(BaseModel):
+    """Request body for extracting memories from conversation"""
+    project_id: str
+    conversation: List[ConversationMessage]
+    source: Optional[str] = None
+
+
+class RelevantMemoriesRequest(BaseModel):
+    """Request body for getting relevant memories"""
+    project_id: str
+    query: str
+    types: Optional[List[str]] = None
+    limit: int = 10
+
+
+@router.post("/memory/save")
+async def save_memory(req: Request, body: MemoryRequest):
+    """
+    Save a memory to the long-term memory store.
+    
+    Memories are project-scoped and shared across all sessions/tabs
+    working on the same project.
+    """
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    store = get_memory_store()
+    
+    try:
+        memory_type = MemoryType(body.type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid memory type: {body.type}")
+    
+    memory = store.save_memory(
+        project_id=body.project_id,
+        type=memory_type,
+        title=body.title,
+        content=body.content,
+        metadata=body.metadata,
+        importance=body.importance,
+        tags=body.tags,
+        source=body.source
+    )
+    
+    # Generate embedding for semantic search
+    extractor = get_memory_extractor()
+    extractor._save_embedding(memory)
+    
+    return {"memory": memory.to_dict()}
+
+
+@router.get("/memory/{memory_id}")
+async def get_memory(req: Request, memory_id: str):
+    """Get a memory by ID"""
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    store = get_memory_store()
+    memory = store.get_memory(memory_id)
+    
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    
+    return {"memory": memory.to_dict()}
+
+
+@router.delete("/memory/{memory_id}")
+async def delete_memory(req: Request, memory_id: str, soft: bool = True):
+    """Delete a memory (soft delete by default)"""
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    store = get_memory_store()
+    store.delete_memory(memory_id, soft_delete=soft)
+    
+    return {"ok": True}
+
+
+@router.post("/memory/search")
+async def search_memories(req: Request, body: MemorySearchRequest):
+    """
+    Search memories using full-text search.
+    
+    Supports filtering by type, tags, and importance.
+    """
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    store = get_memory_store()
+    
+    types = None
+    if body.types:
+        try:
+            types = [MemoryType(t) for t in body.types]
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    memories = store.search_memories(
+        project_id=body.project_id,
+        query=body.query,
+        types=types,
+        tags=body.tags,
+        min_importance=body.min_importance,
+        limit=body.limit
+    )
+    
+    return {"memories": [m.to_dict() for m in memories]}
+
+
+@router.post("/memory/extract")
+async def extract_memories(req: Request, body: ExtractMemoriesRequest):
+    """
+    Extract memories from a conversation using LLM.
+    
+    Automatically identifies decisions, plans, components, tasks,
+    and code knowledge from the conversation.
+    """
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    extractor = get_memory_extractor()
+    
+    # Convert to dict format
+    conversation = [
+        {"role": msg.role, "content": msg.content}
+        for msg in body.conversation
+    ]
+    
+    memories = extractor.extract_memories(
+        conversation=conversation,
+        project_id=body.project_id,
+        source=body.source
+    )
+    
+    return {"memories": [m.to_dict() for m in memories]}
+
+
+@router.post("/memory/relevant")
+async def get_relevant_memories(req: Request, body: RelevantMemoriesRequest):
+    """
+    Get memories relevant to a query using hybrid search.
+    
+    Combines semantic search, full-text search, and importance-based
+    retrieval to find the most relevant memories.
+    """
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    extractor = get_memory_extractor()
+    
+    types = None
+    if body.types:
+        try:
+            types = [MemoryType(t) for t in body.types]
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    memories = extractor.get_relevant_memories(
+        query=body.query,
+        project_id=body.project_id,
+        limit=body.limit,
+        include_types=types
+    )
+    
+    # Format for context
+    context = extractor.format_memories_for_context(memories)
+    
+    return {
+        "memories": [m.to_dict() for m in memories],
+        "context": context
+    }
+
+
+@router.get("/project/{project_id}/memories")
+async def get_project_memories(
+    req: Request, 
+    project_id: str,
+    type: Optional[str] = None,
+    limit: int = 100
+):
+    """Get all memories for a project"""
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    store = get_memory_store()
+    
+    memory_type = None
+    if type:
+        try:
+            memory_type = MemoryType(type)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid memory type: {type}")
+    
+    memories = store.get_project_memories(
+        project_id=project_id,
+        type=memory_type,
+        limit=limit
+    )
+    
+    return {"memories": [m.to_dict() for m in memories]}
+
+
+@router.get("/project/{project_id}/stats")
+async def get_project_memory_stats(req: Request, project_id: str):
+    """Get memory statistics for a project"""
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    store = get_memory_store()
+    stats = store.get_memory_stats(project_id)
+    
+    return stats
+
+
+class ProjectRequest(BaseModel):
+    """Request body for creating/getting a project"""
+    name: str
+    workspace_path: Optional[str] = None
+
+
+@router.post("/project")
+async def create_or_get_project(req: Request, body: ProjectRequest):
+    """
+    Create a new project or get existing one by name/path.
+    
+    Projects are used to scope memories - all sessions working on
+    the same project share the same long-term memory.
+    """
+    reject_legacy_key_http(req)
+    _require_localhost(req)
+    _require_proxy_token(req)
+    
+    store = get_memory_store()
+    project_id = store.get_or_create_project(
+        name=body.name,
+        workspace_path=body.workspace_path
+    )
+    
+    project = store.get_project(project_id)
+    
+    return {"project": project}
