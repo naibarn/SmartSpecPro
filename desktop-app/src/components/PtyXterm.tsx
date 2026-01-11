@@ -135,21 +135,35 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
           return false;
         }
         
-        fit.fit();
-        console.log("PtyXterm: Fit successful, rows:", term.rows, "cols:", term.cols);
-        
-        const newRows = term.rows;
-        const newCols = term.cols;
-        
-        if (newRows > 0 && newCols > 0) {
-          const lastSize = lastSizeRef.current;
-          if (!lastSize || lastSize.rows !== newRows || lastSize.cols !== newCols) {
-            lastSizeRef.current = { rows: newRows, cols: newCols };
-            if (onResize) {
-              onResize(newRows, newCols);
-            }
-          }
+        // Check viewport dimensions
+        const viewportRect = viewport.getBoundingClientRect();
+        if (viewportRect.width === 0 || viewportRect.height === 0) {
+          console.log("PtyXterm: Viewport has no dimensions");
+          return false;
         }
+        
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          try {
+            fit.fit();
+            console.log("PtyXterm: Fit successful, rows:", term.rows, "cols:", term.cols);
+            
+            const newRows = term.rows;
+            const newCols = term.cols;
+            
+            if (newRows > 0 && newCols > 0) {
+              const lastSize = lastSizeRef.current;
+              if (!lastSize || lastSize.rows !== newRows || lastSize.cols !== newCols) {
+                lastSizeRef.current = { rows: newRows, cols: newCols };
+                if (onResize) {
+                  onResize(newRows, newCols);
+                }
+              }
+            }
+          } catch (e) {
+            console.log("PtyXterm: Fit error in RAF:", e);
+          }
+        });
         
         return true;
       } catch (e) {
@@ -158,7 +172,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       }
     };
 
-    // Delayed fit with retries
+    // Delayed fit with retries - start after longer delay
     let fitAttempts = 0;
     const maxFitAttempts = 20;
     let fitSuccess = false;
@@ -172,18 +186,18 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         console.log("PtyXterm: Fit completed after", fitAttempts, "attempts");
       } else {
         // Retry with increasing delay
-        setTimeout(tryFit, 50 + fitAttempts * 20);
+        setTimeout(tryFit, 100 + fitAttempts * 50);
       }
     };
     
-    // Start fit attempts after a short delay
-    setTimeout(tryFit, 100);
+    // Start fit attempts after a longer delay (300ms)
+    setTimeout(tryFit, 300);
     
-    // Focus terminal
+    // Focus terminal after delay
     setTimeout(() => {
       term.focus();
       console.log("PtyXterm: Terminal focused");
-    }, 200);
+    }, 350);
 
     // Debounced resize handler
     let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -195,7 +209,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         fitSuccess = false;
         fitAttempts = 0;
         tryFit();
-      }, 150);
+      }, 200);
     };
     
     window.addEventListener("resize", handleResize);
