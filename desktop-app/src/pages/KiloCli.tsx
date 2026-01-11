@@ -144,7 +144,58 @@ export default function KiloCliPage() {
     );
   }
 
-  async function run(planOnly = false) {
+  // Run in active tab (continue context) or create new tab if none exists
+  async function runInActiveTab(planOnly = false) {
+    if (!workspace) {
+      alert("Please set workspace path");
+      return;
+    }
+    if (!command) {
+      alert("Please enter a command");
+      return;
+    }
+
+    const cmd = planOnly ? `${command} --plan-only` : command;
+    saveHistory(cmd);
+
+    // If no active tab, create one first
+    if (!activeTab) {
+      await runInNewTab(planOnly);
+      return;
+    }
+
+    const tabId = activeTab.id;
+    
+    // Update tab status
+    updateTab(tabId, { status: "starting", isWaiting: true });
+    setCommand(""); // Clear for next command
+
+    // Add separator and new command header
+    const header = [
+      `\n${"─".repeat(80)}\n`,
+      `📝 Command: ${cmd}\n`,
+      `⏰ Time: ${new Date().toLocaleString('th-TH')}\n`,
+      `${"─".repeat(80)}\n\n`,
+      `⏳ Processing... please wait\n\n`
+    ];
+    
+    header.forEach(line => appendToTab(tabId, line));
+
+    try {
+      const res = await kiloRun(workspace, cmd);
+      console.log("✅ Got jobId:", res.jobId);
+      
+      updateTab(tabId, { jobId: res.jobId, status: "running", command: cmd });
+      await connectStream(tabId, res.jobId, 0);
+    } catch (err) {
+      console.error("❌ Error running workflow:", err);
+      updateTab(tabId, { status: "error", isWaiting: false });
+      appendToTab(tabId, `\n❌ Error: ${err}\n`);
+    }
+  }
+
+  // Run in new tab (fresh context)
+  async function runInNewTab(planOnly = false) {
     if (!workspace) {
       alert("Please set workspace path");
       return;
@@ -254,11 +305,28 @@ export default function KiloCliPage() {
     updateTab(activeTab.id, { lines: [] });
   }
 
+  function createEmptyTab() {
+    const tabId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+    const newTab: Tab = {
+      id: tabId,
+      title: "New Tab",
+      command: "",
+      jobId: "",
+      status: "idle",
+      lines: [],
+      lastSeq: 0,
+      isWaiting: false,
+    };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(tabId);
+  }
+
   const getStatusColor = (status: string) => {
     if (status === "running" || status === "starting") return "#10b981";
     if (status === "done" || status === "completed") return "#3b82f6";
     if (status === "error") return "#ef4444";
     if (status === "cancelled") return "#f59e0b";
+    if (status === "idle") return "#6b7280";
     return "#6b7280";
   };
 
@@ -269,6 +337,7 @@ export default function KiloCliPage() {
     if (status === "done" || status === "completed") return "✅";
     if (status === "error") return "❌";
     if (status === "cancelled") return "⏹️";
+    if (status === "idle") return "○";
     return "○";
   };
 
@@ -318,8 +387,8 @@ export default function KiloCliPage() {
     outline: "none",
   };
 
-  // Check if any tab is waiting
-  const isAnyTabWaiting = tabs.some(t => t.isWaiting);
+  // Check if active tab is waiting
+  const isActiveTabWaiting = activeTab?.isWaiting || false;
 
   return (
     <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: "1400px", margin: "0 auto" }}>
@@ -374,6 +443,7 @@ export default function KiloCliPage() {
                 <strong>Status:</strong>{" "}
                 <span style={{ fontFamily: "monospace", color: getStatusColor(activeTab.status) }}>
                   {getStatusIcon(activeTab.status)} {activeTab.status}
+                  {isActiveTabWaiting && " (กำลังประมวลผล...)"}
                 </span>
               </div>
               <div>
@@ -383,135 +453,85 @@ export default function KiloCliPage() {
             <div style={{ fontSize: 11, opacity: 0.7 }}>
               💡 <strong>Natural language supported:</strong> พิมพ์คำถามหรือคำสั่งเป็นภาษาธรรมดาได้เลย ระบบจะ route ไปที่ SmartSpec Copilot อัตโนมัติ<br/>
               📋 <strong>Workflows:</strong> ใช้ <code>/workflow_name</code> เพื่อเรียกใช้ workflow เฉพาะ<br/>
-              ⌨️ <strong>Interactive mode:</strong> ใช้ช่อง stdin ด้านล่างเพื่อส่งข้อมูลเข้า workflow ที่กำลังรันอยู่
+              ⌨️ <strong>Context:</strong> ใช้ <strong>▶️ Run</strong> เพื่อต่อเนื่องจากบริบทเดิม หรือ <strong>➕ New Tab</strong> เพื่อเริ่มใหม่
             </div>
           </div>
         )}
       </div>
 
-      {/* Loading indicator overlay */}
-      {isAnyTabWaiting && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0, 0, 0, 0.7)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 9999,
-          backdropFilter: "blur(4px)"
-        }}>
-          <div style={{
-            background: "#1f2937",
-            border: "2px solid #3b82f6",
-            borderRadius: 16,
-            padding: "32px 48px",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-            textAlign: "center",
-            maxWidth: 500
-          }}>
-            <div style={{
-              fontSize: 48,
-              marginBottom: 16,
-              animation: "spin 1.5s linear infinite"
-            }}>
-              ⚙️
-            </div>
-            <div style={{
-              fontSize: 20,
-              fontWeight: 600,
-              color: "#f9fafb",
-              marginBottom: 8
-            }}>
-              กำลังประมวลผล...
-            </div>
-            <div style={{
-              fontSize: 14,
-              color: "#9ca3af"
-            }}>
-              กำลังเรียก LLM และประมวลผล workflow<br/>
-              โปรดรอสักครู่ ระบบอาจใช้เวลา 5-15 วินาที
-            </div>
-            <div style={{
-              marginTop: 20,
-              padding: "8px 16px",
-              background: "#111827",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "#6b7280",
-              fontFamily: "monospace"
-            }}>
-              {tabs.filter(t => t.isWaiting).map(t => (
-                <div key={t.id}>Job: {t.jobId || "กำลังสร้าง..."}</div>
-              ))}
-            </div>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "8px 0", alignItems: "center" }}>
+        <button
+          onClick={createEmptyTab}
+          style={{
+            ...buttonStyle,
+            padding: "6px 12px",
+            fontSize: 13,
+            display: "flex",
+            alignItems: "center",
+            gap: 4
+          }}
+        >
+          ➕ New Tab
+        </button>
+        
+        {tabs.map(t => (
+          <div key={t.id} style={{ display: "flex", alignItems: "center" }}>
+            <button
+              onClick={() => setActiveTabId(t.id)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "8px 0 0 8px",
+                border: "1px solid #d1d5db",
+                borderRight: "none",
+                background: t.id === activeTabId ? "#111827" : "white",
+                color: t.id === activeTabId ? "white" : "#111827",
+                fontFamily: "ui-monospace, monospace",
+                fontSize: 13,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+              title={t.command || "(empty tab)"}
+            >
+              <span style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: getStatusColor(t.status),
+                animation: t.isWaiting ? "pulse 1s infinite" : "none"
+              }} />
+              <span>{t.title}</span>
+              <span style={{ opacity: 0.7, fontSize: 11 }}>{getStatusIcon(t.status)}</span>
+            </button>
+            <button
+              onClick={() => closeTab(t.id)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: "0 8px 8px 0",
+                border: "1px solid #d1d5db",
+                background: t.id === activeTabId ? "#374151" : "#f3f4f6",
+                color: t.id === activeTabId ? "white" : "#6b7280",
+                cursor: "pointer",
+                fontSize: 12,
+                transition: "all 0.2s"
+              }}
+              title="Close tab"
+            >
+              ✕
+            </button>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
       <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
       `}</style>
-
-      {/* Tabs */}
-      {tabs.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "8px 0" }}>
-          {tabs.map(t => (
-            <div key={t.id} style={{ display: "flex", alignItems: "center" }}>
-              <button
-                onClick={() => setActiveTabId(t.id)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: "8px 0 0 8px",
-                  border: "1px solid #d1d5db",
-                  borderRight: "none",
-                  background: t.id === activeTabId ? "#111827" : "white",
-                  color: t.id === activeTabId ? "white" : "#111827",
-                  fontFamily: "ui-monospace, monospace",
-                  fontSize: 13,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  cursor: "pointer",
-                  transition: "all 0.2s"
-                }}
-                title={t.command}
-              >
-                <span style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  backgroundColor: getStatusColor(t.status)
-                }} />
-                <span>{t.title}</span>
-                <span style={{ opacity: 0.7, fontSize: 11 }}>{getStatusIcon(t.status)}</span>
-              </button>
-              <button
-                onClick={() => closeTab(t.id)}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: "0 8px 8px 0",
-                  border: "1px solid #d1d5db",
-                  background: t.id === activeTabId ? "#374151" : "#f3f4f6",
-                  color: t.id === activeTabId ? "white" : "#6b7280",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  transition: "all 0.2s"
-                }}
-                title="Close tab"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Terminal */}
       <Terminal lines={activeTab?.lines || []} />
@@ -527,7 +547,7 @@ export default function KiloCliPage() {
             style={{ ...inputStyle, flex: 1, minWidth: 500, fontFamily: "monospace" }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && workspace && command) {
-                run(false);
+                runInActiveTab(false);
               } else if (e.key === "/" && command === "") {
                 e.preventDefault();
                 setIsPaletteOpen(true);
@@ -553,16 +573,25 @@ export default function KiloCliPage() {
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <button
-            disabled={!workspace || !command}
-            onClick={() => run(false)}
-            style={workspace && command ? { ...successButtonStyle, fontSize: "16px", padding: "10px 24px" } : disabledButtonStyle}
+            disabled={!workspace || !command || isActiveTabWaiting}
+            onClick={() => runInActiveTab(false)}
+            style={workspace && command && !isActiveTabWaiting ? { ...successButtonStyle, fontSize: "16px", padding: "10px 24px" } : disabledButtonStyle}
+            title="Run in current tab (continue context)"
           >
-            ▶️ Run (New Tab)
+            ▶️ Run
           </button>
           <button
-            disabled={!workspace || !command}
-            onClick={() => run(true)}
-            style={workspace && command ? buttonStyle : disabledButtonStyle}
+            disabled={!workspace || !command || isActiveTabWaiting}
+            onClick={() => runInNewTab(false)}
+            style={workspace && command && !isActiveTabWaiting ? primaryButtonStyle : disabledButtonStyle}
+            title="Run in new tab (fresh context)"
+          >
+            ➕ Run in New Tab
+          </button>
+          <button
+            disabled={!workspace || !command || isActiveTabWaiting}
+            onClick={() => runInActiveTab(true)}
+            style={workspace && command && !isActiveTabWaiting ? buttonStyle : disabledButtonStyle}
           >
             📝 Plan-only
           </button>
@@ -587,20 +616,13 @@ export default function KiloCliPage() {
           >
             🗑️ Clear
           </button>
-          <button
-            disabled={!activeTab}
-            onClick={() => activeTab && closeTab(activeTab.id)}
-            style={activeTab ? buttonStyle : disabledButtonStyle}
-          >
-            ❌ Close Tab
-          </button>
 
           <div style={{ width: 1, height: 24, background: "#d1d5db", margin: "0 4px" }} />
 
           <button
             disabled={!workspace}
             onClick={refreshWorkflows}
-            style={workspace ? primaryButtonStyle : disabledButtonStyle}
+            style={workspace ? buttonStyle : disabledButtonStyle}
           >
             🔄 Refresh workflows
           </button>

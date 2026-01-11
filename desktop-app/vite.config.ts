@@ -17,6 +17,7 @@ export default defineConfig(async () => ({
     port: 1420,
     strictPort: true,
     host: host || "0.0.0.0",
+    allowedHosts: ["1420-if9cce0gpf9ek86518wjp-deba0960.sg1.manus.computer", ".manus.computer", "localhost"],
     hmr: host
       ? {
           protocol: "ws",
