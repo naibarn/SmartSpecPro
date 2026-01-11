@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import PtyXterm from "../components/PtyXterm";
 import MediaGallery from "../components/MediaGallery";
 import { openPtyWs, ptyCreate, ptyAttach, ptyInput, ptySignal, ptyKill, ptyResize, ptyPoll, PtyMessage } from "../services/pty";
 import { createWsTicket } from "../services/wsTicket";
 import { loadProxyToken, getProxyTokenHint, setProxyToken } from "../services/authStore";
 import { openMediaWs, mediaAttach, mediaEmit, MediaMessage, MediaEvent } from "../services/mediaChannel";
+import { useMemoryStore } from "../stores/memoryStore";
+import { MemoryPanel, MemoryContextMenu, MemorySaveDialog, MemoryButton, useMemoryTextSelection } from "../components/MemoryPanel";
 
 
 const DEFAULT_WORKSPACE = import.meta.env.VITE_WORKSPACE_PATH || "";
@@ -40,10 +42,33 @@ export default function KiloPtyPage() {
 
   const activeTab = useMemo(() => tabs.find(t => t.id === active), [tabs, active]);
 
+  // Use shared memory store (workspace-scoped)
+  const {
+    initProject,
+    setContextMenuPos,
+  } = useMemoryStore();
+
+  // Use shared text selection hook
+  const { handleTextSelection, handleContextMenu } = useMemoryTextSelection();
+
   // Update ref when active changes
   useEffect(() => {
     activeSessionRef.current = active;
   }, [active]);
+
+  // Initialize project when workspace changes (using shared store)
+  useEffect(() => {
+    if (workspace) {
+      initProject(workspace);
+    }
+  }, [workspace, initProject]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setContextMenuPos(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [setContextMenuPos]);
 
   // Styles matching KiloCli.tsx
   const buttonStyle = {
@@ -552,9 +577,12 @@ export default function KiloPtyPage() {
 
   return (
     <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: "1400px", margin: "0 auto" }}>
-      <h2 style={{ margin: 0, fontSize: "24px", fontWeight: 600, color: "#111827" }}>
-        Terminal (PTY + Media Channel)
-      </h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h2 style={{ margin: 0, fontSize: "24px", fontWeight: 600, color: "#111827" }}>
+          Terminal (PTY + Media Channel)
+        </h2>
+        <MemoryButton />
+      </div>
 
       {/* Token and Workspace Section */}
       <div style={{ display: "grid", gap: 8 }}>
@@ -823,6 +851,11 @@ export default function KiloPtyPage() {
           </div>
         </div>
       </div>
+
+      {/* Shared Memory Components */}
+      <MemoryContextMenu />
+      <MemorySaveDialog />
+      <MemoryPanel />
     </div>
   );
 }

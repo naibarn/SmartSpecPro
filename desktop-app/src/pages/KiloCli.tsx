@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, kiloRecordResponse, StreamMessage, WorkflowSchema, ConversationMessage, ConversationContext, kiloGetOrCreateProject, kiloGetRelevantMemories, kiloExtractMemories, kiloGetProjectMemories, Memory, MemoryType, Project } from "../services/kiloCli";
+import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, kiloRecordResponse, StreamMessage, WorkflowSchema, ConversationMessage, ConversationContext } from "../services/kiloCli";
 import { Terminal } from "../components/Terminal";
 import { CommandPalette } from "../components/CommandPalette";
 import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
+import { useMemoryStore, detectImportantContent } from "../stores/memoryStore";
+import { MemoryPanel, MemoryContextMenu, MemorySaveDialog, MemoryButton, useMemoryTextSelection } from "../components/MemoryPanel";
 
 const DEFAULT_WORKSPACE = import.meta.env.VITE_WORKSPACE_PATH || "";
 const LS_KEY = "smartspec.kilo.history.v1";
@@ -19,11 +21,9 @@ type Tab = {
   lastSeq: number;
   isWaiting: boolean;
   // Context management
-  sessionId: string;  // Session ID for context continuity
-  conversationHistory: ConversationMessage[];  // Local conversation history
-  contextUsagePercent: number;  // Current context usage percentage
-  // Long-term memory
-  projectId: string;  // Project ID for memory scoping (shared across tabs)
+  sessionId: string;
+  conversationHistory: ConversationMessage[];
+  contextUsagePercent: number;
 };
 
 export default function KiloCliPage() {
@@ -37,15 +37,25 @@ export default function KiloCliPage() {
   // Multi-tab state
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>("");
-  
-  // Project-level state (shared across all tabs)
-  const [project, setProject] = useState<Project | null>(null);
-  const [projectMemories, setProjectMemories] = useState<Memory[]>([]);
 
   const abortRefs = useRef<Map<string, AbortController>>(new Map());
 
   const [tokenInput, setTokenInput] = useState<string>("");
   const [tokenHint, setTokenHint] = useState<string>("");
+
+  // Use shared memory store
+  const {
+    project,
+    memories: projectMemories,
+    initProject,
+    getRelevantMemories,
+    extractMemories,
+    openMemoryDialog,
+    setContextMenuPos,
+  } = useMemoryStore();
+
+  // Use shared text selection hook
+  const { handleTextSelection, handleContextMenu } = useMemoryTextSelection();
 
   const history: HistoryItem[] = useMemo(() => {
     try {
@@ -96,27 +106,12 @@ export default function KiloCliPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace]);
 
-  // Initialize project when workspace changes
+  // Initialize project when workspace changes (using shared store)
   useEffect(() => {
-    const initProject = async () => {
-      if (!workspace) return;
-      try {
-        // Get or create project for this workspace
-        const projectName = workspace.split('/').pop() || 'default';
-        const proj = await kiloGetOrCreateProject(projectName, workspace);
-        setProject(proj);
-        console.log('📁 Project initialized:', proj.id, proj.name);
-        
-        // Load existing memories for this project
-        const memories = await kiloGetProjectMemories(proj.id, { limit: 50 });
-        setProjectMemories(memories);
-        console.log('🧠 Loaded', memories.length, 'memories for project');
-      } catch (err) {
-        console.error('❌ Failed to initialize project:', err);
-      }
-    };
-    initProject();
-  }, [workspace]);
+    if (workspace) {
+      initProject(workspace);
+    }
+  }, [workspace, initProject]);
 
   useEffect(() => {
     return () => {
@@ -126,6 +121,13 @@ export default function KiloCliPage() {
       });
     };
   }, []);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setContextMenuPos(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [setContextMenuPos]);
 
   const onSaveToken = async () => {
     const token = tokenInput.trim();
@@ -278,7 +280,7 @@ export default function KiloCliPage() {
       let memoryContext = '';
       if (project?.id && activeTab.contextUsagePercent < 50) {
         try {
-          const { context: memCtx } = await kiloGetRelevantMemories(project.id, cmd, { limit: 3 });
+          const { context: memCtx } = await getRelevantMemories(cmd, { limit: 3 });
           if (memCtx) {
             memoryContext = memCtx;
           }
@@ -330,18 +332,19 @@ export default function KiloCliPage() {
         if (project?.id && (newHistory.length % 5 === 0 || responseContent.length > 500)) {
           try {
             const recentConvo = newHistory.slice(-6); // Last 3 exchanges
-            const extractedMemories = await kiloExtractMemories(
-              project.id,
-              recentConvo,
-              activeTab.sessionId
-            );
-            if (extractedMemories.length > 0) {
-              console.log('🧠 Extracted', extractedMemories.length, 'memories');
-              setProjectMemories(prev => [...extractedMemories, ...prev].slice(0, 100));
-            }
+            await extractMemories(recentConvo, activeTab.sessionId);
           } catch (memErr) {
             console.warn('Failed to extract memories:', memErr);
           }
+        }
+        
+        // Check for important content and suggest saving
+        const detected = detectImportantContent(responseContent);
+        if (detected && detected.importance >= 8) {
+          // High importance content - suggest saving
+          setTimeout(() => {
+            openMemoryDialog(responseContent.substring(0, 1000), true);
+          }, 500);
         }
       }
     } catch (err) {
@@ -388,7 +391,6 @@ export default function KiloCliPage() {
       sessionId: "",  // Will be set from API response
       conversationHistory: initialHistory,
       contextUsagePercent: 0,
-      projectId: project?.id || ""  // Share project across all tabs
     };
 
     setTabs(prev => [...prev, newTab]);
@@ -413,7 +415,7 @@ export default function KiloCliPage() {
       let memoryContext = '';
       if (project?.id) {
         try {
-          const { context } = await kiloGetRelevantMemories(project.id, cmd, { limit: 5 });
+          const { context } = await getRelevantMemories(cmd, { limit: 5 });
           if (context) {
             memoryContext = context;
             appendToTab(tabId, `🧠 Retrieved ${context.split('\n').length} relevant memories from project history\n\n`);
@@ -461,15 +463,7 @@ export default function KiloCliPage() {
         // Extract and save important memories from this conversation
         if (project?.id && responseContent.length > 100) {
           try {
-            const extractedMemories = await kiloExtractMemories(
-              project.id,
-              [...initialHistory, assistantMessage],
-              tabId
-            );
-            if (extractedMemories.length > 0) {
-              console.log('🧠 Extracted', extractedMemories.length, 'memories from conversation');
-              setProjectMemories(prev => [...extractedMemories, ...prev].slice(0, 100));
-            }
+            await extractMemories([...initialHistory, assistantMessage], tabId);
           } catch (memErr) {
             console.warn('Failed to extract memories:', memErr);
           }
@@ -549,7 +543,6 @@ export default function KiloCliPage() {
       sessionId: "",
       conversationHistory: [],
       contextUsagePercent: 0,
-      projectId: project?.id || ""  // Share project across all tabs
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(tabId);
@@ -626,7 +619,10 @@ export default function KiloCliPage() {
 
   return (
     <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: "1400px", margin: "0 auto" }}>
-      <h2 style={{ margin: 0, fontSize: "24px", fontWeight: 600, color: "#111827" }}>CLI (Terminal)</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h2 style={{ margin: 0, fontSize: "24px", fontWeight: 600, color: "#111827" }}>CLI (Terminal)</h2>
+        <MemoryButton />
+      </div>
 
       <div style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -735,13 +731,15 @@ export default function KiloCliPage() {
                 height: 8,
                 borderRadius: "50%",
                 backgroundColor: getStatusColor(t.status),
-                animation: t.isWaiting ? "pulse 1s infinite" : "none"
+                animation: t.isWaiting ? "pulse 1.5s infinite" : "none"
               }} />
-              <span>{t.title}</span>
-              <span style={{ opacity: 0.7, fontSize: 11 }}>{getStatusIcon(t.status)}</span>
+              {t.title || "New Tab"}
             </button>
             <button
-              onClick={() => closeTab(t.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                closeTab(t.id);
+              }}
               style={{
                 padding: "8px 10px",
                 borderRadius: "0 8px 8px 0",
@@ -767,8 +765,13 @@ export default function KiloCliPage() {
         }
       `}</style>
 
-      {/* Terminal */}
-      <Terminal lines={activeTab?.lines || []} />
+      {/* Terminal with text selection handlers */}
+      <div 
+        onMouseUp={handleTextSelection}
+        onContextMenu={handleContextMenu}
+      >
+        <Terminal lines={activeTab?.lines || []} />
+      </div>
 
       {/* Command input section */}
       <div style={{ display: "grid", gap: 8, background: "#f9fafb", padding: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}>
@@ -826,56 +829,46 @@ export default function KiloCliPage() {
             disabled={!workspace || !command || isActiveTabWaiting}
             onClick={() => runInActiveTab(true)}
             style={workspace && command && !isActiveTabWaiting ? buttonStyle : disabledButtonStyle}
+            title="Plan only (no execution)"
           >
-            📝 Plan-only
+            📋 Plan Only
           </button>
-          <button 
-            disabled={!activeTab || !activeTab.jobId || activeTab.status !== "running"} 
-            onClick={cancel} 
-            style={activeTab && activeTab.jobId && activeTab.status === "running" ? dangerButtonStyle : disabledButtonStyle}
+          <button
+            disabled={!activeTab || !activeTab.jobId}
+            onClick={reconnect}
+            style={activeTab && activeTab.jobId ? buttonStyle : disabledButtonStyle}
+          >
+            🔄 Reconnect
+          </button>
+          <button
+            disabled={!activeTab || !activeTab.jobId}
+            onClick={cancel}
+            style={activeTab && activeTab.jobId ? dangerButtonStyle : disabledButtonStyle}
           >
             ⏹️ Cancel
           </button>
-          <button 
-            disabled={!activeTab || !activeTab.jobId} 
-            onClick={reconnect} 
-            style={activeTab && activeTab.jobId ? buttonStyle : disabledButtonStyle}
-          >
-            🔌 Reconnect
-          </button>
-          <button 
+          <button
             disabled={!activeTab}
-            onClick={clearActiveTab} 
+            onClick={clearActiveTab}
             style={activeTab ? buttonStyle : disabledButtonStyle}
           >
             🗑️ Clear
           </button>
+        </div>
 
-          <div style={{ width: 1, height: 24, background: "#d1d5db", margin: "0 4px" }} />
-
-          <button
-            disabled={!workspace}
-            onClick={refreshWorkflows}
-            style={workspace ? buttonStyle : disabledButtonStyle}
-          >
-            🔄 Refresh workflows
-          </button>
-
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <label style={{ fontSize: 12, opacity: 0.9 }}>Workflow</label>
           <select
             value=""
             onChange={(e) => {
-              const v = e.target.value;
-              if (v) {
-                let cmd = v;
-                if (!cmd.startsWith("/")) cmd = "/" + cmd;
-                if (!cmd.endsWith(".md")) cmd = cmd + ".md";
-                setCommand(cmd);
+              if (e.target.value) {
+                setCommand(`/${e.target.value}`);
               }
             }}
-            style={{ ...inputStyle, minWidth: 240 }}
+            style={{ ...inputStyle, minWidth: 200 }}
           >
-            <option value="">(autocomplete workflows)</option>
-            {workflows.map((w) => (
+            <option value="">Select workflow...</option>
+            {workflows.map(w => (
               <option key={w} value={w}>
                 {w}
               </option>
@@ -915,6 +908,11 @@ export default function KiloCliPage() {
           </details>
         ) : null}
       </div>
+
+      {/* Shared Memory Components */}
+      <MemoryContextMenu />
+      <MemorySaveDialog />
+      <MemoryPanel />
     </div>
   );
 }

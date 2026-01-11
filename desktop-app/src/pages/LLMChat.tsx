@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { chatCompletions, chatCompletionsStream, type Message, type ContentPart } from "../services/llmOpenAI";
 import { uploadToArtifactStorage } from "../services/artifacts";
 import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
 import { LLMArtifactViewer, type LLMArtifact } from "../components/LLMArtifactViewer";
+import { useMemoryStore, detectImportantContent } from "../stores/memoryStore";
+import { MemoryPanel, MemoryContextMenu, MemorySaveDialog, MemoryButton, useMemoryTextSelection } from "../components/MemoryPanel";
+import type { ConversationMessage } from "../services/kiloCli";
 
 const DEFAULT_WORKSPACE = import.meta.env.VITE_WORKSPACE_PATH || "";
 
@@ -134,12 +137,40 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
   const [artifacts, setArtifacts] = useState<LLMArtifact[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<LLMArtifact | null>(null);
 
+  // Use shared memory store
+  const {
+    project,
+    memories: projectMemories,
+    initProject,
+    getRelevantMemories,
+    extractMemories,
+    openMemoryDialog,
+    setContextMenuPos,
+  } = useMemoryStore();
+
+  // Use shared text selection hook
+  const { handleTextSelection, handleContextMenu } = useMemoryTextSelection();
+
   useEffect(() => {
     (async () => {
       await loadProxyToken();
       setTokenHint(getProxyTokenHint());
     })();
   }, []);
+
+  // Initialize project when workspace changes (using shared store)
+  useEffect(() => {
+    if (workspace) {
+      initProject(workspace);
+    }
+  }, [workspace, initProject]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setContextMenuPos(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [setContextMenuPos]);
 
 
   const display = useMemo(() => messages.filter((m) => m.role !== "system"), [messages]);
@@ -406,9 +437,34 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
     abortRef.current = new AbortController();
 
     try {
+      // Fetch relevant long-term memories
+      let memoryContext = '';
+      if (project?.id) {
+        try {
+          const { context: memCtx } = await getRelevantMemories(messageText, { limit: 3 });
+          if (memCtx) {
+            memoryContext = memCtx;
+            console.log('🧠 Retrieved relevant memories for LLM Chat');
+          }
+        } catch (memErr) {
+          console.warn('Failed to retrieve memories:', memErr);
+        }
+      }
+
       // Send only last 10 messages to avoid huge context with base64 images
       // Include system message + recent conversation
-      const recentMessages = messages.slice(0, 1).concat(messages.slice(-9)).concat([userMsg]);
+      let recentMessages = messages.slice(0, 1).concat(messages.slice(-9)).concat([userMsg]);
+      
+      // Inject memory context into system message if available
+      if (memoryContext) {
+        const systemMsg = recentMessages[0];
+        if (systemMsg && systemMsg.role === 'system') {
+          recentMessages[0] = {
+            ...systemMsg,
+            content: systemMsg.content + `\n\n## Project Context (Long-term Memory)\n${memoryContext}`
+          };
+        }
+      }
 
       // Use non-streaming mode (backend direct proxy mode doesn't support streaming)
       const response = await chatCompletions({
@@ -427,6 +483,27 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
       }
 
       setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }]);
+
+      // Extract memories from conversation periodically
+      if (project?.id && messages.length % 5 === 0) {
+        try {
+          const convoForExtraction: ConversationMessage[] = [
+            { role: 'user', content: messageText, timestamp: Date.now() },
+            { role: 'assistant', content: assistantMessage, timestamp: Date.now() }
+          ];
+          await extractMemories(convoForExtraction, 'llm-chat');
+        } catch (memErr) {
+          console.warn('Failed to extract memories:', memErr);
+        }
+      }
+
+      // Check for important content and suggest saving
+      const detected = detectImportantContent(assistantMessage);
+      if (detected && detected.importance >= 8) {
+        setTimeout(() => {
+          openMemoryDialog(assistantMessage.substring(0, 1000), true);
+        }, 500);
+      }
     } catch (e: any) {
       setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e?.message || "Unknown error"}` }]);
     } finally {
@@ -439,8 +516,9 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
 
   return (
     <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>LLM Chat (Multi‑modal via Artifact Storage)</h2>
+        <MemoryButton />
         <div style={{ fontSize: 12, opacity: 0.75 }}>
           Desktop → python-backend <code>/v1/chat/completions</code> (Direct Proxy Mode)
         </div>
@@ -475,7 +553,11 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: artifacts.length > 0 ? "1fr 300px" : "1fr", gap: 12 }}>
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, minHeight: 360 }}>
+        <div 
+          style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, minHeight: 360 }}
+          onMouseUp={handleTextSelection}
+          onContextMenu={handleContextMenu}
+        >
           {display.length === 0 && !streamingText ? (
             <div style={{ opacity: 0.7 }}>No messages yet.</div>
           ) : (
@@ -1048,6 +1130,11 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
           onClose={() => setSelectedArtifact(null)}
         />
       )}
+
+      {/* Shared Memory Components */}
+      <MemoryContextMenu />
+      <MemorySaveDialog />
+      <MemoryPanel />
     </div>
   );
 }
