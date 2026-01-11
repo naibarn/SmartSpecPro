@@ -290,7 +290,14 @@ export default function KiloPtyPage() {
         const msg = JSON.parse(ev.data) as MediaMessage;
         if (msg.type === "event") {
           const e = msg.event;
-          setTabs(prev => prev.map(t => t.id === e.sessionId ? { ...t, mediaSeq: msg.seq, media: [e, ...t.media].slice(0, 200) } : t));
+          // Only add if not already in the list (check by url to prevent duplicates)
+          setTabs(prev => prev.map(t => {
+            if (t.id !== e.sessionId) return t;
+            // Check if media already exists (by url)
+            const exists = t.media.some(m => m.url === e.url);
+            if (exists) return { ...t, mediaSeq: msg.seq };
+            return { ...t, mediaSeq: msg.seq, media: [e, ...t.media].slice(0, 200) };
+          }));
         }
       };
 
@@ -350,13 +357,20 @@ export default function KiloPtyPage() {
   const attachTab = useCallback((id: string) => {
     setActive(id);
     activeSessionRef.current = id;  // Update ref
-    const ws = ptyWsRef.current;
-    const mws = mediaWsRef.current;
-    const tab = tabs.find(t => t.id === id);
-    if (!ws || ws.readyState !== 1 || !tab) return;
-    ptyAttach(ws, id, tab.seq);
-    if (mws && mws.readyState === 1) mediaAttach(mws, id, tab.mediaSeq);
-    ptyPoll(ws);
+    
+    // Wait for terminal to mount before attaching
+    // This ensures __ptyWrite points to the correct terminal instance
+    setTimeout(() => {
+      const ws = ptyWsRef.current;
+      const mws = mediaWsRef.current;
+      const tab = tabs.find(t => t.id === id);
+      if (!ws || ws.readyState !== 1 || !tab) return;
+      
+      console.log("Attaching to tab:", id, "from seq:", tab.seq);
+      ptyAttach(ws, id, tab.seq);
+      if (mws && mws.readyState === 1) mediaAttach(mws, id, tab.mediaSeq);
+      ptyPoll(ws);
+    }, 500); // Wait for PtyXterm to mount and register __ptyWrite
   }, [tabs]);
 
   const closeTab = useCallback((id: string) => {
@@ -781,7 +795,7 @@ export default function KiloPtyPage() {
             </div>
           ) : (
             <>
-              <PtyXterm key="pty-terminal" onData={onTermData} onKey={onKey} onResize={onTermResize} />
+              <PtyXterm key={`pty-terminal-${active}`} onData={onTermData} onKey={onKey} onResize={onTermResize} />
               <div style={{
                 fontSize: 12,
                 opacity: 0.8,
