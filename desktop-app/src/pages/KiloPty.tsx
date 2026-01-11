@@ -227,7 +227,7 @@ export default function KiloPtyPage() {
           console.log("Session created:", sid);
           // Add new tab and set as active
           setTabs(prev => {
-            const newTabs = [{ id: sid, title: sid.slice(0, 6), command, status: "running", seq: 0, mediaSeq: 0, media: [] }, ...prev];
+            const newTabs = [{ id: sid, title: sid.slice(0, 6), command: "", status: "running", seq: 0, mediaSeq: 0, media: [] }, ...prev];
             return newTabs;
           });
           setActive(sid);
