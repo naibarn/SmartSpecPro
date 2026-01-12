@@ -361,15 +361,14 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       delete window.__ptyWrite;
       delete window.__ptyFocus;
 
-      // Dispose terminal last, after all timers are cleared
-      // Use setTimeout to ensure any pending internal timers complete
-      setTimeout(() => {
-        try {
-          term.dispose();
-        } catch (e) {
-          console.debug('dispose() error:', e);
-        }
-      }, 0);
+      // Dispose terminal - use try-catch to handle any internal timer errors
+      // The dimensions error may still occur from xterm's internal setTimeout
+      // but it's harmless since we've already cleaned up our references
+      try {
+        term.dispose();
+      } catch (e) {
+        // Ignore dispose errors - terminal may have internal timers still running
+      }
       
       termRef.current = null;
       fitRef.current = null;
