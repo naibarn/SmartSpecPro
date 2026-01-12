@@ -15,13 +15,10 @@ import { Terminal } from "xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "xterm/css/xterm.css";
 
-// Optional WebGL addon for better performance
-let WebglAddon: any = null;
-try {
-  WebglAddon = require("@xterm/addon-webgl").WebglAddon;
-} catch {
-  WebglAddon = null;
-}
+// Note: WebGL addon disabled due to dimensions timing issues
+// Canvas renderer provides stable performance without the complexity
+// To re-enable, uncomment WebGL code in the component and import:
+// import { WebglAddon } from "@xterm/addon-webgl";
 
 type Props = {
   onData: (data: string) => void;
@@ -290,22 +287,36 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       term.focus();
       
       // Load WebGL addon AFTER fit (requires valid dimensions)
+      // Skip WebGL entirely to avoid dimensions error - canvas renderer is stable
+      // WebGL can cause issues when terminal dimensions aren't ready
+      // Uncomment below to enable WebGL (may cause errors on some systems)
+      /*
       if (WebglAddon && !disposedRef.current) {
-        // Use setTimeout to ensure dimensions are fully calculated
-        setTimeout(() => {
-          if (disposedRef.current || !termRef.current) return;
-          try {
-            const webgl = new WebglAddon();
-            webgl.onContextLoss(() => {
-              webgl.dispose();
-            });
-            termRef.current.loadAddon(webgl);
-          } catch (e) {
-            // WebGL not supported, fall back to canvas renderer
-            console.log('WebGL not available, using canvas renderer');
+        const tryLoadWebGL = (attempt = 0) => {
+          if (disposedRef.current || !termRef.current || attempt > 3) return;
+          
+          const t = termRef.current;
+          // Check if terminal has valid dimensions
+          if (t.cols > 0 && t.rows > 0) {
+            try {
+              const webgl = new WebglAddon();
+              webgl.onContextLoss(() => {
+                webgl.dispose();
+              });
+              t.loadAddon(webgl);
+              console.log('WebGL renderer loaded successfully');
+            } catch (e) {
+              console.log('WebGL not available, using canvas renderer');
+            }
+          } else {
+            // Retry with exponential backoff
+            setTimeout(() => tryLoadWebGL(attempt + 1), 100 * Math.pow(2, attempt));
           }
-        }, 100);
+        };
+        
+        setTimeout(() => tryLoadWebGL(0), 200);
       }
+      */
     });
 
     return () => {
