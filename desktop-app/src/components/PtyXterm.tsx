@@ -3,22 +3,17 @@
  * 
  * Features:
  * - Write batching with requestAnimationFrame (reduces jank)
- * - WebGL addon support for hardware acceleration
  * - ResizeObserver for smooth resizing
  * - Modern UI with glassmorphism header
- * - Light/Dark theme support
+ * - Light theme matching app UI
  * - Full ANSI color palette
+ * - Fixed dimensions error (xterm.js #4983)
  */
 
-import { useEffect, useRef, useImperativeHandle, forwardRef, useMemo } from "react";
+import { useEffect, useRef, useImperativeHandle, forwardRef, useMemo, useCallback } from "react";
 import { Terminal } from "xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "xterm/css/xterm.css";
-
-// Note: WebGL addon disabled due to dimensions timing issues
-// Canvas renderer provides stable performance without the complexity
-// To re-enable, uncomment WebGL code in the component and import:
-// import { WebglAddon } from "@xterm/addon-webgl";
 
 type Props = {
   onData: (data: string) => void;
@@ -40,7 +35,6 @@ type TermTheme = {
   cursorAccent: string;
   selectionBackground: string;
   selectionForeground: string;
-  // ANSI colors
   black: string;
   red: string;
   green: string;
@@ -60,22 +54,19 @@ type TermTheme = {
 };
 
 function getTheme(): TermTheme {
-  // Always use light theme to match the app UI
-  // const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
-
   // Modern light theme - matches app UI
-  const light: TermTheme = {
+  return {
     background: "#ffffff",
-    foreground: "#1e293b",  // slate-800 - dark enough to read
+    foreground: "#1e293b",  // slate-800
     cursor: "#3b82f6",      // blue-500
     cursorAccent: "#ffffff",
     selectionBackground: "rgba(59, 130, 246, 0.25)",
     selectionForeground: "#1e293b",
-    // ANSI colors - optimized for light background readability
+    // ANSI colors - optimized for light background
     black: "#334155",       // slate-700
     red: "#dc2626",         // red-600
     green: "#16a34a",       // green-600
-    yellow: "#ca8a04",      // yellow-600 (darker for readability)
+    yellow: "#ca8a04",      // yellow-600
     blue: "#2563eb",        // blue-600
     magenta: "#9333ea",     // purple-600
     cyan: "#0891b2",        // cyan-600
@@ -89,36 +80,6 @@ function getTheme(): TermTheme {
     brightCyan: "#06b6d4",  // cyan-500
     brightWhite: "#ffffff",
   };
-
-  // Modern dark theme (default)
-  const dark: TermTheme = {
-    background: "#0f172a",
-    foreground: "#e2e8f0",
-    cursor: "#10b981",
-    cursorAccent: "#0f172a",
-    selectionBackground: "rgba(59, 130, 246, 0.4)",
-    selectionForeground: "#ffffff",
-    // ANSI colors (vibrant for dark bg)
-    black: "#1e293b",
-    red: "#ef4444",
-    green: "#10b981",
-    yellow: "#f59e0b",
-    blue: "#3b82f6",
-    magenta: "#8b5cf6",
-    cyan: "#06b6d4",
-    white: "#f1f5f9",
-    brightBlack: "#475569",
-    brightRed: "#f87171",
-    brightGreen: "#34d399",
-    brightYellow: "#fbbf24",
-    brightBlue: "#60a5fa",
-    brightMagenta: "#a78bfa",
-    brightCyan: "#22d3ee",
-    brightWhite: "#ffffff",
-  };
-
-  // Always return light theme to match app UI
-  return light;
 }
 
 const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onResize }, ref) => {
@@ -128,12 +89,32 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   const fitRef = useRef<FitAddon | null>(null);
   const lastSizeRef = useRef<{ rows: number; cols: number } | null>(null);
   const disposedRef = useRef(false);
+  const isReadyRef = useRef(false);
 
   // Write batching for performance
   const writeQueueRef = useRef<string[]>([]);
   const rafRef = useRef<number | null>(null);
+  const fitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const theme = useMemo(() => getTheme(), []);
+
+  // Safe fit function that checks terminal state
+  const safeFit = useCallback(() => {
+    if (disposedRef.current || !isReadyRef.current) return;
+    const t = termRef.current;
+    const f = fitRef.current;
+    if (!t || !f) return;
+
+    try {
+      // Double-check terminal has valid internal state
+      if (t.element && t.cols > 0 && t.rows > 0) {
+        f.fit();
+      }
+    } catch (e) {
+      // Ignore fit errors - terminal may be in transition
+      console.debug('fit() skipped:', e);
+    }
+  }, []);
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -145,6 +126,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     if (!containerRef.current || termRef.current) return;
 
     disposedRef.current = false;
+    isReadyRef.current = false;
 
     const term = new Terminal({
       convertEol: true,
@@ -184,15 +166,33 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     });
 
     const fit = new FitAddon();
-    term.loadAddon(fit);
-
+    
     termRef.current = term;
     fitRef.current = fit;
 
+    // Load addon BEFORE open (important for proper initialization)
+    term.loadAddon(fit);
     term.open(containerRef.current);
 
+    // Mark as ready AFTER open completes and DOM settles
+    // This prevents dimensions error from race condition
+    fitTimeoutRef.current = setTimeout(() => {
+      if (disposedRef.current) return;
+      isReadyRef.current = true;
+      
+      // Now safe to fit
+      try {
+        fit.fit();
+        term.focus();
+      } catch (e) {
+        console.debug('Initial fit skipped:', e);
+      }
+    }, 50);
+
     // Focus on click
-    const handlePointerDown = () => term.focus();
+    const handlePointerDown = () => {
+      if (!disposedRef.current) term.focus();
+    };
     outerRef.current?.addEventListener("pointerdown", handlePointerDown);
 
     // Handle terminal input
@@ -216,7 +216,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       const t = termRef.current;
       if (!t) return;
 
-      // Batch writes to reduce repaints
       let chunk = "";
       let bytes = 0;
       const MAX_CHUNK = 64 * 1024;
@@ -228,9 +227,14 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         if (bytes >= MAX_CHUNK) break;
       }
 
-      if (chunk) t.write(chunk);
+      if (chunk) {
+        try {
+          t.write(chunk);
+        } catch (e) {
+          console.debug('write() error:', e);
+        }
+      }
 
-      // Continue if more data pending
       if (writeQueueRef.current.length && rafRef.current == null) {
         rafRef.current = requestAnimationFrame(flush);
       }
@@ -239,7 +243,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     const writeToTerminal = (data: string) => {
       if (disposedRef.current) return;
 
-      // Prevent queue from growing too large
       if (writeQueueRef.current.length > 5000) {
         writeQueueRef.current.splice(0, 2500);
       }
@@ -251,79 +254,63 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     };
 
     window.__ptyWrite = writeToTerminal;
-    window.__ptyFocus = () => termRef.current?.focus();
+    window.__ptyFocus = () => {
+      if (!disposedRef.current) termRef.current?.focus();
+    };
 
-    // ResizeObserver for smooth resizing
+    // ResizeObserver with debouncing
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
     const ro = new ResizeObserver(() => {
-      if (disposedRef.current) return;
-      const t = termRef.current;
-      const f = fitRef.current;
-      if (!t || !f) return;
+      if (disposedRef.current || !isReadyRef.current) return;
+      
+      // Debounce resize to prevent rapid fit() calls
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (disposedRef.current || !isReadyRef.current) return;
+        
+        const t = termRef.current;
+        const f = fitRef.current;
+        if (!t || !f) return;
 
-      try {
-        f.fit();
-      } catch {
-        // Ignore fit errors
-      }
-
-      const rows = t.rows;
-      const cols = t.cols;
-      if (rows > 0 && cols > 0) {
-        const last = lastSizeRef.current;
-        if (!last || last.rows !== rows || last.cols !== cols) {
-          lastSizeRef.current = { rows, cols };
-          onResize?.(rows, cols);
+        try {
+          f.fit();
+        } catch {
+          // Ignore fit errors
         }
-      }
+
+        const rows = t.rows;
+        const cols = t.cols;
+        if (rows > 0 && cols > 0) {
+          const last = lastSizeRef.current;
+          if (!last || last.rows !== rows || last.cols !== cols) {
+            lastSizeRef.current = { rows, cols };
+            onResize?.(rows, cols);
+          }
+        }
+      }, 16); // ~60fps debounce
     });
 
     if (outerRef.current) ro.observe(outerRef.current);
 
-    // Initial fit and WebGL loading
-    requestAnimationFrame(() => {
-      try {
-        fit.fit();
-      } catch {}
-      term.focus();
-      
-      // Load WebGL addon AFTER fit (requires valid dimensions)
-      // Skip WebGL entirely to avoid dimensions error - canvas renderer is stable
-      // WebGL can cause issues when terminal dimensions aren't ready
-      // Uncomment below to enable WebGL (may cause errors on some systems)
-      /*
-      if (WebglAddon && !disposedRef.current) {
-        const tryLoadWebGL = (attempt = 0) => {
-          if (disposedRef.current || !termRef.current || attempt > 3) return;
-          
-          const t = termRef.current;
-          // Check if terminal has valid dimensions
-          if (t.cols > 0 && t.rows > 0) {
-            try {
-              const webgl = new WebglAddon();
-              webgl.onContextLoss(() => {
-                webgl.dispose();
-              });
-              t.loadAddon(webgl);
-              console.log('WebGL renderer loaded successfully');
-            } catch (e) {
-              console.log('WebGL not available, using canvas renderer');
-            }
-          } else {
-            // Retry with exponential backoff
-            setTimeout(() => tryLoadWebGL(attempt + 1), 100 * Math.pow(2, attempt));
-          }
-        };
-        
-        setTimeout(() => tryLoadWebGL(0), 200);
-      }
-      */
-    });
-
+    // Cleanup function
     return () => {
+      // CRITICAL: Set disposed FIRST to prevent any async operations
       disposedRef.current = true;
+      isReadyRef.current = false;
 
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+      // Clear all pending timers BEFORE dispose
+      if (fitTimeoutRef.current) {
+        clearTimeout(fitTimeoutRef.current);
+        fitTimeoutRef.current = null;
+      }
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      
       writeQueueRef.current = [];
 
       ro.disconnect();
@@ -334,21 +321,29 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       delete window.__ptyWrite;
       delete window.__ptyFocus;
 
-      term.dispose();
+      // Dispose terminal last, after all timers are cleared
+      // Use setTimeout to ensure any pending internal timers complete
+      setTimeout(() => {
+        try {
+          term.dispose();
+        } catch (e) {
+          console.debug('dispose() error:', e);
+        }
+      }, 0);
+      
       termRef.current = null;
       fitRef.current = null;
     };
-  }, [onData, onKey, onResize, theme]);
+  }, [onData, onKey, onResize, theme, safeFit]);
 
   const doCopy = async () => {
     const t = termRef.current;
-    if (!t) return;
+    if (!t || disposedRef.current) return;
     const selection = t.getSelection?.() ?? "";
     if (!selection) return;
     try {
       await navigator.clipboard.writeText(selection);
     } catch {
-      // Fallback for older browsers
       const ta = document.createElement("textarea");
       ta.value = selection;
       ta.style.position = "fixed";
@@ -361,7 +356,9 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   };
 
   const doClear = () => {
-    termRef.current?.clear();
+    if (!disposedRef.current) {
+      termRef.current?.clear();
+    }
   };
 
   return (
@@ -373,13 +370,13 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         borderRadius: 12,
         overflow: "hidden",
         background: theme.background,
-        border: "1px solid #e5e7eb",  // gray-200
+        border: "1px solid #e5e7eb",
         boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* Modern header bar - matches app UI */}
+      {/* Modern header bar */}
       <div
         style={{
           height: 40,
@@ -388,7 +385,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
           justifyContent: "space-between",
           padding: "0 12px",
           borderBottom: "1px solid #e5e7eb",
-          background: "#f9fafb",  // gray-50
+          background: "#f9fafb",
           userSelect: "none",
         }}
       >
@@ -417,7 +414,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
           <div style={{ 
             fontSize: 13, 
             fontWeight: 600, 
-            color: "#374151",  // gray-700
+            color: "#374151",
             letterSpacing: "-0.01em"
           }}>
             Terminal
@@ -432,14 +429,14 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
               fontWeight: 500,
               padding: "5px 10px",
               borderRadius: 6,
-              border: "1px solid #d1d5db",  // gray-300
+              border: "1px solid #d1d5db",
               background: "#ffffff",
-              color: "#374151",  // gray-700
+              color: "#374151",
               cursor: "pointer",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#f3f4f6";  // gray-100
+              e.currentTarget.style.background = "#f3f4f6";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "#ffffff";
@@ -455,14 +452,14 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
               fontWeight: 500,
               padding: "5px 10px",
               borderRadius: 6,
-              border: "1px solid #d1d5db",  // gray-300
+              border: "1px solid #d1d5db",
               background: "#ffffff",
-              color: "#374151",  // gray-700
+              color: "#374151",
               cursor: "pointer",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#f3f4f6";  // gray-100
+              e.currentTarget.style.background = "#f3f4f6";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "#ffffff";
