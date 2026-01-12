@@ -490,14 +490,14 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       </div>
 
       {/* Terminal body */}
-      <div style={{ flex: 1, padding: 8 }}>
+      <div style={{ flex: 1, padding: 8, paddingBottom: 16, background: theme.background }}>
         <div
           ref={containerRef}
           style={{
             width: "100%",
             height: "100%",
             overflow: "hidden",
-            background: "transparent",
+            background: theme.background,
           }}
         />
       </div>
