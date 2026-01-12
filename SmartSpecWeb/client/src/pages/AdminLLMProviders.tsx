@@ -54,6 +54,12 @@ import {
   DollarSign,
   Copy,
   GripVertical,
+  RefreshCw,
+  Download,
+  Search,
+  CheckCircle2,
+  XCircle,
+  Clock,
 } from "lucide-react";
 
 interface ModelVersion {
@@ -96,6 +102,11 @@ export default function AdminLLMProviders() {
   const [deleteConfirm, setDeleteConfirm] = useState<Provider | null>(null);
   const [testResult, setTestResult] = useState<{ id: number; success: boolean; message: string } | null>(null);
   const [activeTab, setActiveTab] = useState("settings");
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [isBrowseDialogOpen, setIsBrowseDialogOpen] = useState(false);
+  const [browseSearch, setBrowseSearch] = useState("");
+  const [browseProvider, setBrowseProvider] = useState("");
+  const [selectedModelsToImport, setSelectedModelsToImport] = useState<string[]>([]);
   
   // Model editing state
   const [editingModels, setEditingModels] = useState<ModelVersion[]>([]);
@@ -173,6 +184,59 @@ export default function AdminLLMProviders() {
       setTestResult({ id, success: false, message: error.message });
       setTimeout(() => setTestResult(null), 5000);
     },
+  });
+
+  // Sync mutations
+  const syncProviderMutation = useMutation({
+    mutationFn: (id: number) => trpc.llmProviders.syncProvider.mutate({ id }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+      setSyncResult(result);
+      setTimeout(() => setSyncResult(null), 10000);
+    },
+    onError: (error) => {
+      setSyncResult({ success: false, error: error.message });
+      setTimeout(() => setSyncResult(null), 10000);
+    },
+  });
+
+  const syncAllMutation = useMutation({
+    mutationFn: () => trpc.llmProviders.syncAll.mutate(),
+    onSuccess: (results) => {
+      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+      const totalAdded = results.reduce((sum: number, r: any) => sum + r.modelsAdded, 0);
+      const totalRemoved = results.reduce((sum: number, r: any) => sum + r.modelsRemoved, 0);
+      setSyncResult({
+        success: true,
+        message: `Synced ${results.length} providers: +${totalAdded} models, -${totalRemoved} removed`,
+        results,
+      });
+      setTimeout(() => setSyncResult(null), 10000);
+    },
+    onError: (error) => {
+      setSyncResult({ success: false, error: error.message });
+      setTimeout(() => setSyncResult(null), 10000);
+    },
+  });
+
+  const importModelsMutation = useMutation({
+    mutationFn: (data: { providerId: number; modelIds: string[] }) =>
+      trpc.llmProviders.importModels.mutate(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+      setSelectedModelsToImport([]);
+      setIsBrowseDialogOpen(false);
+    },
+  });
+
+  // Browse OpenRouter models query
+  const { data: browseData, isLoading: isBrowseLoading, refetch: refetchBrowse } = useQuery({
+    queryKey: ["llmProviders", "browseOpenRouterModels", browseSearch, browseProvider],
+    queryFn: () => trpc.llmProviders.browseOpenRouterModels.query({
+      search: browseSearch || undefined,
+      provider: browseProvider || undefined,
+    }),
+    enabled: isBrowseDialogOpen,
   });
 
   const resetForm = () => {
@@ -352,9 +416,63 @@ export default function AdminLLMProviders() {
         </Card>
       </div>
 
+      {/* Sync Result Notification */}
+      {syncResult && (
+        <div className={`mb-4 p-4 rounded-lg flex items-center gap-3 ${
+          syncResult.success ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"
+        }`}>
+          {syncResult.success ? (
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+          ) : (
+            <XCircle className="h-5 w-5 text-red-600" />
+          )}
+          <div className="flex-1">
+            {syncResult.message || (
+              syncResult.success ? (
+                <span>
+                  Synced <strong>{syncResult.provider}</strong>: 
+                  +{syncResult.modelsAdded} added, -{syncResult.modelsRemoved} removed, 
+                  ~{syncResult.modelsUpdated} updated. Total: {syncResult.totalModels} models
+                </span>
+              ) : (
+                <span className="text-red-600">Sync failed: {syncResult.error}</span>
+              )
+            )}
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setSyncResult(null)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Configured Providers */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Configured Providers</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Configured Providers</h2>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBrowseDialogOpen(true)}
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Browse Models
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => syncAllMutation.mutate()}
+              disabled={syncAllMutation.isPending}
+            >
+              {syncAllMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Sync All from OpenRouter
+            </Button>
+          </div>
+        </div>
         {providers.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
@@ -430,6 +548,19 @@ export default function AdminLLMProviders() {
                         onCheckedChange={() => toggleMutation.mutate(provider.id)}
                         disabled={toggleMutation.isPending}
                       />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => syncProviderMutation.mutate(provider.id)}
+                        disabled={syncProviderMutation.isPending}
+                        title="Sync Models from OpenRouter"
+                      >
+                        {syncProviderMutation.isPending && syncProviderMutation.variables === provider.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -798,6 +929,189 @@ export default function AdminLLMProviders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Browse OpenRouter Models Dialog */}
+      <Dialog open={isBrowseDialogOpen} onOpenChange={setIsBrowseDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Browse OpenRouter Models
+            </DialogTitle>
+            <DialogDescription>
+              Discover and import models from OpenRouter's catalog of 420+ models
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex gap-4 mb-4">
+            <div className="flex-1">
+              <Input
+                placeholder="Search models..."
+                value={browseSearch}
+                onChange={(e) => setBrowseSearch(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <select
+              className="px-3 py-2 border rounded-md bg-background"
+              value={browseProvider}
+              onChange={(e) => setBrowseProvider(e.target.value)}
+            >
+              <option value="">All Providers</option>
+              {browseData?.providers.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => refetchBrowse()}
+              disabled={isBrowseLoading}
+            >
+              {isBrowseLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
+          <div className="text-sm text-muted-foreground mb-2">
+            {browseData ? (
+              <span>
+                Showing {browseData.filteredCount} of {browseData.totalCount} models
+                {selectedModelsToImport.length > 0 && (
+                  <span className="ml-2 text-primary">
+                    • {selectedModelsToImport.length} selected
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span>Loading models...</span>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-auto border rounded-md">
+            {isBrowseLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : browseData?.models.length === 0 ? (
+              <div className="flex items-center justify-center h-64 text-muted-foreground">
+                No models found
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedModelsToImport.length === browseData?.models.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedModelsToImport(browseData?.models.map(m => m.id) || []);
+                          } else {
+                            setSelectedModelsToImport([]);
+                          }
+                        }}
+                      />
+                    </TableHead>
+                    <TableHead>Model ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="text-right">Context</TableHead>
+                    <TableHead className="text-right">Input $/1M</TableHead>
+                    <TableHead className="text-right">Output $/1M</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {browseData?.models.slice(0, 100).map((model) => (
+                    <TableRow
+                      key={model.id}
+                      className={selectedModelsToImport.includes(model.id) ? "bg-primary/5" : ""}
+                    >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedModelsToImport.includes(model.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedModelsToImport([...selectedModelsToImport, model.id]);
+                            } else {
+                              setSelectedModelsToImport(selectedModelsToImport.filter(id => id !== model.id));
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{model.id}</TableCell>
+                      <TableCell>{model.name}</TableCell>
+                      <TableCell className="text-right">
+                        {model.contextLength ? `${(model.contextLength / 1000).toFixed(0)}K` : "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {model.pricing?.input ? `$${model.pricing.input.toFixed(2)}` : "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {model.pricing?.output ? `$${model.pricing.output.toFixed(2)}` : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            {browseData && browseData.models.length > 100 && (
+              <div className="p-4 text-center text-sm text-muted-foreground border-t">
+                Showing first 100 models. Use search to find specific models.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4">
+            <div className="flex-1 text-sm text-muted-foreground">
+              Select a provider to import models to:
+              <select
+                className="ml-2 px-2 py-1 border rounded-md bg-background"
+                id="importTargetProvider"
+              >
+                {providers.map((p) => (
+                  <option key={p.id} value={p.id}>{p.displayName}</option>
+                ))}
+              </select>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsBrowseDialogOpen(false);
+                setSelectedModelsToImport([]);
+                setBrowseSearch("");
+                setBrowseProvider("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const select = document.getElementById("importTargetProvider") as HTMLSelectElement;
+                const providerId = parseInt(select?.value || "0");
+                if (providerId && selectedModelsToImport.length > 0) {
+                  importModelsMutation.mutate({
+                    providerId,
+                    modelIds: selectedModelsToImport,
+                  });
+                }
+              }}
+              disabled={selectedModelsToImport.length === 0 || importModelsMutation.isPending}
+            >
+              {importModelsMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Import {selectedModelsToImport.length} Models
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -4,6 +4,13 @@ import { db } from "../db";
 import { llmProviders } from "../../drizzle/schema";
 import { eq, asc, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
+import {
+  syncProviderModels,
+  syncAllProviderModels,
+  fetchAllOpenRouterModels,
+  getProviderSyncStatus,
+  importModelsFromOpenRouter,
+} from "../services/modelSyncService";
 
 // Simple encryption for API keys (in production, use proper key management)
 const ENCRYPTION_KEY = process.env.LLM_ENCRYPTION_KEY || "smartspec-llm-key-32chars!!";
@@ -487,14 +494,122 @@ export const llmProvidersRouter = router({
       .select({
         isEnabled: llmProviders.isEnabled,
         hasApiKey: llmProviders.hasApiKey,
+        availableModels: llmProviders.availableModels,
       })
       .from(llmProviders);
+    
+    const totalModels = providers.reduce((sum, p) => {
+      const models = (p.availableModels as any[]) || [];
+      return sum + models.length;
+    }, 0);
     
     return {
       total: providers.length,
       enabled: providers.filter(p => p.isEnabled).length,
       configured: providers.filter(p => p.hasApiKey).length,
       ready: providers.filter(p => p.isEnabled && p.hasApiKey).length,
+      totalModels,
     };
   }),
+
+  // Sync models for a specific provider from OpenRouter
+  syncProvider: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      // Get OpenRouter API key if configured
+      const [openRouter] = await db
+        .select({ apiKeyEncrypted: llmProviders.apiKeyEncrypted })
+        .from(llmProviders)
+        .where(eq(llmProviders.providerName, "openrouter"))
+        .limit(1);
+      
+      const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
+      
+      return syncProviderModels(input.id, apiKey);
+    }),
+
+  // Sync models for all enabled providers
+  syncAll: adminProcedure.mutation(async () => {
+    // Get OpenRouter API key if configured
+    const [openRouter] = await db
+      .select({ apiKeyEncrypted: llmProviders.apiKeyEncrypted })
+      .from(llmProviders)
+      .where(eq(llmProviders.providerName, "openrouter"))
+      .limit(1);
+    
+    const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
+    
+    return syncAllProviderModels(apiKey);
+  }),
+
+  // Browse all available models from OpenRouter
+  browseOpenRouterModels: adminProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      provider: z.string().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      // Get OpenRouter API key if configured
+      const [openRouter] = await db
+        .select({ apiKeyEncrypted: llmProviders.apiKeyEncrypted })
+        .from(llmProviders)
+        .where(eq(llmProviders.providerName, "openrouter"))
+        .limit(1);
+      
+      const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
+      
+      const result = await fetchAllOpenRouterModels(apiKey);
+      
+      let filteredModels = result.models;
+      
+      // Filter by provider
+      if (input?.provider) {
+        filteredModels = filteredModels.filter(m => 
+          m.provider?.toLowerCase() === input.provider?.toLowerCase() ||
+          m.id.toLowerCase().startsWith(input.provider?.toLowerCase() + "/")
+        );
+      }
+      
+      // Filter by search
+      if (input?.search) {
+        const search = input.search.toLowerCase();
+        filteredModels = filteredModels.filter(m =>
+          m.id.toLowerCase().includes(search) ||
+          m.name.toLowerCase().includes(search)
+        );
+      }
+      
+      return {
+        models: filteredModels,
+        providers: result.providers,
+        totalCount: result.totalCount,
+        filteredCount: filteredModels.length,
+      };
+    }),
+
+  // Get sync status for a provider
+  getSyncStatus: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return getProviderSyncStatus(input.id);
+    }),
+
+  // Import specific models from OpenRouter to a provider
+  importModels: adminProcedure
+    .input(z.object({
+      providerId: z.number(),
+      modelIds: z.array(z.string()),
+    }))
+    .mutation(async ({ input }) => {
+      // Get OpenRouter API key if configured
+      const [openRouter] = await db
+        .select({ apiKeyEncrypted: llmProviders.apiKeyEncrypted })
+        .from(llmProviders)
+        .where(eq(llmProviders.providerName, "openrouter"))
+        .limit(1);
+      
+      const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
+      
+      return importModelsFromOpenRouter(input.providerId, input.modelIds, apiKey);
+    }),
 });
