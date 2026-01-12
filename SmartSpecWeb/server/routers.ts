@@ -26,6 +26,7 @@ import { nanoid } from "nanoid";
 import { creditsRouter } from "./routers/credits";
 import { usersRouter } from "./routers/users";
 import { packagesRouter } from "./routers/packages";
+import { llmProvidersRouter } from "./routers/llmProviders";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -84,6 +85,9 @@ export const appRouter = router({
 
   // Package management (admin)
   packages: packagesRouter,
+
+  // LLM Provider management (admin)
+  llmProviders: llmProvidersRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

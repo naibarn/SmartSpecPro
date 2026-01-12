@@ -26,6 +26,7 @@ import DeviceAuth from "./pages/DeviceAuth";
 import AdminGallery from "./pages/AdminGallery";
 import AdminUsers from "./pages/AdminUsers";
 import AdminPackages from "./pages/AdminPackages";
+import AdminLLMProviders from "./pages/AdminLLMProviders";
 import Chat from "./pages/Chat";
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/admin/gallery" component={AdminGallery} />
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/packages" component={AdminPackages} />
+      <Route path="/admin/llm-providers" component={AdminLLMProviders} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />

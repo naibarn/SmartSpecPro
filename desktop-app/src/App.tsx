@@ -7,29 +7,18 @@ import KiloCliPage from "./pages/KiloCli";
 import KiloPtyPage from "./pages/KiloPty";
 import LLMChatPage from "./pages/LLMChat";
 import TestPage from "./pages/TestPage";
-import AdminSettings from "./pages/AdminSettings";
 import Login from "./pages/Login";
 import WebLogin from "./pages/WebLogin";
-import { initializeAuth, getAuthToken, isAdmin, isTokenExpired } from "./services/authService";
-import { initializeWebAuth, isWebAuthenticated } from "./services/webAuthService";
+import { initializeAuth, getAuthToken, isTokenExpired } from "./services/authService";
+import { initializeWebAuth } from "./services/webAuthService";
 
 // Protected Route wrapper
-function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = getAuthToken();
 
   // Check if token exists and not expired
   if (!token || isTokenExpired()) {
     return <Navigate to="/login" replace />;
-  }
-
-  // Check admin requirement
-  if (requireAdmin && !isAdmin()) {
-    return (
-      <div style={{ padding: 24 }}>
-        <h2>Access Denied</h2>
-        <p>You need admin privileges to access this page.</p>
-      </div>
-    );
   }
 
   return <>{children}</>;
@@ -66,16 +55,6 @@ export default function App() {
                     <Route path="/terminal" element={<KiloPtyPage />} />
                     <Route path="/kilo" element={<KiloCliPage />} />
                     <Route path="/test" element={<TestPage />} />
-
-                    {/* Admin-only routes */}
-                    <Route
-                      path="/admin/settings"
-                      element={
-                        <ProtectedRoute requireAdmin>
-                          <AdminSettings />
-                        </ProtectedRoute>
-                      }
-                    />
                   </Routes>
                 </div>
               </div>

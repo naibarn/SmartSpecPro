@@ -191,3 +191,64 @@ export const galleryItems = mysqlTable("gallery_items", {
 
 export type GalleryItem = typeof galleryItems.$inferSelect;
 export type InsertGalleryItem = typeof galleryItems.$inferInsert;
+
+
+/**
+ * LLM Provider configurations
+ * Stores API keys and settings for various LLM providers
+ */
+export const llmProviders = mysqlTable("llm_providers", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  /** Provider identifier (e.g., openai, anthropic, groq) */
+  providerName: varchar("providerName", { length: 64 }).notNull().unique(),
+  
+  /** Display name for UI */
+  displayName: varchar("displayName", { length: 128 }).notNull(),
+  
+  /** Provider description */
+  description: text("description"),
+  
+  /** API base URL */
+  baseUrl: varchar("baseUrl", { length: 512 }),
+  
+  /** Encrypted API key (stored securely) */
+  apiKeyEncrypted: text("apiKeyEncrypted"),
+  
+  /** Whether API key is set (without exposing the key) */
+  hasApiKey: boolean("hasApiKey").default(false).notNull(),
+  
+  /** Default model for this provider */
+  defaultModel: varchar("defaultModel", { length: 128 }),
+  
+  /** Available models (JSON array) */
+  availableModels: json("availableModels").$type<Array<{
+    id: string;
+    name: string;
+    contextLength?: number;
+    pricing?: { input: number; output: number };
+  }>>(),
+  
+  /** Additional configuration */
+  configJson: json("configJson").$type<{
+    maxTokens?: number;
+    temperature?: number;
+    supportsVision?: boolean;
+    supportsStreaming?: boolean;
+    supportsTools?: boolean;
+    headers?: Record<string, string>;
+    [key: string]: any;
+  }>(),
+  
+  /** Whether provider is enabled */
+  isEnabled: boolean("isEnabled").default(false).notNull(),
+  
+  /** Sort order for display */
+  sortOrder: int("sortOrder").default(0).notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LlmProvider = typeof llmProviders.$inferSelect;
+export type InsertLlmProvider = typeof llmProviders.$inferInsert;

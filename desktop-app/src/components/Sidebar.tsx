@@ -1,10 +1,13 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getUser, logout, isTokenExpired } from "../services/authService";
+import { isWebAuthenticated, getWebUrl, getCachedUser } from "../services/webAuthService";
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const [user, setUser] = useState(getUser());
+  const [webUser, setWebUser] = useState(getCachedUser());
+  const [webConnected, setWebConnected] = useState(isWebAuthenticated());
 
   // Check token expiry periodically
   useEffect(() => {
@@ -13,6 +16,9 @@ export default function Sidebar() {
         console.log("Token expired, logging out...");
         logout(navigate);
       }
+      // Update web auth status
+      setWebConnected(isWebAuthenticated());
+      setWebUser(getCachedUser());
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
@@ -21,6 +27,12 @@ export default function Sidebar() {
   const handleLogout = () => {
     logout(navigate);
   };
+
+  const openWebAdmin = () => {
+    const webUrl = getWebUrl();
+    window.open(`${webUrl}/admin/llm-providers`, "_blank");
+  };
+
   const linkStyle = ({ isActive }: { isActive: boolean }) => ({
     display: "block",
     padding: "10px 12px",
@@ -41,6 +53,11 @@ export default function Sidebar() {
           <div style={{ color: "#6b7280", fontSize: 11 }}>
             {user.is_admin ? "👑 Admin" : "User"}
           </div>
+          {webConnected && webUser && (
+            <div style={{ color: "#059669", fontSize: 11, marginTop: 4 }}>
+              ✓ Web: {webUser.credits} credits
+            </div>
+          )}
         </div>
       )}
 
@@ -51,12 +68,30 @@ export default function Sidebar() {
         <NavLink to="/terminal" style={linkStyle}>Terminal (PTY)</NavLink>
         <NavLink to="/kilo" style={linkStyle}>CLI (Terminal)</NavLink>
 
-        {user?.is_admin && (
+        {/* SmartSpecWeb Admin Link */}
+        {webConnected && webUser?.plan !== "free" && (
           <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 8, paddingTop: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 6, paddingLeft: 12 }}>
-              ADMIN
+              SMARTSPEC WEB
             </div>
-            <NavLink to="/admin/settings" style={linkStyle}>⚙️ Provider Config</NavLink>
+            <button
+              onClick={openWebAdmin}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 10,
+                textDecoration: "none",
+                color: "#374151",
+                background: "transparent",
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              ⚙️ LLM Providers
+            </button>
           </div>
         )}
       </nav>

@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { chatCompletions, type Message, type ContentPart } from "../services/llmOpenAI";
 import { uploadToArtifactStorage } from "../services/artifacts";
-import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
+import { getProxyTokenHint, loadProxyToken } from "../services/authStore";
+import { isWebAuthenticated, getCachedUser, initializeWebAuth, getWebUrl } from "../services/webAuthService";
 import { LLMArtifactViewer, type LLMArtifact } from "../components/LLMArtifactViewer";
 import { useMemoryStore, detectImportantContent } from "../stores/memoryStore";
 import { MemoryPanel, MemoryContextMenu, MemorySaveDialog, MemoryButton, useMemoryTextSelection } from "../components/MemoryPanel";
@@ -125,8 +126,9 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const [tokenInput, setTokenInput] = useState<string>("");
   const [tokenHint, setTokenHint] = useState<string>("");
+  const [webConnected, setWebConnected] = useState(false);
+  const [webUser, setWebUser] = useState<{ name: string; credits: number } | null>(null);
 
   // Artifact viewer state
   const [artifactViewerOpen, setArtifactViewerOpen] = useState(false);
@@ -155,6 +157,13 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
     (async () => {
       await loadProxyToken();
       setTokenHint(getProxyTokenHint());
+      // Check SmartSpecWeb connection
+      await initializeWebAuth();
+      setWebConnected(isWebAuthenticated());
+      const user = getCachedUser();
+      if (user) {
+        setWebUser({ name: user.name || user.email || 'User', credits: user.credits });
+      }
     })();
   }, []);
 
@@ -180,11 +189,12 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
 
   const display = useMemo(() => messages.filter((m) => m.role !== "system"), [messages]);
 
-  const onSaveToken = async () => {
-    await setProxyToken(tokenInput.trim());
-    setTokenInput("");
-    setTokenHint(getProxyTokenHint());
-    alert("Saved proxy token locally (OS keychain when available).");
+  const openWebLogin = () => {
+    window.location.href = "/web-login";
+  };
+
+  const openWebDashboard = () => {
+    window.open(getWebUrl(), "_blank");
   };
 
   const onInsertImage = async () => {
@@ -512,28 +522,60 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-          <label style={{ fontSize: 12, opacity: 0.9 }}>Proxy token</label>
-          <input
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            placeholder={tokenHint ? `saved (${tokenHint})` : "paste SMARTSPEC_PROXY_TOKEN"}
-            style={{ minWidth: 280, padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }}
-            type="password"
-          />
-          <button 
-            onClick={onSaveToken} 
-            disabled={busy}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 6,
-              border: "1px solid #e5e7eb",
-              background: "#f9fafb",
-              fontSize: 13,
-              cursor: busy ? "not-allowed" : "pointer"
-            }}
-          >
-            Save Token
-          </button>
+          <label style={{ fontSize: 12, opacity: 0.9 }}>SmartSpec Web</label>
+          {webConnected ? (
+            <>
+              <span style={{ 
+                padding: "4px 10px", 
+                borderRadius: 6, 
+                background: "#d1fae5", 
+                color: "#065f46",
+                fontSize: 12,
+                fontWeight: 500
+              }}>
+                ✓ Connected {webUser && `• ${webUser.credits} credits`}
+              </span>
+              <button 
+                onClick={openWebDashboard}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "1px solid #e5e7eb",
+                  background: "#f9fafb",
+                  fontSize: 13,
+                  cursor: "pointer"
+                }}
+              >
+                Open Dashboard
+              </button>
+            </>
+          ) : (
+            <>
+              <span style={{ 
+                padding: "4px 10px", 
+                borderRadius: 6, 
+                background: "#fef3c7", 
+                color: "#92400e",
+                fontSize: 12
+              }}>
+                Not connected
+              </span>
+              <button 
+                onClick={openWebLogin}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "1px solid #3b82f6",
+                  background: "#3b82f6",
+                  color: "#fff",
+                  fontSize: 13,
+                  cursor: "pointer"
+                }}
+              >
+                Connect to SmartSpec Web
+              </button>
+            </>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
