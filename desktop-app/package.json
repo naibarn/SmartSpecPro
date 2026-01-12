@@ -13,7 +13,8 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
     "@tauri-apps/api": "^2.9.1",
-    "@xterm/addon-fit": "0.10.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.26.1",
@@ -27,7 +28,6 @@
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.4.0",
     "uuid": "^13.0.0",
-    "xterm": "5.3.0",
     "zustand": "^5.0.9"
   },
   "devDependencies": {

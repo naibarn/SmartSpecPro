@@ -7,13 +7,13 @@
  * - Modern UI with glassmorphism header
  * - Light theme matching app UI
  * - Full ANSI color palette
- * - Fixed dimensions error (xterm.js #4983)
+ * - Using xterm.js 6.0 with native dimensions error fix (#4984)
  */
 
 import { useEffect, useRef, useImperativeHandle, forwardRef, useMemo, useCallback } from "react";
-import { Terminal } from "xterm";
+import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
-import "xterm/css/xterm.css";
+import "@xterm/xterm/css/xterm.css";
 
 type Props = {
   onData: (data: string) => void;
@@ -98,22 +98,12 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
 
   const theme = useMemo(() => getTheme(), []);
 
-  // Safe fit function that checks terminal state
+  // Safe fit function - xterm.js 6.0 handles edge cases internally
   const safeFit = useCallback(() => {
     if (disposedRef.current || !isReadyRef.current) return;
-    const t = termRef.current;
     const f = fitRef.current;
-    if (!t || !f) return;
-
-    try {
-      // Double-check terminal has valid internal state
-      if (t.element && t.cols > 0 && t.rows > 0) {
-        f.fit();
-      }
-    } catch (e) {
-      // Ignore fit errors - terminal may be in transition
-      console.debug('fit() skipped:', e);
-    }
+    if (!f) return;
+    f.fit();
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -128,19 +118,8 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     disposedRef.current = false;
     isReadyRef.current = false;
 
-    // Wait for container to have valid dimensions before creating terminal
-    // This prevents the "Cannot read properties of undefined (reading 'dimensions')" error
-    const rect = containerRef.current.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-      // Container not ready yet, wait and retry
-      const retryTimeout = setTimeout(() => {
-        // Force re-render to retry
-        if (!disposedRef.current) {
-          termRef.current = null; // Reset to allow retry
-        }
-      }, 50);
-      return () => clearTimeout(retryTimeout);
-    }
+    // xterm.js 6.0 has native fix for dimensions error (#4984)
+    // No need for container dimension checks anymore
 
     const term = new Terminal({
       convertEol: true,
