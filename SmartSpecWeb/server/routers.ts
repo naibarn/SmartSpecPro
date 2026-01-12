@@ -20,6 +20,7 @@ import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 import { creditsRouter } from "./routers/credits";
 import { usersRouter } from "./routers/users";
+import { packagesRouter } from "./routers/packages";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -75,6 +76,9 @@ export const appRouter = router({
 
   // User management (admin)
   users: usersRouter,
+
+  // Package management (admin)
+  packages: packagesRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({
