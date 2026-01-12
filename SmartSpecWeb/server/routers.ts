@@ -13,6 +13,11 @@ import {
   incrementGalleryLikes,
   incrementGalleryDownloads,
   getGalleryStats,
+  getGalleryItemsCount,
+  getGalleryAnalytics,
+  bulkDeleteGalleryItems,
+  bulkUpdateGalleryPublish,
+  bulkUpdateGalleryFeatured,
   type GalleryType,
   type AspectRatio
 } from "./db";
@@ -271,6 +276,44 @@ export const appRouter = router({
         }
         await updateGalleryItem(input.id, { isFeatured: !item.isFeatured });
         return { success: true, isFeatured: !item.isFeatured };
+      }),
+
+    // Admin: Bulk delete items
+    bulkDelete: adminProcedure
+      .input(z.object({ ids: z.array(z.number()).min(1) }))
+      .mutation(async ({ input }) => {
+        await bulkDeleteGalleryItems(input.ids);
+        return { success: true, count: input.ids.length };
+      }),
+
+    // Admin: Bulk publish items
+    bulkPublish: adminProcedure
+      .input(z.object({ ids: z.array(z.number()).min(1), isPublished: z.boolean() }))
+      .mutation(async ({ input }) => {
+        await bulkUpdateGalleryPublish(input.ids, input.isPublished);
+        return { success: true, count: input.ids.length };
+      }),
+
+    // Admin: Bulk feature items
+    bulkFeature: adminProcedure
+      .input(z.object({ ids: z.array(z.number()).min(1), isFeatured: z.boolean() }))
+      .mutation(async ({ input }) => {
+        await bulkUpdateGalleryFeatured(input.ids, input.isFeatured);
+        return { success: true, count: input.ids.length };
+      }),
+
+    // Admin: Get items count (for pagination)
+    count: adminProcedure
+      .input(galleryFiltersSchema.omit({ limit: true, offset: true }))
+      .query(async ({ input }) => {
+        return getGalleryItemsCount(input);
+      }),
+
+    // Admin: Get analytics
+    analytics: adminProcedure
+      .input(z.object({ days: z.number().min(1).max(365).default(30) }).optional())
+      .query(async ({ input }) => {
+        return getGalleryAnalytics(input?.days || 30);
       }),
   }),
 });

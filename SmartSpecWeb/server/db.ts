@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, sql, like, or } from "drizzle-orm";
+import { eq, desc, asc, and, sql, like, or, inArray, SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -271,6 +271,142 @@ export async function incrementGalleryDownloads(id: number): Promise<void> {
   await db.update(galleryItems)
     .set({ downloads: sql`${galleryItems.downloads} + 1` })
     .where(eq(galleryItems.id, id));
+}
+
+/**
+ * Bulk delete gallery items
+ */
+export async function bulkDeleteGalleryItems(ids: number[]): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db.delete(galleryItems).where(inArray(galleryItems.id, ids));
+}
+
+/**
+ * Bulk update publish status
+ */
+export async function bulkUpdateGalleryPublish(ids: number[], isPublished: boolean): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db.update(galleryItems)
+    .set({ isPublished })
+    .where(inArray(galleryItems.id, ids));
+}
+
+/**
+ * Bulk update featured status
+ */
+export async function bulkUpdateGalleryFeatured(ids: number[], isFeatured: boolean): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db.update(galleryItems)
+    .set({ isFeatured })
+    .where(inArray(galleryItems.id, ids));
+}
+
+/**
+ * Get gallery items count (for pagination)
+ */
+export async function getGalleryItemsCount(filters: {
+  type?: GalleryType;
+  isPublished?: boolean;
+  isFeatured?: boolean;
+  search?: string;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) {
+    return 0;
+  }
+
+  const conditions: SQL<unknown>[] = [];
+  
+  if (filters.type) {
+    conditions.push(eq(galleryItems.type, filters.type));
+  }
+  
+  if (filters.isPublished !== undefined) {
+    conditions.push(eq(galleryItems.isPublished, filters.isPublished));
+  }
+  
+  if (filters.isFeatured !== undefined) {
+    conditions.push(eq(galleryItems.isFeatured, filters.isFeatured));
+  }
+  
+  if (filters.search) {
+    conditions.push(
+      or(
+        like(galleryItems.title, `%${filters.search}%`),
+        like(galleryItems.description, `%${filters.search}%`)
+      )
+    );
+  }
+
+  let query = db.select({ count: sql<number>`COUNT(*)` }).from(galleryItems);
+  
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as typeof query;
+  }
+
+  const result = await query;
+  return Number(result[0]?.count) || 0;
+}
+
+/**
+ * Get gallery analytics
+ */
+export async function getGalleryAnalytics(days: number = 30): Promise<{
+  dailyStats: Array<{ date: string; views: number; likes: number; downloads: number }>;
+  topItems: Array<{ id: number; title: string; type: string; views: number; likes: number }>;
+  typeDistribution: Array<{ type: string; count: number }>;
+}> {
+  const db = await getDb();
+  if (!db) {
+    return { dailyStats: [], topItems: [], typeDistribution: [] };
+  }
+
+  // Get top items by views
+  const topItems = await db.select({
+    id: galleryItems.id,
+    title: galleryItems.title,
+    type: galleryItems.type,
+    views: galleryItems.views,
+    likes: galleryItems.likes,
+  })
+    .from(galleryItems)
+    .orderBy(desc(galleryItems.views))
+    .limit(10);
+
+  // Get type distribution
+  const typeDistribution = await db.select({
+    type: galleryItems.type,
+    count: sql<number>`COUNT(*)`,
+  })
+    .from(galleryItems)
+    .groupBy(galleryItems.type);
+
+  return {
+    dailyStats: [], // Would need a separate analytics table for daily tracking
+    topItems: topItems.map(item => ({
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      views: item.views,
+      likes: item.likes,
+    })),
+    typeDistribution: typeDistribution.map(item => ({
+      type: item.type,
+      count: Number(item.count),
+    })),
+  };
 }
 
 /**
