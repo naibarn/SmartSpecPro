@@ -110,6 +110,8 @@ export async function deductCredits(params: DeductCreditsParams) {
 
   const newBalance = balance.credits - amount;
 
+  let transactionId: number = 0;
+
   // Update user credits and create transaction in a transaction
   await db.transaction(async (tx) => {
     // Update user credits
@@ -119,7 +121,7 @@ export async function deductCredits(params: DeductCreditsParams) {
       .where(eq(users.id, userId));
 
     // Create transaction record
-    await tx.insert(creditTransactions).values({
+    const result = await tx.insert(creditTransactions).values({
       userId,
       amount: -amount, // Negative for deductions
       type: "usage",
@@ -127,12 +129,14 @@ export async function deductCredits(params: DeductCreditsParams) {
       metadata,
       balanceAfter: newBalance,
     });
+    transactionId = result[0].insertId;
   });
 
   return {
     success: true,
     creditsUsed: amount,
-    creditsRemaining: newBalance,
+    newBalance,
+    transactionId,
   };
 }
 
@@ -154,6 +158,8 @@ export async function addCredits(params: AddCreditsParams) {
 
   const newBalance = balance.credits + amount;
 
+  let transactionId: number = 0;
+
   // Update user credits and create transaction
   await db.transaction(async (tx) => {
     // Update user credits
@@ -163,7 +169,7 @@ export async function addCredits(params: AddCreditsParams) {
       .where(eq(users.id, userId));
 
     // Create transaction record
-    await tx.insert(creditTransactions).values({
+    const result = await tx.insert(creditTransactions).values({
       userId,
       amount, // Positive for additions
       type,
@@ -172,12 +178,14 @@ export async function addCredits(params: AddCreditsParams) {
       balanceAfter: newBalance,
       referenceId,
     });
+    transactionId = result[0].insertId;
   });
 
   return {
     success: true,
     creditsAdded: amount,
-    creditsBalance: newBalance,
+    newBalance,
+    transactionId,
   };
 }
 

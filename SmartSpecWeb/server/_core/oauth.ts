@@ -1,6 +1,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
+import { giveSignupBonus } from "../services/creditService";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -28,6 +29,10 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
+      // Check if this is a new user
+      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      const isNewUser = !existingUser;
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
@@ -35,6 +40,19 @@ export function registerOAuthRoutes(app: Express) {
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
+
+      // Give signup bonus to new users
+      if (isNewUser) {
+        const newUser = await db.getUserByOpenId(userInfo.openId);
+        if (newUser) {
+          try {
+            await giveSignupBonus(newUser.id, 100); // 100 credits signup bonus
+            console.log(`[OAuth] Gave signup bonus to new user: ${newUser.id}`);
+          } catch (err) {
+            console.error(`[OAuth] Failed to give signup bonus:`, err);
+          }
+        }
+      }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",
