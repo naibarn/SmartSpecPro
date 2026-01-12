@@ -24,6 +24,19 @@ logger = structlog.get_logger()
 router = APIRouter(tags=["OpenAI Compatible"])
 
 
+def _extract_user_token(req: Request) -> Optional[str]:
+    """
+    Extract user auth token from request headers.
+    
+    Returns:
+        User's JWT token if present, None otherwise
+    """
+    auth_header = req.headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        return auth_header.split(" ", 1)[1].strip()
+    return None
+
+
 def _require_proxy_token(req: Request):
     """
     Check for valid proxy token OR valid auth token (JWT)
@@ -136,6 +149,9 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
     payload: Dict[str, Any] = await req.json()
     stream = bool(payload.get("stream"))
     tid = _trace_id(req)
+    
+    # Extract user token for forwarding to Web Gateway (for credit tracking)
+    user_token = _extract_user_token(req)
 
     # Mode 1: Web Gateway (if enabled)
     if settings.SMARTSPEC_USE_WEB_GATEWAY:
@@ -144,12 +160,12 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
 
         if stream:
             async def gen():
-                async for chunk in forward_chat_stream(payload, trace_id=tid):
+                async for chunk in forward_chat_stream(payload, trace_id=tid, user_token=user_token):
                     yield chunk
 
             return StreamingResponse(gen(), media_type="text/event-stream")
 
-        upstream = await forward_chat_json(payload, trace_id=tid)
+        upstream = await forward_chat_json(payload, trace_id=tid, user_token=user_token)
         content_type = upstream.headers.get("content-type", "application/json")
         return Response(content=upstream.content, status_code=upstream.status_code, media_type=content_type)
 
@@ -285,6 +301,7 @@ async def models(req: Request):
         raise HTTPException(status_code=500, detail="SMARTSPEC_WEB_GATEWAY_URL not configured")
 
     tid = _trace_id(req)
-    upstream = await forward_models(trace_id=tid)
+    user_token = _extract_user_token(req)
+    upstream = await forward_models(trace_id=tid, user_token=user_token)
     content_type = upstream.headers.get("content-type", "application/json")
     return Response(content=upstream.content, status_code=upstream.status_code, media_type=content_type)
