@@ -5,7 +5,8 @@
  * Used across all pages that support workspace-scoped memory
  */
 
-import { useMemoryStore, selectMemoryStats } from '../stores/memoryStore';
+import { useMemo } from 'react';
+import { useMemoryStore } from '../stores/memoryStore';
 import type { MemoryType } from '../services/kiloCli';
 
 const buttonStyle = {
@@ -43,7 +44,14 @@ export function MemoryPanel() {
     deleteMemory,
   } = useMemoryStore();
   
-  const stats = useMemoryStore(selectMemoryStats);
+  // Memoize stats to prevent infinite re-renders
+  const stats = useMemo(() => ({
+    total: memories.length,
+    decisions: memories.filter(m => m.type === 'decision').length,
+    plans: memories.filter(m => m.type === 'plan').length,
+    components: memories.filter(m => m.type === 'component').length,
+    tasks: memories.filter(m => m.type === 'task').length,
+  }), [memories]);
 
   if (!showMemoryPanel) return null;
 
