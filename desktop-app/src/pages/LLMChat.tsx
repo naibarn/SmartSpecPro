@@ -123,6 +123,7 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
   ]);
   const [streamingText, setStreamingText] = useState<string>("");
   const abortRef = useRef<AbortController | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const [tokenInput, setTokenInput] = useState<string>("");
   const [tokenHint, setTokenHint] = useState<string>("");
@@ -170,6 +171,11 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, [setContextMenuPos]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, streamingText]);
 
 
   const display = useMemo(() => messages.filter((m) => m.role !== "system"), [messages]);
@@ -327,233 +333,239 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
     }
   };
 
-  const onCancelStream = () => abortRef.current?.abort();
-
-  const onClearChat = () => {
-    if (confirm("Clear all messages and artifacts?")) {
-      setMessages([messages[0]]); // Keep system message
-      setStreamingText("");
-      setArtifacts([]);
-      setSelectedArtifact(null);
-    }
-  };
-
   const onViewArtifact = async (url: string, type: string, name: string) => {
-    setViewerContent({ url, type, name });
-    setArtifactViewerOpen(true);
+    setViewerContent({ type, url, name });
     setFileContent(null);
 
-    // For text-based files, fetch and display content
     if (type === "file") {
-      const ext = name.split(".").pop()?.toLowerCase();
-      const textExtensions = ["md", "txt", "json", "js", "jsx", "ts", "tsx", "py", "java", "c", "cpp", "h", "css", "html", "xml", "yaml", "yml", "sh", "bash", "log", "env", "gitignore", "dockerfile"];
-
-      if (ext && textExtensions.includes(ext)) {
-        setLoadingFileContent(true);
-        try {
-          const response = await fetch(url);
-          const text = await response.text();
+      setLoadingFileContent(true);
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const text = await res.text();
           setFileContent(text);
-        } catch (error) {
-          console.error("Failed to load file content:", error);
-          setFileContent("Error: Failed to load file content");
-        } finally {
-          setLoadingFileContent(false);
         }
+      } catch (e) {
+        console.error("Failed to load file content:", e);
+      } finally {
+        setLoadingFileContent(false);
       }
     }
+
+    setArtifactViewerOpen(true);
   };
 
   const onSend = async () => {
-    const text = input.trim();
-    if (!text && attachments.length === 0) return;
+    if (!input.trim() && attachments.length === 0) return;
 
-    const parts: ContentPart[] = [];
+    // Build user message content
+    let userContent: string | ContentPart[];
 
-    // If no text but has attachments, add default analysis prompt
-    const messageText = text || (attachments.length > 0 ? "Please analyze this." : "");
-    if (messageText) parts.push({ type: "text", text: messageText });
+    if (attachments.length === 0) {
+      userContent = input.trim();
+    } else {
+      const parts: ContentPart[] = [];
 
-    // Convert attachments to base64 data URLs (OpenRouter can't fetch from private URLs)
-    for (const a of attachments) {
-      if (a.kind === "image") {
-        try {
-          // Fetch image and convert to base64
-          const response = await fetch(a.url);
-          const blob = await response.blob();
-          const base64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
+      if (input.trim()) {
+        parts.push({ type: "text", text: input.trim() });
+      }
+
+      for (const a of attachments) {
+        if (a.kind === "image") {
+          parts.push({
+            type: "image_url",
+            image_url: { url: a.url }
           });
-
-          parts.push({ type: "image_url", image_url: { url: base64, detail: "auto" } });
-        } catch (err) {
-          console.error("Failed to convert image to base64:", err);
-          // Fallback to URL if conversion fails
-          parts.push({ type: "image_url", image_url: { url: a.url, detail: "auto" } });
-        }
-      } else if (a.kind === "video") {
-        // Video - send as file_url
-        parts.push({ type: "file_url", file_url: { url: a.url, mime_type: a.mime, name: a.name } });
-      } else {
-        // File - check if text-based, if so fetch content and send as text
-        const ext = a.name.split(".").pop()?.toLowerCase();
-        const textExtensions = ["md", "txt", "json", "js", "jsx", "ts", "tsx", "py", "java", "c", "cpp", "h", "css", "html", "xml", "yaml", "yml", "sh", "bash", "log", "env"];
-
-        if (ext && textExtensions.includes(ext)) {
-          try {
-            const response = await fetch(a.url);
-            const fileContent = await response.text();
-            // Add file content as text part
-            parts.push({
-              type: "text",
-              text: `File: ${a.name}\n\`\`\`${ext}\n${fileContent}\n\`\`\``,
-            });
-          } catch (err) {
-            console.error("Failed to fetch file content:", err);
-            parts.push({ type: "file_url", file_url: { url: a.url, mime_type: a.mime, name: a.name } });
-          }
         } else {
-          // Binary file - send as file_url
-          parts.push({ type: "file_url", file_url: { url: a.url, mime_type: a.mime, name: a.name } });
+          parts.push({
+            type: "file_url",
+            file_url: {
+              url: a.url,
+              name: a.name,
+              mime_type: a.mime
+            }
+          });
         }
       }
+
+      userContent = parts;
     }
 
-    const userMsg: Message = {
-      role: "user",
-      content: parts.length === 1 && parts[0].type === "text" ? text : parts,
-    };
-
-    // Add user message to UI
-    setMessages((prev) => [...prev, userMsg]);
+    const userMsg: Message = { role: "user", content: userContent };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput("");
     setAttachments([]);
+    setBusy(true);
     setStreamingText("");
 
-    setBusy(true);
-    abortRef.current = new AbortController();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
 
     try {
-      // Fetch relevant long-term memories
-      let memoryContext = '';
+      // Get relevant memories for context (if project is initialized)
+      let memoryContext = "";
       if (project?.id) {
         try {
-          const { context: memCtx } = await getRelevantMemories(messageText, { limit: 3 });
-          if (memCtx) {
-            memoryContext = memCtx;
-            console.log('🧠 Retrieved relevant memories for LLM Chat');
+          const query = typeof userContent === "string" ? userContent : input.trim();
+          const { context } = await getRelevantMemories(query, { limit: 5 });
+          if (context) {
+            memoryContext = context;
           }
-        } catch (memErr) {
-          console.warn('Failed to retrieve memories:', memErr);
+        } catch (e) {
+          console.log("Failed to get relevant memories:", e);
         }
       }
 
-      // Send only last 10 messages to avoid huge context with base64 images
-      // Include system message + recent conversation
-      let recentMessages = messages.slice(0, 1).concat(messages.slice(-9)).concat([userMsg]);
-      
-      // Inject memory context into system message if available
+      // Prepare messages with memory context
+      let messagesForLLM = newMessages;
       if (memoryContext) {
-        const systemMsg = recentMessages[0];
-        if (systemMsg && systemMsg.role === 'system') {
-          recentMessages[0] = {
-            ...systemMsg,
-            content: systemMsg.content + `\n\n## Project Context (Long-term Memory)\n${memoryContext}`
-          };
-        }
+        // Insert memory context as a system message before the user message
+        const systemMsg: Message = {
+          role: "system",
+          content: `[Project Memory Context]\n${memoryContext}\n\nUse this context to provide more relevant and consistent responses.`
+        };
+        messagesForLLM = [...newMessages.slice(0, -1), systemMsg, newMessages[newMessages.length - 1]];
       }
 
-      // Use non-streaming mode (backend direct proxy mode doesn't support streaming)
-      const response = await chatCompletions({
-        model: "gpt-4o-mini",
-        messages: recentMessages,
-        temperature: 0.3,
-        max_tokens: 2000,
-      });
-
-      const assistantMessage = response?.choices?.[0]?.message?.content || "No response";
+      let full = "";
+      await chatCompletions(
+        messagesForLLM,
+        (chunk) => {
+          full += chunk;
+          setStreamingText(full);
+        },
+        ctrl.signal
+      );
 
       // Parse artifacts from response
-      const parsedArtifacts = parseArtifacts(assistantMessage);
-      if (parsedArtifacts.length > 0) {
-        setArtifacts((prev) => [...prev, ...parsedArtifacts]);
+      const newArtifacts = parseArtifacts(full);
+      if (newArtifacts.length > 0) {
+        setArtifacts((prev) => [...prev, ...newArtifacts]);
       }
 
-      setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }]);
+      const assistantMsg: Message = { role: "assistant", content: full };
+      setMessages([...newMessages, assistantMsg]);
+      setStreamingText("");
 
-      // Extract memories from conversation periodically
-      if (project?.id && messages.length % 5 === 0) {
+      // Try to extract memories from the conversation
+      if (project?.id) {
         try {
-          const convoForExtraction: ConversationMessage[] = [
-            { role: 'user', content: messageText, timestamp: Date.now() },
-            { role: 'assistant', content: assistantMessage, timestamp: Date.now() }
+          const conversationForExtraction: ConversationMessage[] = [
+            { role: "user", content: typeof userContent === "string" ? userContent : input.trim() },
+            { role: "assistant", content: full }
           ];
-          await extractMemories(convoForExtraction, 'llm-chat');
-        } catch (memErr) {
-          console.warn('Failed to extract memories:', memErr);
+          await extractMemories(conversationForExtraction, "LLMChat");
+        } catch (e) {
+          console.log("Failed to extract memories:", e);
         }
       }
 
-      // Check for important content and suggest saving
-      const detected = detectImportantContent(assistantMessage);
+      // Check for important content in assistant response
+      const detected = detectImportantContent(full);
       if (detected && detected.importance >= 8) {
-        setTimeout(() => {
-          openMemoryDialog(assistantMessage.substring(0, 1000), true);
-        }, 500);
+        // Auto-suggest saving important content
+        openMemoryDialog(full, true);
       }
-    } catch (e: any) {
-      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e?.message || "Unknown error"}` }]);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        console.log("Request aborted");
+      } else {
+        alert(`Error: ${err}`);
+      }
     } finally {
       setBusy(false);
       abortRef.current = null;
     }
   };
 
+  const onCancelStream = () => {
+    abortRef.current?.abort();
+  };
+
+  const onClearChat = () => {
+    setMessages([messages[0]]);
+    setStreamingText("");
+    setArtifacts([]);
+  };
+
   const canSend = !busy && (input.trim().length > 0 || attachments.length > 0);
 
   return (
-    <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>LLM Chat (Multi‑modal via Artifact Storage)</h2>
-        <MemoryButton />
-        <div style={{ fontSize: 12, opacity: 0.75 }}>
-          Desktop → python-backend <code>/v1/chat/completions</code> (Direct Proxy Mode)
+    <div style={{ 
+      display: "flex", 
+      flexDirection: "column", 
+      height: "100vh",
+      maxWidth: 1100, 
+      margin: "0 auto",
+      padding: "0 16px"
+    }}>
+      {/* Header - Fixed at top */}
+      <div style={{ 
+        padding: "16px 0", 
+        borderBottom: "1px solid #e5e7eb",
+        flexShrink: 0
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>LLM Chat (Vision)</h2>
+          <MemoryButton />
+        </div>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+          <label style={{ fontSize: 12, opacity: 0.9 }}>Proxy token</label>
+          <input
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            placeholder={tokenHint ? `saved (${tokenHint})` : "paste SMARTSPEC_PROXY_TOKEN"}
+            style={{ minWidth: 280, padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }}
+            type="password"
+          />
+          <button 
+            onClick={onSaveToken} 
+            disabled={busy}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 6,
+              border: "1px solid #e5e7eb",
+              background: "#f9fafb",
+              fontSize: 13,
+              cursor: busy ? "not-allowed" : "pointer"
+            }}
+          >
+            Save Token
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <label style={{ fontSize: 12, opacity: 0.9 }}>Workspace</label>
+          <input
+            value={workspace}
+            onChange={(e) => setWorkspace(e.target.value)}
+            placeholder="/path/to/workspace"
+            style={{ flex: 1, minWidth: 300, padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }}
+          />
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <label style={{ fontSize: 12, opacity: 0.9 }}>Proxy token</label>
-        <input
-          value={tokenInput}
-          onChange={(e) => setTokenInput(e.target.value)}
-          placeholder={tokenHint ? `saved (${tokenHint})` : "paste SMARTSPEC_PROXY_TOKEN"}
-          style={{ minWidth: 320 }}
-          type="password"
-        />
-        <button onClick={onSaveToken} disabled={busy}>
-          Save Token
-        </button>
-
-        <span style={{ fontSize: 12, opacity: 0.6 }}>
-          (runtime local only — avoid baking secrets in build)
-        </span>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <label style={{ fontSize: 12, opacity: 0.9 }}>Workspace</label>
-        <input
-          value={workspace}
-          onChange={(e) => setWorkspace(e.target.value)}
-          placeholder="/path/to/workspace"
-          style={{ minWidth: 520, padding: "6px 10px", borderRadius: 8, border: "1px solid #e5e7eb" }}
-        />
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: artifacts.length > 0 ? "1fr 300px" : "1fr", gap: 12 }}>
+      {/* Messages Area - Scrollable */}
+      <div style={{ 
+        flex: 1, 
+        overflow: "auto", 
+        padding: "16px 0",
+        display: "grid",
+        gridTemplateColumns: artifacts.length > 0 ? "1fr 280px" : "1fr",
+        gap: 12,
+        alignContent: "start"
+      }}>
+        {/* Chat Messages */}
         <div 
-          style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, minHeight: 360 }}
+          style={{ 
+            border: "1px solid #e5e7eb", 
+            borderRadius: 14, 
+            padding: 12,
+            minHeight: 200,
+            overflow: "auto"
+          }}
           onMouseUp={handleTextSelection}
           onContextMenu={handleContextMenu}
         >
@@ -602,14 +614,9 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                                 e.currentTarget.style.boxShadow = "none";
                               }}
                             >
-                              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                <span style={{ fontSize: 24 }}>🎨</span>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: 16, fontWeight: 600 }}>{artifact.title}</div>
-                                  <div style={{ fontSize: 12, opacity: 0.9, marginTop: 2 }}>
-                                    {artifact.type} • Click to view
-                                  </div>
-                                </div>
+                              <div style={{ fontWeight: 600, marginBottom: 4 }}>🎨 {artifact.title}</div>
+                              <div style={{ fontSize: 12, opacity: 0.9 }}>
+                                {artifact.type} • Click to preview
                               </div>
                             </div>
                           ))}
@@ -641,7 +648,6 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                                 maxHeight: 300,
                                 borderRadius: 8,
                                 border: "1px solid #e5e7eb",
-                                objectFit: "contain",
                                 cursor: "pointer",
                               }}
                               title="Click to view fullscreen"
@@ -649,8 +655,8 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                           </div>
                         );
                       } else if (part.type === "file_url") {
-                        const isVideo = part.file_url.mime_type?.startsWith("video/");
-                        if (isVideo) {
+                        const isVideoFile = part.file_url.mime_type?.startsWith("video/");
+                        if (isVideoFile) {
                           return (
                             <div key={i}>
                               <video
@@ -662,7 +668,6 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                                   maxHeight: 300,
                                   borderRadius: 8,
                                   border: "1px solid #e5e7eb",
-                                  cursor: "pointer",
                                 }}
                                 title="Click to view fullscreen"
                               />
@@ -681,7 +686,7 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                             }}
                             title="Click to view"
                           >
-                            📄 {part.file_url.name} ({part.file_url.mime_type})
+                            📄 {part.file_url.name || "Attached file"}
                           </div>
                         );
                       }
@@ -705,11 +710,14 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                 <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{streamingText}</div>
               </div>
             ) : null}
+            
+            {/* Scroll anchor */}
+            <div ref={messagesEndRef} />
           </div>
-        )}
+          )}
         </div>
 
-        {/* Artifacts Sidebar */}
+        {/* Artifacts Panel */}
         {artifacts.length > 0 && (
           <div style={{
             border: "1px solid #e5e7eb",
@@ -718,6 +726,7 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
             background: "#f9fafb",
             maxHeight: 360,
             overflow: "auto",
+            alignSelf: "start"
           }}>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: "#111827" }}>
               🎨 Artifacts ({artifacts.length})
@@ -729,24 +738,22 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                   onClick={() => setSelectedArtifact(artifact)}
                   style={{
                     background: "#ffffff",
-                    padding: 12,
-                    borderRadius: 8,
                     border: "1px solid #e5e7eb",
+                    borderRadius: 8,
+                    padding: 10,
                     cursor: "pointer",
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#f3f4f6";
-                    e.currentTarget.style.borderColor = "#3b82f6";
+                    e.currentTarget.style.borderColor = "#667eea";
+                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.2)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#ffffff";
                     e.currentTarget.style.borderColor = "#e5e7eb";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 4 }}>
-                    {artifact.title}
-                  </div>
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>{artifact.title}</div>
                   <div style={{ fontSize: 11, color: "#6b7280" }}>
                     {artifact.type}
                   </div>
@@ -757,7 +764,13 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
         )}
       </div>
 
-      <div style={{ display: "grid", gap: 10 }}>
+      {/* Input Area - Fixed at bottom */}
+      <div style={{ 
+        borderTop: "1px solid #e5e7eb",
+        padding: "16px 0",
+        background: "#ffffff",
+        flexShrink: 0
+      }}>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -767,104 +780,91 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
               onSend();
             }
           }}
-          rows={4}
-          placeholder="Type your message… (Ctrl+Enter to send)"
+          rows={3}
+          placeholder="Type your message... (Ctrl+Enter to send)"
           disabled={busy}
-          style={{ width: "100%", borderRadius: 14, padding: 12, border: "1px solid #e5e7eb", fontSize: 14 }}
+          style={{ 
+            width: "100%", 
+            borderRadius: 12, 
+            padding: 12, 
+            border: "1px solid #e5e7eb", 
+            fontSize: 14,
+            resize: "vertical",
+            minHeight: 60,
+            maxHeight: 200
+          }}
         />
 
-        {/* Attachments Preview - below textarea */}
+        {/* Attachments Preview */}
         {attachments.length > 0 && (
-          <div style={{ border: "2px dashed #3b82f6", borderRadius: 12, padding: 12, background: "#eff6ff" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: "#1e40af" }}>
-              📎 Attached Files ({attachments.length})
+          <div style={{ 
+            border: "2px dashed #3b82f6", 
+            borderRadius: 10, 
+            padding: 10, 
+            background: "#eff6ff",
+            marginTop: 10
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#1e40af" }}>
+              📎 Attached ({attachments.length})
             </div>
-            <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {attachments.map((a, i) => (
-                <div key={i} style={{ background: "#ffffff", borderRadius: 8, padding: 12, border: "1px solid #e5e7eb" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 20 }}>
-                        {a.kind === "image" && "🖼️"}
-                        {a.kind === "video" && "🎥"}
-                        {a.kind === "file" && "📄"}
-                      </span>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{a.name}</div>
-                        <div style={{ fontSize: 11, color: "#6b7280" }}>{a.mime}</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
-                      disabled={busy}
-                      style={{
-                        fontSize: 12,
-                        padding: "6px 12px",
-                        borderRadius: 6,
-                        border: "1px solid #ef4444",
-                        background: "#fee2e2",
-                        color: "#dc2626",
-                        cursor: busy ? "not-allowed" : "pointer",
-                        fontWeight: 500,
-                      }}
-                    >
-                      ✕ Remove
-                    </button>
-                  </div>
-                  {/* Preview */}
-                  {a.kind === "image" && (
-                    <img
-                      src={a.url}
-                      alt={a.name}
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: 200,
-                        borderRadius: 8,
-                        border: "1px solid #e5e7eb",
-                        objectFit: "contain",
-                      }}
-                    />
-                  )}
-                  {a.kind === "video" && (
-                    <video
-                      src={a.url}
-                      controls
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: 200,
-                        borderRadius: 8,
-                        border: "1px solid #e5e7eb",
-                      }}
-                    />
-                  )}
-                  {a.kind === "file" && (
-                    <div style={{ padding: 12, background: "#f9fafb", borderRadius: 6, fontSize: 12, color: "#6b7280" }}>
-                      File attached (preview not available for this type)
-                    </div>
-                  )}
+                <div key={i} style={{ 
+                  background: "#ffffff", 
+                  borderRadius: 6, 
+                  padding: 8, 
+                  border: "1px solid #e5e7eb",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}>
+                  <span style={{ fontSize: 16 }}>
+                    {a.kind === "image" && "🖼️"}
+                    {a.kind === "video" && "🎥"}
+                    {a.kind === "file" && "📄"}
+                  </span>
+                  <span style={{ fontSize: 12, maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {a.name}
+                  </span>
+                  <button
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    disabled={busy}
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      border: "1px solid #ef4444",
+                      background: "#fee2e2",
+                      color: "#dc2626",
+                      cursor: busy ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8 }}>
+        {/* Action Buttons */}
+        <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 6 }}>
             <button
               onClick={onInsertImage}
               disabled={busy || !workspace}
               style={{
-                padding: "8px 16px",
-                borderRadius: 8,
+                padding: "6px 12px",
+                borderRadius: 6,
                 border: "1px solid #e5e7eb",
                 background: workspace && !busy ? "#f0f9ff" : "#f9fafb",
                 color: workspace && !busy ? "#0369a1" : "#9ca3af",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: workspace && !busy ? "pointer" : "not-allowed",
                 display: "flex",
                 alignItems: "center",
-                gap: 6
+                gap: 4
               }}
             >
               🖼️ Insert Picture
@@ -873,17 +873,17 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
               onClick={onInsertVideo}
               disabled={busy || !workspace}
               style={{
-                padding: "8px 16px",
-                borderRadius: 8,
+                padding: "6px 12px",
+                borderRadius: 6,
                 border: "1px solid #e5e7eb",
                 background: workspace && !busy ? "#fef3f2" : "#f9fafb",
                 color: workspace && !busy ? "#b91c1c" : "#9ca3af",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: workspace && !busy ? "pointer" : "not-allowed",
                 display: "flex",
                 alignItems: "center",
-                gap: 6
+                gap: 4
               }}
             >
               🎥 Insert Video
@@ -892,56 +892,56 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
               onClick={onInsertFile}
               disabled={busy || !workspace}
               style={{
-                padding: "8px 16px",
-                borderRadius: 8,
+                padding: "6px 12px",
+                borderRadius: 6,
                 border: "1px solid #e5e7eb",
                 background: workspace && !busy ? "#f0fdf4" : "#f9fafb",
                 color: workspace && !busy ? "#15803d" : "#9ca3af",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: workspace && !busy ? "pointer" : "not-allowed",
                 display: "flex",
                 alignItems: "center",
-                gap: 6
+                gap: 4
               }}
             >
               📎 Attach File
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {busy ? (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {busy && (
               <button
                 onClick={onCancelStream}
                 style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
+                  padding: "6px 12px",
+                  borderRadius: 6,
                   border: "1px solid #ef4444",
                   background: "#fee2e2",
                   color: "#dc2626",
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: 500,
                   cursor: "pointer"
                 }}
               >
                 ❌ Cancel
               </button>
-            ) : null}
+            )}
             <button
               onClick={onSend}
               disabled={!canSend}
               style={{
-                padding: "10px 24px",
-                borderRadius: 8,
+                padding: "8px 20px",
+                borderRadius: 6,
                 border: "none",
                 background: canSend ? "#10b981" : "#d1d5db",
                 color: canSend ? "#ffffff" : "#6b7280",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: canSend ? "pointer" : "not-allowed",
                 display: "flex",
                 alignItems: "center",
-                gap: 6
+                gap: 4
               }}
             >
               {busy ? "⏳ Sending..." : "📤 Send"}
@@ -950,12 +950,12 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
               onClick={onClearChat}
               disabled={busy || messages.length <= 1}
               style={{
-                padding: "10px 20px",
-                borderRadius: 8,
+                padding: "8px 16px",
+                borderRadius: 6,
                 border: "1px solid #ef4444",
                 background: "#ffffff",
                 color: "#ef4444",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: messages.length > 1 && !busy ? "pointer" : "not-allowed",
                 opacity: messages.length > 1 && !busy ? 1 : 0.5,
@@ -967,7 +967,7 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
           </div>
         </div>
 
-        <div style={{ fontSize: 11, opacity: 0.6, textAlign: "center" }}>
+        <div style={{ fontSize: 10, opacity: 0.5, textAlign: "center", marginTop: 8 }}>
           Multi‑modal flow: Insert media → upload → send as <code>image_url/file_url</code> • Ctrl+Enter to send • Click image/video to view fullscreen
         </div>
       </div>
@@ -1001,15 +1001,10 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
             }}
           />
           <div style={{ color: "#ffffff", fontSize: 16, fontWeight: 500 }}>
-            กำลังประมวลผล...
+            Processing...
           </div>
           <style>
-            {`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}
+            {`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}
           </style>
         </div>
       )}
@@ -1041,10 +1036,9 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                 background: "#ef4444",
                 color: "#fff",
                 border: "none",
-                borderRadius: 6,
+                borderRadius: 8,
                 cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 500,
               }}
             >
               ✕ Close
@@ -1066,7 +1060,6 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                 style={{
                   maxWidth: "100%",
                   maxHeight: "80vh",
-                  objectFit: "contain",
                 }}
               />
             )}
@@ -1108,13 +1101,12 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                     </pre>
                   </>
                 ) : (
-                  <>
-                    <h3>File Preview Not Available</h3>
-                    <p>{viewerContent.name}</p>
+                  <div>
+                    <p>Unable to preview this file type.</p>
                     <a href={viewerContent.url} target="_blank" rel="noopener noreferrer">
-                      Open in new tab →
+                      Download file →
                     </a>
-                  </>
+                  </div>
                 )}
               </div>
             )}
