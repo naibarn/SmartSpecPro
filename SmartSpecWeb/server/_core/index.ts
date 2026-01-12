@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 import cookieParser from "cookie-parser";
 
-import { createContext } from "../context";
+import { createContext } from "./context";
 import { appRouter } from "../routers";
 import { createTRPCExpressMiddleware } from "@trpc/server/adapters/express";
 import { serveStatic, setupVite } from "./vite";
