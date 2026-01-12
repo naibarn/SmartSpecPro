@@ -126,6 +126,15 @@ const detectImportantContent = (text: string): { type: MemoryType; importance: n
   return null;
 };
 
+// Debounce/Cache tracking to prevent rate limiting
+let lastInitWorkspace: string | null = null;
+let initInProgress = false;
+let lastInitTime = 0;
+const INIT_DEBOUNCE_MS = 2000; // 2 seconds debounce
+let loadMemoriesInProgress = false;
+let lastLoadMemoriesTime = 0;
+const LOAD_MEMORIES_DEBOUNCE_MS = 3000; // 3 seconds debounce
+
 // Initial state
 const initialState: MemoryState = {
   project: null,
@@ -152,6 +161,30 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
         initProject: async (workspace: string) => {
           if (!workspace) return;
           
+          // Debounce: Skip if same workspace was initialized recently
+          const now = Date.now();
+          if (lastInitWorkspace === workspace && (now - lastInitTime) < INIT_DEBOUNCE_MS) {
+            console.log('📁 initProject debounced (same workspace, too soon)');
+            return;
+          }
+          
+          // Skip if already in progress
+          if (initInProgress) {
+            console.log('📁 initProject skipped (already in progress)');
+            return;
+          }
+          
+          // Skip if project already loaded for this workspace
+          const currentProject = get().project;
+          if (currentProject && currentProject.workspace_path === workspace) {
+            console.log('📁 Project already loaded for this workspace');
+            return;
+          }
+          
+          initInProgress = true;
+          lastInitWorkspace = workspace;
+          lastInitTime = now;
+          
           set(state => {
             state.projectLoading = true;
             state.projectError = null;
@@ -168,14 +201,18 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
             
             console.log('📁 Project initialized:', project.id, project.name);
             
-            // Load memories for this project
-            await get().loadMemories();
+            // Load memories for this project (with small delay to avoid rate limit)
+            setTimeout(() => {
+              get().loadMemories().catch(console.error);
+            }, 500);
           } catch (err) {
             console.error('❌ Failed to initialize project:', err);
             set(state => {
               state.projectLoading = false;
               state.projectError = String(err);
             });
+          } finally {
+            initInProgress = false;
           }
         },
         
@@ -188,8 +225,24 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
         
         // Memory CRUD actions
         loadMemories: async (limit = 50) => {
-          const { project } = get();
+          const { project, memories: existingMemories } = get();
           if (!project?.id) return;
+          
+          // Debounce: Skip if loaded recently
+          const now = Date.now();
+          if ((now - lastLoadMemoriesTime) < LOAD_MEMORIES_DEBOUNCE_MS && existingMemories.length > 0) {
+            console.log('🧠 loadMemories debounced (loaded recently)');
+            return;
+          }
+          
+          // Skip if already in progress
+          if (loadMemoriesInProgress) {
+            console.log('🧠 loadMemories skipped (already in progress)');
+            return;
+          }
+          
+          loadMemoriesInProgress = true;
+          lastLoadMemoriesTime = now;
           
           set(state => {
             state.memoriesLoading = true;
@@ -211,6 +264,8 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
               state.memoriesLoading = false;
               state.memoriesError = String(err);
             });
+          } finally {
+            loadMemoriesInProgress = false;
           }
         },
         
