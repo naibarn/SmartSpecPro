@@ -71,7 +71,78 @@ function authHeaders(extra?: Record<string, string>) {
   return h;
 }
 
-export async function chatCompletions(req: ChatCompletionRequest): Promise<ChatCompletionResponse> {
+export async function chatCompletions(req: ChatCompletionRequest): Promise<ChatCompletionResponse>;
+export async function chatCompletions(
+  messages: Message[],
+  onChunk: (chunk: string) => void,
+  signal?: AbortSignal
+): Promise<void>;
+export async function chatCompletions(
+  reqOrMessages: ChatCompletionRequest | Message[],
+  onChunk?: (chunk: string) => void,
+  signal?: AbortSignal
+): Promise<ChatCompletionResponse | void> {
+  // Check if this is the streaming callback version
+  if (Array.isArray(reqOrMessages)) {
+    const messages = reqOrMessages;
+    const url = buildUrl("/v1/chat/completions");
+
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: authHeaders({ accept: "text/event-stream" }),
+      body: JSON.stringify({ messages, stream: true }),
+      signal,
+    });
+
+    if (!res.ok || !res.body) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`LLM error (${res.status}): ${text}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let idx: number;
+      while ((idx = buffer.indexOf("\n\n")) !== -1) {
+        const chunk = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+
+        const lines = chunk.split("\n").map((l) => l.trim());
+        const dataLines = lines.filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim());
+        if (dataLines.length === 0) continue;
+
+        for (const data of dataLines) {
+          if (!data) continue;
+          if (data === "[DONE]") return;
+
+          let parsed: any = null;
+          try {
+            parsed = JSON.parse(data);
+          } catch {
+            continue;
+          }
+
+          const choice = parsed?.choices?.[0];
+          const delta = choice?.delta ?? choice?.message ?? null;
+          const textDelta: string | undefined = typeof delta?.content === "string" ? delta.content : undefined;
+
+          if (textDelta && onChunk) {
+            onChunk(textDelta);
+          }
+        }
+      }
+    }
+    return;
+  }
+
+  // Original non-streaming version
+  const req = reqOrMessages;
   const url = buildUrl("/v1/chat/completions");
 
   const res = await fetch(url.toString(), {
