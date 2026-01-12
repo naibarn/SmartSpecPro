@@ -189,19 +189,24 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     const fit = new FitAddon();
     term.loadAddon(fit);
 
-    // Load WebGL addon for better performance (if available)
-    if (WebglAddon) {
-      try {
-        term.loadAddon(new WebglAddon());
-      } catch {
-        // WebGL not supported, fall back to canvas
-      }
-    }
-
     termRef.current = term;
     fitRef.current = fit;
 
     term.open(containerRef.current);
+
+    // Load WebGL addon AFTER terminal is opened (requires dimensions)
+    if (WebglAddon) {
+      try {
+        const webgl = new WebglAddon();
+        webgl.onContextLoss(() => {
+          webgl.dispose();
+        });
+        term.loadAddon(webgl);
+      } catch (e) {
+        // WebGL not supported, fall back to canvas renderer
+        console.log('WebGL not available, using canvas renderer');
+      }
+    }
 
     // Focus on click
     const handlePointerDown = () => term.focus();
