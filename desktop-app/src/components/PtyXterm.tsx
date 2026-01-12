@@ -128,6 +128,20 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     disposedRef.current = false;
     isReadyRef.current = false;
 
+    // Wait for container to have valid dimensions before creating terminal
+    // This prevents the "Cannot read properties of undefined (reading 'dimensions')" error
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      // Container not ready yet, wait and retry
+      const retryTimeout = setTimeout(() => {
+        // Force re-render to retry
+        if (!disposedRef.current) {
+          termRef.current = null; // Reset to allow retry
+        }
+      }, 50);
+      return () => clearTimeout(retryTimeout);
+    }
+
     const term = new Terminal({
       convertEol: true,
       cursorBlink: true,
