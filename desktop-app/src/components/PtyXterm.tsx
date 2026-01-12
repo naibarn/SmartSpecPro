@@ -194,20 +194,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
 
     term.open(containerRef.current);
 
-    // Load WebGL addon AFTER terminal is opened (requires dimensions)
-    if (WebglAddon) {
-      try {
-        const webgl = new WebglAddon();
-        webgl.onContextLoss(() => {
-          webgl.dispose();
-        });
-        term.loadAddon(webgl);
-      } catch (e) {
-        // WebGL not supported, fall back to canvas renderer
-        console.log('WebGL not available, using canvas renderer');
-      }
-    }
-
     // Focus on click
     const handlePointerDown = () => term.focus();
     outerRef.current?.addEventListener("pointerdown", handlePointerDown);
@@ -296,12 +282,30 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
 
     if (outerRef.current) ro.observe(outerRef.current);
 
-    // Initial fit
+    // Initial fit and WebGL loading
     requestAnimationFrame(() => {
       try {
         fit.fit();
       } catch {}
       term.focus();
+      
+      // Load WebGL addon AFTER fit (requires valid dimensions)
+      if (WebglAddon && !disposedRef.current) {
+        // Use setTimeout to ensure dimensions are fully calculated
+        setTimeout(() => {
+          if (disposedRef.current || !termRef.current) return;
+          try {
+            const webgl = new WebglAddon();
+            webgl.onContextLoss(() => {
+              webgl.dispose();
+            });
+            termRef.current.loadAddon(webgl);
+          } catch (e) {
+            // WebGL not supported, fall back to canvas renderer
+            console.log('WebGL not available, using canvas renderer');
+          }
+        }, 100);
+      }
     });
 
     return () => {

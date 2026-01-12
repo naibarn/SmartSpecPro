@@ -203,14 +203,43 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
             
             // Load memories for this project (with small delay to avoid rate limit)
             setTimeout(() => {
-              get().loadMemories().catch(console.error);
+              get().loadMemories().catch(() => {
+                // Silently ignore memory load errors
+              });
             }, 500);
-          } catch (err) {
-            console.error('❌ Failed to initialize project:', err);
-            set(state => {
-              state.projectLoading = false;
-              state.projectError = String(err);
-            });
+          } catch (err: unknown) {
+            const errMsg = String(err);
+            // Handle 404 and rate limit gracefully
+            if (errMsg.includes('404') || errMsg.includes('Not Found')) {
+              console.log('📁 Project API not available (404), using local project');
+              // Create a local project placeholder
+              const projectName = workspace.split('/').pop() || 'default';
+              set(state => {
+                state.project = {
+                  id: `local-${Date.now()}`,
+                  name: projectName,
+                  workspace_path: workspace,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                };
+                state.projectLoading = false;
+                state.projectError = null;
+              });
+            } else if (errMsg.includes('429') || errMsg.includes('Too Many')) {
+              console.log('📁 Rate limited, will retry later');
+              set(state => {
+                state.projectLoading = false;
+                state.projectError = null;
+              });
+              // Reset debounce to allow retry
+              lastInitTime = 0;
+            } else {
+              console.error('❌ Failed to initialize project:', err);
+              set(state => {
+                state.projectLoading = false;
+                state.projectError = errMsg;
+              });
+            }
           } finally {
             initInProgress = false;
           }
@@ -252,18 +281,45 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
           try {
             const memories = await kiloGetProjectMemories(project.id, { limit });
             
+            // Handle null/undefined response
+            if (!memories || !Array.isArray(memories)) {
+              console.log('🧠 No memories returned or invalid response');
+              set(state => {
+                state.memories = [];
+                state.memoriesLoading = false;
+              });
+              return;
+            }
+            
             set(state => {
               state.memories = memories;
               state.memoriesLoading = false;
             });
             
             console.log('🧠 Loaded', memories.length, 'memories');
-          } catch (err) {
-            console.error('❌ Failed to load memories:', err);
-            set(state => {
-              state.memoriesLoading = false;
-              state.memoriesError = String(err);
-            });
+          } catch (err: unknown) {
+            // Handle 404 (no memories endpoint) gracefully
+            const errMsg = String(err);
+            if (errMsg.includes('404') || errMsg.includes('Not Found')) {
+              console.log('🧠 Memory API not available (404), skipping');
+              set(state => {
+                state.memories = [];
+                state.memoriesLoading = false;
+                state.memoriesError = null; // Don't show error for 404
+              });
+            } else if (errMsg.includes('429') || errMsg.includes('Too Many')) {
+              console.log('🧠 Rate limited, will retry later');
+              set(state => {
+                state.memoriesLoading = false;
+                state.memoriesError = null; // Don't show error for rate limit
+              });
+            } else {
+              console.error('❌ Failed to load memories:', err);
+              set(state => {
+                state.memoriesLoading = false;
+                state.memoriesError = errMsg;
+              });
+            }
           } finally {
             loadMemoriesInProgress = false;
           }
