@@ -178,6 +178,25 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     // This prevents dimensions error from race condition
     fitTimeoutRef.current = setTimeout(() => {
       if (disposedRef.current) return;
+      
+      // Verify container has valid dimensions before marking ready
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        // Retry after another frame if container not ready
+        fitTimeoutRef.current = setTimeout(() => {
+          if (disposedRef.current) return;
+          isReadyRef.current = true;
+          try {
+            fit.fit();
+            term.focus();
+          } catch (e) {
+            console.debug('Initial fit skipped:', e);
+          }
+        }, 100);
+        return;
+      }
+      
       isReadyRef.current = true;
       
       // Now safe to fit
@@ -271,11 +290,17 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
         const t = termRef.current;
         const f = fitRef.current;
         if (!t || !f) return;
+        
+        // Check terminal has valid internal state before fit
+        // This prevents "Cannot read properties of undefined (reading 'dimensions')" error
+        if (!t.element || !containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
 
         try {
           f.fit();
         } catch {
-          // Ignore fit errors
+          // Ignore fit errors - terminal may be in transition
         }
 
         const rows = t.rows;
@@ -287,7 +312,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
             onResize?.(rows, cols);
           }
         }
-      }, 16); // ~60fps debounce
+      }, 32); // Increased debounce to 32ms for stability
     });
 
     if (outerRef.current) ro.observe(outerRef.current);
@@ -305,6 +330,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       }
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
+        resizeTimeout = null;
       }
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
