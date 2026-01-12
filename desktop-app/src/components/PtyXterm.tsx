@@ -63,32 +63,33 @@ type TermTheme = {
 };
 
 function getTheme(): TermTheme {
-  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? true;
+  // Always use light theme to match the app UI
+  // const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
 
-  // Modern light theme
+  // Modern light theme - matches app UI
   const light: TermTheme = {
-    background: "#fafafa",
-    foreground: "#1f2937",
-    cursor: "#10b981",
-    cursorAccent: "#fafafa",
-    selectionBackground: "rgba(59, 130, 246, 0.3)",
-    selectionForeground: "#1f2937",
-    // ANSI colors (slightly muted for light bg)
-    black: "#374151",
-    red: "#dc2626",
-    green: "#059669",
-    yellow: "#d97706",
-    blue: "#2563eb",
-    magenta: "#7c3aed",
-    cyan: "#0891b2",
-    white: "#f3f4f6",
-    brightBlack: "#6b7280",
-    brightRed: "#ef4444",
-    brightGreen: "#10b981",
-    brightYellow: "#f59e0b",
-    brightBlue: "#3b82f6",
-    brightMagenta: "#8b5cf6",
-    brightCyan: "#06b6d4",
+    background: "#ffffff",
+    foreground: "#1e293b",  // slate-800 - dark enough to read
+    cursor: "#3b82f6",      // blue-500
+    cursorAccent: "#ffffff",
+    selectionBackground: "rgba(59, 130, 246, 0.25)",
+    selectionForeground: "#1e293b",
+    // ANSI colors - optimized for light background readability
+    black: "#334155",       // slate-700
+    red: "#dc2626",         // red-600
+    green: "#16a34a",       // green-600
+    yellow: "#ca8a04",      // yellow-600 (darker for readability)
+    blue: "#2563eb",        // blue-600
+    magenta: "#9333ea",     // purple-600
+    cyan: "#0891b2",        // cyan-600
+    white: "#f8fafc",       // slate-50
+    brightBlack: "#64748b", // slate-500
+    brightRed: "#ef4444",   // red-500
+    brightGreen: "#22c55e", // green-500
+    brightYellow: "#eab308",// yellow-500
+    brightBlue: "#3b82f6",  // blue-500
+    brightMagenta: "#a855f7",// purple-500
+    brightCyan: "#06b6d4",  // cyan-500
     brightWhite: "#ffffff",
   };
 
@@ -119,7 +120,8 @@ function getTheme(): TermTheme {
     brightWhite: "#ffffff",
   };
 
-  return prefersDark ? dark : light;
+  // Always return light theme to match app UI
+  return light;
 }
 
 const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onResize }, ref) => {
@@ -342,153 +344,123 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
     termRef.current?.clear();
   };
 
-  const isDark = theme.background === "#0f172a";
-
   return (
     <div
       ref={outerRef}
       style={{
         height: "60vh",
         minHeight: 420,
-        borderRadius: 16,
+        borderRadius: 12,
         overflow: "hidden",
         background: theme.background,
-        border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)",
-        boxShadow: isDark 
-          ? "0 8px 32px rgba(0,0,0,0.4)" 
-          : "0 8px 32px rgba(0,0,0,0.08)",
+        border: "1px solid #e5e7eb",  // gray-200
+        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* Modern header bar */}
+      {/* Modern header bar - matches app UI */}
       <div
         style={{
-          height: 44,
+          height: 40,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 14px",
-          borderBottom: isDark 
-            ? "1px solid rgba(255,255,255,0.08)" 
-            : "1px solid rgba(0,0,0,0.08)",
-          background: isDark 
-            ? "rgba(15,23,42,0.8)" 
-            : "rgba(255,255,255,0.7)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
+          padding: "0 12px",
+          borderBottom: "1px solid #e5e7eb",
+          background: "#f9fafb",  // gray-50
           userSelect: "none",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {/* Traffic light buttons */}
           <div style={{ display: "flex", gap: 6 }}>
             <span style={{ 
-              width: 12, 
-              height: 12, 
+              width: 10, 
+              height: 10, 
               borderRadius: 999, 
               background: "#ff5f57",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.2)"
             }} />
             <span style={{ 
-              width: 12, 
-              height: 12, 
+              width: 10, 
+              height: 10, 
               borderRadius: 999, 
               background: "#febc2e",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.2)"
             }} />
             <span style={{ 
-              width: 12, 
-              height: 12, 
+              width: 10, 
+              height: 10, 
               borderRadius: 999, 
               background: "#28c840",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.2)"
             }} />
           </div>
           <div style={{ 
             fontSize: 13, 
             fontWeight: 600, 
-            color: isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.7)",
+            color: "#374151",  // gray-700
             letterSpacing: "-0.01em"
           }}>
             Terminal
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 6 }}>
           <button
             onClick={doCopy}
             style={{
               fontSize: 12,
               fontWeight: 500,
-              padding: "6px 12px",
-              borderRadius: 8,
-              border: isDark 
-                ? "1px solid rgba(255,255,255,0.15)" 
-                : "1px solid rgba(0,0,0,0.12)",
-              background: isDark 
-                ? "rgba(255,255,255,0.08)" 
-                : "rgba(255,255,255,0.8)",
-              color: isDark ? "#e2e8f0" : "#374151",
+              padding: "5px 10px",
+              borderRadius: 6,
+              border: "1px solid #d1d5db",  // gray-300
+              background: "#ffffff",
+              color: "#374151",  // gray-700
               cursor: "pointer",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = isDark 
-                ? "rgba(255,255,255,0.15)" 
-                : "rgba(255,255,255,1)";
+              e.currentTarget.style.background = "#f3f4f6";  // gray-100
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = isDark 
-                ? "rgba(255,255,255,0.08)" 
-                : "rgba(255,255,255,0.8)";
+              e.currentTarget.style.background = "#ffffff";
             }}
             title="Copy selection (Ctrl+Shift+C)"
           >
-            📋 Copy
+            Copy
           </button>
           <button
             onClick={doClear}
             style={{
               fontSize: 12,
               fontWeight: 500,
-              padding: "6px 12px",
-              borderRadius: 8,
-              border: isDark 
-                ? "1px solid rgba(255,255,255,0.15)" 
-                : "1px solid rgba(0,0,0,0.12)",
-              background: isDark 
-                ? "rgba(255,255,255,0.08)" 
-                : "rgba(255,255,255,0.8)",
-              color: isDark ? "#e2e8f0" : "#374151",
+              padding: "5px 10px",
+              borderRadius: 6,
+              border: "1px solid #d1d5db",  // gray-300
+              background: "#ffffff",
+              color: "#374151",  // gray-700
               cursor: "pointer",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = isDark 
-                ? "rgba(255,255,255,0.15)" 
-                : "rgba(255,255,255,1)";
+              e.currentTarget.style.background = "#f3f4f6";  // gray-100
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = isDark 
-                ? "rgba(255,255,255,0.08)" 
-                : "rgba(255,255,255,0.8)";
+              e.currentTarget.style.background = "#ffffff";
             }}
             title="Clear screen"
           >
-            🗑️ Clear
+            Clear
           </button>
         </div>
       </div>
 
       {/* Terminal body */}
-      <div style={{ flex: 1, padding: 12 }}>
+      <div style={{ flex: 1, padding: 8 }}>
         <div
           ref={containerRef}
           style={{
             width: "100%",
             height: "100%",
-            borderRadius: 8,
             overflow: "hidden",
             background: "transparent",
           }}
