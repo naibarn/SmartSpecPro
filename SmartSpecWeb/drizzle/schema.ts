@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -17,6 +17,13 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  
+  /** User's credit balance (in smallest unit, e.g., 1 credit = 100 units for precision) */
+  credits: int("credits").default(0).notNull(),
+  
+  /** User's subscription plan */
+  plan: mysqlEnum("plan", ["free", "starter", "pro", "enterprise"]).default("free").notNull(),
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -24,6 +31,92 @@ export const users = mysqlTable("users", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+/**
+ * Credit transactions table - tracks all credit movements
+ * Used for billing, usage tracking, and audit trail
+ */
+export const creditTransactions = mysqlTable("credit_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  /** User who owns this transaction */
+  userId: int("userId").notNull().references(() => users.id),
+  
+  /** Amount of credits (positive for additions, negative for deductions) */
+  amount: int("amount").notNull(),
+  
+  /** Transaction type */
+  type: mysqlEnum("type", [
+    "purchase",      // User bought credits
+    "usage",         // Credits used for LLM/generation
+    "bonus",         // Free credits (signup bonus, promo)
+    "refund",        // Refunded credits
+    "adjustment",    // Admin adjustment
+    "subscription",  // Monthly subscription credits
+  ]).notNull(),
+  
+  /** Human-readable description */
+  description: varchar("description", { length: 512 }),
+  
+  /** Additional metadata (model used, tokens, cost, etc.) */
+  metadata: json("metadata").$type<{
+    model?: string;
+    provider?: string;
+    tokensUsed?: number;
+    costUsd?: number;
+    endpoint?: string;
+    traceId?: string;
+    [key: string]: any;
+  }>(),
+  
+  /** Balance after this transaction */
+  balanceAfter: int("balanceAfter").notNull(),
+  
+  /** Reference ID for external systems (e.g., Stripe payment ID) */
+  referenceId: varchar("referenceId", { length: 128 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CreditTransaction = typeof creditTransactions.$inferSelect;
+export type InsertCreditTransaction = typeof creditTransactions.$inferInsert;
+
+/**
+ * Credit packages available for purchase
+ */
+export const creditPackages = mysqlTable("credit_packages", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  /** Package name */
+  name: varchar("name", { length: 128 }).notNull(),
+  
+  /** Package description */
+  description: text("description"),
+  
+  /** Number of credits in package */
+  credits: int("credits").notNull(),
+  
+  /** Price in USD (stored as decimal for precision) */
+  priceUsd: decimal("priceUsd", { precision: 10, scale: 2 }).notNull(),
+  
+  /** Stripe Price ID for checkout */
+  stripePriceId: varchar("stripePriceId", { length: 128 }),
+  
+  /** Whether package is active/available */
+  isActive: boolean("isActive").default(true).notNull(),
+  
+  /** Whether this is a featured/popular package */
+  isFeatured: boolean("isFeatured").default(false).notNull(),
+  
+  /** Sort order for display */
+  sortOrder: int("sortOrder").default(0).notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreditPackage = typeof creditPackages.$inferSelect;
+export type InsertCreditPackage = typeof creditPackages.$inferInsert;
 
 /**
  * Gallery items table - stores images, videos, and website demos

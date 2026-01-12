@@ -1,6 +1,6 @@
 import { eq, desc, asc, and, sql, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem } from "../drizzle/schema";
+import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -17,6 +17,37 @@ export async function getDb() {
   }
   return _db;
 }
+
+// Synchronous db getter for services that need direct access
+// Note: This will throw if called before getDb() has been called at least once
+export const db = {
+  get instance() {
+    if (!_db) {
+      throw new Error("Database not initialized. Call getDb() first.");
+    }
+    return _db;
+  },
+  select: (...args: Parameters<NonNullable<typeof _db>['select']>) => {
+    if (!_db) throw new Error("Database not initialized");
+    return _db.select(...args);
+  },
+  insert: (...args: Parameters<NonNullable<typeof _db>['insert']>) => {
+    if (!_db) throw new Error("Database not initialized");
+    return _db.insert(...args);
+  },
+  update: (...args: Parameters<NonNullable<typeof _db>['update']>) => {
+    if (!_db) throw new Error("Database not initialized");
+    return _db.update(...args);
+  },
+  delete: (...args: Parameters<NonNullable<typeof _db>['delete']>) => {
+    if (!_db) throw new Error("Database not initialized");
+    return _db.delete(...args);
+  },
+  transaction: async <T>(fn: (tx: NonNullable<typeof _db>) => Promise<T>): Promise<T> => {
+    if (!_db) throw new Error("Database not initialized");
+    return _db.transaction(fn);
+  },
+};
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {

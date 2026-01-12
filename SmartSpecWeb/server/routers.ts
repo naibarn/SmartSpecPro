@@ -18,6 +18,7 @@ import {
 } from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
+import { creditsRouter } from "./routers/credits";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -56,6 +57,7 @@ const galleryFiltersSchema = z.object({
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -67,37 +69,39 @@ export const appRouter = router({
     }),
   }),
 
+  // Credit management
+  credits: creditsRouter,
 
-// AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
-ai: router({
-  upload: protectedProcedure
-    .input(
-      z
-        .object({
-          fileName: z.string().min(1).max(255),
-          fileType: z.string().min(1).max(255),
-          fileBase64: z.string().min(1),
-        })
-        .refine(
-          (v) => v.fileType.startsWith("image/") || v.fileType.startsWith("video/"),
-          { message: "Only image/* or video/* uploads are supported" }
-        )
-    )
-    .mutation(async ({ input, ctx }) => {
-      const parts = input.fileBase64.split(",", 2);
-      const b64 = parts.length === 2 ? parts[1] : input.fileBase64;
-      const buf = Buffer.from(b64, "base64");
-      const max = 15 * 1024 * 1024;
-      if (buf.length > max) throw new Error("File too large (max 15MB)");
+  // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
+  ai: router({
+    upload: protectedProcedure
+      .input(
+        z
+          .object({
+            fileName: z.string().min(1).max(255),
+            fileType: z.string().min(1).max(255),
+            fileBase64: z.string().min(1),
+          })
+          .refine(
+            (v) => v.fileType.startsWith("image/") || v.fileType.startsWith("video/"),
+            { message: "Only image/* or video/* uploads are supported" }
+          )
+      )
+      .mutation(async ({ input, ctx }) => {
+        const parts = input.fileBase64.split(",", 2);
+        const b64 = parts.length === 2 ? parts[1] : input.fileBase64;
+        const buf = Buffer.from(b64, "base64");
+        const max = 15 * 1024 * 1024;
+        if (buf.length > max) throw new Error("File too large (max 15MB)");
 
-      const ext = (input.fileName.split(".").pop() || "").replace(/[^a-zA-Z0-9]/g, "");
-      const id = nanoid(10);
-      const key = `chat/uploads/${ctx.user?.id || "anon"}/${id}-${Date.now()}${ext ? "." + ext : ""}`;
+        const ext = (input.fileName.split(".").pop() || "").replace(/[^a-zA-Z0-9]/g, "");
+        const id = nanoid(10);
+        const key = `chat/uploads/${ctx.user?.id || "anon"}/${id}-${Date.now()}${ext ? "." + ext : ""}`;
 
-      const { url } = await storagePut(key, buf, input.fileType);
-      return { key, url, fileType: input.fileType };
-    }),
-}),
+        const { url } = await storagePut(key, buf, input.fileType);
+        return { key, url, fileType: input.fileType };
+      }),
+  }),
 
   // Gallery routes
   gallery: router({
