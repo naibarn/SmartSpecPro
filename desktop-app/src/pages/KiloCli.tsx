@@ -46,7 +46,6 @@ export default function KiloCliPage() {
   // Use shared memory store
   const {
     project,
-    memories: projectMemories,
     initProject,
     getRelevantMemories,
     extractMemories,

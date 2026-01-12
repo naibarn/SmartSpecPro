@@ -35,9 +35,9 @@ export default function KiloPtyPage() {
 
   const ptyWsRef = useRef<WebSocket | null>(null);
   const mediaWsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeSessionRef = useRef<string>("");  // Track active session without closure issues
 
   const activeTab = useMemo(() => tabs.find(t => t.id === active), [tabs, active]);
@@ -48,8 +48,8 @@ export default function KiloPtyPage() {
     setContextMenuPos,
   } = useMemoryStore();
 
-  // Use shared text selection hook
-  const { handleTextSelection, handleContextMenu } = useMemoryTextSelection();
+  // Text selection hook available if needed for terminal output
+  // const { handleTextSelection, handleContextMenu } = useMemoryTextSelection();
 
   // Update ref when active changes
   useEffect(() => {

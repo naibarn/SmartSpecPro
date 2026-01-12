@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { chatCompletions, chatCompletionsStream, type Message, type ContentPart } from "../services/llmOpenAI";
+import { chatCompletions, type Message, type ContentPart } from "../services/llmOpenAI";
 import { uploadToArtifactStorage } from "../services/artifacts";
 import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
 import { LLMArtifactViewer, type LLMArtifact } from "../components/LLMArtifactViewer";
@@ -140,7 +140,6 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
   // Use shared memory store
   const {
     project,
-    memories: projectMemories,
     initProject,
     getRelevantMemories,
     extractMemories,
@@ -657,7 +656,7 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                               <video
                                 src={part.file_url.url}
                                 controls
-                                onClick={() => onViewArtifact(part.file_url.url, "video", part.file_url.name)}
+                                onClick={() => onViewArtifact(part.file_url.url, "video", part.file_url.name || "video")}
                                 style={{
                                   maxWidth: "100%",
                                   maxHeight: 300,
@@ -673,7 +672,7 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
                         return (
                           <div
                             key={i}
-                            onClick={() => onViewArtifact(part.file_url.url, "file", part.file_url.name)}
+                            onClick={() => onViewArtifact(part.file_url.url, "file", part.file_url.name || "file")}
                             style={{
                               padding: 8,
                               background: "#f3f4f6",
