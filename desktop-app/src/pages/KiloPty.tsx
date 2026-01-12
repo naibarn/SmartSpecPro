@@ -799,8 +799,7 @@ export default function KiloPtyPage() {
                 Terminal Ready
               </div>
               <div style={{ fontSize: 14, textAlign: "center", maxWidth: 400, lineHeight: 1.6, color: "#6b7280" }}>
-                คลิก <strong style={{ color: "#10b981" }}>▶️ New Tab</strong> เพื่อเปิด interactive shell<br/>
-                หรือใส่ command แล้วกด Enter
+                คลิก <strong style={{ color: "#10b981" }}>▶️ New Tab</strong> เพื่อเปิด interactive shell
               </div>
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 8 }}>
                 Connection: <span style={{ color: getStatusColor(connectionStatus) }}>{getStatusText(connectionStatus)}</span>

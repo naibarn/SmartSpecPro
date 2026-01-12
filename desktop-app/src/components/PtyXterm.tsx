@@ -133,7 +133,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       allowProposedApi: true,
       allowTransparency: true,
       theme: {
-        background: "transparent",
+        background: theme.background,
         foreground: theme.foreground,
         cursor: theme.cursor,
         cursorAccent: theme.cursorAccent,
