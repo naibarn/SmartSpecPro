@@ -5,8 +5,8 @@
  */
 
 import { useState, useEffect, FormEvent } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { trpc } from "../trpc";
+import { useLocation, useSearch } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 
 type AuthState = "input" | "loading" | "confirming" | "success" | "error";
 
@@ -18,23 +18,25 @@ interface DeviceInfo {
 }
 
 export default function DeviceAuth() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const { user, isLoading: userLoading } = useAuth();
   const [authState, setAuthState] = useState<AuthState>("input");
-  const [userCode, setUserCode] = useState(searchParams.get("user_code") || "");
+  const [userCode, setUserCode] = useState("");
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
   const [error, setError] = useState("");
 
-  // Check if user is logged in
-  const { data: currentUser, isLoading: userLoading } = trpc.auth.me.useQuery();
-
-  // Auto-verify if code is in URL
+  // Parse user_code from URL
   useEffect(() => {
-    const code = searchParams.get("user_code");
-    if (code && code.length >= 8) {
-      verifyCode(code);
+    const params = new URLSearchParams(search);
+    const code = params.get("user_code");
+    if (code) {
+      setUserCode(code);
+      if (code.replace(/-/g, "").length >= 8) {
+        verifyCode(code);
+      }
     }
-  }, [searchParams]);
+  }, [search]);
 
   // Verify user code
   const verifyCode = async (code: string) => {
@@ -65,10 +67,11 @@ export default function DeviceAuth() {
 
   // Authorize device
   const authorizeDevice = async () => {
-    if (!currentUser) {
+    if (!user) {
       // Redirect to login with return URL
-      const returnUrl = `/auth/device?user_code=${userCode}`;
-      navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`);
+      const cleanCode = userCode.replace(/-/g, "");
+      const returnUrl = `/auth/device?user_code=${cleanCode}`;
+      setLocation(`/login?redirect=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
@@ -101,7 +104,7 @@ export default function DeviceAuth() {
   // Handle form submit
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (userCode.length >= 8) {
+    if (userCode.replace(/-/g, "").length >= 8) {
       verifyCode(userCode);
     }
   };
@@ -236,7 +239,7 @@ export default function DeviceAuth() {
               </ul>
             </div>
 
-            {!currentUser && (
+            {!user && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-yellow-800">
                   You need to sign in to authorize this device.
@@ -258,7 +261,7 @@ export default function DeviceAuth() {
                 onClick={authorizeDevice}
                 className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
               >
-                {currentUser ? "Authorize" : "Sign in & Authorize"}
+                {user ? "Authorize" : "Sign in & Authorize"}
               </button>
             </div>
 

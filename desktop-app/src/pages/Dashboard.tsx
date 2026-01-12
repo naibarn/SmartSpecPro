@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getAuthToken } from "../services/authService";
+import {
+  getCreditBalance,
+  getCachedUser,
+  isWebAuthenticated,
+  WebUser,
+} from "../services/webAuthService";
 
 const API_BASE_URL = import.meta.env.VITE_PY_BACKEND_URL || "http://localhost:8000";
 
@@ -7,6 +14,11 @@ interface BalanceInfo {
   credits: number;
   usd: number;
   last_updated?: string;
+}
+
+interface WebCredits {
+  credits: number;
+  plan: string;
 }
 
 interface Statistics {
@@ -60,16 +72,48 @@ interface Transaction {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [dailyUsage, setDailyUsage] = useState<DailyUsage[]>([]);
   const [llmUsage, setLLMUsage] = useState<LLMUsageBreakdown | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // SmartSpecWeb credits state
+  const [webCredits, setWebCredits] = useState<WebCredits | null>(null);
+  const [webUser, setWebUser] = useState<WebUser | null>(null);
+  const [webConnected, setWebConnected] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
+    loadWebCredits();
   }, []);
+
+  // Load SmartSpecWeb credits
+  const loadWebCredits = async () => {
+    if (!isWebAuthenticated()) {
+      setWebConnected(false);
+      return;
+    }
+
+    try {
+      setWebConnected(true);
+      const cachedUser = getCachedUser();
+      if (cachedUser) {
+        setWebUser(cachedUser);
+        setWebCredits({ credits: cachedUser.credits, plan: cachedUser.plan });
+      }
+
+      // Fetch fresh data
+      const balance = await getCreditBalance();
+      if (balance) {
+        setWebCredits(balance);
+      }
+    } catch (err) {
+      console.error("Failed to load web credits:", err);
+    }
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -186,12 +230,79 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Credit Balance Card */}
+        {/* SmartSpecWeb Credit Card */}
+        <div style={{ 
+          ...cardStyle, 
+          marginBottom: 24, 
+          background: webConnected 
+            ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" 
+            : "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 14, color: "#d1fae5", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                <span>SmartSpec Web Credits</span>
+                {webConnected && (
+                  <span style={{ 
+                    fontSize: 10, 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "2px 8px", 
+                    borderRadius: 10,
+                    textTransform: "capitalize"
+                  }}>
+                    {webCredits?.plan || "free"} plan
+                  </span>
+                )}
+              </div>
+              {webConnected && webCredits ? (
+                <>
+                  <div style={{ fontSize: 48, fontWeight: 700, color: "#ffffff" }}>
+                    {webCredits.credits.toLocaleString()}
+                  </div>
+                  {webUser && (
+                    <div style={{ fontSize: 14, color: "#d1fae5", marginTop: 4 }}>
+                      {webUser.name || webUser.email}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 24, fontWeight: 600, color: "#ffffff", marginBottom: 8 }}>
+                    Not Connected
+                  </div>
+                  <button
+                    onClick={() => navigate("/web-login")}
+                    style={{
+                      padding: "10px 20px",
+                      background: "#ffffff",
+                      color: "#059669",
+                      border: "none",
+                      borderRadius: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Connect to SmartSpec Web
+                  </button>
+                </>
+              )}
+            </div>
+            <div style={{ fontSize: 64 }}>{webConnected ? "🌐" : "🔗"}</div>
+          </div>
+          {webConnected && (
+            <div style={{ fontSize: 12, color: "#a7f3d0", marginTop: 12 }}>
+              Connected • AI features use web credits
+            </div>
+          )}
+        </div>
+
+        {/* Local Credit Balance Card (if available) */}
         {summary && (
           <div style={{ ...cardStyle, marginBottom: 24, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 14, color: "#e0e7ff", marginBottom: 8 }}>Available Credits</div>
+                <div style={{ fontSize: 14, color: "#e0e7ff", marginBottom: 8 }}>Local Credits (Legacy)</div>
                 <div style={{ fontSize: 48, fontWeight: 700, color: "#ffffff" }}>
                   {summary.balance.credits.toLocaleString()}
                 </div>

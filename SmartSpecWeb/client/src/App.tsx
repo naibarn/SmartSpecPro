@@ -22,6 +22,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import VerifyEmail from "./pages/VerifyEmail";
 import Gallery from "./pages/Gallery";
+import DeviceAuth from "./pages/DeviceAuth";
 import AdminGallery from "./pages/AdminGallery";
 import Chat from "./pages/Chat";
 function Router() {
@@ -46,6 +47,7 @@ function Router() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/auth/callback/:provider" component={AuthCallback} />
+      <Route path="/auth/device" component={DeviceAuth} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
