@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 
 import { createContext } from "./context";
 import { appRouter } from "../routers";
-import { createTRPCExpressMiddleware } from "@trpc/server/adapters/express";
+import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { serveStatic, setupVite } from "./vite";
 import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
@@ -45,7 +45,7 @@ registerDeviceAuthRoutes(app);
 
 app.use(
   "/api/trpc",
-  createTRPCExpressMiddleware({
+  createExpressMiddleware({
     router: appRouter,
     createContext,
   })
