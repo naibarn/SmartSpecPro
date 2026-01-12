@@ -75,12 +75,14 @@ export async function chatCompletions(req: ChatCompletionRequest): Promise<ChatC
 export async function chatCompletions(
   messages: Message[],
   onChunk: (chunk: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  model?: string
 ): Promise<void>;
 export async function chatCompletions(
   reqOrMessages: ChatCompletionRequest | Message[],
   onChunk?: (chunk: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  model?: string
 ): Promise<ChatCompletionResponse | void> {
   // Check if this is the streaming callback version
   if (Array.isArray(reqOrMessages)) {
@@ -90,7 +92,7 @@ export async function chatCompletions(
     const res = await fetch(url.toString(), {
       method: "POST",
       headers: authHeaders({ accept: "text/event-stream" }),
-      body: JSON.stringify({ messages, stream: true }),
+      body: JSON.stringify({ messages, stream: true, model: model || undefined }),
       signal,
     });
 

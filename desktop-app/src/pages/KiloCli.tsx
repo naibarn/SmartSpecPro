@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { kiloCancel, kiloListWorkflows, kiloRun, kiloSendInput, kiloStreamNdjson, kiloRecordResponse, StreamMessage, WorkflowSchema, ConversationMessage, ConversationContext } from "../services/kiloCli";
 import { Terminal } from "../components/Terminal";
 import { CommandPalette } from "../components/CommandPalette";
 import { getProxyTokenHint, loadProxyToken, setProxyToken } from "../services/authStore";
+import { CLIModeSelector, DEFAULT_CLI_MODES, getModelForMode, setModeModelMapping } from "../components/CLIModeSelector";
+import { ModelSelector } from "../components/ModelSelector";
+import { isWebAuthenticated, getCachedUser, initializeWebAuth, getWebUrl } from "../services/webAuthService";
 import { useMemoryStore, detectImportantContent } from "../stores/memoryStore";
 import { MemoryPanel, MemoryContextMenu, MemorySaveDialog, MemoryButton, useMemoryTextSelection } from "../components/MemoryPanel";
 
@@ -42,6 +45,12 @@ export default function KiloCliPage() {
 
   const [tokenInput, setTokenInput] = useState<string>("");
   const [tokenHint, setTokenHint] = useState<string>("");
+
+  // CLI Mode and Model selection
+  const [selectedMode, setSelectedMode] = useState<string>("code");
+  const [modeModels, setModeModels] = useState<Record<string, string>>({});
+  const [webConnected, setWebConnected] = useState(false);
+  const [webUser, setWebUser] = useState<{ name: string; credits: number } | null>(null);
 
   // Use shared memory store
   const {
@@ -98,6 +107,33 @@ export default function KiloCliPage() {
       setTokenHint(getProxyTokenHint());
     };
     initToken();
+  }, []);
+
+  // Initialize web auth and load mode-model mappings
+  useEffect(() => {
+    const initWebAuth = async () => {
+      try {
+        await initializeWebAuth();
+        if (isWebAuthenticated()) {
+          setWebConnected(true);
+          const user = getCachedUser();
+          if (user) {
+            setWebUser({ name: user.name || user.email || "User", credits: user.credits || 0 });
+          }
+        }
+      } catch (e) {
+        console.log("Web auth not available");
+      }
+    };
+    initWebAuth();
+
+    // Load saved mode-model mappings
+    const savedMappings: Record<string, string> = {};
+    DEFAULT_CLI_MODES.forEach(mode => {
+      const model = getModelForMode(mode.id);
+      if (model) savedMappings[mode.id] = model;
+    });
+    setModeModels(savedMappings);
   }, []);
 
   useEffect(() => {
@@ -624,25 +660,46 @@ export default function KiloCliPage() {
       </div>
 
       <div style={{ display: "grid", gap: 8 }}>
+        {/* SmartSpecWeb Connection Status */}
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ fontSize: 12, opacity: 0.9 }}>Proxy token</label>
-          <input
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            placeholder={tokenHint ? `saved (${tokenHint})` : "paste dev-token-smartspec-2026"}
-            style={{ ...inputStyle, minWidth: 320 }}
-            type="password"
-          />
-          <button
-            onClick={onSaveToken}
-            disabled={!tokenInput.trim()}
-            style={tokenInput.trim() ? primaryButtonStyle : buttonStyle}
-          >
-            Save Token
-          </button>
-          <span style={{ fontSize: 11, opacity: 0.6 }}>
-            (required for Kilo CLI API access)
-          </span>
+          <label style={{ fontSize: 12, opacity: 0.9 }}>SmartSpec Web</label>
+          {webConnected ? (
+            <>
+              <span style={{ 
+                padding: "4px 10px", 
+                borderRadius: 6, 
+                background: "#d1fae5", 
+                color: "#065f46",
+                fontSize: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 4
+              }}>
+                ✅ Connected as {webUser?.name}
+              </span>
+              <span style={{ fontSize: 12, color: "#6b7280" }}>
+                Credits: <strong style={{ color: "#059669" }}>{webUser?.credits || 0}</strong>
+              </span>
+            </>
+          ) : (
+            <>
+              <span style={{ 
+                padding: "4px 10px", 
+                borderRadius: 6, 
+                background: "#fef3c7", 
+                color: "#92400e",
+                fontSize: 12
+              }}>
+                Not connected
+              </span>
+              <button 
+                onClick={() => window.open(getWebUrl(), "_blank")}
+                style={primaryButtonStyle}
+              >
+                Connect to SmartSpec Web
+              </button>
+            </>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -855,24 +912,67 @@ export default function KiloCliPage() {
           </button>
         </div>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <label style={{ fontSize: 12, opacity: 0.9 }}>Workflow</label>
-          <select
-            value=""
-            onChange={(e) => {
-              if (e.target.value) {
-                setCommand(`/${e.target.value}`);
-              }
-            }}
-            style={{ ...inputStyle, minWidth: 200 }}
-          >
-            <option value="">Select workflow...</option>
-            {workflows.map(w => (
-              <option key={w} value={w}>
-                {w}
-              </option>
-            ))}
-          </select>
+        {/* Mode and Model Selector */}
+        <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "#6b7280" }}>Mode:</span>
+            <CLIModeSelector
+              selectedMode={selectedMode}
+              onModeChange={(modeId) => {
+                setSelectedMode(modeId);
+              }}
+              disabled={isActiveTabWaiting}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "#6b7280" }}>Model:</span>
+            <ModelSelector
+              selectedModel={modeModels[selectedMode] || ""}
+              onModelChange={(modelId) => {
+                setModeModels(prev => ({ ...prev, [selectedMode]: modelId }));
+                setModeModelMapping(selectedMode, modelId);
+              }}
+              storageKey={`cli_${selectedMode}`}
+              disabled={isActiveTabWaiting || !webConnected}
+            />
+            {!webConnected && (
+              <button
+                onClick={() => window.open(getWebUrl(), "_blank")}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 4,
+                  border: "1px solid #3b82f6",
+                  background: "#3b82f6",
+                  color: "#fff",
+                  fontSize: 11,
+                  cursor: "pointer"
+                }}
+              >
+                Connect
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <label style={{ fontSize: 12, opacity: 0.9 }}>Workflow</label>
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  setCommand(`/${e.target.value}`);
+                }
+              }}
+              style={{ ...inputStyle, minWidth: 200 }}
+            >
+              <option value="">Select workflow...</option>
+              {workflows.map(w => (
+                <option key={w} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, borderTop: "1px solid #e5e7eb", paddingTop: 8, marginTop: 4 }}>

@@ -1,5 +1,6 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { chatCompletions, type Message, type ContentPart } from "../services/llmOpenAI";
+import { ModelSelector } from "../components/ModelSelector";
 import { uploadToArtifactStorage } from "../services/artifacts";
 import { getProxyTokenHint, loadProxyToken } from "../services/authStore";
 import { isWebAuthenticated, getCachedUser, initializeWebAuth, getWebUrl } from "../services/webAuthService";
@@ -125,6 +126,9 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
   const [streamingText, setStreamingText] = useState<string>("");
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Model selection
+  const [selectedModel, setSelectedModel] = useState<string>("");
 
   const [tokenHint, setTokenHint] = useState<string>("");
   const [webConnected, setWebConnected] = useState(false);
@@ -445,7 +449,8 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
           full += chunk;
           setStreamingText(full);
         },
-        ctrl.signal
+        ctrl.signal,
+        selectedModel || undefined
       );
 
       // Parse artifacts from response
@@ -1007,6 +1012,22 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
               🗑️ Clear Chat
             </button>
           </div>
+        </div>
+
+        {/* Model Selector */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+          <span style={{ fontSize: 12, color: "#6b7280" }}>Model:</span>
+          <ModelSelector
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            storageKey="chat"
+            disabled={busy || !webConnected}
+          />
+          {!webConnected && (
+            <span style={{ fontSize: 11, color: "#f59e0b" }}>
+              Connect to SmartSpec Web to select models
+            </span>
+          )}
         </div>
 
         <div style={{ fontSize: 10, opacity: 0.5, textAlign: "center", marginTop: 8 }}>

@@ -64,9 +64,14 @@ const PROVIDER_TEMPLATES = [
   {
     providerName: "openrouter",
     displayName: "OpenRouter",
-    description: "Access 420+ models with unified API",
+    description: "Access 420+ models with unified API (Primary gateway with fallback)",
     baseUrl: "https://openrouter.ai/api/v1",
     defaultModel: "anthropic/claude-3.5-sonnet",
+    configDefaults: {
+      allow_fallbacks: true,
+      route: "fallback",
+      sort: ["throughput", "latency", "price"],
+    },
   },
   {
     providerName: "minimax",
@@ -106,6 +111,61 @@ const PROVIDER_TEMPLATES = [
 ];
 
 export const llmProvidersRouter = router({
+  // Get all available models from enabled providers (for Desktop App model selector)
+  // This is a public endpoint that returns flattened model list
+  availableModels: protectedProcedure.query(async () => {
+    const providers = await db
+      .select({
+        providerName: llmProviders.providerName,
+        displayName: llmProviders.displayName,
+        availableModels: llmProviders.availableModels,
+        configJson: llmProviders.configJson,
+        defaultModel: llmProviders.defaultModel,
+      })
+      .from(llmProviders)
+      .where(eq(llmProviders.isEnabled, true))
+      .orderBy(asc(llmProviders.sortOrder));
+    
+    // Flatten models from all providers
+    const models: Array<{
+      id: string;
+      name: string;
+      provider: string;
+      providerDisplayName: string;
+      contextLength?: number;
+      isDefault?: boolean;
+    }> = [];
+    
+    for (const provider of providers) {
+      const providerModels = provider.availableModels as Array<{
+        id: string;
+        name: string;
+        contextLength?: number;
+      }> || [];
+      
+      for (const model of providerModels) {
+        models.push({
+          id: model.id,
+          name: model.name,
+          provider: provider.providerName,
+          providerDisplayName: provider.displayName,
+          contextLength: model.contextLength,
+          isDefault: model.id === provider.defaultModel,
+        });
+      }
+    }
+    
+    return {
+      models,
+      providers: providers.map(p => ({
+        name: p.providerName,
+        displayName: p.displayName,
+        isPrimary: (p.configJson as any)?.isPrimary === true,
+        isFallback: (p.configJson as any)?.isFallback === true,
+      })),
+    };
+  }),
+
   // Get all enabled providers (for users)
   list: protectedProcedure.query(async () => {
     const providers = await db
