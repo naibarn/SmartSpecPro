@@ -6,7 +6,7 @@ import { createWsTicket } from "../services/wsTicket";
 import { loadProxyToken, getProxyTokenHint, setProxyToken } from "../services/authStore";
 import { openMediaWs, mediaAttach, mediaEmit, MediaMessage, MediaEvent } from "../services/mediaChannel";
 import { useMemoryStore } from "../stores/memoryStore";
-import { MemoryPanel, MemoryContextMenu, MemorySaveDialog, MemoryButton, useMemoryTextSelection } from "../components/MemoryPanel";
+import { MemoryPanel, MemoryContextMenu, MemorySaveDialog, MemoryButton } from "../components/MemoryPanel";
 
 
 const DEFAULT_WORKSPACE = import.meta.env.VITE_WORKSPACE_PATH || "";
@@ -782,20 +782,23 @@ export default function KiloPtyPage() {
           {tabs.length === 0 ? (
             <div style={{
               height: "60vh",
+              minHeight: 420,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              background: "#0b0f14",
+              background: "#ffffff",
               borderRadius: 12,
-              color: "#9ca3af",
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+              color: "#6b7280",
               gap: 16
             }}>
               <div style={{ fontSize: 48 }}>🖥️</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#d1d5db" }}>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#374151" }}>
                 Terminal Ready
               </div>
-              <div style={{ fontSize: 14, textAlign: "center", maxWidth: 400, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 14, textAlign: "center", maxWidth: 400, lineHeight: 1.6, color: "#6b7280" }}>
                 คลิก <strong style={{ color: "#10b981" }}>▶️ New Tab</strong> เพื่อเปิด interactive shell<br/>
                 หรือใส่ command แล้วกด Enter
               </div>

@@ -207,31 +207,43 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
           }
         };
 
-        // ResizeObserver for auto-fit
+        // ResizeObserver for auto-fit with debouncing
+        let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
         resizeObserver = new ResizeObserver(() => {
           if (disposedRef.current || !fitAddon) return;
-          try {
-            fitAddon.fit();
-          } catch {
-            // Ignore fit errors
-          }
+          
+          // Debounce resize
+          if (resizeTimeout) clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            if (disposedRef.current || !fitAddon) return;
+            try {
+              fitAddon.fit();
+            } catch {
+              // Ignore fit errors
+            }
+          }, 50);
         });
 
         if (outerRef.current) {
           resizeObserver.observe(outerRef.current);
         }
 
-        // Initial fit
-        setTimeout(() => {
-          if (!disposedRef.current && fitAddon) {
-            try {
-              fitAddon.fit();
-              term?.focus();
-            } catch {
-              // Ignore
-            }
+        // Initial fit - multiple attempts to ensure proper sizing
+        const doInitialFit = (attempt = 0) => {
+          if (disposedRef.current || !fitAddon || attempt > 5) return;
+          try {
+            fitAddon.fit();
+            if (attempt === 0) term?.focus();
+          } catch {
+            // Ignore
           }
-        }, 50);
+          // Retry fit to handle late layout
+          if (attempt < 5) {
+            setTimeout(() => doInitialFit(attempt + 1), 100 * (attempt + 1));
+          }
+        };
+        
+        setTimeout(() => doInitialFit(0), 50);
 
         setIsReady(true);
 
@@ -426,7 +438,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       </div>
 
       {/* Terminal body */}
-      <div style={{ flex: 1, padding: 8 }}>
+      <div style={{ flex: 1, padding: "8px 8px 16px 8px", overflow: "hidden" }}>
         <div
           ref={containerRef}
           style={{
