@@ -1,18 +1,19 @@
 /**
- * PtyXterm - Terminal Component using ghostty-web
- * 
- * Based on opencode's terminal implementation
- * Uses ghostty-web for better VT100 compatibility and performance
+ * PtyXterm - High Performance Terminal Component
  * 
  * Features:
- * - WASM-based terminal emulator (Ghostty)
- * - xterm.js API compatible
- * - Better Unicode/grapheme handling
- * - Modern UI with light theme
+ * - Write batching with requestAnimationFrame (reduces jank)
+ * - ResizeObserver for smooth resizing
+ * - Modern UI with glassmorphism header
+ * - Light theme matching app UI
+ * - Full ANSI color palette
+ * - Fixed dimensions error (xterm.js #4983)
  */
 
-import { useEffect, useRef, useImperativeHandle, forwardRef, useMemo, useState } from "react";
-import type { Terminal as GhosttyTerminal, FitAddon as GhosttyFitAddon } from "ghostty-web";
+import { useEffect, useRef, useImperativeHandle, forwardRef, useMemo, useCallback } from "react";
+import { Terminal } from "xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import "xterm/css/xterm.css";
 
 type Props = {
   onData: (data: string) => void;
@@ -24,7 +25,6 @@ declare global {
   interface Window {
     __ptyWrite?: (data: string) => void;
     __ptyFocus?: () => void;
-    __ghosttyReady?: boolean;
   }
 }
 
@@ -32,7 +32,25 @@ type TermTheme = {
   background: string;
   foreground: string;
   cursor: string;
+  cursorAccent: string;
   selectionBackground: string;
+  selectionForeground: string;
+  black: string;
+  red: string;
+  green: string;
+  yellow: string;
+  blue: string;
+  magenta: string;
+  cyan: string;
+  white: string;
+  brightBlack: string;
+  brightRed: string;
+  brightGreen: string;
+  brightYellow: string;
+  brightBlue: string;
+  brightMagenta: string;
+  brightCyan: string;
+  brightWhite: string;
 };
 
 function getTheme(): TermTheme {
@@ -41,41 +59,62 @@ function getTheme(): TermTheme {
     background: "#ffffff",
     foreground: "#1e293b",  // slate-800
     cursor: "#3b82f6",      // blue-500
+    cursorAccent: "#ffffff",
     selectionBackground: "rgba(59, 130, 246, 0.25)",
+    selectionForeground: "#1e293b",
+    // ANSI colors - optimized for light background
+    black: "#334155",       // slate-700
+    red: "#dc2626",         // red-600
+    green: "#16a34a",       // green-600
+    yellow: "#ca8a04",      // yellow-600
+    blue: "#2563eb",        // blue-600
+    magenta: "#9333ea",     // purple-600
+    cyan: "#0891b2",        // cyan-600
+    white: "#f8fafc",       // slate-50
+    brightBlack: "#64748b", // slate-500
+    brightRed: "#ef4444",   // red-500
+    brightGreen: "#22c55e", // green-500
+    brightYellow: "#eab308",// yellow-500
+    brightBlue: "#3b82f6",  // blue-500
+    brightMagenta: "#a855f7",// purple-500
+    brightCyan: "#06b6d4",  // cyan-500
+    brightWhite: "#ffffff",
   };
-}
-
-// Global ghostty module reference
-let ghosttyModule: typeof import("ghostty-web") | null = null;
-let initPromise: Promise<void> | null = null;
-
-// Initialize ghostty-web once
-async function initGhostty(): Promise<typeof import("ghostty-web")> {
-  if (ghosttyModule) return ghosttyModule;
-  
-  if (!initPromise) {
-    initPromise = (async () => {
-      const mod = await import("ghostty-web");
-      await mod.init();
-      ghosttyModule = mod;
-      window.__ghosttyReady = true;
-    })();
-  }
-  
-  await initPromise;
-  return ghosttyModule!;
 }
 
 const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onResize }, ref) => {
   const outerRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const termRef = useRef<GhosttyTerminal | null>(null);
-  const fitRef = useRef<GhosttyFitAddon | null>(null);
+  const termRef = useRef<Terminal | null>(null);
+  const fitRef = useRef<FitAddon | null>(null);
   const lastSizeRef = useRef<{ rows: number; cols: number } | null>(null);
   const disposedRef = useRef(false);
-  const [isReady, setIsReady] = useState(false);
+  const isReadyRef = useRef(false);
+
+  // Write batching for performance
+  const writeQueueRef = useRef<string[]>([]);
+  const rafRef = useRef<number | null>(null);
+  const fitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const theme = useMemo(() => getTheme(), []);
+
+  // Safe fit function that checks terminal state
+  const safeFit = useCallback(() => {
+    if (disposedRef.current || !isReadyRef.current) return;
+    const t = termRef.current;
+    const f = fitRef.current;
+    if (!t || !f) return;
+
+    try {
+      // Double-check terminal has valid internal state
+      if (t.element && t.cols > 0 && t.rows > 0) {
+        f.fit();
+      }
+    } catch (e) {
+      // Ignore fit errors - terminal may be in transition
+      console.debug('fit() skipped:', e);
+    }
+  }, []);
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -84,209 +123,218 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
   }));
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || termRef.current) return;
 
     disposedRef.current = false;
-    let term: GhosttyTerminal | null = null;
-    let fitAddon: GhosttyFitAddon | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-    let handlePointerDown: (() => void) | null = null;
-    let keyHandler: ((e: KeyboardEvent) => void) | null = null;
+    isReadyRef.current = false;
 
-    const setup = async () => {
-      if (disposedRef.current || !containerRef.current) return;
+    const term = new Terminal({
+      convertEol: true,
+      cursorBlink: true,
+      cursorStyle: "bar",
+      fontFamily:
+        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+      fontSize: 14,
+      lineHeight: 1.25,
+      scrollback: 10_000,
+      allowProposedApi: true,
+      allowTransparency: true,
+      theme: {
+        background: "transparent",
+        foreground: theme.foreground,
+        cursor: theme.cursor,
+        cursorAccent: theme.cursorAccent,
+        selectionBackground: theme.selectionBackground,
+        selectionForeground: theme.selectionForeground,
+        black: theme.black,
+        red: theme.red,
+        green: theme.green,
+        yellow: theme.yellow,
+        blue: theme.blue,
+        magenta: theme.magenta,
+        cyan: theme.cyan,
+        white: theme.white,
+        brightBlack: theme.brightBlack,
+        brightRed: theme.brightRed,
+        brightGreen: theme.brightGreen,
+        brightYellow: theme.brightYellow,
+        brightBlue: theme.brightBlue,
+        brightMagenta: theme.brightMagenta,
+        brightCyan: theme.brightCyan,
+        brightWhite: theme.brightWhite,
+      },
+    });
 
+    const fit = new FitAddon();
+    
+    termRef.current = term;
+    fitRef.current = fit;
+
+    // Load addon BEFORE open (important for proper initialization)
+    term.loadAddon(fit);
+    term.open(containerRef.current);
+
+    // Mark as ready AFTER open completes and DOM settles
+    // This prevents dimensions error from race condition
+    fitTimeoutRef.current = setTimeout(() => {
+      if (disposedRef.current) return;
+      isReadyRef.current = true;
+      
+      // Now safe to fit
       try {
-        const mod = await initGhostty();
-        
-        if (disposedRef.current || !containerRef.current) return;
+        fit.fit();
+        term.focus();
+      } catch (e) {
+        console.debug('Initial fit skipped:', e);
+      }
+    }, 50);
 
-        // Create terminal with ghostty-web
-        term = new mod.Terminal({
-          cursorBlink: true,
-          cursorStyle: "bar",
-          fontSize: 14,
-          fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-          allowTransparency: true,
-          scrollback: 10_000,
-          theme: {
-            background: "transparent",
-            foreground: theme.foreground,
-            cursor: theme.cursor,
-            selectionBackground: theme.selectionBackground,
-          },
-        });
+    // Focus on click
+    const handlePointerDown = () => {
+      if (!disposedRef.current) term.focus();
+    };
+    outerRef.current?.addEventListener("pointerdown", handlePointerDown);
 
-        fitAddon = new mod.FitAddon();
-        term.loadAddon(fitAddon);
-        
-        termRef.current = term;
-        fitRef.current = fitAddon;
+    // Handle terminal input
+    const dataDisposer = term.onData((data) => {
+      if (!disposedRef.current) onData(data);
+    });
 
-        // Open terminal
-        term.open(containerRef.current);
+    // Keyboard shortcuts
+    const keyHandler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "t") || 
+          (e.ctrlKey && e.key.toLowerCase() === "w")) {
+        onKey(e);
+      }
+    };
+    window.addEventListener("keydown", keyHandler);
 
-        // Focus handling
-        const focusTerminal = () => {
-          if (!disposedRef.current && term) {
-            term.focus();
-          }
-        };
+    // Batched write function using RAF for smooth output
+    const flush = () => {
+      rafRef.current = null;
+      if (disposedRef.current) return;
+      const t = termRef.current;
+      if (!t) return;
 
-        handlePointerDown = () => {
-          const activeElement = document.activeElement;
-          if (activeElement instanceof HTMLElement && activeElement !== containerRef.current) {
-            activeElement.blur();
-          }
-          focusTerminal();
-        };
+      let chunk = "";
+      let bytes = 0;
+      const MAX_CHUNK = 64 * 1024;
 
-        outerRef.current?.addEventListener("pointerdown", handlePointerDown);
+      while (writeQueueRef.current.length) {
+        const part = writeQueueRef.current.shift()!;
+        chunk += part;
+        bytes += part.length;
+        if (bytes >= MAX_CHUNK) break;
+      }
 
-        // Handle terminal input
-        term.onData((data: string) => {
-          if (!disposedRef.current) onData(data);
-        });
-
-        // Handle resize
-        term.onResize((size: { cols: number; rows: number }) => {
-          if (!disposedRef.current) {
-            const last = lastSizeRef.current;
-            if (!last || last.rows !== size.rows || last.cols !== size.cols) {
-              lastSizeRef.current = { rows: size.rows, cols: size.cols };
-              onResize?.(size.rows, size.cols);
-            }
-          }
-        });
-
-        // Keyboard shortcuts
-        keyHandler = (e: KeyboardEvent) => {
-          if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "t") || 
-              (e.ctrlKey && e.key.toLowerCase() === "w")) {
-            onKey(e);
-          }
-        };
-        window.addEventListener("keydown", keyHandler);
-
-        // Copy handling
-        term.attachCustomKeyEventHandler?.((event: KeyboardEvent) => {
-          const key = event.key.toLowerCase();
-
-          // Ctrl+Shift+C for copy
-          if (event.ctrlKey && event.shiftKey && !event.metaKey && key === "c") {
-            const selection = term?.getSelection?.();
-            if (selection) {
-              navigator.clipboard.writeText(selection).catch(() => {});
-            }
-            return true;
-          }
-
-          // Cmd+C (Mac) for copy
-          if (event.metaKey && !event.ctrlKey && !event.altKey && key === "c") {
-            if (!term?.hasSelection?.()) return true;
-            const selection = term?.getSelection?.();
-            if (selection) {
-              navigator.clipboard.writeText(selection).catch(() => {});
-            }
-            return true;
-          }
-
-          return false;
-        });
-
-        // Global write function
-        window.__ptyWrite = (data: string) => {
-          if (!disposedRef.current && term) {
-            term.write(data);
-          }
-        };
-
-        window.__ptyFocus = () => {
-          if (!disposedRef.current && term) {
-            term.focus();
-          }
-        };
-
-        // ResizeObserver for auto-fit with debouncing
-        let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
-        resizeObserver = new ResizeObserver(() => {
-          if (disposedRef.current || !fitAddon) return;
-          
-          // Debounce resize
-          if (resizeTimeout) clearTimeout(resizeTimeout);
-          resizeTimeout = setTimeout(() => {
-            if (disposedRef.current || !fitAddon) return;
-            try {
-              fitAddon.fit();
-            } catch {
-              // Ignore fit errors
-            }
-          }, 50);
-        });
-
-        if (outerRef.current) {
-          resizeObserver.observe(outerRef.current);
+      if (chunk) {
+        try {
+          t.write(chunk);
+        } catch (e) {
+          console.debug('write() error:', e);
         }
+      }
 
-        // Initial fit - multiple attempts to ensure proper sizing
-        const doInitialFit = (attempt = 0) => {
-          if (disposedRef.current || !fitAddon || attempt > 5) return;
-          try {
-            fitAddon.fit();
-            if (attempt === 0) term?.focus();
-          } catch {
-            // Ignore
-          }
-          // Retry fit to handle late layout
-          if (attempt < 5) {
-            setTimeout(() => doInitialFit(attempt + 1), 100 * (attempt + 1));
-          }
-        };
-        
-        setTimeout(() => doInitialFit(0), 50);
-
-        setIsReady(true);
-
-      } catch (error) {
-        console.error("Failed to initialize ghostty-web terminal:", error);
+      if (writeQueueRef.current.length && rafRef.current == null) {
+        rafRef.current = requestAnimationFrame(flush);
       }
     };
 
-    setup();
+    const writeToTerminal = (data: string) => {
+      if (disposedRef.current) return;
 
-    // Cleanup
+      if (writeQueueRef.current.length > 5000) {
+        writeQueueRef.current.splice(0, 2500);
+      }
+
+      writeQueueRef.current.push(data);
+      if (rafRef.current == null) {
+        rafRef.current = requestAnimationFrame(flush);
+      }
+    };
+
+    window.__ptyWrite = writeToTerminal;
+    window.__ptyFocus = () => {
+      if (!disposedRef.current) termRef.current?.focus();
+    };
+
+    // ResizeObserver with debouncing
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+    const ro = new ResizeObserver(() => {
+      if (disposedRef.current || !isReadyRef.current) return;
+      
+      // Debounce resize to prevent rapid fit() calls
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (disposedRef.current || !isReadyRef.current) return;
+        
+        const t = termRef.current;
+        const f = fitRef.current;
+        if (!t || !f) return;
+
+        try {
+          f.fit();
+        } catch {
+          // Ignore fit errors
+        }
+
+        const rows = t.rows;
+        const cols = t.cols;
+        if (rows > 0 && cols > 0) {
+          const last = lastSizeRef.current;
+          if (!last || last.rows !== rows || last.cols !== cols) {
+            lastSizeRef.current = { rows, cols };
+            onResize?.(rows, cols);
+          }
+        }
+      }, 16); // ~60fps debounce
+    });
+
+    if (outerRef.current) ro.observe(outerRef.current);
+
+    // Cleanup function
     return () => {
+      // CRITICAL: Set disposed FIRST to prevent any async operations
       disposedRef.current = true;
-      setIsReady(false);
+      isReadyRef.current = false;
 
-      if (resizeObserver) {
-        resizeObserver.disconnect();
+      // Clear all pending timers BEFORE dispose
+      if (fitTimeoutRef.current) {
+        clearTimeout(fitTimeoutRef.current);
+        fitTimeoutRef.current = null;
       }
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      
+      writeQueueRef.current = [];
 
-      if (keyHandler) {
-        window.removeEventListener("keydown", keyHandler);
-      }
-
-      if (handlePointerDown && outerRef.current) {
-        outerRef.current.removeEventListener("pointerdown", handlePointerDown);
-      }
+      ro.disconnect();
+      dataDisposer.dispose();
+      window.removeEventListener("keydown", keyHandler);
+      outerRef.current?.removeEventListener("pointerdown", handlePointerDown);
 
       delete window.__ptyWrite;
       delete window.__ptyFocus;
 
-      // Dispose terminal
-      if (term) {
+      // Dispose terminal last, after all timers are cleared
+      // Use setTimeout to ensure any pending internal timers complete
+      setTimeout(() => {
         try {
           term.dispose();
-        } catch {
-          // Ignore dispose errors
+        } catch (e) {
+          console.debug('dispose() error:', e);
         }
-      }
-
+      }, 0);
+      
       termRef.current = null;
       fitRef.current = null;
     };
-  }, [onData, onKey, onResize, theme]);
+  }, [onData, onKey, onResize, theme, safeFit]);
 
   const doCopy = async () => {
     const t = termRef.current;
@@ -309,7 +357,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
 
   const doClear = () => {
     if (!disposedRef.current) {
-      termRef.current?.clear?.();
+      termRef.current?.clear();
     }
   };
 
@@ -367,28 +415,15 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
             fontSize: 13, 
             fontWeight: 600, 
             color: "#374151",
-            letterSpacing: "-0.01em",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
+            letterSpacing: "-0.01em"
           }}>
             Terminal
-            {!isReady && (
-              <span style={{ 
-                fontSize: 11, 
-                color: "#9ca3af",
-                fontWeight: 400,
-              }}>
-                (loading...)
-              </span>
-            )}
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 6 }}>
           <button
             onClick={doCopy}
-            disabled={!isReady}
             style={{
               fontSize: 12,
               fontWeight: 500,
@@ -396,12 +431,12 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
               borderRadius: 6,
               border: "1px solid #d1d5db",
               background: "#ffffff",
-              color: isReady ? "#374151" : "#9ca3af",
-              cursor: isReady ? "pointer" : "not-allowed",
+              color: "#374151",
+              cursor: "pointer",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              if (isReady) e.currentTarget.style.background = "#f3f4f6";
+              e.currentTarget.style.background = "#f3f4f6";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "#ffffff";
@@ -412,7 +447,6 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
           </button>
           <button
             onClick={doClear}
-            disabled={!isReady}
             style={{
               fontSize: 12,
               fontWeight: 500,
@@ -420,12 +454,12 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
               borderRadius: 6,
               border: "1px solid #d1d5db",
               background: "#ffffff",
-              color: isReady ? "#374151" : "#9ca3af",
-              cursor: isReady ? "pointer" : "not-allowed",
+              color: "#374151",
+              cursor: "pointer",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              if (isReady) e.currentTarget.style.background = "#f3f4f6";
+              e.currentTarget.style.background = "#f3f4f6";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "#ffffff";
@@ -438,7 +472,7 @@ const PtyXterm = forwardRef<{ focus: () => void }, Props>(({ onData, onKey, onRe
       </div>
 
       {/* Terminal body */}
-      <div style={{ flex: 1, padding: "8px 8px 16px 8px", overflow: "hidden" }}>
+      <div style={{ flex: 1, padding: 8 }}>
         <div
           ref={containerRef}
           style={{
