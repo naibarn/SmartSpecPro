@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerOAuthRoutes } from "./oauth";
+import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { ENV } from "./env";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,6 +39,9 @@ registerMCPRoutes(app);
 
 // OAuth routes
 registerOAuthRoutes(app);
+
+// Device auth routes (for desktop app)
+registerDeviceAuthRoutes(app);
 
 app.use(
   "/api/trpc",

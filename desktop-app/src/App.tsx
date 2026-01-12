@@ -9,7 +9,9 @@ import LLMChatPage from "./pages/LLMChat";
 import TestPage from "./pages/TestPage";
 import AdminSettings from "./pages/AdminSettings";
 import Login from "./pages/Login";
+import WebLogin from "./pages/WebLogin";
 import { initializeAuth, getAuthToken, isAdmin, isTokenExpired } from "./services/authService";
+import { initializeWebAuth, isWebAuthenticated } from "./services/webAuthService";
 
 // Protected Route wrapper
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
@@ -39,6 +41,7 @@ export default function App() {
   // Initialize auth on app start
   useEffect(() => {
     initializeAuth().catch(console.error);
+    initializeWebAuth().catch(console.error);
   }, []);
 
   return (
@@ -46,6 +49,7 @@ export default function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/web-login" element={<WebLogin />} />
 
         {/* Protected routes with sidebar */}
         <Route
