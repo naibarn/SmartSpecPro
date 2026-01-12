@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Settings,
   Key,
   Check,
@@ -40,7 +49,22 @@ import {
   Zap,
   Globe,
   Bot,
+  Cpu,
+  Layers,
+  DollarSign,
+  Copy,
+  GripVertical,
 } from "lucide-react";
+
+interface ModelVersion {
+  id: string;
+  name: string;
+  contextLength?: number;
+  pricing?: {
+    input: number;
+    output: number;
+  };
+}
 
 interface Provider {
   id: number;
@@ -50,11 +74,7 @@ interface Provider {
   baseUrl: string | null;
   hasApiKey: boolean;
   defaultModel: string | null;
-  availableModels: Array<{
-    id: string;
-    name: string;
-    contextLength?: number;
-  }> | null;
+  availableModels: ModelVersion[] | null;
   configJson: Record<string, any> | null;
   isEnabled: boolean;
   sortOrder: number;
@@ -75,6 +95,12 @@ export default function AdminLLMProviders() {
   const [selectedTemplate, setSelectedTemplate] = useState<ProviderTemplate | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Provider | null>(null);
   const [testResult, setTestResult] = useState<{ id: number; success: boolean; message: string } | null>(null);
+  const [activeTab, setActiveTab] = useState("settings");
+  
+  // Model editing state
+  const [editingModels, setEditingModels] = useState<ModelVersion[]>([]);
+  const [newModel, setNewModel] = useState<ModelVersion>({ id: "", name: "" });
+  const [deleteModelConfirm, setDeleteModelConfirm] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -140,10 +166,10 @@ export default function AdminLLMProviders() {
   const testMutation = useMutation({
     mutationFn: (id: number) => trpc.llmProviders.testConnection.mutate({ id }),
     onSuccess: (result, id) => {
-      setTestResult({ id, ...result });
+      setTestResult({ id, success: result.success, message: result.message });
       setTimeout(() => setTestResult(null), 5000);
     },
-    onError: (error: any, id) => {
+    onError: (error, id) => {
       setTestResult({ id, success: false, message: error.message });
       setTimeout(() => setTestResult(null), 5000);
     },
@@ -158,6 +184,8 @@ export default function AdminLLMProviders() {
       defaultModel: "",
       isEnabled: false,
     });
+    setEditingModels([]);
+    setActiveTab("settings");
   };
 
   const handleCreateFromTemplate = (template: ProviderTemplate) => {
@@ -170,6 +198,7 @@ export default function AdminLLMProviders() {
       defaultModel: template.defaultModel,
       isEnabled: false,
     });
+    setEditingModels([]);
     setIsCreateDialogOpen(true);
   };
 
@@ -179,25 +208,60 @@ export default function AdminLLMProviders() {
       displayName: provider.displayName,
       description: provider.description || "",
       baseUrl: provider.baseUrl || "",
-      apiKey: "", // Don't pre-fill API key
+      apiKey: "",
       defaultModel: provider.defaultModel || "",
       isEnabled: provider.isEnabled,
     });
+    setEditingModels(provider.availableModels || []);
+    setActiveTab("settings");
   };
 
   const handleSave = () => {
+    const payload = {
+      ...formData,
+      availableModels: editingModels.length > 0 ? editingModels : undefined,
+      apiKey: formData.apiKey || undefined,
+    };
+
     if (editingProvider) {
       updateMutation.mutate({
         id: editingProvider.id,
-        ...formData,
-        apiKey: formData.apiKey || undefined, // Only send if changed
+        ...payload,
       });
     } else if (selectedTemplate) {
       createMutation.mutate({
         providerName: selectedTemplate.providerName,
-        ...formData,
+        ...payload,
       });
     }
+  };
+
+  const handleAddModel = () => {
+    if (!newModel.id.trim() || !newModel.name.trim()) return;
+    
+    // Check for duplicate
+    if (editingModels.some(m => m.id === newModel.id)) {
+      return;
+    }
+    
+    setEditingModels([...editingModels, { ...newModel }]);
+    setNewModel({ id: "", name: "" });
+  };
+
+  const handleUpdateModel = (index: number, field: keyof ModelVersion, value: any) => {
+    const updated = [...editingModels];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditingModels(updated);
+  };
+
+  const handleDeleteModel = (modelId: string) => {
+    setEditingModels(editingModels.filter(m => m.id !== modelId));
+    setDeleteModelConfirm(null);
+  };
+
+  const handleDuplicateModel = (model: ModelVersion) => {
+    const newId = `${model.id}-copy`;
+    setEditingModels([...editingModels, { ...model, id: newId, name: `${model.name} (Copy)` }]);
   };
 
   const getProviderIcon = (providerName: string) => {
@@ -205,13 +269,23 @@ export default function AdminLLMProviders() {
       case "openai":
         return <Bot className="h-5 w-5" />;
       case "anthropic":
-        return <Bot className="h-5 w-5" />;
+        return <Bot className="h-5 w-5 text-orange-500" />;
       case "google":
-        return <Globe className="h-5 w-5" />;
+        return <Globe className="h-5 w-5 text-blue-500" />;
       case "groq":
-        return <Zap className="h-5 w-5" />;
+        return <Zap className="h-5 w-5 text-yellow-500" />;
       case "ollama":
-        return <Server className="h-5 w-5" />;
+        return <Server className="h-5 w-5 text-gray-500" />;
+      case "openrouter":
+        return <Layers className="h-5 w-5 text-purple-500" />;
+      case "deepseek":
+        return <Cpu className="h-5 w-5 text-cyan-500" />;
+      case "minimax":
+        return <Bot className="h-5 w-5 text-pink-500" />;
+      case "qwen":
+        return <Bot className="h-5 w-5 text-green-500" />;
+      case "zhipu":
+        return <Bot className="h-5 w-5 text-red-500" />;
       default:
         return <Bot className="h-5 w-5" />;
     }
@@ -220,6 +294,9 @@ export default function AdminLLMProviders() {
   // Filter out templates that are already configured
   const configuredProviderNames = providers.map(p => p.providerName);
   const availableTemplates = templates.filter(t => !configuredProviderNames.includes(t.providerName));
+
+  // Calculate total models
+  const totalModels = providers.reduce((sum, p) => sum + (p.availableModels?.length || 0), 0);
 
   if (isLoading) {
     return (
@@ -237,39 +314,43 @@ export default function AdminLLMProviders() {
           LLM Provider Configuration
         </h1>
         <p className="text-muted-foreground mt-2">
-          Configure API keys and settings for LLM providers
+          Configure API keys, settings, and model versions for LLM providers
         </p>
       </div>
 
       {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Providers</CardDescription>
-              <CardTitle className="text-2xl">{stats.total}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Configured</CardDescription>
-              <CardTitle className="text-2xl">{stats.configured}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Enabled</CardDescription>
-              <CardTitle className="text-2xl">{stats.enabled}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Ready to Use</CardDescription>
-              <CardTitle className="text-2xl text-green-600">{stats.ready}</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total Providers</CardDescription>
+            <CardTitle className="text-2xl">{stats?.total || providers.length}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Configured</CardDescription>
+            <CardTitle className="text-2xl">{stats?.configured || 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Enabled</CardDescription>
+            <CardTitle className="text-2xl text-green-600">{stats?.enabled || 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Ready</CardDescription>
+            <CardTitle className="text-2xl text-blue-600">{stats?.ready || 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total Models</CardDescription>
+            <CardTitle className="text-2xl text-purple-600">{totalModels}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
 
       {/* Configured Providers */}
       <div className="mb-8">
@@ -277,64 +358,69 @@ export default function AdminLLMProviders() {
         {providers.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
-              No providers configured yet. Add a provider from the templates below.
+              No providers configured yet. Add one from the templates below.
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
             {providers.map((provider) => (
-              <Card key={provider.id} className={!provider.isEnabled ? "opacity-60" : ""}>
+              <Card key={provider.id} className={provider.isEnabled ? "border-green-200" : ""}>
                 <CardContent className="py-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
                       <div className="p-2 rounded-lg bg-muted">
                         {getProviderIcon(provider.providerName)}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-semibold">{provider.displayName}</h3>
-                          <Badge variant={provider.isEnabled ? "default" : "secondary"}>
-                            {provider.isEnabled ? "Enabled" : "Disabled"}
-                          </Badge>
-                          {provider.hasApiKey ? (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
+                          {provider.isEnabled ? (
+                            <Badge variant="default" className="bg-green-600">Enabled</Badge>
+                          ) : (
+                            <Badge variant="secondary">Disabled</Badge>
+                          )}
+                          {provider.hasApiKey && (
+                            <Badge variant="outline" className="text-blue-600 border-blue-600">
                               <Key className="h-3 w-3 mr-1" />
                               API Key Set
                             </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                              <Key className="h-3 w-3 mr-1" />
-                              No API Key
-                            </Badge>
                           )}
-                          {testResult?.id === provider.id && (
-                            <Badge variant={testResult.success ? "default" : "destructive"}>
-                              {testResult.success ? (
-                                <Check className="h-3 w-3 mr-1" />
-                              ) : (
-                                <X className="h-3 w-3 mr-1" />
-                              )}
-                              {testResult.message}
+                          {provider.availableModels && provider.availableModels.length > 0 && (
+                            <Badge variant="outline" className="text-purple-600 border-purple-600">
+                              <Cpu className="h-3 w-3 mr-1" />
+                              {provider.availableModels.length} Models
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Provider: {provider.providerName}
-                        </p>
-                        {provider.baseUrl && (
-                          <p className="text-sm text-muted-foreground">
-                            Base URL: {provider.baseUrl}
-                          </p>
+                        <p className="text-sm text-muted-foreground">{provider.description}</p>
+                        <div className="flex flex-wrap gap-4 mt-2 text-xs text-muted-foreground">
+                          <span><strong>Provider:</strong> {provider.providerName}</span>
+                          {provider.baseUrl && <span><strong>Base URL:</strong> {provider.baseUrl}</span>}
+                          {provider.defaultModel && <span><strong>Default Model:</strong> {provider.defaultModel}</span>}
+                        </div>
+                        
+                        {/* Show available models preview */}
+                        {provider.availableModels && provider.availableModels.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1">
+                            {provider.availableModels.slice(0, 5).map((model) => (
+                              <Badge key={model.id} variant="secondary" className="text-xs">
+                                {model.name}
+                              </Badge>
+                            ))}
+                            {provider.availableModels.length > 5 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{provider.availableModels.length - 5} more
+                              </Badge>
+                            )}
+                          </div>
                         )}
-                        {provider.defaultModel && (
-                          <p className="text-sm text-muted-foreground">
-                            Default Model: {provider.defaultModel}
-                          </p>
-                        )}
-                        {provider.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {provider.description}
-                          </p>
+                        
+                        {/* Test result */}
+                        {testResult?.id === provider.id && (
+                          <div className={`mt-2 text-sm ${testResult.success ? "text-green-600" : "text-red-600"}`}>
+                            {testResult.success ? <Check className="inline h-4 w-4 mr-1" /> : <X className="inline h-4 w-4 mr-1" />}
+                            {testResult.message}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -349,6 +435,7 @@ export default function AdminLLMProviders() {
                         size="sm"
                         onClick={() => testMutation.mutate(provider.id)}
                         disabled={!provider.hasApiKey || testMutation.isPending}
+                        title="Test Connection"
                       >
                         {testMutation.isPending && testMutation.variables === provider.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -360,6 +447,7 @@ export default function AdminLLMProviders() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(provider)}
+                        title="Edit Provider"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -368,6 +456,7 @@ export default function AdminLLMProviders() {
                         size="sm"
                         className="text-red-600 hover:text-red-700"
                         onClick={() => setDeleteConfirm(provider)}
+                        title="Delete Provider"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -422,75 +511,223 @@ export default function AdminLLMProviders() {
           }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingProvider ? `Edit ${editingProvider.displayName}` : `Add ${selectedTemplate?.displayName}`}
             </DialogTitle>
             <DialogDescription>
-              Configure the provider settings and API key
+              Configure the provider settings, API key, and available models
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="displayName">Display Name</Label>
-              <Input
-                id="displayName"
-                value={formData.displayName}
-                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="baseUrl">Base URL</Label>
-              <Input
-                id="baseUrl"
-                value={formData.baseUrl}
-                onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
-                placeholder="https://api.example.com/v1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">
-                API Key
-                {editingProvider?.hasApiKey && (
-                  <span className="text-muted-foreground ml-2">(leave empty to keep current)</span>
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="models">
+                Models
+                {editingModels.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{editingModels.length}</Badge>
                 )}
-              </Label>
-              <Input
-                id="apiKey"
-                type="password"
-                value={formData.apiKey}
-                onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-                placeholder={editingProvider?.hasApiKey ? "••••••••" : "Enter API key"}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="defaultModel">Default Model</Label>
-              <Input
-                id="defaultModel"
-                value={formData.defaultModel}
-                onChange={(e) => setFormData({ ...formData, defaultModel: e.target.value })}
-                placeholder="e.g., gpt-4o-mini"
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="isEnabled"
-                checked={formData.isEnabled}
-                onCheckedChange={(checked) => setFormData({ ...formData, isEnabled: checked })}
-              />
-              <Label htmlFor="isEnabled">Enable Provider</Label>
-            </div>
-          </div>
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="settings" className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  value={formData.displayName}
+                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="baseUrl">Base URL</Label>
+                <Input
+                  id="baseUrl"
+                  value={formData.baseUrl}
+                  onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
+                  placeholder="https://api.example.com/v1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="apiKey">
+                  API Key
+                  {editingProvider?.hasApiKey && (
+                    <span className="text-muted-foreground ml-2">(leave empty to keep current)</span>
+                  )}
+                </Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  value={formData.apiKey}
+                  onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+                  placeholder={editingProvider?.hasApiKey ? "••••••••" : "Enter API key"}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="defaultModel">Default Model</Label>
+                <Input
+                  id="defaultModel"
+                  value={formData.defaultModel}
+                  onChange={(e) => setFormData({ ...formData, defaultModel: e.target.value })}
+                  placeholder="e.g., gpt-4o-mini"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="isEnabled"
+                  checked={formData.isEnabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isEnabled: checked })}
+                />
+                <Label htmlFor="isEnabled">Enable Provider</Label>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="models" className="py-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">Available Models</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Define the models available for this provider
+                    </p>
+                  </div>
+                  <Badge variant="outline">{editingModels.length} models</Badge>
+                </div>
+                
+                {/* Add new model form */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Add New Model</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Model ID *</Label>
+                        <Input
+                          placeholder="e.g., gpt-4o-2024-11-20"
+                          value={newModel.id}
+                          onChange={(e) => setNewModel({ ...newModel, id: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Display Name *</Label>
+                        <Input
+                          placeholder="e.g., GPT-4o (Nov 2024)"
+                          value={newModel.name}
+                          onChange={(e) => setNewModel({ ...newModel, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Context Length</Label>
+                        <Input
+                          type="number"
+                          placeholder="e.g., 128000"
+                          value={newModel.contextLength || ""}
+                          onChange={(e) => setNewModel({ ...newModel, contextLength: e.target.value ? parseInt(e.target.value) : undefined })}
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <Button onClick={handleAddModel} disabled={!newModel.id.trim() || !newModel.name.trim()}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Models table */}
+                {editingModels.length > 0 ? (
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[40px]"></TableHead>
+                          <TableHead>Model ID</TableHead>
+                          <TableHead>Display Name</TableHead>
+                          <TableHead className="w-[120px]">Context</TableHead>
+                          <TableHead className="w-[100px]">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {editingModels.map((model, index) => (
+                          <TableRow key={model.id}>
+                            <TableCell>
+                              <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={model.id}
+                                onChange={(e) => handleUpdateModel(index, "id", e.target.value)}
+                                className="h-8 font-mono text-sm"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={model.name}
+                                onChange={(e) => handleUpdateModel(index, "name", e.target.value)}
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={model.contextLength || ""}
+                                onChange={(e) => handleUpdateModel(index, "contextLength", e.target.value ? parseInt(e.target.value) : undefined)}
+                                className="h-8"
+                                placeholder="-"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDuplicateModel(model)}
+                                  title="Duplicate"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600"
+                                  onClick={() => setDeleteModelConfirm(model.id)}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      <Cpu className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No models defined yet.</p>
+                      <p className="text-sm">Add models to make them available for selection in the app.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+          
           <DialogFooter>
             <Button
               variant="outline"
@@ -516,7 +753,7 @@ export default function AdminLLMProviders() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Delete Provider Confirmation */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -536,6 +773,27 @@ export default function AdminLLMProviders() {
               ) : (
                 "Delete"
               )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Model Confirmation */}
+      <AlertDialog open={!!deleteModelConfirm} onOpenChange={() => setDeleteModelConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Model</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this model from the list?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => deleteModelConfirm && handleDeleteModel(deleteModelConfirm)}
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
