@@ -348,7 +348,7 @@ export function getWebUrl(): string {
 export function openVerificationUrl(url: string): void {
   // Try to use Tauri's shell.open if available
   if (typeof window !== "undefined" && (window as any).__TAURI__) {
-    import("@tauri-apps/plugin-shell").then((shell) => {
+    import("@tauri-apps/api/shell").then((shell) => {
       shell.open(url);
     }).catch(() => {
       // Fallback to window.open
