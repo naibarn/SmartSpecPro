@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import sys
 sys.path.insert(0, '/home/ubuntu/SmartSpecPro/python-backend')
 
-from app.security.secrets_manager import (
+from app.security.vault_manager import (
     SecretsManager,
     Secret,
     SecretType,

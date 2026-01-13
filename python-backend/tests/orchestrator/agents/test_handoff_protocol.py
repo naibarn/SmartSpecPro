@@ -182,7 +182,7 @@ Add the API endpoint.
     @pytest.fixture
     def mock_budget_controller(self):
         """Create a mock budget controller."""
-        from app.orchestrator.agents.token_budget_controller import BudgetAllocation, BudgetScope
+        from app.orchestrator.agents.budget_controller import BudgetAllocation, BudgetScope
         
         controller = MagicMock()
         controller.create_allocation = AsyncMock(return_value=BudgetAllocation(

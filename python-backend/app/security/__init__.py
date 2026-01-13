@@ -9,7 +9,7 @@ Security features:
 - Audit logging
 """
 
-from .secrets_manager import (
+from .vault_manager import (
     SecretsManager,
     SecretType,
     Secret,

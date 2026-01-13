@@ -10,44 +10,116 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 import structlog
 from enum import Enum
+from dataclasses import dataclass, field
 
 from app.orchestrator.agents.supervisor import (
     SupervisorAgent,
-    SupervisorConfig,
-    SupervisorDecision,
-    TaskAnalysis,
-    TaskComplexity,
-    AgentType,
+    RoutingDecision,
+    SupervisorTask,
+    SupervisorResult,
+    TaskType,
+    ExecutorType,
 )
 from app.orchestrator.agents.kilo_adapter import (
     KiloAdapter,
-    KiloAdapterConfig,
-    KiloTaskRequest,
-    KiloTaskResult,
+    KiloExecutionRequest,
+    KiloExecutionResult,
 )
 from app.orchestrator.agents.opencode_adapter import (
     OpenCodeAdapter,
-    OpenCodeConfig,
-    OpenCodeRequest,
-    OpenCodeResult,
+    OpenCodeExecutionRequest,
+    OpenCodeExecutionResult,
 )
 from app.orchestrator.agents.handoff_protocol import (
     HandoffProtocol,
-    HandoffConfig,
-    HandoffRequest,
-    HandoffResult,
+    HandoffSession,
+    TaskExecution,
     HandoffDirection,
+    HandoffStatus,
 )
-from app.orchestrator.agents.token_budget_controller import (
+from app.orchestrator.agents.budget_controller import (
     TokenBudgetController,
-    BudgetConfig,
+    TokenUsage,
     BudgetAllocation,
+    BudgetCheckResult,
     BudgetStatus,
+    BudgetScope,
 )
 from app.services.credit_service import CreditService
 
 logger = structlog.get_logger()
 
+
+# ==================== ENUMS ====================
+
+class ExecutionStatus(str, Enum):
+    """Execution status enum."""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+# ==================== DATA CLASSES ====================
+
+@dataclass
+class ExecutionContext:
+    """Context for a supervised execution."""
+    execution_id: str
+    user_id: str
+    workspace: str
+    project_context: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class AgentOutput:
+    """Output from an agent execution."""
+    agent: ExecutorType
+    content: str
+    artifacts: List[Dict[str, Any]] = field(default_factory=list)
+    is_complete: bool = False
+    needs_handoff: bool = False
+    next_prompt: Optional[str] = None
+    tokens_used: int = 0
+
+
+@dataclass
+class ExecutionResult:
+    """Result of a supervised execution."""
+    execution_id: str
+    status: ExecutionStatus
+    outputs: List[AgentOutput] = field(default_factory=list)
+    error: Optional[str] = None
+    warning: Optional[str] = None
+    completed_at: datetime = field(default_factory=datetime.utcnow)
+    
+    @property
+    def is_success(self) -> bool:
+        return self.status == ExecutionStatus.COMPLETED and not self.error
+    
+    @property
+    def final_output(self) -> Optional[str]:
+        if self.outputs:
+            return self.outputs[-1].content
+        return None
+    
+    @property
+    def total_tokens(self) -> int:
+        return sum(o.tokens_used for o in self.outputs)
+
+
+@dataclass
+class HandoffResult:
+    """Result of a handoff between agents."""
+    success: bool
+    target_agent: Optional[ExecutorType] = None
+    context_for_target: Optional[str] = None
+    error: Optional[str] = None
+
+
+# ==================== SUPERVISOR INTEGRATION ====================
 
 class SupervisorIntegration:
     """
@@ -65,25 +137,21 @@ class SupervisorIntegration:
     def __init__(
         self,
         credit_service: Optional[CreditService] = None,
-        supervisor_config: Optional[SupervisorConfig] = None,
-        budget_config: Optional[BudgetConfig] = None,
     ):
         """
         Initialize the supervisor integration.
         
         Args:
             credit_service: Credit service for billing
-            supervisor_config: Configuration for supervisor agent
-            budget_config: Configuration for token budget
         """
         self.credit_service = credit_service
         
         # Initialize components
-        self.supervisor = SupervisorAgent(config=supervisor_config)
+        self.supervisor = SupervisorAgent()
         self.kilo_adapter = KiloAdapter()
         self.opencode_adapter = OpenCodeAdapter()
         self.handoff_protocol = HandoffProtocol()
-        self.budget_controller = TokenBudgetController(config=budget_config)
+        self.budget_controller = TokenBudgetController()
         
         # State tracking
         self._active_executions: Dict[str, ExecutionContext] = {}
@@ -142,16 +210,21 @@ class SupervisorIntegration:
                 )
             
             # Analyze task with Supervisor
-            analysis = await self.supervisor.analyze_task(
+            task = SupervisorTask(
+                task_id=execution_id,
+                project_id=workspace,
+                user_id=user_id,
                 prompt=prompt,
-                context=project_context,
+                context=project_context or {},
             )
             
-            # Execute based on analysis
+            routing = await self.supervisor.analyze_task(task)
+            
+            # Execute based on routing decision
             result = await self._execute_with_routing(
                 context=context,
                 prompt=prompt,
-                analysis=analysis,
+                routing=routing,
                 budget=budget,
                 max_iterations=max_iterations,
             )
@@ -233,13 +306,13 @@ class SupervisorIntegration:
         self,
         context: ExecutionContext,
         prompt: str,
-        analysis: TaskAnalysis,
+        routing: RoutingDecision,
         budget: BudgetAllocation,
         max_iterations: int,
     ) -> ExecutionResult:
         """Execute task with intelligent routing between agents."""
         iterations = 0
-        current_agent = analysis.recommended_agent
+        current_executor = routing.executor
         current_prompt = prompt
         outputs: List[AgentOutput] = []
         
@@ -256,7 +329,7 @@ class SupervisorIntegration:
                 break
             
             # Execute with appropriate agent
-            if current_agent == AgentType.KILO:
+            if current_executor == ExecutorType.KILO:
                 output = await self._execute_kilo(
                     context=context,
                     prompt=current_prompt,
@@ -283,13 +356,13 @@ class SupervisorIntegration:
             if output.needs_handoff:
                 handoff_result = await self._handle_handoff(
                     context=context,
-                    current_agent=current_agent,
+                    current_executor=current_executor,
                     output=output,
                 )
                 
-                if handoff_result.success:
-                    current_agent = handoff_result.target_agent
-                    current_prompt = handoff_result.context_for_target
+                if handoff_result.success and handoff_result.target_agent:
+                    current_executor = handoff_result.target_agent
+                    current_prompt = handoff_result.context_for_target or prompt
                 else:
                     # Handoff failed, continue with current agent
                     current_prompt = output.next_prompt or prompt
@@ -311,7 +384,7 @@ class SupervisorIntegration:
         budget: BudgetAllocation,
     ) -> AgentOutput:
         """Execute task with Kilo adapter (macro-level)."""
-        request = KiloTaskRequest(
+        request = KiloExecutionRequest(
             execution_id=context.execution_id,
             prompt=prompt,
             workspace=context.workspace,
@@ -329,7 +402,7 @@ class SupervisorIntegration:
             )
         
         return AgentOutput(
-            agent=AgentType.KILO,
+            agent=ExecutorType.KILO,
             content=result.content,
             artifacts=result.artifacts,
             is_complete=result.is_complete,
@@ -345,7 +418,7 @@ class SupervisorIntegration:
         budget: BudgetAllocation,
     ) -> AgentOutput:
         """Execute task with OpenCode adapter (micro-level)."""
-        request = OpenCodeRequest(
+        request = OpenCodeExecutionRequest(
             execution_id=context.execution_id,
             prompt=prompt,
             workspace=context.workspace,
@@ -362,7 +435,7 @@ class SupervisorIntegration:
             )
         
         return AgentOutput(
-            agent=AgentType.OPENCODE,
+            agent=ExecutorType.OPENCODE,
             content=result.content,
             artifacts=result.artifacts,
             is_complete=result.is_complete,
@@ -374,20 +447,20 @@ class SupervisorIntegration:
     async def _handle_handoff(
         self,
         context: ExecutionContext,
-        current_agent: AgentType,
+        current_executor: ExecutorType,
         output: AgentOutput,
     ) -> HandoffResult:
         """Handle handoff between agents."""
         # Determine direction
-        if current_agent == AgentType.KILO:
+        if current_executor == ExecutorType.KILO:
             direction = HandoffDirection.KILO_TO_OPENCODE
-            target = AgentType.OPENCODE
+            target = ExecutorType.OPENCODE
         else:
             direction = HandoffDirection.OPENCODE_TO_KILO
-            target = AgentType.KILO
+            target = ExecutorType.KILO
         
-        # Create handoff request
-        request = HandoffRequest(
+        # Create handoff session
+        session = await self.handoff_protocol.create_session(
             execution_id=context.execution_id,
             direction=direction,
             source_output=output.content,
@@ -396,91 +469,14 @@ class SupervisorIntegration:
         )
         
         # Execute handoff
-        result = await self.handoff_protocol.execute_handoff(request)
-        result.target_agent = target
+        result = await self.handoff_protocol.execute_handoff(session)
         
-        return result
-
-
-class ExecutionStatus(str, Enum):
-    """Execution status enum."""
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-
-class ExecutionContext:
-    """Context for a supervised execution."""
-    
-    def __init__(
-        self,
-        execution_id: str,
-        user_id: str,
-        workspace: str,
-        project_context: Dict[str, Any],
-    ):
-        self.execution_id = execution_id
-        self.user_id = user_id
-        self.workspace = workspace
-        self.project_context = project_context
-        self.created_at = datetime.utcnow()
-
-
-class AgentOutput:
-    """Output from an agent execution."""
-    
-    def __init__(
-        self,
-        agent: AgentType,
-        content: str,
-        artifacts: Optional[List[Dict[str, Any]]] = None,
-        is_complete: bool = False,
-        needs_handoff: bool = False,
-        next_prompt: Optional[str] = None,
-        tokens_used: int = 0,
-    ):
-        self.agent = agent
-        self.content = content
-        self.artifacts = artifacts or []
-        self.is_complete = is_complete
-        self.needs_handoff = needs_handoff
-        self.next_prompt = next_prompt
-        self.tokens_used = tokens_used
-
-
-class ExecutionResult:
-    """Result of a supervised execution."""
-    
-    def __init__(
-        self,
-        execution_id: str,
-        status: ExecutionStatus,
-        outputs: Optional[List[AgentOutput]] = None,
-        error: Optional[str] = None,
-        warning: Optional[str] = None,
-    ):
-        self.execution_id = execution_id
-        self.status = status
-        self.outputs = outputs or []
-        self.error = error
-        self.warning = warning
-        self.completed_at = datetime.utcnow()
-    
-    @property
-    def is_success(self) -> bool:
-        return self.status == ExecutionStatus.COMPLETED and not self.error
-    
-    @property
-    def final_output(self) -> Optional[str]:
-        if self.outputs:
-            return self.outputs[-1].content
-        return None
-    
-    @property
-    def total_tokens(self) -> int:
-        return sum(o.tokens_used for o in self.outputs)
+        return HandoffResult(
+            success=result.status == HandoffStatus.COMPLETED,
+            target_agent=target,
+            context_for_target=result.context_for_target if hasattr(result, 'context_for_target') else None,
+            error=result.error if hasattr(result, 'error') else None,
+        )
 
 
 # Factory function

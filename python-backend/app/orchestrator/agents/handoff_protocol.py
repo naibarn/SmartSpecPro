@@ -32,7 +32,7 @@ from app.orchestrator.agents.opencode_adapter import (
     OpenCodeExecutionRequest,
     OpenCodeExecutionResult,
 )
-from app.orchestrator.agents.token_budget_controller import (
+from app.orchestrator.agents.budget_controller import (
     TokenBudgetController,
     BudgetAllocation,
     BudgetScope,

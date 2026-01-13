@@ -15,7 +15,7 @@ from .user import User
 from .execution import ExecutionModel, CheckpointModel, ExecutionStatus
 from .semantic_memory import SemanticMemory, MemoryType, MemoryScope
 from .provider_config import ProviderConfig
-from .opencode_api_key import OpenCodeAPIKey, OpenCodeAPIKeyUsage, OpenCodeKeyStatus
+from .opencode_key import OpenCodeAPIKey, OpenCodeAPIKeyUsage, OpenCodeKeyStatus
 
 # Phase 3: Multi-tenancy models
 from .tenant import Tenant, TenantUser, TenantStatus, TenantPlan
@@ -33,7 +33,7 @@ from .approval import (
 )
 
 # Phase 3: Secret models
-from .secret import Secret, SecretVersion, AuditEvent, SecretType
+from .vault_model import Secret, SecretVersion, AuditEvent, SecretType
 
 # Phase 3: Vector store models
 from .vector_store import (

@@ -91,7 +91,7 @@ class VectorDocument(Base):
     content_hash = Column(String(64), nullable=True)  # SHA-256 for deduplication
     
     # Metadata
-    metadata = Column(JSON, default=dict)
+    extra_data = Column(JSON, default=dict)
     source = Column(String(255), nullable=True)  # Source file/URL
     source_type = Column(String(50), nullable=True)  # file, url, api, manual
     

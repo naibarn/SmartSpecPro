@@ -34,8 +34,8 @@ from app.core.database import get_db
 from app.core.auth import verify_token
 from app.models.user import User
 from app.services.credit_service import CreditService
-from app.llm_proxy.gateway_unified import UnifiedGateway
-from app.orchestrator.agents.token_budget_controller import (
+from app.llm_proxy.gateway_unified import LLMGateway
+from app.orchestrator.agents.budget_controller import (
     TokenBudgetController,
     BudgetScope,
     calculate_cost,
@@ -267,7 +267,7 @@ async def create_chat_completion(
             )
         
         # Get unified gateway
-        gateway = UnifiedGateway()
+        gateway = LLMGateway()
         
         # Prepare messages for gateway
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
@@ -351,7 +351,7 @@ async def create_chat_completion(
 
 
 async def _stream_completion(
-    gateway: UnifiedGateway,
+    gateway: LLMGateway,
     request_id: str,
     model: str,
     messages: List[Dict],

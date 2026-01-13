@@ -71,7 +71,7 @@ class ApprovalRequest(Base):
     
     # Payload (what needs to be approved)
     payload = Column(JSON, default=dict)
-    metadata = Column(JSON, default=dict)
+    extra_data = Column(JSON, default=dict)
     
     # Risk assessment
     risk_level = Column(String(20), default="medium")  # low, medium, high, critical

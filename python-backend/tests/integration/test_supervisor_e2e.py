@@ -21,7 +21,7 @@ from app.orchestrator.agents.supervisor import (
     TaskComplexity,
     AgentType,
 )
-from app.orchestrator.agents.token_budget_controller import (
+from app.orchestrator.agents.budget_controller import (
     TokenBudgetController,
     BudgetConfig,
     BudgetAllocation,
