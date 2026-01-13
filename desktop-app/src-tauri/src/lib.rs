@@ -5,6 +5,9 @@ mod repository;
 mod git_manager;
 mod secure_store;
 mod docker_manager;
+mod workspace_db;
+mod workspace_data;
+mod workspace_commands;
 
 use python_bridge::{OutputMessage, PythonBridge, WorkflowArgs};
 use tokio::sync::Mutex;
@@ -16,6 +19,7 @@ use models::*;
 use repository::*;
 use git_manager::GitManager;
 use docker_manager::{DockerManager, ContainerInfo, ContainerStats, ImageInfo, DockerInfo, ContainerLogs, SandboxConfig};
+use workspace_commands::AppState as WorkspaceAppState;
 
 // App state
 struct AppState {
@@ -116,12 +120,18 @@ pub fn run() {
             let db_path = app_data_dir.join("smartspecpro.db");
             let db = Database::new(db_path).expect("Failed to initialize database");
             
-            // Store state
+            // Initialize workspace state
+            let workspace_state = WorkspaceAppState::new()
+                .expect("Failed to initialize workspace state");
+            
+            // Store states
             app.manage(AppState {
                 python_bridge: Mutex::new(python_bridge),
                 db: Arc::new(db),
                 git_manager: Arc::new(Mutex::new(None)),
             });
+            
+            app.manage(workspace_state);
             
             Ok(())
         })
@@ -184,6 +194,48 @@ pub fn run() {
             docker_exec_command,
             docker_prune_containers,
             docker_prune_images,
+            // Workspace Management
+            workspace_commands::create_workspace,
+            workspace_commands::list_workspaces,
+            workspace_commands::get_workspace,
+            workspace_commands::get_recent_workspaces,
+            workspace_commands::update_workspace,
+            workspace_commands::delete_workspace,
+            workspace_commands::open_workspace,
+            workspace_commands::close_workspace,
+            workspace_commands::get_workspace_stats,
+            // Workspace Maintenance
+            workspace_commands::backup_workspace,
+            workspace_commands::restore_workspace,
+            workspace_commands::vacuum_workspace,
+            workspace_commands::cleanup_expired_memory,
+            workspace_commands::optimize_workspace,
+            // App Settings
+            workspace_commands::get_app_setting,
+            workspace_commands::set_app_setting,
+            // Jobs
+            workspace_commands::create_job,
+            workspace_commands::get_job,
+            workspace_commands::list_jobs,
+            workspace_commands::update_job_status,
+            workspace_commands::delete_job,
+            // Tasks
+            workspace_commands::create_task,
+            workspace_commands::list_tasks,
+            workspace_commands::update_task_status,
+            // Chat Sessions
+            workspace_commands::create_chat_session,
+            workspace_commands::list_chat_sessions,
+            workspace_commands::add_chat_message,
+            workspace_commands::get_chat_messages,
+            // Knowledge
+            workspace_commands::create_knowledge,
+            workspace_commands::search_knowledge,
+            workspace_commands::list_knowledge,
+            // Memory
+            workspace_commands::create_memory_long,
+            workspace_commands::get_relevant_memories,
+            workspace_commands::increment_memory_access,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -259,10 +311,9 @@ async fn delete_workflow_db(
 #[tauri::command]
 async fn create_execution_db(
     state: State<'_, AppState>,
-    workflow_id: String,
-    workflow_name: String,
+    req: CreateExecutionRequest,
 ) -> Result<Execution, String> {
-    let execution = Execution::new(workflow_id, workflow_name);
+    let execution = Execution::new(req.workflow_id, req.workflow_name);
     let repo = ExecutionRepository::new(state.db.get_connection());
     
     repo.create(&execution).map_err(|e| e.to_string())?;
@@ -293,14 +344,12 @@ async fn update_execution_status_db(
     state: State<'_, AppState>,
     id: String,
     status: String,
-    output: Option<serde_json::Value>,
+    output: Option<String>,
     error: Option<String>,
 ) -> Result<(), String> {
-    let status_enum = ExecutionStatus::from_str(&status)
-        .ok_or_else(|| format!("Invalid status: {}", status))?;
-    
     let repo = ExecutionRepository::new(state.db.get_connection());
-    repo.update_status(&id, status_enum, output, error).map_err(|e| e.to_string())
+    repo.update_status(&id, &status, output.as_deref(), error.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -318,7 +367,7 @@ async fn delete_old_executions_db(
     days: i64,
 ) -> Result<usize, String> {
     let repo = ExecutionRepository::new(state.db.get_connection());
-    repo.delete_old(days).map_err(|e| e.to_string())
+    repo.delete_older_than(days).map_err(|e| e.to_string())
 }
 
 // ========================================
@@ -328,21 +377,10 @@ async fn delete_old_executions_db(
 #[tauri::command]
 async fn upsert_config_db(
     state: State<'_, AppState>,
-    workflow_id: String,
-    key: String,
-    value: String,
-    value_type: String,
-    description: Option<String>,
+    req: UpsertConfigRequest,
 ) -> Result<Config, String> {
-    let value_type_enum = ConfigValueType::from_str(&value_type)
-        .ok_or_else(|| format!("Invalid value type: {}", value_type))?;
-    
-    let config = Config::new(workflow_id, key, value, value_type_enum, description);
     let repo = ConfigRepository::new(state.db.get_connection());
-    
-    repo.upsert(&config).map_err(|e| e.to_string())?;
-    
-    Ok(config)
+    repo.upsert(&req).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -381,14 +419,8 @@ async fn delete_config_db(
 #[tauri::command]
 async fn get_database_stats(
     state: State<'_, AppState>,
-) -> Result<serde_json::Value, String> {
-    let stats = state.db.get_stats().map_err(|e| e.to_string())?;
-    
-    Ok(serde_json::json!({
-        "workflow_count": stats.workflow_count,
-        "execution_count": stats.execution_count,
-        "config_count": stats.config_count,
-    }))
+) -> Result<database::DatabaseStats, String> {
+    state.db.get_stats().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -407,14 +439,11 @@ async fn git_init(
     state: State<'_, AppState>,
     repo_path: String,
 ) -> Result<(), String> {
-    let manager = GitManager::new(repo_path);
+    let manager = GitManager::new(&repo_path).map_err(|e| e.to_string())?;
     
-    if !manager.repo_exists() {
-        return Err("Repository not found at path".to_string());
-    }
-    
-    let mut git_manager = state.git_manager.lock().await;
-    *git_manager = Some(manager);
+    // Store the manager
+    let mut git = state.git_manager.lock().await;
+    *git = Some(manager);
     
     Ok(())
 }
@@ -424,13 +453,9 @@ async fn git_create_branch(
     state: State<'_, AppState>,
     branch_name: String,
 ) -> Result<(), String> {
-    let git_manager = state.git_manager.lock().await;
-    
-    if let Some(manager) = git_manager.as_ref() {
-        manager.create_branch(&branch_name).map_err(|e| e.to_string())
-    } else {
-        Err("Git manager not initialized".to_string())
-    }
+    let git = state.git_manager.lock().await;
+    let manager = git.as_ref().ok_or("Git not initialized")?;
+    manager.create_branch(&branch_name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -438,13 +463,9 @@ async fn git_checkout_branch(
     state: State<'_, AppState>,
     branch_name: String,
 ) -> Result<(), String> {
-    let git_manager = state.git_manager.lock().await;
-    
-    if let Some(manager) = git_manager.as_ref() {
-        manager.checkout_branch(&branch_name).map_err(|e| e.to_string())
-    } else {
-        Err("Git manager not initialized".to_string())
-    }
+    let git = state.git_manager.lock().await;
+    let manager = git.as_ref().ok_or("Git not initialized")?;
+    manager.checkout_branch(&branch_name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -452,26 +473,18 @@ async fn git_create_and_checkout_branch(
     state: State<'_, AppState>,
     branch_name: String,
 ) -> Result<(), String> {
-    let git_manager = state.git_manager.lock().await;
-    
-    if let Some(manager) = git_manager.as_ref() {
-        manager.create_and_checkout_branch(&branch_name).map_err(|e| e.to_string())
-    } else {
-        Err("Git manager not initialized".to_string())
-    }
+    let git = state.git_manager.lock().await;
+    let manager = git.as_ref().ok_or("Git not initialized")?;
+    manager.create_and_checkout_branch(&branch_name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn git_get_current_branch(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    let git_manager = state.git_manager.lock().await;
-    
-    if let Some(manager) = git_manager.as_ref() {
-        manager.get_current_branch().map_err(|e| e.to_string())
-    } else {
-        Err("Git manager not initialized".to_string())
-    }
+    let git = state.git_manager.lock().await;
+    let manager = git.as_ref().ok_or("Git not initialized")?;
+    manager.get_current_branch().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -479,131 +492,115 @@ async fn git_commit_all(
     state: State<'_, AppState>,
     message: String,
 ) -> Result<String, String> {
-    let git_manager = state.git_manager.lock().await;
-    
-    if let Some(manager) = git_manager.as_ref() {
-        manager.stage_all().map_err(|e| e.to_string())?;
-        manager.commit(&message).map_err(|e| e.to_string())
-    } else {
-        Err("Git manager not initialized".to_string())
-    }
+    let git = state.git_manager.lock().await;
+    let manager = git.as_ref().ok_or("Git not initialized")?;
+    manager.commit_all(&message).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn git_push_branch(
     state: State<'_, AppState>,
     branch_name: String,
-    remote_name: String,
+    remote: Option<String>,
 ) -> Result<(), String> {
-    let git_manager = state.git_manager.lock().await;
-    
-    if let Some(manager) = git_manager.as_ref() {
-        manager.push_branch(&branch_name, &remote_name).map_err(|e| e.to_string())
-    } else {
-        Err("Git manager not initialized".to_string())
-    }
+    let git = state.git_manager.lock().await;
+    let manager = git.as_ref().ok_or("Git not initialized")?;
+    manager.push_branch(&branch_name, remote.as_deref()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn git_has_changes(
     state: State<'_, AppState>,
 ) -> Result<bool, String> {
-    let git_manager = state.git_manager.lock().await;
-    
-    if let Some(manager) = git_manager.as_ref() {
-        manager.has_changes().map_err(|e| e.to_string())
-    } else {
-        Err("Git manager not initialized".to_string())
-    }
+    let git = state.git_manager.lock().await;
+    let manager = git.as_ref().ok_or("Git not initialized")?;
+    manager.has_changes().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn git_list_branches(
     state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let git_manager = state.git_manager.lock().await;
-    
-    if let Some(manager) = git_manager.as_ref() {
-        manager.list_branches().map_err(|e| e.to_string())
-    } else {
-        Err("Git manager not initialized".to_string())
-    }
+    let git = state.git_manager.lock().await;
+    let manager = git.as_ref().ok_or("Git not initialized")?;
+    manager.list_branches().map_err(|e| e.to_string())
 }
+
 // ========================================
-// Docker Management Commands
+// Docker Commands
 // ========================================
 
 #[tauri::command]
 async fn docker_check() -> Result<DockerInfo, String> {
-    DockerManager::check_docker()
+    DockerManager::check_docker().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn docker_list_containers(all: bool) -> Result<Vec<ContainerInfo>, String> {
-    DockerManager::list_containers(all)
+    DockerManager::list_containers(all).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn docker_get_container_stats(container_id: String) -> Result<ContainerStats, String> {
-    DockerManager::get_container_stats(&container_id)
+    DockerManager::get_container_stats(&container_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn docker_get_container_logs(container_id: String, tail: u32) -> Result<ContainerLogs, String> {
-    DockerManager::get_container_logs(&container_id, tail)
+async fn docker_get_container_logs(container_id: String, tail: Option<u32>) -> Result<ContainerLogs, String> {
+    DockerManager::get_container_logs(&container_id, tail).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn docker_start_container(container_id: String) -> Result<(), String> {
-    DockerManager::start_container(&container_id)
+    DockerManager::start_container(&container_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn docker_stop_container(container_id: String) -> Result<(), String> {
-    DockerManager::stop_container(&container_id)
+    DockerManager::stop_container(&container_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn docker_restart_container(container_id: String) -> Result<(), String> {
-    DockerManager::restart_container(&container_id)
+    DockerManager::restart_container(&container_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn docker_remove_container(container_id: String, force: bool) -> Result<(), String> {
-    DockerManager::remove_container(&container_id, force)
+    DockerManager::remove_container(&container_id, force).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn docker_list_images() -> Result<Vec<ImageInfo>, String> {
-    DockerManager::list_images()
+    DockerManager::list_images().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn docker_pull_image(image: String) -> Result<String, String> {
-    DockerManager::pull_image(&image)
+async fn docker_pull_image(image_name: String) -> Result<(), String> {
+    DockerManager::pull_image(&image_name).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn docker_remove_image(image_id: String, force: bool) -> Result<(), String> {
-    DockerManager::remove_image(&image_id, force)
+    DockerManager::remove_image(&image_id, force).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn docker_create_sandbox(config: SandboxConfig) -> Result<String, String> {
-    DockerManager::create_sandbox(&config)
+async fn docker_create_sandbox(config: SandboxConfig) -> Result<ContainerInfo, String> {
+    DockerManager::create_sandbox(config).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn docker_exec_command(container_id: String, command: String) -> Result<String, String> {
-    DockerManager::exec_in_container(&container_id, &command)
+async fn docker_exec_command(container_id: String, command: Vec<String>) -> Result<String, String> {
+    DockerManager::exec_command(&container_id, command).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn docker_prune_containers() -> Result<String, String> {
-    DockerManager::prune_containers()
+async fn docker_prune_containers() -> Result<u64, String> {
+    DockerManager::prune_containers().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn docker_prune_images() -> Result<String, String> {
-    DockerManager::prune_images()
+async fn docker_prune_images() -> Result<u64, String> {
+    DockerManager::prune_images().await.map_err(|e| e.to_string())
 }
