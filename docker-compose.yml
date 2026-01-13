@@ -2,8 +2,35 @@ version: '3.8'
 
 # SmartSpec Pro - Docker Compose Configuration
 # This file sets up the required infrastructure services
+# 
+# Services:
+# - PostgreSQL: For python-backend
+# - MySQL: For SmartSpecWeb (Next.js)
+# - Redis: Shared cache
+# - ChromaDB: Vector store for RAG
 
 services:
+  # MySQL Database (for SmartSpecWeb)
+  mysql:
+    image: mysql:8.0
+    container_name: smartspec-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: smartspecweb
+      MYSQL_USER: smartspec
+      MYSQL_PASSWORD: smartspec123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
@@ -53,6 +80,8 @@ services:
     restart: unless-stopped
 
 volumes:
+  mysql_data:
+    driver: local
   postgres_data:
     driver: local
   redis_data:
