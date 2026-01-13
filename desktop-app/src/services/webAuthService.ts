@@ -268,6 +268,13 @@ function getRefreshToken(): string | null {
 }
 
 /**
+ * Get current access token
+ */
+export function getAccessToken(): string | null {
+  return getProxyToken();
+}
+
+/**
  * Check if access token is expired (with 1 min buffer)
  */
 export function isAccessTokenExpired(): boolean {
