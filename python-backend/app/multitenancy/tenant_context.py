@@ -260,3 +260,14 @@ class TenantContextLogger:
 def get_tenant_logger(name: str) -> TenantContextLogger:
     """Get a tenant-aware logger."""
     return TenantContextLogger(name)
+
+
+def get_current_tenant_id() -> Optional[str]:
+    """
+    Get the current tenant ID.
+    
+    Returns:
+        Current tenant ID or None if not set
+    """
+    context = get_current_tenant()
+    return context.tenant_id if context else None

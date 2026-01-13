@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from app.core.auth import get_current_user, get_current_admin
+from app.core.auth import get_current_user, get_current_admin_user as get_current_admin
 from app.models.user import User
 from app.rbac.rbac_service import RBACService, get_rbac_service
 from app.multitenancy.tenant_context import get_current_tenant_id
