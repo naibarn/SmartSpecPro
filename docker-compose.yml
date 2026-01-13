@@ -1,0 +1,66 @@
+version: '3.8'
+
+# SmartSpec Pro - Docker Compose Configuration
+# This file sets up the required infrastructure services
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartspec-postgres
+    environment:
+      POSTGRES_USER: smartspec
+      POSTGRES_PASSWORD: smartspec123
+      POSTGRES_DB: smartspecpro
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./python-backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartspec -d smartspecpro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: smartspec-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ChromaDB Vector Store (optional - for RAG features)
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: smartspec-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  chroma_data:
+    driver: local
+
+# Networks (optional - for service isolation)
+networks:
+  default:
+    name: smartspec-network
