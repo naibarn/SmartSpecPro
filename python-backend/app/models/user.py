@@ -35,6 +35,7 @@ class User(Base):
     api_keys = relationship("APIKey", back_populates="user", lazy="dynamic")
     oauth_connections = relationship("OAuthConnection", back_populates="user", lazy="dynamic")
     semantic_memories = relationship("SemanticMemory", back_populates="user", lazy="dynamic")
+    opencode_api_keys = relationship("OpenCodeAPIKey", back_populates="user", lazy="dynamic")
     
     # Generation relationships (commented out - models not yet defined)
     # generation_tasks = relationship("GenerationTask", back_populates="user", lazy="dynamic")

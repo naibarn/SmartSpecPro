@@ -91,3 +91,34 @@ aiosmtplib==2.0.1
 argon2-cffi==23.1.0
 
 chromadb>=0.5.0
+
+# ==========================================
+# Phase 2-3: Additional Dependencies
+# ==========================================
+
+# Vector Database (pgvector)
+pgvector>=0.2.4
+
+# RAG & Search
+rank_bm25>=0.2.2
+sentence-transformers>=2.2.0
+tiktoken>=0.5.0
+
+# Observability
+prometheus-client>=0.19.0
+opentelemetry-api>=1.22.0
+opentelemetry-sdk>=1.22.0
+opentelemetry-instrumentation-fastapi>=0.43b0
+
+# Testing enhancements
+faker>=22.0.0
+factory-boy>=3.3.0
+
+# Development enhancements
+ruff>=0.1.0
+
+# Utilities
+tenacity>=8.2.0
+
+# Workspace & Docker
+docker>=7.0.0
