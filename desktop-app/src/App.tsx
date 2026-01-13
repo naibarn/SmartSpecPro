@@ -7,6 +7,7 @@ import KiloCliPage from "./pages/KiloCli";
 import KiloPtyPage from "./pages/KiloPty";
 import LLMChatPage from "./pages/LLMChat";
 import TestPage from "./pages/TestPage";
+import DockerSandbox from "./pages/DockerSandbox";
 import Login from "./pages/Login";
 import WebLogin from "./pages/WebLogin";
 import { initializeAuth, getAuthToken, isTokenExpired } from "./services/authService";
@@ -55,6 +56,7 @@ export default function App() {
                     <Route path="/terminal" element={<KiloPtyPage />} />
                     <Route path="/kilo" element={<KiloCliPage />} />
                     <Route path="/test" element={<TestPage />} />
+                    <Route path="/docker" element={<DockerSandbox />} />
                   </Routes>
                 </div>
               </div>

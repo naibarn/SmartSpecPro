@@ -67,6 +67,7 @@ export default function Sidebar() {
         <NavLink to="/chat" style={linkStyle}>LLM Chat (Vision)</NavLink>
         <NavLink to="/terminal" style={linkStyle}>Terminal (PTY)</NavLink>
         <NavLink to="/kilo" style={linkStyle}>CLI (Terminal)</NavLink>
+        <NavLink to="/docker" style={linkStyle}>🐳 Docker Sandbox</NavLink>
 
         {/* SmartSpecWeb Admin Link */}
         {webConnected && webUser?.plan !== "free" && (

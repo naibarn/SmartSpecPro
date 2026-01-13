@@ -1,6 +1,15 @@
 /**
  * OpenAI service for natural language to command translation
+ * 
+ * This service calls the python-backend LLM proxy instead of calling
+ * OpenAI directly. This ensures:
+ * - Authentication is enforced
+ * - Credits are tracked and deducted
+ * - Rate limiting is applied
+ * - No API keys are exposed in the desktop app
  */
+
+import { chatCompletions } from "./llmOpenAI";
 
 interface TranslationResult {
   command: string;
@@ -9,7 +18,6 @@ interface TranslationResult {
   confidence: number;
 }
 
-// @ts-ignore - Used in production OpenAI integration
 const SYSTEM_PROMPT = `You are a command translator for SmartSpec Pro, a workflow automation tool.
 
 Your task is to translate natural language requests into structured workflow commands.
@@ -61,27 +69,65 @@ Rules:
 5. Use reasonable defaults when needed`;
 
 /**
- * Translate natural language to workflow command using OpenAI
+ * Translate natural language to workflow command using LLM
+ * 
+ * Calls python-backend which handles:
+ * - Authentication
+ * - Credit deduction
+ * - Rate limiting
+ * - LLM provider routing
  */
 export async function translateToCommand(
   naturalLanguage: string
 ): Promise<TranslationResult> {
-  // For demo/development: Use mock translation
-  // In production, this would call OpenAI API
-  
-  const mockResult = mockTranslation(naturalLanguage);
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  return mockResult;
+  try {
+    const response = await chatCompletions({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: naturalLanguage }
+      ],
+      temperature: 0.3,
+      max_tokens: 200
+    });
+
+    const content = response.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("No response from LLM");
+    }
+
+    // Parse JSON response
+    const result = JSON.parse(content);
+
+    return {
+      command: formatCommand(result.workflow, result.args),
+      workflow: result.workflow,
+      args: result.args,
+      confidence: result.confidence
+    };
+  } catch (error) {
+    console.error("Translation error:", error);
+    
+    // Fallback to local parsing for basic commands
+    return fallbackTranslation(naturalLanguage);
+  }
 }
 
 /**
- * Mock translation for demo purposes
- * Replace with actual OpenAI API call in production
+ * Format workflow and args into command string
  */
-function mockTranslation(input: string): TranslationResult {
+function formatCommand(workflow: string, args: Record<string, any>): string {
+  const argStr = Object.entries(args)
+    .map(([key, value]) => `--${key} "${value}"`)
+    .join(" ");
+  return `${workflow} ${argStr}`;
+}
+
+/**
+ * Fallback translation when LLM is unavailable
+ * Uses simple pattern matching for basic commands
+ */
+function fallbackTranslation(input: string): TranslationResult {
   const lower = input.toLowerCase();
   
   // Generate spec
@@ -94,7 +140,7 @@ function mockTranslation(input: string): TranslationResult {
         topic,
         format: "markdown"
       },
-      confidence: 0.9
+      confidence: 0.6 // Lower confidence for fallback
     };
   }
   
@@ -107,7 +153,7 @@ function mockTranslation(input: string): TranslationResult {
       args: {
         spec_path: path
       },
-      confidence: 0.85
+      confidence: 0.6
     };
   }
   
@@ -120,7 +166,7 @@ function mockTranslation(input: string): TranslationResult {
       args: {
         source
       },
-      confidence: 0.8
+      confidence: 0.6
     };
   }
   
@@ -133,7 +179,7 @@ function mockTranslation(input: string): TranslationResult {
       args: {
         spec
       },
-      confidence: 0.85
+      confidence: 0.6
     };
   }
   
@@ -145,7 +191,7 @@ function mockTranslation(input: string): TranslationResult {
       topic: input,
       format: "markdown"
     },
-    confidence: 0.5
+    confidence: 0.3
   };
 }
 
@@ -180,57 +226,3 @@ function extractPath(input: string): string | null {
   
   return null;
 }
-
-/**
- * Call OpenAI API for translation (production implementation)
- * Uncomment and use this when ready for production
- */
-/*
-export async function translateToCommandWithOpenAI(
-  naturalLanguage: string
-): Promise<TranslationResult> {
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: naturalLanguage }
-        ],
-        temperature: 0.3,
-        max_tokens: 200
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    const result = JSON.parse(content);
-
-    return {
-      command: formatCommand(result.workflow, result.args),
-      workflow: result.workflow,
-      args: result.args,
-      confidence: result.confidence
-    };
-  } catch (error) {
-    console.error("OpenAI translation error:", error);
-    throw error;
-  }
-}
-
-function formatCommand(workflow: string, args: Record<string, any>): string {
-  const argStr = Object.entries(args)
-    .map(([key, value]) => `--${key} "${value}"`)
-    .join(" ");
-  return `${workflow} ${argStr}`;
-}
-*/

@@ -1,0 +1,228 @@
+# SmartSpec Sandbox Images - Docker Compose
+# Build and manage sandbox images for local development
+#
+# Usage:
+#   Build all images:     docker-compose build
+#   Build specific image: docker-compose build nodejs
+#   Run sandbox:          docker-compose run --rm nodejs bash
+
+version: "3.9"
+
+services:
+  # ============================================
+  # Base Image - Foundation for all sandboxes
+  # ============================================
+  base:
+    build:
+      context: ./base
+      dockerfile: Dockerfile
+      args:
+        SANDBOX_USER: sandbox
+        SANDBOX_UID: 1000
+        SANDBOX_GID: 1000
+    image: smartspec/sandbox-base:latest
+    container_name: smartspec-sandbox-base
+    volumes:
+      - ./workspace:/workspace
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # Node.js Sandbox
+  # ============================================
+  nodejs:
+    build:
+      context: ./nodejs
+      dockerfile: Dockerfile
+    image: smartspec/sandbox-nodejs:latest
+    container_name: smartspec-sandbox-nodejs
+    depends_on:
+      - base
+    volumes:
+      - ./workspace:/workspace
+      - nodejs-npm-cache:/home/sandbox/.npm
+      - nodejs-pnpm-cache:/home/sandbox/.local/share/pnpm
+    ports:
+      - "3000:3000"
+      - "5173:5173"
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # Python Sandbox
+  # ============================================
+  python:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    image: smartspec/sandbox-python:latest
+    container_name: smartspec-sandbox-python
+    depends_on:
+      - base
+    volumes:
+      - ./workspace:/workspace
+      - python-pip-cache:/home/sandbox/.cache/pip
+    ports:
+      - "8000:8000"
+      - "5000:5000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # Go Sandbox
+  # ============================================
+  golang:
+    build:
+      context: ./golang
+      dockerfile: Dockerfile
+    image: smartspec/sandbox-golang:latest
+    container_name: smartspec-sandbox-golang
+    depends_on:
+      - base
+    volumes:
+      - ./workspace:/workspace
+      - golang-cache:/home/sandbox/go
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    environment:
+      - GO111MODULE=on
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # Rust Sandbox
+  # ============================================
+  rust:
+    build:
+      context: ./rust
+      dockerfile: Dockerfile
+    image: smartspec/sandbox-rust:latest
+    container_name: smartspec-sandbox-rust
+    depends_on:
+      - base
+    volumes:
+      - ./workspace:/workspace
+      - rust-cargo-cache:/home/sandbox/.cargo
+      - rust-sccache:/home/sandbox/.cache/sccache
+    ports:
+      - "8080:8080"
+      - "3000:3000"
+    environment:
+      - RUST_BACKTRACE=1
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # Fullstack Sandbox
+  # ============================================
+  fullstack:
+    build:
+      context: ./fullstack
+      dockerfile: Dockerfile
+    image: smartspec/sandbox-fullstack:latest
+    container_name: smartspec-sandbox-fullstack
+    depends_on:
+      - base
+    volumes:
+      - ./workspace:/workspace
+      - fullstack-npm-cache:/home/sandbox/.npm
+      - fullstack-pip-cache:/home/sandbox/.cache/pip
+      - fullstack-go-cache:/home/sandbox/go
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker
+    ports:
+      - "3000:3000"
+      - "5000:5000"
+      - "5173:5173"
+      - "8000:8000"
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PYTHONUNBUFFERED=1
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # Development Database Services (Optional)
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartspec-sandbox-postgres
+    environment:
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: sandbox
+      POSTGRES_DB: sandbox
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    profiles:
+      - databases
+
+  mysql:
+    image: mysql:8.0
+    container_name: smartspec-sandbox-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: sandbox
+      MYSQL_DATABASE: sandbox
+      MYSQL_USER: sandbox
+      MYSQL_PASSWORD: sandbox
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    profiles:
+      - databases
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartspec-sandbox-redis
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    profiles:
+      - databases
+
+  mongodb:
+    image: mongo:7
+    container_name: smartspec-sandbox-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: sandbox
+      MONGO_INITDB_ROOT_PASSWORD: sandbox
+    volumes:
+      - mongodb-data:/data/db
+    ports:
+      - "27017:27017"
+    profiles:
+      - databases
+
+# ============================================
+# Volumes for caching
+# ============================================
+volumes:
+  nodejs-npm-cache:
+  nodejs-pnpm-cache:
+  python-pip-cache:
+  golang-cache:
+  rust-cargo-cache:
+  rust-sccache:
+  fullstack-npm-cache:
+  fullstack-pip-cache:
+  fullstack-go-cache:
+  postgres-data:
+  mysql-data:
+  redis-data:
+  mongodb-data:
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  default:
+    name: smartspec-sandbox-network

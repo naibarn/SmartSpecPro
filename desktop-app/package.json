@@ -7,7 +7,16 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:debug": "tauri build --debug",
+    "sandbox:setup": "cd sandbox-images && ./setup-workspace.sh",
+    "sandbox:build": "cd sandbox-images && ./build.sh",
+    "sandbox:build:all": "cd sandbox-images && ./build.sh all",
+    "full:build": "npm run sandbox:build && npm run tauri:build",
+    "full:dev": "npm run sandbox:build && npm run tauri:dev"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

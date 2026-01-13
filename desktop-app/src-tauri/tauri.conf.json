@@ -32,7 +32,9 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "python/**/*"
-    ]
+      "python/**/*",
+      "../sandbox-images/**/*"
+    ],
+    "externalBin": []
   }
 }

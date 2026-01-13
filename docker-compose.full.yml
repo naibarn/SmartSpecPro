@@ -1,0 +1,247 @@
+version: '3.8'
+# SmartSpec Pro - Full Docker Compose Configuration
+# This file sets up the complete infrastructure and application services
+# 
+# Infrastructure Services:
+# - PostgreSQL: For python-backend
+# - MySQL: For SmartSpecWeb and docker-status
+# - Redis: Shared cache
+# - ChromaDB: Vector store for RAG
+#
+# Application Services:
+# - python-backend: FastAPI backend with LangGraph
+# - smartspec-web: Main web application
+# - docker-status: Docker container monitoring
+# - api-generator: API code generation service
+# - control-plane: Control plane service
+#
+# Usage:
+#   docker-compose -f docker-compose.full.yml up -d
+#   docker-compose -f docker-compose.full.yml --profile tools up api-generator
+
+services:
+  # ============================================
+  # INFRASTRUCTURE SERVICES
+  # ============================================
+  
+  # MySQL Database (for SmartSpecWeb and docker-status)
+  mysql:
+    image: mysql:8.0
+    container_name: smartspec-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-smartspecweb}
+      MYSQL_USER: ${MYSQL_USER:-smartspec}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smartspec123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # PostgreSQL Database (for python-backend)
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartspec-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smartspec}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartspec123}
+      POSTGRES_DB: ${POSTGRES_DB:-smartspecpro}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./python-backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartspec -d smartspecpro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: smartspec-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # ChromaDB Vector Store (for RAG features)
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: smartspec-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # ============================================
+  # APPLICATION SERVICES
+  # ============================================
+
+  # Python Backend (FastAPI + LangGraph)
+  python-backend:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-python-backend
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspecpro}
+      - REDIS_URL=redis://redis:6379
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # SmartSpec Web Application
+  smartspec-web:
+    build:
+      context: ./SmartSpecWeb
+      dockerfile: Dockerfile
+    container_name: smartspec-web
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=mysql://${MYSQL_USER:-smartspec}:${MYSQL_PASSWORD:-smartspec123}@mysql:3306/${MYSQL_DATABASE:-smartspecweb}
+      - REDIS_URL=redis://redis:6379
+      - BACKEND_URL=http://python-backend:8000
+      - SESSION_SECRET=${SESSION_SECRET:-your-session-secret-change-in-production}
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      python-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # Docker Status Monitor
+  docker-status:
+    build:
+      context: ./docker-status
+      dockerfile: Dockerfile
+    container_name: smartspec-docker-status
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=mysql://${MYSQL_USER:-smartspec}:${MYSQL_PASSWORD:-smartspec123}@mysql:3306/${MYSQL_DATABASE:-smartspecweb}
+    ports:
+      - "3001:3001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # Control Plane Service
+  control-plane:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    container_name: smartspec-control-plane
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspecpro}
+    ports:
+      - "7070:7070"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # API Generator (Optional - run on demand)
+  api-generator:
+    build:
+      context: ./api-generator
+      dockerfile: Dockerfile
+    container_name: smartspec-api-generator
+    volumes:
+      - ./api-generator/output:/app/output
+    profiles:
+      - tools
+    networks:
+      - smartspec-network
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  mysql_data:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  chroma_data:
+    driver: local
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  smartspec-network:
+    name: smartspec-network
+    driver: bridge

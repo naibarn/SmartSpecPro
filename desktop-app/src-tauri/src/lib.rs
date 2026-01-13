@@ -4,6 +4,7 @@ mod models;
 mod repository;
 mod git_manager;
 mod secure_store;
+mod docker_manager;
 
 use python_bridge::{OutputMessage, PythonBridge, WorkflowArgs};
 use tokio::sync::Mutex;
@@ -14,6 +15,7 @@ use database::Database;
 use models::*;
 use repository::*;
 use git_manager::GitManager;
+use docker_manager::{DockerManager, ContainerInfo, ContainerStats, ImageInfo, DockerInfo, ContainerLogs, SandboxConfig};
 
 // App state
 struct AppState {
@@ -166,6 +168,22 @@ pub fn run() {
             secure_store::set_proxy_token,
             secure_store::get_proxy_token,
             secure_store::delete_proxy_token,
+            // Docker Management
+            docker_check,
+            docker_list_containers,
+            docker_get_container_stats,
+            docker_get_container_logs,
+            docker_start_container,
+            docker_stop_container,
+            docker_restart_container,
+            docker_remove_container,
+            docker_list_images,
+            docker_pull_image,
+            docker_remove_image,
+            docker_create_sandbox,
+            docker_exec_command,
+            docker_prune_containers,
+            docker_prune_images,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -510,4 +528,82 @@ async fn git_list_branches(
     } else {
         Err("Git manager not initialized".to_string())
     }
+}
+// ========================================
+// Docker Management Commands
+// ========================================
+
+#[tauri::command]
+async fn docker_check() -> Result<DockerInfo, String> {
+    DockerManager::check_docker()
+}
+
+#[tauri::command]
+async fn docker_list_containers(all: bool) -> Result<Vec<ContainerInfo>, String> {
+    DockerManager::list_containers(all)
+}
+
+#[tauri::command]
+async fn docker_get_container_stats(container_id: String) -> Result<ContainerStats, String> {
+    DockerManager::get_container_stats(&container_id)
+}
+
+#[tauri::command]
+async fn docker_get_container_logs(container_id: String, tail: u32) -> Result<ContainerLogs, String> {
+    DockerManager::get_container_logs(&container_id, tail)
+}
+
+#[tauri::command]
+async fn docker_start_container(container_id: String) -> Result<(), String> {
+    DockerManager::start_container(&container_id)
+}
+
+#[tauri::command]
+async fn docker_stop_container(container_id: String) -> Result<(), String> {
+    DockerManager::stop_container(&container_id)
+}
+
+#[tauri::command]
+async fn docker_restart_container(container_id: String) -> Result<(), String> {
+    DockerManager::restart_container(&container_id)
+}
+
+#[tauri::command]
+async fn docker_remove_container(container_id: String, force: bool) -> Result<(), String> {
+    DockerManager::remove_container(&container_id, force)
+}
+
+#[tauri::command]
+async fn docker_list_images() -> Result<Vec<ImageInfo>, String> {
+    DockerManager::list_images()
+}
+
+#[tauri::command]
+async fn docker_pull_image(image: String) -> Result<String, String> {
+    DockerManager::pull_image(&image)
+}
+
+#[tauri::command]
+async fn docker_remove_image(image_id: String, force: bool) -> Result<(), String> {
+    DockerManager::remove_image(&image_id, force)
+}
+
+#[tauri::command]
+async fn docker_create_sandbox(config: SandboxConfig) -> Result<String, String> {
+    DockerManager::create_sandbox(&config)
+}
+
+#[tauri::command]
+async fn docker_exec_command(container_id: String, command: String) -> Result<String, String> {
+    DockerManager::exec_in_container(&container_id, &command)
+}
+
+#[tauri::command]
+async fn docker_prune_containers() -> Result<String, String> {
+    DockerManager::prune_containers()
+}
+
+#[tauri::command]
+async fn docker_prune_images() -> Result<String, String> {
+    DockerManager::prune_images()
 }

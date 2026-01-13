@@ -1,0 +1,14 @@
+# Workspace files (except .gitkeep)
+workspace/*
+!workspace/.gitkeep
+
+# Docker build cache
+.docker/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store

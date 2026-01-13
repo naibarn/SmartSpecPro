@@ -15,13 +15,22 @@ from app.llm_proxy.unified_client import get_unified_client
 from app.core.database import get_db
 from app.core.auth import verify_token
 from app.models.user import User
-from app.services.credit_service import CreditService
+from app.services.credit_service import CreditService, InsufficientCreditsError
+from app.core.rate_limiter import get_rate_limiter
 from sqlalchemy import select
 import structlog
 
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["OpenAI Compatible"])
+
+# Minimum credit balance required to make LLM calls (in credits)
+# 100 credits = $0.10 USD - enough for a small request
+MIN_CREDITS_REQUIRED = 100
+
+# Estimated cost per request for pre-check (in USD)
+# This is a conservative estimate to prevent overdraft
+ESTIMATED_COST_PER_REQUEST = Decimal("0.05")
 
 
 def _extract_user_token(req: Request) -> Optional[str]:
@@ -35,6 +44,21 @@ def _extract_user_token(req: Request) -> Optional[str]:
     if auth_header.lower().startswith("bearer "):
         return auth_header.split(" ", 1)[1].strip()
     return None
+
+
+def _get_client_ip(req: Request) -> str:
+    """Get client IP address from request"""
+    # Check for forwarded headers (behind proxy/load balancer)
+    forwarded = req.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    
+    real_ip = req.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+    
+    # Fallback to direct client IP
+    return req.client.host if req.client else "unknown"
 
 
 def _require_proxy_token(req: Request):
@@ -115,6 +139,159 @@ async def _get_user_from_token(req: Request, db: AsyncSession) -> Optional[User]
         return None
 
 
+async def _check_credit_balance(
+    user: Optional[User],
+    db: AsyncSession,
+    estimated_cost: Decimal = ESTIMATED_COST_PER_REQUEST
+) -> None:
+    """
+    Pre-check credit balance before making LLM call
+    
+    Args:
+        user: User object (optional)
+        db: Database session
+        estimated_cost: Estimated cost in USD
+    
+    Raises:
+        HTTPException: 402 if insufficient credits
+    """
+    if not user:
+        # Anonymous request - skip credit check (use proxy token limits)
+        return
+    
+    credit_service = CreditService(db)
+    
+    try:
+        balance = await credit_service.get_balance(str(user.id))
+        
+        # Check minimum balance
+        if balance < MIN_CREDITS_REQUIRED:
+            logger.warning(
+                "insufficient_credits_precheck",
+                user_id=str(user.id),
+                balance=balance,
+                min_required=MIN_CREDITS_REQUIRED
+            )
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "insufficient_credits",
+                    "message": f"Insufficient credits. Minimum required: {MIN_CREDITS_REQUIRED:,} credits (${MIN_CREDITS_REQUIRED/1000:.2f})",
+                    "balance_credits": balance,
+                    "balance_usd": balance / 1000,
+                    "min_required_credits": MIN_CREDITS_REQUIRED,
+                    "min_required_usd": MIN_CREDITS_REQUIRED / 1000,
+                    "topup_url": "/credits/topup"
+                }
+            )
+        
+        # Check if balance covers estimated cost
+        has_sufficient = await credit_service.check_sufficient_credits(
+            str(user.id),
+            estimated_cost
+        )
+        
+        if not has_sufficient:
+            from app.core.credits import usd_to_credits
+            required_credits = usd_to_credits(estimated_cost)
+            
+            logger.warning(
+                "insufficient_credits_for_request",
+                user_id=str(user.id),
+                balance=balance,
+                estimated_cost_usd=float(estimated_cost),
+                required_credits=required_credits
+            )
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "insufficient_credits",
+                    "message": f"Insufficient credits for this request. Estimated cost: ${float(estimated_cost):.4f}",
+                    "balance_credits": balance,
+                    "balance_usd": balance / 1000,
+                    "estimated_cost_usd": float(estimated_cost),
+                    "estimated_cost_credits": required_credits,
+                    "topup_url": "/credits/topup"
+                }
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("credit_check_failed", user_id=str(user.id), error=str(e))
+        # Don't block request on credit check errors - log and continue
+        pass
+
+
+def _check_rate_limit(
+    user: Optional[User],
+    ip: str,
+    estimated_tokens: int = 0
+) -> None:
+    """
+    Check rate limits before processing request
+    
+    Args:
+        user: User object (optional)
+        ip: Client IP address
+        estimated_tokens: Estimated tokens for this request
+    
+    Raises:
+        HTTPException: 429 if rate limited
+    """
+    rate_limiter = get_rate_limiter()
+    
+    user_id = str(user.id) if user else None
+    allowed, error_message, retry_after = rate_limiter.check_rate_limit(
+        user_id=user_id,
+        ip=ip,
+        estimated_tokens=estimated_tokens
+    )
+    
+    if not allowed:
+        logger.warning(
+            "rate_limit_exceeded",
+            user_id=user_id,
+            ip=ip,
+            error=error_message,
+            retry_after=retry_after
+        )
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "rate_limit_exceeded",
+                "message": error_message,
+                "retry_after": retry_after
+            },
+            headers={"Retry-After": str(retry_after)}
+        )
+
+
+def _record_rate_limit(
+    user: Optional[User],
+    ip: str,
+    tokens_used: int = 0
+) -> None:
+    """Record request for rate limiting"""
+    rate_limiter = get_rate_limiter()
+    user_id = str(user.id) if user else None
+    rate_limiter.record_request(user_id=user_id, ip=ip, tokens_used=tokens_used)
+
+
+def _estimate_tokens(messages: list, max_tokens: int = 4000) -> int:
+    """
+    Estimate total tokens for a request
+    
+    Simple estimation: ~4 chars per token for input + max_tokens for output
+    """
+    input_chars = sum(
+        len(str(m.get("content", ""))) 
+        for m in messages
+    )
+    estimated_input_tokens = input_chars // 4
+    return estimated_input_tokens + max_tokens
+
+
 def _convert_to_openai_format(llm_response, model: str) -> Dict[str, Any]:
     """Convert LLMResponse to OpenAI chat completion format"""
     return {
@@ -152,11 +329,33 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
     
     # Extract user token for forwarding to Web Gateway (for credit tracking)
     user_token = _extract_user_token(req)
+    
+    # Get user and client IP for rate limiting and credit checks
+    user = await _get_user_from_token(req, db)
+    client_ip = _get_client_ip(req)
+    
+    # Extract parameters for estimation
+    messages = payload.get("messages", [])
+    max_tokens = payload.get("max_tokens", 4000)
+    
+    # Estimate tokens for rate limiting
+    estimated_tokens = _estimate_tokens(messages, max_tokens)
+    
+    # === PRE-CHECKS ===
+    
+    # 1. Rate limit check
+    _check_rate_limit(user, client_ip, estimated_tokens)
+    
+    # 2. Credit balance pre-check (for authenticated users)
+    await _check_credit_balance(user, db)
 
     # Mode 1: Web Gateway (if enabled)
     if settings.SMARTSPEC_USE_WEB_GATEWAY:
         if not settings.SMARTSPEC_WEB_GATEWAY_URL:
             raise HTTPException(status_code=500, detail="SMARTSPEC_WEB_GATEWAY_URL not configured")
+
+        # Record rate limit usage
+        _record_rate_limit(user, client_ip, estimated_tokens)
 
         if stream:
             async def gen():
@@ -178,13 +377,8 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
             )
 
         # Extract parameters
-        messages = payload.get("messages", [])
         model_requested = payload.get("model")  # Don't use default yet
         temperature = payload.get("temperature", 0.7)
-        max_tokens = payload.get("max_tokens", 4000)
-
-        # Get user from auth token (optional - for credit tracking)
-        user = await _get_user_from_token(req, db)
 
         # Initialize client with database session to load provider configs
         client = get_unified_client()
@@ -224,6 +418,10 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
                 use_openrouter=True  # Default to OpenRouter if available
             )
 
+            # Record actual token usage for rate limiting
+            actual_tokens = response.tokens_used or estimated_tokens
+            _record_rate_limit(user, client_ip, actual_tokens)
+
             # Track credit usage if user is authenticated
             credits_used = None
             credits_balance = None
@@ -257,6 +455,16 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
                         model=model
                     )
 
+                except InsufficientCreditsError as e:
+                    # This shouldn't happen due to pre-check, but handle it anyway
+                    logger.error(
+                        "insufficient_credits_after_call",
+                        user_id=str(user.id),
+                        error=str(e)
+                    )
+                    # Still return the response, but log the issue
+                    # The pre-check should prevent this in most cases
+
                 except Exception as e:
                     # Log error but don't fail the request
                     logger.error(
@@ -282,6 +490,8 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
 
             return openai_response
 
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(
                 status_code=500,
@@ -305,3 +515,27 @@ async def models(req: Request):
     upstream = await forward_models(trace_id=tid, user_token=user_token)
     content_type = upstream.headers.get("content-type", "application/json")
     return Response(content=upstream.content, status_code=upstream.status_code, media_type=content_type)
+
+
+@router.get("/v1/rate-limit/status")
+async def rate_limit_status(req: Request, db: AsyncSession = Depends(get_db)):
+    """
+    Get current rate limit status for the requesting user/IP
+    
+    Returns usage stats and remaining limits
+    """
+    _require_proxy_token(req)
+    
+    user = await _get_user_from_token(req, db)
+    client_ip = _get_client_ip(req)
+    
+    rate_limiter = get_rate_limiter()
+    user_id = str(user.id) if user else None
+    
+    usage = rate_limiter.get_usage(user_id=user_id, ip=client_ip)
+    
+    return {
+        "user_id": user_id,
+        "ip": client_ip,
+        "usage": usage
+    }

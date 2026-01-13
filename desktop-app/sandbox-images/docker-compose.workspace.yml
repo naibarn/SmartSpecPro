@@ -1,0 +1,190 @@
+# SmartSpec Sandbox - Workspace Docker Compose
+# Template for creating workspace containers with persistent storage
+#
+# Usage:
+#   1. Copy this file to your workspace directory
+#   2. Customize environment variables
+#   3. Run: docker-compose -f docker-compose.workspace.yml up -d
+
+version: '3.8'
+
+# ============================================
+# Workspace Container Template
+# ============================================
+# This template shows how to create a workspace container
+# with proper volume mounting for data persistence
+
+x-workspace-common: &workspace-common
+  stdin_open: true
+  tty: true
+  restart: unless-stopped
+  networks:
+    - smartspec-network
+  environment:
+    - TZ=Asia/Bangkok
+    - WORKSPACE_NAME=${WORKSPACE_NAME:-default}
+    - BRANCH_NAME=${BRANCH_NAME:-main}
+
+services:
+  # ============================================
+  # Node.js Workspace
+  # ============================================
+  workspace-nodejs:
+    <<: *workspace-common
+    image: smartspec/sandbox-nodejs:latest
+    container_name: smartspec-${WORKSPACE_NAME:-default}-${BRANCH_NAME:-main}-nodejs
+    volumes:
+      # Project files - PERSISTENT (never lost)
+      - ${PROJECT_PATH:-./project}:/workspace/project:rw
+      
+      # Package caches - SHARED across containers
+      - smartspec-npm-cache:/home/sandbox/.npm
+      - smartspec-pnpm-cache:/home/sandbox/.local/share/pnpm
+      
+      # Build artifacts - EPHEMERAL (can be recreated)
+      # Uncomment if you want node_modules inside container
+      # - workspace-node-modules:/workspace/project/node_modules
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+      - "${VITE_PORT:-5173}:5173"
+      - "${DEBUG_PORT:-9229}:9229"
+    working_dir: /workspace/project
+    environment:
+      - NODE_ENV=development
+      - WORKSPACE_NAME=${WORKSPACE_NAME:-default}
+      - BRANCH_NAME=${BRANCH_NAME:-main}
+    profiles:
+      - nodejs
+
+  # ============================================
+  # Python Workspace
+  # ============================================
+  workspace-python:
+    <<: *workspace-common
+    image: smartspec/sandbox-python:latest
+    container_name: smartspec-${WORKSPACE_NAME:-default}-${BRANCH_NAME:-main}-python
+    volumes:
+      # Project files - PERSISTENT
+      - ${PROJECT_PATH:-./project}:/workspace/project:rw
+      
+      # Package caches - SHARED
+      - smartspec-pip-cache:/home/sandbox/.cache/pip
+      - smartspec-uv-cache:/home/sandbox/.cache/uv
+    ports:
+      - "${API_PORT:-8000}:8000"
+      - "${FLASK_PORT:-5000}:5000"
+    working_dir: /workspace/project
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WORKSPACE_NAME=${WORKSPACE_NAME:-default}
+      - BRANCH_NAME=${BRANCH_NAME:-main}
+    profiles:
+      - python
+
+  # ============================================
+  # Go Workspace
+  # ============================================
+  workspace-golang:
+    <<: *workspace-common
+    image: smartspec/sandbox-golang:latest
+    container_name: smartspec-${WORKSPACE_NAME:-default}-${BRANCH_NAME:-main}-golang
+    volumes:
+      # Project files - PERSISTENT
+      - ${PROJECT_PATH:-./project}:/workspace/project:rw
+      
+      # Go module cache - SHARED
+      - smartspec-go-cache:/home/sandbox/go
+    ports:
+      - "${GO_PORT:-8080}:8080"
+      - "${GRPC_PORT:-9000}:9000"
+    working_dir: /workspace/project
+    environment:
+      - GO111MODULE=on
+      - WORKSPACE_NAME=${WORKSPACE_NAME:-default}
+      - BRANCH_NAME=${BRANCH_NAME:-main}
+    profiles:
+      - golang
+
+  # ============================================
+  # Rust Workspace
+  # ============================================
+  workspace-rust:
+    <<: *workspace-common
+    image: smartspec/sandbox-rust:latest
+    container_name: smartspec-${WORKSPACE_NAME:-default}-${BRANCH_NAME:-main}-rust
+    volumes:
+      # Project files - PERSISTENT
+      - ${PROJECT_PATH:-./project}:/workspace/project:rw
+      
+      # Cargo cache - SHARED
+      - smartspec-cargo-cache:/home/sandbox/.cargo
+      - smartspec-sccache:/home/sandbox/.cache/sccache
+    ports:
+      - "${RUST_PORT:-8080}:8080"
+    working_dir: /workspace/project
+    environment:
+      - RUST_BACKTRACE=1
+      - WORKSPACE_NAME=${WORKSPACE_NAME:-default}
+      - BRANCH_NAME=${BRANCH_NAME:-main}
+    profiles:
+      - rust
+
+  # ============================================
+  # Fullstack Workspace
+  # ============================================
+  workspace-fullstack:
+    <<: *workspace-common
+    image: smartspec/sandbox-fullstack:latest
+    container_name: smartspec-${WORKSPACE_NAME:-default}-${BRANCH_NAME:-main}-fullstack
+    volumes:
+      # Project files - PERSISTENT
+      - ${PROJECT_PATH:-./project}:/workspace/project:rw
+      
+      # All caches - SHARED
+      - smartspec-npm-cache:/home/sandbox/.npm
+      - smartspec-pnpm-cache:/home/sandbox/.local/share/pnpm
+      - smartspec-pip-cache:/home/sandbox/.cache/pip
+      - smartspec-go-cache:/home/sandbox/go
+      - smartspec-cargo-cache:/home/sandbox/.cargo
+      
+      # Docker socket for Docker-in-Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+      - "${API_PORT:-8000}:8000"
+      - "${DEBUG_PORT:-9229}:9229"
+    working_dir: /workspace/project
+    environment:
+      - NODE_ENV=development
+      - PYTHONUNBUFFERED=1
+      - WORKSPACE_NAME=${WORKSPACE_NAME:-default}
+      - BRANCH_NAME=${BRANCH_NAME:-main}
+    profiles:
+      - fullstack
+
+# ============================================
+# Shared Volumes (Persistent across containers)
+# ============================================
+volumes:
+  # Package manager caches
+  smartspec-npm-cache:
+    external: true
+  smartspec-pnpm-cache:
+    external: true
+  smartspec-pip-cache:
+    external: true
+  smartspec-uv-cache:
+    external: true
+  smartspec-go-cache:
+    external: true
+  smartspec-cargo-cache:
+    external: true
+  smartspec-sccache:
+    external: true
+
+# ============================================
+# Network
+# ============================================
+networks:
+  smartspec-network:
+    driver: bridge

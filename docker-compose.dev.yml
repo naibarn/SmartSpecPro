@@ -1,0 +1,241 @@
+version: '3.8'
+
+# SmartSpecPro Development Environment
+# Usage: ./dev.sh start
+
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+  
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartspec-postgres
+    environment:
+      POSTGRES_USER: smartspec
+      POSTGRES_PASSWORD: smartspec_dev
+      POSTGRES_DB: smartspec
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartspec"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartspec-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartspec-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartspec-network
+
+  # ============================================
+  # Backend Services
+  # ============================================
+  
+  python-backend:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-backend
+    environment:
+      - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - SMARTSPEC_PROXY_TOKEN=dev_token_12345
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
+      - JWT_SECRET=dev_jwt_secret_change_in_production
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./python-backend:/app
+      - python_cache:/root/.cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - smartspec-network
+    restart: unless-stopped
+
+  control-plane:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    container_name: smartspec-control-plane
+    environment:
+      - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    ports:
+      - "7070:7070"
+    volumes:
+      - ./control-plane:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - smartspec-network
+    restart: unless-stopped
+
+  # ============================================
+  # Frontend Services
+  # ============================================
+  
+  smartspec-web:
+    build:
+      context: ./SmartSpecWeb
+      dockerfile: Dockerfile
+      target: development
+    container_name: smartspec-web
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_CONTROL_PLANE_URL=http://localhost:7070
+      - VITE_WS_URL=ws://localhost:8000
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./SmartSpecWeb:/app
+      - web_node_modules:/app/node_modules
+      - /app/.next
+    depends_on:
+      - python-backend
+      - control-plane
+    command: pnpm dev --host 0.0.0.0
+    networks:
+      - smartspec-network
+    restart: unless-stopped
+
+  # ============================================
+  # Monitoring Services
+  # ============================================
+  
+  docker-status:
+    build:
+      context: ./docker-status
+      dockerfile: Dockerfile
+    container_name: smartspec-docker-status
+    environment:
+      - OAUTH_SERVER_URL=http://python-backend:8000
+      - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
+      - NODE_ENV=development
+    ports:
+      - "3001:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker-status:/app
+      - docker_status_node_modules:/app/node_modules
+    depends_on:
+      - python-backend
+    networks:
+      - smartspec-network
+    restart: unless-stopped
+
+  # ============================================
+  # Optional: Production-like Setup
+  # ============================================
+  
+  nginx:
+    image: nginx:alpine
+    container_name: smartspec-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - smartspec-web
+      - python-backend
+    networks:
+      - smartspec-network
+    profiles:
+      - production
+
+  # ============================================
+  # Optional: Database Admin
+  # ============================================
+  
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smartspec-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@smartspec.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - smartspec-network
+    profiles:
+      - tools
+
+  # ============================================
+  # Optional: Redis Admin
+  # ============================================
+  
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: smartspec-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - smartspec-network
+    profiles:
+      - tools
+
+# ============================================
+# Networks
+# ============================================
+
+networks:
+  smartspec-network:
+    driver: bridge
+
+# ============================================
+# Volumes
+# ============================================
+
+volumes:
+  postgres_data:
+    name: smartspec_postgres_data
+  redis_data:
+    name: smartspec_redis_data
+  python_cache:
+    name: smartspec_python_cache
+  web_node_modules:
+    name: smartspec_web_node_modules
+  docker_status_node_modules:
+    name: smartspec_docker_status_node_modules
+  pgadmin_data:
+    name: smartspec_pgadmin_data
