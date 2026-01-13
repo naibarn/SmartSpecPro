@@ -346,15 +346,7 @@ export function getWebUrl(): string {
  * Open verification URL in browser
  */
 export function openVerificationUrl(url: string): void {
-  // Try to use Tauri's shell.open if available
-  if (typeof window !== "undefined" && (window as any).__TAURI__) {
-    import("@tauri-apps/api/shell").then((shell) => {
-      shell.open(url);
-    }).catch(() => {
-      // Fallback to window.open
-      window.open(url, "_blank");
-    });
-  } else {
-    window.open(url, "_blank");
-  }
+  // Open URL in default browser
+  // Note: In Tauri v2, use window.open which is handled by the webview
+  window.open(url, "_blank");
 }
