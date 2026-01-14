@@ -8,8 +8,12 @@ Tools:
 1. analyze_spec_for_assets - วิเคราะห์ spec.md เพื่อค้นหา Assets ที่ต้องสร้าง
 2. generate_asset - สร้างสื่อผ่าน Backend API
 3. save_asset_to_project - ดาวน์โหลดและบันทึกไฟล์ลง assets/
+4. generate_assets_from_spec - Workflow อัตโนมัติสำหรับสร้าง assets จาก spec
+5. register_asset - ลงทะเบียน asset ใน Asset Registry
+6. find_assets - ค้นหา assets จาก Asset Registry
+7. get_asset_details - ดึงข้อมูลรายละเอียดของ asset
 
-Version: 1.0.0
+Version: 2.0.0
 """
 
 import asyncio
@@ -592,6 +596,269 @@ async def generate_assets_from_spec(
         "failed": failed,
         "results": results
     }, indent=2, ensure_ascii=False)
+
+
+# ============================================
+# Tool 5: register_asset
+# ============================================
+
+@mcp.tool()
+async def register_asset(
+    filename: str,
+    relative_path: str,
+    asset_type: Literal["image", "video", "audio"],
+    project_id: Optional[str] = None,
+    spec_id: Optional[str] = None,
+    prompt: Optional[str] = None,
+    model: Optional[str] = None,
+    tags: Optional[str] = None,
+    description: Optional[str] = None
+) -> str:
+    """
+    ลงทะเบียน asset ใน Asset Registry ของ Backend
+    
+    Args:
+        filename: ชื่อไฟล์ (เช่น "hero.png")
+        relative_path: ตำแหน่งไฟล์เทียบกับ project root (เช่น "assets/hero.png")
+        asset_type: ประเภท asset - "image", "video", หรือ "audio"
+        project_id: ID ของโปรเจกต์ (optional)
+        spec_id: ID ของ spec ที่เกี่ยวข้อง (optional)
+        prompt: Prompt ที่ใช้สร้าง (optional)
+        model: Model ที่ใช้สร้าง (optional)
+        tags: Tags คั่นด้วยเครื่องหมายจุลภาค (optional, เช่น "hero,banner,marketing")
+        description: คำอธิบาย asset (optional)
+    
+    Returns:
+        JSON string containing registered asset details
+    """
+    if not API_TOKEN:
+        return json.dumps({
+            "success": False,
+            "error": "SMARTSPEC_API_TOKEN environment variable is not set.",
+            "hint": "Set the environment variable: export SMARTSPEC_API_TOKEN=your_jwt_token"
+        }, indent=2, ensure_ascii=False)
+    
+    # Build request payload
+    payload = {
+        "filename": filename,
+        "relative_path": relative_path,
+        "asset_type": asset_type,
+    }
+    
+    if project_id:
+        payload["project_id"] = project_id
+    if spec_id:
+        payload["spec_id"] = spec_id
+    if description:
+        payload["description"] = description
+    
+    # Build metadata
+    metadata = {}
+    if prompt:
+        metadata["prompt"] = prompt
+    if model:
+        metadata["model"] = model
+    if metadata:
+        payload["metadata"] = metadata
+    
+    # Parse tags
+    if tags:
+        payload["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{BACKEND_URL}/api/v1/assets/",
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {API_TOKEN}",
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            if response.status_code == 201:
+                data = response.json()
+                return json.dumps({
+                    "success": True,
+                    "message": "Asset registered successfully",
+                    "asset": data
+                }, indent=2, ensure_ascii=False)
+            else:
+                error_detail = response.text
+                try:
+                    error_json = response.json()
+                    error_detail = error_json.get("detail", response.text)
+                except:
+                    pass
+                
+                return json.dumps({
+                    "success": False,
+                    "error": f"API returned status {response.status_code}: {error_detail}"
+                }, indent=2, ensure_ascii=False)
+                
+    except httpx.ConnectError:
+        return json.dumps({
+            "success": False,
+            "error": f"Cannot connect to Backend API at {BACKEND_URL}"
+        }, indent=2, ensure_ascii=False)
+        
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "error": f"Unexpected error: {str(e)}"
+        }, indent=2, ensure_ascii=False)
+
+
+# ============================================
+# Tool 6: find_assets
+# ============================================
+
+@mcp.tool()
+async def find_assets(
+    query: Optional[str] = None,
+    asset_type: Optional[Literal["image", "video", "audio"]] = None,
+    project_id: Optional[str] = None,
+    spec_id: Optional[str] = None,
+    tags: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20
+) -> str:
+    """
+    ค้นหา assets จาก Asset Registry
+    
+    Args:
+        query: คำค้นหา (ค้นหาใน filename และ description)
+        asset_type: กรองตามประเภท - "image", "video", หรือ "audio"
+        project_id: กรองตาม project ID
+        spec_id: กรองตาม spec ID
+        tags: กรองตาม tags (คั่นด้วยเครื่องหมายจุลภาค)
+        page: หมายเลขหน้า (default: 1)
+        page_size: จำนวนรายการต่อหน้า (default: 20)
+    
+    Returns:
+        JSON string containing list of assets
+    """
+    if not API_TOKEN:
+        return json.dumps({
+            "success": False,
+            "error": "SMARTSPEC_API_TOKEN environment variable is not set."
+        }, indent=2, ensure_ascii=False)
+    
+    # Build query params
+    params = {
+        "page": page,
+        "page_size": page_size
+    }
+    
+    if query:
+        params["query"] = query
+    if asset_type:
+        params["asset_type"] = asset_type
+    if project_id:
+        params["project_id"] = project_id
+    if spec_id:
+        params["spec_id"] = spec_id
+    if tags:
+        params["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{BACKEND_URL}/api/v1/assets/",
+                params=params,
+                headers={
+                    "Authorization": f"Bearer {API_TOKEN}"
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return json.dumps({
+                    "success": True,
+                    "total": data.get("total", 0),
+                    "page": data.get("page", 1),
+                    "page_size": data.get("page_size", 20),
+                    "total_pages": data.get("total_pages", 1),
+                    "assets": data.get("items", [])
+                }, indent=2, ensure_ascii=False)
+            else:
+                return json.dumps({
+                    "success": False,
+                    "error": f"API returned status {response.status_code}"
+                }, indent=2, ensure_ascii=False)
+                
+    except httpx.ConnectError:
+        return json.dumps({
+            "success": False,
+            "error": f"Cannot connect to Backend API at {BACKEND_URL}"
+        }, indent=2, ensure_ascii=False)
+        
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "error": f"Unexpected error: {str(e)}"
+        }, indent=2, ensure_ascii=False)
+
+
+# ============================================
+# Tool 7: get_asset_details
+# ============================================
+
+@mcp.tool()
+async def get_asset_details(asset_id: str) -> str:
+    """
+    ดึงข้อมูลรายละเอียดของ asset ตาม ID
+    
+    Args:
+        asset_id: UUID ของ asset
+    
+    Returns:
+        JSON string containing asset details
+    """
+    if not API_TOKEN:
+        return json.dumps({
+            "success": False,
+            "error": "SMARTSPEC_API_TOKEN environment variable is not set."
+        }, indent=2, ensure_ascii=False)
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{BACKEND_URL}/api/v1/assets/{asset_id}",
+                headers={
+                    "Authorization": f"Bearer {API_TOKEN}"
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return json.dumps({
+                    "success": True,
+                    "asset": data
+                }, indent=2, ensure_ascii=False)
+            elif response.status_code == 404:
+                return json.dumps({
+                    "success": False,
+                    "error": "Asset not found",
+                    "asset_id": asset_id
+                }, indent=2, ensure_ascii=False)
+            else:
+                return json.dumps({
+                    "success": False,
+                    "error": f"API returned status {response.status_code}"
+                }, indent=2, ensure_ascii=False)
+                
+    except httpx.ConnectError:
+        return json.dumps({
+            "success": False,
+            "error": f"Cannot connect to Backend API at {BACKEND_URL}"
+        }, indent=2, ensure_ascii=False)
+        
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "error": f"Unexpected error: {str(e)}"
+        }, indent=2, ensure_ascii=False)
 
 
 # ============================================

@@ -43,6 +43,9 @@ from .vector_store import (
     VectorIndexType,
 )
 
+# Asset Management
+from .asset import Asset, AssetType, AssetStatus
+
 __all__ = [
     # Existing
     "AuditLog",
@@ -94,4 +97,8 @@ __all__ = [
     "VectorDocument",
     "EmbeddingJob",
     "VectorIndexType",
+    # Asset Management
+    "Asset",
+    "AssetType",
+    "AssetStatus",
 ]
