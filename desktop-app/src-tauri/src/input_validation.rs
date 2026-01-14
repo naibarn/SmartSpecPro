@@ -20,8 +20,9 @@ static CONTAINER_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$").unwrap()
 });
 
+// Updated: Allow @ for user references in branch names (e.g., feature/user@domain)
 static BRANCH_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[a-zA-Z0-9/_.-]+$").unwrap()
+    Regex::new(r"^[a-zA-Z0-9/_@.-]+$").unwrap()
 });
 
 static IMAGE_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -40,7 +41,13 @@ static ALPHANUMERIC_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap()
 });
 
+// Updated: Allow more characters including spaces and common special chars
 static SAFE_FILENAME_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^[a-zA-Z0-9][a-zA-Z0-9._\-\s\[\]\(\)]+$").unwrap()
+});
+
+// Strict filename regex for sensitive operations
+static STRICT_FILENAME_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$").unwrap()
 });
 
@@ -125,7 +132,13 @@ fn normalize_path(path: &Path) -> Result<PathBuf, String> {
 }
 
 /// Validate a filename (no path components)
+/// Use strict=true for sensitive operations like template processing
 pub fn validate_filename(filename: &str) -> Result<(), String> {
+    validate_filename_with_options(filename, false)
+}
+
+/// Validate filename with strictness option
+pub fn validate_filename_with_options(filename: &str, strict: bool) -> Result<(), String> {
     if filename.is_empty() {
         return Err("Filename cannot be empty".to_string());
     }
@@ -149,9 +162,15 @@ pub fn validate_filename(filename: &str) -> Result<(), String> {
         return Err("Filename contains null byte".to_string());
     }
     
-    // Check for valid characters
-    if !SAFE_FILENAME_REGEX.is_match(filename) {
-        return Err("Filename contains invalid characters".to_string());
+    // Check for valid characters based on strictness
+    let regex = if strict { &*STRICT_FILENAME_REGEX } else { &*SAFE_FILENAME_REGEX };
+    if !regex.is_match(filename) {
+        let allowed = if strict {
+            "alphanumeric, underscore, period, or hyphen"
+        } else {
+            "alphanumeric, underscore, period, hyphen, space, brackets, or parentheses"
+        };
+        return Err(format!("Filename contains invalid characters. Allowed: {}", allowed));
     }
     
     Ok(())

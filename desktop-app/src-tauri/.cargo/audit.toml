@@ -1,0 +1,57 @@
+# Cargo Audit Configuration
+# RISK-014 FIX: Setup cargo-audit for dependency vulnerability scanning
+#
+# Run with: cargo audit
+# Install with: cargo install cargo-audit
+
+[advisories]
+# The path where the advisory database is cloned/fetched into
+db-path = "~/.cargo/advisory-db"
+
+# The URL of the advisory database to use
+url = "https://github.com/RustSec/advisory-db"
+
+# Ignore specific advisories (use sparingly and document why)
+ignore = [
+    # Example: "RUSTSEC-2020-0001", # Reason for ignoring
+]
+
+# Vulnerability severity threshold
+# Options: "none", "low", "medium", "high", "critical"
+severity = "medium"
+
+[database]
+# Fetch the advisory database from the network
+fetch = true
+
+# Stale advisory database warning threshold (in days)
+stale = 30
+
+[output]
+# Output format: "terminal", "json", "markdown"
+format = "terminal"
+
+# Show dependency tree for vulnerable packages
+deny = [
+    # Deny specific categories of vulnerabilities
+    "unmaintained",
+]
+
+# Warn about these categories
+warn = [
+    "unsound",
+    "yanked",
+]
+
+[packages]
+# Package-specific configuration
+
+# Ignore specific packages from audit
+ignore = [
+    # Example: "some-package", # Reason for ignoring
+]
+
+# Source configuration
+[packages.source]
+# Allow packages from crates.io
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
