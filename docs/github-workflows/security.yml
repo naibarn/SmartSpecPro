@@ -1,0 +1,155 @@
+# Security Scanning Workflow
+# RISK-014 FIX: Automated security scanning in CI/CD
+#
+# Installation:
+# 1. Copy this file to .github/workflows/security.yml in your repository
+# 2. Commit and push to enable the workflow
+
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Sunday at midnight
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-security:
+    name: Rust Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+        
+      - name: Run cargo audit
+        working-directory: desktop-app/src-tauri
+        run: cargo audit
+        
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+        
+      - name: Run cargo deny
+        working-directory: desktop-app/src-tauri
+        run: cargo deny check || true
+
+  npm-security:
+    name: NPM Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        working-directory: desktop-app
+        run: npm ci
+        
+      - name: Run npm audit
+        working-directory: desktop-app
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+        
+      - name: Run npm audit (production only)
+        working-directory: desktop-app
+        run: npm audit --production --audit-level=high
+
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript', 'typescript']
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+        
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+  security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [rust-security, npm-security, secret-scanning]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create security report
+        run: |
+          echo "# Security Scan Report" > security-report.md
+          echo "" >> security-report.md
+          echo "**Date:** $(date -u)" >> security-report.md
+          echo "**Commit:** ${{ github.sha }}" >> security-report.md
+          echo "" >> security-report.md
+          echo "## Results" >> security-report.md
+          echo "" >> security-report.md
+          echo "| Check | Status |" >> security-report.md
+          echo "|-------|--------|" >> security-report.md
+          echo "| Rust Security | ${{ needs.rust-security.result }} |" >> security-report.md
+          echo "| NPM Security | ${{ needs.npm-security.result }} |" >> security-report.md
+          echo "| Secret Scanning | ${{ needs.secret-scanning.result }} |" >> security-report.md
+          
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          retention-days: 30
