@@ -1,0 +1,210 @@
+name: Auto Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - preview
+          - staging
+          - production
+      deploy_target:
+        description: 'Deployment target'
+        required: true
+        default: 'vercel'
+        type: choice
+        options:
+          - vercel
+          - netlify
+          - github-pages
+
+  # Trigger on push to main (after quality gate passes)
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.spec/**'
+
+jobs:
+  # Pre-deployment checks
+  pre-deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check deployment conditions
+        id: check
+        run: |
+          # Check if this is a workflow_dispatch or automated trigger
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            # Check if quality gate passed (look for marker file or commit message)
+            if git log -1 --pretty=%B | grep -q "quality-gate: pass"; then
+              echo "should_deploy=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              echo "Quality gate marker not found, skipping deployment"
+            fi
+          fi
+
+  # Build the application
+  build:
+    needs: pre-deploy
+    if: needs.pre-deploy.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      
+      - name: Install dependencies
+        run: |
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          elif [ -f "yarn.lock" ]; then
+            yarn install --frozen-lockfile
+          elif [ -f "pnpm-lock.yaml" ]; then
+            npm install -g pnpm
+            pnpm install --frozen-lockfile
+          fi
+      
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dist/
+            build/
+            .next/
+          retention-days: 1
+
+  # Deploy to Vercel
+  deploy-vercel:
+    needs: build
+    if: github.event.inputs.deploy_target == 'vercel' || github.event.inputs.deploy_target == ''
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+      
+      - name: Deploy to Vercel
+        id: deploy
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: ${{ github.event.inputs.environment == 'production' && '--prod' || '' }}
+      
+      - name: Output deployment URL
+        run: |
+          echo "Deployed to: ${{ steps.deploy.outputs.url }}"
+          echo "Deployment ID: ${{ steps.deploy.outputs.deployment-id }}"
+
+  # Deploy to Netlify
+  deploy-netlify:
+    needs: build
+    if: github.event.inputs.deploy_target == 'netlify'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ steps.deploy.outputs.deploy-url }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+      
+      - name: Deploy to Netlify
+        id: deploy
+        uses: nwtgck/actions-netlify@v3
+        with:
+          publish-dir: './dist'
+          production-branch: main
+          production-deploy: ${{ github.event.inputs.environment == 'production' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from GitHub Actions"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      
+      - name: Output deployment URL
+        run: |
+          echo "Deployed to: ${{ steps.deploy.outputs.deploy-url }}"
+
+  # Deploy to GitHub Pages
+  deploy-github-pages:
+    needs: build
+    if: github.event.inputs.deploy_target == 'github-pages'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Post-deployment verification
+  verify:
+    needs: [deploy-vercel, deploy-netlify, deploy-github-pages]
+    if: always() && (needs.deploy-vercel.result == 'success' || needs.deploy-netlify.result == 'success' || needs.deploy-github-pages.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          # Add your smoke test commands here
+          # Example: curl -f https://your-app.vercel.app/health || exit 1
+          echo "Smoke tests passed!"
+      
+      - name: Notify success
+        run: |
+          echo "Deployment completed successfully!"
+          # Add notification logic here (Slack, Discord, etc.)

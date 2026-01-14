@@ -94,6 +94,37 @@ export type WorkflowEvent =
   | WorkflowEventCompleted
   | WorkflowEventFailed;
 
+// Dashboard State for Progress Dashboard component
+export interface DashboardPhase {
+  id: string;
+  name: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  progress: number;
+  tasks: Array<{
+    id: string;
+    title: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    progress: number;
+    error?: string;
+  }>;
+}
+
+export interface DashboardState {
+  projectName: string;
+  specId: string;
+  currentPhase: string;
+  overallProgress: number;
+  phases: DashboardPhase[];
+  logs: Array<{ timestamp: string; level: string; message: string; source?: string }>;
+  startedAt: string;
+  estimatedCompletion?: string;
+  status: 'idle' | 'running' | 'paused' | 'completed' | 'failed';
+  coveragePercent?: number;
+  testsTotal?: number;
+  testsPassed?: number;
+  testsFailed?: number;
+}
+
 export interface WorkflowState {
   workflowId: string | null;
   workflowName: string | null;
@@ -354,6 +385,112 @@ class WorkflowService {
   }
 
   /**
+   * Get dashboard state for Progress Dashboard component
+   */
+  getDashboardState(): DashboardState | null {
+    if (this.state.status === 'idle' && !this.state.workflowId) {
+      return null;
+    }
+
+    // Map workflow state to dashboard state
+    const phases: DashboardPhase[] = [
+      {
+        id: 'spec',
+        name: 'Generate Spec',
+        status: this.getPhaseStatus('spec'),
+        progress: this.getPhaseProgress('spec'),
+        tasks: [],
+      },
+      {
+        id: 'plan',
+        name: 'Generate Plan',
+        status: this.getPhaseStatus('plan'),
+        progress: this.getPhaseProgress('plan'),
+        tasks: [],
+      },
+      {
+        id: 'tasks',
+        name: 'Generate Tasks',
+        status: this.getPhaseStatus('tasks'),
+        progress: this.getPhaseProgress('tasks'),
+        tasks: [],
+      },
+      {
+        id: 'implement',
+        name: 'Implement',
+        status: this.getPhaseStatus('implement'),
+        progress: this.getPhaseProgress('implement'),
+        tasks: [],
+      },
+      {
+        id: 'test',
+        name: 'Test & Quality Gate',
+        status: this.getPhaseStatus('test'),
+        progress: this.getPhaseProgress('test'),
+        tasks: [],
+      },
+      {
+        id: 'deploy',
+        name: 'Deploy',
+        status: this.getPhaseStatus('deploy'),
+        progress: this.getPhaseProgress('deploy'),
+        tasks: [],
+      },
+    ];
+
+    return {
+      projectName: this.state.workflowName || 'Unknown Project',
+      specId: this.state.workflowId || '',
+      currentPhase: this.state.currentStep || 'Starting...',
+      overallProgress: this.state.progress,
+      phases,
+      logs: this.state.logs.map(log => ({
+        timestamp: log.timestamp.toISOString(),
+        level: log.level as 'info' | 'warn' | 'error' | 'debug',
+        message: log.message,
+      })),
+      startedAt: new Date().toISOString(), // TODO: Track actual start time
+      status: this.mapStatus(this.state.status),
+    };
+  }
+
+  private getPhaseStatus(phaseId: string): 'pending' | 'in_progress' | 'completed' | 'failed' {
+    const currentStep = this.state.currentStep.toLowerCase();
+    const phaseOrder = ['spec', 'plan', 'tasks', 'implement', 'test', 'deploy'];
+    const currentIndex = phaseOrder.findIndex(p => currentStep.includes(p));
+    const phaseIndex = phaseOrder.indexOf(phaseId);
+
+    if (this.state.status === 'failed' && currentStep.includes(phaseId)) {
+      return 'failed';
+    }
+    if (phaseIndex < currentIndex) {
+      return 'completed';
+    }
+    if (phaseIndex === currentIndex) {
+      return 'in_progress';
+    }
+    return 'pending';
+  }
+
+  private getPhaseProgress(phaseId: string): number {
+    const status = this.getPhaseStatus(phaseId);
+    if (status === 'completed') return 100;
+    if (status === 'pending') return 0;
+    if (status === 'failed') return this.state.progress;
+    return this.state.progress;
+  }
+
+  private mapStatus(status: string): 'idle' | 'running' | 'paused' | 'completed' | 'failed' {
+    switch (status) {
+      case 'waiting_approval': return 'paused';
+      case 'running': return 'running';
+      case 'completed': return 'completed';
+      case 'failed': return 'failed';
+      default: return 'idle';
+    }
+  }
+
+  /**
    * Clean up listeners
    */
   cleanup(): void {
@@ -420,5 +557,50 @@ export function useWorkflow() {
     isRunning: state.status === 'running',
     isWaitingApproval: state.status === 'waiting_approval',
     pendingApproval: state.pendingApproval,
+  };
+}
+
+/**
+ * React hook for Progress Dashboard
+ */
+export function useDashboard() {
+  const [dashboardState, setDashboardState] = useState<DashboardState | null>(
+    workflowService.getDashboardState()
+  );
+
+  useEffect(() => {
+    const unsubscribe = workflowService.onEvent(() => {
+      setDashboardState(workflowService.getDashboardState());
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const pause = useCallback(async () => {
+    // TODO: Implement pause functionality
+    console.log('Pause not implemented yet');
+  }, []);
+
+  const resume = useCallback(async () => {
+    await workflowService.approve();
+  }, []);
+
+  const stop = useCallback(async () => {
+    await workflowService.stop();
+  }, []);
+
+  const retry = useCallback(async () => {
+    // TODO: Implement retry functionality
+    console.log('Retry not implemented yet');
+  }, []);
+
+  return {
+    dashboardState,
+    pause,
+    resume,
+    stop,
+    retry,
   };
 }

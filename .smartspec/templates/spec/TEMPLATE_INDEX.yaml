@@ -1,0 +1,97 @@
+# SmartSpec Spec Templates Index
+# Version: 1.0.0
+# Last Updated: 2025-01-15
+
+templates:
+  - id: website_gallery
+    name: Gallery Website
+    file: website_gallery.md
+    category: website
+    description: Media gallery website with image/video display, user authentication, and AI media generation
+    keywords:
+      - gallery
+      - portfolio
+      - image
+      - video
+      - media
+      - showcase
+    features:
+      - Responsive media grid
+      - Random/rotating display
+      - User authentication
+      - AI media generation
+      - SEO & AIO optimization
+    tech_stack:
+      frontend: Next.js / React
+      styling: TailwindCSS
+      backend: FastAPI / Next.js API
+      database: PostgreSQL
+      storage: S3 / Cloudflare R2
+    complexity: medium
+    estimated_time: 2-3 weeks
+
+  - id: saas_dashboard
+    name: SaaS Dashboard
+    file: saas_dashboard.md
+    category: web-application
+    description: SaaS dashboard with user management, analytics, billing, and multi-tenant support
+    keywords:
+      - saas
+      - dashboard
+      - analytics
+      - admin
+      - management
+      - subscription
+    features:
+      - User authentication & RBAC
+      - Dashboard & analytics
+      - Team management
+      - Billing & subscription (Stripe)
+      - Multi-tenant architecture
+    tech_stack:
+      frontend: Next.js / React
+      styling: TailwindCSS + shadcn/ui
+      backend: Next.js API / FastAPI
+      database: PostgreSQL
+      payments: Stripe
+    complexity: high
+    estimated_time: 4-6 weeks
+
+  - id: ecommerce_store
+    name: E-commerce Store
+    file: ecommerce_store.md
+    category: web-application
+    description: E-commerce store with product catalog, shopping cart, checkout, and order management
+    keywords:
+      - ecommerce
+      - shop
+      - store
+      - products
+      - cart
+      - checkout
+      - payment
+    features:
+      - Product catalog
+      - Shopping cart
+      - Checkout & payment
+      - Order management
+      - Admin panel
+    tech_stack:
+      frontend: Next.js / Remix
+      styling: TailwindCSS
+      backend: Next.js API / Medusa
+      database: PostgreSQL
+      payments: Stripe
+      search: Algolia / Meilisearch
+    complexity: high
+    estimated_time: 4-8 weeks
+
+# Usage:
+# 1. List templates: /smartspec_list_templates
+# 2. Use template: /smartspec_generate_spec_from_prompt --template <template_id>
+# 3. Templates are used as base structure when generating specs from prompts
+
+# Adding new templates:
+# 1. Create a new .md file in this directory
+# 2. Add entry to this index
+# 3. Follow the template structure from existing templates

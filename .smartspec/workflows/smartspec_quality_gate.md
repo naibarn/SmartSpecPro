@@ -342,5 +342,50 @@ Legacy workflows must be removed in v6 to avoid duplication.
 
 ---
 
+## Auto-Deploy Integration (v7.4.0)
+
+When the quality gate passes with `--profile=release`, it can optionally trigger the auto-deploy workflow.
+
+### Configuration
+
+In `.spec/smartspec.config.yaml`:
+
+```yaml
+quality:
+  auto_deploy:
+    enabled: true
+    trigger_on_release_pass: true
+    deploy_target: vercel  # vercel, netlify, github-pages, custom
+    environment: production
+    require_approval: true  # Request user approval before deploy
+```
+
+### Trigger Logic
+
+After all checks pass:
+
+1. Check if `quality.auto_deploy.enabled=true`
+2. Check if `quality.auto_deploy.trigger_on_release_pass=true`
+3. If `require_approval=true`, emit approval request before triggering
+4. Call `/smartspec_auto_deploy` with configured parameters
+
+### Example Output
+
+When auto-deploy is triggered, the `next_steps` in `summary.json` will include:
+
+```json
+{
+  "next_steps": [
+    {
+      "cmd": "/smartspec_auto_deploy --deploy-target vercel --environment production",
+      "why": "Quality gate passed. Auto-deploy is enabled.",
+      "auto_trigger": true
+    }
+  ]
+}
+```
+
+---
+
 # End of workflow doc
 
