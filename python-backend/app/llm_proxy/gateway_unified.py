@@ -1,29 +1,12 @@
-"""
-SmartSpec Pro - Unified LLM Gateway
-Version: 2.0.0
-
-This module consolidates gateway.py and gateway_v2.py into a single,
-unified gateway that supports both direct provider access and OpenRouter.
-
-Features:
-- Credit checking and deduction
-- Multi-provider support (direct + OpenRouter)
-- Automatic fallbacks
-- Load balancing (price, throughput, latency)
-- Privacy controls (ZDR, data collection)
-- Cost estimation and tracking
-- Comprehensive logging
-"""
-
 from decimal import Decimal
-from typing import Dict, Any, Optional, List, Literal
+from typing import Dict, Any, Optional, List, Literal, Union
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.llm_proxy.proxy import LLMProxy, LLMProviderError
 from app.llm_proxy.unified_client import get_unified_client, UnifiedLLMClient
-from app.llm_proxy.models import LLMRequest, LLMResponse
+from app.llm_proxy.models import LLMRequest, LLMResponse, ImageGenerationRequest, ImageGenerationResponse, VideoGenerationRequest, VideoGenerationResponse, AudioGenerationRequest, AudioGenerationResponse
 from app.services.credit_service import CreditService, InsufficientCreditsError
 from app.core.credits import usd_to_credits, credits_to_usd
 from app.models.user import User
@@ -185,7 +168,196 @@ class LLMGateway:
         response.credits_balance = transaction.balance_after
         
         return response
-    
+
+    async def generate_image(
+        self,
+        request: ImageGenerationRequest,
+        user: User
+    ) -> ImageGenerationResponse:
+        """
+        Generate image with credit checking.
+        """
+        logger.info("image_generation_request", user_id=user.id, model=request.model)
+
+        # Estimate cost (placeholder for now, actual cost calculation is complex for image generation)
+        estimated_cost = Decimal("0.01") # Example: 0.01 USD per image
+        await self._check_credits(user, estimated_cost)
+
+        if not self.unified_client.kie_ai_client:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Kie.ai client not initialized or enabled")
+
+        try:
+            image_data = await self.unified_client.kie_ai_client.generate_image(
+                model=request.model,
+                prompt=request.prompt,
+                **request.dict(exclude_unset=True, exclude={
+                    "model", "prompt", "user", "reference_image_urls", "reference_style_url"
+                })
+            )
+            # Handle reference images if any
+            if request.reference_image_urls:
+                # This part needs more sophisticated handling, e.g., uploading to Kie.ai first
+                logger.warning("Reference image URLs are not fully supported yet for Kie.ai direct generation.")
+
+            response = ImageGenerationResponse(
+                id=image_data.get("id", ""),
+                model=request.model,
+                provider="kie_ai",
+                created=image_data.get("created", 0),
+                data=image_data.get("data", []),
+            )
+
+            actual_cost = estimated_cost # For now, assume estimated is actual
+            transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
+            response.credits_used = transaction.amount
+            response.credits_balance = transaction.balance_after
+            return response
+        except Exception as e:
+            logger.error("image_generation_failed", user_id=user.id, error=str(e))
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Image generation failed: {str(e)}")
+
+    async def generate_video(
+        self,
+        request: VideoGenerationRequest,
+        user: User
+    ) -> VideoGenerationResponse:
+        """
+        Generate video with credit checking.
+        """
+        logger.info("video_generation_request", user_id=user.id, model=request.model)
+
+        # Estimate cost (placeholder for now)
+        estimated_cost = Decimal("0.05") # Example: 0.05 USD per video
+        await self._check_credits(user, estimated_cost)
+
+        if not self.unified_client.kie_ai_client:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Kie.ai client not initialized or enabled")
+
+        try:
+            video_data = await self.unified_client.kie_ai_client.generate_video(
+                model=request.model,
+                prompt=request.prompt,
+                **request.dict(exclude_unset=True, exclude={
+                    "model", "prompt", "user", "reference_video_url", "reference_image_urls"
+                })
+            )
+            response = VideoGenerationResponse(
+                id=video_data.get("id", ""),
+                model=request.model,
+                provider="kie_ai",
+                created=video_data.get("created", 0),
+                data=video_data.get("data", []),
+            )
+
+            actual_cost = estimated_cost
+            transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
+            response.credits_used = transaction.amount
+            response.credits_balance = transaction.balance_after
+            return response
+        except Exception as e:
+            logger.error("video_generation_failed", user_id=user.id, error=str(e))
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Video generation failed: {str(e)}")
+
+    async def generate_audio(
+        self,
+        request: AudioGenerationRequest,
+        user: User
+    ) -> AudioGenerationResponse:
+        """
+        Generate audio with credit checking.
+        """
+        logger.info("audio_generation_request", user_id=user.id, model=request.model)
+
+        # Estimate cost (placeholder for now)
+        estimated_cost = Decimal("0.005") # Example: 0.005 USD per audio
+        await self._check_credits(user, estimated_cost)
+
+        if not self.unified_client.kie_ai_client:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Kie.ai client not initialized or enabled")
+
+        try:
+            audio_data = await self.unified_client.kie_ai_client.generate_audio(
+                model=request.model,
+                text=request.text,
+                **request.dict(exclude_unset=True, exclude={
+                    "model", "text", "user"
+                })
+            )
+            response = AudioGenerationResponse(
+                id=audio_data.get("id", ""),
+                model=request.model,
+                provider="kie_ai",
+                created=audio_data.get("created", 0),
+                data=audio_data.get("data", []),
+            )
+
+            actual_cost = estimated_cost
+            transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
+            response.credits_used = transaction.amount
+            response.credits_balance = transaction.balance_after
+            return response
+        except Exception as e:
+            logger.error("audio_generation_failed", user_id=user.id, error=str(e))
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Audio generation failed: {str(e)}")
+
+    def _estimate_cost(self, request: Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest], use_openrouter: bool) -> Decimal:
+        """Estimate cost based on request type."""
+        if isinstance(request, LLMRequest):
+            # Existing LLM cost estimation logic
+            if use_openrouter:
+                # OpenRouter models have dynamic pricing, so we use a base estimate
+                return Decimal("0.001")  # A small base cost for OpenRouter requests
+            else:
+                # Direct provider cost estimation
+                # This part needs to be more sophisticated, possibly looking up model costs
+                return COST_PER_1K_TOKENS.get((request.task_type, request.budget_priority), Decimal("0.001"))
+        elif isinstance(request, ImageGenerationRequest):
+            # Placeholder for image generation cost
+            return Decimal("0.01") # Example: 0.01 USD per image
+        elif isinstance(request, VideoGenerationRequest):
+            # Placeholder for video generation cost
+            return Decimal("0.05") # Example: 0.05 USD per video
+        elif isinstance(request, AudioGenerationRequest):
+            # Placeholder for audio generation cost
+            return Decimal("0.005") # Example: 0.005 USD per audio
+        else:
+            raise ValueError("Unknown request type for cost estimation")
+
+    async def _deduct_credits(
+        self,
+        user: User,
+        actual_cost: Decimal,
+        request: Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest],
+        response: Union[LLMResponse, ImageGenerationResponse, VideoGenerationResponse, AudioGenerationResponse],
+        estimated_cost: Decimal,
+        use_openrouter: bool
+    ):
+        """
+        Deduct credits from user account and log transaction.
+        """
+        transaction = await self.credit_service.deduct_credits(
+            user_id=user.id,
+            amount_usd=actual_cost,
+            description=f"LLM/Media Generation: {request.model}",
+            metadata={
+                "request_type": request.__class__.__name__,
+                "model": request.model,
+                "estimated_cost_usd": float(estimated_cost),
+                "actual_cost_usd": float(actual_cost),
+                "use_openrouter": use_openrouter,
+                "response_id": getattr(response, "id", None),
+                "provider": getattr(response, "provider", None),
+            }
+        )
+        logger.info(
+            "credits_deducted",
+            user_id=user.id,
+            amount_usd=float(actual_cost),
+            balance_after=float(transaction.balance_after),
+            transaction_id=transaction.id,
+        )
+        return transaction
+
     async def _check_credits(self, user: User, estimated_cost: Decimal) -> None:
         """Check if user has sufficient credits."""
         has_credits = await self.credit_service.check_sufficient_credits(
@@ -275,257 +447,56 @@ class LLMGateway:
     async def _invoke_via_direct(
         self,
         request: LLMRequest,
-        user: User,
+        user: User
     ) -> LLMResponse:
-        """Invoke LLM via direct provider with fallback logic."""
-        primary_provider = request.preferred_provider or "openai"  # Default to openai if not specified
-        fallback_providers = self.llm_proxy.get_fallback_providers(primary_provider)
-        
-        # Try primary provider first
+        """
+        Invoke LLM via direct provider client.
+        """
         try:
-            logger.info("llm_direct_attempt", user_id=user.id, provider=primary_provider)
-            response = await self.llm_proxy.invoke(request)
-            return response
-            
-        except LLMProviderError as e:
-            logger.warning(
-                "llm_provider_failed",
-                user_id=user.id,
-                provider=primary_provider,
-                error=str(e),
-            )
-            
-            # Try fallback providers
-            for fallback_provider in fallback_providers:
-                try:
-                    logger.info(
-                        "llm_fallback_attempt",
-                        user_id=user.id,
-                        provider=fallback_provider
-                    )
-                    fallback_request = request.model_copy(update={"preferred_provider": fallback_provider})
-                    response = await self.llm_proxy.invoke(fallback_request)
-                    
-                    logger.info(
-                        "llm_fallback_succeeded",
-                        user_id=user.id,
-                        original_provider=primary_provider,
-                        fallback_provider=fallback_provider,
-                    )
-                    return response
-                    
-                except LLMProviderError as fallback_e:
-                    logger.warning(
-                        "llm_fallback_failed",
-                        user_id=user.id,
-                        provider=fallback_provider,
-                        error=str(fallback_e),
-                    )
-                    continue
-            
-            # All fallbacks failed
-            logger.critical(
-                "llm_all_fallbacks_failed",
-                user_id=user.id,
-                original_provider=primary_provider,
-                fallbacks=fallback_providers,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=(
-                    "All LLM providers are currently unavailable. "
-                    f"Please try again later. Final error: {str(e)}"
-                )
-            )
-    
-    async def _deduct_credits(
-        self,
-        user: User,
-        actual_cost: Decimal,
-        request: LLMRequest,
-        response: LLMResponse,
-        estimated_cost: Decimal,
-        use_openrouter: bool,
-    ):
-        """Deduct credits from user account."""
-        try:
-            transaction = await self.credit_service.deduct_credits(
-                user_id=user.id,
-                llm_cost_usd=actual_cost,
-                description=f"LLM call: {request.task_type} using {response.provider}/{response.model}",
-                metadata={
-                    "task_type": request.task_type,
-                    "provider": response.provider,
-                    "model": response.model,
-                    "model_requested": request.preferred_model,
-                    "tokens": response.tokens_used,
-                    "prompt_tokens": 0,  # Not available in LLMResponse model
-                    "completion_tokens": response.tokens_used,  # Approximate as completion tokens
-                    "llm_cost": float(actual_cost),
-                    "estimated_cost": float(estimated_cost),
-                    "use_openrouter": use_openrouter,
-                    "budget_priority": request.budget_priority,
-                }
+            response = await self.unified_client.chat(
+                messages=request.messages,
+                model=request.preferred_model,
+                task_type=request.task_type,
+                budget_priority=request.budget_priority,
+                use_openrouter=False,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
             )
             
             logger.info(
-                "credits_deducted",
+                "llm_direct_success",
                 user_id=user.id,
-                credits_deducted=transaction.amount,
-                usd_deducted=float(actual_cost),
-                balance_after_credits=transaction.balance_after,
-                balance_after_usd=float(credits_to_usd(transaction.balance_after)),
+                model_requested=request.preferred_model,
+                model_used=response.model,
+                provider=response.provider,
+                tokens=response.tokens_used or 0,
             )
             
-            return transaction
+            return response
             
-        except InsufficientCreditsError as e:
-            # This shouldn't happen since we checked before, but handle it anyway
+        except Exception as e:
             logger.error(
-                "unexpected_insufficient_credits",
+                "llm_direct_failed",
                 user_id=user.id,
                 error=str(e),
             )
             raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail={
-                    "error": "Insufficient credits",
-                    "required": float(e.required),
-                    "available": float(e.available),
-                }
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"LLM call failed: {str(e)}"
             )
-    
-    def _estimate_cost(self, request: LLMRequest, use_openrouter: bool) -> Decimal:
-        """
-        Estimate LLM cost based on request.
-        
-        Args:
-            request: LLM request
-            use_openrouter: Whether using OpenRouter
-        
-        Returns:
-            Estimated cost in USD
-        """
-        # Estimate tokens based on message length (1 token ≈ 4 characters)
-        message_length = sum(len(msg.get("content", "")) for msg in request.messages)
-        estimated_prompt_tokens = message_length // 4
-        
-        # Assume response is 2x input for most tasks
-        estimated_completion_tokens = estimated_prompt_tokens * 2
-        estimated_total_tokens = estimated_prompt_tokens + estimated_completion_tokens
-        
-        if use_openrouter and self.unified_client.openrouter_client:
-            # Use unified client for more accurate estimation
-            model = request.preferred_model or MODEL_MATRIX.get(
-                (request.task_type, request.budget_priority),
-                "openai/gpt-4o"
-            )
-            estimated_cost = self.unified_client.estimate_cost(
-                model=model,
-                prompt_tokens=estimated_prompt_tokens,
-                completion_tokens=estimated_completion_tokens
-            )
-        else:
-            # Use static cost matrix for direct providers
-            key = (request.task_type, request.budget_priority)
-            cost_per_1k = COST_PER_1K_TOKENS.get(key, Decimal("0.01"))
-            estimated_cost = Decimal(str(estimated_total_tokens / 1000)) * cost_per_1k
-        
-        # Minimum cost: $0.0001
-        return max(estimated_cost, Decimal("0.0001"))
-    
-    def _calculate_actual_cost(self, response: LLMResponse, use_openrouter: bool) -> Decimal:
-        """
-        Calculate actual cost from LLM response.
-        
-        Args:
-            response: LLM response with usage stats
-            use_openrouter: Whether using OpenRouter
-        
-        Returns:
-            Actual cost in USD
-        """
-        # If response has cost field, use it directly
-        if hasattr(response, 'cost') and response.cost:
-            return Decimal(str(response.cost))
-        
-        # If no tokens_used, estimate based on content length
-        if not response.tokens_used:
-            content_length = len(response.content) if response.content else 0
-            estimated_tokens = content_length // 4
-            return Decimal(str(estimated_tokens / 1000 * 0.01))
-
-        # Use response tokens_used
-        tokens = response.tokens_used or 0
-        return Decimal(str(tokens / 1000 * 0.01))
-    
-    async def get_user_balance(self, user: User) -> Dict[str, Any]:
-        """
-        Get user credit balance and transaction stats.
-        
-        Args:
-            user: Current user
-        
-        Returns:
-            Dictionary with balance and stats
-        """
-        balance_credits = await self.credit_service.get_balance(user.id)
-        balance_usd = await self.credit_service.get_balance_usd(user.id)
-        stats = await self.credit_service.get_transaction_stats(user.id)
-        
-        return {
-            "balance_credits": balance_credits,
-            "balance_usd": float(balance_usd),
-            "stats": stats
-        }
-    
-    async def get_available_models(self) -> Dict[str, Any]:
-        """
-        Get available models and providers.
-        
-        Returns:
-            Dictionary with available models grouped by provider
-        """
-        return {
-            "openrouter": {
-                "enabled": self.unified_client.openrouter_client is not None,
-                "models": "420+",
-                "features": [
-                    "Load balancing",
-                    "Automatic fallbacks",
-                    "Privacy controls (ZDR)",
-                    "Cost controls"
-                ]
-            },
-            "direct_providers": {
-                "openai": "openai" in self.unified_client.direct_providers,
-                "anthropic": "anthropic" in self.unified_client.direct_providers,
-            },
-            "recommended_models": {
-                "code_generation": {
-                    "quality": "anthropic/claude-3.5-sonnet",
-                    "speed": "google/gemini-flash-1.5",
-                    "cost": "meta-llama/llama-3.1-70b-instruct"
-                },
-                "analysis": {
-                    "quality": "openai/gpt-4o",
-                    "speed": "google/gemini-flash-1.5",
-                    "cost": "meta-llama/llama-3.1-70b-instruct"
-                },
-                "planning": {
-                    "quality": "anthropic/claude-3.5-sonnet",
-                    "speed": "openai/gpt-4o-mini",
-                    "cost": "meta-llama/llama-3.1-70b-instruct"
-                },
-                "simple": {
-                    "quality": "openai/gpt-4o-mini",
-                    "speed": "google/gemini-flash-1.5",
-                    "cost": "meta-llama/llama-3.1-70b-instruct"
-                }
-            }
-        }
 
 
-# Backward compatibility aliases
-LLMGatewayV1 = LLMGateway
-LLMGatewayV2 = LLMGateway
+class LLMGatewayV1(LLMGateway):
+    """
+    LLM Gateway V1 (Legacy Compatibility)
+    This class is kept for backward compatibility only.
+    """
+    pass
+
+
+class LLMGatewayV2(LLMGateway):
+    """
+    LLM Gateway V2 (Legacy Compatibility)
+    This class is kept for backward compatibility only.
+    """
+    pass
