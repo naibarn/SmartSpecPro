@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useChat, ChatMessage, formatTokenCount, getCategoryIcon, getCategoryColor } from '../../services/chatService';
+import { MediaGenerationPanel } from './MediaGenerationPanel';
 
 interface ChatInterfaceProps {
   className?: string;
@@ -28,6 +29,7 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [showSkillSelector, setShowSkillSelector] = useState(false);
+  const [showMediaPanel, setShowMediaPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -179,6 +181,15 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
                 />
               </div>
               <button
+                onClick={() => setShowMediaPanel(true)}
+                title="Generate Image, Video, or Audio"
+                className="p-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </button>
+              <button
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isLoading}
                 className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
@@ -190,6 +201,14 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
             </div>
           </div>
         </div>
+
+        {/* Media Generation Panel */}
+        {showMediaPanel && (
+          <MediaGenerationPanel
+            onClose={() => setShowMediaPanel(false)}
+            chatContext={inputValue}
+          />
+        )}
 
         {/* Sidebar - Pinned Memory */}
         {pinnedMemory.length > 0 && (
