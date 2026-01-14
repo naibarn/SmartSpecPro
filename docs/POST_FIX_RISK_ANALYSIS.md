@@ -605,14 +605,14 @@ pub fn get_credential(key: &str) -> Result<Option<String>, String> {
 
 ## 📋 Action Items Summary
 
-### Priority 1 (ต้องทำก่อน Release)
+### Priority 1 (ต้องทำก่อน Release) ✅ COMPLETED
 
-| # | Action | Risk | Effort |
-|---|--------|------|--------|
-| 1 | เพิ่ม auth token migration script | RISK-001 | 2 hrs |
-| 2 | เพิ่ม API key migration notice | RISK-002 | 2 hrs |
-| 3 | เพิ่ม Google Gemini API ใน CSP | RISK-003 | 0.5 hrs |
-| 4 | ลบ 'unsafe-eval' ใน production | RISK-003 | 1 hr |
+| # | Action | Risk | Effort | Status |
+|---|--------|------|--------|--------|
+| 1 | เพิ่ม auth token migration script | RISK-001 | 2 hrs | ✅ Done |
+| 2 | เพิ่ม API key migration notice | RISK-002 | 2 hrs | ✅ Done |
+| 3 | เพิ่ม Google Gemini API ใน CSP | RISK-003 | 0.5 hrs | ✅ Done |
+| 4 | ลบ 'unsafe-eval' ใน production | RISK-003 | 1 hr | ✅ Done |
 
 ### Priority 2 (ควรทำภายใน Sprint ถัดไป)
 

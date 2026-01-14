@@ -221,10 +221,98 @@ export async function isAuthenticated(): Promise<boolean> {
   }
 }
 
+// ============================================
+// Migration (RISK-001 fix)
+// ============================================
+
+const MIGRATION_VERSION_KEY = 'smartspec_migration_version';
+const CURRENT_MIGRATION_VERSION = 1;
+
+/**
+ * Migrate credentials from localStorage to secure store
+ * This handles the transition from the old storage method
+ */
+async function migrateFromLocalStorage(): Promise<void> {
+  // Check if migration already done
+  const migrationVersion = localStorage.getItem(MIGRATION_VERSION_KEY);
+  if (migrationVersion && parseInt(migrationVersion) >= CURRENT_MIGRATION_VERSION) {
+    return;
+  }
+
+  console.log('Starting credential migration from localStorage to secure store...');
+
+  try {
+    // Migrate auth token
+    const oldToken = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (oldToken) {
+      try {
+        await setAuthToken(oldToken);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('token');
+        console.log('✓ Migrated auth token to secure store');
+      } catch (e) {
+        console.error('Failed to migrate auth token:', e);
+      }
+    }
+
+    // Migrate refresh token
+    const oldRefreshToken = localStorage.getItem('refresh_token');
+    if (oldRefreshToken) {
+      try {
+        await invoke('set_refresh_token', { token: oldRefreshToken });
+        localStorage.removeItem('refresh_token');
+        console.log('✓ Migrated refresh token to secure store');
+      } catch (e) {
+        console.error('Failed to migrate refresh token:', e);
+      }
+    }
+
+    // Migrate user data
+    const oldUserData = localStorage.getItem('user') || localStorage.getItem('user_data');
+    if (oldUserData) {
+      try {
+        await invoke('set_user_data', { userJson: oldUserData });
+        localStorage.removeItem('user');
+        localStorage.removeItem('user_data');
+        console.log('✓ Migrated user data to secure store');
+      } catch (e) {
+        console.error('Failed to migrate user data:', e);
+      }
+    }
+
+    // Migrate API keys (if stored in localStorage)
+    const apiKeyProviders = ['openrouter', 'openai', 'anthropic', 'deepseek', 'google'];
+    for (const provider of apiKeyProviders) {
+      const oldKey = localStorage.getItem(`api_key_${provider}`) || 
+                     localStorage.getItem(`${provider}_api_key`);
+      if (oldKey) {
+        try {
+          await invoke('set_api_key', { provider, apiKey: oldKey });
+          localStorage.removeItem(`api_key_${provider}`);
+          localStorage.removeItem(`${provider}_api_key`);
+          console.log(`✓ Migrated ${provider} API key to secure store`);
+        } catch (e) {
+          console.error(`Failed to migrate ${provider} API key:`, e);
+        }
+      }
+    }
+
+    // Mark migration as complete
+    localStorage.setItem(MIGRATION_VERSION_KEY, CURRENT_MIGRATION_VERSION.toString());
+    console.log('Migration completed successfully');
+
+  } catch (error) {
+    console.error('Migration failed:', error);
+  }
+}
+
 /**
  * Initialize auth on app start
  */
 export async function initializeAuth(): Promise<void> {
+  // Run migration first
+  await migrateFromLocalStorage();
+  
   setupAuthInterceptor();
 
   const token = await getAuthToken();
