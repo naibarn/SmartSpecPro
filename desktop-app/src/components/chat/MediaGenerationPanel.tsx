@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { Loader2, Image, Video, Music, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { MediaAttachment } from '../../services/chatService';
 
 interface MediaGenerationPanelProps {
   onClose: () => void;
+  onInsert?: (attachment: MediaAttachment) => void;
   chatContext?: string;
 }
 
@@ -27,7 +29,7 @@ const AUDIO_MODELS = [
   { id: 'elevenlabs-sfx', name: 'ElevenLabs Sound Effects' },
 ];
 
-export function MediaGenerationPanel({ onClose, chatContext }: MediaGenerationPanelProps) {
+export function MediaGenerationPanel({ onClose, onInsert, chatContext }: MediaGenerationPanelProps) {
   const { toast } = useToast();
   const [mediaType, setMediaType] = useState<MediaType>('image');
   const [selectedModel, setSelectedModel] = useState('google-nano-banana-pro');
@@ -97,8 +99,13 @@ export function MediaGenerationPanel({ onClose, chatContext }: MediaGenerationPa
   };
 
   const handleInsertToChat = () => {
-    if (generatedMedia) {
-      // This would be handled by parent component
+    if (generatedMedia && onInsert) {
+      onInsert({
+        type: mediaType,
+        url: generatedMedia,
+        title: prompt.length > 30 ? prompt.substring(0, 30) + '...' : prompt,
+        model: selectedModel,
+      });
       onClose();
     }
   };

@@ -128,6 +128,14 @@ export interface LlmServiceConfig {
   };
 }
 
+export interface MediaAttachment {
+  type: 'image' | 'video' | 'audio';
+  url: string;
+  thumbnail_url?: string;
+  title?: string;
+  model?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -136,6 +144,7 @@ export interface ChatMessage {
   tokens?: number;
   timestamp: Date;
   isStreaming?: boolean;
+  attachments?: MediaAttachment[];
 }
 
 // ============================================
@@ -354,6 +363,7 @@ interface ChatContextValue {
   retrievedContext: RetrievedContext[];
   memoryStats: MemoryStats | null;
   addToKnowledge: (title: string, content: string, category: string) => Promise<void>;
+  addMessageWithAttachments: (role: 'user' | 'assistant', content: string, attachments: MediaAttachment[]) => Promise<void>;
   
   // Skills
   skills: SkillInfo[];
@@ -581,6 +591,36 @@ export function ChatProvider({
     setMemoryStats(stats);
   }, [workspaceId]);
 
+  const addMessageWithAttachments = useCallback(async (
+    role: 'user' | 'assistant',
+    content: string,
+    attachments: MediaAttachment[]
+  ) => {
+    if (!currentSession) return;
+
+    const newMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role,
+      content,
+      timestamp: new Date(),
+      attachments,
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+
+    // Save to memory (as JSON in content for now, or we could extend the backend)
+    // For simplicity in this phase, we'll just update the local state
+    // In a real app, we'd update the backend schema to support attachments
+    await addShortTermMemory(workspaceId, {
+      session_id: currentSession.id,
+      role,
+      content: attachments.length > 0 
+        ? `${content}\n\n[Media: ${attachments.map(a => a.url).join(', ')}]`
+        : content,
+      model_id: selectedModel?.id,
+    });
+  }, [currentSession, workspaceId, selectedModel]);
+
   const value: ChatContextValue = {
     currentSession,
     sessions,
@@ -596,6 +636,7 @@ export function ChatProvider({
     retrievedContext,
     memoryStats,
     addToKnowledge,
+    addMessageWithAttachments,
     skills,
     activeSkill,
     setActiveSkill,

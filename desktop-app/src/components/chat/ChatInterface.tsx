@@ -2,8 +2,9 @@
 // Main chat UI with message list, input, and context panel
 
 import { useState, useRef, useEffect } from 'react';
-import { useChat, ChatMessage, formatTokenCount, getCategoryIcon, getCategoryColor } from '../../services/chatService';
+import { useChat, ChatMessage, MediaAttachment, formatTokenCount, getCategoryIcon, getCategoryColor } from '../../services/chatService';
 import { MediaGenerationPanel } from './MediaGenerationPanel';
+import { Download, ExternalLink, Play, Pause } from 'lucide-react';
 
 interface ChatInterfaceProps {
   className?: string;
@@ -24,6 +25,7 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
     activeSkill,
     setActiveSkill,
     createSession,
+    addMessageWithAttachments,
   } = useChat();
 
   const [inputValue, setInputValue] = useState('');
@@ -206,6 +208,9 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
         {showMediaPanel && (
           <MediaGenerationPanel
             onClose={() => setShowMediaPanel(false)}
+            onInsert={(attachment) => {
+              addMessageWithAttachments('assistant', `Generated ${attachment.type}:`, [attachment]);
+            }}
             chatContext={inputValue}
           />
         )}
@@ -243,7 +248,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[80%] ${isUser ? 'order-2' : 'order-1'}`}>
+      <div className={`max-w-[85%] md:max-w-[75%] ${isUser ? 'order-2' : 'order-1'}`}>
         {message.skill && !isUser && (
           <div className="mb-1 text-xs text-blue-600 dark:text-blue-400">
             Using {message.skill} skill
@@ -253,16 +258,142 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           className={`px-4 py-3 rounded-2xl ${
             isUser
               ? 'bg-blue-600 text-white rounded-br-md'
-              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-bl-md'
+              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-bl-md shadow-sm'
           }`}
         >
-          <div className="whitespace-pre-wrap">{message.content}</div>
+          {message.content && <div className="whitespace-pre-wrap mb-2">{message.content}</div>}
+          
+          {/* Media Attachments */}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="space-y-3 mt-2">
+              {message.attachments.map((attachment, index) => (
+                <MediaAttachmentView key={index} attachment={attachment} isUser={isUser} />
+              ))}
+            </div>
+          )}
         </div>
         <div className={`mt-1 text-xs text-gray-500 ${isUser ? 'text-right' : 'text-left'}`}>
           {message.timestamp.toLocaleTimeString()}
           {message.tokens && ` · ${message.tokens} tokens`}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Media Attachment View Component
+function MediaAttachmentView({ attachment, isUser }: { attachment: MediaAttachment; isUser: boolean }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const toggleAudio = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleDownload = (url: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className={`rounded-xl overflow-hidden border ${isUser ? 'border-blue-400 bg-blue-500/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'}`}>
+      {attachment.type === 'image' && (
+        <div className="relative group">
+          <img 
+            src={attachment.url} 
+            alt={attachment.title || 'Generated image'} 
+            className="w-full h-auto max-h-96 object-contain bg-black/5"
+          />
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+            <button 
+              onClick={() => handleDownload(attachment.url, `image-${Date.now()}.png`)}
+              className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+              title="Download"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+            <a 
+              href={attachment.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+              title="Open in new tab"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      )}
+
+      {attachment.type === 'video' && (
+        <div className="relative group">
+          <video 
+            src={attachment.url} 
+            controls 
+            className="w-full h-auto max-h-96 bg-black"
+          />
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => handleDownload(attachment.url, `video-${Date.now()}.mp4`)}
+              className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+              title="Download"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {attachment.type === 'audio' && (
+        <div className="p-4">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={toggleAudio}
+              className={`p-3 rounded-full ${isUser ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'} hover:scale-105 transition-transform`}
+            >
+              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+            </button>
+            <div className="flex-1">
+              <div className={`text-sm font-medium ${isUser ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                {attachment.title || 'Generated Audio'}
+              </div>
+              <div className={`text-xs ${isUser ? 'text-blue-100' : 'text-gray-500'}`}>
+                {attachment.model || 'ElevenLabs'}
+              </div>
+            </div>
+            <button 
+              onClick={() => handleDownload(attachment.url, `audio-${Date.now()}.mp3`)}
+              className={`p-2 rounded-lg ${isUser ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500'}`}
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+          <audio 
+            ref={audioRef} 
+            src={attachment.url} 
+            onEnded={() => setIsPlaying(false)}
+            className="hidden"
+          />
+        </div>
+      )}
+
+      {attachment.title && attachment.type !== 'audio' && (
+        <div className={`px-3 py-2 text-xs border-t ${isUser ? 'border-blue-400 text-blue-50' : 'border-gray-200 dark:border-gray-700 text-gray-500'}`}>
+          <span className="font-medium">{attachment.title}</span>
+          {attachment.model && <span className="ml-2 opacity-70">• {attachment.model}</span>}
+        </div>
+      )}
     </div>
   );
 }
