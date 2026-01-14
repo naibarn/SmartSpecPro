@@ -1,5 +1,12 @@
+/**
+ * Login Page
+ * 
+ * SECURITY FIX (CRIT-002): Uses secure store instead of localStorage
+ */
+
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { setAuthToken, setUser } from "../services/authService";
 
 const API_BASE_URL = import.meta.env.VITE_PY_BACKEND_URL || "http://localhost:8000";
 
@@ -15,10 +22,6 @@ export default function Login() {
     setLoading(true);
     setError("");
 
-    console.log("🔐 Attempting login...");
-    console.log("API URL:", `${API_BASE_URL}/api/auth/login`);
-    console.log("Email:", email);
-
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
@@ -28,9 +31,6 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log("Response status:", response.status);
-      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         let errorData;
         try {
@@ -38,14 +38,11 @@ export default function Login() {
         } catch {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        console.error("Login error response:", errorData);
 
-        // Handle different error formats
         let errorMessage = "Login failed";
         if (errorData.detail) {
           if (Array.isArray(errorData.detail)) {
-            // FastAPI validation error format
-            errorMessage = errorData.detail.map((err: any) => err.msg).join(", ");
+            errorMessage = errorData.detail.map((err: { msg: string }) => err.msg).join(", ");
           } else if (typeof errorData.detail === "string") {
             errorMessage = errorData.detail;
           } else {
@@ -59,21 +56,16 @@ export default function Login() {
       }
 
       const data = await response.json();
-      console.log("Login success!", data);
 
-      // Store auth token and user info
-      localStorage.setItem("auth_token", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // SECURITY FIX: Store auth token and user info in secure store
+      await setAuthToken(data.access_token);
+      await setUser(data.user);
 
-      console.log("✅ Stored token and user, redirecting...");
-
-      // Redirect to dashboard for all users
-      console.log(`Redirecting to dashboard (user: ${data.user.email}, admin: ${data.user.is_admin})`);
+      // Redirect to dashboard
       navigate("/");
-    } catch (err: any) {
-      console.error("❌ Login error:", err);
-      console.error("Error stack:", err.stack);
-      setError(err.message || "Failed to login. Check console for details.");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to login";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
