@@ -397,19 +397,19 @@ impl RateLimiter {
 
 | ID | Issue | Status | Assigned | Due Date |
 |----|-------|--------|----------|----------|
-| CRIT-001 | CSP Configuration | ⬜ Not Started | - | Week 1 |
-| CRIT-002 | Auth Token Storage | ⬜ Not Started | - | Week 1 |
-| CRIT-003 | API Key Protection | ⬜ Not Started | - | Week 1 |
+| CRIT-001 | CSP Configuration | ✅ Fixed | Security Team | Week 1 |
+| CRIT-002 | Auth Token Storage | ✅ Fixed | Security Team | Week 1 |
+| CRIT-003 | API Key Protection | ✅ Fixed | Security Team | Week 1 |
 
 ### High Priority Issues
 
 | ID | Issue | Status | Assigned | Due Date |
 |----|-------|--------|----------|----------|
-| HIGH-001 | Remove .unwrap() | ⬜ Not Started | - | Week 2 |
-| HIGH-002 | SQL Parameterization | ⬜ Not Started | - | Week 2 |
-| HIGH-003 | Command Validation | ⬜ Not Started | - | Week 3 |
-| HIGH-004 | Rate Limiting | ⬜ Not Started | - | Week 3 |
-| HIGH-005 | Template Sanitization | ⬜ Not Started | - | Week 3 |
+| HIGH-001 | Remove .unwrap() | ✅ Fixed | Backend Team | Week 2 |
+| HIGH-002 | SQL Parameterization | ✅ Fixed | Backend Team | Week 2 |
+| HIGH-003 | Command Validation | ✅ Fixed | Backend Team | Week 3 |
+| HIGH-004 | Rate Limiting | ✅ Fixed | Backend Team | Week 3 |
+| HIGH-005 | Template Sanitization | ✅ Fixed | Backend Team | Week 3 |
 
 ---
 
