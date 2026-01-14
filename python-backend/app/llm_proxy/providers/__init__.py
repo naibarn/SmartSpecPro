@@ -11,6 +11,7 @@ from app.llm_proxy.providers.groq_provider import GroqProvider
 from app.llm_proxy.providers.ollama_provider import OllamaProvider
 from app.llm_proxy.providers.openrouter_provider import OpenRouterProvider
 from app.llm_proxy.providers.zai_provider import ZAIProvider
+from .kie_ai_provider import KieAIProvider
 
 __all__ = [
     "BaseLLMProvider",
@@ -21,4 +22,5 @@ __all__ = [
     "OllamaProvider",
     "OpenRouterProvider",
     "ZAIProvider",
+    "KieAIProvider",
 ]

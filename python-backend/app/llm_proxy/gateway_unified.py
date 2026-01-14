@@ -8,6 +8,7 @@ from app.llm_proxy.proxy import LLMProxy, LLMProviderError
 from app.llm_proxy.unified_client import get_unified_client, UnifiedLLMClient
 from app.llm_proxy.models import LLMRequest, LLMResponse, ImageGenerationRequest, ImageGenerationResponse, VideoGenerationRequest, VideoGenerationResponse, AudioGenerationRequest, AudioGenerationResponse
 from app.services.credit_service import CreditService, InsufficientCreditsError
+from app.services.web_gateway_client import get_gateway_client
 from app.core.credits import usd_to_credits, credits_to_usd
 from app.models.user import User
 
@@ -85,6 +86,7 @@ class LLMGateway:
         self.llm_proxy = LLMProxy()
         self.unified_client = get_unified_client()
         self.credit_service = CreditService(db)
+        self.web_gateway = get_gateway_client()
     
     async def invoke(
         self,
@@ -129,7 +131,7 @@ class LLMGateway:
         )
         
         # Step 1: Estimate cost
-        estimated_cost = self._estimate_cost(request, use_openrouter)
+        estimated_cost = await self._estimate_cost(request, use_openrouter)
         logger.info(
             "llm_cost_estimated",
             user_id=user.id,
@@ -179,8 +181,8 @@ class LLMGateway:
         """
         logger.info("image_generation_request", user_id=user.id, model=request.model)
 
-        # Estimate cost (placeholder for now, actual cost calculation is complex for image generation)
-        estimated_cost = Decimal("0.01") # Example: 0.01 USD per image
+        # Estimate cost via Web Gateway or use local estimate
+        estimated_cost = await self._estimate_cost(request, False)
         await self._check_credits(user, estimated_cost)
 
         if not self.unified_client.kie_ai_client:
@@ -226,8 +228,8 @@ class LLMGateway:
         """
         logger.info("video_generation_request", user_id=user.id, model=request.model)
 
-        # Estimate cost (placeholder for now)
-        estimated_cost = Decimal("0.05") # Example: 0.05 USD per video
+        # Estimate cost via Web Gateway or use local estimate
+        estimated_cost = await self._estimate_cost(request, False)
         await self._check_credits(user, estimated_cost)
 
         if not self.unified_client.kie_ai_client:
@@ -268,8 +270,8 @@ class LLMGateway:
         """
         logger.info("audio_generation_request", user_id=user.id, model=request.model)
 
-        # Estimate cost (placeholder for now)
-        estimated_cost = Decimal("0.005") # Example: 0.005 USD per audio
+        # Estimate cost via Web Gateway or use local estimate
+        estimated_cost = await self._estimate_cost(request, False)
         await self._check_credits(user, estimated_cost)
 
         if not self.unified_client.kie_ai_client:
@@ -300,28 +302,34 @@ class LLMGateway:
             logger.error("audio_generation_failed", user_id=user.id, error=str(e))
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Audio generation failed: {str(e)}")
 
-    def _estimate_cost(self, request: Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest], use_openrouter: bool) -> Decimal:
-        """Estimate cost based on request type."""
+    async def _estimate_cost(self, request: Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest], use_openrouter: bool) -> Decimal:
+        """Estimate cost based on request type, preferring Web Gateway if available."""
         if isinstance(request, LLMRequest):
-            # Existing LLM cost estimation logic
-            if use_openrouter:
-                # OpenRouter models have dynamic pricing, so we use a base estimate
-                return Decimal("0.001")  # A small base cost for OpenRouter requests
-            else:
-                # Direct provider cost estimation
-                # This part needs to be more sophisticated, possibly looking up model costs
-                return COST_PER_1K_TOKENS.get((request.task_type, request.budget_priority), Decimal("0.001"))
+            request_type = "llm"
+            local_cost = COST_PER_1K_TOKENS.get((request.task_type, request.budget_priority), Decimal("0.001"))
         elif isinstance(request, ImageGenerationRequest):
-            # Placeholder for image generation cost
-            return Decimal("0.01") # Example: 0.01 USD per image
+            request_type = "image"
+            local_cost = Decimal("0.01")
         elif isinstance(request, VideoGenerationRequest):
-            # Placeholder for video generation cost
-            return Decimal("0.05") # Example: 0.05 USD per video
+            request_type = "video"
+            local_cost = Decimal("0.05")
         elif isinstance(request, AudioGenerationRequest):
-            # Placeholder for audio generation cost
-            return Decimal("0.005") # Example: 0.005 USD per audio
+            request_type = "audio"
+            local_cost = Decimal("0.005")
         else:
             raise ValueError("Unknown request type for cost estimation")
+        
+        try:
+            gateway_cost = await self.web_gateway.estimate_cost(
+                request_type=request_type,
+                model=request.model
+            )
+            if gateway_cost is not None:
+                return Decimal(str(gateway_cost))
+        except Exception as e:
+            logger.warning(f"Failed to get cost from gateway: {e}, using local estimate")
+        
+        return local_cost
 
     async def _deduct_credits(
         self,
@@ -333,24 +341,61 @@ class LLMGateway:
         use_openrouter: bool
     ):
         """
-        Deduct credits from user account and log transaction.
+        Deduct credits from user account via Web Gateway or local service.
         """
+        request_type = request.__class__.__name__
+        
+        # Determine request type for gateway
+        if isinstance(request, LLMRequest):
+            gateway_request_type = "llm"
+        elif isinstance(request, ImageGenerationRequest):
+            gateway_request_type = "image"
+        elif isinstance(request, VideoGenerationRequest):
+            gateway_request_type = "video"
+        elif isinstance(request, AudioGenerationRequest):
+            gateway_request_type = "audio"
+        else:
+            gateway_request_type = "unknown"
+        
+        metadata = {
+            "request_type": request_type,
+            "model": request.model,
+            "estimated_cost_usd": float(estimated_cost),
+            "actual_cost_usd": float(actual_cost),
+            "use_openrouter": use_openrouter,
+            "response_id": getattr(response, "id", None),
+            "provider": getattr(response, "provider", None),
+        }
+        
+        # Try to deduct via Web Gateway first
+        gateway_result = await self.web_gateway.deduct_credits(
+            user_id=user.id,
+            amount_usd=float(actual_cost),
+            description=f"{gateway_request_type.upper()} Generation: {request.model}",
+            request_type=gateway_request_type,
+            model=request.model,
+            metadata=metadata
+        )
+        
+        if gateway_result:
+            logger.info(
+                "credits_deducted_via_gateway",
+                user_id=user.id,
+                amount_usd=float(actual_cost),
+                transaction_id=gateway_result.transaction_id,
+                balance_after=gateway_result.balance_after_usd,
+            )
+            return gateway_result
+        
+        # Fall back to local credit service
         transaction = await self.credit_service.deduct_credits(
             user_id=user.id,
             amount_usd=actual_cost,
-            description=f"LLM/Media Generation: {request.model}",
-            metadata={
-                "request_type": request.__class__.__name__,
-                "model": request.model,
-                "estimated_cost_usd": float(estimated_cost),
-                "actual_cost_usd": float(actual_cost),
-                "use_openrouter": use_openrouter,
-                "response_id": getattr(response, "id", None),
-                "provider": getattr(response, "provider", None),
-            }
+            description=f"{gateway_request_type.upper()} Generation: {request.model}",
+            metadata=metadata
         )
         logger.info(
-            "credits_deducted",
+            "credits_deducted_locally",
             user_id=user.id,
             amount_usd=float(actual_cost),
             balance_after=float(transaction.balance_after),

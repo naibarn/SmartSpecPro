@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.llm_proxy.openrouter_wrapper import OpenRouterWrapper, create_openrouter_client
 from app.llm_proxy.models import LLMRequest, LLMResponse, LLMProvider
 from app.core.config import settings
+from app.llm_proxy.providers import KieAIProvider
 
 logger = structlog.get_logger()
 
@@ -40,6 +41,7 @@ class UnifiedLLMClient:
         self.provider_configs: Dict[str, Dict] = {}  # Provider configs from database
         self.default_models: Dict[str, str] = {}  # Default models per provider
         self.model_to_provider: Dict[str, str] = {}  # Map model strings to their provider names
+        self.kie_ai_client: Optional[KieAIProvider] = None
         self._initialized = False
 
         logger.info("unified_llm_client_created")
@@ -172,6 +174,9 @@ class UnifiedLLMClient:
             )
             logger.info("groq_initialized_from_db")
 
+                elif provider_name == "kie_ai":
+            self.kie_ai_client = KieAIProvider(api_key=api_key, base_url=base_url or "https://kie.ai")
+            logger.info("kie_ai_initialized_from_db")
         elif provider_name == "ollama":
             from openai import OpenAI
             self.direct_providers['ollama'] = OpenAI(
@@ -222,6 +227,13 @@ class UnifiedLLMClient:
                 api_key=settings.ANTHROPIC_API_KEY
             )
             logger.info("direct_anthropic_initialized")
+
+        if settings.KIE_AI_API_KEY:
+            self.kie_ai_client = KieAIProvider(
+                api_key=settings.KIE_AI_API_KEY,
+                base_url=settings.KIE_AI_BASE_URL or "https://kie.ai"
+            )
+            logger.info("kie_ai_client_initialized")
     
     async def chat(
         self,
