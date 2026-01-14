@@ -136,15 +136,34 @@ export interface MediaAttachment {
   model?: string;
 }
 
+export interface WorkflowApprovalRequest {
+  workflow_id: string;
+  artifact_type: string;
+  artifact_path: string;
+  preview: string;
+  next_command: string;
+}
+
+export interface WorkflowProgressInfo {
+  workflow_id: string;
+  workflow_name: string;
+  current_step: string;
+  progress: number;
+}
+
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'workflow';
   content: string;
   skill?: string;
   tokens?: number;
   timestamp: Date;
   isStreaming?: boolean;
   attachments?: MediaAttachment[];
+  // Workflow-related fields
+  workflowApproval?: WorkflowApprovalRequest;
+  workflowProgress?: WorkflowProgressInfo;
+  workflowLogs?: Array<{ level: string; message: string; timestamp: Date }>;
 }
 
 // ============================================

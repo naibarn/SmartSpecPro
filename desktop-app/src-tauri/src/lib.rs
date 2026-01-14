@@ -71,12 +71,14 @@ mod multi_workspace;
 mod multiworkspace_commands;
 mod enterprise;
 mod enterprise_commands;
+mod workflow_commands;
 
 // ========================================
 // Imports
 // ========================================
 
 use python_bridge::{OutputMessage, PythonBridge, WorkflowArgs};
+use workflow_commands::WorkflowState;
 use tokio::sync::Mutex;
 use tauri::{Manager, State};
 use std::sync::Arc;
@@ -209,6 +211,9 @@ pub fn run() {
             
             app.manage(workspace_state);
             
+            // Initialize workflow state for Chat-to-Workflow Bridge
+            app.manage(Arc::new(Mutex::new(WorkflowState::new())));
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -222,6 +227,16 @@ pub fn run() {
             get_workflow_status,
             list_workflows,
             validate_spec,
+            
+            // ========================================
+            // Chat-to-Workflow Bridge Commands
+            // ========================================
+            workflow_commands::workflow_detect_intent,
+            workflow_commands::workflow_execute,
+            workflow_commands::workflow_stop,
+            workflow_commands::workflow_list_running,
+            workflow_commands::workflow_approve,
+            workflow_commands::workflow_reject,
             
             // ========================================
             // Workflow Management

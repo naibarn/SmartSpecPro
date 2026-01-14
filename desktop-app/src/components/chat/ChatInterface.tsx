@@ -3,7 +3,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useChat, ChatMessage, MediaAttachment, formatTokenCount, getCategoryIcon, getCategoryColor } from '../../services/chatService';
+import { useWorkflow } from '../../services/workflowService';
 import { MediaGenerationPanel } from './MediaGenerationPanel';
+import { ApprovalCard, WorkflowProgress } from './ApprovalCard';
 import { Download, ExternalLink, Play, Pause } from 'lucide-react';
 
 interface ChatInterfaceProps {
@@ -35,6 +37,18 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Workflow integration
+  const {
+    state: workflowState,
+    executeFromMessage,
+    approve: workflowApprove,
+    reject: workflowReject,
+    stop: workflowStop,
+    isRunning: isWorkflowRunning,
+    isWaitingApproval,
+    pendingApproval,
+  } = useWorkflow();
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -49,7 +63,7 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
   }, [inputValue]);
 
   const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || isWorkflowRunning) return;
     
     // Create session if needed
     if (!currentSession) {
@@ -58,6 +72,21 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
     
     const message = inputValue;
     setInputValue('');
+    
+    // Check if message should trigger a workflow
+    const triggeredWorkflow = await executeFromMessage(message);
+    if (triggeredWorkflow) {
+      // Workflow was triggered, add user message to chat
+      addMessageWithAttachments({
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      });
+      return;
+    }
+    
+    // Otherwise, send to LLM as normal
     await sendMessage(message);
   };
 
@@ -146,6 +175,27 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
                 <MessageBubble key={message.id} message={message} />
               ))
             )}
+            
+            {/* Workflow Progress */}
+            {isWorkflowRunning && workflowState.workflowName && (
+              <WorkflowProgress
+                workflowName={workflowState.workflowName}
+                currentStep={workflowState.currentStep}
+                progress={workflowState.progress}
+                logs={workflowState.logs}
+                onStop={workflowStop}
+              />
+            )}
+            
+            {/* Approval Request */}
+            {isWaitingApproval && pendingApproval && (
+              <ApprovalCard
+                approval={pendingApproval}
+                onApprove={workflowApprove}
+                onReject={workflowReject}
+              />
+            )}
+            
             {isLoading && <LoadingIndicator />}
             <div ref={messagesEndRef} />
           </div>
@@ -193,7 +243,7 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
               </button>
               <button
                 onClick={handleSend}
-                disabled={!inputValue.trim() || isLoading}
+                disabled={!inputValue.trim() || isLoading || isWorkflowRunning}
                 className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
