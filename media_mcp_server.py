@@ -251,6 +251,15 @@ async def generate_asset(
     Returns:
         JSON string containing generated media URL and metadata
     """
+    # Validate API token is set
+    if not API_TOKEN:
+        return json.dumps({
+            "success": False,
+            "error": "SMARTSPEC_API_TOKEN environment variable is not set. Authentication is required to call Backend API.",
+            "asset_type": asset_type,
+            "hint": "Set the environment variable: export SMARTSPEC_API_TOKEN=your_jwt_token"
+        }, indent=2, ensure_ascii=False)
+    
     # Set default model based on asset type
     if not model:
         if asset_type == "image":
@@ -499,6 +508,14 @@ async def generate_assets_from_spec(
     Returns:
         JSON string containing workflow results
     """
+    # Validate API token is set (required for generation, not for dry_run)
+    if not dry_run and not API_TOKEN:
+        return json.dumps({
+            "success": False,
+            "error": "SMARTSPEC_API_TOKEN environment variable is not set. Authentication is required for asset generation.",
+            "hint": "Set the environment variable or use dry_run=True to only analyze without generating."
+        }, indent=2, ensure_ascii=False)
+    
     base_path = project_path or DEFAULT_PROJECT_PATH
     
     # Step 1: Analyze spec

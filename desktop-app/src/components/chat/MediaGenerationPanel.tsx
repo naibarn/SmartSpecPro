@@ -1,7 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Loader2, Image, Video, Music, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { MediaAttachment } from '../../services/chatService';
+import { getAuthToken } from '../../services/authService';
+import { 
+  IMAGE_MODELS, 
+  VIDEO_MODELS, 
+  AUDIO_MODELS, 
+  DEFAULT_IMAGE_MODEL,
+  getModelsForType,
+  getDefaultModelForType,
+  type MediaType 
+} from '../../constants/mediaModels';
 
 interface MediaGenerationPanelProps {
   onClose: () => void;
@@ -9,53 +19,44 @@ interface MediaGenerationPanelProps {
   chatContext?: string;
 }
 
-type MediaType = 'image' | 'video' | 'audio';
-
-const IMAGE_MODELS = [
-  { id: 'google-nano-banana-pro', name: 'Google Nano Banana Pro' },
-  { id: 'flux-2.0', name: 'Flux 2.0' },
-  { id: 'z-image', name: 'Z-Image' },
-  { id: 'grok-imagine', name: 'Grok Imagine' },
-];
-
-const VIDEO_MODELS = [
-  { id: 'veo-3-1', name: 'Veo 3.1' },
-  { id: 'sora-2', name: 'Sora 2' },
-  { id: 'kling-2.6', name: 'Kling 2.6' },
-];
-
-const AUDIO_MODELS = [
-  { id: 'elevenlabs-tts', name: 'ElevenLabs Text-to-Speech' },
-  { id: 'elevenlabs-sfx', name: 'ElevenLabs Sound Effects' },
-];
+// Models are now imported from shared constants
 
 export function MediaGenerationPanel({ onClose, onInsert, chatContext }: MediaGenerationPanelProps) {
   const { toast } = useToast();
   const [mediaType, setMediaType] = useState<MediaType>('image');
-  const [selectedModel, setSelectedModel] = useState('google-nano-banana-pro');
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_IMAGE_MODEL);
   const [prompt, setPrompt] = useState(chatContext || '');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMedia, setGeneratedMedia] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
-  const getModels = () => {
-    switch (mediaType) {
-      case 'image':
-        return IMAGE_MODELS;
-      case 'video':
-        return VIDEO_MODELS;
-      case 'audio':
-        return AUDIO_MODELS;
-      default:
-        return [];
-    }
-  };
+  // Load auth token on mount
+  useEffect(() => {
+    const loadToken = async () => {
+      const token = await getAuthToken();
+      setAuthToken(token);
+    };
+    loadToken();
+  }, []);
+
+  const getModels = () => getModelsForType(mediaType);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       toast({
         title: 'Error',
         description: 'Please enter a prompt',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check if authenticated
+    if (!authToken) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to generate media.',
         variant: 'destructive',
       });
       return;
@@ -68,6 +69,7 @@ export function MediaGenerationPanel({ onClose, onInsert, chatContext }: MediaGe
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           model: selectedModel,
@@ -132,7 +134,7 @@ export function MediaGenerationPanel({ onClose, onInsert, chatContext }: MediaGe
                 key={type}
                 onClick={() => {
                   setMediaType(type);
-                  setSelectedModel(getModels()[0]?.id || '');
+                  setSelectedModel(getDefaultModelForType(type));
                   setGeneratedMedia(null);
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
