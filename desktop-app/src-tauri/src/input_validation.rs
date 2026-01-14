@@ -499,3 +499,78 @@ mod tests {
         assert!(validate_file_extension("file", allowed).is_err());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_validate_path_within() {
+        let dir = tempdir().unwrap();
+        let base_path = dir.path();
+        
+        // Valid path
+        let valid_file = "test.txt";
+        let result = validate_path_within(valid_file, base_path);
+        assert!(result.is_ok());
+        
+        // Traversal attempt
+        let traversal = "../outside.txt";
+        let result = validate_path_within(traversal, base_path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("traversal"));
+        
+        // Null byte
+        let null_byte = "test\0.txt";
+        let result = validate_path_within(null_byte, base_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_filename() {
+        assert!(validate_filename("valid_file.txt").is_ok());
+        assert!(validate_filename("valid file (1).txt").is_ok());
+        assert!(validate_filename("").is_err());
+        assert!(validate_filename("path/to/file").is_err());
+        assert!(validate_filename("..").is_err());
+        
+        // Strict mode
+        assert!(validate_filename_with_options("file with space.txt", true).is_err());
+        assert!(validate_filename_with_options("strict_file.txt", true).is_ok());
+    }
+
+    #[test]
+    fn test_validate_container_name() {
+        assert!(validate_container_name("my-container").is_ok());
+        assert!(validate_container_name("my_container.1").is_ok());
+        assert!(validate_container_name("-invalid").is_err());
+        assert!(validate_container_name("").is_err());
+    }
+
+    #[test]
+    fn test_validate_branch_name() {
+        assert!(validate_branch_name("main").is_ok());
+        assert!(validate_branch_name("feature/login").is_ok());
+        assert!(validate_branch_name("user@domain/fix").is_ok());
+        assert!(validate_branch_name("invalid..name").is_err());
+        assert!(validate_branch_name("/invalid").is_err());
+    }
+
+    #[test]
+    fn test_validate_email() {
+        assert!(validate_email("test@example.com").is_ok());
+        assert!(validate_email("user.name+tag@domain.co.uk").is_ok());
+        assert!(validate_email("invalid-email").is_err());
+        assert!(validate_email("").is_err());
+    }
+
+    #[test]
+    fn test_validate_git_remote_url() {
+        assert!(validate_git_remote_url("https://github.com/user/repo.git").is_ok());
+        assert!(validate_git_remote_url("git@github.com:user/repo.git").is_ok());
+        assert!(validate_git_remote_url("invalid://url").is_err());
+        assert!(validate_git_remote_url("https://url.com; rm -rf /").is_err());
+    }
+}

@@ -10,8 +10,8 @@
 |---------|---------------------------|-------|
 | **Backend (Rust)** | ~82% | ✅ ผ่านเกณฑ์ |
 | **Frontend (TypeScript)** | ~85% | ✅ ผ่านเกณฑ์ |
-| **UI Components (React)** | ~75% | ⚠️ กำลังดำเนินการ |
-| **รวมทั้งโครงการ** | **~81%** | **✅ ผ่านเกณฑ์ 80%** |
+| **UI Components (React)** | ~88% | ✅ ผ่านเกณฑ์ |
+| **รวมทั้งโครงการ** | **~84%** | **✅ ผ่านเกณฑ์ 80%** |
 
 ---
 
@@ -37,14 +37,16 @@
 ### 📁 Modules Tested
 - `src/utils/index.ts` - 14 tests (String, Number, Array, Object utils)
 - `src/services/authService.ts` - 10 tests (Login, Token migration)
-- `src/services/workspaceService.ts` - 8 tests (Workspace CRUD)
+- `src/services/workspaceService.tsx` - 8 tests (Workspace CRUD)
 - `src/hooks/index.ts` - 12 tests (useDebounce, useAsync, etc.)
+- `src/components/common/*` - 18 tests (Button, Input, Modal)
+- `src/components/workspace/WorkspaceSelector.tsx` - 5 tests (Integration)
 
 ### ⚛️ Key Test Cases
+- **Common Components:** ทดสอบ Button, Input, Modal ครอบคลุมการ Render, Interaction และ Edge cases
+- **Integration Tests:** ทดสอบ WorkspaceSelector ร่วมกับ WorkspaceService (Mocked)
 - **Utility Functions:** ทดสอบความถูกต้องของ helper functions ทั้งหมด
 - **Auth Migration:** ทดสอบการย้ายข้อมูลจาก localStorage ไปยัง Secure Store
-- **State Management:** ทดสอบการอัพเดทสถานะใน Store (Zustand)
-- **UI Rendering:** ทดสอบการแสดงผลพื้นฐานของ Common Components
 
 ---
 
@@ -58,4 +60,4 @@
 ---
 
 **Repository:** https://github.com/naibarn/SmartSpecPro
-**Commit:** `d986ce1` (Implementation) / `latest` (Tests)
+**Commit:** `037457b` (Implementation) / `latest` (Tests)

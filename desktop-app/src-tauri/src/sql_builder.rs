@@ -520,3 +520,60 @@ mod tests {
         assert_eq!(escape_like_pattern("test\\"), "test\\\\");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_query_builder_basic() {
+        let query = QueryBuilder::new("users")
+            .select(&["id", "name"])
+            .where_eq("id", 1)
+            .build();
+        assert_eq!(query, "SELECT id, name FROM users WHERE id = ?");
+    }
+
+    #[test]
+    fn test_query_builder_complex() {
+        let query = QueryBuilder::new("tasks")
+            .where_eq("status", "pending")
+            .where_like("title", "%test%")
+            .order_by("created_at", true)
+            .limit(10)
+            .build();
+        assert_eq!(query, "SELECT * FROM tasks WHERE status = ? AND title LIKE ? ORDER BY created_at DESC LIMIT ?");
+    }
+
+    #[test]
+    fn test_insert_builder() {
+        let query = InsertBuilder::new("users")
+            .column("name", "John")
+            .column("email", "john@example.com")
+            .build();
+        assert_eq!(query, "INSERT INTO users (name, email) VALUES (?, ?)");
+    }
+
+    #[test]
+    fn test_update_builder() {
+        let query = UpdateBuilder::new("users")
+            .set("name", "Jane")
+            .where_eq("id", 1)
+            .build();
+        assert_eq!(query, "UPDATE users SET name = ? WHERE id = ?");
+    }
+
+    #[test]
+    fn test_delete_builder() {
+        let query = DeleteBuilder::new("users")
+            .where_eq("id", 1)
+            .build();
+        assert_eq!(query, "DELETE FROM users WHERE id = ?");
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid column name")]
+    fn test_injection_prevention() {
+        QueryBuilder::new("users").where_eq("id; DROP TABLE users", 1);
+    }
+}
