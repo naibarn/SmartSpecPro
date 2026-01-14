@@ -8,6 +8,7 @@ import KiloPtyPage from "./pages/KiloPty";
 import LLMChatPage from "./pages/LLMChat";
 import TestPage from "./pages/TestPage";
 import DockerSandbox from "./pages/DockerSandbox";
+import MediaStudioPage from "./pages/MediaStudioPage";
 import Login from "./pages/Login";
 import WebLogin from "./pages/WebLogin";
 import Settings from "./pages/Settings";
@@ -130,6 +131,7 @@ export default function App() {
                         <Route path="/kilo" element={<KiloCliPage />} />
                         <Route path="/test" element={<TestPage />} />
                         <Route path="/docker" element={<DockerSandbox />} />
+                        <Route path="/media" element={<MediaStudioPage />} />
                         
                         {/* Settings & Profile */}
                         <Route path="/settings" element={<Settings />} />
