@@ -3,7 +3,7 @@ SmartSpec Pro - LLM Proxy Models
 Phase 0.2
 """
 
-from typing import List, Dict, Optional, Literal, Union
+from typing import List, Dict, Optional, Literal, Union, TYPE_CHECKING
 from decimal import Decimal
 from pydantic import BaseModel, Field
 
@@ -21,22 +21,8 @@ class LLMProvider(BaseModel):
     enabled: bool = True
 
 
-class LLMRequest(BaseModel):
-    """Request to invoke LLM"""
-    prompt: str
-    task_type: Literal['planning', 'code_generation', 'analysis', 'decision', 'simple'] = 'simple'
-    max_tokens: int = Field(default=4000, ge=1, le=128000)
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    preferred_provider: Optional[str] = None
-    preferred_model: Optional[str] = None
-    budget_priority: Literal['cost', 'quality', 'speed'] = 'quality'
-    system_prompt: Optional[str] = None
-    messages: Optional[list[dict]] = None  # For chat-style APIs
-    # For Image/Video/Audio generation
-    image_request: Optional[ImageGenerationRequest] = None
-    video_request: Optional[VideoGenerationRequest] = None
-    audio_request: Optional[AudioGenerationRequest] = None
-
+# ==================== MEDIA GENERATION MODELS ====================
+# These must be defined before LLMRequest which references them
 
 class ImageGenerationRequest(BaseModel):
     model: str
@@ -57,6 +43,7 @@ class ImageGenerationRequest(BaseModel):
     reference_image_urls: Optional[List[str]] = None
     reference_style_url: Optional[str] = None
 
+
 class ImageGenerationResponse(BaseModel):
     id: str
     model: str
@@ -65,6 +52,7 @@ class ImageGenerationResponse(BaseModel):
     data: List[Dict[str, str]]  # List of {'url': '...', 'b64_json': '...'}
     credits_used: Optional[Decimal] = None
     credits_balance: Optional[Decimal] = None
+
 
 class VideoGenerationRequest(BaseModel):
     model: str
@@ -80,6 +68,7 @@ class VideoGenerationRequest(BaseModel):
     reference_video_url: Optional[str] = None
     reference_image_urls: Optional[List[str]] = None
 
+
 class VideoGenerationResponse(BaseModel):
     id: str
     model: str
@@ -88,6 +77,7 @@ class VideoGenerationResponse(BaseModel):
     data: List[Dict[str, str]]  # List of {'url': '...'}
     credits_used: Optional[Decimal] = None
     credits_balance: Optional[Decimal] = None
+
 
 class AudioGenerationRequest(BaseModel):
     model: str
@@ -101,6 +91,7 @@ class AudioGenerationRequest(BaseModel):
     similarity_boost: Optional[float] = None
     output_format: Optional[Literal["mp3", "wav"]] = "mp3"
 
+
 class AudioGenerationResponse(BaseModel):
     id: str
     model: str
@@ -109,6 +100,26 @@ class AudioGenerationResponse(BaseModel):
     data: List[Dict[str, str]]  # List of {'url': '...'}
     credits_used: Optional[Decimal] = None
     credits_balance: Optional[Decimal] = None
+
+
+# ==================== LLM REQUEST/RESPONSE MODELS ====================
+
+class LLMRequest(BaseModel):
+    """Request to invoke LLM"""
+    prompt: str
+    task_type: Literal['planning', 'code_generation', 'analysis', 'decision', 'simple'] = 'simple'
+    max_tokens: int = Field(default=4000, ge=1, le=128000)
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    preferred_provider: Optional[str] = None
+    preferred_model: Optional[str] = None
+    budget_priority: Literal['cost', 'quality', 'speed'] = 'quality'
+    system_prompt: Optional[str] = None
+    messages: Optional[list[dict]] = None  # For chat-style APIs
+    # For Image/Video/Audio generation
+    image_request: Optional[ImageGenerationRequest] = None
+    video_request: Optional[VideoGenerationRequest] = None
+    audio_request: Optional[AudioGenerationRequest] = None
+
 
 class LLMResponse(BaseModel):
     """Response from LLM invocation"""
@@ -126,6 +137,8 @@ class LLMResponse(BaseModel):
     video_response: Optional[VideoGenerationResponse] = None
     audio_response: Optional[AudioGenerationResponse] = None
 
+
+# ==================== STATISTICS AND HEALTH MODELS ====================
 
 class LLMUsageStats(BaseModel):
     """Usage statistics for LLM Proxy"""

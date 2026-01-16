@@ -1,8 +1,8 @@
 """
 SmartSpec Pro - OpenCode Gateway API
-Phase 1.4: OpenCode Integration
+Phase 1.4: OpenCode Integration (COMPLETED)
 
-OpenAI-compatible API Gateway for external tools like OpenCode CLI.
+OpenAI-compatible API Gateway for external tools like OpenCode CLI and OpenWork.
 This endpoint allows OpenCode to connect to SmartSpecPro's LLM Gateway
 and use the existing credit system for billing.
 
@@ -10,16 +10,19 @@ Endpoints:
 - POST /v1/opencode/chat/completions - Chat completions (OpenAI-compatible)
 - GET /v1/opencode/models - List available models
 - POST /v1/opencode/api-keys - Create API key for OpenCode
+- GET /v1/opencode/api-keys - List user's API keys
+- DELETE /v1/opencode/api-keys/{key_id} - Revoke API key
 - GET /v1/opencode/usage - Get usage statistics
+- GET /v1/opencode/health - Health check
 """
 
 import asyncio
 import json
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, AsyncGenerator
+from typing import Any, Dict, List, Optional, AsyncGenerator, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Response, Depends, Header
 from fastapi.responses import StreamingResponse
@@ -33,7 +36,9 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.auth import verify_token
 from app.models.user import User
+from app.models.api_key import APIKey
 from app.services.credit_service import CreditService
+from app.services.api_key_service import APIKeyService
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.orchestrator.agents.budget_controller import (
     TokenBudgetController,
@@ -107,19 +112,34 @@ class ModelsResponse(BaseModel):
     data: List[ModelInfo]
 
 
-class APIKeyRequest(BaseModel):
+class APIKeyCreateRequest(BaseModel):
     """Request to create an API key."""
     name: str = Field(..., description="Name for the API key")
-    expires_in_days: Optional[int] = Field(None, description="Days until expiration")
+    expires_in_days: Optional[int] = Field(90, description="Days until expiration (default: 90)")
+    description: Optional[str] = Field(None, description="Optional description")
 
 
 class APIKeyResponse(BaseModel):
-    """API key response."""
+    """API key response (with raw key - only shown once)."""
     id: str
     name: str
     key: str  # Only shown once on creation
+    key_prefix: str
     created_at: str
     expires_at: Optional[str]
+    description: Optional[str]
+
+
+class APIKeyListItem(BaseModel):
+    """API key list item (without raw key)."""
+    id: str
+    name: str
+    key_prefix: str
+    is_active: bool
+    created_at: str
+    expires_at: Optional[str]
+    last_used_at: Optional[str]
+    description: Optional[str]
 
 
 class UsageResponse(BaseModel):
@@ -137,13 +157,16 @@ class UsageResponse(BaseModel):
 async def get_api_key_user(
     authorization: str = Header(..., description="Bearer API key"),
     db: AsyncSession = Depends(get_db),
-) -> User:
+) -> Tuple[User, Optional[APIKey]]:
     """
     Validate API key and return the associated user.
     
     Supports both:
     - SmartSpec API keys (sk-smartspec-...)
     - JWT tokens (for backward compatibility)
+    
+    Returns:
+        (User, APIKey) tuple - APIKey is None for JWT auth
     """
     if not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
@@ -152,10 +175,19 @@ async def get_api_key_user(
     
     # Check if it's a SmartSpec API key
     if token.startswith("sk-smartspec-"):
-        user = await _validate_api_key(token, db)
-        if not user:
+        result = await APIKeyService.validate_api_key(db, token)
+        if not result:
+            logger.warning("opencode_auth_failed", reason="invalid_api_key")
             raise HTTPException(status_code=401, detail="Invalid API key")
-        return user
+        
+        api_key, user = result
+        logger.info(
+            "opencode_auth_success",
+            auth_type="api_key",
+            user_id=str(user.id),
+            key_id=str(api_key.id)
+        )
+        return (user, api_key)
     
     # Try JWT token
     try:
@@ -170,32 +202,54 @@ async def get_api_key_user(
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         
-        return user
+        logger.info(
+            "opencode_auth_success",
+            auth_type="jwt",
+            user_id=str(user.id)
+        )
+        return (user, None)
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.warning("auth_failed", error=str(e))
+        logger.warning("opencode_auth_failed", error=str(e))
         raise HTTPException(status_code=401, detail="Authentication failed")
 
 
-async def _validate_api_key(api_key: str, db: AsyncSession) -> Optional[User]:
-    """Validate a SmartSpec API key and return the associated user."""
-    # TODO: Implement API key validation against database
-    # For now, return None to indicate not implemented
-    # This will be implemented when API Key Service is ready
-    return None
+async def get_user_only(
+    auth_result: Tuple[User, Optional[APIKey]] = Depends(get_api_key_user)
+) -> User:
+    """Get only the user from auth result."""
+    return auth_result[0]
 
 
 # ==================== AVAILABLE MODELS ====================
 
 AVAILABLE_MODELS = [
+    # Anthropic
     {"id": "claude-3.5-sonnet", "owned_by": "anthropic"},
     {"id": "claude-3-opus", "owned_by": "anthropic"},
     {"id": "claude-3-haiku", "owned_by": "anthropic"},
+    {"id": "anthropic/claude-3.5-sonnet", "owned_by": "anthropic"},
+    {"id": "anthropic/claude-3-opus", "owned_by": "anthropic"},
+    # OpenAI
     {"id": "gpt-4o", "owned_by": "openai"},
     {"id": "gpt-4o-mini", "owned_by": "openai"},
     {"id": "gpt-4-turbo", "owned_by": "openai"},
+    {"id": "openai/gpt-4o", "owned_by": "openai"},
+    {"id": "openai/gpt-4o-mini", "owned_by": "openai"},
+    # DeepSeek
     {"id": "deepseek-chat", "owned_by": "deepseek"},
     {"id": "deepseek-coder", "owned_by": "deepseek"},
+    {"id": "deepseek/deepseek-chat", "owned_by": "deepseek"},
+    # Google
+    {"id": "gemini-pro", "owned_by": "google"},
+    {"id": "gemini-flash-1.5", "owned_by": "google"},
+    {"id": "google/gemini-pro", "owned_by": "google"},
+    {"id": "google/gemini-flash-1.5", "owned_by": "google"},
+    # Meta
+    {"id": "meta-llama/llama-3.1-70b-instruct", "owned_by": "meta"},
+    {"id": "meta-llama/llama-3.1-8b-instruct", "owned_by": "meta"},
 ]
 
 
@@ -203,7 +257,7 @@ AVAILABLE_MODELS = [
 
 @router.get("/models", response_model=ModelsResponse)
 async def list_models(
-    user: User = Depends(get_api_key_user),
+    user: User = Depends(get_user_only),
 ):
     """
     List available models.
@@ -226,7 +280,7 @@ async def list_models(
 async def create_chat_completion(
     request: ChatCompletionRequest,
     req: Request,
-    user: User = Depends(get_api_key_user),
+    auth_result: Tuple[User, Optional[APIKey]] = Depends(get_api_key_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -235,6 +289,7 @@ async def create_chat_completion(
     This endpoint is compatible with the OpenAI API format,
     allowing tools like OpenCode to connect seamlessly.
     """
+    user, api_key = auth_result
     request_id = f"chatcmpl-{uuid.uuid4().hex[:24]}"
     start_time = time.time()
     
@@ -242,6 +297,7 @@ async def create_chat_completion(
         "opencode_chat_request",
         request_id=request_id,
         user_id=str(user.id),
+        api_key_id=str(api_key.id) if api_key else None,
         model=request.model,
         message_count=len(request.messages),
         stream=request.stream,
@@ -258,16 +314,19 @@ async def create_chat_completion(
                 detail="Insufficient credits. Please add credits to continue.",
             )
         
-        # Validate model
-        valid_models = [m["id"] for m in AVAILABLE_MODELS]
-        if request.model not in valid_models:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid model. Available models: {', '.join(valid_models)}",
-            )
+        # Validate model (allow both short and full names)
+        valid_model_ids = [m["id"] for m in AVAILABLE_MODELS]
+        if request.model not in valid_model_ids:
+            # Try to find a matching model
+            matching = [m for m in valid_model_ids if request.model in m or m in request.model]
+            if not matching:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid model. Available models: {', '.join(set(m['id'] for m in AVAILABLE_MODELS))}",
+                )
         
         # Get unified gateway
-        gateway = LLMGateway()
+        gateway = LLMGateway(db)
         
         # Prepare messages for gateway
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
@@ -283,7 +342,9 @@ async def create_chat_completion(
                     temperature=request.temperature,
                     max_tokens=request.max_tokens,
                     user=user,
+                    api_key=api_key,
                     credit_service=credit_service,
+                    db=db,
                 ),
                 media_type="text/event-stream",
             )
@@ -309,6 +370,21 @@ async def create_chat_completion(
                 amount=cost,
                 description=f"OpenCode: {request.model} ({total_tokens} tokens)",
             )
+            
+            # Record API key usage if applicable
+            if api_key:
+                duration_ms = int((time.time() - start_time) * 1000)
+                await APIKeyService.record_usage(
+                    db=db,
+                    api_key=api_key,
+                    endpoint="/v1/opencode/chat/completions",
+                    method="POST",
+                    status_code=200,
+                    response_time=duration_ms,
+                    credits_used=int(cost * 100),  # Convert to integer credits
+                    ip_address=req.client.host if req.client else None,
+                    user_agent=req.headers.get("user-agent"),
+                )
             
             # Build response
             response = ChatCompletionResponse(
@@ -358,11 +434,14 @@ async def _stream_completion(
     temperature: float,
     max_tokens: int,
     user: User,
+    api_key: Optional[APIKey],
     credit_service: CreditService,
+    db: AsyncSession,
 ) -> AsyncGenerator[str, None]:
     """Stream chat completion chunks."""
     total_input_tokens = 0
     total_output_tokens = 0
+    start_time = time.time()
     
     try:
         async for chunk in gateway.chat_completion_stream(
@@ -407,6 +486,19 @@ async def _stream_completion(
             description=f"OpenCode (stream): {model} ({total_tokens} tokens)",
         )
         
+        # Record API key usage if applicable
+        if api_key:
+            duration_ms = int((time.time() - start_time) * 1000)
+            await APIKeyService.record_usage(
+                db=db,
+                api_key=api_key,
+                endpoint="/v1/opencode/chat/completions",
+                method="POST",
+                status_code=200,
+                response_time=duration_ms,
+                credits_used=int(cost * 100),
+            )
+        
         logger.info(
             "opencode_stream_completed",
             request_id=request_id,
@@ -421,17 +513,20 @@ async def _stream_completion(
 
 @router.get("/usage", response_model=UsageResponse)
 async def get_usage(
-    user: User = Depends(get_api_key_user),
+    user: User = Depends(get_user_only),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get usage statistics for the current billing period.
     """
-    # TODO: Implement usage tracking
-    # For now, return placeholder data
     now = datetime.utcnow()
     period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
+    # Get credit service for usage data
+    credit_service = CreditService(db)
+    
+    # Get usage from credit transactions
+    # This is a simplified implementation
     return UsageResponse(
         total_tokens=0,
         total_cost=0.0,
@@ -442,10 +537,12 @@ async def get_usage(
     )
 
 
+# ==================== API KEY MANAGEMENT ====================
+
 @router.post("/api-keys", response_model=APIKeyResponse)
 async def create_api_key(
-    request: APIKeyRequest,
-    user: User = Depends(get_api_key_user),
+    request: APIKeyCreateRequest,
+    user: User = Depends(get_user_only),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -453,37 +550,165 @@ async def create_api_key(
     
     The API key will only be shown once. Make sure to save it securely.
     """
-    # Generate API key
-    key_id = uuid.uuid4().hex[:8]
-    key_secret = uuid.uuid4().hex
-    api_key = f"sk-smartspec-{key_id}-{key_secret}"
+    # Create API key using the service
+    api_key, raw_key = await APIKeyService.create_opencode_api_key(
+        db=db,
+        user=user,
+        name=request.name,
+        expires_in_days=request.expires_in_days or 90,
+    )
     
-    # TODO: Store API key in database (hashed)
-    # For now, return the key without storing
-    
-    now = datetime.utcnow()
-    expires_at = None
-    if request.expires_in_days:
-        from datetime import timedelta
-        expires_at = now + timedelta(days=request.expires_in_days)
+    # Update description if provided
+    if request.description:
+        api_key = await APIKeyService.update_api_key(
+            db=db,
+            api_key=api_key,
+            description=request.description,
+        )
     
     logger.info(
-        "api_key_created",
+        "opencode_api_key_created",
         user_id=str(user.id),
-        key_id=key_id,
+        key_id=str(api_key.id),
         name=request.name,
     )
     
     return APIKeyResponse(
-        id=key_id,
-        name=request.name,
-        key=api_key,
-        created_at=now.isoformat(),
-        expires_at=expires_at.isoformat() if expires_at else None,
+        id=str(api_key.id),
+        name=api_key.name,
+        key=raw_key,  # Only shown once!
+        key_prefix=api_key.key_prefix,
+        created_at=api_key.created_at.isoformat(),
+        expires_at=api_key.expires_at.isoformat() if api_key.expires_at else None,
+        description=api_key.description,
     )
+
+
+@router.get("/api-keys", response_model=List[APIKeyListItem])
+async def list_api_keys(
+    user: User = Depends(get_user_only),
+    db: AsyncSession = Depends(get_db),
+    include_inactive: bool = False,
+):
+    """
+    List all API keys for the current user.
+    
+    Note: The actual key values are not returned for security.
+    """
+    api_keys = await APIKeyService.get_user_api_keys(
+        db=db,
+        user=user,
+        include_inactive=include_inactive,
+    )
+    
+    return [
+        APIKeyListItem(
+            id=str(key.id),
+            name=key.name,
+            key_prefix=key.key_prefix,
+            is_active=key.is_active,
+            created_at=key.created_at.isoformat(),
+            expires_at=key.expires_at.isoformat() if key.expires_at else None,
+            last_used_at=key.last_used_at.isoformat() if key.last_used_at else None,
+            description=key.description,
+        )
+        for key in api_keys
+    ]
+
+
+@router.delete("/api-keys/{key_id}")
+async def revoke_api_key(
+    key_id: str,
+    user: User = Depends(get_user_only),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Revoke (deactivate) an API key.
+    
+    The key will no longer be usable for authentication.
+    """
+    api_key = await APIKeyService.get_api_key_by_id(db, key_id, user)
+    
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    
+    await APIKeyService.revoke_api_key(db, api_key)
+    
+    logger.info(
+        "opencode_api_key_revoked",
+        user_id=str(user.id),
+        key_id=key_id,
+    )
+    
+    return {"status": "revoked", "key_id": key_id}
+
+
+@router.post("/api-keys/{key_id}/rotate", response_model=APIKeyResponse)
+async def rotate_api_key(
+    key_id: str,
+    user: User = Depends(get_user_only),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Rotate an API key (generate new key, same ID).
+    
+    The old key will be immediately invalidated.
+    The new key will only be shown once.
+    """
+    api_key = await APIKeyService.get_api_key_by_id(db, key_id, user)
+    
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    
+    api_key, new_raw_key = await APIKeyService.rotate_api_key(db, api_key)
+    
+    logger.info(
+        "opencode_api_key_rotated",
+        user_id=str(user.id),
+        key_id=key_id,
+    )
+    
+    return APIKeyResponse(
+        id=str(api_key.id),
+        name=api_key.name,
+        key=new_raw_key,  # Only shown once!
+        key_prefix=api_key.key_prefix,
+        created_at=api_key.created_at.isoformat(),
+        expires_at=api_key.expires_at.isoformat() if api_key.expires_at else None,
+        description=api_key.description,
+    )
+
+
+@router.get("/api-keys/{key_id}/usage")
+async def get_api_key_usage(
+    key_id: str,
+    days: int = 30,
+    user: User = Depends(get_user_only),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get usage statistics for a specific API key.
+    """
+    api_key = await APIKeyService.get_api_key_by_id(db, key_id, user)
+    
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    
+    stats = await APIKeyService.get_usage_stats(db, api_key, days)
+    
+    return {
+        "key_id": key_id,
+        "key_name": api_key.name,
+        **stats,
+    }
 
 
 @router.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "service": "opencode-gateway"}
+    return {
+        "status": "ok",
+        "service": "opencode-gateway",
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
+    }

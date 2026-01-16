@@ -174,9 +174,10 @@ class UnifiedLLMClient:
             )
             logger.info("groq_initialized_from_db")
 
-                elif provider_name == "kie_ai":
+        elif provider_name == "kie_ai":
             self.kie_ai_client = KieAIProvider(api_key=api_key, base_url=base_url or "https://kie.ai")
             logger.info("kie_ai_initialized_from_db")
+
         elif provider_name == "ollama":
             from openai import OpenAI
             self.direct_providers['ollama'] = OpenAI(

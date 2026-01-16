@@ -1,14 +1,15 @@
 """
 API Key Service
-Manages API key operations
+Manages API key operations including validation for OpenCode Gateway
 """
 
 import secrets
 import hashlib
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
+from sqlalchemy.orm import joinedload
 import structlog
 
 from app.models.api_key import APIKey, APIKeyUsage
@@ -29,16 +30,120 @@ class APIKeyService:
         Returns:
             (key, key_hash, key_prefix) tuple
         """
-        # Generate random key
+        # Generate random key with SmartSpec format
         key = TokenGenerator.generate_api_key()
         
         # Hash for storage
         key_hash = TokenGenerator.hash_token(key)
         
-        # Prefix for display
-        key_prefix = f"{key[:8]}...{key[-8:]}"
+        # Prefix for display (first 16 chars + last 4 chars)
+        key_prefix = f"{key[:16]}...{key[-4:]}"
         
         return key, key_hash, key_prefix
+    
+    @staticmethod
+    async def validate_api_key(
+        db: AsyncSession,
+        raw_key: str
+    ) -> Optional[Tuple[APIKey, User]]:
+        """
+        Validate API key from request and return key + user.
+        
+        This is the main validation method used by OpenCode Gateway
+        to authenticate incoming requests.
+        
+        Args:
+            db: Database session
+            raw_key: Raw API key from Authorization header
+        
+        Returns:
+            (APIKey, User) tuple if valid, None if invalid
+        """
+        # Check format first
+        if not TokenGenerator.is_valid_api_key_format(raw_key):
+            logger.warning("api_key_invalid_format", key_prefix=raw_key[:20] if raw_key else "empty")
+            return None
+        
+        # Hash the raw key
+        key_hash = TokenGenerator.hash_token(raw_key)
+        
+        try:
+            # Find API key by hash with user relationship
+            result = await db.execute(
+                select(APIKey)
+                .options(joinedload(APIKey.user))
+                .where(APIKey.key_hash == key_hash)
+            )
+            api_key = result.scalar_one_or_none()
+            
+            if not api_key:
+                logger.warning("api_key_not_found", key_hash=key_hash[:16])
+                return None
+            
+            # Check if valid (active and not expired)
+            if not api_key.is_valid():
+                logger.warning(
+                    "api_key_invalid",
+                    key_id=str(api_key.id),
+                    is_active=api_key.is_active,
+                    is_expired=api_key.is_expired()
+                )
+                return None
+            
+            # Update last_used_at
+            api_key.last_used_at = datetime.utcnow()
+            await db.commit()
+            
+            logger.info(
+                "api_key_validated",
+                key_id=str(api_key.id),
+                user_id=str(api_key.user_id),
+                key_name=api_key.name
+            )
+            
+            return (api_key, api_key.user)
+            
+        except Exception as e:
+            logger.error("api_key_validation_error", error=str(e))
+            return None
+    
+    @staticmethod
+    async def validate_api_key_with_permission(
+        db: AsyncSession,
+        raw_key: str,
+        endpoint: str,
+        method: str
+    ) -> Optional[Tuple[APIKey, User]]:
+        """
+        Validate API key and check permission for specific endpoint.
+        
+        Args:
+            db: Database session
+            raw_key: Raw API key from Authorization header
+            endpoint: API endpoint being accessed
+            method: HTTP method (GET, POST, etc.)
+        
+        Returns:
+            (APIKey, User) tuple if valid and has permission, None otherwise
+        """
+        result = await APIKeyService.validate_api_key(db, raw_key)
+        
+        if not result:
+            return None
+        
+        api_key, user = result
+        
+        # Check endpoint permission
+        if not api_key.has_permission(endpoint, method):
+            logger.warning(
+                "api_key_permission_denied",
+                key_id=str(api_key.id),
+                endpoint=endpoint,
+                method=method
+            )
+            return None
+        
+        return result
     
     @staticmethod
     async def create_api_key(
@@ -73,13 +178,23 @@ class APIKeyService:
         if expires_in_days:
             expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
         
+        # Default permissions for OpenCode access
+        default_permissions = {
+            "endpoints": [
+                "/v1/opencode/*",
+                "/v1/chat/*",
+                "/v1/models"
+            ],
+            "methods": ["GET", "POST"]
+        }
+        
         # Create API key
         api_key = APIKey(
             user_id=user.id,
             name=name,
             key_hash=key_hash,
             key_prefix=key_prefix,
-            permissions=permissions or {},
+            permissions=permissions or default_permissions,
             rate_limit=rate_limit,
             expires_at=expires_at,
             description=description
@@ -93,10 +208,53 @@ class APIKeyService:
             "api_key_created",
             user_id=str(user.id),
             key_id=str(api_key.id),
-            name=name
+            name=name,
+            expires_at=expires_at.isoformat() if expires_at else None
         )
         
         return api_key, raw_key
+    
+    @staticmethod
+    async def create_opencode_api_key(
+        db: AsyncSession,
+        user: User,
+        name: str = "OpenCode Access",
+        expires_in_days: int = 90
+    ) -> tuple[APIKey, str]:
+        """
+        Create API key specifically for OpenCode access.
+        
+        This is a convenience method that creates an API key with
+        appropriate permissions for OpenCode CLI/OpenWork integration.
+        
+        Args:
+            db: Database session
+            user: User object
+            name: Key name (default: "OpenCode Access")
+            expires_in_days: Expiration in days (default: 90)
+        
+        Returns:
+            (APIKey, raw_key) tuple
+        """
+        permissions = {
+            "endpoints": [
+                "/v1/opencode/*",
+                "/v1/chat/completions",
+                "/v1/models"
+            ],
+            "methods": ["GET", "POST"],
+            "features": ["opencode", "chat", "streaming"]
+        }
+        
+        return await APIKeyService.create_api_key(
+            db=db,
+            user=user,
+            name=name,
+            permissions=permissions,
+            rate_limit=200,  # Higher rate limit for OpenCode
+            expires_in_days=expires_in_days,
+            description="API key for OpenCode CLI and OpenWork integration"
+        )
     
     @staticmethod
     async def get_api_key_by_hash(
@@ -107,6 +265,31 @@ class APIKeyService:
         result = await db.execute(
             select(APIKey).where(APIKey.key_hash == key_hash)
         )
+        return result.scalar_one_or_none()
+    
+    @staticmethod
+    async def get_api_key_by_id(
+        db: AsyncSession,
+        key_id: str,
+        user: Optional[User] = None
+    ) -> Optional[APIKey]:
+        """
+        Get API key by ID.
+        
+        Args:
+            db: Database session
+            key_id: API key ID
+            user: Optional user to verify ownership
+        
+        Returns:
+            APIKey if found (and owned by user if specified)
+        """
+        query = select(APIKey).where(APIKey.id == key_id)
+        
+        if user:
+            query = query.where(APIKey.user_id == user.id)
+        
+        result = await db.execute(query)
         return result.scalar_one_or_none()
     
     @staticmethod
@@ -160,11 +343,35 @@ class APIKeyService:
         return api_key
     
     @staticmethod
+    async def revoke_api_key(
+        db: AsyncSession,
+        api_key: APIKey
+    ) -> APIKey:
+        """
+        Revoke (deactivate) API key.
+        
+        This is preferred over deletion as it maintains audit trail.
+        """
+        api_key.is_active = False
+        api_key.updated_at = datetime.utcnow()
+        
+        await db.commit()
+        await db.refresh(api_key)
+        
+        logger.info(
+            "api_key_revoked",
+            key_id=str(api_key.id),
+            name=api_key.name
+        )
+        
+        return api_key
+    
+    @staticmethod
     async def delete_api_key(
         db: AsyncSession,
         api_key: APIKey
     ):
-        """Delete API key"""
+        """Delete API key permanently"""
         await db.delete(api_key)
         await db.commit()
         
@@ -263,7 +470,8 @@ class APIKeyService:
                 "total_requests": 0,
                 "total_credits": 0,
                 "avg_response_time": 0,
-                "error_rate": 0
+                "error_rate": 0,
+                "period_days": days
             }
         
         total_requests = len(usage_logs)
@@ -272,10 +480,58 @@ class APIKeyService:
         errors = sum(1 for log in usage_logs if log.status_code >= 400)
         error_rate = errors / total_requests if total_requests > 0 else 0
         
+        # Group by endpoint
+        by_endpoint = {}
+        for log in usage_logs:
+            if log.endpoint not in by_endpoint:
+                by_endpoint[log.endpoint] = {"count": 0, "credits": 0}
+            by_endpoint[log.endpoint]["count"] += 1
+            by_endpoint[log.endpoint]["credits"] += log.credits_used
+        
         return {
             "total_requests": total_requests,
             "total_credits": total_credits,
             "avg_response_time": avg_response_time,
             "error_rate": error_rate,
-            "period_days": days
+            "period_days": days,
+            "by_endpoint": by_endpoint
+        }
+    
+    @staticmethod
+    async def check_rate_limit(
+        db: AsyncSession,
+        api_key: APIKey,
+        window_seconds: int = 60
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Check if API key is within rate limit.
+        
+        Args:
+            db: Database session
+            api_key: API key to check
+            window_seconds: Time window in seconds
+        
+        Returns:
+            (is_allowed, rate_limit_info) tuple
+        """
+        since = datetime.utcnow() - timedelta(seconds=window_seconds)
+        
+        result = await db.execute(
+            select(APIKeyUsage).where(
+                and_(
+                    APIKeyUsage.api_key_id == api_key.id,
+                    APIKeyUsage.timestamp >= since
+                )
+            )
+        )
+        recent_requests = len(result.scalars().all())
+        
+        is_allowed = recent_requests < api_key.rate_limit
+        remaining = max(0, api_key.rate_limit - recent_requests)
+        
+        return is_allowed, {
+            "limit": api_key.rate_limit,
+            "remaining": remaining,
+            "reset_at": (datetime.utcnow() + timedelta(seconds=window_seconds)).isoformat(),
+            "window_seconds": window_seconds
         }

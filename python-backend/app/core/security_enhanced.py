@@ -30,6 +30,7 @@ class AdvancedRateLimiter:
             "dashboard": {"requests": 60, "window": 60},  # 60 req/min
             "payments": {"requests": 30, "window": 60},  # 30 req/min
             "llm": {"requests": 100, "window": 60},  # 100 req/min
+            "opencode": {"requests": 200, "window": 60},  # 200 req/min for OpenCode
             "default": {"requests": 60, "window": 60}  # 60 req/min
         }
     
@@ -98,6 +99,9 @@ class SecurityHeaders:
 class TokenGenerator:
     """Secure token generator"""
     
+    # API Key prefix for SmartSpec
+    API_KEY_PREFIX = "sk-smartspec-"
+    
     @staticmethod
     def generate_token(length: int = 32) -> str:
         """Generate secure random token"""
@@ -105,15 +109,38 @@ class TokenGenerator:
     
     @staticmethod
     def generate_api_key() -> str:
-        """Generate API key"""
-        prefix = "sk_live_" if not __debug__ else "sk_test_"
+        """
+        Generate API key with SmartSpec format.
+        
+        Format: sk-smartspec-{random_43_chars}
+        Total length: ~55 characters
+        
+        Returns:
+            API key string starting with sk-smartspec-
+        """
+        # Generate 32 bytes = 43 characters in base64url
         token = secrets.token_urlsafe(32)
-        return f"{prefix}{token}"
+        return f"{TokenGenerator.API_KEY_PREFIX}{token}"
     
     @staticmethod
     def hash_token(token: str) -> str:
-        """Hash token for storage"""
+        """Hash token for storage using SHA-256"""
         return hashlib.sha256(token.encode()).hexdigest()
+    
+    @staticmethod
+    def is_valid_api_key_format(key: str) -> bool:
+        """
+        Check if API key has valid format.
+        
+        Args:
+            key: API key to validate
+            
+        Returns:
+            True if format is valid
+        """
+        if not key:
+            return False
+        return key.startswith(TokenGenerator.API_KEY_PREFIX)
 
 
 class AuditLogger:

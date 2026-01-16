@@ -4,7 +4,8 @@ import structlog
 
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import ImageGenerationRequest, ImageGenerationResponse, VideoGenerationRequest, VideoGenerationResponse, AudioGenerationRequest, AudioGenerationResponse
-from app.dependencies import get_db, get_current_user
+from app.core.database import get_db
+from app.core.auth import get_current_user
 from app.models.user import User
 
 logger = structlog.get_logger()
