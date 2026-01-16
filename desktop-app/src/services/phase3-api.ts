@@ -495,9 +495,7 @@ export const approvalService = {
    * Toggle approval rule
    */
   async toggleRule(ruleId: string, isActive: boolean): Promise<ApiResponse<ApprovalRule>> {
-    return apiClient.post(`/api/v1/approvals/rules/${ruleId}/toggle`, null, {
-      params: { is_active: isActive },
-    });
+    return apiClient.post(`/api/v1/approvals/rules/${ruleId}/toggle?is_active=${isActive}`);
   },
 };
 

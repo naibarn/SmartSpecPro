@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { chatCompletions, type Message, type ContentPart } from "../services/llmOpenAI";
 import { ModelSelector } from "../components/ModelSelector";
 import { uploadToArtifactStorage } from "../services/artifacts";
@@ -160,7 +160,7 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
   useEffect(() => {
     (async () => {
       await loadProxyToken();
-      setTokenHint(getProxyTokenHint());
+  const _tokenHint = getProxyTokenHint();
       // Check SmartSpecWeb connection
       await initializeWebAuth();
       setWebConnected(isWebAuthenticated());
@@ -620,7 +620,7 @@ IMPORTANT: Always create artifacts when user requests interactive displays, visu
             <div style={{ opacity: 0.7 }}>No messages yet.</div>
           ) : (
           <div style={{ display: "grid", gap: 10 }}>
-            {display.map((m, idx) => {
+            {display.map((m: Message, idx: number) => {
               // Helper to render content parts
               const renderContent = (content: string | ContentPart[]) => {
                 if (typeof content === "string") {

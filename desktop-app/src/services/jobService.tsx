@@ -7,7 +7,7 @@
 // - Statistics and progress tracking
 
 import { invoke } from '@tauri-apps/api/core';
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 // ============================================
 // Types

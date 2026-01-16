@@ -7,7 +7,7 @@
 // - Favorites
 
 import { invoke } from '@tauri-apps/api/core';
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 
 // ============================================
 // Types

@@ -2,6 +2,7 @@
 // Provides TypeScript bindings for Tauri workspace commands
 
 import { invoke } from '@tauri-apps/api/core';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 // ============================================
 // Types
@@ -425,7 +426,7 @@ export async function incrementMemoryAccess(
 // Workspace Context Hook
 // ============================================
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
 
 interface WorkspaceContextType {
   currentWorkspace: WorkspaceMetadata | null;

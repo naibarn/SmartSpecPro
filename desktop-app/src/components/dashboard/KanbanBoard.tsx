@@ -114,7 +114,7 @@ function BoardColumnView({
     }
   };
 
-  const isOverLimit = column.limit && tasks.length >= column.limit;
+  const isOverLimit = !!(column.limit && tasks.length >= column.limit);
 
   return (
     <div

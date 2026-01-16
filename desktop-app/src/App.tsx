@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
-import Sidebar from "./components/Sidebar";
+import React, { useEffect } from "react";
+import { Sidebar } from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import { FactoryPanel } from "./components/FactoryPanel";
 import KiloCliPage from "./pages/KiloCli";
@@ -74,10 +74,28 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const token = getAuthToken();
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
 
-  // Check if token exists and not expired
-  if (!token || isTokenExpired()) {
+  React.useEffect(() => {
+    async function checkAuth() {
+      const token = await getAuthToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+      const expired = await isTokenExpired();
+      setIsAuthenticated(!expired);
+    }
+    checkAuth();
+  }, []);
+
+  // Loading state
+  if (isAuthenticated === null) {
+    return <LoadingScreen />;
+  }
+
+  // Not authenticated
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

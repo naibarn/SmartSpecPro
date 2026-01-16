@@ -7,7 +7,7 @@
 // - Session management
 
 import { invoke } from '@tauri-apps/api/core';
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 // ============================================
 // Types
@@ -129,11 +129,16 @@ export interface LlmServiceConfig {
 }
 
 export interface MediaAttachment {
+  id?: string;
   type: 'image' | 'video' | 'audio';
   url: string;
   thumbnail_url?: string;
   title?: string;
+  name?: string;
+  size?: number;
+  mime_type?: string;
   model?: string;
+  created_at?: number;
 }
 
 export interface WorkflowApprovalRequest {

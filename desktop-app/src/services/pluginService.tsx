@@ -7,7 +7,7 @@
 // - Permission management
 
 import { invoke } from '@tauri-apps/api/core';
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 
 // ============================================
 // Types
@@ -391,9 +391,6 @@ export function getPermissionLabel(permission: Permission): string {
 }
 
 export function getStateLabel(state: PluginState): string {
-  if (typeof state === 'string') {
-    return state.charAt(0).toUpperCase() + state.slice(1);
-  }
   switch (state.type) {
     case 'installed': return 'Installed';
     case 'enabled': return 'Enabled';

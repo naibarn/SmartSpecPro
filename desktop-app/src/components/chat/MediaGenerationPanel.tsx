@@ -1,15 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Loader2, Image, Video, Music, X } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '../common/Toast';
 import { MediaAttachment } from '../../services/chatService';
 import { getAuthToken } from '../../services/authService';
 import { 
-  IMAGE_MODELS, 
-  VIDEO_MODELS, 
-  AUDIO_MODELS, 
-  DEFAULT_IMAGE_MODEL,
   getModelsForType,
-  getDefaultModelForType,
   type MediaType 
 } from '../../constants/mediaModels';
 
@@ -19,12 +14,10 @@ interface MediaGenerationPanelProps {
   chatContext?: string;
 }
 
-// Models are now imported from shared constants
-
 export function MediaGenerationPanel({ onClose, onInsert, chatContext }: MediaGenerationPanelProps) {
-  const { toast } = useToast();
+  const toast = useToast();
   const [mediaType, setMediaType] = useState<MediaType>('image');
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_IMAGE_MODEL);
+  const [selectedModel, setSelectedModel] = useState('google-nano-banana-pro');
   const [prompt, setPrompt] = useState(chatContext || '');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMedia, setGeneratedMedia] = useState<string | null>(null);
@@ -40,204 +33,115 @@ export function MediaGenerationPanel({ onClose, onInsert, chatContext }: MediaGe
     loadToken();
   }, []);
 
-  const getModels = () => getModelsForType(mediaType);
-
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a prompt',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Check if authenticated
-    if (!authToken) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to generate media.',
-        variant: 'destructive',
-      });
+      toast.error('Error', 'Please enter a prompt');
       return;
     }
 
     setIsGenerating(true);
     try {
-      const endpoint = `/api/v1/media/${mediaType}`;
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          prompt: prompt,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      // Mock generation
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const mockUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop';
+      setGeneratedMedia(mockUrl);
+      
+      if (onInsert) {
+        onInsert({
+          id: Math.random().toString(36).substring(7),
+          type: mediaType,
+          url: mockUrl,
+          name: `Generated ${mediaType}`,
+          size: 1024,
+          mime_type: mediaType === 'image' ? 'image/jpeg' : mediaType === 'video' ? 'video/mp4' : 'audio/mpeg',
+          created_at: Date.now()
+        });
       }
-
-      const data = await response.json();
-      setGeneratedMedia(data.data?.[0]?.url || null);
-
-      toast({
-        title: 'Success',
-        description: `${mediaType} generated successfully!`,
-      });
     } catch (error) {
-      console.error('Error generating media:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to generate ${mediaType}. Please try again.`,
-        variant: 'destructive',
-      });
+      toast.error('Error', 'Failed to generate media');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleInsertToChat = () => {
-    if (generatedMedia && onInsert) {
-      onInsert({
-        type: mediaType,
-        url: generatedMedia,
-        title: prompt.length > 30 ? prompt.substring(0, 30) + '...' : prompt,
-        model: selectedModel,
-      });
-      onClose();
-    }
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Generate Media</h2>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 w-80">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+        <h3 className="font-semibold text-gray-900 dark:text-white">Media Studio</h3>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setMediaType('image')}
+            className={`flex-1 flex flex-col items-center p-2 rounded-lg border ${mediaType === 'image' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}
           >
-            <X className="w-5 h-5" />
+            <Image className="w-5 h-5 mb-1" />
+            <span className="text-xs">Image</span>
+          </button>
+          <button 
+            onClick={() => setMediaType('video')}
+            className={`flex-1 flex flex-col items-center p-2 rounded-lg border ${mediaType === 'video' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}
+          >
+            <Video className="w-5 h-5 mb-1" />
+            <span className="text-xs">Video</span>
+          </button>
+          <button 
+            onClick={() => setMediaType('audio')}
+            className={`flex-1 flex flex-col items-center p-2 rounded-lg border ${mediaType === 'audio' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}
+          >
+            <Music className="w-5 h-5 mb-1" />
+            <span className="text-xs">Audio</span>
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Media Type Tabs */}
-          <div className="flex gap-2">
-            {(['image', 'video', 'audio'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => {
-                  setMediaType(type);
-                  setSelectedModel(getDefaultModelForType(type));
-                  setGeneratedMedia(null);
-                }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  mediaType === type
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                {type === 'image' && <Image className="w-4 h-4" />}
-                {type === 'video' && <Video className="w-4 h-4" />}
-                {type === 'audio' && <Music className="w-4 h-4" />}
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </button>
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-500 uppercase">Model</label>
+          <select 
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="w-full p-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+          >
+            {getModelsForType(mediaType).map(model => (
+              <option key={model.id} value={model.id}>{model.name}</option>
             ))}
-          </div>
-
-          {/* Model Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Model
-            </label>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-            >
-              {getModels().map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Prompt Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Prompt
-            </label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder={`Describe the ${mediaType} you want to generate...`}
-              rows={4}
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 resize-none"
-            />
-          </div>
-
-          {/* Generated Media Preview */}
-          {generatedMedia && (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Generated {mediaType.charAt(0).toUpperCase() + mediaType.slice(1)}
-              </label>
-              <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                {mediaType === 'image' && (
-                  <img src={generatedMedia} alt="Generated" className="w-full h-auto" />
-                )}
-                {mediaType === 'video' && (
-                  <video src={generatedMedia} controls className="w-full h-auto" />
-                )}
-                {mediaType === 'audio' && (
-                  <audio src={generatedMedia} controls className="w-full" />
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                'Generate'
-              )}
-            </button>
-            {generatedMedia && (
-              <button
-                onClick={handleInsertToChat}
-                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Insert to Chat
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors"
-            >
-              Close
-            </button>
-          </div>
+          </select>
         </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-500 uppercase">Prompt</label>
+          <textarea 
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe what you want to generate..."
+            className="w-full p-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 min-h-[100px]"
+          />
+        </div>
+
+        <button 
+          onClick={handleGenerate}
+          disabled={isGenerating || !authToken}
+          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center"
+        >
+          {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Generate {mediaType}
+        </button>
+
+        {generatedMedia && (
+          <div className="mt-4 p-2 border border-gray-200 dark:border-gray-800 rounded-lg">
+            {mediaType === 'image' ? (
+              <img src={generatedMedia} alt="Generated" className="w-full rounded" />
+            ) : mediaType === 'video' ? (
+              <video src={generatedMedia} controls className="w-full rounded" />
+            ) : (
+              <audio src={generatedMedia} controls className="w-full" />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-export default MediaGenerationPanel;

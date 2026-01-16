@@ -7,7 +7,7 @@
 // - Export operations
 
 import { invoke } from '@tauri-apps/api/core';
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 
 // ============================================
 // Types

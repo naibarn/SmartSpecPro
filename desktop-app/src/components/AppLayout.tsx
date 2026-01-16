@@ -1,4 +1,4 @@
-import { useState, ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Sidebar, defaultNavigationItems } from "./Sidebar";
 import type { NavigationItem } from "./Sidebar";
 

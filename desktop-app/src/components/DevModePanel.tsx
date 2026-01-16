@@ -210,7 +210,7 @@ const SessionsTab: React.FC<{
   currentSession,
   models,
   workspaceId,
-  workspacePath,
+  workspacePath: _workspacePath,
   onCreateSession,
   onStopSession,
   onSelectSession,

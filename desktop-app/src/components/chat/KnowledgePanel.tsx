@@ -265,8 +265,8 @@ function KnowledgeModal({
     
     const tags = tagsInput
       .split(',')
-      .map(t => t.trim())
-      .filter(t => t.length > 0);
+      .map((t: string) => t.trim())
+      .filter((t: string) => t.length > 0);
     
     onSave({
       category,

@@ -79,4 +79,10 @@ export const cp = {
       `/api/artifacts/sessions/${sessionId}/artifacts/presign-get?` + new URLSearchParams({ key }).toString(),
       { method: "GET" }
     ),
+
+  listTasks: (sessionId: string) =>
+    proxyRequest(`/api/artifacts/sessions/${sessionId}/tasks`, { method: "GET" }),
+
+  evaluateGates: (sessionId: string) =>
+    proxyRequest(`/api/artifacts/sessions/${sessionId}/gates/evaluate`, { method: "POST" }),
 };

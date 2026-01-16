@@ -7,7 +7,7 @@
 // - History management
 
 import { invoke } from '@tauri-apps/api/core';
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 // ============================================
 // Types

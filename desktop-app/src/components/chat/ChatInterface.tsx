@@ -77,12 +77,7 @@ export function ChatInterface({ className = '' }: ChatInterfaceProps) {
     const triggeredWorkflow = await executeFromMessage(message);
     if (triggeredWorkflow) {
       // Workflow was triggered, add user message to chat
-      addMessageWithAttachments({
-        id: crypto.randomUUID(),
-        role: 'user',
-        content: message,
-        timestamp: new Date(),
-      });
+      addMessageWithAttachments('user', message, []);
       return;
     }
     

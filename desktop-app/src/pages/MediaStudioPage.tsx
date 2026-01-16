@@ -1,5 +1,5 @@
 import React from 'react';
-import { MediaStudio } from '@/components/generation';
+import MediaStudio from '../components/generation/MediaStudio';
 
 export default function MediaStudioPage() {
   return (

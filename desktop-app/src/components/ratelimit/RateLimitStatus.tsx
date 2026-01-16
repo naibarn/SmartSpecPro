@@ -5,7 +5,7 @@
  * Helps users understand their usage and avoid hitting limits
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 // Types
@@ -277,7 +277,7 @@ export function RateLimitStatus() {
     fetchUsage();
     
     // Auto-refresh every 10 seconds if enabled
-    let interval: NodeJS.Timeout | null = null;
+    let interval: any = null;
     if (autoRefresh) {
       interval = setInterval(fetchUsage, 10000);
     }
@@ -297,7 +297,7 @@ export function RateLimitStatus() {
     }
   };
 
-  const handleResetUsage = async (provider: string) => {
+  const _handleResetUsage = async (provider: string) => {
     if (!confirm(`Reset usage statistics for ${provider}?`)) return;
     
     try {

@@ -4,7 +4,7 @@
  * RISK-002 FIX: Shows migration notice and allows users to manage API keys
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   listStoredApiKeys, 
   setApiKey, 

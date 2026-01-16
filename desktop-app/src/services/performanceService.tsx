@@ -7,7 +7,7 @@
 // - Performance monitoring hooks
 
 import { invoke } from '@tauri-apps/api/core';
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 
 // ============================================
 // Types

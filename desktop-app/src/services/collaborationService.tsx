@@ -8,7 +8,7 @@
 // - Activity feed
 
 import { invoke } from '@tauri-apps/api/core';
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 
 // ============================================
 // Types
@@ -306,7 +306,6 @@ export function CollaborationProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (userId: string) => {
     setIsLoading(true);
     try {
-      await setCurrentUser(userId);
       const user = await getUser(userId);
       setCurrentUser(user);
       await updateUserStatus(userId, 'online');

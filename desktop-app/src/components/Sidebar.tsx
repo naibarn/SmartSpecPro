@@ -1,18 +1,56 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { getUser, logout, isTokenExpired } from "../services/authService";
+import React, { useState, useEffect } from "react";
+import { getUser, getUserSync, logout, isTokenExpired } from "../services/authService";
 import { isWebAuthenticated, getWebUrl, getCachedUser } from "../services/webAuthService";
 
-export default function Sidebar() {
+export interface NavigationItem {
+  id: string;
+  label: string;
+  icon: string;
+  badge?: number;
+}
+
+export const defaultNavigationItems: NavigationItem[] = [
+  { id: "dashboard", label: "Dashboard", icon: "dashboard" },
+  { id: "factory", label: "SaaS Factory", icon: "factory" },
+  { id: "chat", label: "LLM Chat", icon: "chat" },
+  { id: "terminal", label: "Terminal", icon: "terminal" },
+  { id: "kilo", label: "CLI", icon: "cli" },
+  { id: "docker", label: "Docker", icon: "docker" },
+];
+
+export function Sidebar({
+  items = defaultNavigationItems,
+  activeItem,
+  onItemClick,
+  collapsed,
+  onCollapsedChange,
+}: {
+  items?: NavigationItem[];
+  activeItem?: string;
+  onItemClick?: (id: string) => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}) {
   const navigate = useNavigate();
-  const [user, setUser] = useState(getUser());
+  const [user, setUser] = useState(getUserSync());
   const [webUser, setWebUser] = useState(getCachedUser());
   const [webConnected, setWebConnected] = useState(isWebAuthenticated());
 
+  // Load user data on mount
+  useEffect(() => {
+    async function loadUser() {
+      const userData = await getUser();
+      setUser(userData);
+    }
+    loadUser();
+  }, []);
+
   // Check token expiry periodically
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (isTokenExpired()) {
+    const interval = setInterval(async () => {
+      const expired = await isTokenExpired();
+      if (expired) {
         console.log("Token expired, logging out...");
         logout(navigate);
       }

@@ -4,10 +4,7 @@
 import { useState, useEffect } from 'react';
 import {
   useEnterprise,
-  SsoConfig,
-  Role,
   AuditLog,
-  AuditQuery,
   queryAuditLogs,
   getSsoProviderIcon,
   getSsoProviderLabel,
@@ -148,7 +145,7 @@ function SecurityItem({ label, enabled }: { label: string; enabled?: boolean }) 
 // ============================================
 
 function SsoTab() {
-  const { ssoConfigs, addSsoConfig, removeSsoConfig } = useEnterprise();
+  const { ssoConfigs, addSsoConfig: _addSsoConfig, removeSsoConfig: _removeSsoConfig } = useEnterprise();
 
   return (
     <div>
@@ -189,7 +186,7 @@ function SsoTab() {
                     {config.enabled ? 'Active' : 'Disabled'}
                   </span>
                   <button
-                    onClick={() => removeSsoConfig(config.id)}
+                    onClick={() => _removeSsoConfig(config.id)}
                     className="p-2 text-gray-400 hover:text-red-500"
                   >
                     🗑️
@@ -209,7 +206,7 @@ function SsoTab() {
 // ============================================
 
 function RolesTab() {
-  const { roles, addRole } = useEnterprise();
+  const { roles, addRole: _addRole } = useEnterprise();
 
   return (
     <div>
@@ -349,7 +346,7 @@ function AuditTab() {
 // ============================================
 
 function ComplianceTab() {
-  const { complianceSettings, saveComplianceSettings } = useEnterprise();
+  const { complianceSettings, saveComplianceSettings: _saveComplianceSettings } = useEnterprise();
 
   if (!complianceSettings) {
     return <div>Loading...</div>;

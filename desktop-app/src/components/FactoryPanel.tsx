@@ -96,7 +96,7 @@ export function FactoryPanel() {
                 onClick={async () => {
                   try {
                     setError(null);
-                    const r: any = await cp.createSession(projectId);
+                    const r: any = await cp.createSession(projectId, "New Session");
                     const id = r?.session?.id ?? r?.id ?? r?.sessionId;
                     if (id) setSessionId(id);
                   } catch (e: any) {
