@@ -73,6 +73,9 @@ mod enterprise;
 mod enterprise_commands;
 mod workflow_commands;
 
+// OpenCode Integration (Phase 2)
+mod opencode_commands;
+
 // ========================================
 // Imports
 // ========================================
@@ -213,6 +216,9 @@ pub fn run() {
             
             // Initialize workflow state for Chat-to-Workflow Bridge
             app.manage(Arc::new(Mutex::new(WorkflowState::new())));
+            
+            // Initialize OpenCode state
+            app.manage(Arc::new(opencode_commands::OpenCodeState::new()));
             
             Ok(())
         })
@@ -554,6 +560,31 @@ pub fn run() {
             input_validation::validate_path,
             input_validation::validate_command,
             input_validation::validate_input,
+            
+            // ========================================
+            // OpenCode Commands (Phase 2)
+            // ========================================
+            opencode_commands::opencode_start_server,
+            opencode_commands::opencode_stop_server,
+            opencode_commands::opencode_get_server_status,
+            opencode_commands::opencode_get_config,
+            opencode_commands::opencode_set_config,
+            opencode_commands::opencode_set_api_key,
+            opencode_commands::opencode_create_session,
+            opencode_commands::opencode_get_session,
+            opencode_commands::opencode_list_sessions,
+            opencode_commands::opencode_stop_session,
+            opencode_commands::opencode_set_session_model,
+            opencode_commands::opencode_create_api_key,
+            opencode_commands::opencode_list_api_keys,
+            opencode_commands::opencode_revoke_api_key,
+            opencode_commands::opencode_get_usage,
+            opencode_commands::opencode_get_session_usage,
+            opencode_commands::opencode_chat_completion,
+            opencode_commands::opencode_get_models,
+            opencode_commands::opencode_check_health,
+            opencode_commands::opencode_generate_cli_config,
+            opencode_commands::opencode_get_connection_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
