@@ -51,22 +51,27 @@ export type PresignGetResponse = { artifact: { key: string; url: string; expires
 
 export const cp = {
   createProject: (name: string, description?: string) =>
-    // For now, we don't need projects - simplified
-    Promise.resolve({ project: { id: "default", name, description } }),
+    proxyRequest(`/api/v1/control-plane/api/v1/projects`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
 
   createSession: (projectId: string, name: string) =>
-    proxyRequest(`/api/artifacts/sessions`, {
+    proxyRequest(`/api/v1/control-plane/api/v1/projects/${projectId}/sessions`, {
       method: "POST",
       body: JSON.stringify({ name }),
     }),
 
   createIteration: (sessionId: string, number: number) =>
-    // Iterations are handled implicitly in artifacts API
-    Promise.resolve({ iteration: { id: number, sessionId, number } }),
+    proxyRequest(`/api/v1/control-plane/api/v1/sessions/${sessionId}/iterations`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
 
   getSession: (sessionId: string) =>
-    // Simplified - sessions exist implicitly
-    Promise.resolve({ session: { id: sessionId } }),
+    proxyRequest(`/api/v1/control-plane/api/v1/sessions/${sessionId}`, {
+      method: "GET",
+    }),
 
   presignPut: (sessionId: string, iteration: number, name: string, contentType?: string) =>
     proxyRequest<PresignPutResponse>(`/api/artifacts/sessions/${sessionId}/artifacts/presign-put`, {
@@ -81,8 +86,8 @@ export const cp = {
     ),
 
   listTasks: (sessionId: string) =>
-    proxyRequest(`/api/artifacts/sessions/${sessionId}/tasks`, { method: "GET" }),
+    proxyRequest(`/api/v1/control-plane/api/v1/sessions/${sessionId}/tasks`, { method: "GET" }),
 
   evaluateGates: (sessionId: string) =>
-    proxyRequest(`/api/artifacts/sessions/${sessionId}/gates/evaluate`, { method: "POST" }),
+    proxyRequest(`/api/v1/control-plane/api/v1/sessions/${sessionId}/gates/evaluate`, { method: "POST" }),
 };

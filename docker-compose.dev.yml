@@ -60,6 +60,8 @@ services:
       - SMARTSPEC_PROXY_TOKEN=dev_token_12345
       - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
       - JWT_SECRET=dev_jwt_secret_change_in_production
+      - CONTROL_PLANE_URL=http://control-plane:7070
+      - CONTROL_PLANE_API_KEY=dev_control_plane_api_key_change_in_production
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
