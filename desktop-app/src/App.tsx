@@ -16,7 +16,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import { initializeAuth, getAuthToken, isTokenExpired } from "./services/authService";
 import { initializeWebAuth } from "./services/webAuthService";
-import { LazySkillManager } from "./components/LazyComponents";
+import SkillsPage from "./pages/SkillsPage";
 
 // Error Boundary Component
 import { Component, ErrorInfo, ReactNode } from "react";
@@ -148,7 +148,7 @@ export default function App() {
                         <Route path="/chat" element={<LLMChatPage />} />
                         <Route path="/terminal" element={<KiloPtyPage />} />
                         <Route path="/kilo" element={<KiloCliPage />} />
-                        <Route path="/skills" element={<LazySkillManager />} />
+                        <Route path="/skills" element={<SkillsPage />} />
                         <Route path="/test" element={<TestPage />} />
                         <Route path="/docker" element={<DockerSandbox />} />
                         <Route path="/media" element={<MediaStudioPage />} />

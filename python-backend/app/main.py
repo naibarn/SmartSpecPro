@@ -54,7 +54,7 @@ from app.api import (
     rbac,  # Phase 3: RBAC
     approvals,  # Phase 3: Approval Gates
 )
-from app.api.v1 import skills, auth_generator, media_generation, assets
+from app.api.v1 import skills, auth_generator, media_generation, assets, admin_skills
 
 # Setup logging
 setup_logging()
@@ -170,6 +170,7 @@ app.include_router(orchestrator.router, prefix="/api/v1/orchestrator", tags=["Or
 app.include_router(workflows.router, prefix="/api/v1/workflows", tags=["Workflows"])
 app.include_router(autopilot.router, prefix="/api/v1/autopilot", tags=["Autopilot"])
 app.include_router(skills.router, prefix="/api/v1", tags=["Skills"])
+app.include_router(admin_skills.router, prefix="/api/v1", tags=["Admin - Skills"])
 app.include_router(auth_generator.router, prefix="/api/v1", tags=["Auth Generator"])
 app.include_router(media_generation.router, prefix="/api/v1/media", tags=["Media Generation"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])
