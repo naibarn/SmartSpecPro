@@ -48,6 +48,7 @@ from app.api import (
     admin_provider_config,
     internal_provider,
     artifacts,
+    control_plane_proxy,  # Control Plane Proxy for desktop-app
     opencode_gateway,  # Phase 2: OpenCode Gateway API
     tenants,  # Phase 3: Multi-tenancy
     rbac,  # Phase 3: RBAC
@@ -180,6 +181,7 @@ app.include_router(kilo_pty.router)
 app.include_router(kilo_media.router)
 app.include_router(ws_ticket.router)
 app.include_router(artifacts.router)
+app.include_router(control_plane_proxy.router)
 
 # Phase 2: OpenCode Gateway for external tools (OpenCode CLI, etc.)
 app.include_router(opencode_gateway.router, tags=["OpenCode Gateway"])
