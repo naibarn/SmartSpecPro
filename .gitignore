@@ -19,6 +19,8 @@
 *PASSWORD*
 *token*
 *TOKEN*
+# Exception: Allow tokens.ts source file (not actual tokens)
+!**/tokens.ts
 credentials.json
 secrets.json
 config.secret.json
@@ -59,6 +61,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+# Exception: Allow client/src/lib directories in frontend projects
+!**/client/src/lib/
 parts/
 sdist/
 var/

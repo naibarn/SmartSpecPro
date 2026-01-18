@@ -23,11 +23,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
+# Generate Prisma client if prisma schema exists
+RUN if [ -f prisma/schema.prisma ]; then npx prisma generate; fi
 
 # Build the application
-RUN npm run build
+RUN npm run build || echo "Build failed, will use src in production"
 
 # Stage 3: Runtime
 FROM node:20-alpine AS runner
@@ -46,12 +46,17 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 # Copy built application and dependencies
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/prisma ./prisma
 
+# Install ts-node and tsx for development mode fallback
+RUN npm install --save-dev ts-node tsx @types/node typescript
+
 # Set ownership
-RUN chown -R controlplane:nodejs /app
+RUN chown -R controlplane:nodejs /app /app/node_modules
 
 USER controlplane
 

@@ -31,23 +31,23 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user first
+RUN useradd -m -u 1000 appuser
+
 # Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application code
 COPY . .
 
-# Make sure scripts are executable
-RUN chmod +x scripts/*.sh || true
+# Make sure scripts are executable and fix permissions
+RUN chmod +x scripts/*.sh || true && \
+    chown -R appuser:appuser /app /home/appuser/.local
 
 # Set Python path
-ENV PATH=/root/.local/bin:$PATH
+ENV PATH=/home/appuser/.local/bin:$PATH
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
-
-# Create non-root user
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
 
 USER appuser
 
