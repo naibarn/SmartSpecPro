@@ -222,6 +222,16 @@ export const LazySkillTemplateSelector = createLazyComponent(
   { fallbackType: 'skeleton', skeletonType: 'card' }
 );
 
+export const LazySkillImportExport = createLazyComponent(
+  () => import('./SkillImportExport').then(m => ({ default: m.SkillImportExport })),
+  { fallbackType: 'spinner', loadingMessage: 'Loading Import/Export...' }
+);
+
+export const LazySkillSyncManager = createLazyComponent(
+  () => import('./SkillSyncManager').then(m => ({ default: m.SkillSyncManager })),
+  { fallbackType: 'spinner', loadingMessage: 'Loading Sync Manager...' }
+);
+
 export const LazyMemoryDashboard = createLazyComponent(
   () => import('./MemoryDashboard').then(m => ({ default: m.MemoryDashboard })),
   { fallbackType: 'skeleton', skeletonType: 'dashboard', loadingMessage: 'Loading Memory Dashboard...' }
