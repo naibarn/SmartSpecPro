@@ -53,7 +53,7 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-backend
     environment:
-      - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
       - REDIS_URL=redis://redis:6379
       - DEBUG=true
       - LOG_LEVEL=DEBUG
@@ -84,7 +84,7 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-control-plane
     environment:
-      - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
       - REDIS_URL=redis://redis:6379
       - DEBUG=true
       - LOG_LEVEL=DEBUG
@@ -92,9 +92,11 @@ services:
       - "7070:7070"
     volumes:
       - ./control-plane:/app
+      - control_plane_node_modules:/app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
+    command: npm run dev
     networks:
       - smartspec-network
     restart: unless-stopped
@@ -139,7 +141,7 @@ services:
     container_name: smartspec-docker-status
     environment:
       - OAUTH_SERVER_URL=http://python-backend:8000
-      - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
       - NODE_ENV=development
     ports:
       - "3001:3000"
@@ -149,6 +151,7 @@ services:
       - docker_status_node_modules:/app/node_modules
     depends_on:
       - python-backend
+    command: pnpm dev
     networks:
       - smartspec-network
     restart: unless-stopped
@@ -235,6 +238,8 @@ volumes:
     name: smartspec_python_cache
   web_node_modules:
     name: smartspec_web_node_modules
+  control_plane_node_modules:
+    name: smartspec_control_plane_node_modules
   docker_status_node_modules:
     name: smartspec_docker_status_node_modules
   pgadmin_data:

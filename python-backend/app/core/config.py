@@ -2,9 +2,9 @@
 SmartSpec Pro - Core Configuration
 """
 
-from typing import List, Literal
+from typing import List, Literal, Union
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, validator
+from pydantic import Field, field_validator, model_validator
 
 
 class Settings(BaseSettings):
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: Union[str, List[str]] = [
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:8080",
@@ -140,19 +140,19 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_BURST: int = 10
 
-    @validator("SECRET_KEY")
-    def validate_secret_key(cls, v: str, values):
+    @model_validator(mode="after")
+    def validate_secret_key(self):
         """Ensure SECRET_KEY is secure in production."""
-        env = values.get("ENVIRONMENT", "development")
-        if env != "production":
-            return v
-        if not v or v == "change-this-in-production":
+        if self.ENVIRONMENT != "production":
+            return self
+        if not self.SECRET_KEY or self.SECRET_KEY == "change-this-in-production":
             raise ValueError("SECRET_KEY must be set to a secure value in production")
-        if len(v) < 32:
+        if len(self.SECRET_KEY) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters in production")
-        return v
+        return self
 
-    @validator("CORS_ORIGINS", pre=True)
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
     def parse_cors_origins(cls, v):
         """Parse CORS origins from string or list"""
         if isinstance(v, str):
