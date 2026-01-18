@@ -105,6 +105,7 @@ export function Sidebar({
         <NavLink to="/chat" style={linkStyle}>LLM Chat (Vision)</NavLink>
         <NavLink to="/terminal" style={linkStyle}>Terminal (PTY)</NavLink>
         <NavLink to="/kilo" style={linkStyle}>CLI (Terminal)</NavLink>
+        <NavLink to="/skills" style={linkStyle}>🧠 Skills Manager</NavLink>
         <NavLink to="/docker" style={linkStyle}>🐳 Docker Sandbox</NavLink>
         <NavLink to="/media" style={linkStyle}>🎬 Media Studio</NavLink>
 
