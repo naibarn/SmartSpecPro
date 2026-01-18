@@ -19,9 +19,15 @@ RUN if [ -f package-lock.json ]; then \
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl openssl-dev
+
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Set Prisma to use OpenSSL 3.x compatible binary
+ENV PRISMA_ENGINES_MIRROR=https://binaries.prismaio.com
 
 # Generate Prisma client if prisma schema exists
 RUN if [ -f prisma/schema.prisma ]; then npx prisma generate; fi
@@ -37,8 +43,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=7070
 
-# Install runtime dependencies
-RUN apk add --no-cache curl
+# Install runtime dependencies including OpenSSL 3.x for Prisma
+RUN apk add --no-cache curl openssl openssl-dev
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
