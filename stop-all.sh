@@ -1,1 +1,0 @@
-scripts/stop-all.sh

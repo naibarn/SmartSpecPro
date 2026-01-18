@@ -1,1 +1,0 @@
-scripts/status-all.sh
