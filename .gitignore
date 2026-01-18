@@ -142,6 +142,7 @@ media/
 .Trashes
 ehthumbs.db
 Thumbs.db
+*Zone.Identifier
 
 # ============================================================================
 # Git-secrets and security scanning
