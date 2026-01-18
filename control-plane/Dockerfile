@@ -26,10 +26,7 @@ RUN apk add --no-cache openssl openssl-dev
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set Prisma to use OpenSSL 3.x compatible binary
-ENV PRISMA_ENGINES_MIRROR=https://binaries.prismaio.com
-
-# Generate Prisma client if prisma schema exists
+# Generate Prisma client if prisma schema exists (with correct binary target)
 RUN if [ -f prisma/schema.prisma ]; then npx prisma generate; fi
 
 # Build the application
