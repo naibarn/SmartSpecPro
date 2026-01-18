@@ -36,7 +36,40 @@ COPY . .
 # Build the application
 RUN pnpm run build || npm run build
 
-# Stage 3: Production
+# Stage 3: Development
+FROM node:20-alpine AS development
+WORKDIR /app
+
+# Set environment
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package files
+COPY package.json pnpm-lock.yaml* package-lock.json* ./
+COPY patches/ ./patches/
+
+# Install all dependencies (including devDependencies)
+RUN if [ -f pnpm-lock.yaml ]; then \
+      pnpm install; \
+    elif [ -f package-lock.json ]; then \
+      npm install; \
+    else \
+      npm install; \
+    fi
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Run development server
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]
+
+# Stage 4: Production
 FROM node:20-alpine AS runner
 WORKDIR /app
 

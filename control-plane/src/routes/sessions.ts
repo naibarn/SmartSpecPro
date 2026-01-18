@@ -10,14 +10,14 @@ export async function registerSessionRoutes(app: FastifyInstance) {
     const { projectId } = req.params as any;
     const body = CreateSessionSchema.parse(req.body);
     const session = await app.prisma.session.create({ data: { projectId, name: body.name ?? null } });
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "session.create", projectId, sessionId: session.id });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "session.create", projectId, sessionId: session.id });
     return { session };
   });
 
   app.post("/api/v1/sessions/:sessionId/iterations", { preHandler: [requireRole(app, ["admin", "user", "runner"]), requireSessionScope(app)] }, async (req: any) => {
     const { sessionId } = req.params as any;
     const iter = await app.prisma.iteration.create({ data: { sessionId } });
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "iteration.create", sessionId });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "iteration.create", sessionId });
     return { iteration: iter };
   });
 

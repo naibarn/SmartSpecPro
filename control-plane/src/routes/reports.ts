@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { auditLog } from "../audit";
 import { requireRole, requireSessionScope } from "../auth";
@@ -19,15 +20,15 @@ export async function registerReportRoutes(app: FastifyInstance) {
     const report = await app.prisma.report.create({
       data: {
         sessionId,
-        iteration: body.iteration ?? null,
+        iteration: body.iteration ?? undefined,
         title: body.title,
         kind: body.kind,
         artifactKey: body.artifactKey,
-        summary: body.summary ?? null,
+        summary: (body.summary ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
 
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "report.create", sessionId, resource: report.id, metadata: { artifactKey: body.artifactKey } });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "report.create", sessionId, resource: report.id, details: { artifactKey: body.artifactKey } });
 
     return { report };
   });

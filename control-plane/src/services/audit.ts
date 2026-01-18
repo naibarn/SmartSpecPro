@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, Prisma } from "@prisma/client";
 
 export async function audit(prisma: PrismaClient, input: {
   actor: string;
@@ -12,9 +12,9 @@ export async function audit(prisma: PrismaClient, input: {
       data: {
         actor: input.actor,
         action: input.action,
-        details: input.details ?? null,
-        projectId: input.projectId ?? null,
-        sessionId: input.sessionId ?? null,
+        details: (input.details ?? undefined) as Prisma.InputJsonValue | undefined,
+        projectId: input.projectId ?? undefined,
+        sessionId: input.sessionId ?? undefined,
       },
     });
   } catch {

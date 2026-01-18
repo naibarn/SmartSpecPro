@@ -32,7 +32,7 @@ export async function registerApprovalRoutes(app: FastifyInstance) {
       data: { sessionId, tokenHash, expiresAt, status: "issued", reason: body.reason ?? null, issuedToSub: req.user.sub },
     });
 
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "approval.issue_apply", sessionId, resource: approval.id, metadata: { ttlSeconds: ttl } });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "approval.issue_apply", sessionId, resource: approval.id, details: { ttlSeconds: ttl } });
 
     // Return raw token ONCE. Store only hash.
     return { approvalId: approval.id, token: raw, expiresInSeconds: ttl };
@@ -55,7 +55,7 @@ export async function registerApprovalRoutes(app: FastifyInstance) {
       data: { status: "consumed", consumedAt: new Date() },
     });
 
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "approval.consume_apply", sessionId, resource: updated.id });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "approval.consume_apply", sessionId, resource: updated.id });
 
     return { ok: true };
   });

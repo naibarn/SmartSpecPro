@@ -71,7 +71,7 @@ export async function registerArtifactRoutes(app: FastifyInstance) {
 
       const url = await presignPut({ env: app.env, r2, key, contentType: body.contentType, contentLength: body.sizeBytes });
 
-      await auditLog(app.prisma, { actorSub: req.user.sub, action: "artifact.presign_put", sessionId, projectId: session.projectId, resource: artifact.id, metadata: { key } });
+      await auditLog(app.prisma, { actor: req.user.sub, action: "artifact.presign_put", sessionId, projectId: session.projectId, resource: artifact.id, details: { key } });
 
       return { url, key, expiresInSeconds: app.env.R2_PRESIGN_EXPIRES_SECONDS };
     }
@@ -93,7 +93,7 @@ export async function registerArtifactRoutes(app: FastifyInstance) {
         data: { status: "complete", sha256: body.sha256, sizeBytes: body.sizeBytes },
       });
 
-      await auditLog(app.prisma, { actorSub: req.user.sub, action: "artifact.complete", sessionId, projectId: updated.projectId, resource: updated.id, metadata: { key: body.key } });
+      await auditLog(app.prisma, { actor: req.user.sub, action: "artifact.complete", sessionId, projectId: updated.projectId, resource: updated.id, details: { key: body.key } });
 
       return { artifact: updated };
     }
@@ -111,7 +111,7 @@ export async function registerArtifactRoutes(app: FastifyInstance) {
       if (!artifact) return reply.code(404).send({ error: "artifact_not_found_or_not_complete" });
 
       const url = await presignGet({ env: app.env, r2, key });
-      await auditLog(app.prisma, { actorSub: req.user.sub, action: "artifact.presign_get", sessionId, projectId: artifact.projectId, resource: artifact.id, metadata: { key } });
+      await auditLog(app.prisma, { actor: req.user.sub, action: "artifact.presign_get", sessionId, projectId: artifact.projectId, resource: artifact.id, details: { key } });
 
       return { url, key, expiresInSeconds: app.env.R2_PRESIGN_EXPIRES_SECONDS };
     }

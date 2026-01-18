@@ -37,6 +37,7 @@ model Iteration {
   id        String   @id @default(cuid())
   sessionId String
   session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  number    Int      @default(0)
   createdAt DateTime @default(now())
 }
 
@@ -160,11 +161,11 @@ enum ApprovalStatus {
 
 model AuditLog {
   id        String   @id @default(cuid())
-  actorSub  String
+  actor     String
   action    String
   projectId String?
   sessionId String?
   resource  String?
-  metadata  Json?
+  details   Json?
   createdAt DateTime @default(now())
 }

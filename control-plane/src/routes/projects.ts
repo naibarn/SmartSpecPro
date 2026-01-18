@@ -9,7 +9,7 @@ export async function registerProjectRoutes(app: FastifyInstance) {
   app.post("/api/v1/projects", { preHandler: [requireRole(app, ["admin", "user"])] }, async (req: any) => {
     const body = CreateProjectSchema.parse(req.body);
     const project = await app.prisma.project.create({ data: { name: body.name } });
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "project.create", projectId: project.id });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "project.create", projectId: project.id });
     return { project };
   });
 

@@ -64,7 +64,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./python-backend:/app
       - python_cache:/root/.cache
@@ -110,9 +110,9 @@ services:
       target: development
     container_name: smartspec-web
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:8001
       - VITE_CONTROL_PLANE_URL=http://localhost:7070
-      - VITE_WS_URL=ws://localhost:8000
+      - VITE_WS_URL=ws://localhost:8001
       - NODE_ENV=development
     ports:
       - "3000:3000"

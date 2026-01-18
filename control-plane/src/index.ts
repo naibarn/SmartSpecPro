@@ -51,7 +51,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   app.env = env as any;
   app.prisma = (opts.prisma ?? createPrisma()) as any;
 
-  await app.register(jwt, {
+  await app.register(jwt as any, {
     secret: env.JWT_SECRET,
     sign: { issuer: env.JWT_ISSUER, audience: env.JWT_AUDIENCE },
     verify: { issuer: env.JWT_ISSUER, audience: env.JWT_AUDIENCE },

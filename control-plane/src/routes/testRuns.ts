@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { audit } from "../services/audit";
 
@@ -20,10 +21,10 @@ export async function registerTestRunRoutes(app: FastifyInstance) {
     const testRun = await app.prisma.testRun.create({
       data: {
         sessionId,
-        iteration: body.iteration ?? null,
+        iteration: body.iteration ?? undefined,
         passed: body.passed,
-        artifactKey: body.artifactKey ?? null,
-        summary: body.summary ?? null,
+        artifactKey: body.artifactKey ?? undefined,
+        summary: (body.summary ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
 

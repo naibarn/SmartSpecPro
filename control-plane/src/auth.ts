@@ -2,6 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 export type Role = "admin" | "runner" | "user";
+export type ActorType = "UI" | "RUNNER" | "SYSTEM";
+export type JwtPayload = {
+  sub: string;
+  actorType: ActorType;
+};
 
 export function registerAuth(app: FastifyInstance) {
   // authenticate middleware

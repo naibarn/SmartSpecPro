@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { auditLog } from "../audit";
 import { requireRole, requireSessionScope } from "../auth";
@@ -30,9 +31,9 @@ export async function registerResultRoutes(app: FastifyInstance) {
     const body = TestRunSchema.parse(req.body);
 
     const rec = await app.prisma.testRun.create({
-      data: { sessionId, iteration: body.iteration ?? null, passed: body.passed, artifactKey: body.artifactKey ?? null, summary: body.summary ?? null },
+      data: { sessionId, iteration: body.iteration ?? undefined, passed: body.passed, artifactKey: body.artifactKey ?? undefined, summary: (body.summary ?? undefined) as Prisma.InputJsonValue | undefined },
     });
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "testrun.create", sessionId, resource: rec.id });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "testrun.create", sessionId, resource: rec.id });
     return { testRun: rec };
   });
 
@@ -41,9 +42,9 @@ export async function registerResultRoutes(app: FastifyInstance) {
     const body = CoverageSchema.parse(req.body);
 
     const rec = await app.prisma.coverageRun.create({
-      data: { sessionId, iteration: body.iteration ?? null, percent: body.percent, artifactKey: body.artifactKey ?? null, summary: body.summary ?? null },
+      data: { sessionId, iteration: body.iteration ?? undefined, percent: body.percent, artifactKey: body.artifactKey ?? undefined, summary: (body.summary ?? undefined) as Prisma.InputJsonValue | undefined },
     });
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "coveragerun.create", sessionId, resource: rec.id });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "coveragerun.create", sessionId, resource: rec.id });
     return { coverageRun: rec };
   });
 
@@ -52,9 +53,9 @@ export async function registerResultRoutes(app: FastifyInstance) {
     const body = SecuritySchema.parse(req.body);
 
     const rec = await app.prisma.securityCheck.create({
-      data: { sessionId, iteration: body.iteration ?? null, status: body.status, artifactKey: body.artifactKey ?? null, summary: body.summary ?? null },
+      data: { sessionId, iteration: body.iteration ?? undefined, status: body.status, artifactKey: body.artifactKey ?? undefined, summary: (body.summary ?? undefined) as Prisma.InputJsonValue | undefined },
     });
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "securitycheck.create", sessionId, resource: rec.id });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "securitycheck.create", sessionId, resource: rec.id });
     return { securityCheck: rec };
   });
 }

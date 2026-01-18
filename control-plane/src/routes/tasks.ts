@@ -57,7 +57,7 @@ export async function registerTaskRoutes(app: FastifyInstance) {
       },
     });
 
-    await auditLog(app.prisma, { actorSub: req.user.sub, action: "task.upsert", sessionId, resource: task.id, metadata: { dedupeKey } });
+    await auditLog(app.prisma, { actor: req.user.sub, action: "task.upsert", sessionId, resource: task.id, details: { dedupeKey } });
 
     return { task };
   });
