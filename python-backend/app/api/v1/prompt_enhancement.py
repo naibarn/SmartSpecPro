@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.models.user import User
 from app.llm_proxy.gateway_unified import LLMGateway
+from app.services.skill_prompt_service import SkillPromptService
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -78,27 +79,30 @@ async def enhance_prompt_with_ai(
 ) -> PromptEnhancementResponse:
     """Use AI to enhance the user's prompt"""
 
-    # Build enhancement prompt for LLM
-    system_prompt = f"""You are an expert prompt engineer specialized in {media_type} generation.
-Your task is to enhance user prompts to create better, more detailed, and more effective prompts for AI {media_type} generation models.
+    # Get skill ID based on media type
+    skill_id = f"{media_type}-prompt-enhancer"
 
-Guidelines:
-1. For IMAGES: Add details about composition, lighting, style, mood, quality, camera angle
-2. For VIDEOS: Add details about movement, transitions, pacing, camera motion, scene flow
-3. Keep the core idea but enhance with professional details
-4. Be specific and descriptive
-5. Use industry-standard terminology
-6. Optimize for the target model: {target_model or 'general'}
-"""
+    # Get effective system prompt (custom or default)
+    system_prompt = await SkillPromptService.get_effective_prompt(
+        db,
+        current_user.id,
+        skill_id,
+        template_variables={
+            "media_type": media_type,
+            "model": target_model or "general",
+            "style": style or "general",
+        }
+    )
 
-    if style:
-        system_prompt += f"\n7. Apply {style} style characteristics"
+    # Add additional context to system prompt
+    if style and "{style}" not in system_prompt:
+        system_prompt += f"\n\nApply {style} style characteristics."
 
-    if reference_images:
-        system_prompt += f"\n8. Consider reference elements: {', '.join(reference_images)}"
+    if reference_images and "{reference_images}" not in system_prompt:
+        system_prompt += f"\n\nConsider reference elements: {', '.join(reference_images)}"
 
     if additional_context:
-        system_prompt += f"\n9. Context: {additional_context}"
+        system_prompt += f"\n\nAdditional context: {additional_context}"
 
     user_prompt = f"""Original user input: "{user_input}"
 
