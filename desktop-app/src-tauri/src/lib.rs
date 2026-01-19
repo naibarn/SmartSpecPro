@@ -76,6 +76,9 @@ mod workflow_commands;
 // OpenCode Integration (Phase 2)
 mod opencode_commands;
 
+// Video Editor (Phase 0)
+mod video_editor;
+
 // ========================================
 // Imports
 // ========================================
@@ -219,7 +222,10 @@ pub fn run() {
             
             // Initialize OpenCode state
             app.manage(Arc::new(opencode_commands::OpenCodeState::new()));
-            
+
+            // Initialize Video Editor render engine
+            app.manage(Arc::new(tokio::sync::Mutex::new(video_editor::render::RenderEngine::new())));
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -585,6 +591,30 @@ pub fn run() {
             opencode_commands::opencode_check_health,
             opencode_commands::opencode_generate_cli_config,
             opencode_commands::opencode_get_connection_info,
+
+            // ========================================
+            // Video Editor Commands
+            // ========================================
+            // Workspace
+            video_editor::workspace::get_video_editor_workspace_path,
+            video_editor::workspace::get_video_editor_projects_path,
+            video_editor::workspace::file_exists,
+            video_editor::workspace::save_blob_to_file,
+            video_editor::workspace::get_file_size,
+            video_editor::workspace::delete_file,
+            video_editor::workspace::list_workspace_files,
+            video_editor::workspace::cleanup_workspace,
+            // FFmpeg
+            video_editor::ffmpeg::ffmpeg_probe_file,
+            video_editor::ffmpeg::ffmpeg_generate_thumbnail,
+            video_editor::ffmpeg::ffmpeg_detect_encoders,
+            video_editor::ffmpeg::ffmpeg_version,
+            video_editor::ffmpeg::ffmpeg_extract_waveform,
+            // Render
+            video_editor::render::start_render,
+            video_editor::render::get_render_status,
+            video_editor::render::cancel_render,
+            video_editor::render::list_render_jobs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
