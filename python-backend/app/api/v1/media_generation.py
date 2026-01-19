@@ -18,6 +18,19 @@ from app.models.user import User
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.services.media_task_service import MediaTaskService
 
+# Import Celery tasks
+try:
+    from app.tasks.media_tasks import (
+        generate_image_task,
+        generate_video_task,
+        generate_audio_task,
+    )
+    CELERY_ENABLED = True
+except ImportError:
+    CELERY_ENABLED = False
+    logger = structlog.get_logger()
+    logger.warning("celery_not_available", message="Celery tasks not available, using synchronous processing")
+
 logger = structlog.get_logger()
 router = APIRouter()
 
@@ -465,3 +478,101 @@ async def download_media(
     # If result_url is a remote URL, redirect
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=task.result_url)
+
+
+# ==================== Async Endpoints with Celery ====================
+
+@router.post("/async/image", response_model=TaskResponse)
+async def generate_image_async(
+    request: ImageGenerationRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Submit image generation to Celery queue (async processing).
+    Returns immediately with task_id for status polling.
+    """
+    if not CELERY_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Async processing not available. Use /image endpoint instead."
+        )
+
+    # Create task in database
+    task = await MediaTaskService.create_task(
+        db,
+        current_user,
+        MediaType.IMAGE,
+        request.model,
+        request.prompt,
+        request.dict(exclude={'model', 'prompt'})
+    )
+
+    # Submit to Celery
+    generate_image_task.delay(task.id, current_user.id, request.dict())
+
+    logger.info("async_image_task_submitted", task_id=task.id, user_id=current_user.id)
+    return TaskResponse(**task.to_dict())
+
+
+@router.post("/async/video", response_model=TaskResponse)
+async def generate_video_async(
+    request: VideoGenerationRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Submit video generation to Celery queue (async processing).
+    Returns immediately with task_id for status polling.
+    """
+    if not CELERY_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Async processing not available. Use /video endpoint instead."
+        )
+
+    task = await MediaTaskService.create_task(
+        db,
+        current_user,
+        MediaType.VIDEO,
+        request.model,
+        request.prompt,
+        request.dict(exclude={'model', 'prompt'})
+    )
+
+    generate_video_task.delay(task.id, current_user.id, request.dict())
+
+    logger.info("async_video_task_submitted", task_id=task.id, user_id=current_user.id)
+    return TaskResponse(**task.to_dict())
+
+
+@router.post("/async/audio", response_model=TaskResponse)
+async def generate_audio_async(
+    request: AudioGenerationRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Submit audio generation to Celery queue (async processing).
+    Returns immediately with task_id for status polling.
+    """
+    if not CELERY_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Async processing not available. Use /audio endpoint instead."
+        )
+
+    task = await MediaTaskService.create_task(
+        db,
+        current_user,
+        MediaType.AUDIO,
+        request.model,
+        request.text,
+        request.dict(exclude={'model', 'text'})
+    )
+
+    generate_audio_task.delay(task.id, current_user.id, request.dict())
+
+    logger.info("async_audio_task_submitted", task_id=task.id, user_id=current_user.id)
+    return TaskResponse(**task.to_dict())
+

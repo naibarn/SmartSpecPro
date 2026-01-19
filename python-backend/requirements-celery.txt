@@ -1,0 +1,13 @@
+# Celery and async processing dependencies
+celery[redis]==5.3.4
+redis==5.0.1
+flower==2.0.1  # Celery monitoring tool
+
+# Storage backends
+boto3==1.34.14  # AWS S3
+httpx==0.26.0   # HTTP client for downloads
+
+# Already in main requirements but listed for reference
+# structlog
+# fastapi
+# sqlalchemy

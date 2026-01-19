@@ -6,13 +6,14 @@ import ImageGenerator from './ImageGenerator';
 import VideoGenerator from './VideoGenerator';
 import AudioGenerator from './AudioGenerator';
 import Gallery from './Gallery';
+import AnalyticsDashboard from './AnalyticsDashboard';
 
 interface MediaStudioProps {
   onClose?: () => void;
 }
 
 export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'image' | 'video' | 'audio' | 'gallery'>('image');
+  const [activeTab, setActiveTab] = useState<'image' | 'video' | 'audio' | 'gallery' | 'analytics'>('image');
   const [credits, setCredits] = useState<number>(0);
 
   useEffect(() => {
@@ -70,6 +71,12 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
           >
             Gallery
           </TabsTrigger>
+          <TabsTrigger
+            value="analytics"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent"
+          >
+            Analytics
+          </TabsTrigger>
         </TabsList>
 
         <div className="flex-1 overflow-y-auto p-6">
@@ -84,6 +91,9 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
           </TabsContent>
           <TabsContent value="gallery" className="m-0">
             <Gallery />
+          </TabsContent>
+          <TabsContent value="analytics" className="m-0">
+            <AnalyticsDashboard days={30} />
           </TabsContent>
         </div>
       </Tabs>

@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # Redis for Celery broker and result backend
+  redis:
+    image: redis:7-alpine
+    container_name: smartspec-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Celery worker for media generation tasks
+  celery_worker:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-celery-worker
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - KIE_AI_API_KEY=${KIE_AI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - CDN_BASE_URL=${CDN_BASE_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./python-backend:/app
+      - media_storage:/app/media_storage
+    restart: unless-stopped
+
+  # Celery beat for periodic tasks
+  celery_beat:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-celery-beat
+    command: celery -A app.core.celery_app beat --loglevel=info
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./python-backend:/app
+    restart: unless-stopped
+
+  # Flower - Celery monitoring dashboard
+  flower:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-flower
+    command: celery -A app.core.celery_app flower --port=5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery_worker
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
+  media_storage:
+    driver: local
+
+networks:
+  default:
+    name: smartspec-network
