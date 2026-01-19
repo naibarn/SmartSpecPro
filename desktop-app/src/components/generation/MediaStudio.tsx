@@ -5,13 +5,14 @@ import { Button } from '../ui/button';
 import ImageGenerator from './ImageGenerator';
 import VideoGenerator from './VideoGenerator';
 import AudioGenerator from './AudioGenerator';
+import Gallery from './Gallery';
 
 interface MediaStudioProps {
   onClose?: () => void;
 }
 
 export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'image' | 'video' | 'audio' | 'tools'>('image');
+  const [activeTab, setActiveTab] = useState<'image' | 'video' | 'audio' | 'gallery'>('image');
   const [credits, setCredits] = useState<number>(0);
 
   useEffect(() => {
@@ -57,11 +58,17 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
           >
             Video Generation
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="audio"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent"
           >
             Audio & Speech
+          </TabsTrigger>
+          <TabsTrigger
+            value="gallery"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent"
+          >
+            Gallery
           </TabsTrigger>
         </TabsList>
 
@@ -74,6 +81,9 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
           </TabsContent>
           <TabsContent value="audio" className="m-0">
             <AudioGenerator />
+          </TabsContent>
+          <TabsContent value="gallery" className="m-0">
+            <Gallery />
           </TabsContent>
         </div>
       </Tabs>

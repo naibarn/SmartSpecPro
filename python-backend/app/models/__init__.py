@@ -46,6 +46,9 @@ from .vector_store import (
 # Asset Management
 from .asset import Asset, AssetType, AssetStatus
 
+# Media Generation
+from .media_task import MediaTask, TaskStatus, MediaType
+
 __all__ = [
     # Existing
     "AuditLog",
@@ -101,4 +104,8 @@ __all__ = [
     "Asset",
     "AssetType",
     "AssetStatus",
+    # Media Generation
+    "MediaTask",
+    "TaskStatus",
+    "MediaType",
 ]

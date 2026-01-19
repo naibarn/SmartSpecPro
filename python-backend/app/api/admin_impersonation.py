@@ -3,14 +3,22 @@ Admin Impersonation API
 Endpoints for admin user impersonation
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+import structlog
+import uuid
+from datetime import datetime
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
+from app.models.audit_log import AuditLog
 from app.services.impersonation_service import ImpersonationService
 
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/admin")
 
@@ -31,17 +39,82 @@ class StopImpersonationRequest(BaseModel):
 
 
 # ============================================================================
-# Middleware for admin check
+# Secure Admin Check - Fixed Security Issue #5
 # ============================================================================
 
-async def require_admin(current_user: dict = Depends(get_current_user)):
-    """Require admin role"""
-    if current_user.get("role") != "admin":
+async def require_admin(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    request: Request = None
+) -> User:
+    """
+    Require admin privileges with database verification
+
+    SECURITY FIX:
+    - Verifies admin status from database (not just token)
+    - Checks User.is_admin flag (not 'role' field)
+    - Logs unauthorized access attempts
+    - Refreshes user data from database
+
+    Args:
+        current_user: Current authenticated user from token
+        db: Database session
+        request: FastAPI request object for logging
+
+    Returns:
+        User object with verified admin privileges
+
+    Raises:
+        HTTPException: If user is not an admin
+    """
+    # Refresh user from database to get latest admin status
+    result = await db.execute(
+        select(User).where(User.id == current_user.id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        logger.error(
+            "admin_check_user_not_found",
+            user_id=current_user.id
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+
+    # Check is_admin flag (not 'role')
+    if not user.is_admin:
+        logger.warning(
+            "unauthorized_admin_access_attempt",
+            user_id=user.id,
+            email=user.email,
+            endpoint=request.url.path if request else "unknown",
+            ip=request.client.host if request and request.client else "unknown"
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            detail="Admin privileges required"
         )
-    return current_user
+
+    # Check if account is active
+    if not user.is_active:
+        logger.warning(
+            "inactive_admin_access_attempt",
+            user_id=user.id
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is not active"
+        )
+
+    logger.info(
+        "admin_access_granted",
+        user_id=user.id,
+        endpoint=request.url.path if request else "unknown"
+    )
+
+    return user
 
 
 # ============================================================================

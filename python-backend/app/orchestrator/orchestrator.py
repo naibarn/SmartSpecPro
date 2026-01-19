@@ -15,7 +15,7 @@ from datetime import datetime
 import structlog
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+# from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # Disabled - requires psycopg setup
 
 from app.orchestrator.models import (
     ExecutionState,
@@ -92,7 +92,7 @@ class WorkflowOrchestrator:
             db_session: Optional async database session for memory service.
         """
         self.use_postgres = use_postgres
-        self._checkpointer: Optional[Union[AsyncPostgresSaver, MemorySaver]] = None
+        self._checkpointer: Optional[MemorySaver] = None
         self._initialized = False
         self._db_session = db_session
         self._memory_service: Optional[MemoryService] = None
@@ -108,7 +108,7 @@ class WorkflowOrchestrator:
             checkpoint_backend="postgres" if use_postgres else "memory"
         )
     
-    async def _ensure_checkpointer(self) -> Union[AsyncPostgresSaver, MemorySaver]:
+    async def _ensure_checkpointer(self) -> MemorySaver:
         """
         Ensure checkpointer is initialized (lazy initialization).
         
@@ -125,7 +125,7 @@ class WorkflowOrchestrator:
         return self._checkpointer
     
     @property
-    def checkpointer(self) -> Optional[Union[AsyncPostgresSaver, MemorySaver]]:
+    def checkpointer(self) -> Optional[MemorySaver]:
         """Get the current checkpointer (may be None if not initialized)."""
         return self._checkpointer
     
@@ -1152,7 +1152,7 @@ class WorkflowOrchestrator:
         execution_id: str,
         steps: List[Dict[str, Any]],
         parallel_config: Optional[ParallelExecution] = None,
-        checkpointer: Optional[Union[AsyncPostgresSaver, MemorySaver]] = None
+        checkpointer: Optional[MemorySaver] = None
     ) -> StateGraph:
         """
         Build LangGraph for workflow execution.

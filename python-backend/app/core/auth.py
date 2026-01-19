@@ -1,32 +1,31 @@
 """
 Authentication Module
-JWT token generation and validation
+JWT token generation and validation using enhanced JWT Manager
 """
 
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-from jose import JWTError, jwt
+from jose import JWTError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import structlog
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.jwt_manager import get_jwt_manager, create_access_token as jwt_create_access, create_refresh_token as jwt_create_refresh
 from app.models.user import User
 from app.models.token_blacklist import TokenBlacklist
+
+logger = structlog.get_logger(__name__)
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # HTTP Bearer token
 security = HTTPBearer()
-
-# JWT settings
-SECRET_KEY = settings.SECRET_KEY
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -41,42 +40,59 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
-    Create JWT access token
-    
+    Create JWT access token (backwards compatible)
+
     Args:
-        data: Data to encode in token (should include user_id, email)
-        expires_delta: Token expiration time (default: 30 minutes)
-    
+        data: Data to encode in token (should include 'sub' with user_id)
+        expires_delta: Token expiration time (ignored, uses JWT Manager config)
+
     Returns:
         JWT token string
     """
-    to_encode = data.copy()
-    
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    
-    return encoded_jwt
+    # Extract user_id from data
+    user_id = data.get("sub")
+    if not user_id:
+        # Fallback to old format
+        user_id = data.get("user_id")
+
+    if not user_id:
+        raise ValueError("user_id is required in token data")
+
+    # Use JWT Manager for token creation
+    additional_claims = {k: v for k, v in data.items() if k not in ["sub", "exp", "iat"]}
+    return jwt_create_access(int(user_id), **additional_claims)
 
 
-def verify_token(token: str) -> Optional[Dict[str, Any]]:
+def create_refresh_token(user_id: int) -> str:
+    """
+    Create JWT refresh token
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        JWT refresh token string
+    """
+    return jwt_create_refresh(user_id)
+
+
+def verify_token(token: str, expected_type: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
     Verify JWT token
-    
+
     Args:
         token: JWT token string
-    
+        expected_type: Expected token type ("access" or "refresh")
+
     Returns:
         Decoded token payload or None if invalid
     """
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        jwt_manager = get_jwt_manager()
+        payload = jwt_manager.verify_token(token, expected_type=expected_type)
         return payload
-    except JWTError:
+    except JWTError as e:
+        logger.warning("token_verification_failed", error=str(e))
         return None
 
 
@@ -98,43 +114,58 @@ async def get_current_user(
         HTTPException: If authentication fails
     """
     token = credentials.credentials
-    
-    # Verify token
-    payload = verify_token(token)
+
+    # Verify token (expect access token)
+    payload = verify_token(token, expected_type="access")
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # Check if token is blacklisted
+
+    # Check if token is blacklisted (JTI check)
     jti = payload.get("jti")
     if jti:
         blacklist_result = await db.execute(
             select(TokenBlacklist).where(TokenBlacklist.jti == jti)
         )
         if blacklist_result.scalar_one_or_none() is not None:
+            logger.warning("revoked_token_used", jti=jti)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-    
-    # Get user_id from token
-    user_id: str = payload.get("user_id")
-    if user_id is None:
+
+    # Get user_id from token (JWT Manager uses 'sub')
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        # Fallback to old format
+        user_id_str = payload.get("user_id")
+
+    if not user_id_str:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail="Invalid token payload",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Get user from database
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if user is None:
+        logger.warning("token_user_not_found", user_id=user_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",

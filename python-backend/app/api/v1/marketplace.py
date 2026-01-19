@@ -13,6 +13,7 @@ import re
 from app.core.database import get_db
 from app.core.auth import get_current_user, require_admin
 from app.core.input_sanitization import InputSanitizer
+from app.core.secure_validators import SecureURLValidator, SlugValidator
 from app.models.user import User
 from app.models.marketplace_template import TemplateStatus, TemplateCategory, TechStack
 from app.services.marketplace_service import MarketplaceService
@@ -43,75 +44,55 @@ class CreateTemplateRequest(BaseModel):
     @field_validator('slug')
     @classmethod
     def validate_slug(cls, v: str) -> str:
-        """Validate slug is not reserved and is lowercase"""
-        reserved_slugs = ['admin', 'api', 'templates', 'user', 'settings', 'marketplace', 'purchase', 'download']
-        if v.lower() in reserved_slugs:
-            raise ValueError(f'Slug "{v}" is reserved and cannot be used')
-        return v.lower()  # Force lowercase
+        """Validate slug with secure validator - SECURITY FIX #6"""
+        return SlugValidator.validate_slug(v)
 
     @field_validator('template_file_url')
     @classmethod
     def validate_template_url(cls, v: str) -> str:
-        """Validate template file URL is from approved storage"""
+        """
+        Validate template file URL with secure validator - SECURITY FIX #6
+
+        SECURITY IMPROVEMENTS:
+        - Uses exact domain matching (not 'in' check)
+        - Prevents bypass with fake domains (e.g., fake-r2.cloudflare.com.evil.com)
+        - Validates HTTPS protocol
+        - Enforces ZIP file extension
+        """
         if not v:
             raise ValueError('Template file URL is required')
 
-        # Must be HTTPS
-        if not v.startswith('https://'):
-            raise ValueError('Template file URL must use HTTPS protocol')
-
-        # Whitelist approved storage domains
-        approved_domains = [
-            'r2.cloudflare.com',
-            's3.amazonaws.com',
-            's3-us-west-2.amazonaws.com',
-            's3-us-east-1.amazonaws.com',
-            'storage.googleapis.com',
-        ]
-
-        if not any(domain in v for domain in approved_domains):
-            raise ValueError(f'Template file URL must be from approved storage: {", ".join(approved_domains)}')
-
-        # Ensure it's a ZIP file
-        if not v.lower().endswith('.zip'):
-            raise ValueError('Template file must be a ZIP archive')
-
-        return v
+        # Use secure validator with exact domain matching
+        return SecureURLValidator.validate_storage_url(
+            v,
+            allowed_extensions=['.zip'],
+            require_zip=True
+        )
 
     @field_validator('preview_images')
     @classmethod
     def validate_preview_images(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """Validate preview image URLs"""
+        """Validate preview image URLs - SECURITY FIX #6"""
         if not v:
             return v
 
-        approved_domains = ['r2.cloudflare.com', 's3.amazonaws.com', 'storage.googleapis.com']
-
+        # Validate each image URL with secure validator
+        validated_urls = []
         for url in v:
-            if not url.startswith('https://'):
-                raise ValueError('Preview image URLs must use HTTPS')
-            if not any(domain in url for domain in approved_domains):
-                raise ValueError('Preview image URLs must be from approved storage')
+            validated_url = SecureURLValidator.validate_image_url(url)
+            validated_urls.append(validated_url)
 
-        return v
+        return validated_urls
 
     @field_validator('demo_video_url')
     @classmethod
     def validate_demo_video_url(cls, v: Optional[str]) -> Optional[str]:
-        """Validate demo video URL"""
+        """Validate demo video URL - SECURITY FIX #6"""
         if not v:
             return v
 
-        # Allow popular video platforms
-        approved_platforms = ['youtube.com', 'youtu.be', 'vimeo.com', 'loom.com']
-
-        if not v.startswith('https://'):
-            raise ValueError('Demo video URL must use HTTPS')
-
-        if not any(platform in v for platform in approved_platforms):
-            raise ValueError(f'Demo video must be from approved platforms: {", ".join(approved_platforms)}')
-
-        return v
+        # Use secure validator for video platforms
+        return SecureURLValidator.validate_video_url(v)
 
     @field_validator('description', 'tagline')
     @classmethod

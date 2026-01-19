@@ -12,3 +12,4 @@ export { MediaStudio } from './MediaStudio';
 export { default as ImageGenerator } from './ImageGenerator';
 export { default as VideoGenerator } from './VideoGenerator';
 export { default as AudioGenerator } from './AudioGenerator';
+export { default as Gallery } from './Gallery';

@@ -181,12 +181,21 @@ def setup_cors(app):
         debug=settings.DEBUG
     )
 
-    # In development, also allow local network IPs
+    # In development, allow specific ports only - SECURITY FIX #7
     allow_origin_regex = None
     if settings.DEBUG:
-        # Allow localhost and local network IPs (172.x.x.x, 192.168.x.x, 10.x.x.x)
-        allow_origin_regex = r"http://(localhost|127\.0\.0\.1|172\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+"
-        logger.info("cors_allow_origin_regex_enabled", regex=allow_origin_regex)
+        # Allow localhost and local network IPs on SPECIFIC PORTS ONLY
+        # Ports: 3000 (React), 5173 (Vite), 8080 (Alt), 1420 (Tauri), 4200 (Angular), 8000-8099 (Dev servers)
+        allowed_ports = "3000|5173|8080|1420|4200|800[0-9]|809[0-9]"
+        allow_origin_regex = (
+            rf"http://(localhost|127\.0\.0\.1|172\.\d{{1,3}}\.\d{{1,3}}\.\d{{1,3}}|"
+            rf"192\.168\.\d{{1,3}}\.\d{{1,3}}|10\.\d{{1,3}}\.\d{{1,3}}\.\d{{1,3}}):({allowed_ports})"
+        )
+        logger.info(
+            "cors_allow_origin_regex_enabled_secure",
+            message="Only specific development ports allowed",
+            allowed_ports=allowed_ports.replace("|", ", ")
+        )
 
     app.add_middleware(
         CORSMiddleware,
