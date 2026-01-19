@@ -66,7 +66,19 @@ async def get_db() -> AsyncSession:
 async def init_db():
     """Initialize database - create all tables"""
     # Import all models here to ensure they are registered before create_all
-    from app.models import audit_log, credit, api_key, oauth, password_reset, payment, refund, support_ticket, user, marketplace_template
+    from app.models import (
+        # Core models
+        audit_log, credit, api_key, oauth, password_reset, payment, refund,
+        support_ticket, user, marketplace_template,
+        # Execution and memory
+        execution, semantic_memory, provider_config, opencode_key,
+        # Phase 3 models
+        tenant, rbac, approval, vault_model, vector_store,
+        # Media and assets
+        asset, media_task,
+        # Notifications and preferences
+        notification, user_preferences, custom_skill_prompt
+    )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info(

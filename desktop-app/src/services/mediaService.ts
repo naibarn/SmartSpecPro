@@ -5,7 +5,7 @@
 
 import { getAuthToken } from './authService';
 
-const API_BASE_URL = 'http://localhost:8080/api/v1/media';
+const API_BASE_URL = `${import.meta.env.VITE_PY_BACKEND_URL || 'http://127.0.0.1:8000'}/api/v1/media`;
 
 export interface ImageGenerationRequest {
   model: string;

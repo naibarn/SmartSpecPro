@@ -55,6 +55,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
       - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DEBUG=true
       - LOG_LEVEL=DEBUG
       - SMARTSPEC_PROXY_TOKEN=dev_token_12345
@@ -65,17 +67,100 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - KIE_AI_API_KEY=${KIE_AI_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - MEDIA_STORAGE_PATH=./media_storage
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - CDN_BASE_URL=${CDN_BASE_URL:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
     ports:
       - "8001:8000"
     volumes:
       - ./python-backend:/app
       - python_cache:/root/.cache
+      - media_storage:/app/media_storage
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - smartspec-network
+    restart: unless-stopped
+
+  celery-worker:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-celery-worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - KIE_AI_API_KEY=${KIE_AI_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - MEDIA_STORAGE_PATH=./media_storage
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - CDN_BASE_URL=${CDN_BASE_URL:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+    volumes:
+      - ./python-backend:/app
+      - media_storage:/app/media_storage
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+    networks:
+      - smartspec-network
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-celery-beat
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./python-backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: celery -A app.core.celery_app beat --loglevel=info
+    networks:
+      - smartspec-network
+    restart: unless-stopped
+
+  flower:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-flower
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./python-backend:/app
+    depends_on:
+      - redis
+      - celery-worker
+    command: celery -A app.core.celery_app flower --port=5555
     networks:
       - smartspec-network
     restart: unless-stopped
@@ -248,6 +333,8 @@ volumes:
     name: smartspec_redis_data
   python_cache:
     name: smartspec_python_cache
+  media_storage:
+    name: smartspec_media_storage
   web_node_modules:
     name: smartspec_web_node_modules
   control_plane_node_modules:

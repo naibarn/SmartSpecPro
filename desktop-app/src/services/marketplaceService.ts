@@ -5,7 +5,7 @@
 
 import { getAuthToken } from './authService';
 
-const API_BASE_URL = 'http://localhost:8080/api/v1/marketplace';
+const API_BASE_URL = `${import.meta.env.VITE_PY_BACKEND_URL || 'http://127.0.0.1:8000'}/api/v1/marketplace`;
 
 // ==================== Types ====================
 
