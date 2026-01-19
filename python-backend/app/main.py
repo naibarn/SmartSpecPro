@@ -53,6 +53,7 @@ from app.api import (
     tenants,  # Phase 3: Multi-tenancy
     rbac,  # Phase 3: RBAC
     approvals,  # Phase 3: Approval Gates
+    csrf,  # CSRF Protection
 )
 from app.api.v1 import (
     skills,
@@ -158,6 +159,7 @@ register_exception_handlers(app)
 
 # Include routers
 app.include_router(health.router, prefix="/health", tags=["Health"])
+app.include_router(csrf.router, tags=["CSRF Protection"])
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(credits.router, tags=["Credits"])
 app.include_router(payments.router, prefix="/api", tags=["Payments"])

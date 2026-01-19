@@ -235,50 +235,155 @@ class SecurityValidator:
 
 
 class RateLimiter:
-    """Simple in-memory rate limiter"""
-    
-    def __init__(self, max_requests: int = 60, window_seconds: int = 60):
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
-        self.requests: dict[str, list[float]] = {}
-    
-    def check_rate_limit(self, key: str) -> bool:
+    """
+    Advanced rate limiter with support for both IP-based and user-based limiting.
+    Uses sliding window algorithm for accurate rate limiting.
+    """
+
+    def __init__(
+        self,
+        max_requests_anonymous: int = 60,
+        max_requests_authenticated: int = 120,
+        window_seconds: int = 60,
+        burst_multiplier: float = 1.5
+    ):
         """
-        Check if request is within rate limit
-        
+        Initialize rate limiter with different limits for anonymous and authenticated users.
+
         Args:
-            key: Unique identifier for rate limiting (e.g., IP, user ID)
-        
+            max_requests_anonymous: Max requests per window for unauthenticated users
+            max_requests_authenticated: Max requests per window for authenticated users
+            window_seconds: Time window in seconds
+            burst_multiplier: Multiplier for burst allowance
+        """
+        self.max_requests_anonymous = max_requests_anonymous
+        self.max_requests_authenticated = max_requests_authenticated
+        self.window_seconds = window_seconds
+        self.burst_multiplier = burst_multiplier
+        self.requests: dict[str, list[float]] = {}
+        self.user_tiers: dict[str, str] = {}  # Track user tier (anonymous, authenticated, premium)
+
+    def check_rate_limit(
+        self,
+        key: str,
+        is_authenticated: bool = False,
+        tier: str = "standard"
+    ) -> tuple[bool, dict]:
+        """
+        Check if request is within rate limit with enhanced tracking.
+
+        Args:
+            key: Unique identifier for rate limiting (IP or user:user_id)
+            is_authenticated: Whether the request is from an authenticated user
+            tier: User tier for different rate limits (standard, premium, admin)
+
         Returns:
-            True if allowed, False if rate limited
+            Tuple of (allowed: bool, info: dict with rate limit info)
         """
         import time
-        
+
         now = time.time()
-        
+
+        # Determine max requests based on authentication and tier
+        if tier == "admin":
+            max_requests = self.max_requests_authenticated * 10  # Admins get 10x limit
+        elif tier == "premium":
+            max_requests = self.max_requests_authenticated * 2  # Premium users get 2x limit
+        elif is_authenticated:
+            max_requests = self.max_requests_authenticated
+        else:
+            max_requests = self.max_requests_anonymous
+
+        # Calculate burst allowance
+        burst_limit = int(max_requests * self.burst_multiplier)
+
         # Get request history for this key
         if key not in self.requests:
             self.requests[key] = []
-        
-        # Remove old requests outside window
+
+        # Remove old requests outside window (sliding window)
         self.requests[key] = [
             req_time for req_time in self.requests[key]
             if now - req_time < self.window_seconds
         ]
-        
+
+        current_count = len(self.requests[key])
+
         # Check if under limit
-        if len(self.requests[key]) >= self.max_requests:
-            logger.warning("Rate limit exceeded", key=key, count=len(self.requests[key]))
-            return False
-        
+        if current_count >= burst_limit:
+            # Calculate retry-after time
+            oldest_request = self.requests[key][0] if self.requests[key] else now
+            retry_after = int(self.window_seconds - (now - oldest_request)) + 1
+
+            logger.warning(
+                "Rate limit exceeded",
+                key=key,
+                count=current_count,
+                limit=max_requests,
+                burst_limit=burst_limit,
+                is_authenticated=is_authenticated,
+                tier=tier
+            )
+
+            return False, {
+                "allowed": False,
+                "limit": max_requests,
+                "remaining": 0,
+                "reset": int(now + retry_after),
+                "retry_after": retry_after
+            }
+
         # Add current request
         self.requests[key].append(now)
-        return True
-    
+
+        # Calculate remaining requests
+        remaining = max_requests - (current_count + 1)
+        reset_time = int(now + self.window_seconds)
+
+        return True, {
+            "allowed": True,
+            "limit": max_requests,
+            "remaining": max(0, remaining),
+            "reset": reset_time,
+            "retry_after": 0
+        }
+
     def reset(self, key: str):
-        """Reset rate limit for a key"""
+        """Reset rate limit for a specific key"""
         if key in self.requests:
             del self.requests[key]
+            logger.info("Rate limit reset", key=key)
+
+    def clear_all(self):
+        """Clear all rate limit data (use with caution)"""
+        self.requests.clear()
+        self.user_tiers.clear()
+        logger.info("All rate limits cleared")
+
+    def get_stats(self, key: str) -> dict:
+        """Get current rate limit stats for a key"""
+        import time
+        now = time.time()
+
+        if key not in self.requests:
+            return {
+                "key": key,
+                "current_count": 0,
+                "window_seconds": self.window_seconds
+            }
+
+        # Clean old requests
+        self.requests[key] = [
+            req_time for req_time in self.requests[key]
+            if now - req_time < self.window_seconds
+        ]
+
+        return {
+            "key": key,
+            "current_count": len(self.requests[key]),
+            "window_seconds": self.window_seconds,
+            "requests": self.requests[key]
+        }
 
 
 # Global instances

@@ -40,25 +40,88 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Rate limiting middleware"""
-    
+    """
+    Enhanced rate limiting middleware with JWT authentication support.
+    Applies different rate limits based on authentication status and user tier.
+    """
+
     async def dispatch(self, request: Request, call_next):
         # Get client identifier (IP address)
         client_ip = request.client.host if request.client else "unknown"
-        
-        # Check rate limit
-        if not rate_limiter.check_rate_limit(client_ip):
-            logger.warning("Rate limit exceeded", client_ip=client_ip, path=request.url.path)
+
+        # Try to extract user info from JWT token
+        user_id = None
+        is_authenticated = False
+        tier = "standard"
+        rate_limit_key = f"ip:{client_ip}"
+
+        # Check for Authorization header
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+            try:
+                from app.core.auth import verify_token
+                payload = verify_token(token, expected_type="access")
+
+                if payload:
+                    user_id = payload.get("sub") or payload.get("user_id")
+                    is_authenticated = True
+                    tier = payload.get("tier", "standard")  # Get tier from token
+
+                    # Use user-based rate limiting for authenticated users
+                    if user_id:
+                        rate_limit_key = f"user:{user_id}"
+            except Exception as e:
+                # If token verification fails, treat as unauthenticated
+                logger.debug("Token verification failed in rate limiter", error=str(e))
+                pass
+
+        # Check rate limit with authentication context
+        allowed, rate_info = rate_limiter.check_rate_limit(
+            rate_limit_key,
+            is_authenticated=is_authenticated,
+            tier=tier
+        )
+
+        if not allowed:
+            logger.warning(
+                "Rate limit exceeded",
+                key=rate_limit_key,
+                client_ip=client_ip,
+                user_id=user_id,
+                path=request.url.path,
+                is_authenticated=is_authenticated,
+                tier=tier
+            )
+
+            # Return 429 with rate limit headers
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={
                     "error": "RATE_LIMIT_EXCEEDED",
                     "message": "Too many requests. Please try again later.",
-                    "details": {}
+                    "details": {
+                        "limit": rate_info["limit"],
+                        "retry_after": rate_info["retry_after"],
+                        "reset": rate_info["reset"]
+                    }
+                },
+                headers={
+                    "X-RateLimit-Limit": str(rate_info["limit"]),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(rate_info["reset"]),
+                    "Retry-After": str(rate_info["retry_after"])
                 }
             )
-        
+
+        # Process request and add rate limit headers to response
         response = await call_next(request)
+
+        # Add rate limit info headers
+        response.headers["X-RateLimit-Limit"] = str(rate_info["limit"])
+        response.headers["X-RateLimit-Remaining"] = str(rate_info["remaining"])
+        response.headers["X-RateLimit-Reset"] = str(rate_info["reset"])
+
         return response
 
 
@@ -145,15 +208,24 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 
 
 def setup_cors(app):
-    """Setup CORS middleware with environment-based configuration"""
+    """
+    Setup CORS middleware with secure environment-based configuration.
+
+    Security improvements:
+    1. No wildcards in production
+    2. Whitelist specific ports in development
+    3. Strict origin validation
+    4. Secure headers whitelist
+    5. Credential support with strict origin checking
+    """
     from app.core.config import settings
     import structlog
-    
+
     logger = structlog.get_logger()
-    
+
     # Get CORS origins from environment
     cors_origins_str = getattr(settings, 'CORS_ORIGINS', '')
-    
+
     if cors_origins_str:
         # Parse comma-separated origins
         if isinstance(cors_origins_str, str):
@@ -161,23 +233,51 @@ def setup_cors(app):
         elif isinstance(cors_origins_str, list):
             origins = cors_origins_str
     else:
-        # Default origins for development
-        origins = [
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://localhost:8080",
-        ]
-    
-    # Validate: don't allow wildcard in production
-    if "*" in origins and not settings.DEBUG:
-        raise ValueError(
-            "CORS_ORIGINS cannot contain wildcard (*) in production. "
-            "Please set CORS_ORIGINS environment variable with specific domains."
+        # Default origins for development only
+        if settings.DEBUG:
+            origins = [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:8080",
+                "http://localhost:1420",
+                "tauri://localhost",
+            ]
+        else:
+            # In production, require explicit CORS_ORIGINS configuration
+            origins = []
+
+    # SECURITY: Validate origins
+    if not origins and not settings.DEBUG:
+        logger.warning(
+            "cors_not_configured_production",
+            message="CORS_ORIGINS not set in production. No origins will be allowed."
         )
-    
+
+    # SECURITY: Don't allow wildcard in production
+    if "*" in origins:
+        if not settings.DEBUG:
+            raise ValueError(
+                "CORS_ORIGINS cannot contain wildcard (*) in production. "
+                "Please set CORS_ORIGINS environment variable with specific domains."
+            )
+        else:
+            logger.warning(
+                "cors_wildcard_in_development",
+                message="Wildcard CORS origin detected in development mode"
+            )
+
+    # SECURITY: Validate origin format (must be valid URLs)
+    for origin in origins:
+        if origin != "*" and not origin.startswith(("http://", "https://", "tauri://")):
+            raise ValueError(
+                f"Invalid CORS origin format: {origin}. "
+                "Origins must start with http://, https://, or tauri://"
+            )
+
     logger.info(
         "cors_configured",
         origins=origins,
+        environment=settings.ENVIRONMENT,
         debug=settings.DEBUG
     )
 
@@ -188,48 +288,115 @@ def setup_cors(app):
         # Ports: 3000 (React), 5173 (Vite), 8080 (Alt), 1420 (Tauri), 4200 (Angular), 8000-8099 (Dev servers)
         allowed_ports = "3000|5173|8080|1420|4200|800[0-9]|809[0-9]"
         allow_origin_regex = (
-            rf"http://(localhost|127\.0\.0\.1|172\.\d{{1,3}}\.\d{{1,3}}\.\d{{1,3}}|"
-            rf"192\.168\.\d{{1,3}}\.\d{{1,3}}|10\.\d{{1,3}}\.\d{{1,3}}\.\d{{1,3}}):({allowed_ports})"
+            rf"^https?://(localhost|127\.0\.0\.1|172\.\d{{1,3}}\.\d{{1,3}}\.\d{{1,3}}|"
+            rf"192\.168\.\d{{1,3}}\.\d{{1,3}}|10\.\d{{1,3}}\.\d{{1,3}}\.\d{{1,3}}):({allowed_ports})$"
         )
         logger.info(
             "cors_allow_origin_regex_enabled_secure",
             message="Only specific development ports allowed",
             allowed_ports=allowed_ports.replace("|", ", ")
         )
+    else:
+        # In production, no regex - only explicit origins
+        logger.info(
+            "cors_production_mode",
+            message="CORS origin regex disabled in production (explicit origins only)"
+        )
+
+    # SECURITY: Restricted allowed headers
+    # Only allow necessary headers, not all headers
+    allowed_headers = [
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "X-CSRF-Token",  # For CSRF protection
+        "X-RateLimit-Limit",
+        "X-RateLimit-Remaining",
+        "X-RateLimit-Reset",
+    ]
+
+    # Add X-Proxy-Token only if SmartSpecWeb gateway is enabled
+    if settings.SMARTSPEC_USE_WEB_GATEWAY:
+        allowed_headers.append("X-Proxy-Token")
+
+    # SECURITY: Restricted exposed headers
+    # Tell browsers which response headers can be accessed by frontend JavaScript
+    expose_headers = [
+        "X-RateLimit-Limit",
+        "X-RateLimit-Remaining",
+        "X-RateLimit-Reset",
+        "Retry-After",
+        "X-Request-ID",
+    ]
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
         allow_origin_regex=allow_origin_regex,
-        allow_credentials=True,
+        allow_credentials=True,  # Allow cookies and Authorization headers
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "X-Proxy-Token"],
+        allow_headers=allowed_headers,
+        expose_headers=expose_headers,
         max_age=600,  # Cache preflight requests for 10 minutes
+    )
+
+    logger.info(
+        "cors_middleware_configured",
+        origins_count=len(origins),
+        allow_credentials=True,
+        max_age=600
     )
 
 
 def setup_middleware(app):
-    """Setup all middleware"""
-    
+    """
+    Setup all middleware in correct order.
+
+    Middleware execution order (outermost to innermost):
+    1. Error handling - catches all errors
+    2. Request/audit logging - logs all requests
+    3. Security headers - adds security headers
+    4. CORS - handles cross-origin requests
+    5. CSRF protection - validates CSRF tokens
+    6. Rate limiting - enforces rate limits
+    7. Request validation - validates request format
+    """
+
     # Order matters: first added = last executed
-    
-    # Error handling (outermost)
+
+    # 1. Error handling (outermost - catches all errors)
     app.add_middleware(ErrorHandlingMiddleware)
-    
-    # Request and audit logging
+
+    # 2. Request and audit logging
     from app.core.request_logging import setup_request_logging
     setup_request_logging(app)
-    
-    # Security headers (innermost - runs first)
+
+    # 3. Security headers
     app.add_middleware(SecurityHeadersMiddleware)
-    
-    # Request validation
-    app.add_middleware(RequestValidationMiddleware)
-    
-    # Rate limiting
-    app.add_middleware(RateLimitMiddleware)
-    
-    # CORS
+
+    # 4. CORS (must be before CSRF for preflight requests)
     setup_cors(app)
-    
-    logger.info("Middleware configured")
+
+    # 5. CSRF protection
+    from app.core.csrf import CSRFMiddleware
+    from app.core.config import settings
+
+    # Only enable CSRF in production or if explicitly enabled
+    if not settings.DEBUG or getattr(settings, "ENABLE_CSRF", False):
+        app.add_middleware(CSRFMiddleware)
+        logger.info("CSRF protection enabled")
+    else:
+        logger.warning(
+            "CSRF protection disabled in development",
+            message="Set ENABLE_CSRF=true to enable CSRF protection in development"
+        )
+
+    # 6. Rate limiting (with JWT support)
+    app.add_middleware(RateLimitMiddleware)
+
+    # 7. Request validation (innermost)
+    app.add_middleware(RequestValidationMiddleware)
+
+    logger.info("All middleware configured successfully")
