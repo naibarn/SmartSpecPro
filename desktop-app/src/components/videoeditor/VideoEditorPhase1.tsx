@@ -9,6 +9,7 @@ import Timeline from './Timeline';
 import PreviewPlayer from './PreviewPlayer';
 import Toolbar from './Toolbar';
 import { projectManager } from '../../services/projectManager';
+import { sanitizeProjectName } from '../../utils/security';
 import {
   type VideoEditorProject,
   type MediaLibraryAsset,
@@ -404,7 +405,7 @@ export const VideoEditorPhase1: React.FC = () => {
 
       {/* Header */}
       <div className="editor-header">
-        <div className="project-title">🎬 {project.name}</div>
+        <div className="project-title">🎬 {sanitizeProjectName(project.name)}</div>
         <div className="header-spacer" />
         <button className="header-button" onClick={handleLoad}>
           📂 Open

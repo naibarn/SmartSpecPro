@@ -8,6 +8,164 @@ import { save, open } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { VideoEditorProject } from '../types/videoEditor';
 
+/**
+ * Validate project structure to prevent malicious data
+ * Security: Validates all fields against expected types and ranges
+ */
+function validateProjectStructure(data: any): VideoEditorProject {
+  // Check required top-level fields
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('Project must be an object');
+  }
+
+  if (typeof data.version !== 'string' || !data.version.match(/^\d+\.\d+$/)) {
+    throw new Error('Invalid version format (expected: X.Y)');
+  }
+
+  if (typeof data.name !== 'string' || data.name.length === 0 || data.name.length > 256) {
+    throw new Error('Project name must be 1-256 characters');
+  }
+
+  // Validate settings
+  if (typeof data.settings !== 'object') {
+    throw new Error('Missing settings object');
+  }
+
+  const settings = data.settings;
+  if (typeof settings.width !== 'number' || settings.width < 1 || settings.width > 7680) {
+    throw new Error('Invalid width (must be 1-7680)');
+  }
+
+  if (typeof settings.height !== 'number' || settings.height < 1 || settings.height > 4320) {
+    throw new Error('Invalid height (must be 1-4320)');
+  }
+
+  if (typeof settings.fps !== 'number' || settings.fps < 1 || settings.fps > 120) {
+    throw new Error('Invalid FPS (must be 1-120)');
+  }
+
+  if (typeof settings.sample_rate !== 'number' || settings.sample_rate < 8000 || settings.sample_rate > 192000) {
+    throw new Error('Invalid sample rate (must be 8000-192000)');
+  }
+
+  // Validate timeline
+  if (typeof data.timeline !== 'object' || !Array.isArray(data.timeline.tracks)) {
+    throw new Error('Invalid timeline structure');
+  }
+
+  const MAX_TRACKS = 50;
+  if (data.timeline.tracks.length > MAX_TRACKS) {
+    throw new Error(`Too many tracks (max: ${MAX_TRACKS})`);
+  }
+
+  // Validate tracks
+  let totalClips = 0;
+  for (const track of data.timeline.tracks) {
+    if (typeof track.id !== 'string' || track.id.length === 0) {
+      throw new Error('Track must have valid id');
+    }
+
+    if (typeof track.name !== 'string' || track.name.length > 256) {
+      throw new Error('Track name must be valid string');
+    }
+
+    if (!['video', 'audio'].includes(track.type)) {
+      throw new Error('Track type must be "video" or "audio"');
+    }
+
+    if (!Array.isArray(track.clips)) {
+      throw new Error('Track clips must be array');
+    }
+
+    totalClips += track.clips.length;
+
+    // Validate clips
+    for (const clip of track.clips) {
+      if (typeof clip.id !== 'string') {
+        throw new Error('Clip must have valid id');
+      }
+
+      if (typeof clip.assetId !== 'string') {
+        throw new Error('Clip must have valid assetId');
+      }
+
+      if (typeof clip.startTime !== 'number' || clip.startTime < 0) {
+        throw new Error('Clip startTime must be non-negative number');
+      }
+
+      if (typeof clip.duration !== 'number' || clip.duration <= 0 || clip.duration > 7200) {
+        throw new Error('Clip duration must be 0-7200 seconds');
+      }
+
+      if (typeof clip.volume !== 'number' || clip.volume < 0 || clip.volume > 2) {
+        throw new Error('Clip volume must be 0-2');
+      }
+    }
+  }
+
+  const MAX_CLIPS = 1000;
+  if (totalClips > MAX_CLIPS) {
+    throw new Error(`Too many clips (max: ${MAX_CLIPS})`);
+  }
+
+  // Validate assets
+  if (typeof data.assets !== 'object') {
+    throw new Error('Assets must be object');
+  }
+
+  const MAX_ASSETS = 500;
+  if (Object.keys(data.assets).length > MAX_ASSETS) {
+    throw new Error(`Too many assets (max: ${MAX_ASSETS})`);
+  }
+
+  for (const [id, asset] of Object.entries(data.assets)) {
+    const a = asset as any;
+    if (typeof a.type !== 'string' || !['video', 'audio', 'image'].includes(a.type)) {
+      throw new Error('Asset type must be "video", "audio", or "image"');
+    }
+
+    if (typeof a.path !== 'string' || a.path.length === 0) {
+      throw new Error('Asset must have valid path');
+    }
+
+    // Security: Check for path traversal attempts
+    if (a.path.includes('..') || a.path.includes('\0')) {
+      throw new Error('Invalid asset path detected');
+    }
+  }
+
+  // Validate export settings
+  if (typeof data.export !== 'object') {
+    throw new Error('Missing export settings');
+  }
+
+  const exp = data.export;
+  if (typeof exp.bitrate !== 'number' || exp.bitrate < 1000 || exp.bitrate > 50000) {
+    throw new Error('Video bitrate must be 1000-50000 kbps');
+  }
+
+  if (typeof exp.audioBitrate !== 'number' || exp.audioBitrate < 64 || exp.audioBitrate > 320) {
+    throw new Error('Audio bitrate must be 64-320 kbps');
+  }
+
+  // Sanitize strings to prevent XSS
+  data.name = sanitizeString(data.name);
+
+  return data as VideoEditorProject;
+}
+
+/**
+ * Sanitize string to prevent XSS attacks
+ */
+function sanitizeString(str: string): string {
+  return str
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
+
 export class ProjectManager {
   private currentProjectPath: string | null = null;
 
@@ -83,12 +241,10 @@ export class ProjectManager {
       const json = await readTextFile(loadPath);
 
       // Parse JSON
-      const project: VideoEditorProject = JSON.parse(json);
+      const data = JSON.parse(json);
 
-      // Validate project structure
-      if (!project.version || !project.timeline || !project.assets) {
-        throw new Error('Invalid project file format');
-      }
+      // Security: Validate project structure thoroughly
+      const project = validateProjectStructure(data);
 
       // Update current path
       this.currentProjectPath = loadPath;
@@ -200,7 +356,10 @@ export class ProjectManager {
       if (!exists) return null;
 
       const json = await readTextFile(autoSavePath);
-      const project: VideoEditorProject = JSON.parse(json);
+      const data = JSON.parse(json);
+
+      // Security: Validate auto-saved project too
+      const project = validateProjectStructure(data);
 
       console.log('Loaded auto-saved project');
       return project;

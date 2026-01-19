@@ -46,15 +46,50 @@ pub fn file_exists(path: String) -> bool {
 }
 
 /// Save binary data to file
+/// Security: Validates path is within workspace to prevent path traversal attacks
 #[tauri::command]
 pub async fn save_blob_to_file(blob: Vec<u8>, path: String) -> Result<(), String> {
+    // Get workspace path
+    let workspace_path = get_video_editor_workspace_path()?;
+    let workspace = PathBuf::from(&workspace_path);
+
+    // Convert target path to absolute
+    let target = PathBuf::from(&path);
+
+    // Validate path is within workspace (prevent path traversal)
+    let canonical_workspace = workspace.canonicalize()
+        .map_err(|e| format!("Failed to resolve workspace path: {}", e))?;
+
+    // If target is relative, resolve it against workspace
+    let target_path = if target.is_absolute() {
+        target
+    } else {
+        workspace.join(target)
+    };
+
     // Ensure parent directory exists
-    if let Some(parent) = PathBuf::from(&path).parent() {
+    if let Some(parent) = target_path.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create parent directory: {}", e))?;
     }
 
-    fs::write(&path, blob)
+    // Canonicalize target path (after parent dir exists)
+    let canonical_target = target_path.canonicalize()
+        .or_else(|_| {
+            // If file doesn't exist yet, validate parent directory
+            target_path.parent()
+                .ok_or_else(|| "Invalid path".to_string())?
+                .canonicalize()
+                .map(|parent| parent.join(target_path.file_name().unwrap()))
+                .map_err(|e| format!("Failed to resolve target path: {}", e))
+        })?;
+
+    // Security check: ensure target is within workspace
+    if !canonical_target.starts_with(&canonical_workspace) {
+        return Err("Path traversal detected: Target path is outside workspace".to_string());
+    }
+
+    fs::write(&canonical_target, blob)
         .map_err(|e| format!("Failed to write file: {}", e))
 }
 
@@ -68,9 +103,28 @@ pub fn get_file_size(path: String) -> Result<u64, String> {
 }
 
 /// Delete a file
+/// Security: Validates path is within workspace to prevent unauthorized deletions
 #[tauri::command]
 pub fn delete_file(path: String) -> Result<(), String> {
-    fs::remove_file(&path)
+    // Get workspace path
+    let workspace_path = get_video_editor_workspace_path()?;
+    let workspace = PathBuf::from(&workspace_path);
+
+    let target = PathBuf::from(&path);
+
+    // Validate path is within workspace
+    let canonical_workspace = workspace.canonicalize()
+        .map_err(|e| format!("Failed to resolve workspace path: {}", e))?;
+
+    let canonical_target = target.canonicalize()
+        .map_err(|e| format!("Failed to resolve target path: {}", e))?;
+
+    // Security check: ensure target is within workspace
+    if !canonical_target.starts_with(&canonical_workspace) {
+        return Err("Path traversal detected: Cannot delete files outside workspace".to_string());
+    }
+
+    fs::remove_file(&canonical_target)
         .map_err(|e| format!("Failed to delete file: {}", e))
 }
 

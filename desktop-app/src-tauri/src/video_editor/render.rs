@@ -1,7 +1,147 @@
 use std::process::{Command, Stdio, Child};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+
+/// Sanitize file path to prevent command injection
+/// Only allows alphanumeric, dash, underscore, dot, and forward/back slashes
+fn sanitize_path(path: &str) -> Result<String, String> {
+    // Check for null bytes (command injection vector)
+    if path.contains('\0') {
+        return Err("Invalid path: contains null bytes".to_string());
+    }
+
+    // Check for suspicious patterns
+    if path.contains(';') || path.contains('|') || path.contains('&') ||
+       path.contains('`') || path.contains('$') || path.contains('(') ||
+       path.contains(')') || path.contains('<') || path.contains('>') {
+        return Err("Invalid path: contains shell metacharacters".to_string());
+    }
+
+    // Validate file extension
+    let path_obj = Path::new(path);
+    if let Some(ext) = path_obj.extension() {
+        let ext_str = ext.to_string_lossy().to_lowercase();
+        if !matches!(ext_str.as_str(), "mp4" | "mov" | "avi" | "mkv" | "mp3" | "wav" | "aac") {
+            return Err(format!("Invalid file extension: .{}", ext_str));
+        }
+    } else {
+        return Err("File must have an extension".to_string());
+    }
+
+    Ok(path.to_string())
+}
+
+/// Sanitize codec name to prevent injection
+fn sanitize_codec(codec: &str) -> Result<String, String> {
+    // Only allow known safe codecs
+    let allowed_codecs = [
+        "h264_videotoolbox", "h264_mf", "h264_qsv", "h264_nvenc",
+        "hevc_videotoolbox", "hevc_mf", "hevc_qsv", "hevc_nvenc",
+        "libx264", "libx265", "aac", "mp3", "libmp3lame"
+    ];
+
+    if allowed_codecs.contains(&codec) {
+        Ok(codec.to_string())
+    } else {
+        Err(format!("Invalid codec: {}", codec))
+    }
+}
+
+// Resource limits
+const MAX_CLIPS: usize = 1000;
+const MAX_DURATION_SECONDS: f64 = 3600.0; // 1 hour
+const MAX_VIDEO_BITRATE: u32 = 50000; // 50Mbps
+const MAX_AUDIO_BITRATE: u32 = 320; // 320kbps
+const MAX_RESOLUTION_PIXELS: u32 = 1920 * 1080 * 4; // 4K max
+
+/// Validate project resource limits to prevent DoS
+fn validate_project_limits(project: &VideoEditorProject) -> Result<(), String> {
+    // Count total clips
+    let total_clips: usize = project.timeline.tracks
+        .iter()
+        .map(|t| t.clips.len())
+        .sum();
+
+    if total_clips > MAX_CLIPS {
+        return Err(format!(
+            "Too many clips: {} (maximum: {})",
+            total_clips, MAX_CLIPS
+        ));
+    }
+
+    // Check duration
+    let mut max_end_time = 0.0;
+    for track in &project.timeline.tracks {
+        for clip in &track.clips {
+            let clip_end = clip.start_time + clip.duration;
+            if clip_end > max_end_time {
+                max_end_time = clip_end;
+            }
+        }
+    }
+
+    if max_end_time > MAX_DURATION_SECONDS {
+        return Err(format!(
+            "Project duration too long: {:.1}s (maximum: {:.1}s / 1 hour)",
+            max_end_time, MAX_DURATION_SECONDS
+        ));
+    }
+
+    // Validate export settings
+    if project.export.bitrate > MAX_VIDEO_BITRATE {
+        return Err(format!(
+            "Video bitrate too high: {}kbps (maximum: {}kbps)",
+            project.export.bitrate, MAX_VIDEO_BITRATE
+        ));
+    }
+
+    if project.export.audio_bitrate > MAX_AUDIO_BITRATE {
+        return Err(format!(
+            "Audio bitrate too high: {}kbps (maximum: {}kbps)",
+            project.export.audio_bitrate, MAX_AUDIO_BITRATE
+        ));
+    }
+
+    // Validate resolution
+    let total_pixels = project.settings.width * project.settings.height;
+    if total_pixels > MAX_RESOLUTION_PIXELS {
+        return Err(format!(
+            "Resolution too high: {}x{} (maximum: 3840x2160 / 4K)",
+            project.settings.width, project.settings.height
+        ));
+    }
+
+    // Validate FPS
+    if project.settings.fps > 120 || project.settings.fps < 1 {
+        return Err(format!(
+            "Invalid FPS: {} (must be between 1-120)",
+            project.settings.fps
+        ));
+    }
+
+    // Validate clip properties
+    for track in &project.timeline.tracks {
+        for clip in &track.clips {
+            if clip.volume < 0.0 || clip.volume > 2.0 {
+                return Err(format!(
+                    "Invalid clip volume: {} (must be between 0.0-2.0)",
+                    clip.volume
+                ));
+            }
+
+            if clip.speed <= 0.0 || clip.speed > 10.0 {
+                return Err(format!(
+                    "Invalid clip speed: {} (must be between 0.0-10.0)",
+                    clip.speed
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderJob {
@@ -128,6 +268,9 @@ impl RenderEngine {
         let project: VideoEditorProject = serde_json::from_str(&project_json)
             .map_err(|e| format!("Invalid project JSON: {}", e))?;
 
+        // Security: Validate project resource limits
+        validate_project_limits(&project)?;
+
         let job_id = uuid::Uuid::new_v4().to_string();
 
         let job = RenderJob {
@@ -245,6 +388,13 @@ impl RenderEngine {
         project: &VideoEditorProject,
         output_path: &str
     ) -> Result<Vec<String>, String> {
+        // Security: Sanitize output path
+        let safe_output_path = sanitize_path(output_path)?;
+
+        // Security: Validate codecs
+        sanitize_codec(&project.export.codec)?;
+        sanitize_codec(&project.export.audio_codec)?;
+
         let mut args = Vec::new();
 
         // Collect all unique input files
@@ -257,6 +407,9 @@ impl RenderEngine {
                     .ok_or_else(|| format!("Asset not found: {}", clip.asset_id))?;
 
                 if !input_map.contains_key(&asset.path) {
+                    // Security: Validate input paths
+                    sanitize_path(&asset.path)?;
+
                     input_map.insert(asset.path.clone(), inputs.len());
                     inputs.push(asset);
                 }
@@ -310,7 +463,7 @@ impl RenderEngine {
         args.push("-movflags".to_string());
         args.push("+faststart".to_string());
         args.push("-y".to_string());  // Overwrite
-        args.push(output_path.to_string());
+        args.push(safe_output_path);
 
         Ok(args)
     }
