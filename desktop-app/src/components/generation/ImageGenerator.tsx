@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Loader2, Download, RotateCcw, Upload, Plus, AlertCircle, X } from 'lucide-react';
 import { useToast } from '../common/Toast';
+import { generateImage, pollTaskUntilComplete, TaskStatus } from '../../services/mediaService';
 
 interface ImageGeneratorProps {}
 
@@ -23,6 +24,8 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [estimatedCost] = useState<number>(0.5);
+  const [currentTask, setCurrentTask] = useState<TaskStatus | null>(null);
+  const [taskProgress, setTaskProgress] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const styleInputRef = useRef<HTMLInputElement>(null);
@@ -50,13 +53,49 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = () => {
     }
 
     setIsGenerating(true);
+    setGeneratedImage(null);
+    setTaskProgress('Submitting request...');
+
     try {
-      // Mock generation
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop');
-      toast.success("Success", "Image generated successfully.");
+      // Step 1: Submit generation request
+      const response = await generateImage({
+        model: selectedModel,
+        prompt: prompt,
+        size: '1024x1024',
+        quality: 'hd',
+        n: 1,
+      });
+
+      setCurrentTask(response);
+      setTaskProgress('Task submitted. Polling for status...');
+
+      // Step 2: Poll for completion
+      const completedTask = await pollTaskUntilComplete(
+        response.id,
+        (task) => {
+          setCurrentTask(task);
+          if (task.status === 'processing') {
+            setTaskProgress('Generating image...');
+          } else if (task.status === 'pending') {
+            setTaskProgress('Waiting in queue...');
+          }
+        },
+        60, // max 60 attempts
+        2000 // poll every 2 seconds
+      );
+
+      // Step 3: Display result
+      if (completedTask.status === 'completed' && completedTask.result_url) {
+        setGeneratedImage(completedTask.result_url);
+        setTaskProgress('Completed!');
+        toast.success("Success", `Image generated successfully! Credits used: ${completedTask.credits_used || 0}`);
+      } else if (completedTask.status === 'failed') {
+        throw new Error(completedTask.error_message || 'Generation failed');
+      }
     } catch (error) {
-      toast.error("Error", "Failed to generate image. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate image';
+      toast.error("Error", errorMessage);
+      setTaskProgress('');
     } finally {
       setIsGenerating(false);
     }
@@ -209,8 +248,14 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = () => {
                   <Loader2 className={`w-10 h-10 text-slate-500 ${isGenerating ? 'animate-spin' : ''}`} />
                 </div>
                 <p className="text-slate-400">
-                  {isGenerating ? 'Generating your masterpiece...' : 'Your generated image will appear here'}
+                  {isGenerating ? taskProgress || 'Generating your masterpiece...' : 'Your generated image will appear here'}
                 </p>
+                {currentTask && isGenerating && (
+                  <div className="mt-2">
+                    <p className="text-xs text-slate-500">Task ID: {currentTask.id}</p>
+                    <p className="text-xs text-slate-500">Status: {currentTask.status}</p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

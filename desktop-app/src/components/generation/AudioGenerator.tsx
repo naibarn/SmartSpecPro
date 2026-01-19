@@ -3,6 +3,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Loader2, Download, RotateCcw, Play, Pause, AlertCircle } from 'lucide-react';
 import { useToast } from '../common/Toast';
+import { generateAudio, pollTaskUntilComplete, TaskStatus } from '../../services/mediaService';
 
 interface AudioGeneratorProps {}
 
@@ -30,6 +31,8 @@ export const AudioGenerator: React.FC<AudioGeneratorProps> = () => {
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [estimatedCost] = useState<number>(0.01);
+  const [currentTask, setCurrentTask] = useState<TaskStatus | null>(null);
+  const [taskProgress, setTaskProgress] = useState<string>('');
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const handleGenerateAudio = async () => {
@@ -39,13 +42,49 @@ export const AudioGenerator: React.FC<AudioGeneratorProps> = () => {
     }
 
     setIsGenerating(true);
+    setGeneratedAudio(null);
+    setTaskProgress('Submitting request...');
+
     try {
-      // Mock generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setGeneratedAudio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
-      toast.success("Success", "Audio generated successfully.");
+      // Step 1: Submit generation request
+      const response = await generateAudio({
+        model: selectedModel,
+        text: text,
+        voice: selectedVoice,
+        speed: 1.0,
+        output_format: 'mp3',
+      });
+
+      setCurrentTask(response);
+      setTaskProgress('Task submitted. Polling for status...');
+
+      // Step 2: Poll for completion
+      const completedTask = await pollTaskUntilComplete(
+        response.id,
+        (task) => {
+          setCurrentTask(task);
+          if (task.status === 'processing') {
+            setTaskProgress('Generating audio...');
+          } else if (task.status === 'pending') {
+            setTaskProgress('Waiting in queue...');
+          }
+        },
+        60, // max 60 attempts
+        2000 // poll every 2 seconds
+      );
+
+      // Step 3: Display result
+      if (completedTask.status === 'completed' && completedTask.result_url) {
+        setGeneratedAudio(completedTask.result_url);
+        setTaskProgress('Completed!');
+        toast.success("Success", `Audio generated successfully! Credits used: ${completedTask.credits_used || 0}`);
+      } else if (completedTask.status === 'failed') {
+        throw new Error(completedTask.error_message || 'Generation failed');
+      }
     } catch (error) {
-      toast.error("Error", "Failed to generate audio. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate audio';
+      toast.error("Error", errorMessage);
+      setTaskProgress('');
     } finally {
       setIsGenerating(false);
     }
@@ -181,8 +220,14 @@ export const AudioGenerator: React.FC<AudioGeneratorProps> = () => {
                   <Loader2 className={`w-10 h-10 text-slate-500 ${isGenerating ? 'animate-spin' : ''}`} />
                 </div>
                 <p className="text-slate-400">
-                  {isGenerating ? 'Composing your audio...' : 'Your generated audio will appear here'}
+                  {isGenerating ? taskProgress || 'Composing your audio...' : 'Your generated audio will appear here'}
                 </p>
+                {currentTask && isGenerating && (
+                  <div className="mt-2">
+                    <p className="text-xs text-slate-500">Task ID: {currentTask.id}</p>
+                    <p className="text-xs text-slate-500">Status: {currentTask.status}</p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

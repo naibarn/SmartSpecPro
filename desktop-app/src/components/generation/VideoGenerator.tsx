@@ -3,6 +3,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Loader2, Download, RotateCcw, Plus, X, AlertCircle } from 'lucide-react';
 import { useToast } from '../common/Toast';
+import { generateVideo, pollTaskUntilComplete, TaskStatus } from '../../services/mediaService';
 
 interface VideoGeneratorProps {}
 
@@ -23,6 +24,8 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
   const [estimatedCost] = useState<number>(2.5);
+  const [currentTask, setCurrentTask] = useState<TaskStatus | null>(null);
+  const [taskProgress, setTaskProgress] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,13 +46,49 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = () => {
     }
 
     setIsGenerating(true);
+    setGeneratedVideo(null);
+    setTaskProgress('Submitting request...');
+
     try {
-      // Mock generation
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      setGeneratedVideo('https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4');
-      toast.success("Success", "Video generated successfully.");
+      // Step 1: Submit generation request
+      const response = await generateVideo({
+        model: selectedModel,
+        prompt: prompt,
+        duration: parseInt(duration),
+        resolution: '1080p',
+        fps: 30,
+      });
+
+      setCurrentTask(response);
+      setTaskProgress('Task submitted. Polling for status...');
+
+      // Step 2: Poll for completion (videos take longer, so more attempts)
+      const completedTask = await pollTaskUntilComplete(
+        response.id,
+        (task) => {
+          setCurrentTask(task);
+          if (task.status === 'processing') {
+            setTaskProgress('Generating video... This may take a few minutes.');
+          } else if (task.status === 'pending') {
+            setTaskProgress('Waiting in queue...');
+          }
+        },
+        120, // max 120 attempts (4 minutes)
+        2000 // poll every 2 seconds
+      );
+
+      // Step 3: Display result
+      if (completedTask.status === 'completed' && completedTask.result_url) {
+        setGeneratedVideo(completedTask.result_url);
+        setTaskProgress('Completed!');
+        toast.success("Success", `Video generated successfully! Credits used: ${completedTask.credits_used || 0}`);
+      } else if (completedTask.status === 'failed') {
+        throw new Error(completedTask.error_message || 'Generation failed');
+      }
     } catch (error) {
-      toast.error("Error", "Failed to generate video. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate video';
+      toast.error("Error", errorMessage);
+      setTaskProgress('');
     } finally {
       setIsGenerating(false);
     }
@@ -181,8 +220,14 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = () => {
                   <Loader2 className={`w-10 h-10 text-slate-500 ${isGenerating ? 'animate-spin' : ''}`} />
                 </div>
                 <p className="text-slate-400">
-                  {isGenerating ? 'Creating your cinematic experience...' : 'Your generated video will appear here'}
+                  {isGenerating ? taskProgress || 'Creating your cinematic experience...' : 'Your generated video will appear here'}
                 </p>
+                {currentTask && isGenerating && (
+                  <div className="mt-2">
+                    <p className="text-xs text-slate-500">Task ID: {currentTask.id}</p>
+                    <p className="text-xs text-slate-500">Status: {currentTask.status}</p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
