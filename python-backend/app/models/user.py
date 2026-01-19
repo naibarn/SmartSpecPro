@@ -39,6 +39,10 @@ class User(Base):
     media_tasks = relationship("MediaTask", back_populates="user", lazy="dynamic")
     custom_skill_prompts = relationship("CustomSkillPrompt", back_populates="user", lazy="dynamic")
 
+    # Marketplace relationships
+    created_templates = relationship("MarketplaceTemplate", foreign_keys="MarketplaceTemplate.creator_id", back_populates="creator", lazy="dynamic")
+    template_purchases = relationship("TemplatePurchase", back_populates="buyer", lazy="dynamic")
+
     # Generation relationships (commented out - models not yet defined)
     # generation_tasks = relationship("GenerationTask", back_populates="user", lazy="dynamic")
     # generation_api_keys = relationship("GenerationAPIKey", back_populates="user", lazy="dynamic")
