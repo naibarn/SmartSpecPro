@@ -54,7 +54,7 @@ from app.api import (
     rbac,  # Phase 3: RBAC
     approvals,  # Phase 3: Approval Gates
 )
-from app.api.v1 import skills, auth_generator, media_generation, assets, admin_skills
+from app.api.v1 import skills, auth_generator, media_generation, assets, admin_skills, prompt_enhancement
 
 # Setup logging
 setup_logging()
@@ -173,6 +173,7 @@ app.include_router(skills.router, prefix="/api/v1", tags=["Skills"])
 app.include_router(admin_skills.router, prefix="/api/v1", tags=["Admin - Skills"])
 app.include_router(auth_generator.router, prefix="/api/v1", tags=["Auth Generator"])
 app.include_router(media_generation.router, prefix="/api/v1/media", tags=["Media Generation"])
+app.include_router(prompt_enhancement.router, prefix="/api/v1/prompt", tags=["Prompt Enhancement"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])
 
 # OpenAI-compatible surface for desktop/runner/proxy (forwarded to SmartSpecWeb gateway)

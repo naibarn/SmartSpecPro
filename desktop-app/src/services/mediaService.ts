@@ -308,11 +308,12 @@ export async function downloadMedia(taskId: string): Promise<Blob> {
 
 /**
  * Poll task until completion or failure
+ * Supports long-running tasks with extended timeout
  */
 export async function pollTaskUntilComplete(
   taskId: string,
   onProgress?: (task: TaskStatus) => void,
-  maxAttempts: number = 60,
+  maxAttempts: number = 900, // 30 minutes with 2s interval
   intervalMs: number = 2000
 ): Promise<TaskStatus> {
   let attempts = 0;
@@ -332,7 +333,51 @@ export async function pollTaskUntilComplete(
     attempts++;
   }
 
-  throw new Error('Task polling timeout');
+  throw new Error('Task polling timeout - exceeded 30 minutes');
+}
+
+/**
+ * Start polling in background without blocking
+ * Returns a function to stop polling and get current status
+ */
+export function pollTaskInBackground(
+  taskId: string,
+  onProgress?: (task: TaskStatus) => void,
+  onComplete?: (task: TaskStatus) => void,
+  onError?: (error: Error) => void
+): () => Promise<TaskStatus | null> {
+  let currentTask: TaskStatus | null = null;
+  let isStopped = false;
+
+  const poll = async () => {
+    try {
+      currentTask = await pollTaskUntilComplete(
+        taskId,
+        (task) => {
+          currentTask = task;
+          if (onProgress) onProgress(task);
+        },
+        900, // 30 minutes
+        2000
+      );
+
+      if (onComplete && !isStopped) {
+        onComplete(currentTask);
+      }
+    } catch (error) {
+      if (onError && !isStopped) {
+        onError(error instanceof Error ? error : new Error('Unknown error'));
+      }
+    }
+  };
+
+  poll();
+
+  // Return function to stop polling and get current status
+  return async () => {
+    isStopped = true;
+    return currentTask;
+  };
 }
 
 export { uploadFiles };
