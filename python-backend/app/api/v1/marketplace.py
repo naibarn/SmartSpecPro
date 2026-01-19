@@ -5,12 +5,14 @@ Endpoints for template marketplace operations
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 from typing import List, Optional, Dict
 import structlog
+import re
 
 from app.core.database import get_db
 from app.core.auth import get_current_user, require_admin
+from app.core.input_sanitization import InputSanitizer
 from app.models.user import User
 from app.models.marketplace_template import TemplateStatus, TemplateCategory, TechStack
 from app.services.marketplace_service import MarketplaceService
@@ -24,19 +26,110 @@ router = APIRouter()
 class CreateTemplateRequest(BaseModel):
     """Request to create a new template"""
     name: str = Field(..., min_length=3, max_length=255)
-    slug: str = Field(..., min_length=3, max_length=255, regex=r'^[a-z0-9-]+$')
+    slug: str = Field(..., min_length=3, max_length=255, pattern=r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$')
     tagline: str = Field(..., min_length=10, max_length=500)
     description: str = Field(..., min_length=50)
     category: TemplateCategory
     tags: Optional[List[str]] = []
     tech_stack: List[str] = Field(..., min_items=1)
     price_credits: int = Field(..., ge=0)
-    template_file_url: str
+    template_file_url: str  # Will be validated by validator
     preview_images: Optional[List[str]] = []
     demo_video_url: Optional[str] = None
     readme_content: Optional[str] = None
     min_smartspec_version: Optional[str] = None
     dependencies: Optional[List[str]] = []
+
+    @field_validator('slug')
+    @classmethod
+    def validate_slug(cls, v: str) -> str:
+        """Validate slug is not reserved and is lowercase"""
+        reserved_slugs = ['admin', 'api', 'templates', 'user', 'settings', 'marketplace', 'purchase', 'download']
+        if v.lower() in reserved_slugs:
+            raise ValueError(f'Slug "{v}" is reserved and cannot be used')
+        return v.lower()  # Force lowercase
+
+    @field_validator('template_file_url')
+    @classmethod
+    def validate_template_url(cls, v: str) -> str:
+        """Validate template file URL is from approved storage"""
+        if not v:
+            raise ValueError('Template file URL is required')
+
+        # Must be HTTPS
+        if not v.startswith('https://'):
+            raise ValueError('Template file URL must use HTTPS protocol')
+
+        # Whitelist approved storage domains
+        approved_domains = [
+            'r2.cloudflare.com',
+            's3.amazonaws.com',
+            's3-us-west-2.amazonaws.com',
+            's3-us-east-1.amazonaws.com',
+            'storage.googleapis.com',
+        ]
+
+        if not any(domain in v for domain in approved_domains):
+            raise ValueError(f'Template file URL must be from approved storage: {", ".join(approved_domains)}')
+
+        # Ensure it's a ZIP file
+        if not v.lower().endswith('.zip'):
+            raise ValueError('Template file must be a ZIP archive')
+
+        return v
+
+    @field_validator('preview_images')
+    @classmethod
+    def validate_preview_images(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate preview image URLs"""
+        if not v:
+            return v
+
+        approved_domains = ['r2.cloudflare.com', 's3.amazonaws.com', 'storage.googleapis.com']
+
+        for url in v:
+            if not url.startswith('https://'):
+                raise ValueError('Preview image URLs must use HTTPS')
+            if not any(domain in url for domain in approved_domains):
+                raise ValueError('Preview image URLs must be from approved storage')
+
+        return v
+
+    @field_validator('demo_video_url')
+    @classmethod
+    def validate_demo_video_url(cls, v: Optional[str]) -> Optional[str]:
+        """Validate demo video URL"""
+        if not v:
+            return v
+
+        # Allow popular video platforms
+        approved_platforms = ['youtube.com', 'youtu.be', 'vimeo.com', 'loom.com']
+
+        if not v.startswith('https://'):
+            raise ValueError('Demo video URL must use HTTPS')
+
+        if not any(platform in v for platform in approved_platforms):
+            raise ValueError(f'Demo video must be from approved platforms: {", ".join(approved_platforms)}')
+
+        return v
+
+    @field_validator('description', 'tagline')
+    @classmethod
+    def sanitize_text_fields(cls, v: str) -> str:
+        """Sanitize text fields to prevent XSS"""
+        if not v:
+            return v
+        # Sanitize but allow basic markdown formatting
+        return InputSanitizer.sanitize_string(v, allow_html=True, max_length=10000)
+
+    @field_validator('readme_content')
+    @classmethod
+    def sanitize_readme(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize README content"""
+        if not v:
+            return v
+        # Allow more HTML for README but still sanitize dangerous content
+        return InputSanitizer.sanitize_string(v, allow_html=True, max_length=50000)
 
 
 class UpdateTemplateRequest(BaseModel):
@@ -132,8 +225,8 @@ async def list_marketplace_templates(
     tech_stack: Optional[str] = Query(None),
     min_price: Optional[int] = Query(None, ge=0),
     max_price: Optional[int] = Query(None, ge=0),
-    search: Optional[str] = Query(None),
-    sort_by: str = Query("popular", regex="^(popular|recent|price_low|price_high|rating)$"),
+    search: Optional[str] = Query(None, min_length=1, max_length=100, description="Search query (max 100 chars)"),
+    sort_by: str = Query("popular", pattern="^(popular|recent|price_low|price_high|rating)$"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db)
@@ -444,17 +537,12 @@ async def list_pending_reviews(
     List templates pending admin review
     Admin only
     """
-    templates, _ = await MarketplaceService.list_marketplace_templates(
-        db,
-        limit=100,
-        offset=0
-    )
-
-    # Filter for pending review (should be done in service but this works)
+    # Fixed: Query MarketplaceTemplate model, not MarketplaceService class
     from sqlalchemy import select
-    query = select(MarketplaceService).where(
+    query = select(MarketplaceTemplate).where(
         MarketplaceTemplate.status == TemplateStatus.PENDING_REVIEW
-    )
+    ).order_by(MarketplaceTemplate.submitted_at.desc())
+
     result = await db.execute(query)
     pending = list(result.scalars().all())
 

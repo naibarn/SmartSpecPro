@@ -151,49 +151,76 @@ class RefundService:
         refund.status = RefundStatus.PROCESSING
         refund.processed_at = datetime.utcnow()
         await self.db.commit()
-        
+
         try:
             # Get payment transaction
             result = await self.db.execute(
                 select(PaymentTransaction).where(PaymentTransaction.id == refund.payment_id)
             )
             payment = result.scalar_one_or_none()
-            
+
             if not payment or not payment.stripe_payment_intent_id:
                 raise ValueError("Payment or Stripe payment intent not found")
-            
-            # Create Stripe refund
-            stripe_refund = stripe.Refund.create(
-                payment_intent=payment.stripe_payment_intent_id,
-                amount=int(refund.amount_usd * 100),  # Convert to cents
-                reason="requested_by_customer" if refund.requested_by == refund.user_id else "requested_by_admin",
-                metadata={
-                    "refund_id": refund_id,
-                    "payment_id": refund.payment_id,
-                    "user_id": refund.user_id
-                }
-            )
-            
-            # Update refund with Stripe ID
-            refund.stripe_refund_id = stripe_refund.id
-            
-            # Deduct credits from user
+
+            # CRITICAL FIX: Deduct credits FIRST before Stripe refund
+            # This ensures atomicity - if Stripe fails, user still has credits
             await self.credit_service.deduct_credits(
                 user_id=refund.user_id,
                 amount=refund.credits_deducted,
-                description=f"Refund for payment {refund.payment_id}",
+                description=f"Refund for payment {refund.payment_id} (pending Stripe)",
                 metadata={
                     "refund_id": refund_id,
                     "payment_id": refund.payment_id,
-                    "stripe_refund_id": stripe_refund.id,
-                    "reason": refund.reason
+                    "reason": refund.reason,
+                    "status": "pending_stripe"
                 }
             )
-            
-            # Update refund status
-            refund.status = RefundStatus.COMPLETED
-            refund.completed_at = datetime.utcnow()
-            
+
+            # Now process Stripe refund
+            try:
+                stripe_refund = stripe.Refund.create(
+                    payment_intent=payment.stripe_payment_intent_id,
+                    amount=int(refund.amount_usd * 100),  # Convert to cents
+                    reason="requested_by_customer" if refund.requested_by == refund.user_id else "requested_by_admin",
+                    metadata={
+                        "refund_id": refund_id,
+                        "payment_id": refund.payment_id,
+                        "user_id": refund.user_id
+                    }
+                )
+
+                # Update refund with Stripe ID
+                refund.stripe_refund_id = stripe_refund.id
+                refund.status = RefundStatus.COMPLETED
+                refund.completed_at = datetime.utcnow()
+
+            except stripe.error.StripeError as stripe_error:
+                # Stripe refund failed - rollback credit deduction
+                logger.error(
+                    "stripe_refund_failed_rolling_back_credits",
+                    refund_id=refund_id,
+                    error=str(stripe_error)
+                )
+
+                # Add credits back
+                await self.credit_service.add_credits(
+                    user_id=refund.user_id,
+                    amount=refund.credits_deducted,
+                    description=f"Rollback - Stripe refund failed for payment {refund.payment_id}",
+                    transaction_type="refund_rollback",
+                    metadata={
+                        "refund_id": refund_id,
+                        "payment_id": refund.payment_id,
+                        "stripe_error": str(stripe_error)
+                    }
+                )
+
+                # Update refund status to failed
+                refund.status = RefundStatus.FAILED
+                refund.notes = f"Stripe refund failed: {str(stripe_error)}"
+
+                raise  # Re-raise to trigger outer exception handler
+
             await self.db.commit()
             await self.db.refresh(refund)
             

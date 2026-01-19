@@ -3,7 +3,7 @@ Marketplace Template Models
 Templates that users can purchase and import into their projects
 """
 
-from sqlalchemy import Column, String, Integer, Text, Boolean, DateTime, Enum, ForeignKey, JSON, Index
+from sqlalchemy import Column, String, Integer, Text, Boolean, DateTime, Enum, ForeignKey, JSON, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
@@ -122,11 +122,17 @@ class MarketplaceTemplate(Base):
     purchases = relationship("TemplatePurchase", back_populates="template", lazy="dynamic")
     reviews = relationship("TemplateReview", back_populates="template", lazy="dynamic")
 
-    # Indexes for performance
+    # Indexes for performance and security
     __table_args__ = (
         Index('idx_template_status_category', status, category),
         Index('idx_template_featured_status', is_featured, status),
         Index('idx_template_creator_status', creator_id, status),
+        # New indexes for analytics and revenue queries
+        Index('idx_template_creator_revenue', creator_id, total_revenue_credits),
+        Index('idx_template_purchase_count', purchase_count.desc()),
+        Index('idx_template_rating', rating_average.desc(), rating_count),
+        # Index for pending reviews
+        Index('idx_template_status_submitted', status, submitted_at.desc()),
     )
 
     def to_dict(self):
@@ -194,10 +200,12 @@ class TemplatePurchase(Base):
     template = relationship("MarketplaceTemplate", back_populates="purchases")
     buyer = relationship("User", foreign_keys=[buyer_id], backref="template_purchases")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index('idx_purchase_buyer_template', buyer_id, template_id),
         Index('idx_purchase_template_date', template_id, purchased_at),
+        # CRITICAL: Unique constraint to prevent duplicate purchases
+        UniqueConstraint('buyer_id', 'template_id', name='uq_purchase_buyer_template'),
     )
 
     def to_dict(self):

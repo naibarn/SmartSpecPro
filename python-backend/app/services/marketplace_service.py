@@ -6,6 +6,7 @@ Handles template marketplace operations, purchases, and revenue distribution
 from typing import Optional, List, Dict, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, desc
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 import structlog
 
@@ -338,7 +339,13 @@ class MarketplaceService:
         if await MarketplaceService.has_user_purchased(db, buyer.id, template_id):
             raise ValueError("You have already purchased this template")
 
-        # Check buyer has enough credits
+        # CRITICAL FIX: Lock buyer row to prevent race conditions
+        # Re-fetch buyer with row lock to ensure exclusive access
+        buyer_lock_query = select(User).where(User.id == buyer.id).with_for_update()
+        buyer_lock_result = await db.execute(buyer_lock_query)
+        buyer = buyer_lock_result.scalar_one()
+
+        # Check buyer has enough credits (after locking)
         if buyer.credits_balance < template.price_credits:
             raise ValueError(
                 f"Insufficient credits. Need {template.price_credits}, have {buyer.credits_balance}"
@@ -349,10 +356,20 @@ class MarketplaceService:
         creator_revenue = int(total_credits * CREATOR_REVENUE_PERCENTAGE / 100)
         platform_commission = total_credits - creator_revenue  # Ensure no rounding loss
 
-        # Get creator
-        creator_query = select(User).where(User.id == template.creator_id)
+        # Verify split integrity
+        assert (creator_revenue + platform_commission) == total_credits, "Revenue split calculation error"
+
+        # CRITICAL FIX: Get creator with row lock
+        creator_query = select(User).where(User.id == template.creator_id).with_for_update()
         creator_result = await db.execute(creator_query)
         creator = creator_result.scalar_one()
+
+        # CRITICAL FIX: Lock template for statistics update
+        template_lock_query = select(MarketplaceTemplate).where(
+            MarketplaceTemplate.id == template_id
+        ).with_for_update()
+        template_lock_result = await db.execute(template_lock_query)
+        template = template_lock_result.scalar_one()
 
         # Record balances before transaction
         buyer_balance_before = buyer.credits_balance
@@ -423,7 +440,19 @@ class MarketplaceService:
         template.total_revenue_credits += creator_revenue
         template.platform_commission_credits += platform_commission
 
-        await db.commit()
+        # Commit with IntegrityError handling for duplicate purchases
+        try:
+            await db.commit()
+        except IntegrityError as e:
+            await db.rollback()
+            logger.warning(
+                "duplicate_purchase_prevented",
+                template_id=template_id,
+                buyer_id=buyer.id,
+                error=str(e)
+            )
+            raise ValueError("You have already purchased this template")
+
         await db.refresh(purchase)
         await db.refresh(template)
         await db.refresh(buyer)

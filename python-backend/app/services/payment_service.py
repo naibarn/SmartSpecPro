@@ -314,21 +314,22 @@ class PaymentService:
             payment_intent_id=payment_intent_id
         )
         
-        # Get payment transaction
+        # CRITICAL FIX: Get payment transaction with row lock to prevent race conditions
         stmt = select(PaymentTransaction).where(
             PaymentTransaction.stripe_session_id == session_id
-        )
+        ).with_for_update()  # Lock row until transaction completes
+
         result = await self.db.execute(stmt)
         payment_tx = result.scalar_one_or_none()
-        
+
         if not payment_tx:
             logger.error(
                 "payment_transaction_not_found",
                 session_id=session_id
             )
             return
-        
-        # R3.2: Idempotency check. If we've already processed this, log and exit.
+
+        # R3.2: Idempotency check (now thread-safe with lock)
         if payment_tx.status == 'completed' and payment_tx.stripe_payment_intent_id == payment_intent_id:
             logger.warning(
                 "webhook_already_processed",
@@ -337,20 +338,13 @@ class PaymentService:
             )
             return
 
-        # R3.1: More robust check to prevent double-crediting
+        # R3.1: Robust check to prevent double-crediting
         if payment_tx.credits_added_at is not None:
             logger.error(
                 "credits_already_added_for_tx",
                 session_id=session_id,
                 payment_tx_id=payment_tx.id,
                 credits_added_at=payment_tx.credits_added_at
-            )
-            # Potentially alert for manual review
-            return
-            logger.info(
-                "payment_already_processed",
-                session_id=session_id,
-                payment_tx_id=payment_tx.id
             )
             return
         
@@ -364,8 +358,9 @@ class PaymentService:
         try:
             await self.credit_service.add_credits(
                 user_id=payment_tx.user_id,
-                credits=payment_tx.credits_amount,
+                amount=payment_tx.credits_amount,  # Fixed: parameter name is 'amount', not 'credits'
                 description=f"Payment via Stripe - ${payment_tx.amount_usd}",
+                transaction_type="purchase",
                 metadata={
                     "stripe_session_id": session_id,
                     "stripe_payment_intent_id": payment_intent_id,

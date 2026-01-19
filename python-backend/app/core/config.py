@@ -77,8 +77,10 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = "change-this-in-production"
+    JWT_SECRET: str = "change-this-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes for security
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days
     ENCRYPTION_MASTER_KEY: str = "change-this-in-production-32-chars-min"  # For encrypting provider API keys
 
     # ============================================================
@@ -141,14 +143,60 @@ class Settings(BaseSettings):
     RATE_LIMIT_BURST: int = 10
 
     @model_validator(mode="after")
-    def validate_secret_key(self):
-        """Ensure SECRET_KEY is secure in production."""
+    def validate_production_security(self):
+        """Ensure all security settings are properly configured in production."""
         if self.ENVIRONMENT != "production":
             return self
-        if not self.SECRET_KEY or self.SECRET_KEY == "change-this-in-production":
-            raise ValueError("SECRET_KEY must be set to a secure value in production")
+
+        # Validate SECRET_KEY
+        forbidden_secrets = [
+            "change-this-in-production",
+            "dev-secret-key",
+            "dev_jwt_secret",
+            "dev_token"
+        ]
+
+        if not self.SECRET_KEY or any(forbidden in self.SECRET_KEY for forbidden in forbidden_secrets):
+            raise ValueError(
+                "SECRET_KEY must be set to a secure value in production. "
+                "Generate with: openssl rand -hex 32"
+            )
+
         if len(self.SECRET_KEY) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters in production")
+
+        # Validate JWT_SECRET
+        if not self.JWT_SECRET or any(forbidden in self.JWT_SECRET for forbidden in forbidden_secrets):
+            raise ValueError(
+                "JWT_SECRET must be set to a secure value in production. "
+                "Generate with: openssl rand -hex 32"
+            )
+
+        if len(self.JWT_SECRET) < 32:
+            raise ValueError("JWT_SECRET must be at least 32 characters in production")
+
+        # Validate DEBUG is disabled
+        if self.DEBUG:
+            raise ValueError("DEBUG must be False in production")
+
+        # Validate LOG_LEVEL is not DEBUG
+        if self.LOG_LEVEL == "DEBUG":
+            raise ValueError("LOG_LEVEL must not be DEBUG in production (use INFO, WARNING, or ERROR)")
+
+        # Validate ENCRYPTION_MASTER_KEY
+        if "change-this-in-production" in self.ENCRYPTION_MASTER_KEY:
+            raise ValueError(
+                "ENCRYPTION_MASTER_KEY must be set to a secure value in production. "
+                "Generate with: openssl rand -hex 32"
+            )
+
+        # Validate Stripe keys are production keys
+        if self.STRIPE_SECRET_KEY and self.STRIPE_SECRET_KEY.startswith("sk_test_"):
+            raise ValueError("Stripe test keys cannot be used in production. Use sk_live_... keys")
+
+        if self.STRIPE_PUBLISHABLE_KEY and self.STRIPE_PUBLISHABLE_KEY.startswith("pk_test_"):
+            raise ValueError("Stripe test keys cannot be used in production. Use pk_live_... keys")
+
         return self
 
     @field_validator("CORS_ORIGINS", mode="before")
