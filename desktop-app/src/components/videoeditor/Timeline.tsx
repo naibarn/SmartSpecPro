@@ -14,7 +14,7 @@ import {
 
 interface TimelineProps {
   timeline: TimelineData;
-  assets: Record<string, Asset>;
+  assets: Readonly<Record<string, Asset>>;
   currentTime: number;
   duration: number;
   zoom: number;  // pixels per second
@@ -25,6 +25,15 @@ interface TimelineProps {
   onClipDelete: (clipId: string) => void;
   selectedClipId: string | null;
 }
+
+// Type guards for better type safety
+const isValidTime = (time: number): time is number => {
+  return typeof time === 'number' && !isNaN(time) && isFinite(time) && time >= 0;
+};
+
+const isValidZoom = (zoom: number): zoom is number => {
+  return typeof zoom === 'number' && !isNaN(zoom) && isFinite(zoom) && zoom > 0;
+};
 
 const TRACK_HEIGHT = 80;
 const HEADER_WIDTH = 100;
@@ -60,17 +69,30 @@ export const Timeline: React.FC<TimelineProps> = ({
     originalStartTime: number;
   } | null>(null);
   const [hoveredClipId, setHoveredClipId] = useState<string | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   // Calculate timeline width
   const timelineWidth = Math.max(duration * zoom, 1000);
 
   // Convert time to pixels
-  const timeToPixels = useCallback((time: number) => {
+  const timeToPixels = useCallback((time: number): number => {
+    if (!isValidTime(time) || !isValidZoom(zoom)) {
+      console.warn('Invalid time or zoom value', { time, zoom });
+      return 0;
+    }
     return time * zoom;
   }, [zoom]);
 
   // Convert pixels to time
-  const pixelsToTime = useCallback((pixels: number) => {
+  const pixelsToTime = useCallback((pixels: number): number => {
+    if (!isValidZoom(zoom)) {
+      console.warn('Invalid zoom value', { zoom });
+      return 0;
+    }
+    if (!isValidTime(pixels)) {
+      console.warn('Invalid pixels value', { pixels });
+      return 0;
+    }
     return pixels / zoom;
   }, [zoom]);
 
@@ -120,65 +142,81 @@ export const Timeline: React.FC<TimelineProps> = ({
 
   // Handle mouse move (drag or resize)
   const handleMouseMove = useCallback((e: MouseEvent) => {
+    // Prevent race conditions by checking ref existence
     if (!timelineRef.current) return;
 
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left - HEADER_WIDTH + scrollLeft;
-    const time = pixelsToTime(Math.max(0, x));
-
-    if (draggingClip) {
-      // Calculate new start time
-      let newStartTime = time - draggingClip.offsetX;
-      newStartTime = Math.max(0, newStartTime);
-
-      // Snap to grid (0.5 second intervals)
-      if (Math.abs(newStartTime % 0.5) < 0.1) {
-        newStartTime = Math.round(newStartTime * 2) / 2;
-      }
-
-      // Find track under cursor
-      const y = e.clientY - rect.top - RULER_HEIGHT;
-      const trackIndex = Math.floor(y / TRACK_HEIGHT);
-      const track = timeline.tracks[trackIndex];
-
-      if (track && !track.locked) {
-        onClipMove(draggingClip.clipId, newStartTime, track.id);
-      }
-    } else if (resizingClip) {
-      const clip = timeline.tracks
-        .flatMap(t => t.clips)
-        .find(c => c.id === resizingClip.clipId);
-
-      if (!clip) return;
-
-      const asset = assets[clip.assetId];
-      if (!asset) return;
-
-      if (resizingClip.edge === 'left') {
-        // Resize from left (adjust trim in and start time)
-        const delta = time - resizingClip.originalStartTime;
-        const newTrimIn = Math.max(0, Math.min(resizingClip.originalTrimIn + delta, asset.duration));
-        const newDuration = resizingClip.originalDuration - (newTrimIn - resizingClip.originalTrimIn);
-
-        if (newDuration > 0.1) {
-          onClipResize(resizingClip.clipId, newDuration, newTrimIn);
-        }
-      } else {
-        // Resize from right (adjust duration)
-        const newDuration = Math.max(0.1, time - clip.startTime);
-        const maxDuration = asset.duration - clip.trimIn;
-
-        onClipResize(
-          resizingClip.clipId,
-          Math.min(newDuration, maxDuration),
-          clip.trimIn
-        );
-      }
+    // Cancel previous animation frame to prevent race conditions
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
     }
+
+    // Use requestAnimationFrame to throttle updates and prevent race conditions
+    rafIdRef.current = requestAnimationFrame(() => {
+      if (!timelineRef.current) return;
+
+      const rect = timelineRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left - HEADER_WIDTH + scrollLeft;
+      const time = pixelsToTime(Math.max(0, x));
+
+      if (draggingClip) {
+        // Calculate new start time
+        let newStartTime = time - draggingClip.offsetX;
+        newStartTime = Math.max(0, newStartTime);
+
+        // Snap to grid (0.5 second intervals)
+        if (Math.abs(newStartTime % 0.5) < 0.1) {
+          newStartTime = Math.round(newStartTime * 2) / 2;
+        }
+
+        // Find track under cursor
+        const y = e.clientY - rect.top - RULER_HEIGHT;
+        const trackIndex = Math.floor(y / TRACK_HEIGHT);
+        const track = timeline.tracks[trackIndex];
+
+        if (track && !track.locked) {
+          onClipMove(draggingClip.clipId, newStartTime, track.id);
+        }
+      } else if (resizingClip) {
+        const clip = timeline.tracks
+          .flatMap(t => t.clips)
+          .find(c => c.id === resizingClip.clipId);
+
+        if (!clip) return;
+
+        const asset = assets[clip.assetId];
+        if (!asset) return;
+
+        if (resizingClip.edge === 'left') {
+          // Resize from left (adjust trim in and start time)
+          const delta = time - resizingClip.originalStartTime;
+          const newTrimIn = Math.max(0, Math.min(resizingClip.originalTrimIn + delta, asset.duration));
+          const newDuration = resizingClip.originalDuration - (newTrimIn - resizingClip.originalTrimIn);
+
+          if (newDuration > 0.1) {
+            onClipResize(resizingClip.clipId, newDuration, newTrimIn);
+          }
+        } else {
+          // Resize from right (adjust duration)
+          const newDuration = Math.max(0.1, time - clip.startTime);
+          const maxDuration = asset.duration - clip.trimIn;
+
+          onClipResize(
+            resizingClip.clipId,
+            Math.min(newDuration, maxDuration),
+            clip.trimIn
+          );
+        }
+      }
+    });
   }, [draggingClip, resizingClip, scrollLeft, zoom, timeline, assets, pixelsToTime, onClipMove, onClipResize]);
 
   // Handle mouse up (end drag or resize)
   const handleMouseUp = useCallback(() => {
+    // Cancel any pending animation frame to prevent race conditions
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
     setDraggingClip(null);
     setResizingClip(null);
   }, []);
@@ -190,8 +228,13 @@ export const Timeline: React.FC<TimelineProps> = ({
       document.addEventListener('mouseup', handleMouseUp);
 
       return () => {
+        // Cleanup: remove event listeners and cancel any pending animation frames
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
+        }
       };
     }
   }, [draggingClip, resizingClip, handleMouseMove, handleMouseUp]);
@@ -262,13 +305,18 @@ export const Timeline: React.FC<TimelineProps> = ({
         onMouseDown={(e) => handleClipMouseDown(e, clip, track.id)}
         onMouseEnter={() => setHoveredClipId(clip.id)}
         onMouseLeave={() => setHoveredClipId(null)}
+        role="button"
+        tabIndex={0}
+        aria-label={`${track.type} clip: ${asset.filename}, duration ${formatTime(clip.duration)}, starts at ${formatTime(clip.startTime)}`}
+        aria-selected={isSelected}
+        aria-grabbed={isDragging}
       >
-        <div className="clip-resize-handle left" />
+        <div className="clip-resize-handle left" aria-label="Resize clip from start" role="button" tabIndex={-1} />
         <div className="clip-content">
           <div className="clip-name">{asset.filename}</div>
           <div className="clip-duration">{formatTime(clip.duration)}</div>
         </div>
-        <div className="clip-resize-handle right" />
+        <div className="clip-resize-handle right" aria-label="Resize clip from end" role="button" tabIndex={-1} />
       </div>
     );
   };
@@ -375,26 +423,43 @@ export const Timeline: React.FC<TimelineProps> = ({
           border-radius: 4px;
           cursor: move;
           overflow: hidden;
-          transition: box-shadow 0.2s;
+          transition: all 0.2s ease-in-out;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          transform: translateZ(0);
+          will-change: transform, box-shadow;
         }
 
         .timeline-clip:hover {
           box-shadow: 0 0 8px rgba(0, 120, 212, 0.5);
+          transform: translateY(-1px);
         }
 
         .timeline-clip.selected {
           border: 2px solid #fff;
           box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+          }
+          50% {
+            box-shadow: 0 0 16px rgba(255, 255, 255, 0.7);
+          }
         }
 
         .timeline-clip.dragging {
           opacity: 0.7;
           cursor: grabbing;
+          transform: scale(1.05) rotate(1deg);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+          z-index: 1000;
         }
 
         .timeline-clip.resizing {
           opacity: 0.8;
+          box-shadow: 0 2px 8px rgba(0, 120, 212, 0.6);
         }
 
         .clip-content {
@@ -446,6 +511,17 @@ export const Timeline: React.FC<TimelineProps> = ({
           background: #ff4444;
           pointer-events: none;
           z-index: 100;
+          box-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
+          animation: playhead-glow 1.5s ease-in-out infinite;
+        }
+
+        @keyframes playhead-glow {
+          0%, 100% {
+            box-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
+          }
+          50% {
+            box-shadow: 0 0 12px rgba(255, 68, 68, 0.9);
+          }
         }
 
         .playhead::before {
@@ -458,22 +534,29 @@ export const Timeline: React.FC<TimelineProps> = ({
           border-left: 7px solid transparent;
           border-right: 7px solid transparent;
           border-top: 8px solid #ff4444;
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
         }
       `}</style>
 
       {/* Ruler */}
-      <div className="timeline-ruler">
+      <div className="timeline-ruler" role="presentation" aria-label="Timeline ruler">
         <div style={{ position: 'relative', width: `${timelineWidth}px`, height: '100%' }}>
           {renderRuler()}
         </div>
       </div>
 
       {/* Timeline Content */}
-      <div className="timeline-content" onScroll={handleScroll}>
+      <div className="timeline-content" onScroll={handleScroll} role="region" aria-label="Timeline editor">
         {/* Track Headers */}
-        <div className="timeline-tracks-header">
+        <div className="timeline-tracks-header" role="complementary" aria-label="Track headers">
           {timeline.tracks.map(track => (
-            <div key={track.id} className="track-header">
+            <div
+              key={track.id}
+              className="track-header"
+              role="heading"
+              aria-level={2}
+              aria-label={`${track.type === 'video' ? 'Video' : 'Audio'} track ${track.name}`}
+            >
               {track.type === 'video' ? '🎬' : '🎤'} {track.name}
             </div>
           ))}
@@ -484,12 +567,17 @@ export const Timeline: React.FC<TimelineProps> = ({
           ref={timelineRef}
           className="timeline-tracks"
           onClick={handleTimelineClick}
+          role="application"
+          aria-label="Timeline tracks"
         >
           <div className="timeline-canvas">
             {timeline.tracks.map(track => (
               <div
                 key={track.id}
                 className={`track-lane ${track.locked ? 'locked' : ''}`}
+                role="group"
+                aria-label={`${track.name} track lane`}
+                aria-readonly={track.locked}
               >
                 {track.clips.map(clip => renderClip(clip, track))}
               </div>
@@ -499,6 +587,12 @@ export const Timeline: React.FC<TimelineProps> = ({
             <div
               className="playhead"
               style={{ left: `${timeToPixels(currentTime)}px` }}
+              role="slider"
+              aria-label="Playhead position"
+              aria-valuenow={currentTime}
+              aria-valuemin={0}
+              aria-valuemax={duration}
+              aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
             />
           </div>
         </div>

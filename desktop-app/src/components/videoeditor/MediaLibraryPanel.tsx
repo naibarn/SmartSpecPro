@@ -14,6 +14,19 @@ interface MediaLibraryPanelProps {
   onAddToTimeline?: (asset: MediaLibraryAsset, localPath: string) => void;
 }
 
+// Type guards
+const isValidAsset = (asset: unknown): asset is MediaLibraryAsset => {
+  return (
+    typeof asset === 'object' &&
+    asset !== null &&
+    'id' in asset &&
+    'type' in asset &&
+    'title' in asset &&
+    typeof (asset as MediaLibraryAsset).id === 'string' &&
+    ((asset as MediaLibraryAsset).type === 'video' || (asset as MediaLibraryAsset).type === 'audio')
+  );
+};
+
 export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   onAddToTimeline
 }) => {
@@ -47,8 +60,19 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   };
 
   const handleDragStart = (asset: MediaLibraryAsset) => (e: React.DragEvent) => {
-    e.dataTransfer.setData('application/video-editor-asset', JSON.stringify(asset));
-    e.dataTransfer.effectAllowed = 'copy';
+    try {
+      if (!isValidAsset(asset)) {
+        console.error('Invalid asset for drag operation', asset);
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.setData('application/video-editor-asset', JSON.stringify(asset));
+      e.dataTransfer.effectAllowed = 'copy';
+    } catch (err) {
+      console.error('Failed to start drag operation:', err);
+      e.preventDefault();
+      showToast('Failed to drag asset', 'error', 2000);
+    }
   };
 
   const handleAddToTimeline = async (asset: MediaLibraryAsset) => {
@@ -186,19 +210,50 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           border: 1px solid #444;
           border-radius: 6px;
           cursor: move;
-          transition: all 0.2s;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           overflow: hidden;
+          position: relative;
         }
 
         .media-item:hover {
           border-color: #0078d4;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+          transform: translateY(-4px) scale(1.02);
+          box-shadow: 0 8px 16px rgba(0, 120, 212, 0.3);
         }
 
         .media-item.downloading {
           opacity: 0.6;
           cursor: wait;
+          animation: downloading-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes downloading-pulse {
+          0%, 100% {
+            opacity: 0.6;
+          }
+          50% {
+            opacity: 0.8;
+          }
+        }
+
+        .media-item.downloading::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(90deg, transparent, rgba(0, 120, 212, 0.3), transparent);
+          animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
         }
 
         .media-thumbnail {
@@ -276,16 +331,43 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           border-radius: 3px;
           cursor: pointer;
           font-size: 11px;
-          transition: background 0.2s;
+          transition: all 0.2s ease-in-out;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .add-button::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 0;
+          height: 0;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.3);
+          transform: translate(-50%, -50%);
+          transition: width 0.3s, height 0.3s;
+        }
+
+        .add-button:hover::before {
+          width: 100%;
+          height: 100%;
         }
 
         .add-button:hover {
           background: #005a9e;
+          transform: scale(1.05);
+          box-shadow: 0 2px 8px rgba(0, 120, 212, 0.4);
+        }
+
+        .add-button:active {
+          transform: scale(0.95);
         }
 
         .add-button:disabled {
           background: #555;
           cursor: not-allowed;
+          transform: none;
         }
 
         .loading-state {

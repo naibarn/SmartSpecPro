@@ -50,6 +50,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [showRenderProgress, setShowRenderProgress] = useState(false);
   const [currentRenderJob, setCurrentRenderJob] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<Omit<ConfirmDialogProps, 'onConfirm' | 'onCancel'> | null>(null);
+  const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
 
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio'>('library');
@@ -365,15 +366,99 @@ export const VideoEditorPhase3: React.FC = () => {
   // Keyboard Shortcuts
   // ========================================
 
+  // Handle new project
+  const handleNewProject = useCallback(() => {
+    const createNew = () => {
+      const newProject = createEmptyProject();
+      setProject(newProject);
+      setHistory([newProject]);
+      setHistoryIndex(0);
+      setIsDirty(false);
+      setCurrentTime(0);
+      setSelectedClipId(null);
+      setConfirmDialog(null);
+      setConfirmCallback(null);
+    };
+
+    if (isDirty) {
+      setConfirmDialog({
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes. Creating a new project will discard them. Continue?',
+        confirmText: 'Create New',
+        cancelText: 'Cancel',
+        type: 'warning',
+        showUndoHint: false
+      });
+      setConfirmCallback(() => createNew);
+      return;
+    }
+
+    createNew();
+  }, [isDirty]);
+
+  // Handle duplicate clip
+  const handleDuplicateClip = useCallback(() => {
+    if (!selectedClipId) return;
+
+    setProject(prevProject => {
+      const newProject = { ...prevProject };
+
+      // Find the selected clip
+      for (const track of newProject.timeline.tracks) {
+        const clipIndex = track.clips.findIndex(c => c.id === selectedClipId);
+        if (clipIndex !== -1) {
+          const originalClip = track.clips[clipIndex];
+
+          // Create duplicate with new ID
+          const duplicatedClip: Clip = {
+            ...originalClip,
+            id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            startTime: originalClip.startTime + originalClip.duration
+          };
+
+          // Insert after original
+          track.clips.splice(clipIndex + 1, 0, duplicatedClip);
+
+          // Select the new clip
+          setSelectedClipId(duplicatedClip.id);
+
+          // Update project duration
+          newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+          newProject.modifiedAt = new Date().toISOString();
+
+          addToHistory(newProject);
+          break;
+        }
+      }
+
+      return newProject;
+    });
+  }, [selectedClipId, addToHistory]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+S: Save
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
         handleSave();
-      } else if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
+      }
+      // Ctrl+N: New Project
+      else if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        handleNewProject();
+      }
+      // Ctrl+D: Duplicate Clip
+      else if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        handleDuplicateClip();
+      }
+      // Ctrl+Z: Undo
+      else if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
         e.preventDefault();
         undo();
-      } else if (e.ctrlKey && e.shiftKey && e.key === 'z') {
+      }
+      // Ctrl+Shift+Z: Redo
+      else if (e.ctrlKey && e.shiftKey && e.key === 'z') {
         e.preventDefault();
         redo();
       }
@@ -381,7 +466,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, handleNewProject, handleDuplicateClip]);
 
   // Auto-save
   useEffect(() => {
@@ -404,7 +489,9 @@ export const VideoEditorPhase3: React.FC = () => {
 
   // Handle confirm dialog actions
   const handleConfirmDialogConfirm = () => {
-    if (confirmDialog?.title === 'Unsaved Changes') {
+    if (confirmCallback) {
+      confirmCallback();
+    } else if (confirmDialog?.title === 'Unsaved Changes') {
       loadProject();
     } else if (confirmDialog?.title === 'Delete Clip' && selectedClipId) {
       confirmClipDelete(selectedClipId);
@@ -419,6 +506,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
   const handleConfirmDialogCancel = () => {
     setConfirmDialog(null);
+    setConfirmCallback(null);
   };
 
   return (

@@ -28,11 +28,18 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [volume, setVolume] = useState(1.0);
   const [isMuted, setIsMuted] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   // Sync video element with current time
   useEffect(() => {
     if (videoRef.current && Math.abs(videoRef.current.currentTime - currentTime) > 0.1) {
-      videoRef.current.currentTime = currentTime;
+      try {
+        videoRef.current.currentTime = currentTime;
+        setVideoError(null);
+      } catch (err) {
+        console.error('Failed to set current time:', err);
+        setVideoError(err instanceof Error ? err.message : 'Failed to seek video');
+      }
     }
   }, [currentTime]);
 
@@ -42,12 +49,20 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       if (isPlaying) {
         videoRef.current.play().catch(err => {
           console.error('Failed to play:', err);
+          setVideoError(err instanceof Error ? err.message : 'Failed to play video');
+          onPlayPause(); // Revert to paused state
         });
       } else {
-        videoRef.current.pause();
+        try {
+          videoRef.current.pause();
+          setVideoError(null);
+        } catch (err) {
+          console.error('Failed to pause:', err);
+          setVideoError(err instanceof Error ? err.message : 'Failed to pause video');
+        }
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, onPlayPause]);
 
   // Handle video time update
   const handleTimeUpdate = () => {
@@ -64,19 +79,63 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
   // Handle volume change
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const vol = parseFloat(e.target.value);
-    setVolume(vol);
-    if (videoRef.current) {
-      videoRef.current.volume = vol;
+    try {
+      const vol = parseFloat(e.target.value);
+      if (isNaN(vol) || vol < 0 || vol > 1) {
+        throw new Error('Invalid volume value');
+      }
+      setVolume(vol);
+      if (videoRef.current) {
+        videoRef.current.volume = vol;
+      }
+      setVideoError(null);
+    } catch (err) {
+      console.error('Failed to change volume:', err);
+      setVideoError(err instanceof Error ? err.message : 'Failed to change volume');
     }
   };
 
   // Toggle mute
   const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
+    try {
+      setIsMuted(!isMuted);
+      if (videoRef.current) {
+        videoRef.current.muted = !isMuted;
+      }
+      setVideoError(null);
+    } catch (err) {
+      console.error('Failed to toggle mute:', err);
+      setVideoError(err instanceof Error ? err.message : 'Failed to toggle mute');
     }
+  };
+
+  // Handle video error
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const videoElement = e.currentTarget;
+    const error = videoElement.error;
+
+    let errorMessage = 'Unknown video error';
+    if (error) {
+      switch (error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMessage = 'Video playback aborted';
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMessage = 'Network error while loading video';
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMessage = 'Video decoding failed';
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = 'Video format not supported';
+          break;
+        default:
+          errorMessage = error.message || 'Unknown video error';
+      }
+    }
+
+    console.error('Video error:', errorMessage, error);
+    setVideoError(errorMessage);
   };
 
   // Keyboard shortcuts
@@ -288,14 +347,42 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       `}</style>
 
       {/* Video Container */}
-      <div className="preview-video-container">
-        {previewVideoUrl ? (
+      <div className="preview-video-container" role="region" aria-label="Video preview">
+        {videoError ? (
+          <div className="preview-placeholder">
+            <div className="placeholder-icon">⚠️</div>
+            <div style={{ color: '#ff6b6b' }}>Video Error</div>
+            <div style={{ fontSize: '12px', marginTop: '8px', color: '#888' }}>
+              {videoError}
+            </div>
+            <button
+              onClick={() => {
+                setVideoError(null);
+                if (videoRef.current) {
+                  videoRef.current.load();
+                }
+              }}
+              style={{
+                marginTop: '12px',
+                padding: '8px 16px',
+                background: '#0078d4',
+                border: 'none',
+                borderRadius: '4px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : previewVideoUrl ? (
           <video
             ref={videoRef}
             className="preview-video"
             src={previewVideoUrl}
             onTimeUpdate={handleTimeUpdate}
             onEnded={onStop}
+            onError={handleVideoError}
           />
         ) : (
           <div className="preview-placeholder">
@@ -312,7 +399,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       </div>
 
       {/* Controls */}
-      <div className="preview-controls">
+      <div className="preview-controls" role="group" aria-label="Video playback controls">
         {/* Seek Bar */}
         <div className="seek-bar-container">
           <input
@@ -323,6 +410,11 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             step="0.01"
             value={currentTime}
             onChange={handleSeek}
+            aria-label="Seek video position"
+            aria-valuemin={0}
+            aria-valuemax={duration}
+            aria-valuenow={currentTime}
+            aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
           />
         </div>
 
@@ -334,6 +426,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               className="control-button"
               onClick={() => onTimeChange(Math.max(0, currentTime - 1/30))}
               title="Previous Frame (←)"
+              aria-label="Go to previous frame"
             >
               ⏮
             </button>
@@ -343,6 +436,8 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               className="control-button primary"
               onClick={onPlayPause}
               title="Play/Pause (Space)"
+              aria-label={isPlaying ? 'Pause video' : 'Play video'}
+              aria-pressed={isPlaying}
             >
               {isPlaying ? '⏸' : '▶️'}
             </button>
@@ -352,6 +447,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               className="control-button"
               onClick={onStop}
               title="Stop"
+              aria-label="Stop playback"
             >
               ⏹
             </button>
@@ -361,6 +457,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               className="control-button"
               onClick={() => onTimeChange(Math.min(duration, currentTime + 1/30))}
               title="Next Frame (→)"
+              aria-label="Go to next frame"
             >
               ⏭
             </button>
@@ -372,11 +469,13 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           </div>
 
           {/* Volume Control */}
-          <div className="volume-control">
+          <div className="volume-control" role="group" aria-label="Volume controls">
             <button
               className="volume-button"
               onClick={toggleMute}
               title="Mute/Unmute"
+              aria-label={isMuted ? 'Unmute' : 'Mute'}
+              aria-pressed={isMuted}
             >
               {isMuted ? '🔇' : volume > 0.5 ? '🔊' : volume > 0 ? '🔉' : '🔈'}
             </button>
@@ -388,6 +487,11 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               step="0.01"
               value={isMuted ? 0 : volume}
               onChange={handleVolumeChange}
+              aria-label="Volume level"
+              aria-valuemin={0}
+              aria-valuemax={1}
+              aria-valuenow={isMuted ? 0 : volume}
+              aria-valuetext={`${Math.round((isMuted ? 0 : volume) * 100)}%`}
             />
           </div>
         </div>
