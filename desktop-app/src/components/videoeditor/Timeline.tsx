@@ -40,6 +40,7 @@ const isValidZoom = (zoom: number): zoom is number => {
 };
 
 const TRACK_HEIGHT = 80;
+const OVERLAY_TRACK_HEIGHT = 60; // Smaller height for overlay tracks
 const HEADER_WIDTH = 100;
 const RULER_HEIGHT = 30;
 const SNAP_THRESHOLD = 5; // pixels
@@ -308,15 +309,17 @@ export const Timeline: React.FC<TimelineProps> = ({
     const isDragging = draggingClip?.clipId === clip.id;
     const isResizing = resizingClip?.clipId === clip.id;
     const isMultiSelected = selectedClipIds.includes(clip.id);
+    const isOverlay = track.type === 'overlay';
+    const hasTransform = !!clip.transform;
 
     return (
       <div
         key={clip.id}
-        className={`timeline-clip ${isSelected ? 'selected' : ''} ${isMultiSelected ? 'multi-selected' : ''} ${isHovered ? 'hovered' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
+        className={`timeline-clip ${isSelected ? 'selected' : ''} ${isMultiSelected ? 'multi-selected' : ''} ${isHovered ? 'hovered' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''} ${isOverlay ? 'overlay-clip' : ''}`}
         style={{
           left: `${x}px`,
           width: `${width}px`,
-          backgroundColor: track.type === 'video' ? '#0078d4' : '#00b294'
+          backgroundColor: track.type === 'video' ? '#0078d4' : track.type === 'overlay' ? '#ff6b6b' : '#00b294'
         }}
         onMouseDown={(e) => handleClipMouseDown(e, clip, track.id)}
         onMouseEnter={() => setHoveredClipId(clip.id)}
@@ -345,6 +348,11 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div className="clip-content">
           <div className="clip-name">{asset.filename}</div>
           <div className="clip-duration">{formatTime(clip.duration)}</div>
+          {hasTransform && (
+            <div className="clip-transform-indicator" title="Has transform/keyframes">
+              🎨
+            </div>
+          )}
         </div>
         <div className="clip-resize-handle right" aria-label="Resize clip from end" role="button" tabIndex={-1} />
       </div>
@@ -511,6 +519,18 @@ export const Timeline: React.FC<TimelineProps> = ({
         .timeline-clip.multi-selected {
           border: 2px solid #ff9800;
           box-shadow: 0 0 12px rgba(255, 152, 0, 0.6);
+        }
+
+        .timeline-clip.overlay-clip {
+          border-left: 3px solid #ff6b6b;
+        }
+
+        .clip-transform-indicator {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          font-size: 14px;
+          filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
         }
 
         @keyframes pulse {

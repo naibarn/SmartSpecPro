@@ -33,12 +33,13 @@ export interface Timeline {
 
 export interface Track {
   id: string;
-  type: 'video' | 'audio';
-  name: string;              // "V1", "A1", etc.
+  type: 'video' | 'audio' | 'overlay';
+  name: string;              // "V1", "A1", "OV1", etc.
   clips: Clip[];
   muted: boolean;
   locked: boolean;
   height?: number;           // UI track height
+  zIndex?: number;           // For overlay tracks stacking order
 }
 
 export interface Clip {
@@ -56,6 +57,7 @@ export interface Clip {
     fadeIn?: number;         // fade in duration (seconds)
     fadeOut?: number;        // fade out duration (seconds)
   };
+  transform?: ClipTransform; // For overlay clips
 }
 
 export interface Asset {
@@ -111,6 +113,40 @@ export interface ExportSettings {
 export interface Effect {
   type: 'fadeIn' | 'fadeOut' | 'transition' | 'speed' | 'filter';
   parameters: Record<string, any>;
+}
+
+// ========================================
+// Overlay & Transform
+// ========================================
+
+export interface ClipTransform {
+  // Position (0-1 normalized, relative to video dimensions)
+  x: number;                 // 0 = left, 0.5 = center, 1 = right
+  y: number;                 // 0 = top, 0.5 = center, 1 = bottom
+
+  // Scale (0.1 - 3.0)
+  scaleX: number;            // 1.0 = original width
+  scaleY: number;            // 1.0 = original height
+
+  // Rotation (degrees)
+  rotation: number;          // 0 - 360
+
+  // Opacity
+  opacity: number;           // 0.0 - 1.0
+
+  // Keyframes for animation
+  keyframes?: TransformKeyframe[];
+}
+
+export interface TransformKeyframe {
+  time: number;              // Time in clip duration (0 - 1 normalized)
+  x: number;
+  y: number;
+  scaleX: number;
+  scaleY: number;
+  rotation: number;
+  opacity: number;
+  easing?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
 }
 
 // ========================================

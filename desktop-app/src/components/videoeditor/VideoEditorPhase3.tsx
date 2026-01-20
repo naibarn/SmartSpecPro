@@ -17,6 +17,7 @@ import ConfirmDialog, { type ConfirmDialogProps } from './ConfirmDialog';
 import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay';
 import HistoryPanel from './HistoryPanel';
 import TransitionsPanel from './TransitionsPanel';
+import OverlayPanel from './OverlayPanel';
 import { projectManager } from '../../services/projectManager';
 import { videoEditorRenderService } from '../../services/videoEditorService';
 import { sanitizeProjectName } from '../../utils/security';
@@ -26,6 +27,7 @@ import {
   type Clip,
   type ExportSettings,
   type DuckingConfig,
+  type ClipTransform,
   createEmptyProject,
   addAssetToProject,
   addClipToTrack,
@@ -58,7 +60,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
 
   // Sidebar view
-  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions'>('library');
+  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay'>('library');
 
   // Save project to sessionStorage for error recovery
   useEffect(() => {
@@ -344,6 +346,29 @@ export const VideoEditorPhase3: React.FC = () => {
         const clip = track.clips.find((c: Clip) => c.id === clipId);
         if (clip) {
           clip.transitions = transitions;
+          break;
+        }
+      }
+
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  // ========================================
+  // Overlay Transform
+  // ========================================
+
+  const handleTransformChange = useCallback((clipId: string, transform: ClipTransform) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      // Find and update the clip
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          clip.transform = transform;
           break;
         }
       }
@@ -1020,6 +1045,12 @@ export const VideoEditorPhase3: React.FC = () => {
               >
                 ✨ FX
               </button>
+              <button
+                className={`sidebar-tab ${sidebarView === 'overlay' ? 'active' : ''}`}
+                onClick={() => setSidebarView('overlay')}
+              >
+                🎨 Overlay
+              </button>
             </div>
 
             <div className="sidebar-content">
@@ -1063,6 +1094,17 @@ export const VideoEditorPhase3: React.FC = () => {
                     : null
                   }
                   onTransitionsChange={handleTransitionsChange}
+                />
+              )}
+              {sidebarView === 'overlay' && (
+                <OverlayPanel
+                  selectedClip={selectedClipId ?
+                    project.timeline.tracks
+                      .flatMap(t => t.clips)
+                      .find(c => c.id === selectedClipId) || null
+                    : null
+                  }
+                  onTransformChange={handleTransformChange}
                 />
               )}
             </div>
