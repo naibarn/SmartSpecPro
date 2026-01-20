@@ -15,6 +15,8 @@ import AspectRatioSelector from './AspectRatioSelector';
 import ErrorBoundary from './ErrorBoundary';
 import ConfirmDialog, { type ConfirmDialogProps } from './ConfirmDialog';
 import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay';
+import HistoryPanel from './HistoryPanel';
+import TransitionsPanel from './TransitionsPanel';
 import { projectManager } from '../../services/projectManager';
 import { videoEditorRenderService } from '../../services/videoEditorService';
 import { sanitizeProjectName } from '../../utils/security';
@@ -54,7 +56,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
 
   // Sidebar view
-  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio'>('library');
+  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions'>('library');
 
   // Save project to sessionStorage for error recovery
   useEffect(() => {
@@ -88,6 +90,13 @@ export const VideoEditorPhase3: React.FC = () => {
       setProject(JSON.parse(JSON.stringify(history[historyIndex + 1])));
     }
   }, [history, historyIndex]);
+
+  const jumpToHistory = useCallback((index: number) => {
+    if (index >= 0 && index < history.length) {
+      setHistoryIndex(index);
+      setProject(JSON.parse(JSON.stringify(history[index])));
+    }
+  }, [history]);
 
   // ========================================
   // Project Management
@@ -305,6 +314,63 @@ export const VideoEditorPhase3: React.FC = () => {
       return newProject;
     });
   };
+
+  // ========================================
+  // Clip Transitions
+  // ========================================
+
+  const handleTransitionsChange = useCallback((clipId: string, transitions: { fadeIn?: number; fadeOut?: number }) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      // Find and update the clip
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          clip.transitions = transitions;
+          break;
+        }
+      }
+
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  // ========================================
+  // Track Controls
+  // ========================================
+
+  const handleTrackToggleLock = useCallback((trackId: string) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      const track = newProject.timeline.tracks.find((t: any) => t.id === trackId);
+      if (track) {
+        track.locked = !track.locked;
+      }
+
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  const handleTrackToggleMute = useCallback((trackId: string) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      const track = newProject.timeline.tracks.find((t: any) => t.id === trackId);
+      if (track) {
+        track.muted = !track.muted;
+      }
+
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
 
   // ========================================
   // Aspect Ratio
@@ -854,6 +920,8 @@ export const VideoEditorPhase3: React.FC = () => {
                 onClipResize={handleClipResize}
                 onClipDelete={handleClipDelete}
                 selectedClipId={selectedClipId}
+                onTrackToggleLock={handleTrackToggleLock}
+                onTrackToggleMute={handleTrackToggleMute}
               />
             </div>
           </div>
@@ -879,6 +947,18 @@ export const VideoEditorPhase3: React.FC = () => {
               >
                 📐 Ratio
               </button>
+              <button
+                className={`sidebar-tab ${sidebarView === 'history' ? 'active' : ''}`}
+                onClick={() => setSidebarView('history')}
+              >
+                📜 History
+              </button>
+              <button
+                className={`sidebar-tab ${sidebarView === 'transitions' ? 'active' : ''}`}
+                onClick={() => setSidebarView('transitions')}
+              >
+                ✨ FX
+              </button>
             </div>
 
             <div className="sidebar-content">
@@ -901,6 +981,28 @@ export const VideoEditorPhase3: React.FC = () => {
                     onResolutionChange={handleResolutionChange}
                   />
                 </div>
+              )}
+              {sidebarView === 'history' && (
+                <HistoryPanel
+                  history={history}
+                  currentIndex={historyIndex}
+                  onJumpTo={jumpToHistory}
+                  canUndo={historyIndex > 0}
+                  canRedo={historyIndex < history.length - 1}
+                  onUndo={undo}
+                  onRedo={redo}
+                />
+              )}
+              {sidebarView === 'transitions' && (
+                <TransitionsPanel
+                  selectedClip={selectedClipId ?
+                    project.timeline.tracks
+                      .flatMap(t => t.clips)
+                      .find(c => c.id === selectedClipId) || null
+                    : null
+                  }
+                  onTransitionsChange={handleTransitionsChange}
+                />
               )}
             </div>
           </div>

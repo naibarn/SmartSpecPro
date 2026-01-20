@@ -52,6 +52,10 @@ export interface Clip {
   volume: number;            // 0.0 - 1.0
   speed: number;             // 0.5 - 2.0
   effects: Effect[];
+  transitions?: {
+    fadeIn?: number;         // fade in duration (seconds)
+    fadeOut?: number;        // fade out duration (seconds)
+  };
 }
 
 export interface Asset {

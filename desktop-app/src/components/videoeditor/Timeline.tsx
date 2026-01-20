@@ -25,6 +25,8 @@ interface TimelineProps {
   onClipResize: (clipId: string, newDuration: number, newTrimIn: number) => void;
   onClipDelete: (clipId: string) => void;
   selectedClipId: string | null;
+  onTrackToggleLock?: (trackId: string) => void;
+  onTrackToggleMute?: (trackId: string) => void;
 }
 
 // Type guards for better type safety
@@ -53,7 +55,9 @@ export const Timeline: React.FC<TimelineProps> = ({
   onClipMove,
   onClipResize,
   onClipDelete,
-  selectedClipId
+  selectedClipId,
+  onTrackToggleLock,
+  onTrackToggleMute
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -400,11 +404,49 @@ export const Timeline: React.FC<TimelineProps> = ({
         .track-header {
           height: ${TRACK_HEIGHT}px;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           border-bottom: 1px solid #333;
           font-size: 12px;
           font-weight: 600;
+          padding: 4px;
+          gap: 4px;
+        }
+
+        .track-header-name {
+          font-size: 11px;
+        }
+
+        .track-header-controls {
+          display: flex;
+          gap: 4px;
+        }
+
+        .track-control-btn {
+          width: 24px;
+          height: 24px;
+          background: #1e1e1e;
+          border: 1px solid #444;
+          border-radius: 3px;
+          color: #888;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          transition: all 0.2s;
+        }
+
+        .track-control-btn:hover {
+          background: #333;
+          border-color: #0078d4;
+        }
+
+        .track-control-btn.active {
+          background: #0078d4;
+          border-color: #0078d4;
+          color: #fff;
         }
 
         .timeline-tracks {
@@ -591,7 +633,29 @@ export const Timeline: React.FC<TimelineProps> = ({
               aria-level={2}
               aria-label={`${track.type === 'video' ? 'Video' : 'Audio'} track ${track.name}`}
             >
-              {track.type === 'video' ? '🎬' : '🎤'} {track.name}
+              <div className="track-header-name">
+                {track.type === 'video' ? '🎬' : '🎤'} {track.name}
+              </div>
+              <div className="track-header-controls">
+                <button
+                  className={`track-control-btn ${track.locked ? 'active' : ''}`}
+                  onClick={() => onTrackToggleLock?.(track.id)}
+                  title={track.locked ? 'Unlock Track' : 'Lock Track'}
+                  aria-label={track.locked ? 'Unlock track' : 'Lock track'}
+                  aria-pressed={track.locked}
+                >
+                  {track.locked ? '🔒' : '🔓'}
+                </button>
+                <button
+                  className={`track-control-btn ${track.muted ? 'active' : ''}`}
+                  onClick={() => onTrackToggleMute?.(track.id)}
+                  title={track.muted ? 'Unmute Track' : 'Mute Track'}
+                  aria-label={track.muted ? 'Unmute track' : 'Mute track'}
+                  aria-pressed={track.muted}
+                >
+                  {track.muted ? '🔇' : '🔊'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
