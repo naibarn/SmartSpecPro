@@ -18,6 +18,9 @@ interface ToolbarProps {
   onSave: () => void;
   onExport: () => void;
   isDirty: boolean;
+  rippleEditMode?: boolean;
+  onToggleRippleEdit?: () => void;
+  selectedCount?: number;
 }
 
 const ZOOM_LEVELS = [10, 20, 30, 50, 75, 100, 150, 200];
@@ -34,7 +37,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onRedo,
   onSave,
   onExport,
-  isDirty
+  isDirty,
+  rippleEditMode = false,
+  onToggleRippleEdit,
+  selectedCount = 0
 }) => {
   const handleZoomIn = () => {
     if (onZoomIn) {
@@ -129,8 +135,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           background: #005a9e;
         }
 
+        .toolbar-button.active {
+          background: #0078d4;
+          border-color: #0078d4;
+        }
+
         .toolbar-button.danger {
           color: #ff6b6b;
+        }
+
+        .toolbar-info {
+          font-size: 11px;
+          color: #0078d4;
+          padding: 0 8px;
+          font-weight: 500;
         }
 
         .zoom-display {
@@ -222,6 +240,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         >
           ✂
         </button>
+        {onToggleRippleEdit && (
+          <button
+            className={`toolbar-button ${rippleEditMode ? 'active' : ''}`}
+            onClick={onToggleRippleEdit}
+            title={`Ripple Edit: ${rippleEditMode ? 'ON (auto-close gaps)' : 'OFF'}`}
+          >
+            🌊
+          </button>
+        )}
+        {selectedCount > 0 && (
+          <span className="toolbar-info" title={`${selectedCount} clips selected`}>
+            {selectedCount} selected
+          </span>
+        )}
       </div>
 
       {/* Save/Export Group */}

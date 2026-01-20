@@ -38,10 +38,12 @@ export const VideoEditorPhase3: React.FC = () => {
   // Project state
   const [project, setProject] = useState<VideoEditorProject>(() => createEmptyProject());
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]); // Multi-select
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(50);
   const [clipboardClip, setClipboardClip] = useState<Clip | null>(null);
+  const [rippleEditMode, setRippleEditMode] = useState(false);
 
   // History
   const [history, setHistory] = useState<VideoEditorProject[]>([]);
@@ -269,25 +271,38 @@ export const VideoEditorPhase3: React.FC = () => {
   }, [addToHistory]);
 
   const handleClipDelete = useCallback((clipId: string) => {
+    const clipCount = selectedClipIds.length > 0 ? selectedClipIds.length : 1;
     setConfirmDialog({
       title: 'Delete Clip',
-      message: 'Are you sure you want to delete this clip?',
+      message: `Are you sure you want to delete ${clipCount} clip${clipCount > 1 ? 's' : ''}?`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
       type: 'danger',
       showUndoHint: true
     });
-  }, []);
+  }, [selectedClipIds.length]);
 
   const confirmClipDelete = (clipId: string) => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
 
+      // Delete all selected clips or single clip
+      const clipsToDelete = selectedClipIds.length > 0 ? selectedClipIds : [clipId];
+
       for (const track of newProject.timeline.tracks) {
-        const index = track.clips.findIndex((c: Clip) => c.id === clipId);
-        if (index !== -1) {
-          track.clips.splice(index, 1);
-          break;
+        track.clips = track.clips.filter((c: Clip) => !clipsToDelete.includes(c.id));
+      }
+
+      // Handle ripple edit mode - close gaps after deletion
+      if (rippleEditMode) {
+        for (const track of newProject.timeline.tracks) {
+          let currentTime = 0;
+          track.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+
+          track.clips.forEach((clip: Clip) => {
+            clip.startTime = currentTime;
+            currentTime += clip.duration;
+          });
         }
       }
 
@@ -296,6 +311,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
       addToHistory(newProject);
       setSelectedClipId(null);
+      setSelectedClipIds([]);
       return newProject;
     });
     setConfirmDialog(null);
@@ -627,6 +643,37 @@ export const VideoEditorPhase3: React.FC = () => {
     setZoom(50); // Default zoom
   }, []);
 
+  // Handle multi-clip selection
+  const handleClipSelect = useCallback((clipId: string, isMultiSelect: boolean) => {
+    if (isMultiSelect) {
+      // Toggle selection with Shift/Ctrl
+      setSelectedClipIds(prev => {
+        if (prev.includes(clipId)) {
+          return prev.filter(id => id !== clipId);
+        } else {
+          return [...prev, clipId];
+        }
+      });
+    } else {
+      // Single selection
+      setSelectedClipId(clipId);
+      setSelectedClipIds([]);
+    }
+  }, []);
+
+  // Select all clips
+  const handleSelectAll = useCallback(() => {
+    const allClipIds = project.timeline.tracks.flatMap(track => track.clips.map(clip => clip.id));
+    setSelectedClipIds(allClipIds);
+    setSelectedClipId(null);
+  }, [project.timeline.tracks]);
+
+  // Deselect all
+  const handleDeselectAll = useCallback(() => {
+    setSelectedClipIds([]);
+    setSelectedClipId(null);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+S: Save
@@ -638,6 +685,16 @@ export const VideoEditorPhase3: React.FC = () => {
       else if (e.ctrlKey && e.key === 'n') {
         e.preventDefault();
         handleNewProject();
+      }
+      // Ctrl+A: Select All
+      else if (e.ctrlKey && e.key === 'a') {
+        e.preventDefault();
+        handleSelectAll();
+      }
+      // Escape: Deselect All
+      else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleDeselectAll();
       }
       // Ctrl+D: Duplicate Clip
       else if (e.ctrlKey && e.key === 'd') {
@@ -705,7 +762,7 @@ export const VideoEditorPhase3: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('wheel', handleWheel);
     };
-  }, [undo, redo, handleNewProject, handleDuplicateClip, handleSplitClip, handleCopyClip, handlePasteClip, handleZoomIn, handleZoomOut, handleResetZoom, selectedClipId, clipboardClip]);
+  }, [undo, redo, handleNewProject, handleDuplicateClip, handleSplitClip, handleCopyClip, handlePasteClip, handleZoomIn, handleZoomOut, handleResetZoom, handleSelectAll, handleDeselectAll, selectedClipId, clipboardClip]);
 
   // Auto-save
   useEffect(() => {
@@ -890,6 +947,9 @@ export const VideoEditorPhase3: React.FC = () => {
           onSave={handleSave}
           onExport={handleExportClick}
           isDirty={isDirty}
+          rippleEditMode={rippleEditMode}
+          onToggleRippleEdit={() => setRippleEditMode(prev => !prev)}
+          selectedCount={selectedClipIds.length}
         />
 
         {/* Main Layout */}
@@ -915,11 +975,12 @@ export const VideoEditorPhase3: React.FC = () => {
                 duration={project.settings.duration}
                 zoom={zoom}
                 onTimeChange={handleTimeChange}
-                onClipSelect={setSelectedClipId}
+                onClipSelect={handleClipSelect}
                 onClipMove={handleClipMove}
                 onClipResize={handleClipResize}
                 onClipDelete={handleClipDelete}
                 selectedClipId={selectedClipId}
+                selectedClipIds={selectedClipIds}
                 onTrackToggleLock={handleTrackToggleLock}
                 onTrackToggleMute={handleTrackToggleMute}
               />

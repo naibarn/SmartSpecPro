@@ -20,11 +20,12 @@ interface TimelineProps {
   duration: number;
   zoom: number;  // pixels per second
   onTimeChange: (time: number) => void;
-  onClipSelect: (clipId: string | null) => void;
+  onClipSelect: (clipId: string, isMultiSelect: boolean) => void;
   onClipMove: (clipId: string, newStartTime: number, newTrackId: string) => void;
   onClipResize: (clipId: string, newDuration: number, newTrimIn: number) => void;
   onClipDelete: (clipId: string) => void;
   selectedClipId: string | null;
+  selectedClipIds?: string[];
   onTrackToggleLock?: (trackId: string) => void;
   onTrackToggleMute?: (trackId: string) => void;
 }
@@ -56,6 +57,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   onClipResize,
   onClipDelete,
   selectedClipId,
+  selectedClipIds = [],
   onTrackToggleLock,
   onTrackToggleMute
 }) => {
@@ -143,7 +145,9 @@ export const Timeline: React.FC<TimelineProps> = ({
       });
     }
 
-    onClipSelect(clip.id);
+    // Multi-select with Shift or Ctrl key
+    const isMultiSelect = e.shiftKey || e.ctrlKey;
+    onClipSelect(clip.id, isMultiSelect);
   };
 
   // Handle mouse move (drag or resize)
@@ -299,15 +303,16 @@ export const Timeline: React.FC<TimelineProps> = ({
 
     const x = timeToPixels(clip.startTime);
     const width = timeToPixels(clip.duration);
-    const isSelected = clip.id === selectedClipId;
+    const isSelected = clip.id === selectedClipId || selectedClipIds.includes(clip.id);
     const isHovered = clip.id === hoveredClipId;
     const isDragging = draggingClip?.clipId === clip.id;
     const isResizing = resizingClip?.clipId === clip.id;
+    const isMultiSelected = selectedClipIds.includes(clip.id);
 
     return (
       <div
         key={clip.id}
-        className={`timeline-clip ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
+        className={`timeline-clip ${isSelected ? 'selected' : ''} ${isMultiSelected ? 'multi-selected' : ''} ${isHovered ? 'hovered' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
         style={{
           left: `${x}px`,
           width: `${width}px`,
@@ -344,7 +349,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div className="clip-resize-handle right" aria-label="Resize clip from end" role="button" tabIndex={-1} />
       </div>
     );
-  }, [assets, zoom, selectedClipId, hoveredClipId, draggingClip, resizingClip, timeToPixels, handleClipMouseDown]);
+  }, [assets, zoom, selectedClipId, selectedClipIds, hoveredClipId, draggingClip, resizingClip, timeToPixels, handleClipMouseDown]);
 
   return (
     <div className="timeline-container">
@@ -501,6 +506,11 @@ export const Timeline: React.FC<TimelineProps> = ({
           border: 2px solid #fff;
           box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
           animation: pulse 2s ease-in-out infinite;
+        }
+
+        .timeline-clip.multi-selected {
+          border: 2px solid #ff9800;
+          box-shadow: 0 0 12px rgba(255, 152, 0, 0.6);
         }
 
         @keyframes pulse {

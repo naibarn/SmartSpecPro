@@ -40,11 +40,20 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
     shortcuts: [
       { keys: ['Ctrl', 'Z'], description: 'Undo' },
       { keys: ['Ctrl', 'Shift', 'Z'], description: 'Redo' },
-      { keys: ['Delete'], description: 'Delete selected clip' },
+      { keys: ['Delete'], description: 'Delete selected clip(s)' },
       { keys: ['Ctrl', 'D'], description: 'Duplicate clip' },
-      { keys: ['Ctrl', 'X'], description: 'Cut clip' },
+      { keys: ['Ctrl', 'B'], description: 'Split clip at playhead' },
       { keys: ['Ctrl', 'C'], description: 'Copy clip' },
       { keys: ['Ctrl', 'V'], description: 'Paste clip' },
+    ]
+  },
+  {
+    name: 'Selection',
+    shortcuts: [
+      { keys: ['Ctrl', 'A'], description: 'Select all clips' },
+      { keys: ['Esc'], description: 'Deselect all' },
+      { keys: ['Shift', 'Click'], description: 'Add to selection' },
+      { keys: ['Ctrl', 'Click'], description: 'Toggle selection' },
     ]
   },
   {
