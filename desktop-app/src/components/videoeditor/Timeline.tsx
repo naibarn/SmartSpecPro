@@ -3,7 +3,7 @@
  * Phase 1: Interactive timeline with zoom, scroll, and drag & drop
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   type Track,
   type Clip,
@@ -40,6 +40,7 @@ const TRACK_HEIGHT = 80;
 const HEADER_WIDTH = 100;
 const RULER_HEIGHT = 30;
 const SNAP_THRESHOLD = 5; // pixels
+const PLAYHEAD_SNAP_DISTANCE = 0.2; // seconds - snap when within 0.2s of playhead
 
 export const Timeline: React.FC<TimelineProps> = ({
   timeline,
@@ -164,8 +165,13 @@ export const Timeline: React.FC<TimelineProps> = ({
         let newStartTime = time - draggingClip.offsetX;
         newStartTime = Math.max(0, newStartTime);
 
-        // Snap to grid (0.5 second intervals)
-        if (Math.abs(newStartTime % 0.5) < 0.1) {
+        // Snap to playhead (priority snapping)
+        const distanceToPlayhead = Math.abs(newStartTime - currentTime);
+        if (distanceToPlayhead < PLAYHEAD_SNAP_DISTANCE) {
+          newStartTime = currentTime;
+        }
+        // Otherwise, snap to grid (0.5 second intervals)
+        else if (Math.abs(newStartTime % 0.5) < 0.1) {
           newStartTime = Math.round(newStartTime * 2) / 2;
         }
 
@@ -209,7 +215,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         }
       }
     });
-  }, [draggingClip, resizingClip, scrollLeft, zoom, timeline, assets, pixelsToTime, onClipMove, onClipResize]);
+  }, [draggingClip, resizingClip, scrollLeft, zoom, timeline, assets, pixelsToTime, onClipMove, onClipResize, currentTime]);
 
   // Handle mouse up (end drag or resize)
   const handleMouseUp = useCallback(() => {
@@ -260,8 +266,8 @@ export const Timeline: React.FC<TimelineProps> = ({
     setScrollLeft(e.currentTarget.scrollLeft);
   };
 
-  // Render time ruler
-  const renderRuler = () => {
+  // Render time ruler - memoized for performance
+  const rulerMarkers = useMemo(() => {
     const markers = [];
     const interval = zoom > 50 ? 1 : zoom > 20 ? 5 : 10; // seconds
 
@@ -280,10 +286,10 @@ export const Timeline: React.FC<TimelineProps> = ({
     }
 
     return markers;
-  };
+  }, [zoom, duration, timeToPixels]);
 
-  // Render clip
-  const renderClip = (clip: Clip, track: Track) => {
+  // Render clip - optimized with useCallback
+  const renderClip = useCallback((clip: Clip, track: Track) => {
     const asset = assets[clip.assetId];
     if (!asset) return null;
 
@@ -334,7 +340,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div className="clip-resize-handle right" aria-label="Resize clip from end" role="button" tabIndex={-1} />
       </div>
     );
-  };
+  }, [assets, zoom, selectedClipId, hoveredClipId, draggingClip, resizingClip, timeToPixels, handleClipMouseDown]);
 
   return (
     <div className="timeline-container">
@@ -569,7 +575,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       {/* Ruler */}
       <div className="timeline-ruler" role="presentation" aria-label="Timeline ruler">
         <div style={{ position: 'relative', width: `${timelineWidth}px`, height: '100%' }}>
-          {renderRuler()}
+          {rulerMarkers}
         </div>
       </div>
 

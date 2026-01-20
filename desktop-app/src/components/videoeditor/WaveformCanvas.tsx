@@ -13,7 +13,7 @@ interface WaveformCanvasProps {
   backgroundColor?: string;
 }
 
-export const WaveformCanvas: React.FC<WaveformCanvasProps> = ({
+export const WaveformCanvas: React.FC<WaveformCanvasProps> = React.memo(({
   waveformData,
   width,
   height,
@@ -84,6 +84,6 @@ export const WaveformCanvas: React.FC<WaveformCanvasProps> = ({
       }}
     />
   );
-};
+});
 
 export default WaveformCanvas;

@@ -39,6 +39,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(50);
+  const [clipboardClip, setClipboardClip] = useState<Clip | null>(null);
 
   // History
   const [history, setHistory] = useState<VideoEditorProject[]>([]);
@@ -492,6 +493,61 @@ export const VideoEditorPhase3: React.FC = () => {
     });
   }, [selectedClipId, currentTime, addToHistory]);
 
+  // Handle copy clip
+  const handleCopyClip = useCallback(() => {
+    if (!selectedClipId) return;
+
+    // Find the selected clip
+    for (const track of project.timeline.tracks) {
+      const clip = track.clips.find(c => c.id === selectedClipId);
+      if (clip) {
+        // Store a deep copy in clipboard
+        setClipboardClip(JSON.parse(JSON.stringify(clip)));
+        console.log('Copied clip:', clip.id);
+        break;
+      }
+    }
+  }, [selectedClipId, project.timeline.tracks]);
+
+  // Handle paste clip
+  const handlePasteClip = useCallback(() => {
+    if (!clipboardClip) return;
+
+    setProject(prevProject => {
+      const newProject = { ...prevProject };
+
+      // Find the track that matches the clipboard clip's type
+      const targetTrack = newProject.timeline.tracks.find(t => t.id === clipboardClip.trackId);
+      if (!targetTrack) {
+        alert('Cannot paste: target track not found');
+        return prevProject;
+      }
+
+      // Create new clip at playhead position
+      const pastedClip: Clip = {
+        ...clipboardClip,
+        id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        startTime: currentTime
+      };
+
+      // Add to track and sort by start time
+      targetTrack.clips.push(pastedClip);
+      targetTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+
+      // Select the new clip
+      setSelectedClipId(pastedClip.id);
+
+      // Update project
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+
+      addToHistory(newProject);
+      console.log('Pasted clip at:', currentTime);
+
+      return newProject;
+    });
+  }, [clipboardClip, currentTime, addToHistory]);
+
   // Handle zoom in/out
   const handleZoomIn = useCallback(() => {
     setZoom(prev => Math.min(prev * 1.2, 200)); // Max zoom: 200px per second
@@ -526,6 +582,16 @@ export const VideoEditorPhase3: React.FC = () => {
       else if (e.ctrlKey && e.key === 'b') {
         e.preventDefault();
         handleSplitClip();
+      }
+      // Ctrl+C: Copy Clip
+      else if (e.ctrlKey && e.key === 'c' && selectedClipId) {
+        e.preventDefault();
+        handleCopyClip();
+      }
+      // Ctrl+V: Paste Clip
+      else if (e.ctrlKey && e.key === 'v' && clipboardClip) {
+        e.preventDefault();
+        handlePasteClip();
       }
       // Ctrl+= or Ctrl+Plus: Zoom In
       else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
@@ -573,7 +639,7 @@ export const VideoEditorPhase3: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('wheel', handleWheel);
     };
-  }, [undo, redo, handleNewProject, handleDuplicateClip, handleSplitClip, handleZoomIn, handleZoomOut, handleResetZoom]);
+  }, [undo, redo, handleNewProject, handleDuplicateClip, handleSplitClip, handleCopyClip, handlePasteClip, handleZoomIn, handleZoomOut, handleResetZoom, selectedClipId, clipboardClip]);
 
   // Auto-save
   useEffect(() => {
