@@ -1,0 +1,679 @@
+/**
+ * Video Editor Main Component - Phase 3
+ * Complete editor with UX improvements and aspect ratio selector
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
+import MediaLibraryPanel from './MediaLibraryPanel';
+import Timeline from './Timeline';
+import PreviewPlayer from './PreviewPlayer';
+import Toolbar from './Toolbar';
+import ExportDialog from './ExportDialog';
+import RenderProgressDialog from './RenderProgressDialog';
+import AudioDuckingPanel from './AudioDuckingPanel';
+import AspectRatioSelector from './AspectRatioSelector';
+import ErrorBoundary from './ErrorBoundary';
+import ConfirmDialog, { type ConfirmDialogProps } from './ConfirmDialog';
+import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay';
+import { projectManager } from '../../services/projectManager';
+import { videoEditorRenderService } from '../../services/videoEditorService';
+import { sanitizeProjectName } from '../../utils/security';
+import {
+  type VideoEditorProject,
+  type MediaLibraryAsset,
+  type Clip,
+  type ExportSettings,
+  type DuckingConfig,
+  createEmptyProject,
+  addAssetToProject,
+  addClipToTrack,
+  findTrackByType,
+  calculateProjectDuration,
+  validateProject
+} from '../../types/videoEditor';
+
+export const VideoEditorPhase3: React.FC = () => {
+  // Project state
+  const [project, setProject] = useState<VideoEditorProject>(() => createEmptyProject());
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [zoom, setZoom] = useState(50);
+
+  // History
+  const [history, setHistory] = useState<VideoEditorProject[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Dialogs
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showRenderProgress, setShowRenderProgress] = useState(false);
+  const [currentRenderJob, setCurrentRenderJob] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<Omit<ConfirmDialogProps, 'onConfirm' | 'onCancel'> | null>(null);
+
+  // Sidebar view
+  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio'>('library');
+
+  // Save project to sessionStorage for error recovery
+  useEffect(() => {
+    sessionStorage.setItem('currentProject', JSON.stringify(project));
+  }, [project]);
+
+  // ========================================
+  // History Management
+  // ========================================
+
+  const addToHistory = useCallback((newProject: VideoEditorProject) => {
+    setHistory(prev => {
+      const trimmed = prev.slice(0, historyIndex + 1);
+      const updated = [...trimmed, JSON.parse(JSON.stringify(newProject))];
+      return updated.slice(-50);
+    });
+    setHistoryIndex(prev => prev + 1);
+    setIsDirty(true);
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      setHistoryIndex(prev => prev - 1);
+      setProject(JSON.parse(JSON.stringify(history[historyIndex - 1])));
+    }
+  }, [history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(prev => prev + 1);
+      setProject(JSON.parse(JSON.stringify(history[historyIndex + 1])));
+    }
+  }, [history, historyIndex]);
+
+  // ========================================
+  // Project Management
+  // ========================================
+
+  const handleSave = async () => {
+    try {
+      await projectManager.saveProject(project);
+      setIsDirty(false);
+      alert('Project saved successfully!');
+    } catch (error) {
+      alert(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleLoad = async () => {
+    try {
+      if (isDirty) {
+        setConfirmDialog({
+          title: 'Unsaved Changes',
+          message: 'You have unsaved changes. Loading a project will discard them. Continue?',
+          confirmText: 'Load Anyway',
+          cancelText: 'Cancel',
+          type: 'warning',
+          showUndoHint: false
+        });
+        return;
+      }
+
+      await loadProject();
+    } catch (error) {
+      console.error('Load failed:', error);
+    }
+  };
+
+  const loadProject = async () => {
+    const { project: loadedProject } = await projectManager.loadProject();
+    setProject(loadedProject);
+    setHistory([loadedProject]);
+    setHistoryIndex(0);
+    setIsDirty(false);
+    setCurrentTime(0);
+    setSelectedClipId(null);
+    setConfirmDialog(null);
+  };
+
+  const handleExportClick = () => {
+    // Validate project first
+    const validation = validateProject(project);
+    if (!validation.valid) {
+      alert(`Cannot export:\n${validation.errors.join('\n')}`);
+      return;
+    }
+
+    setShowExportDialog(true);
+  };
+
+  const handleExport = async (outputPath: string, settings: ExportSettings) => {
+    try {
+      setShowExportDialog(false);
+
+      // Update project export settings
+      project.export = settings;
+
+      // Convert project to JSON for render
+      const projectJson = JSON.stringify(project);
+
+      // Start render job
+      const jobId = await videoEditorRenderService.startRender(projectJson, outputPath);
+
+      setCurrentRenderJob(jobId);
+      setShowRenderProgress(true);
+    } catch (error) {
+      alert(`Failed to start export: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleRenderComplete = (outputPath: string) => {
+    setShowRenderProgress(false);
+    setCurrentRenderJob(null);
+    alert(`✅ Export complete!\n\nSaved to: ${outputPath}`);
+  };
+
+  const handleRenderCancel = () => {
+    setShowRenderProgress(false);
+    setCurrentRenderJob(null);
+  };
+
+  // ========================================
+  // Timeline Interactions
+  // ========================================
+
+  const handleAddToTimeline = (asset: MediaLibraryAsset, localPath: string) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      const newAsset = addAssetToProject(newProject, asset, localPath);
+      const track = findTrackByType(newProject.timeline, asset.type);
+
+      if (!track) {
+        alert(`No available ${asset.type} track found`);
+        return prevProject;
+      }
+
+      const lastClip = track.clips[track.clips.length - 1];
+      const startTime = lastClip ? lastClip.startTime + lastClip.duration : 0;
+
+      addClipToTrack(track, newAsset, startTime);
+
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+
+      addToHistory(newProject);
+      return newProject;
+    });
+  };
+
+  const handleClipMove = useCallback((clipId: string, newStartTime: number, newTrackId: string) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      let clip: Clip | null = null;
+      for (const track of newProject.timeline.tracks) {
+        const index = track.clips.findIndex((c: Clip) => c.id === clipId);
+        if (index !== -1) {
+          clip = track.clips.splice(index, 1)[0];
+          break;
+        }
+      }
+
+      if (!clip) return prevProject;
+
+      clip.startTime = newStartTime;
+      clip.trackId = newTrackId;
+
+      const newTrack = newProject.timeline.tracks.find((t: any) => t.id === newTrackId);
+      if (newTrack) {
+        newTrack.clips.push(clip);
+        newTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+      }
+
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  const handleClipResize = useCallback((clipId: string, newDuration: number, newTrimIn: number) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          clip.duration = newDuration;
+          clip.trimIn = newTrimIn;
+          clip.trimOut = newTrimIn + newDuration;
+          break;
+        }
+      }
+
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  const handleClipDelete = useCallback((clipId: string) => {
+    setConfirmDialog({
+      title: 'Delete Clip',
+      message: 'Are you sure you want to delete this clip?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+      showUndoHint: true
+    });
+  }, []);
+
+  const confirmClipDelete = (clipId: string) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      for (const track of newProject.timeline.tracks) {
+        const index = track.clips.findIndex((c: Clip) => c.id === clipId);
+        if (index !== -1) {
+          track.clips.splice(index, 1);
+          break;
+        }
+      }
+
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+
+      addToHistory(newProject);
+      setSelectedClipId(null);
+      return newProject;
+    });
+    setConfirmDialog(null);
+  };
+
+  // ========================================
+  // Audio Ducking
+  // ========================================
+
+  const handleDuckingChange = (ducking: DuckingConfig) => {
+    setProject(prevProject => {
+      const newProject = { ...prevProject };
+      newProject.audioMixing.ducking = ducking;
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  };
+
+  // ========================================
+  // Aspect Ratio
+  // ========================================
+
+  const handleResolutionChange = (width: number, height: number) => {
+    setConfirmDialog({
+      title: 'Change Resolution',
+      message: `Change project resolution to ${width}×${height}? Existing clips will be scaled to fit.`,
+      confirmText: 'Change Resolution',
+      cancelText: 'Cancel',
+      type: 'warning',
+      showUndoHint: true
+    });
+  };
+
+  const confirmResolutionChange = (width: number, height: number) => {
+    setProject(prevProject => {
+      const newProject = { ...prevProject };
+      newProject.settings.width = width;
+      newProject.settings.height = height;
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+    setConfirmDialog(null);
+  };
+
+  // ========================================
+  // Playback Controls
+  // ========================================
+
+  const handlePlayPause = () => setIsPlaying(!isPlaying);
+  const handleStop = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
+  const handleTimeChange = (time: number) => {
+    setCurrentTime(Math.max(0, Math.min(time, project.settings.duration)));
+  };
+
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const interval = setInterval(() => {
+      setCurrentTime(prev => {
+        const next = prev + 1/30;
+        if (next >= project.settings.duration) {
+          setIsPlaying(false);
+          return project.settings.duration;
+        }
+        return next;
+      });
+    }, 1000/30);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, project.settings.duration]);
+
+  // ========================================
+  // Keyboard Shortcuts
+  // ========================================
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      } else if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      } else if (e.ctrlKey && e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
+
+  // Auto-save
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const timer = setTimeout(() => {
+      projectManager.autoSave(project);
+    }, 30000);
+
+    return () => clearTimeout(timer);
+  }, [project, isDirty]);
+
+  // Initialize history
+  useEffect(() => {
+    if (history.length === 0) {
+      setHistory([project]);
+      setHistoryIndex(0);
+    }
+  }, []);
+
+  // Handle confirm dialog actions
+  const handleConfirmDialogConfirm = () => {
+    if (confirmDialog?.title === 'Unsaved Changes') {
+      loadProject();
+    } else if (confirmDialog?.title === 'Delete Clip' && selectedClipId) {
+      confirmClipDelete(selectedClipId);
+    } else if (confirmDialog?.title === 'Change Resolution') {
+      // Extract width/height from message
+      const match = confirmDialog.message.match(/(\d+)×(\d+)/);
+      if (match) {
+        confirmResolutionChange(parseInt(match[1]), parseInt(match[2]));
+      }
+    }
+  };
+
+  const handleConfirmDialogCancel = () => {
+    setConfirmDialog(null);
+  };
+
+  return (
+    <ErrorBoundary onReset={() => window.location.reload()}>
+      <div className="video-editor-phase3">
+        <style>{`
+          .video-editor-phase3 {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: #1a1a1a;
+            color: #e0e0e0;
+          }
+
+          .editor-header {
+            padding: 8px 16px;
+            background: #2a2a2a;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+          }
+
+          .project-title {
+            font-size: 14px;
+            font-weight: 600;
+          }
+
+          .header-spacer {
+            flex: 1;
+          }
+
+          .header-button {
+            padding: 6px 12px;
+            background: #444;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+          }
+
+          .header-button:hover {
+            background: #555;
+          }
+
+          .editor-layout {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+          }
+
+          .editor-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+          }
+
+          .preview-container {
+            flex: 1;
+            min-height: 300px;
+          }
+
+          .timeline-container {
+            height: 300px;
+            border-top: 1px solid #333;
+          }
+
+          .sidebar {
+            width: 320px;
+            border-left: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+          }
+
+          .sidebar-tabs {
+            display: flex;
+            background: #2a2a2a;
+            border-bottom: 1px solid #444;
+          }
+
+          .sidebar-tab {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: #888;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+
+          .sidebar-tab:hover {
+            color: #e0e0e0;
+          }
+
+          .sidebar-tab.active {
+            color: #0078d4;
+            border-bottom-color: #0078d4;
+          }
+
+          .sidebar-content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+          }
+
+          .ducking-container {
+            padding: 12px;
+            overflow-y: auto;
+          }
+
+          .aspect-ratio-container {
+            padding: 12px;
+            overflow-y: auto;
+          }
+        `}</style>
+
+        {/* Header */}
+        <div className="editor-header">
+          <div className="project-title">🎬 {sanitizeProjectName(project.name)}</div>
+          <div className="header-spacer" />
+          <button className="header-button" onClick={handleLoad}>
+            📂 Open
+          </button>
+        </div>
+
+        {/* Toolbar */}
+        <Toolbar
+          zoom={zoom}
+          onZoomChange={setZoom}
+          canUndo={historyIndex > 0}
+          canRedo={historyIndex < history.length - 1}
+          onUndo={undo}
+          onRedo={redo}
+          onSave={handleSave}
+          onExport={handleExportClick}
+          isDirty={isDirty}
+        />
+
+        {/* Main Layout */}
+        <div className="editor-layout">
+          {/* Editor Main */}
+          <div className="editor-main">
+            <div className="preview-container">
+              <PreviewPlayer
+                currentTime={currentTime}
+                duration={project.settings.duration}
+                isPlaying={isPlaying}
+                onTimeChange={handleTimeChange}
+                onPlayPause={handlePlayPause}
+                onStop={handleStop}
+              />
+            </div>
+
+            <div className="timeline-container">
+              <Timeline
+                timeline={project.timeline}
+                assets={project.assets}
+                currentTime={currentTime}
+                duration={project.settings.duration}
+                zoom={zoom}
+                onTimeChange={handleTimeChange}
+                onClipSelect={setSelectedClipId}
+                onClipMove={handleClipMove}
+                onClipResize={handleClipResize}
+                onClipDelete={handleClipDelete}
+                selectedClipId={selectedClipId}
+              />
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="sidebar">
+            <div className="sidebar-tabs">
+              <button
+                className={`sidebar-tab ${sidebarView === 'library' ? 'active' : ''}`}
+                onClick={() => setSidebarView('library')}
+              >
+                📚 Library
+              </button>
+              <button
+                className={`sidebar-tab ${sidebarView === 'ducking' ? 'active' : ''}`}
+                onClick={() => setSidebarView('ducking')}
+              >
+                🎚️ Audio
+              </button>
+              <button
+                className={`sidebar-tab ${sidebarView === 'aspectRatio' ? 'active' : ''}`}
+                onClick={() => setSidebarView('aspectRatio')}
+              >
+                📐 Ratio
+              </button>
+            </div>
+
+            <div className="sidebar-content">
+              {sidebarView === 'library' && (
+                <MediaLibraryPanel onAddToTimeline={handleAddToTimeline} />
+              )}
+              {sidebarView === 'ducking' && (
+                <div className="ducking-container">
+                  <AudioDuckingPanel
+                    ducking={project.audioMixing.ducking}
+                    tracks={project.timeline.tracks}
+                    onDuckingChange={handleDuckingChange}
+                  />
+                </div>
+              )}
+              {sidebarView === 'aspectRatio' && (
+                <div className="aspect-ratio-container">
+                  <AspectRatioSelector
+                    currentSettings={project.settings}
+                    onResolutionChange={handleResolutionChange}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Export Dialog */}
+        {showExportDialog && (
+          <ExportDialog
+            project={project}
+            onExport={handleExport}
+            onCancel={() => setShowExportDialog(false)}
+          />
+        )}
+
+        {/* Render Progress */}
+        {showRenderProgress && currentRenderJob && (
+          <RenderProgressDialog
+            jobId={currentRenderJob}
+            onComplete={handleRenderComplete}
+            onCancel={handleRenderCancel}
+          />
+        )}
+
+        {/* Confirm Dialog */}
+        {confirmDialog && (
+          <ConfirmDialog
+            {...confirmDialog}
+            onConfirm={handleConfirmDialogConfirm}
+            onCancel={handleConfirmDialogCancel}
+          />
+        )}
+
+        {/* Keyboard Shortcuts Overlay */}
+        <KeyboardShortcutsOverlay />
+      </div>
+    </ErrorBoundary>
+  );
+};
+
+export default VideoEditorPhase3;
