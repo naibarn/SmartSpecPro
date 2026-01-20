@@ -244,11 +244,25 @@ pub async fn ffmpeg_version() -> Result<String, String> {
 
 /// Extract audio waveform data for visualization
 /// Returns array of amplitude values (0.0 - 1.0)
+/// FIXED: Added resource limits to prevent DoS
 #[tauri::command]
 pub async fn ffmpeg_extract_waveform(
     input_path: String,
     samples: usize
 ) -> Result<Vec<f32>, String> {
+    // Security: Limit maximum samples to prevent resource exhaustion
+    const MAX_WAVEFORM_SAMPLES: usize = 10000;
+    if samples > MAX_WAVEFORM_SAMPLES {
+        return Err(format!(
+            "Too many samples requested: {} (max: {})",
+            samples, MAX_WAVEFORM_SAMPLES
+        ));
+    }
+
+    if samples == 0 {
+        return Err("Samples must be greater than 0".to_string());
+    }
+
     let ffmpeg_path = get_ffmpeg_path();
 
     if !ffmpeg_path.exists() {

@@ -49,12 +49,37 @@ fn sanitize_codec(codec: &str) -> Result<String, String> {
     }
 }
 
+/// Sanitize numeric value for FFmpeg filters to prevent injection
+/// Only allows positive integers and decimals (no special characters)
+fn sanitize_numeric(value: impl std::fmt::Display) -> Result<String, String> {
+    let value_str = value.to_string();
+
+    // Check for command injection attempts
+    if value_str.contains(';') || value_str.contains('|') || value_str.contains('&') ||
+       value_str.contains('`') || value_str.contains('$') || value_str.contains('[') ||
+       value_str.contains(']') || value_str.contains('(') || value_str.contains(')') {
+        return Err("Invalid numeric value: contains unsafe characters".to_string());
+    }
+
+    // Validate it's actually a number
+    if value_str.parse::<f64>().is_err() {
+        return Err("Invalid numeric value: not a valid number".to_string());
+    }
+
+    Ok(value_str)
+}
+
 // Resource limits
 const MAX_CLIPS: usize = 1000;
 const MAX_DURATION_SECONDS: f64 = 3600.0; // 1 hour
 const MAX_VIDEO_BITRATE: u32 = 50000; // 50Mbps
 const MAX_AUDIO_BITRATE: u32 = 320; // 320kbps
 const MAX_RESOLUTION_PIXELS: u32 = 1920 * 1080 * 4; // 4K max
+
+// Job management limits
+const MAX_CONCURRENT_JOBS: usize = 5;
+const MAX_STORED_JOBS: usize = 100; // Keep history of last 100 jobs
+const JOB_CLEANUP_THRESHOLD: usize = 80; // Cleanup when reaching 80 jobs
 
 /// Validate project resource limits to prevent DoS
 fn validate_project_limits(project: &VideoEditorProject) -> Result<(), String> {
@@ -258,6 +283,47 @@ impl RenderEngine {
         }
     }
 
+    /// Clean up old completed/failed jobs to prevent memory leak
+    fn cleanup_old_jobs(jobs: &mut HashMap<String, RenderJob>) {
+        if jobs.len() <= JOB_CLEANUP_THRESHOLD {
+            return;
+        }
+
+        // Sort jobs by completion time, keep the most recent ones
+        let mut completed_jobs: Vec<_> = jobs
+            .iter()
+            .filter(|(_, job)| {
+                matches!(job.status, RenderStatus::Completed | RenderStatus::Failed)
+            })
+            .map(|(id, job)| (id.clone(), job.completed_at.unwrap_or(0)))
+            .collect();
+
+        completed_jobs.sort_by_key(|(_, time)| *time);
+
+        // Remove oldest jobs until we're under the threshold
+        let to_remove = jobs.len().saturating_sub(MAX_STORED_JOBS);
+        for (id, _) in completed_jobs.iter().take(to_remove) {
+            jobs.remove(id);
+        }
+    }
+
+    /// Check concurrent job limit
+    fn check_concurrent_limit(jobs: &HashMap<String, RenderJob>) -> Result<(), String> {
+        let active_jobs = jobs
+            .values()
+            .filter(|job| matches!(job.status, RenderStatus::Pending | RenderStatus::Rendering))
+            .count();
+
+        if active_jobs >= MAX_CONCURRENT_JOBS {
+            return Err(format!(
+                "Too many concurrent render jobs ({}/{}). Please wait for some to complete.",
+                active_jobs, MAX_CONCURRENT_JOBS
+            ));
+        }
+
+        Ok(())
+    }
+
     /// Start a render job
     pub async fn start_render_internal(
         jobs: Arc<Mutex<HashMap<String, RenderJob>>>,
@@ -270,6 +336,13 @@ impl RenderEngine {
 
         // Security: Validate project resource limits
         validate_project_limits(&project)?;
+
+        // Check concurrent job limit and cleanup old jobs
+        {
+            let mut jobs_lock = jobs.lock().unwrap();
+            Self::check_concurrent_limit(&jobs_lock)?;
+            Self::cleanup_old_jobs(&mut jobs_lock);
+        }
 
         let job_id = uuid::Uuid::new_v4().to_string();
 
@@ -335,8 +408,8 @@ impl RenderEngine {
 
         let mut child = match Command::new(&ffmpeg_path)
             .args(&ffmpeg_cmd)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stdout(Stdio::null())  // Discard stdout to prevent buffer overflow
+            .stderr(Stdio::null())  // Discard stderr to prevent deadlock (FFmpeg produces lots of output)
             .spawn()
         {
             Ok(child) => child,
@@ -350,9 +423,10 @@ impl RenderEngine {
             }
         };
 
-        // Note: We can't store the child process here because it needs to be moved
-        // For now, we'll just wait for completion
-        // In a production version, we'd use a more sophisticated approach
+        // FIXED: Use Stdio::null() instead of piped() to prevent deadlock
+        // FFmpeg produces lots of stderr output which can fill the pipe buffer
+        // causing the process to block. We discard the output since we're tracking
+        // progress through file size instead.
 
         // Wait for completion
         let result = child.wait();
@@ -492,11 +566,14 @@ impl RenderEngine {
         }
 
         // For now, just scale and resample
+        // Security: Sanitize numeric values to prevent filter injection
+        let width = sanitize_numeric(project.settings.width)?;
+        let height = sanitize_numeric(project.settings.height)?;
+        let sample_rate = sanitize_numeric(project.settings.sample_rate)?;
+
         Ok(format!(
             "[0:v]scale={}:{}[vout];[0:a]aresample={}[aout]",
-            project.settings.width,
-            project.settings.height,
-            project.settings.sample_rate
+            width, height, sample_rate
         ))
     }
 }

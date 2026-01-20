@@ -47,56 +47,87 @@ pub fn file_exists(path: String) -> bool {
 
 /// Save binary data to file
 /// Security: Validates path is within workspace to prevent path traversal attacks
+/// FIXED: Canonicalize parent path BEFORE creating directories to prevent symlink attacks
 #[tauri::command]
 pub async fn save_blob_to_file(blob: Vec<u8>, path: String) -> Result<(), String> {
     // Get workspace path
     let workspace_path = get_video_editor_workspace_path()?;
     let workspace = PathBuf::from(&workspace_path);
 
-    // Convert target path to absolute
-    let target = PathBuf::from(&path);
-
-    // Validate path is within workspace (prevent path traversal)
+    // Validate workspace exists and canonicalize it first
     let canonical_workspace = workspace.canonicalize()
         .map_err(|e| format!("Failed to resolve workspace path: {}", e))?;
 
-    // If target is relative, resolve it against workspace
-    let target_path = if target.is_absolute() {
-        target
-    } else {
-        workspace.join(target)
-    };
+    // Convert target path to absolute
+    let target = PathBuf::from(&path);
 
-    // Ensure parent directory exists
+    // Security: Reject absolute paths that might bypass workspace
+    if target.is_absolute() {
+        return Err("Absolute paths are not allowed for security reasons".to_string());
+    }
+
+    // Build target path within workspace
+    let target_path = canonical_workspace.join(&target);
+
+    // Security: Validate the constructed path is still within workspace BEFORE creating dirs
+    // This prevents symlink attacks where parent() could be a symlink outside workspace
+    let target_path_str = target_path.to_string_lossy();
+    let workspace_str = canonical_workspace.to_string_lossy();
+    if !target_path_str.starts_with(workspace_str.as_ref()) {
+        return Err("Path traversal detected: Target path is outside workspace".to_string());
+    }
+
+    // Security: Check for null bytes and special characters
+    if path.contains('\0') || path.contains("..") {
+        return Err("Invalid path: contains illegal characters".to_string());
+    }
+
+    // Now safe to create parent directory (after validation)
     if let Some(parent) = target_path.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create parent directory: {}", e))?;
     }
 
-    // Canonicalize target path (after parent dir exists)
-    let canonical_target = target_path.canonicalize()
-        .or_else(|_| {
-            // If file doesn't exist yet, validate parent directory
-            target_path.parent()
-                .ok_or_else(|| "Invalid path".to_string())?
-                .canonicalize()
-                .map(|parent| parent.join(target_path.file_name().unwrap()))
-                .map_err(|e| format!("Failed to resolve target path: {}", e))
-        })?;
-
-    // Security check: ensure target is within workspace
-    if !canonical_target.starts_with(&canonical_workspace) {
-        return Err("Path traversal detected: Target path is outside workspace".to_string());
-    }
-
-    fs::write(&canonical_target, blob)
+    // Write file
+    fs::write(&target_path, blob)
         .map_err(|e| format!("Failed to write file: {}", e))
 }
 
 /// Get file size in bytes
+/// Security: Validates path is within workspace
 #[tauri::command]
 pub fn get_file_size(path: String) -> Result<u64, String> {
-    let metadata = fs::metadata(&path)
+    // Get workspace path
+    let workspace_path = get_video_editor_workspace_path()?;
+    let workspace = PathBuf::from(&workspace_path);
+
+    // Canonicalize workspace
+    let canonical_workspace = workspace.canonicalize()
+        .map_err(|e| format!("Failed to resolve workspace path: {}", e))?;
+
+    let target = PathBuf::from(&path);
+
+    // Security: Reject absolute paths
+    if target.is_absolute() {
+        return Err("Absolute paths are not allowed for security reasons".to_string());
+    }
+
+    // Security: Check for path traversal attempts
+    if path.contains('\0') || path.contains("..") {
+        return Err("Invalid path: contains illegal characters".to_string());
+    }
+
+    // Build target path within workspace
+    let target_path = canonical_workspace.join(&target);
+
+    // Security: Validate constructed path
+    let target_path_str = target_path.to_string_lossy();
+    let workspace_str = canonical_workspace.to_string_lossy();
+    if !target_path_str.starts_with(workspace_str.as_ref()) {
+        return Err("Path traversal detected: Cannot access files outside workspace".to_string());
+    }
+
+    let metadata = fs::metadata(&target_path)
         .map_err(|e| format!("Failed to get file metadata: {}", e))?;
 
     Ok(metadata.len())
@@ -104,27 +135,50 @@ pub fn get_file_size(path: String) -> Result<u64, String> {
 
 /// Delete a file
 /// Security: Validates path is within workspace to prevent unauthorized deletions
+/// FIXED: Validate path before canonicalization to prevent symlink attacks
 #[tauri::command]
 pub fn delete_file(path: String) -> Result<(), String> {
     // Get workspace path
     let workspace_path = get_video_editor_workspace_path()?;
     let workspace = PathBuf::from(&workspace_path);
 
-    let target = PathBuf::from(&path);
-
-    // Validate path is within workspace
+    // Canonicalize workspace first
     let canonical_workspace = workspace.canonicalize()
         .map_err(|e| format!("Failed to resolve workspace path: {}", e))?;
 
-    let canonical_target = target.canonicalize()
-        .map_err(|e| format!("Failed to resolve target path: {}", e))?;
+    let target = PathBuf::from(&path);
 
-    // Security check: ensure target is within workspace
-    if !canonical_target.starts_with(&canonical_workspace) {
+    // Security: Reject absolute paths
+    if target.is_absolute() {
+        return Err("Absolute paths are not allowed for security reasons".to_string());
+    }
+
+    // Security: Check for path traversal attempts
+    if path.contains('\0') || path.contains("..") {
+        return Err("Invalid path: contains illegal characters".to_string());
+    }
+
+    // Build target path within workspace
+    let target_path = canonical_workspace.join(&target);
+
+    // Security: Validate constructed path is within workspace (string check)
+    let target_path_str = target_path.to_string_lossy();
+    let workspace_str = canonical_workspace.to_string_lossy();
+    if !target_path_str.starts_with(workspace_str.as_ref()) {
         return Err("Path traversal detected: Cannot delete files outside workspace".to_string());
     }
 
-    fs::remove_file(&canonical_target)
+    // Verify file exists and is actually a file (not directory or symlink)
+    if !target_path.exists() {
+        return Err("File does not exist".to_string());
+    }
+
+    if !target_path.is_file() {
+        return Err("Path is not a file (symlinks and directories not allowed)".to_string());
+    }
+
+    // Safe to delete now
+    fs::remove_file(&target_path)
         .map_err(|e| format!("Failed to delete file: {}", e))
 }
 

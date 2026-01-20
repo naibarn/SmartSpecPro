@@ -8,6 +8,7 @@ import {
   videoEditorMediaLibrary,
   type MediaLibraryAsset
 } from '../../services/videoEditorService';
+import { showToast } from './Toast';
 
 interface MediaLibraryPanelProps {
   onAddToTimeline?: (asset: MediaLibraryAsset, localPath: string) => void;
@@ -79,9 +80,13 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
 
       // Add to timeline
       onAddToTimeline(asset, localPath);
+
+      // Show success toast
+      showToast(`✓ Added "${asset.title}" to timeline`, 'success', 2000);
     } catch (err) {
       console.error('Failed to add to timeline:', err);
-      alert(`Failed to add to timeline: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      showToast(`Failed to add to timeline: ${errorMsg}`, 'error', 4000);
     } finally {
       setDownloadingIds(prev => {
         const next = new Set(prev);
