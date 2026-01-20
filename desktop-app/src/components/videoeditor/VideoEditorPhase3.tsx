@@ -435,6 +435,76 @@ export const VideoEditorPhase3: React.FC = () => {
     });
   }, [selectedClipId, addToHistory]);
 
+  // Handle split clip at playhead
+  const handleSplitClip = useCallback(() => {
+    if (!selectedClipId) return;
+
+    setProject(prevProject => {
+      const newProject = { ...prevProject };
+
+      // Find the selected clip
+      for (const track of newProject.timeline.tracks) {
+        const clipIndex = track.clips.findIndex(c => c.id === selectedClipId);
+        if (clipIndex !== -1) {
+          const originalClip = track.clips[clipIndex];
+
+          // Check if playhead is within the clip
+          const clipEndTime = originalClip.startTime + originalClip.duration;
+          if (currentTime <= originalClip.startTime || currentTime >= clipEndTime) {
+            alert('Playhead must be within the selected clip to split');
+            return prevProject;
+          }
+
+          // Calculate split position relative to clip start
+          const splitOffset = currentTime - originalClip.startTime;
+
+          // Create first part (before split)
+          const firstClip: Clip = {
+            ...originalClip,
+            duration: splitOffset,
+            trimOut: originalClip.trimOut + (originalClip.duration - splitOffset)
+          };
+
+          // Create second part (after split)
+          const secondClip: Clip = {
+            ...originalClip,
+            id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            startTime: currentTime,
+            duration: originalClip.duration - splitOffset,
+            trimIn: originalClip.trimIn + splitOffset,
+            trimOut: originalClip.trimOut
+          };
+
+          // Replace original clip with the two new clips
+          track.clips.splice(clipIndex, 1, firstClip, secondClip);
+
+          // Select the second clip
+          setSelectedClipId(secondClip.id);
+
+          // Update project
+          newProject.modifiedAt = new Date().toISOString();
+          addToHistory(newProject);
+          break;
+        }
+      }
+
+      return newProject;
+    });
+  }, [selectedClipId, currentTime, addToHistory]);
+
+  // Handle zoom in/out
+  const handleZoomIn = useCallback(() => {
+    setZoom(prev => Math.min(prev * 1.2, 200)); // Max zoom: 200px per second
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(prev => Math.max(prev / 1.2, 10)); // Min zoom: 10px per second
+  }, []);
+
+  const handleResetZoom = useCallback(() => {
+    setZoom(50); // Default zoom
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+S: Save
@@ -452,6 +522,26 @@ export const VideoEditorPhase3: React.FC = () => {
         e.preventDefault();
         handleDuplicateClip();
       }
+      // Ctrl+B: Split Clip
+      else if (e.ctrlKey && e.key === 'b') {
+        e.preventDefault();
+        handleSplitClip();
+      }
+      // Ctrl+= or Ctrl+Plus: Zoom In
+      else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        handleZoomIn();
+      }
+      // Ctrl+- or Ctrl+Minus: Zoom Out
+      else if (e.ctrlKey && (e.key === '-' || e.key === '_')) {
+        e.preventDefault();
+        handleZoomOut();
+      }
+      // Ctrl+0: Reset Zoom
+      else if (e.ctrlKey && e.key === '0') {
+        e.preventDefault();
+        handleResetZoom();
+      }
       // Ctrl+Z: Undo
       else if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
         e.preventDefault();
@@ -464,9 +554,26 @@ export const VideoEditorPhase3: React.FC = () => {
       }
     };
 
+    // Handle wheel zoom (Ctrl+Scroll)
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          handleZoomIn();
+        } else {
+          handleZoomOut();
+        }
+      }
+    };
+
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, handleNewProject, handleDuplicateClip]);
+    document.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('wheel', handleWheel);
+    };
+  }, [undo, redo, handleNewProject, handleDuplicateClip, handleSplitClip, handleZoomIn, handleZoomOut, handleResetZoom]);
 
   // Auto-save
   useEffect(() => {
@@ -641,6 +748,9 @@ export const VideoEditorPhase3: React.FC = () => {
         <Toolbar
           zoom={zoom}
           onZoomChange={setZoom}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetZoom={handleResetZoom}
           canUndo={historyIndex > 0}
           canRedo={historyIndex < history.length - 1}
           onUndo={undo}

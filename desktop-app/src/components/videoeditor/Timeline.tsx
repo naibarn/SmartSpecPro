@@ -11,6 +11,7 @@ import {
   type Timeline as TimelineData,
   formatTime
 } from '../../types/videoEditor';
+import WaveformCanvas from './WaveformCanvas';
 
 interface TimelineProps {
   timeline: TimelineData;
@@ -312,6 +313,20 @@ export const Timeline: React.FC<TimelineProps> = ({
         aria-grabbed={isDragging}
       >
         <div className="clip-resize-handle left" aria-label="Resize clip from start" role="button" tabIndex={-1} />
+
+        {/* Waveform for audio clips */}
+        {track.type === 'audio' && asset.waveformData && asset.waveformData.length > 0 && (
+          <div className="clip-waveform">
+            <WaveformCanvas
+              waveformData={asset.waveformData}
+              width={width}
+              height={TRACK_HEIGHT - 10}
+              color="rgba(255, 255, 255, 0.6)"
+              backgroundColor="transparent"
+            />
+          </div>
+        )}
+
         <div className="clip-content">
           <div className="clip-name">{asset.filename}</div>
           <div className="clip-duration">{formatTime(clip.duration)}</div>
@@ -462,9 +477,22 @@ export const Timeline: React.FC<TimelineProps> = ({
           box-shadow: 0 2px 8px rgba(0, 120, 212, 0.6);
         }
 
+        .clip-waveform {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          opacity: 0.4;
+        }
+
         .clip-content {
+          position: relative;
           padding: 4px 8px;
           pointer-events: none;
+          z-index: 1;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
         }
 
         .clip-name {

@@ -8,6 +8,9 @@ import React from 'react';
 interface ToolbarProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onResetZoom?: () => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -22,6 +25,9 @@ const ZOOM_LEVELS = [10, 20, 30, 50, 75, 100, 150, 200];
 export const Toolbar: React.FC<ToolbarProps> = ({
   zoom,
   onZoomChange,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
   canUndo,
   canRedo,
   onUndo,
@@ -31,21 +37,33 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   isDirty
 }) => {
   const handleZoomIn = () => {
-    const currentIndex = ZOOM_LEVELS.findIndex(z => z >= zoom);
-    if (currentIndex < ZOOM_LEVELS.length - 1) {
-      onZoomChange(ZOOM_LEVELS[currentIndex + 1]);
+    if (onZoomIn) {
+      onZoomIn();
+    } else {
+      const currentIndex = ZOOM_LEVELS.findIndex(z => z >= zoom);
+      if (currentIndex < ZOOM_LEVELS.length - 1) {
+        onZoomChange(ZOOM_LEVELS[currentIndex + 1]);
+      }
     }
   };
 
   const handleZoomOut = () => {
-    const currentIndex = ZOOM_LEVELS.findIndex(z => z >= zoom);
-    if (currentIndex > 0) {
-      onZoomChange(ZOOM_LEVELS[currentIndex - 1]);
+    if (onZoomOut) {
+      onZoomOut();
+    } else {
+      const currentIndex = ZOOM_LEVELS.findIndex(z => z >= zoom);
+      if (currentIndex > 0) {
+        onZoomChange(ZOOM_LEVELS[currentIndex - 1]);
+      }
     }
   };
 
   const handleZoomFit = () => {
-    onZoomChange(50); // Reset to default
+    if (onResetZoom) {
+      onResetZoom();
+    } else {
+      onZoomChange(50); // Reset to default
+    }
   };
 
   return (
@@ -165,23 +183,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           className="toolbar-button"
           onClick={handleZoomOut}
           disabled={zoom <= ZOOM_LEVELS[0]}
-          title="Zoom Out (-)"
+          title="Zoom Out (Ctrl+- or Ctrl+Scroll Down)"
+          aria-label="Zoom out timeline"
         >
           🔍−
         </button>
-        <div className="zoom-display">{zoom}px/s</div>
+        <div className="zoom-display">{Math.round(zoom)}px/s</div>
         <button
           className="toolbar-button"
           onClick={handleZoomIn}
           disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-          title="Zoom In (+)"
+          title="Zoom In (Ctrl++ or Ctrl+Scroll Up)"
+          aria-label="Zoom in timeline"
         >
           🔍+
         </button>
         <button
           className="toolbar-button"
           onClick={handleZoomFit}
-          title="Fit to Window"
+          title="Reset Zoom (Ctrl+0)"
+          aria-label="Reset timeline zoom to default"
         >
           ⊡
         </button>
