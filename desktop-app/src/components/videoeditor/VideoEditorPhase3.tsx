@@ -18,6 +18,7 @@ import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay';
 import HistoryPanel from './HistoryPanel';
 import TransitionsPanel from './TransitionsPanel';
 import OverlayPanel from './OverlayPanel';
+import SilenceDetectionPanel from './SilenceDetectionPanel';
 import { projectManager } from '../../services/projectManager';
 import { videoEditorRenderService } from '../../services/videoEditorService';
 import { sanitizeProjectName } from '../../utils/security';
@@ -28,7 +29,9 @@ import {
   type ExportSettings,
   type DuckingConfig,
   type ClipTransform,
+  type SilentRegion,
   createEmptyProject,
+  generateId,
   addAssetToProject,
   addClipToTrack,
   findTrackByType,
@@ -60,7 +63,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
 
   // Sidebar view
-  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay'>('library');
+  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence'>('library');
 
   // Save project to sessionStorage for error recovery
   useEffect(() => {
@@ -377,6 +380,134 @@ export const VideoEditorPhase3: React.FC = () => {
       addToHistory(newProject);
       return newProject;
     });
+  }, [addToHistory]);
+
+  // ========================================
+  // Silence Detection & Dead Air Removal
+  // ========================================
+
+  const handleCutAndCombine = useCallback((selectedRegions: SilentRegion[]) => {
+    if (selectedRegions.length === 0) return;
+
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      // Sort regions by start time (ascending)
+      const sortedRegions = [...selectedRegions].sort((a, b) => a.startTime - b.startTime);
+
+      // Process each affected track
+      const affectedTrackIds = new Set(sortedRegions.map(r => r.trackId));
+
+      for (const trackId of affectedTrackIds) {
+        const track = newProject.timeline.tracks.find((t: any) => t.id === trackId);
+        if (!track) continue;
+
+        // Get silent regions for this track
+        const trackRegions = sortedRegions.filter(r => r.trackId === trackId);
+
+        // Split clips at region boundaries
+        const newClips: Clip[] = [];
+
+        for (const clip of track.clips) {
+          const clipStart = clip.startTime;
+          const clipEnd = clip.startTime + clip.duration;
+
+          // Find overlapping silent regions
+          const overlapping = trackRegions.filter(
+            r => r.startTime < clipEnd && r.endTime > clipStart
+          );
+
+          if (overlapping.length === 0) {
+            // No overlap, keep clip as is
+            newClips.push(clip);
+            continue;
+          }
+
+          // Split clip around silent regions
+          let currentTime = clipStart;
+          let trimInOffset = 0;
+
+          for (const region of overlapping) {
+            // Keep part before silent region
+            if (currentTime < region.startTime) {
+              const segmentDuration = region.startTime - currentTime;
+              newClips.push({
+                ...clip,
+                id: generateId('clip'),
+                startTime: currentTime,
+                duration: segmentDuration,
+                trimIn: clip.trimIn + trimInOffset,
+                trimOut: clip.trimIn + trimInOffset + segmentDuration
+              });
+              trimInOffset += segmentDuration;
+            }
+
+            // Skip silent region
+            const silentDuration = Math.min(region.endTime, clipEnd) - Math.max(region.startTime, clipStart);
+            trimInOffset += silentDuration;
+            currentTime = Math.min(region.endTime, clipEnd);
+          }
+
+          // Keep remaining part after last silent region
+          if (currentTime < clipEnd) {
+            const segmentDuration = clipEnd - currentTime;
+            newClips.push({
+              ...clip,
+              id: generateId('clip'),
+              startTime: currentTime,
+              duration: segmentDuration,
+              trimIn: clip.trimIn + trimInOffset,
+              trimOut: clip.trimIn + trimInOffset + segmentDuration
+            });
+          }
+        }
+
+        track.clips = newClips;
+      }
+
+      // Now combine clips by removing gaps (ripple delete)
+      for (const trackId of affectedTrackIds) {
+        const track = newProject.timeline.tracks.find((t: any) => t.id === trackId);
+        if (!track) continue;
+
+        // Calculate total duration to remove
+        const trackRegions = sortedRegions.filter(r => r.trackId === trackId);
+
+        // Sort clips by start time
+        track.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+
+        // Shift clips to close gaps
+        let cumulativeOffset = 0;
+        let currentTime = 0;
+
+        for (let i = 0; i < track.clips.length; i++) {
+          const clip = track.clips[i];
+
+          // Calculate how much silence was removed before this clip
+          const removedBefore = trackRegions
+            .filter(r => r.endTime <= clip.startTime)
+            .reduce((sum, r) => sum + r.duration, 0);
+
+          // Update clip start time
+          clip.startTime = currentTime;
+          currentTime += clip.duration;
+        }
+      }
+
+      // Update project duration
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+
+      addToHistory(newProject);
+
+      // Deselect clips
+      setSelectedClipId(null);
+      setSelectedClipIds([]);
+
+      return newProject;
+    });
+
+    alert('Dead air removed and video combined successfully!');
   }, [addToHistory]);
 
   // ========================================
@@ -1051,6 +1182,12 @@ export const VideoEditorPhase3: React.FC = () => {
               >
                 🎨 Overlay
               </button>
+              <button
+                className={`sidebar-tab ${sidebarView === 'silence' ? 'active' : ''}`}
+                onClick={() => setSidebarView('silence')}
+              >
+                🔇 Silence
+              </button>
             </div>
 
             <div className="sidebar-content">
@@ -1105,6 +1242,12 @@ export const VideoEditorPhase3: React.FC = () => {
                     : null
                   }
                   onTransformChange={handleTransformChange}
+                />
+              )}
+              {sidebarView === 'silence' && (
+                <SilenceDetectionPanel
+                  project={project}
+                  onCutAndCombine={handleCutAndCombine}
                 />
               )}
             </div>

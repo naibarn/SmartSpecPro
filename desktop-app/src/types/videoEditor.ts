@@ -150,6 +150,34 @@ export interface TransformKeyframe {
 }
 
 // ========================================
+// Silence Detection & Dead Air Removal
+// ========================================
+
+export interface SilentRegion {
+  id: string;
+  trackId: string;           // Which track this belongs to
+  startTime: number;         // Start time in seconds
+  endTime: number;           // End time in seconds
+  duration: number;          // Duration in seconds
+  selected: boolean;         // User can toggle selection to remove
+  averageDb: number;         // Average dB level in this region
+}
+
+export interface SilenceDetectionConfig {
+  threshold: number;         // dB threshold for silence (e.g., -40)
+  minDuration: number;       // Minimum silence duration to detect (seconds, e.g., 0.5)
+  enabled: boolean;          // Whether silence detection is active
+  trackIds: string[];        // Which tracks to analyze
+}
+
+export interface SilenceDetectionResult {
+  regions: SilentRegion[];
+  totalSilenceDuration: number;
+  totalActiveDuration: number;
+  analysisComplete: boolean;
+}
+
+// ========================================
 // UI State
 // ========================================
 
