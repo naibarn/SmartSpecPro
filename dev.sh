@@ -142,8 +142,14 @@ cmd_start() {
         fi
     fi
     
-    # Start services
-    compose_cmd up -d
+    # Check if containers already exist and handle accordingly
+    if compose_cmd ps -q 2>/dev/null | grep -q .; then
+        log_info "Found existing containers. Starting them..."
+        compose_cmd start
+    else
+        log_info "Creating and starting new containers..."
+        compose_cmd up -d
+    fi
     
     echo ""
     log_step "Waiting for services to be ready..."
@@ -229,42 +235,46 @@ cmd_status() {
     echo ""
     echo -e "${CYAN}Service Status:${NC}"
     echo ""
-    compose_cmd ps
+    docker ps --filter "name=smartspec-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
     echo ""
     
-    # Health check
-    echo -e "${CYAN}Health Checks:${NC}"
+    # Health check using docker inspect (for WSL/Windows compatibility)
+    echo -e "${CYAN}Health Checks (from Docker):${NC}"
     echo ""
     
-    # Check each service
-    services=(
-        "PostgreSQL|localhost:5432"
-        "Redis|localhost:6379"
-        "Python Backend|http://localhost:8000/health"
-        "Control Plane|http://localhost:7070/health"
-        "SmartSpec Web|http://localhost:3000"
-        "Docker Status|http://localhost:3001"
+    # Check each container's health status using docker inspect
+    containers=(
+        "smartspec-postgres|PostgreSQL"
+        "smartspec-redis|Redis"
+        "smartspec-backend|Python Backend"
+        "smartspec-control-plane|Control Plane"
+        "smartspec-web|SmartSpec Web"
+        "smartspec-docker-status|Docker Status"
+        "smartspec-flower|Flower"
+        "smartspec-celery-worker|Celery Worker"
+        "smartspec-celery-beat|Celery Beat"
     )
     
-    for svc in "${services[@]}"; do
-        name="${svc%%|*}"
-        url="${svc##*|}"
+    for container in "${containers[@]}"; do
+        container_name="${container%%|*}"
+        display_name="${container##*|}"
         
-        if [[ "$url" == localhost:* ]]; then
-            # TCP check
-            port="${url##*:}"
-            if nc -z localhost "$port" 2>/dev/null; then
-                echo -e "  ${GREEN}✓${NC} $name"
-            else
-                echo -e "  ${RED}✗${NC} $name"
-            fi
+        # Get container health status
+        health_status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}running{{end}}' "$container_name" 2>/dev/null)
+        running=$(docker inspect --format='{{.State.Running}}' "$container_name" 2>/dev/null)
+        
+        if [[ "$running" != "true" ]]; then
+            echo -e "  ${RED}✗${NC} $display_name (not running)"
+        elif [[ "$health_status" == "healthy" ]]; then
+            echo -e "  ${GREEN}✓${NC} $display_name (healthy)"
+        elif [[ "$health_status" == "starting" ]]; then
+            echo -e "  ${YELLOW}⏳${NC} $display_name (starting)"
+        elif [[ "$health_status" == "unhealthy" ]]; then
+            echo -e "  ${RED}✗${NC} $display_name (unhealthy)"
+        elif [[ "$health_status" == "running" ]]; then
+            echo -e "  ${GREEN}✓${NC} $display_name (running)"
         else
-            # HTTP check
-            if curl -s "$url" > /dev/null 2>&1; then
-                echo -e "  ${GREEN}✓${NC} $name"
-            else
-                echo -e "  ${RED}✗${NC} $name"
-            fi
+            echo -e "  ${YELLOW}?${NC} $display_name ($health_status)"
         fi
     done
     echo ""
@@ -275,15 +285,14 @@ cmd_clean() {
     check_compose
     
     log_warn "This will remove all containers, volumes, and cached data."
-    echo -n "Are you sure? (y/N): "
-    read -r answer
+    read -p "Are you sure? (y/N): " answer
     
     if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
         log_step "Stopping and removing containers..."
         compose_cmd down -v --remove-orphans
         
         log_step "Removing cached volumes..."
-        docker volume rm smartspec_postgres_data smartspec_redis_data smartspec_python_cache smartspec_web_node_modules smartspec_docker_status_node_modules 2>/dev/null || true
+        docker volume rm smartspec_postgres_data smartspec_redis_data smartspec_python_cache smartspec_web_node_modules smartspec_docker_status_node_modules smartspec_control_plane_node_modules 2>/dev/null || true
         
         log_info "Cleanup complete."
     else

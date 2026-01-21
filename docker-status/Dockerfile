@@ -19,7 +19,7 @@ RUN if [ -f pnpm-lock.yaml ]; then \
     elif [ -f package-lock.json ]; then \
       npm ci; \
     else \
-      npm install; \
+      npm install --legacy-peer-deps; \
     fi
 
 # Stage 2: Builder

@@ -12,6 +12,10 @@ import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerOAuthRoutes } from "./oauth";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
+import { registerServicesRoutes } from "../routers/services";
+import { registerTenantRoutes } from "../routers/tenant";
+import { registerAdminTenantsRoutes } from "../routers/adminTenants";
+import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,6 +37,9 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser(ENV.cookieSecret));
 
+// Multi-tenant middleware - identifies tenant from domain
+app.use(tenantMiddleware);
+
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);
@@ -43,8 +50,17 @@ registerOAuthRoutes(app);
 // Device auth routes (for desktop app)
 registerDeviceAuthRoutes(app);
 
+// Services management routes (admin)
+registerServicesRoutes(app);
+
+// Tenant routes
+registerTenantRoutes(app);
+
+// Admin tenant management routes
+registerAdminTenantsRoutes(app);
+
 app.use(
-  "/api/trpc",
+  "/trpc",
   createExpressMiddleware({
     router: appRouter,
     createContext,

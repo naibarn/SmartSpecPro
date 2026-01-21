@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +42,7 @@ import {
   Edit,
   CheckCircle2,
   XCircle,
+  ChevronLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -59,6 +62,8 @@ interface Skill {
 }
 
 export default function AdminSkills() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -76,6 +81,13 @@ export default function AdminSkills() {
     version: "1.0.0",
     author: "",
   });
+
+  // Check auth
+  useEffect(() => {
+    if (!authLoading && (!user || user.role !== "admin")) {
+      setLocation("/");
+    }
+  }, [user, authLoading, setLocation]);
 
   // Fetch skills
   const { data: skills, isLoading } = useQuery({
@@ -189,8 +201,25 @@ export default function AdminSkills() {
     return true;
   });
 
+  if (authLoading || !user || user.role !== "admin") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8 space-y-8">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setLocation('/dashboard')}
+        className="text-gray-600 mb-4"
+      >
+        <ChevronLeft className="w-5 h-5 mr-1" />
+        Back to Dashboard
+      </Button>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Skills Management</h1>
@@ -363,7 +392,7 @@ export default function AdminSkills() {
 
       {/* Create Skill Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Skill</DialogTitle>
             <DialogDescription>
@@ -481,7 +510,7 @@ export default function AdminSkills() {
       {/* Edit Skill Dialog */}
       {editingSkill && (
         <Dialog open={!!editingSkill} onOpenChange={() => setEditingSkill(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Skill</DialogTitle>
               <DialogDescription>

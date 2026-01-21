@@ -22,6 +22,15 @@ import {
   ChevronRight,
   Plus,
   MessageSquare,
+  Server,
+  Users,
+  Package,
+  Wand2,
+  Brain,
+  Building2,
+  UserCog,
+  Activity,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -81,14 +90,16 @@ export default function Dashboard() {
 
         <nav className="space-y-2">
           {[
-            { label: 'Dashboard', icon: TrendingUp, active: true },
-            { label: 'Generate', icon: Sparkles },
-            { label: 'Gallery', icon: Image },
-            { label: 'Credits', icon: CreditCard },
-            { label: 'Settings', icon: Settings },
+            { label: 'Dashboard', icon: TrendingUp, active: true, path: '/dashboard' },
+            { label: 'Chat (LLM)', icon: MessageSquare, path: '/chat' },
+            { label: 'Generate', icon: Sparkles, path: '/generate' },
+            { label: 'Gallery', icon: Image, path: '/gallery' },
+            { label: 'Credits', icon: CreditCard, path: '/credits' },
+            { label: 'Settings', icon: Settings, path: '/settings' },
           ].map((item) => (
             <button
               key={item.label}
+              onClick={() => setLocation(item.path)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
                 item.active
                   ? 'bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-700'
@@ -99,6 +110,58 @@ export default function Dashboard() {
               <span className="font-medium">{item.label}</span>
             </button>
           ))}
+
+          {user.role === 'admin' && (
+            <>
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2">
+                  Admin
+                </div>
+                {[
+                  { label: 'Tenants', icon: Building2, path: '/admin/tenants' },
+                  { label: 'Services', icon: Server, path: '/admin/services' },
+                  { label: 'Docker Status', icon: Activity, path: 'http://docker.smartspec.pro', external: true },
+                  { label: 'Users', icon: Users, path: '/admin/users' },
+                  { label: 'Packages', icon: Package, path: '/admin/packages' },
+                  { label: 'LLM Providers', icon: Brain, path: '/admin/llm-providers' },
+                  { label: 'Skills', icon: Wand2, path: '/admin/skills' },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={() => {
+                      if (item.external) {
+                        window.open(item.path, '_blank');
+                      } else {
+                        setLocation(item.path);
+                      }
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all text-gray-600 hover:bg-gray-100"
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                    {item.external && <ExternalLink className="w-4 h-4 ml-auto" />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {user.role === 'domain_admin' && (
+            <>
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2">
+                  Domain Admin
+                </div>
+                <button
+                  onClick={() => setLocation('/domain-admin')}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all text-gray-600 hover:bg-gray-100"
+                >
+                  <UserCog className="w-5 h-5" />
+                  <span className="font-medium">Manage Users</span>
+                </button>
+              </div>
+            </>
+          )}
         </nav>
 
         <div className="absolute bottom-6 left-6 right-6">
@@ -165,6 +228,7 @@ export default function Dashboard() {
             {quickActions.map((action, index) => (
               <button
                 key={index}
+                onClick={() => setLocation(action.href)}
                 className="group relative bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-6 shadow-lg shadow-purple-500/5 hover:shadow-xl transition-all duration-300 overflow-hidden"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
@@ -186,7 +250,7 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
-            <Button variant="ghost" size="sm" className="text-purple-600">
+            <Button variant="ghost" size="sm" onClick={() => setLocation('/activity')} className="text-purple-600">
               View All
               <ChevronRight className="w-4 h-4 ml-1" />
             </Button>

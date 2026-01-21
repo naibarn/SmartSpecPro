@@ -1,6 +1,8 @@
 /**
  * Authentication Context
  * Manages user authentication state and provides auth methods
+ *
+ * Uses tRPC session-cookie based authentication (app_session_id cookie)
  */
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -13,6 +15,7 @@ export interface User {
   company?: string;
   plan: 'free' | 'pro' | 'enterprise';
   credits?: number;
+  role?: string;
 }
 
 interface AuthContextType {
@@ -38,7 +41,7 @@ interface SignupData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API base URL - configure based on environment
+// API base URL for legacy Python backend (for OAuth flows)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -52,34 +55,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // Call tRPC auth.me endpoint with credentials to include session cookie
+      const response = await fetch('/trpc/auth.me', {
+        method: 'GET',
+        credentials: 'include', // Include cookies for session auth
       });
 
       if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
+        const data = await response.json();
+        // tRPC response structure: { result: { data: { json: user } } }
+        const userData = data.result?.data?.json;
+        
+        if (userData && userData.id) {
+          // Transform to match User interface
+          setUser({
+            id: String(userData.id),
+            email: userData.email || '',
+            name: userData.name || userData.email?.split('@')[0] || 'User',
+            avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
+            plan: userData.role === 'admin' ? 'enterprise' : 'free',
+            credits: userData.credits ?? 100,
+            role: userData.role,
+          });
+        } else {
+          // No valid session
+          setUser(null);
+        }
       } else {
-        // Token invalid, clear it
-        localStorage.removeItem('auth_token');
+        // Session invalid or expired
+        setUser(null);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
-      // For demo mode, check if we have a stored user
-      const storedUser = localStorage.getItem('demo_user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      } else {
-        localStorage.removeItem('auth_token');
-      }
+      console.error('[AuthContext] Auth check failed:', error);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -91,46 +99,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If userOrEmail is a User object (from OAuth callback)
       if (typeof userOrEmail === 'object') {
         setUser(userOrEmail);
-        localStorage.setItem('demo_user', JSON.stringify(userOrEmail));
-        localStorage.setItem('auth_token', 'demo_token_' + userOrEmail.id);
         return;
       }
 
-      // Otherwise, it's email/password login
+      // Otherwise, it's email/password login via tRPC
       const email = userOrEmail;
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch('/trpc/auth.login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          json: { email, password }
+        }),
+        credentials: 'include', // Important: include cookies
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Login failed');
-      }
-
       const data = await response.json();
-      localStorage.setItem('auth_token', data.access_token);
-      setUser(data.user);
-    } catch (error) {
-      // Demo mode: create mock user for testing
-      if (typeof userOrEmail === 'string') {
-        const mockUser: User = {
-          id: 'demo_' + Date.now(),
-          email: userOrEmail,
-          name: userOrEmail.split('@')[0],
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userOrEmail}`,
+      // tRPC response structure: { result: { data: { json: {...} } } }
+      const result = data.result?.data?.json;
+
+      if (result?.success && result.user) {
+        // Transform to match User interface
+        setUser({
+          id: String(result.user.id),
+          email: result.user.email || '',
+          name: result.user.name || result.user.email?.split('@')[0] || 'User',
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${result.user.email}`,
           plan: 'free',
           credits: 100,
-        };
-        setUser(mockUser);
-        localStorage.setItem('demo_user', JSON.stringify(mockUser));
-        localStorage.setItem('auth_token', 'demo_token_' + mockUser.id);
+        });
       } else {
-        throw error;
+        const errorMessage = result?.message || data.error?.json?.message || 'Login failed';
+        throw new Error(errorMessage);
       }
+    } catch (error) {
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -139,36 +143,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (signupData: SignupData) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      // For signup, use tRPC login (which auto-creates users)
+      // The login procedure creates users if they don't exist
+      const response = await fetch('/trpc/auth.login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(signupData),
+        body: JSON.stringify({
+          json: { email: signupData.email, password: signupData.password }
+        }),
+        credentials: 'include',
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Signup failed');
-      }
-
       const data = await response.json();
-      localStorage.setItem('auth_token', data.access_token);
-      setUser(data.user);
+      const result = data.result?.data?.json;
+
+      if (result?.success && result.user) {
+        setUser({
+          id: String(result.user.id),
+          email: result.user.email || signupData.email,
+          name: signupData.name || result.user.name || signupData.email.split('@')[0],
+          company: signupData.company,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${signupData.email}`,
+          plan: signupData.plan,
+          credits: signupData.plan === 'pro' ? 500 : 100,
+        });
+      } else {
+        throw new Error(result?.message || 'Signup failed');
+      }
     } catch (error) {
-      // Demo mode: create mock user
-      const mockUser: User = {
-        id: 'demo_' + Date.now(),
-        email: signupData.email,
-        name: signupData.name,
-        company: signupData.company,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${signupData.email}`,
-        plan: signupData.plan,
-        credits: signupData.plan === 'pro' ? 500 : 100,
-      };
-      setUser(mockUser);
-      localStorage.setItem('demo_user', JSON.stringify(mockUser));
-      localStorage.setItem('auth_token', 'demo_token_' + mockUser.id);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -176,20 +181,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      if (token && !token.startsWith('demo_')) {
-        await fetch(`${API_BASE_URL}/api/auth/logout`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
+      // Call tRPC logout endpoint to clear session cookie
+      await fetch('/trpc/auth.logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+        credentials: 'include',
+      });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('demo_user');
       setUser(null);
     }
   };
@@ -219,28 +222,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshUser = async () => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-
-    // Demo mode
-    if (token.startsWith('demo_')) {
-      const storedUser = localStorage.getItem('demo_user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-      return;
-    }
-
+    // Use tRPC auth.me to refresh user from session cookie
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await fetch('/trpc/auth.me', {
+        method: 'GET',
+        credentials: 'include',
       });
 
       if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
+        const data = await response.json();
+        const userData = data.result?.data?.json;
+        
+        if (userData && userData.id) {
+          setUser({
+            id: String(userData.id),
+            email: userData.email || '',
+            name: userData.name || userData.email?.split('@')[0] || 'User',
+            avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
+            plan: userData.role === 'admin' ? 'enterprise' : 'free',
+            credits: userData.credits ?? 100,
+            role: userData.role,
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to refresh user:', error);
@@ -251,7 +254,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      localStorage.setItem('demo_user', JSON.stringify(updatedUser));
     }
   };
 

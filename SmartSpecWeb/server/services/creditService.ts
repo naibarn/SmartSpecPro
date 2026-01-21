@@ -120,7 +120,7 @@ export async function deductCredits(params: DeductCreditsParams) {
       .set({ credits: newBalance })
       .where(eq(users.id, userId));
 
-    // Create transaction record
+    // Create transaction record - PostgreSQL returns the inserted rows
     const result = await tx.insert(creditTransactions).values({
       userId,
       amount: -amount, // Negative for deductions
@@ -128,8 +128,9 @@ export async function deductCredits(params: DeductCreditsParams) {
       description,
       metadata,
       balanceAfter: newBalance,
-    });
-    transactionId = result[0].insertId;
+    }).returning({ id: creditTransactions.id });
+
+    transactionId = result[0]?.id || 0;
   });
 
   return {
@@ -168,7 +169,7 @@ export async function addCredits(params: AddCreditsParams) {
       .set({ credits: newBalance })
       .where(eq(users.id, userId));
 
-    // Create transaction record
+    // Create transaction record - PostgreSQL returns the inserted rows
     const result = await tx.insert(creditTransactions).values({
       userId,
       amount, // Positive for additions
@@ -177,8 +178,9 @@ export async function addCredits(params: AddCreditsParams) {
       metadata,
       balanceAfter: newBalance,
       referenceId,
-    });
-    transactionId = result[0].insertId;
+    }).returning({ id: creditTransactions.id });
+
+    transactionId = result[0]?.id || 0;
   });
 
   return {

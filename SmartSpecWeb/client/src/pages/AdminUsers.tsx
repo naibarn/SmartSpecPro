@@ -25,6 +25,8 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownRight,
+  Globe,
+  Edit,
 } from "lucide-react";
 
 interface UserData {
@@ -32,10 +34,12 @@ interface UserData {
   openId: string;
   name: string | null;
   email: string | null;
-  role: "user" | "admin";
+  role: "user" | "admin" | "domain_admin";
   credits: number;
   plan: "free" | "starter" | "pro" | "enterprise";
   loginMethod: string | null;
+  registeredDomain: string | null;
+  isDisabled: boolean;
   createdAt: Date;
   lastSignedIn: Date;
 }
@@ -52,7 +56,7 @@ interface Transaction {
 }
 
 export default function AdminUsers() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshUser } = useAuth();
   const [, setLocation] = useLocation();
   
   // State
@@ -64,6 +68,10 @@ export default function AdminUsers() {
   const [creditType, setCreditType] = useState<"bonus" | "refund" | "adjustment">("bonus");
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [creditAction, setCreditAction] = useState<"add" | "deduct">("add");
+  const [showDomainModal, setShowDomainModal] = useState(false);
+  const [newDomain, setNewDomain] = useState("");
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [newRole, setNewRole] = useState<"user" | "admin" | "domain_admin">("user");
 
   const limit = 20;
 
@@ -93,6 +101,10 @@ export default function AdminUsers() {
       refetchUsers();
       refetchSelectedUser();
       refetchStats();
+      // Refresh current user's credits if they were modified
+      if (selectedUser?.id === user?.id) {
+        refreshUser();
+      }
     },
     onError: (err) => {
       toast.error(`Failed to add credits: ${err.message}`);
@@ -108,6 +120,10 @@ export default function AdminUsers() {
       refetchUsers();
       refetchSelectedUser();
       refetchStats();
+      // Refresh current user's credits if they were modified
+      if (selectedUser?.id === user?.id) {
+        refreshUser();
+      }
     },
     onError: (err) => {
       toast.error(`Failed to deduct credits: ${err.message}`);
@@ -174,6 +190,38 @@ export default function AdminUsers() {
     setShowCreditModal(true);
   };
 
+  const openDomainModal = (user: UserData) => {
+    setSelectedUser(user);
+    setNewDomain(user.registeredDomain || "");
+    setShowDomainModal(true);
+  };
+
+  const handleDomainUpdate = () => {
+    if (!selectedUser) return;
+
+    updateUserMutation.mutate({
+      id: selectedUser.id,
+      data: { registeredDomain: newDomain || null },
+    });
+    setShowDomainModal(false);
+  };
+
+  const openRoleModal = (user: UserData) => {
+    setSelectedUser(user);
+    setNewRole(user.role);
+    setShowRoleModal(true);
+  };
+
+  const handleRoleUpdate = () => {
+    if (!selectedUser) return;
+
+    updateUserMutation.mutate({
+      id: selectedUser.id,
+      data: { role: newRole },
+    });
+    setShowRoleModal(false);
+  };
+
   const totalPages = Math.ceil((usersData?.total || 0) / limit);
 
   return (
@@ -181,6 +229,15 @@ export default function AdminUsers() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation('/dashboard')}
+            className="text-gray-600 mb-4"
+          >
+            <ChevronLeft className="w-5 h-5 mr-1" />
+            Back to Dashboard
+          </Button>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
             <Shield className="w-8 h-8 text-purple-500" />
             Admin: User Management
@@ -277,11 +334,11 @@ export default function AdminUsers() {
                       onClick={() => setSelectedUser(u as UserData)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-1">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-medium">
                             {(u.name || u.email || "U")[0].toUpperCase()}
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium text-gray-900">
                               {u.name || "No name"}
                               {u.role === "admin" && (
@@ -289,8 +346,24 @@ export default function AdminUsers() {
                                   Admin
                                 </span>
                               )}
+                              {u.role === "domain_admin" && (
+                                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                  Domain Admin
+                                </span>
+                              )}
                             </p>
-                            <p className="text-sm text-gray-500">{u.email || u.openId}</p>
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                              <span>{u.email || u.openId}</span>
+                              {u.registeredDomain && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Globe className="w-3 h-3" />
+                                    {u.registeredDomain}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="text-right">
@@ -379,9 +452,20 @@ export default function AdminUsers() {
 
                   {/* User Info */}
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Role</span>
-                      <span className="font-medium capitalize">{selectedUserData.user.role}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <Shield className="w-3 h-3" />
+                        Role
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium capitalize">{selectedUserData.user.role}</span>
+                        <button
+                          onClick={() => openRoleModal(selectedUserData.user as UserData)}
+                          className="text-purple-600 hover:text-purple-700"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Plan</span>
@@ -390,6 +474,23 @@ export default function AdminUsers() {
                     <div className="flex justify-between">
                       <span className="text-gray-500">Login Method</span>
                       <span className="font-medium">{selectedUserData.user.loginMethod || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <Globe className="w-3 h-3" />
+                        Registered Domain
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {selectedUserData.user.registeredDomain || "N/A"}
+                        </span>
+                        <button
+                          onClick={() => openDomainModal(selectedUserData.user as UserData)}
+                          className="text-purple-600 hover:text-purple-700"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Joined</span>
@@ -531,6 +632,145 @@ export default function AdminUsers() {
                     : creditAction === "add"
                     ? "Add Credits"
                     : "Deduct Credits"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Domain Edit Modal */}
+        {showDomainModal && selectedUser && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                Edit Registered Domain
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Changing registered domain for{" "}
+                <strong>{selectedUser.name || selectedUser.email}</strong>
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Domain
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="example.com"
+                    value={newDomain}
+                    onChange={(e) => setNewDomain(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    The domain where this user registered. Only admins can change this.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDomainModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleDomainUpdate}
+                  disabled={updateUserMutation.isPending}
+                >
+                  {updateUserMutation.isPending ? "Updating..." : "Update Domain"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Role Edit Modal */}
+        {showRoleModal && selectedUser && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Edit User Role
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Changing role for{" "}
+                <strong>{selectedUser.name || selectedUser.email}</strong>
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Role
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="role"
+                        value="user"
+                        checked={newRole === "user"}
+                        onChange={(e) => setNewRole(e.target.value as any)}
+                        className="mr-3"
+                      />
+                      <div>
+                        <div className="font-medium">User</div>
+                        <div className="text-xs text-gray-500">Regular user with basic permissions</div>
+                      </div>
+                    </label>
+                    <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="role"
+                        value="domain_admin"
+                        checked={newRole === "domain_admin"}
+                        onChange={(e) => setNewRole(e.target.value as any)}
+                        className="mr-3"
+                      />
+                      <div>
+                        <div className="font-medium">Domain Admin</div>
+                        <div className="text-xs text-gray-500">
+                          Can manage users, edit theme, and generate content in their domain
+                        </div>
+                      </div>
+                    </label>
+                    <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="role"
+                        value="admin"
+                        checked={newRole === "admin"}
+                        onChange={(e) => setNewRole(e.target.value as any)}
+                        className="mr-3"
+                      />
+                      <div>
+                        <div className="font-medium">Admin</div>
+                        <div className="text-xs text-gray-500">
+                          Full system access - manage all users, services, and configuration
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowRoleModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleRoleUpdate}
+                  disabled={updateUserMutation.isPending}
+                >
+                  {updateUserMutation.isPending ? "Updating..." : "Update Role"}
                 </Button>
               </div>
             </div>

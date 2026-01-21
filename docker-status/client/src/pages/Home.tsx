@@ -8,7 +8,9 @@
  * - Cyan primary color on deep navy background
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -378,9 +380,18 @@ function LogsDialog({
 }
 
 export default function Home() {
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedContainer, setSelectedContainer] = useState<{ id: string; name: string } | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ action: "start" | "stop" | "restart"; containerId: string; containerName: string } | null>(null);
   const [activeTab, setActiveTab] = useState("containers");
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      setLocation('/login');
+    }
+  }, [isAuthLoading, isAuthenticated, setLocation]);
 
   // Fetch containers
   const { data: containersData, isLoading: isLoadingContainers, refetch: refetchContainers } = trpc.docker.list.useQuery(

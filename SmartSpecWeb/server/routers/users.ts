@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
+import { router, adminProcedure, protectedProcedure, domainAdminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { users, creditTransactions } from "../../drizzle/schema";
 import { eq, desc, like, or, sql, and } from "drizzle-orm";
@@ -13,8 +13,9 @@ import { addCredits, deductCredits, type TransactionType } from "../services/cre
 // Zod schemas
 const userFiltersSchema = z.object({
   search: z.string().optional(),
-  role: z.enum(["user", "admin"]).optional(),
+  role: z.enum(["user", "admin", "domain_admin"]).optional(),
   plan: z.enum(["free", "starter", "pro", "enterprise"]).optional(),
+  registeredDomain: z.string().optional(), // Filter by domain for domain admins
   limit: z.number().min(1).max(100).default(50),
   offset: z.number().min(0).default(0),
 });
@@ -22,8 +23,10 @@ const userFiltersSchema = z.object({
 const updateUserSchema = z.object({
   name: z.string().optional(),
   email: z.string().email().optional(),
-  role: z.enum(["user", "admin"]).optional(),
+  role: z.enum(["user", "admin", "domain_admin"]).optional(),
   plan: z.enum(["free", "starter", "pro", "enterprise"]).optional(),
+  registeredDomain: z.string().optional(),
+  isDisabled: z.boolean().optional(),
 });
 
 const creditAdjustmentSchema = z.object({
@@ -64,6 +67,10 @@ export const usersRouter = router({
         conditions.push(eq(users.plan, input.plan));
       }
 
+      if (input.registeredDomain) {
+        conditions.push(eq(users.registeredDomain, input.registeredDomain));
+      }
+
       // Get total count
       const [countResult] = await db
         .select({ count: sql<number>`COUNT(*)` })
@@ -92,6 +99,8 @@ export const usersRouter = router({
           credits: u.credits,
           plan: u.plan,
           loginMethod: u.loginMethod,
+          registeredDomain: u.registeredDomain,
+          isDisabled: u.isDisabled,
           createdAt: u.createdAt,
           lastSignedIn: u.lastSignedIn,
         })),
@@ -138,6 +147,8 @@ export const usersRouter = router({
           credits: user.credits,
           plan: user.plan,
           loginMethod: user.loginMethod,
+          registeredDomain: user.registeredDomain,
+          isDisabled: user.isDisabled,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
           lastSignedIn: user.lastSignedIn,
@@ -175,6 +186,8 @@ export const usersRouter = router({
       if (input.data.email !== undefined) updateData.email = input.data.email;
       if (input.data.role !== undefined) updateData.role = input.data.role;
       if (input.data.plan !== undefined) updateData.plan = input.data.plan;
+      if (input.data.registeredDomain !== undefined) updateData.registeredDomain = input.data.registeredDomain;
+      if (input.data.isDisabled !== undefined) updateData.isDisabled = input.data.isDisabled;
 
       if (Object.keys(updateData).length === 0) {
         throw new Error("No fields to update");
@@ -341,21 +354,21 @@ export const usersRouter = router({
       starterUsers: sql<number>`SUM(CASE WHEN plan = 'starter' THEN 1 ELSE 0 END)`,
       proUsers: sql<number>`SUM(CASE WHEN plan = 'pro' THEN 1 ELSE 0 END)`,
       enterpriseUsers: sql<number>`SUM(CASE WHEN plan = 'enterprise' THEN 1 ELSE 0 END)`,
-      activeToday: sql<number>`SUM(CASE WHEN DATE(lastSignedIn) = CURDATE() THEN 1 ELSE 0 END)`,
-      activeThisWeek: sql<number>`SUM(CASE WHEN lastSignedIn >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END)`,
-      activeThisMonth: sql<number>`SUM(CASE WHEN lastSignedIn >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END)`,
+      activeToday: sql<number>`SUM(CASE WHEN DATE("lastSignedIn") = CURRENT_DATE THEN 1 ELSE 0 END)`,
+      activeThisWeek: sql<number>`SUM(CASE WHEN "lastSignedIn" >= CURRENT_TIMESTAMP - INTERVAL '7 days' THEN 1 ELSE 0 END)`,
+      activeThisMonth: sql<number>`SUM(CASE WHEN "lastSignedIn" >= CURRENT_TIMESTAMP - INTERVAL '30 days' THEN 1 ELSE 0 END)`,
     }).from(users);
 
     // Get recent signups
     const recentSignups = await db
       .select({
-        date: sql<string>`DATE(createdAt)`,
+        date: sql<string>`DATE("createdAt")`,
         count: sql<number>`COUNT(*)`,
       })
       .from(users)
-      .where(sql`createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)`)
-      .groupBy(sql`DATE(createdAt)`)
-      .orderBy(desc(sql`DATE(createdAt)`));
+      .where(sql`"createdAt" >= CURRENT_TIMESTAMP - INTERVAL '30 days'`)
+      .groupBy(sql`DATE("createdAt")`)
+      .orderBy(desc(sql`DATE("createdAt")`));
 
     return {
       totalUsers: Number(stats.totalUsers) || 0,
@@ -432,8 +445,81 @@ export const usersRouter = router({
       role: user.role,
       credits: user.credits,
       plan: user.plan,
+      registeredDomain: user.registeredDomain,
       createdAt: user.createdAt,
       lastSignedIn: user.lastSignedIn,
+    };
+  }),
+
+  /**
+   * Domain Admin: Toggle user enabled/disabled status
+   * Domain admins can only toggle users in their domain
+   */
+  toggleUserStatus: domainAdminProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get target user
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, input.userId))
+        .limit(1);
+
+      if (!targetUser) {
+        throw new Error("User not found");
+      }
+
+      // If domain admin (not full admin), check they can only manage users in their domain
+      if (ctx.user.role === 'domain_admin') {
+        if (targetUser.registeredDomain !== ctx.user.registeredDomain) {
+          throw new Error("You can only manage users in your domain");
+        }
+        // Domain admins cannot disable other domain admins or full admins
+        if (targetUser.role === 'domain_admin' || targetUser.role === 'admin') {
+          throw new Error("You cannot disable other admins");
+        }
+      }
+
+      // Toggle status
+      await db
+        .update(users)
+        .set({ isDisabled: !targetUser.isDisabled })
+        .where(eq(users.id, input.userId));
+
+      return {
+        success: true,
+        newStatus: !targetUser.isDisabled
+      };
+    }),
+
+  /**
+   * Domain Admin: Get statistics for their domain
+   */
+  domainStats: domainAdminProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    // If domain admin, filter by their domain
+    const domainFilter = ctx.user.role === 'domain_admin'
+      ? eq(users.registeredDomain, ctx.user.registeredDomain || '')
+      : undefined;
+
+    const [stats] = await db.select({
+      totalUsers: sql<number>`COUNT(*)`,
+      activeUsers: sql<number>`SUM(CASE WHEN "isDisabled" = false THEN 1 ELSE 0 END)`,
+      disabledUsers: sql<number>`SUM(CASE WHEN "isDisabled" = true THEN 1 ELSE 0 END)`,
+      totalCredits: sql<number>`SUM(credits)`,
+    }).from(users).where(domainFilter);
+
+    return {
+      totalUsers: Number(stats.totalUsers) || 0,
+      activeUsers: Number(stats.activeUsers) || 0,
+      disabledUsers: Number(stats.disabledUsers) || 0,
+      totalCredits: Number(stats.totalCredits) || 0,
+      domain: ctx.user.role === 'domain_admin' ? ctx.user.registeredDomain : null,
     };
   }),
 });

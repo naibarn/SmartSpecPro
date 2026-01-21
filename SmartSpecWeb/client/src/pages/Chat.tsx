@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Paperclip, Send, X } from "lucide-react";
+import { Loader2, Paperclip, Send, X, ChevronLeft } from "lucide-react";
 import { Streamdown } from "streamdown";
 
 type ChatMessage =
@@ -238,7 +238,18 @@ export default function Chat() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <div className="text-xl font-semibold">Chat</div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation('/dashboard')}
+            className="text-gray-600"
+          >
+            <ChevronLeft className="w-5 h-5 mr-1" />
+            Back
+          </Button>
+          <div className="text-xl font-semibold">Chat</div>
+        </div>
         <div className="flex items-center gap-2">
           {isStreaming ? (
             <Badge variant="secondary" className="gap-2">

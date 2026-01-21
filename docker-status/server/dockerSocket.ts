@@ -11,7 +11,7 @@ import http from "http";
 import https from "https";
 
 // Docker API version
-const DOCKER_API_VERSION = "v1.43";
+const DOCKER_API_VERSION = "v1.44";
 
 // Connection configuration
 export interface DockerConfig {

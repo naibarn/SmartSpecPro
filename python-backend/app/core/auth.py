@@ -21,6 +21,9 @@ from app.models.token_blacklist import TokenBlacklist
 
 logger = structlog.get_logger(__name__)
 
+# Re-export ACCESS_TOKEN_EXPIRE_MINUTES from settings for backwards compatibility
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -203,3 +206,37 @@ async def get_current_admin_user(
             detail="Admin access required"
         )
     return current_user
+
+
+async def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    """
+    Get current user if authenticated, return None otherwise.
+    
+    This is useful for endpoints that work differently for authenticated
+    vs anonymous users.
+    
+    Args:
+        credentials: Optional HTTP Bearer credentials
+        db: Database session
+    
+    Returns:
+        User object if authenticated, None otherwise
+    """
+    if credentials is None:
+        return None
+    try:
+        return await get_current_user(credentials, db)
+    except HTTPException:
+        return None
+
+
+# Alias for superuser (uses admin check)
+# Use as: current_user: User = Depends(get_current_active_superuser)
+get_current_active_superuser = get_current_admin_user
+
+# Alias for require_admin (backwards compatibility)
+# Use as: current_user: User = Depends(require_admin)
+require_admin = get_current_admin_user

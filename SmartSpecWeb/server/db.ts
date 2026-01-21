@@ -1,15 +1,18 @@
 import { eq, desc, asc, and, sql, like, or, inArray, SQL } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _client: ReturnType<typeof postgres> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _client = postgres(process.env.DATABASE_URL);
+      _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -91,6 +94,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.role = 'admin';
     }
 
+    // Set registeredDomain only on first insert (new user)
+    if (user.registeredDomain !== undefined) {
+      values.registeredDomain = user.registeredDomain;
+      // Do NOT include in updateSet - registeredDomain should only be set once
+    }
+
     if (!values.lastSignedIn) {
       values.lastSignedIn = new Date();
     }
@@ -99,7 +108,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    // PostgreSQL upsert syntax
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -120,12 +131,44 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user by email: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Update a user's role by their ID
+ * Used for promoting users to admin in local development
+ */
+export async function updateUserRole(userId: number, role: 'user' | 'admin'): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot update user role: database not available");
+    return;
+  }
+
+  try {
+    await db.update(users).set({ role }).where(eq(users.id, userId));
+  } catch (error) {
+    console.error("[Database] Failed to update user role:", error);
+    throw error;
+  }
+}
+
 // ==================== Gallery Queries ====================
 
 export type GalleryType = 'image' | 'video' | 'website';
 export type AspectRatio = '1:1' | '9:16' | '16:9';
 
 export interface GalleryFilters {
+  tenantId?: number;
   type?: GalleryType;
   isPublished?: boolean;
   isFeatured?: boolean;
@@ -145,19 +188,23 @@ export async function getGalleryItems(filters: GalleryFilters = {}): Promise<Gal
   }
 
   const conditions = [];
-  
+
+  if (filters.tenantId !== undefined) {
+    conditions.push(eq(galleryItems.tenantId, filters.tenantId));
+  }
+
   if (filters.type) {
     conditions.push(eq(galleryItems.type, filters.type));
   }
-  
+
   if (filters.isPublished !== undefined) {
     conditions.push(eq(galleryItems.isPublished, filters.isPublished));
   }
-  
+
   if (filters.isFeatured !== undefined) {
     conditions.push(eq(galleryItems.isFeatured, filters.isFeatured));
   }
-  
+
   if (filters.search) {
     conditions.push(
       or(
@@ -209,8 +256,8 @@ export async function createGalleryItem(item: InsertGalleryItem): Promise<number
     throw new Error("Database not available");
   }
 
-  const result = await db.insert(galleryItems).values(item);
-  return result[0].insertId;
+  const result = await db.insert(galleryItems).values(item).returning({ id: galleryItems.id });
+  return result[0].id;
 }
 
 /**
@@ -317,6 +364,7 @@ export async function bulkUpdateGalleryFeatured(ids: number[], isFeatured: boole
  * Get gallery items count (for pagination)
  */
 export async function getGalleryItemsCount(filters: {
+  tenantId?: number;
   type?: GalleryType;
   isPublished?: boolean;
   isFeatured?: boolean;
@@ -328,19 +376,23 @@ export async function getGalleryItemsCount(filters: {
   }
 
   const conditions: SQL<unknown>[] = [];
-  
+
+  if (filters.tenantId !== undefined) {
+    conditions.push(eq(galleryItems.tenantId, filters.tenantId));
+  }
+
   if (filters.type) {
     conditions.push(eq(galleryItems.type, filters.type));
   }
-  
+
   if (filters.isPublished !== undefined) {
     conditions.push(eq(galleryItems.isPublished, filters.isPublished));
   }
-  
+
   if (filters.isFeatured !== undefined) {
     conditions.push(eq(galleryItems.isFeatured, filters.isFeatured));
   }
-  
+
   if (filters.search) {
     conditions.push(
       or(

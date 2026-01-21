@@ -7,7 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from app.auth import get_current_admin_user
+from app.core.auth import get_current_admin_user
 from app.services.kilo_skill_manager_v2 import (
     KiloSkillManager,
     Skill,

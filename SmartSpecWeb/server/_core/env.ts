@@ -1,11 +1,15 @@
 export const ENV = {
-  appId: process.env.VITE_APP_ID ?? "",
+  // Use VITE_APP_ID if available, fall back to sensible default for local development
+  appId: process.env.VITE_APP_ID ?? "smartspec-local-dev",
   cookieSecret: process.env.JWT_SECRET ?? "",
   jwtSecret: process.env.JWT_SECRET ?? "",
   databaseUrl: process.env.DATABASE_URL ?? "",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
+  
+  // Admin user email for local development (defaults to admin@localhost.local)
+  adminEmail: process.env.ADMIN_EMAIL ?? "admin@localhost.local",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
 

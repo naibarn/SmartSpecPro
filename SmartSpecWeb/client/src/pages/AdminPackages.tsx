@@ -9,6 +9,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Package,
@@ -28,6 +29,7 @@ import {
   X,
   Check,
   AlertTriangle,
+  ChevronLeft,
 } from "lucide-react";
 
 interface PackageData {
@@ -243,6 +245,15 @@ export default function AdminPackages() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation('/dashboard')}
+          className="text-gray-600 mb-4"
+        >
+          <ChevronLeft className="w-5 h-5 mr-1" />
+          Back to Dashboard
+        </Button>
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
@@ -375,9 +386,10 @@ export default function AdminPackages() {
                               )}
                             </p>
                             {pkg.description && (
-                              <p className="text-sm text-gray-500 truncate max-w-xs">
-                                {pkg.description}
-                              </p>
+                              <div
+                                className="text-sm text-gray-500 max-w-xs line-clamp-2"
+                                dangerouslySetInnerHTML={{ __html: pkg.description }}
+                              />
                             )}
                           </div>
                         </div>
@@ -510,13 +522,18 @@ export default function AdminPackages() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
+                    Description (HTML supported)
                   </label>
-                  <Input
-                    placeholder="Brief description of the package"
+                  <Textarea
+                    placeholder="Enter package description. You can use HTML tags like <strong>, <ul>, <li>, <p>, etc."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="min-h-[200px] font-mono text-sm"
+                    rows={10}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tip: Use HTML tags for formatting. Example: &lt;ul&gt;&lt;li&gt;Feature 1&lt;/li&gt;&lt;/ul&gt;
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

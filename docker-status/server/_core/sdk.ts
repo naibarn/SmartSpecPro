@@ -270,6 +270,11 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
+    // If not found by openId, try by email (for email/password login)
+    if (!user && sessionUserId.includes("@")) {
+      user = await db.getUserByEmail(sessionUserId);
+    }
+
     // If user not in DB, sync from OAuth server automatically
     if (!user) {
       try {
@@ -292,10 +297,13 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    await db.upsertUser({
-      openId: user.openId,
-      lastSignedIn: signedInAt,
-    });
+    // Update last signed in
+    if (user.openId) {
+      await db.upsertUser({
+        openId: user.openId,
+        lastSignedIn: signedInAt,
+      });
+    }
 
     return user;
   }

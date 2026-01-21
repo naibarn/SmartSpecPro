@@ -1,4 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
@@ -67,7 +67,27 @@ export const appRouter = router({
   system: systemRouter,
   
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      // If no user is authenticated, return null (expected for public procedure)
+      if (!opts.ctx.user) {
+        console.log("[Auth] auth.me called without authenticated user");
+        return null;
+      }
+      
+      // Return user data with all required fields
+      const user = opts.ctx.user;
+      console.log("[Auth] auth.me returning user:", { id: user.id, email: user.email });
+      
+      return {
+        id: user.id,
+        email: user.email || '',
+        name: user.name || user.email?.split('@')[0] || 'User',
+        avatar: user.email ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}` : undefined,
+        plan: user.plan || 'free',
+        credits: user.credits || 0,
+        role: user.role
+      };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -75,6 +95,61 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    login: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // For demo: Look up user by email and create session
+        // In production, add proper password verification
+        const { getUserByEmail, upsertUser, updateUserRole } = await import("./db");
+        const { sdk } = await import("./_core/sdk");
+        const { ENV } = await import("./_core/env");
+        
+        let user = await getUserByEmail(input.email);
+        
+        // Check if this email should be granted admin role
+        const isAdminEmail = input.email.toLowerCase() === ENV.adminEmail.toLowerCase();
+        
+        // If user doesn't exist, create a demo account
+        if (!user) {
+          const openId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+          await upsertUser({
+            openId,
+            email: input.email,
+            name: input.email.split('@')[0],
+            loginMethod: 'email',
+            lastSignedIn: new Date(),
+          });
+          user = await getUserByEmail(input.email);
+          
+          // Grant admin role if this is the admin email
+          if (user && isAdminEmail) {
+            await updateUserRole(user.id, 'admin');
+            user = await getUserByEmail(input.email);
+          }
+        } else if (isAdminEmail && user.role !== 'admin') {
+          // Ensure admin email always has admin role
+          await updateUserRole(user.id, 'admin');
+          user = await getUserByEmail(input.email);
+        }
+        
+        if (!user) {
+          return { success: false, message: 'Failed to create user' };
+        }
+        
+        // Create session token
+        const token = await sdk.createSessionToken(user.openId, {
+          name: user.name || user.email || '',
+        });
+        
+        // Set cookie with maxAge (critical for cookie persistence across page loads)
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        
+        return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+      }),
   }),
 
   // Credit management

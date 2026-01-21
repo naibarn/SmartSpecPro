@@ -28,7 +28,14 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminPackages from "./pages/AdminPackages";
 import AdminLLMProviders from "./pages/AdminLLMProviders";
 import AdminSkills from "./pages/AdminSkills";
+import AdminTenants from "./pages/AdminTenants";
+import AdminServices from "./pages/AdminServices";
+import DomainAdmin from "./pages/DomainAdmin";
+import DomainThemeEditor from "./pages/DomainThemeEditor";
 import Chat from "./pages/Chat";
+import Generate from "./pages/Generate";
+import Credits from "./pages/Credits";
+import Settings from "./pages/Settings";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -45,11 +52,18 @@ function Router() {
       <Route path="/admin/packages" component={AdminPackages} />
       <Route path="/admin/llm-providers" component={AdminLLMProviders} />
       <Route path="/admin/skills" component={AdminSkills} />
+      <Route path="/admin/services" component={AdminServices} />
+      <Route path="/admin/tenants" component={AdminTenants} />
+      <Route path="/domain-admin" component={DomainAdmin} />
+      <Route path="/domain-admin/theme" component={DomainThemeEditor} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/chat" component={Chat} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/generate/:type?" component={Generate} />
+      <Route path="/credits" component={Credits} />
+      <Route path="/settings" component={Settings} />
       <Route path="/profile" component={Profile} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />

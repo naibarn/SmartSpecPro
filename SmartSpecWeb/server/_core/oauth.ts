@@ -33,12 +33,17 @@ export function registerOAuthRoutes(app: Express) {
       const existingUser = await db.getUserByOpenId(userInfo.openId);
       const isNewUser = !existingUser;
 
+      // Get hostname for registeredDomain
+      const hostname = req.hostname || req.get("host")?.split(":")[0] || "localhost";
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
         email: userInfo.email ?? null,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
+        // Only set registeredDomain for new users (will be ignored on update)
+        registeredDomain: isNewUser ? hostname : undefined,
       });
 
       // Give signup bonus to new users

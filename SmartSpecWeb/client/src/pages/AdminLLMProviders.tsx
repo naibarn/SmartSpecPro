@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -60,6 +62,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  ChevronLeft,
 } from "lucide-react";
 
 interface ModelVersion {
@@ -95,6 +98,8 @@ interface ProviderTemplate {
 }
 
 export default function AdminLLMProviders() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -107,7 +112,7 @@ export default function AdminLLMProviders() {
   const [browseSearch, setBrowseSearch] = useState("");
   const [browseProvider, setBrowseProvider] = useState("");
   const [selectedModelsToImport, setSelectedModelsToImport] = useState<string[]>([]);
-  
+
   // Model editing state
   const [editingModels, setEditingModels] = useState<ModelVersion[]>([]);
   const [newModel, setNewModel] = useState<ModelVersion>({ id: "", name: "" });
@@ -123,87 +128,84 @@ export default function AdminLLMProviders() {
     isEnabled: false,
   });
 
-  // Queries
-  const { data: providers = [], isLoading } = useQuery({
-    queryKey: ["llmProviders", "adminList"],
-    queryFn: () => trpc.llmProviders.adminList.query(),
+  // Check auth
+  useEffect(() => {
+    if (!authLoading && (!user || user.role !== "admin")) {
+      setLocation("/");
+    }
+  }, [user, authLoading, setLocation]);
+
+  // Queries using tRPC hooks
+  const { data: providers = [], isLoading } = trpc.llmProviders.adminList.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
   });
 
-  const { data: templates = [] } = useQuery({
-    queryKey: ["llmProviders", "templates"],
-    queryFn: () => trpc.llmProviders.templates.query(),
+  const { data: templates = [] } = trpc.llmProviders.templates.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ["llmProviders", "stats"],
-    queryFn: () => trpc.llmProviders.stats.query(),
+  const { data: stats } = trpc.llmProviders.stats.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
   });
 
-  // Mutations
-  const createMutation = useMutation({
-    mutationFn: (data: any) => trpc.llmProviders.create.mutate(data),
+  // Mutations using tRPC hooks
+  const createMutation = trpc.llmProviders.create.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+      queryClient.invalidateQueries({ queryKey: [["llmProviders"]] });
       setIsCreateDialogOpen(false);
       setSelectedTemplate(null);
       resetForm();
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (data: any) => trpc.llmProviders.update.mutate(data),
+  const updateMutation = trpc.llmProviders.update.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+      queryClient.invalidateQueries({ queryKey: [["llmProviders"]] });
       setEditingProvider(null);
       resetForm();
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => trpc.llmProviders.delete.mutate({ id }),
+  const deleteMutation = trpc.llmProviders.delete.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+      queryClient.invalidateQueries({ queryKey: [["llmProviders"]] });
       setDeleteConfirm(null);
     },
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: (id: number) => trpc.llmProviders.toggleEnabled.mutate({ id }),
+  const toggleMutation = trpc.llmProviders.toggleEnabled.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+      queryClient.invalidateQueries({ queryKey: [["llmProviders"]] });
     },
   });
 
-  const testMutation = useMutation({
-    mutationFn: (id: number) => trpc.llmProviders.testConnection.mutate({ id }),
-    onSuccess: (result, id) => {
+  const testMutation = trpc.llmProviders.testConnection.useMutation({
+    onSuccess: (result: any, id: number) => {
       setTestResult({ id, success: result.success, message: result.message });
       setTimeout(() => setTestResult(null), 5000);
     },
-    onError: (error, id) => {
+    onError: (error: any, id: number) => {
       setTestResult({ id, success: false, message: error.message });
       setTimeout(() => setTestResult(null), 5000);
     },
   });
 
-  // Sync mutations
-  const syncProviderMutation = useMutation({
-    mutationFn: (id: number) => trpc.llmProviders.syncProvider.mutate({ id }),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+  // Sync mutations using tRPC hooks
+  const syncProviderMutation = trpc.llmProviders.syncProvider.useMutation({
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: [["llmProviders"]] });
       setSyncResult(result);
       setTimeout(() => setSyncResult(null), 10000);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       setSyncResult({ success: false, error: error.message });
       setTimeout(() => setSyncResult(null), 10000);
     },
   });
 
-  const syncAllMutation = useMutation({
-    mutationFn: () => trpc.llmProviders.syncAll.mutate(),
-    onSuccess: (results) => {
-      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+  const syncAllMutation = trpc.llmProviders.syncAll.useMutation({
+    onSuccess: (results: any[]) => {
+      queryClient.invalidateQueries({ queryKey: [["llmProviders"]] });
       const totalAdded = results.reduce((sum: number, r: any) => sum + r.modelsAdded, 0);
       const totalRemoved = results.reduce((sum: number, r: any) => sum + r.modelsRemoved, 0);
       setSyncResult({
@@ -213,17 +215,15 @@ export default function AdminLLMProviders() {
       });
       setTimeout(() => setSyncResult(null), 10000);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       setSyncResult({ success: false, error: error.message });
       setTimeout(() => setSyncResult(null), 10000);
     },
   });
 
-  const importModelsMutation = useMutation({
-    mutationFn: (data: { providerId: number; modelIds: string[] }) =>
-      trpc.llmProviders.importModels.mutate(data),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["llmProviders"] });
+  const importModelsMutation = trpc.llmProviders.importModels.useMutation({
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: [["llmProviders"]] });
       setSelectedModelsToImport([]);
       setIsBrowseDialogOpen(false);
     },
@@ -362,6 +362,14 @@ export default function AdminLLMProviders() {
   // Calculate total models
   const totalModels = providers.reduce((sum, p) => sum + (p.availableModels?.length || 0), 0);
 
+  if (authLoading || !user || user.role !== "admin") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -372,6 +380,15 @@ export default function AdminLLMProviders() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setLocation('/dashboard')}
+        className="text-gray-600 mb-4"
+      >
+        <ChevronLeft className="w-5 h-5 mr-1" />
+        Back to Dashboard
+      </Button>
       <div className="mb-8">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Settings className="h-8 w-8" />
