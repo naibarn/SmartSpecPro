@@ -24,25 +24,42 @@ function isSecureRequest(req: Request) {
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  // const hostname = req.hostname;
-  // const shouldSetDomain =
-  //   hostname &&
-  //   !LOCAL_HOSTS.has(hostname) &&
-  //   !isIpAddress(hostname) &&
-  //   hostname !== "127.0.0.1" &&
-  //   hostname !== "::1";
+  const hostname = req.hostname;
 
-  // const domain =
-  //   shouldSetDomain && !hostname.startsWith(".")
-  //     ? `.${hostname}`
-  //     : shouldSetDomain
-  //       ? hostname
-  //       : undefined;
+  // Extract root domain for cookie sharing across subdomains
+  // e.g., docker.smartspec.pro -> .smartspec.pro
+  let domain: string | undefined;
+
+  const shouldSetDomain =
+    hostname &&
+    !LOCAL_HOSTS.has(hostname) &&
+    !isIpAddress(hostname) &&
+    hostname !== "127.0.0.1" &&
+    hostname !== "::1";
+
+  if (shouldSetDomain) {
+    // For production domains like smartspec.pro or docker.smartspec.pro
+    // Set domain to .smartspec.pro to share cookies across subdomains
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      // Get the last two parts (e.g., smartspec.pro from docker.smartspec.pro)
+      const rootDomain = parts.slice(-2).join('.');
+      domain = `.${rootDomain}`;
+    }
+  } else {
+    // For localhost development, don't set domain attribute
+    // Cookies will be scoped to the exact hostname (localhost)
+    // For subdomain sharing in dev, use .local domains with hosts file
+    domain = undefined;
+  }
+
+  const isSecure = isSecureRequest(req);
 
   return {
+    domain,
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    sameSite: isSecure ? "none" : "lax",
+    secure: isSecure,
   };
 }

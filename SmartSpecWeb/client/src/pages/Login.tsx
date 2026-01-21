@@ -28,16 +28,63 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Get returnUrl from query params
+  const getReturnUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    const returnUrl = params.get('returnUrl');
+    // Only allow returnUrl from same domain or subdomains
+    if (returnUrl) {
+      try {
+        const url = new URL(returnUrl);
+        const currentHost = window.location.hostname;
+        if (url.hostname === currentHost || url.hostname.endsWith('.smartspec.pro') || url.hostname.endsWith('.smartspec.local')) {
+          return returnUrl;
+        }
+      } catch {
+        // Invalid URL, ignore
+      }
+    }
+    return '/dashboard';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      // Call login API
+      const response = await fetch('/trpc/auth.login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          json: { email, password }
+        }),
+        credentials: 'include',
+      });
 
-    // For demo purposes
-    toast.success('Login successful! Redirecting...');
-    setIsLoading(false);
+      const data = await response.json();
+
+      // Extract the response from tRPC structure: { result: { data: { json: {...} } } }
+      const result = data.result?.data?.json;
+
+      if (result?.success) {
+        toast.success('Login successful! Redirecting...');
+        // Redirect to returnUrl or dashboard
+        const redirectUrl = getReturnUrl();
+        window.location.href = redirectUrl;
+      } else {
+        // Error message can be in either result.message or data.error.json.message
+        const errorMessage = result?.message || data.error?.json?.message || 'Invalid email or password';
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {

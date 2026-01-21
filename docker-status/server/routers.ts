@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, router, adminProcedure } from "./_core/trpc";
 import {
   listContainers,
   getContainerLogs,
@@ -175,7 +175,9 @@ function updateStatsHistory(containerId: string, containerName: string, stats: S
 export const appRouter = router({
   system: systemRouter,
   auth: router({
+    // Check current user session (shared with SmartSpec Web)
     me: publicProcedure.query(opts => opts.ctx.user),
+    // Logout - clears session cookie
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -185,10 +187,10 @@ export const appRouter = router({
     }),
   }),
 
-  // Docker management routes
+  // Docker management routes (Admin only)
   docker: router({
     // Get Docker system info
-    info: publicProcedure.query(async () => {
+    info: adminProcedure.query(async () => {
       try {
         return await getDockerInfo();
       } catch (error) {
@@ -205,7 +207,7 @@ export const appRouter = router({
     }),
 
     // List all containers
-    list: publicProcedure.query(async () => {
+    list: adminProcedure.query(async () => {
       try {
         const containers = await listContainers();
         return { containers, error: null };
@@ -215,11 +217,11 @@ export const appRouter = router({
     }),
 
     // Get container stats
-    stats: publicProcedure
+    stats: adminProcedure
       .input(z.object({ containerId: z.string(), containerName: z.string().optional() }))
       .query(async ({ input }) => {
         const stats = await getContainerStats(input.containerId);
-        
+
         // Update history
         updateStatsHistory(input.containerId, input.containerName || input.containerId, {
           timestamp: Date.now(),
@@ -234,7 +236,7 @@ export const appRouter = router({
       }),
 
     // Get container stats history for graphs
-    statsHistory: publicProcedure
+    statsHistory: adminProcedure
       .input(z.object({ containerId: z.string() }))
       .query(({ input }) => {
         const history = statsHistory.get(input.containerId) || [];
@@ -242,8 +244,8 @@ export const appRouter = router({
       }),
 
     // Get container logs
-    logs: publicProcedure
-      .input(z.object({ 
+    logs: adminProcedure
+      .input(z.object({
         containerId: z.string(),
         tail: z.number().optional().default(100),
       }))
@@ -252,11 +254,11 @@ export const appRouter = router({
       }),
 
     // Start container
-    start: publicProcedure
+    start: adminProcedure
       .input(z.object({ containerId: z.string(), containerName: z.string().optional() }))
       .mutation(async ({ input }) => {
         await startContainer(input.containerId);
-        
+
         if (notificationSettings.enabled && notificationSettings.notifyOnStart) {
           await addNotification(
             "success",
@@ -272,7 +274,7 @@ export const appRouter = router({
       }),
 
     // Stop container
-    stop: publicProcedure
+    stop: adminProcedure
       .input(z.object({ containerId: z.string(), containerName: z.string().optional() }))
       .mutation(async ({ input }) => {
         await stopContainer(input.containerId);
@@ -292,7 +294,7 @@ export const appRouter = router({
       }),
 
     // Restart container
-    restart: publicProcedure
+    restart: adminProcedure
       .input(z.object({ containerId: z.string(), containerName: z.string().optional() }))
       .mutation(async ({ input }) => {
         await restartContainer(input.containerId);
@@ -312,10 +314,10 @@ export const appRouter = router({
       }),
   }),
 
-  // Docker Images routes
+  // Docker Images routes (Admin only)
   images: router({
     // List all images
-    list: publicProcedure.query(async () => {
+    list: adminProcedure.query(async () => {
       try {
         const images = await listImages();
         return { images, error: null };
@@ -325,7 +327,7 @@ export const appRouter = router({
     }),
 
     // Delete an image
-    delete: publicProcedure
+    delete: adminProcedure
       .input(z.object({ imageId: z.string(), force: z.boolean().optional() }))
       .mutation(async ({ input }) => {
         await deleteImage(input.imageId, input.force);
@@ -333,10 +335,10 @@ export const appRouter = router({
       }),
 
     // Prune unused images
-    prune: publicProcedure.mutation(async () => {
+    prune: adminProcedure.mutation(async () => {
       const result = await pruneImages();
-      return { 
-        success: true, 
+      return {
+        success: true,
         deleted: result.deleted,
         spaceReclaimed: result.spaceReclaimed,
         spaceReclaimedFormatted: formatBytes(result.spaceReclaimed),
@@ -344,10 +346,10 @@ export const appRouter = router({
     }),
   }),
 
-  // Docker Compose routes
+  // Docker Compose routes (Admin only)
   compose: router({
     // List all compose projects
-    list: publicProcedure.query(async () => {
+    list: adminProcedure.query(async () => {
       try {
         const projects = await listComposeProjects();
         return { projects, error: null };
@@ -357,7 +359,7 @@ export const appRouter = router({
     }),
 
     // Start all services in a project
-    start: publicProcedure
+    start: adminProcedure
       .input(z.object({ projectName: z.string() }))
       .mutation(async ({ input }) => {
         await startComposeProject(input.projectName);
@@ -365,7 +367,7 @@ export const appRouter = router({
       }),
 
     // Stop all services in a project
-    stop: publicProcedure
+    stop: adminProcedure
       .input(z.object({ projectName: z.string() }))
       .mutation(async ({ input }) => {
         await stopComposeProject(input.projectName);
@@ -373,7 +375,7 @@ export const appRouter = router({
       }),
 
     // Restart all services in a project
-    restart: publicProcedure
+    restart: adminProcedure
       .input(z.object({ projectName: z.string() }))
       .mutation(async ({ input }) => {
         await restartComposeProject(input.projectName);
@@ -381,20 +383,20 @@ export const appRouter = router({
       }),
   }),
 
-  // Notification routes
+  // Notification routes (Admin only)
   notifications: router({
     // Get all notifications
-    list: publicProcedure.query(() => {
+    list: adminProcedure.query(() => {
       return { notifications };
     }),
 
     // Get unread count
-    unreadCount: publicProcedure.query(() => {
+    unreadCount: adminProcedure.query(() => {
       return { count: notifications.filter(n => !n.read).length };
     }),
 
     // Mark notification as read
-    markRead: publicProcedure
+    markRead: adminProcedure
       .input(z.object({ id: z.string() }))
       .mutation(({ input }) => {
         const notification = notifications.find(n => n.id === input.id);
@@ -405,24 +407,24 @@ export const appRouter = router({
       }),
 
     // Mark all as read
-    markAllRead: publicProcedure.mutation(() => {
+    markAllRead: adminProcedure.mutation(() => {
       notifications.forEach(n => n.read = true);
       return { success: true };
     }),
 
     // Clear all notifications
-    clear: publicProcedure.mutation(() => {
+    clear: adminProcedure.mutation(() => {
       notifications.length = 0;
       return { success: true };
     }),
 
     // Get notification settings
-    getSettings: publicProcedure.query(() => {
+    getSettings: adminProcedure.query(() => {
       return { settings: notificationSettings };
     }),
 
     // Update notification settings
-    updateSettings: publicProcedure
+    updateSettings: adminProcedure
       .input(z.object({
         enabled: z.boolean().optional(),
         cpuThreshold: z.number().min(0).max(100).optional(),
@@ -439,16 +441,16 @@ export const appRouter = router({
       }),
   }),
 
-  // Webhook configuration routes
+  // Webhook configuration routes (Admin only)
   webhooks: router({
     // List all webhook configs
-    list: publicProcedure.query(async () => {
+    list: adminProcedure.query(async () => {
       const configs = await getWebhookConfigs();
       return { configs };
     }),
 
     // Create webhook config
-    create: publicProcedure
+    create: adminProcedure
       .input(z.object({
         name: z.string().min(1),
         url: z.string().url(),
@@ -462,7 +464,7 @@ export const appRouter = router({
       }),
 
     // Update webhook config
-    update: publicProcedure
+    update: adminProcedure
       .input(z.object({
         id: z.number(),
         name: z.string().min(1).optional(),
@@ -478,7 +480,7 @@ export const appRouter = router({
       }),
 
     // Delete webhook config
-    delete: publicProcedure
+    delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await deleteWebhookConfig(input.id);
@@ -486,7 +488,7 @@ export const appRouter = router({
       }),
 
     // Test webhook
-    test: publicProcedure
+    test: adminProcedure
       .input(z.object({
         url: z.string().url(),
         type: z.enum(["slack", "discord", "generic", "teams"]),
@@ -497,16 +499,16 @@ export const appRouter = router({
       }),
   }),
 
-  // Email configuration routes
+  // Email configuration routes (Admin only)
   emails: router({
     // List all email configs
-    list: publicProcedure.query(async () => {
+    list: adminProcedure.query(async () => {
       const configs = await getEmailConfigs();
       return { configs };
     }),
 
     // Create email config
-    create: publicProcedure
+    create: adminProcedure
       .input(z.object({
         name: z.string().min(1),
         smtpHost: z.string().min(1),
@@ -524,7 +526,7 @@ export const appRouter = router({
       }),
 
     // Update email config
-    update: publicProcedure
+    update: adminProcedure
       .input(z.object({
         id: z.number(),
         name: z.string().min(1).optional(),
@@ -544,7 +546,7 @@ export const appRouter = router({
       }),
 
     // Delete email config
-    delete: publicProcedure
+    delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await deleteEmailConfig(input.id);
@@ -552,9 +554,9 @@ export const appRouter = router({
       }),
   }),
 
-  // Notification history
+  // Notification history (Admin only)
   notificationHistory: router({
-    list: publicProcedure
+    list: adminProcedure
       .input(z.object({ limit: z.number().optional() }).optional())
       .query(async ({ input }) => {
         const history = await getNotificationHistoryList(input?.limit || 50);
