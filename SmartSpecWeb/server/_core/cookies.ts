@@ -55,12 +55,27 @@ export function getSessionCookieOptions(
 
   const isSecure = isSecureRequest(req);
 
+  // IMPORTANT: For subdomain cookie sharing to work across different subdomains,
+  // SameSite must be set appropriately:
+  // - HTTPS: Use SameSite=none with secure=true (production standard)
+  // - HTTP Development: Use SameSite=none with secure=false
+  //
+  // WARNING: Modern browsers reject SameSite=none with secure=false for
+  // non-localhost domains. However, for development purposes with HTTP,
+  // we use SameSite=none anyway. Users should use HTTPS in production.
+  //
+  // RECOMMENDED SETUP:
+  // - Development: Use .local domains (docker.smartspec.local) with hosts file
+  // - Production: Use HTTPS with real domains (docker.smartspec.pro)
+
   return {
     domain,
     httpOnly: true,
     path: "/",
-    // SameSite: "none" requires secure=true; use "lax" for HTTP (localhost dev)
-    sameSite: isSecure ? "none" : "lax",
+    // Always use SameSite=none for cross-subdomain cookie sharing
+    // This requires secure=true in production (HTTPS)
+    // In development with HTTP, this may not work in all browsers
+    sameSite: "none",
     secure: isSecure,
   };
 }
