@@ -1,0 +1,51 @@
+# Git Line Ending Configuration for SmartSpecPro
+
+# Default behavior: Convert to LF on commit, convert to CRLF on checkout (Windows)
+* text=auto
+
+# Shell scripts must always use LF (Unix line endings)
+*.sh text eol=lf
+
+# Batch files must always use CRLF (Windows line endings)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Source code - enforce LF
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Configuration files - enforce LF
+Dockerfile text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+
+# Binary files - do not convert
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.db binary
+*.sqlite binary
+
+# SSL certificates and keys - do not convert
+*.crt binary
+*.key binary
+*.pem binary
+*.cer binary
+*.p12 binary
+*.pfx binary
