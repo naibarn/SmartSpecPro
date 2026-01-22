@@ -30,6 +30,8 @@ import { llmProvidersRouter } from "./routers/llmProviders";
 import { chatRouter } from "./routers/chat";
 import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
+import { mediaProvidersRouter } from "./routers/mediaProviders";
+import { mediaModelsRouter } from "./routers/mediaModels";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -226,6 +228,12 @@ export const appRouter = router({
 
   // LLM Provider management (admin)
   llmProviders: llmProvidersRouter,
+
+  // Media Provider management (admin) - Kie AI, fal.ai, etc.
+  mediaProviders: mediaProvidersRouter,
+
+  // Media Models management (admin) - AI models for image/video/audio generation
+  mediaModels: mediaModelsRouter,
 
   // Chat system (conversations, messages, memory)
   chat: chatRouter,

@@ -10,10 +10,13 @@ import {
   VideoModel,
   AudioModel,
   MediaGenerationResponse,
-  DEFAULT_MODELS,
-  MEDIA_MODELS,
 } from "./mediaGenerationService";
 import { deductCredits, hasEnoughCredits } from "./creditService";
+import {
+  getModelById,
+  getDefaultModel,
+  mapToApiModelId,
+} from "./modelRegistry";
 
 export interface SkillExecutionParams {
   prompt: string;
@@ -39,22 +42,6 @@ export interface SkillExecutionResult {
   taskId?: string;
   isAsync?: boolean;
 }
-
-// Map skill model names to media generation models
-const MODEL_MAP: Record<string, string> = {
-  // Image models
-  nano_banana_pro: "google-nano-banana-pro",
-  flux_2_0: "flux-2.0",
-  z_image: "z-image",
-  grok_imagine: "grok-imagine",
-  // Video models
-  veo_3_1: "veo-3-1",
-  sora_2: "sora-2",
-  kling_2_6: "kling-2.6",
-  // Audio models
-  elevenlabs_tts: "elevenlabs-tts",
-  elevenlabs_sfx: "elevenlabs-sfx",
-};
 
 /**
  * Execute a detected skill
@@ -91,12 +78,12 @@ async function executeImageGeneration(
   userId: number,
   userToken: string
 ): Promise<SkillExecutionResult> {
-  // Map model name
-  const modelInput = params.model || skill.defaultModel || "nano_banana_pro";
-  const model = (MODEL_MAP[modelInput] || modelInput) as ImageModel;
+  // Get model from params or defaults (already API format from modelRegistry)
+  const modelInput = params.model || skill.defaultModel;
+  const model = (modelInput ? mapToApiModelId(modelInput) : getDefaultModel("image")?.id || "google-nano-banana-pro") as ImageModel;
 
-  // Get model metadata for credit cost
-  const modelMeta = MEDIA_MODELS[model];
+  // Get model metadata from registry
+  const modelMeta = getModelById(model);
   if (!modelMeta) {
     return {
       success: false,
@@ -176,12 +163,12 @@ async function executeVideoGeneration(
   userId: number,
   userToken: string
 ): Promise<SkillExecutionResult> {
-  // Map model name
-  const modelInput = params.model || skill.defaultModel || "veo_3_1";
-  const model = (MODEL_MAP[modelInput] || modelInput) as VideoModel;
+  // Get model from params or defaults (already API format from modelRegistry)
+  const modelInput = params.model || skill.defaultModel;
+  const model = (modelInput ? mapToApiModelId(modelInput) : getDefaultModel("video")?.id || "veo-3-1") as VideoModel;
 
-  // Get model metadata for credit cost
-  const modelMeta = MEDIA_MODELS[model];
+  // Get model metadata from registry
+  const modelMeta = getModelById(model);
   if (!modelMeta) {
     return {
       success: false,
@@ -246,10 +233,12 @@ export async function executeAudioGeneration(
   userId: number,
   userToken: string
 ): Promise<SkillExecutionResult> {
-  const model = (params.model || DEFAULT_MODELS.audio) as AudioModel;
+  // Get model from params or defaults (already API format from modelRegistry)
+  const modelInput = params.model;
+  const model = (modelInput ? mapToApiModelId(modelInput) : getDefaultModel("audio")?.id || "elevenlabs-tts") as AudioModel;
 
-  // Get model metadata for credit cost
-  const modelMeta = MEDIA_MODELS[model];
+  // Get model metadata from registry
+  const modelMeta = getModelById(model);
   if (!modelMeta) {
     return {
       success: false,
@@ -321,13 +310,13 @@ export function estimateSkillCost(
   params: SkillExecutionParams
 ): number {
   const modelInput = params.model || skill.defaultModel;
-  const model = modelInput ? MODEL_MAP[modelInput] || modelInput : null;
+  const model = modelInput ? mapToApiModelId(modelInput) : null;
 
   if (!model) {
     return 0;
   }
 
-  const modelMeta = MEDIA_MODELS[model];
+  const modelMeta = getModelById(model);
   if (!modelMeta) {
     return 0;
   }
@@ -351,6 +340,6 @@ export function estimateSkillCost(
  * Check if a skill can be automatically executed
  */
 export function canAutoExecute(skill: SkillDefinition): boolean {
-  // Only image and video generation skills can be auto-executed
-  return ["image-generation", "video-generation"].includes(skill.type);
+  // Media generation skills can be auto-executed
+  return ["image-generation", "video-generation", "audio-generation"].includes(skill.type);
 }

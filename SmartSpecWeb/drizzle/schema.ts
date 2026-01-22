@@ -781,3 +781,166 @@ export const skillPreferences = pgTable("skill_preferences", {
 
 export type SkillPreference = typeof skillPreferences.$inferSelect;
 export type InsertSkillPreference = typeof skillPreferences.$inferInsert;
+
+/**
+ * Media Provider Type Enum
+ * Defines the types of media that each provider can generate
+ */
+export const mediaProviderTypeEnum = pgEnum("media_provider_type", ["image", "video", "audio", "multimodal"]);
+
+/**
+ * Media Providers - Configuration for media generation services
+ * Stores API keys and settings for providers like Kie AI, fal.ai, etc.
+ */
+export const mediaProviders = pgTable("media_providers", {
+  id: serial("id").primaryKey(),
+
+  /** Provider identifier (e.g., kie_ai, fal_ai, replicate) */
+  providerName: varchar("providerName", { length: 64 }).notNull().unique(),
+
+  /** Display name for UI */
+  displayName: varchar("displayName", { length: 128 }).notNull(),
+
+  /** Provider description */
+  description: text("description"),
+
+  /** Type of media this provider handles */
+  providerType: mediaProviderTypeEnum("providerType").notNull().default("multimodal"),
+
+  /** API base URL */
+  baseUrl: varchar("baseUrl", { length: 512 }),
+
+  /** Encrypted API key (stored securely) */
+  apiKeyEncrypted: text("apiKeyEncrypted"),
+
+  /** Whether API key is set (without exposing the key) */
+  hasApiKey: boolean("hasApiKey").default(false).notNull(),
+
+  /** Available models/services (JSON array) */
+  availableModels: json("availableModels").$type<Array<{
+    id: string;
+    name: string;
+    type: "image" | "video" | "audio";
+    description?: string;
+    pricing?: {
+      perGeneration?: number;
+      perSecond?: number;
+      perMinute?: number;
+    };
+    config?: {
+      maxDuration?: number;
+      maxResolution?: string;
+      supportedFormats?: string[];
+    };
+  }>>(),
+
+  /** Default model for this provider */
+  defaultModel: varchar("defaultModel", { length: 128 }),
+
+  /** Additional configuration */
+  configJson: json("configJson").$type<{
+    timeout?: number;
+    maxRetries?: number;
+    webhookUrl?: string;
+    headers?: Record<string, string>;
+    rateLimit?: {
+      requestsPerMinute?: number;
+      requestsPerDay?: number;
+    };
+    [key: string]: any;
+  }>(),
+
+  /** Whether provider is enabled */
+  isEnabled: boolean("isEnabled").default(false).notNull(),
+
+  /** Whether this is the primary provider for its type */
+  isPrimary: boolean("isPrimary").default(false).notNull(),
+
+  /** Priority order (lower = higher priority, used for failover) */
+  priority: integer("priority").default(0).notNull(),
+
+  /** Sort order for display */
+  sortOrder: integer("sortOrder").default(0).notNull(),
+
+  /** Last successful connection test */
+  lastTestedAt: timestamp("lastTestedAt", { withTimezone: true }),
+
+  /** Last test result */
+  lastTestResult: json("lastTestResult").$type<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+    balance?: number;
+  }>(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type MediaProvider = typeof mediaProviders.$inferSelect;
+export type InsertMediaProvider = typeof mediaProviders.$inferInsert;
+
+/**
+ * Media Model Type Enum
+ * Defines what type of media this model generates
+ */
+export const mediaModelTypeEnum = pgEnum("media_model_type", ["image", "video", "audio"]);
+
+/**
+ * Media Models - Configuration for AI generation models
+ * Centralized registry of all available models (Nano Banana Pro, Flux, Veo, etc.)
+ */
+export const mediaModels = pgTable("media_models", {
+  id: serial("id").primaryKey(),
+
+  /** Model identifier (e.g., google-nano-banana-pro, flux-2.0) */
+  modelId: varchar("modelId", { length: 128 }).notNull().unique(),
+
+  /** Display name for UI */
+  name: varchar("name", { length: 128 }).notNull(),
+
+  /** Model description */
+  description: text("description"),
+
+  /** Type of media this model generates */
+  modelType: mediaModelTypeEnum("modelType").notNull(),
+
+  /** Provider name (e.g., kie.ai, fal.ai) */
+  provider: varchar("provider", { length: 64 }).notNull(),
+
+  /** Aliases for natural language detection (JSON array) */
+  aliases: json("aliases").$type<string[]>().default([]),
+
+  /** Credit cost per generation */
+  creditCost: integer("creditCost").notNull().default(10),
+
+  /** Supported aspect ratios (JSON array) */
+  aspectRatios: json("aspectRatios").$type<string[]>(),
+
+  /** Supported sizes (JSON array) */
+  sizes: json("sizes").$type<string[]>(),
+
+  /** Supported durations for video (JSON array of numbers) */
+  durations: json("durations").$type<number[]>(),
+
+  /** Supported voices for audio (JSON array) */
+  voices: json("voices").$type<string[]>(),
+
+  /** Additional configuration */
+  configJson: json("configJson").$type<Record<string, any>>(),
+
+  /** Whether model is enabled */
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+
+  /** Priority for selection (lower = higher priority) */
+  priority: integer("priority").default(99).notNull(),
+
+  /** Sort order for display */
+  sortOrder: integer("sortOrder").default(0).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type MediaModel = typeof mediaModels.$inferSelect;
+export type InsertMediaModel = typeof mediaModels.$inferInsert;

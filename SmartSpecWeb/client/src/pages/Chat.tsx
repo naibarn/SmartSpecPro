@@ -19,6 +19,9 @@ export default function Chat() {
 
   const utils = trpc.useUtils();
 
+  // Get available models from LLM providers (for default model)
+  const { data: modelsData } = trpc.llmProviders.availableModels.useQuery();
+
   // Fetch messages to extract artifacts
   const { data: messagesData } = trpc.chat.getMessages.useQuery(
     { conversationId: selectedConversationId!, limit: 100 },
@@ -52,10 +55,14 @@ export default function Chat() {
     }
   }, [isLoading, isAuthenticated, setLocation]);
 
-  // Create new conversation
+  // Create new conversation with default model from LLM Provider
   const handleNewChat = async () => {
+    // Find the default model from LLM Provider settings
+    const defaultModel = modelsData?.models?.find(m => m.isDefault);
+
     const result = await createConversationMutation.mutateAsync({
       title: "New Chat",
+      model: defaultModel?.id, // Use default model from LLM Provider
     });
     setSelectedConversationId(result.id);
   };

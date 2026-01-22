@@ -211,7 +211,13 @@ export interface TaskListResponse {
 
 // ==================== Service Class ====================
 
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+// Support multiple env var names for docker compatibility
+// PYTHON_BACKEND_URL (preferred) -> BACKEND_URL -> OAUTH_SERVER_URL (fallback)
+const PYTHON_BACKEND_URL =
+  process.env.PYTHON_BACKEND_URL ||
+  process.env.BACKEND_URL ||
+  process.env.OAUTH_SERVER_URL ||
+  "http://localhost:8000";
 const NODE_ENV = process.env.NODE_ENV || "development";
 
 /**

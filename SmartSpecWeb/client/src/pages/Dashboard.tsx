@@ -31,6 +31,7 @@ import {
   UserCog,
   Activity,
   ExternalLink,
+  Layers,
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -124,6 +125,8 @@ export default function Dashboard() {
                   { label: 'Users', icon: Users, path: '/admin/users' },
                   { label: 'Packages', icon: Package, path: '/admin/packages' },
                   { label: 'LLM Providers', icon: Brain, path: '/admin/llm-providers' },
+                  { label: 'Media Providers', icon: Layers, path: '/admin/media-providers' },
+                  { label: 'AI Models', icon: Sparkles, path: '/admin/media-models' },
                   { label: 'Skills', icon: Wand2, path: '/admin/skills' },
                 ].map((item) => (
                   <button

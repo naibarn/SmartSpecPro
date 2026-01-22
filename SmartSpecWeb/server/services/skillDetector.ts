@@ -9,6 +9,13 @@ import {
   SkillDefinition,
 } from "./skillRegistry";
 import { getSkillPreferences } from "./chatService";
+import {
+  detectModelFromMessage,
+  getDefaultModel,
+  getAllModelAliases,
+  mapToApiModelId,
+  MediaType,
+} from "./modelRegistry";
 
 export interface SkillDetectionResult {
   detected: boolean;
@@ -190,6 +197,7 @@ export function isExplicitSkillRequest(message: string): {
 
 /**
  * Get skill execution parameters from message
+ * Uses centralized modelRegistry for model detection
  */
 export function extractSkillParams(
   message: string,
@@ -199,19 +207,27 @@ export function extractSkillParams(
     prompt: message,
   };
 
-  // Extract model preference if mentioned
-  if (skill.models && skill.models.length > 0) {
-    for (const model of skill.models) {
-      const modelPattern = new RegExp(`\\b${model.replace(/_/g, "[_\\s]?")}\\b`, "i");
-      if (modelPattern.test(message)) {
-        params.model = model;
-        break;
-      }
-    }
+  // Determine media type from skill type
+  const mediaTypeMap: Record<string, MediaType> = {
+    "image-generation": "image",
+    "video-generation": "video",
+    "audio-generation": "audio",
+  };
+  const mediaType = mediaTypeMap[skill.type];
 
-    // Use default model if not specified
-    if (!params.model && skill.defaultModel) {
-      params.model = skill.defaultModel;
+  // Extract model preference using modelRegistry
+  if (mediaType) {
+    const detectedModel = detectModelFromMessage(message, mediaType);
+
+    if (detectedModel) {
+      // Store the API model ID
+      params.model = detectedModel.id;
+    } else {
+      // Use default model for this media type
+      const defaultModel = getDefaultModel(mediaType);
+      if (defaultModel) {
+        params.model = defaultModel.id;
+      }
     }
   }
 
@@ -248,6 +264,44 @@ export function extractSkillParams(
       "square": "1:1",
     };
     params.aspectRatio = ratioMap[aspectRatioMatch[1].toLowerCase()] || aspectRatioMatch[1];
+  }
+
+  // Extract number of images (e.g., "2 images", "สร้าง 3 รูป")
+  const numImagesMatch = message.match(/\b(\d+)\s*(images?|รูป|ภาพ|pictures?)\b/i);
+  if (numImagesMatch) {
+    const num = parseInt(numImagesMatch[1], 10);
+    if (num >= 1 && num <= 4) {
+      params.numImages = num;
+    }
+  }
+
+  // Extract video duration (e.g., "5 seconds", "10 วินาที")
+  const durationMatch = message.match(/\b(\d+)\s*(seconds?|sec|s|วินาที)\b/i);
+  if (durationMatch) {
+    const duration = parseInt(durationMatch[1], 10);
+    if (duration >= 1 && duration <= 60) {
+      params.duration = duration;
+    }
+  }
+
+  // Clean up prompt - remove model specification phrases
+  let cleanPrompt = message;
+  // Remove "ด้วย <model>", "using <model>", "with <model>"
+  cleanPrompt = cleanPrompt.replace(/\s*(ด้วย|using|with)\s+[\w\s.-]+$/i, "").trim();
+
+  // Remove model names from prompt using centralized registry
+  const allAliases = getAllModelAliases();
+  for (const [alias] of allAliases) {
+    // Escape special regex characters and create pattern
+    const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    cleanPrompt = cleanPrompt.replace(new RegExp(escapedAlias, "gi"), "").trim();
+  }
+
+  // Clean up extra spaces
+  cleanPrompt = cleanPrompt.replace(/\s+/g, " ").trim();
+
+  if (cleanPrompt && cleanPrompt.length > 5) {
+    params.prompt = cleanPrompt;
   }
 
   return params;

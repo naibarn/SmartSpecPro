@@ -2,6 +2,8 @@
  * Skill Registry - Defines available skills and their configurations
  */
 
+import { getModelIdsByType, getDefaultModel } from "./modelRegistry";
+
 export type SkillType =
   | "image-generation"
   | "video-generation"
@@ -40,14 +42,14 @@ export interface SkillDefinition {
 }
 
 /**
- * Available skills in the system
+ * Base skill definitions (without models - models are added dynamically)
  */
-export const SKILL_REGISTRY: SkillDefinition[] = [
+const BASE_SKILL_DEFINITIONS: Omit<SkillDefinition, "models" | "defaultModel">[] = [
   // Image Generation
   {
     id: "image-generation",
     name: "Image Generation",
-    description: "Generate images using AI models like Nano Banana Pro (Gemini 3.0)",
+    description: "Generate images using AI models",
     icon: "image",
     type: "image-generation",
     triggers: [
@@ -61,8 +63,6 @@ export const SKILL_REGISTRY: SkillDefinition[] = [
     ],
     requiresExplicit: false,
     creditMultiplier: 2.0,
-    models: ["nano_banana_pro"],
-    defaultModel: "nano_banana_pro",
     enabledByDefault: true,
     priority: 90,
   },
@@ -71,7 +71,7 @@ export const SKILL_REGISTRY: SkillDefinition[] = [
   {
     id: "video-generation",
     name: "Video Generation",
-    description: "Generate videos using VEO 3.1, Sora 2, or Kling 2.6",
+    description: "Generate videos using AI models",
     icon: "video",
     type: "video-generation",
     triggers: [
@@ -83,8 +83,6 @@ export const SKILL_REGISTRY: SkillDefinition[] = [
     ],
     requiresExplicit: false,
     creditMultiplier: 10.0,
-    models: ["veo_3_1", "sora_2", "kling_2_6"],
-    defaultModel: "veo_3_1",
     enabledByDefault: true,
     priority: 85,
   },
@@ -93,7 +91,7 @@ export const SKILL_REGISTRY: SkillDefinition[] = [
   {
     id: "audio-generation",
     name: "Audio Generation",
-    description: "Generate speech and sound effects using ElevenLabs",
+    description: "Generate speech and sound effects",
     icon: "music",
     type: "audio-generation",
     triggers: [
@@ -101,19 +99,25 @@ export const SKILL_REGISTRY: SkillDefinition[] = [
       /generate\s+(a\s+)?(audio|sound|speech)/i,
       /create\s+(a\s+)?(voice|speech|audio)/i,
       /text\s+to\s+speech/i,
+      /tts/i,
       /speak\s+(this|the)/i,
       /read\s+(this\s+)?(text\s+)?aloud/i,
       /อ่านออกเสียง/i,
       /พูดให้ฟัง/i,
+      /แปลงเป็นเสียง/i,
     ],
     requiresExplicit: false,
     creditMultiplier: 1.0,
-    models: ["elevenlabs_tts", "elevenlabs_sfx"],
-    defaultModel: "elevenlabs_tts",
     enabledByDefault: true,
     priority: 80,
   },
 
+];
+
+/**
+ * Non-media skills (don't need dynamic model loading)
+ */
+const NON_MEDIA_SKILLS: SkillDefinition[] = [
   // Code Assistant
   {
     id: "code-assistant",
@@ -182,31 +186,87 @@ export const SKILL_REGISTRY: SkillDefinition[] = [
 ];
 
 /**
+ * Map skill type to media type for model lookup
+ */
+const SKILL_TO_MEDIA_TYPE: Record<string, "image" | "video" | "audio"> = {
+  "image-generation": "image",
+  "video-generation": "video",
+  "audio-generation": "audio",
+};
+
+/**
+ * Build complete skill registry with dynamic model data
+ */
+function buildSkillRegistry(): SkillDefinition[] {
+  // Enrich media skills with dynamic model data
+  const mediaSkills = BASE_SKILL_DEFINITIONS.map((baseSkill) => {
+    const mediaType = SKILL_TO_MEDIA_TYPE[baseSkill.type];
+
+    if (mediaType) {
+      const modelIds = getModelIdsByType(mediaType);
+      const defaultModelDef = getDefaultModel(mediaType);
+
+      return {
+        ...baseSkill,
+        models: modelIds,
+        defaultModel: defaultModelDef?.id,
+      } as SkillDefinition;
+    }
+
+    return baseSkill as SkillDefinition;
+  });
+
+  return [...mediaSkills, ...NON_MEDIA_SKILLS];
+}
+
+/**
+ * Cached skill registry (rebuilt when needed)
+ */
+let _skillRegistryCache: SkillDefinition[] | null = null;
+
+/**
+ * Get the complete skill registry (with caching)
+ */
+export function getSkillRegistry(): SkillDefinition[] {
+  if (!_skillRegistryCache) {
+    _skillRegistryCache = buildSkillRegistry();
+  }
+  return _skillRegistryCache;
+}
+
+/**
+ * Clear skill registry cache (call when models are updated)
+ */
+export function clearSkillRegistryCache(): void {
+  _skillRegistryCache = null;
+}
+
+/**
  * Get all available skills
  */
 export function getAvailableSkills(): SkillDefinition[] {
-  return [...SKILL_REGISTRY].sort((a, b) => b.priority - a.priority);
+  return [...getSkillRegistry()].sort((a, b) => b.priority - a.priority);
 }
 
 /**
  * Get skill by ID
  */
 export function getSkillById(id: string): SkillDefinition | undefined {
-  return SKILL_REGISTRY.find((s) => s.id === id);
+  return getSkillRegistry().find((s) => s.id === id);
 }
 
 /**
  * Get skills by type
  */
 export function getSkillsByType(type: SkillType): SkillDefinition[] {
-  return SKILL_REGISTRY.filter((s) => s.type === type);
+  return getSkillRegistry().filter((s) => s.type === type);
 }
 
 /**
  * Get default enabled skills
  */
 export function getDefaultEnabledSkills(): string[] {
-  return SKILL_REGISTRY
+  return getSkillRegistry()
     .filter((s) => s.enabledByDefault)
     .map((s) => s.id);
 }

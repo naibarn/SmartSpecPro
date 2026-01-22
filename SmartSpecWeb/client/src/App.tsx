@@ -27,6 +27,8 @@ import AdminGallery from "./pages/AdminGallery";
 import AdminUsers from "./pages/AdminUsers";
 import AdminPackages from "./pages/AdminPackages";
 import AdminLLMProviders from "./pages/AdminLLMProviders";
+import AdminMediaProviders from "./pages/AdminMediaProviders";
+import AdminMediaModels from "./pages/AdminMediaModels";
 import AdminSkills from "./pages/AdminSkills";
 import AdminTenants from "./pages/AdminTenants";
 import AdminServices from "./pages/AdminServices";
@@ -54,6 +56,8 @@ function Router() {
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/packages" component={AdminPackages} />
       <Route path="/admin/llm-providers" component={AdminLLMProviders} />
+      <Route path="/admin/media-providers" component={AdminMediaProviders} />
+      <Route path="/admin/media-models" component={AdminMediaModels} />
       <Route path="/admin/skills" component={AdminSkills} />
       <Route path="/admin/services" component={AdminServices} />
       <Route path="/admin/tenants" component={AdminTenants} />
