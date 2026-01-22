@@ -46,8 +46,9 @@ export default function Login() {
     mainSiteUrl = 'http://localhost';
   }
 
-  const currentUrl = window.location.href.split('?')[0]; // Remove query params
-  const returnUrl = encodeURIComponent(currentUrl);
+  // Use homepage URL as returnUrl, not /login to avoid redirect loops
+  const homeUrl = `${window.location.protocol}//${window.location.host}`;
+  const returnUrl = encodeURIComponent(homeUrl);
   const loginUrl = `${mainSiteUrl}/login?returnUrl=${returnUrl}`;
 
   useEffect(() => {

@@ -108,14 +108,13 @@ export default function DomainAdminContent() {
 
   const fetchPages = async () => {
     try {
-      const response = await fetch(`/api/tenant/pages?input=${encodeURIComponent(JSON.stringify({ json: {} }))}`, {
+      const response = await fetch('/api/tenant/pages', {
         credentials: 'include',
       });
 
       if (response.ok) {
-        const data = await response.json();
-        const pagesData = data.result?.data?.json || {};
-        setPages(pagesData);
+        const pagesData = await response.json();
+        setPages(pagesData || {});
 
         if (selectedPageKey && pagesData[selectedPageKey]) {
           setCurrentPage(pagesData[selectedPageKey]);
