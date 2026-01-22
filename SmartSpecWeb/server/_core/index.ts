@@ -24,6 +24,30 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.disable("x-powered-by");
 
+// CORS for cross-domain access (Docker Status, etc.)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  // Allow Docker Status subdomains to access token generation API
+  if (origin && (
+    origin.includes('docker.smartspec.local') ||
+    origin.includes('docker.smartspec.pro') ||
+    origin.includes('docker.localhost')
+  )) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
 // Baseline security headers (lightweight; no external deps)
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -80,8 +104,8 @@ async function main() {
   const preferred = parseInt(process.env.PORT || "3000");
   const port = Number.isFinite(preferred) ? preferred : 3000;
 
-  server.listen(port, () => {
-    console.log(`SmartSpecWeb listening on http://localhost:${port}`);
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`SmartSpecWeb listening on http://0.0.0.0:${port}`);
   });
 }
 

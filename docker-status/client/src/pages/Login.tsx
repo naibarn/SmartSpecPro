@@ -36,19 +36,20 @@ export default function Login() {
   // Determine the main site URL based on current hostname
   let mainSiteUrl: string;
   if (hostname === 'docker.smartspec.pro') {
-    mainSiteUrl = 'http://smartspec.pro';
+    mainSiteUrl = 'https://smartspec.pro';
   } else if (hostname === 'docker.smartspec.local') {
-    mainSiteUrl = 'http://smartspec.local';
+    mainSiteUrl = 'https://smartspec.local';
   } else if (hostname === 'docker.localhost') {
-    mainSiteUrl = 'http://localhost';
+    mainSiteUrl = 'https://localhost';
   } else {
     // Fallback for direct port access (localhost:3001)
-    mainSiteUrl = 'http://localhost';
+    mainSiteUrl = 'https://localhost';
   }
 
-  // Use homepage URL as returnUrl, not /login to avoid redirect loops
-  const homeUrl = `${window.location.protocol}//${window.location.host}`;
-  const returnUrl = encodeURIComponent(homeUrl);
+  // Redirect to main site's docker-redirect page after login
+  // This intermediate page ensures cookies are set before redirecting to token-exchange
+  const dockerRedirectUrl = `${mainSiteUrl}/docker-redirect`;
+  const returnUrl = encodeURIComponent(dockerRedirectUrl);
   const loginUrl = `${mainSiteUrl}/login?returnUrl=${returnUrl}`;
 
   useEffect(() => {
@@ -58,10 +59,8 @@ export default function Login() {
     // 3. User is not authenticated or not admin
     if (!fromRedirect && !isCheckingAuth && !isAuthLoading) {
       if (!user || user.role !== 'admin') {
-        const timer = setTimeout(() => {
-          window.location.href = loginUrl;
-        }, 3000);
-        return () => clearTimeout(timer);
+        // Redirect immediately to prevent any API calls
+        window.location.href = loginUrl;
       }
     }
   }, [loginUrl, fromRedirect, isCheckingAuth, isAuthLoading, user]);

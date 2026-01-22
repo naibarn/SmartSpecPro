@@ -256,8 +256,76 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
+  /**
+   * Authenticate request using Bearer token from Authorization header
+   * This is used for cross-domain authentication (e.g., Docker Status)
+   *
+   * The token is a JWT signed with the same JWT_SECRET as SmartSpec Web
+   */
+  async authenticateRequestWithToken(req: Request): Promise<User> {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw ForbiddenError("Missing Bearer token");
+    }
+
+    const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+    // Verify JWT token using shared JWT_SECRET
+    const session = await this.verifySession(token);
+
+    if (!session) {
+      throw ForbiddenError("Invalid access token");
+    }
+
+    const userInfo = {
+      openId: session.openId,
+      name: session.name,
+      email: session.openId.includes('@') ? session.openId : null
+    };
+
+    const signedInAt = new Date();
+    let user = await db.getUserByOpenId(userInfo.openId);
+
+    // If not found by openId, try by email (for email/password login)
+    if (!user && userInfo.openId && userInfo.openId.includes("@")) {
+      user = await db.getUserByEmail(userInfo.openId);
+    }
+
+    // If user not in DB, create it from token info
+    if (!user) {
+      try {
+        await db.upsertUser({
+          openId: userInfo.openId,
+          name: userInfo.name || null,
+          email: userInfo.email ?? null,
+          loginMethod: userInfo.loginMethod ?? null,
+          lastSignedIn: signedInAt,
+        });
+        user = await db.getUserByOpenId(userInfo.openId);
+      } catch (error) {
+        console.error("[Auth] Failed to create user from token:", error);
+        throw ForbiddenError("Failed to create user");
+      }
+    }
+
+    if (!user) {
+      throw ForbiddenError("User not found");
+    }
+
+    // Update last signed in
+    if (user.openId) {
+      await db.upsertUser({
+        openId: user.openId,
+        lastSignedIn: signedInAt,
+      });
+    }
+
+    return user;
+  }
+
   async authenticateRequest(req: Request): Promise<User> {
-    // Regular authentication flow
+    // Regular authentication flow using session cookie
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
     const session = await this.verifySession(sessionCookie);

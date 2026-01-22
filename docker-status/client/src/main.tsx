@@ -92,9 +92,17 @@ const trpcClient = trpc.createClient({
       url: apiUrl,
       transformer: superjson,
       fetch(input, init) {
+        // Get access token from localStorage
+        const accessToken = localStorage.getItem('docker_status_access_token');
+
         return globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
+          headers: {
+            ...init?.headers,
+            // Add Authorization header if access token exists
+            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+          }
         });
       },
     }),

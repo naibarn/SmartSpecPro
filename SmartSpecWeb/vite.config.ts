@@ -35,6 +35,9 @@ export default defineConfig({
       ".manusvm.computer",
       "localhost",
       "127.0.0.1",
+      ".smartspec.local",
+      ".smartspec.pro",
+      "smartspec-web",
     ],
     fs: {
       strict: true,

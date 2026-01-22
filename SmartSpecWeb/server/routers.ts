@@ -95,6 +95,66 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    // Generate access token for cross-domain authentication (Docker Status, etc.)
+    generateAccessToken: protectedProcedure.mutation(async ({ ctx }) => {
+      const user = ctx.user;
+      const { sdk } = await import("./_core/sdk");
+
+      // Create JWT token with 1 year expiry (same as session)
+      const accessToken = await sdk.createSessionToken(
+        user.openId || user.email || String(user.id),
+        {
+          expiresInMs: ONE_YEAR_MS,
+          name: user.name || user.email || 'User'
+        }
+      );
+
+      return {
+        accessToken,
+        user: {
+          id: user.id,
+          email: user.email || '',
+          name: user.name || user.email?.split('@')[0] || 'User',
+          role: user.role
+        }
+      };
+    }),
+    // Verify access token (called by Docker Status and other services)
+    verifyAccessToken: publicProcedure
+      .input(z.object({
+        accessToken: z.string()
+      }))
+      .mutation(async ({ input }) => {
+        const { sdk } = await import("./_core/sdk");
+
+        // Verify the JWT token
+        const session = await sdk.verifySession(input.accessToken);
+
+        if (!session) {
+          throw new Error('Invalid access token');
+        }
+
+        // Get user from database
+        const { getUserByOpenId, getUserByEmail } = await import("./db");
+        let user = await getUserByOpenId(session.openId);
+
+        // If not found by openId, try by email (for email/password login)
+        if (!user && session.openId.includes("@")) {
+          user = await getUserByEmail(session.openId);
+        }
+
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        return {
+          openId: user.openId || user.email || String(user.id),
+          email: user.email || '',
+          name: user.name || user.email?.split('@')[0] || 'User',
+          role: user.role,
+          loginMethod: user.loginMethod
+        };
+      }),
     login: publicProcedure
       .input(z.object({
         email: z.string().email(),

@@ -27,6 +27,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      // NEW: Check if we have access token in localStorage (JWT auth)
+      const accessToken = localStorage.getItem('docker_status_access_token');
+      const storedUser = localStorage.getItem('docker_status_user');
+
+      if (accessToken && storedUser) {
+        // We have JWT token, parse stored user
+        try {
+          const userData = JSON.parse(storedUser);
+
+          if (userData && userData.id && userData.role === 'admin') {
+            setUser({
+              id: String(userData.id),
+              email: userData.email || '',
+              name: userData.name || userData.email?.split('@')[0] || 'Admin',
+              role: userData.role,
+            });
+            setIsLoading(false);
+            console.log('[Auth] Loaded user from localStorage (JWT auth)');
+            return;
+          }
+        } catch (parseError) {
+          console.error('[Auth] Failed to parse stored user:', parseError);
+          // Clear invalid data
+          localStorage.removeItem('docker_status_access_token');
+          localStorage.removeItem('docker_status_user');
+        }
+      }
+
+      // Fallback: try session cookie auth (old method, for compatibility)
       const response = await fetch('/api/trpc/auth.me', {
         method: 'GET',
         credentials: 'include',
@@ -43,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: userData.name || userData.email?.split('@')[0] || 'Admin',
             role: userData.role,
           });
+          console.log('[Auth] Loaded user from session cookie');
         } else {
           setUser(null);
         }
@@ -59,6 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // Clear JWT token and user data from localStorage
+      localStorage.removeItem('docker_status_access_token');
+      localStorage.removeItem('docker_status_user');
+
       await fetch('/api/trpc/auth.logout', {
         method: 'POST',
         headers: {
@@ -68,17 +102,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: 'include',
       });
 
+      setUser(null);
+
       // Redirect to main site after logout
       const hostname = window.location.hostname;
       let mainSiteUrl: string;
       if (hostname === 'docker.smartspec.pro') {
-        mainSiteUrl = 'http://smartspec.pro';
+        mainSiteUrl = 'https://smartspec.pro';
       } else if (hostname === 'docker.smartspec.local') {
-        mainSiteUrl = 'http://smartspec.local';
+        mainSiteUrl = 'https://smartspec.local';
       } else if (hostname === 'docker.localhost') {
-        mainSiteUrl = 'http://localhost';
+        mainSiteUrl = 'https://localhost';
       } else {
-        mainSiteUrl = 'http://localhost';
+        mainSiteUrl = 'https://localhost';
       }
       window.location.href = mainSiteUrl;
     } catch (error) {

@@ -37,6 +37,8 @@ import Chat from "./pages/Chat";
 import Generate from "./pages/Generate";
 import Credits from "./pages/Credits";
 import Settings from "./pages/Settings";
+import DockerRedirect from "./pages/DockerRedirect";
+
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -72,6 +74,7 @@ function Router() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/auth/callback/:provider" component={AuthCallback} />
       <Route path="/auth/device" component={DeviceAuth} />
+      <Route path="/docker-redirect" component={DockerRedirect} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

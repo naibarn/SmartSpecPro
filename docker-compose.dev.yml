@@ -172,9 +172,9 @@ services:
     depends_on:
       - redis
       - celery-worker
-    command: celery -A app.core.celery_app flower --port=5555
+    command: celery -A app.core.celery_app flower --port=5555 --broker=redis://redis:6379/0
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5555/healthcheck || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:5555/ || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -274,7 +274,7 @@ services:
       - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
       - NODE_ENV=development
       - PORT=3000
-      - JWT_SECRET=docker-status-secret-key-change-in-production
+      - JWT_SECRET=dev_jwt_secret_change_in_production_at_least_16_chars
       - VITE_APP_ID=docker-status
     ports:
       - "3001:3000"

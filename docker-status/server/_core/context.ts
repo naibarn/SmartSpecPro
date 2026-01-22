@@ -14,10 +14,16 @@ export async function createContext(
   let user: User | null = null;
 
   try {
-    user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
-    // Authentication is optional for public procedures.
-    user = null;
+    // Try JWT token authentication first (for cross-domain)
+    user = await sdk.authenticateRequestWithToken(opts.req);
+  } catch (tokenError) {
+    // Fallback to session cookie authentication
+    try {
+      user = await sdk.authenticateRequest(opts.req);
+    } catch (cookieError) {
+      // Authentication is optional for public procedures.
+      user = null;
+    }
   }
 
   return {

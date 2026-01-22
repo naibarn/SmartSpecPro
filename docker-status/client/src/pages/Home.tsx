@@ -386,28 +386,24 @@ export default function Home() {
   const [confirmAction, setConfirmAction] = useState<{ action: "start" | "stop" | "restart"; containerId: string; containerName: string } | null>(null);
   const [activeTab, setActiveTab] = useState("containers");
 
-  // Redirect to login if not authenticated or not admin
-  useEffect(() => {
-    if (!isAuthLoading) {
-      if (!isAuthenticated) {
-        setLocation('/login');
-      } else if (user && user.role !== 'admin') {
-        // Non-admin user, redirect to login with error
-        setLocation('/login?from=redirect');
-      }
-    }
-  }, [isAuthLoading, isAuthenticated, user, setLocation]);
+  // Only fetch data if authenticated and admin
+  const shouldFetchData = !isAuthLoading && isAuthenticated && user?.role === 'admin';
 
   // Fetch containers
   const { data: containersData, isLoading: isLoadingContainers, refetch: refetchContainers } = trpc.docker.list.useQuery(
     undefined,
-    { refetchInterval: 10000 } // Auto-refresh every 10 seconds
+    {
+      enabled: shouldFetchData,
+      refetchInterval: shouldFetchData ? 10000 : false // Auto-refresh every 10 seconds only if authenticated
+    }
   );
 
   // Fetch Docker info
-  const { data: dockerInfo } = trpc.docker.info.useQuery();
+  const { data: dockerInfo } = trpc.docker.info.useQuery(undefined, {
+    enabled: shouldFetchData
+  });
 
-  // Mutations
+  // Mutations - MUST be declared before any conditional returns (React Hooks Rules)
   const startMutation = trpc.docker.start.useMutation({
     onSuccess: (data) => {
       toast.success(data.message);
@@ -438,14 +434,42 @@ export default function Home() {
     },
   });
 
+  // State for selected container stats - MUST be before conditional return
+  const [selectedStatsContainer, setSelectedStatsContainer] = useState<string | null>(null);
+
+  // Fetch stats history for selected container - MUST be before conditional return
+  const { data: statsHistoryData } = trpc.docker.statsHistory.useQuery(
+    { containerId: selectedStatsContainer || "" },
+    { enabled: !!selectedStatsContainer && shouldFetchData, refetchInterval: 5000 }
+  );
+
+  // Redirect to login if not authenticated or not admin
+  useEffect(() => {
+    if (!isAuthLoading) {
+      if (!isAuthenticated) {
+        // Save current path to return after login
+        const returnPath = window.location.pathname === '/login' ? '/' : window.location.pathname;
+        setLocation(`/login?returnPath=${encodeURIComponent(returnPath)}`);
+      } else if (user && user.role !== 'admin') {
+        // Non-admin user, redirect to login with error
+        setLocation('/login?from=redirect');
+      }
+    }
+  }, [isAuthLoading, isAuthenticated, user, setLocation]);
+
+  // Don't render anything while checking auth or if not authenticated
+  if (isAuthLoading || !isAuthenticated || user?.role !== 'admin') {
+    return null; // Will redirect via useEffect
+  }
+
   const isActionLoading = startMutation.isPending || stopMutation.isPending || restartMutation.isPending;
 
   const handleAction = (action: "start" | "stop" | "restart", containerId: string) => {
     const container = containersData?.containers.find(c => c.id === containerId);
-    setConfirmAction({ 
-      action, 
-      containerId, 
-      containerName: container?.name || containerId 
+    setConfirmAction({
+      action,
+      containerId,
+      containerName: container?.name || containerId
     });
   };
 
@@ -471,15 +495,6 @@ export default function Home() {
   };
 
   const containers = containersData?.containers || [];
-
-  // State for selected container stats
-  const [selectedStatsContainer, setSelectedStatsContainer] = useState<string | null>(null);
-
-  // Fetch stats history for selected container
-  const { data: statsHistoryData } = trpc.docker.statsHistory.useQuery(
-    { containerId: selectedStatsContainer || "" },
-    { enabled: !!selectedStatsContainer, refetchInterval: 5000 }
-  );
 
   return (
     <div className="min-h-screen blueprint-grid">
