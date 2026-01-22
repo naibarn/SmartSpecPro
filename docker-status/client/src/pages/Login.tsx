@@ -1,16 +1,34 @@
 import { useEffect, useState } from 'react';
-import { LogIn, ArrowRight, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { LogIn, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 export default function Login() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [fromRedirect, setFromRedirect] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Check if we came from a redirect (to prevent loops)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('from') === 'redirect') {
       setFromRedirect(true);
+      setIsCheckingAuth(false);
+    } else {
+      // Wait for auth check to complete
+      setTimeout(() => {
+        setIsCheckingAuth(false);
+      }, 1500);
     }
   }, []);
+
+  // If user is authenticated and is admin, redirect to home
+  useEffect(() => {
+    if (!isAuthLoading && !isCheckingAuth && user && user.role === 'admin') {
+      setLocation('/');
+    }
+  }, [isAuthLoading, isCheckingAuth, user, setLocation]);
 
   // Redirect to SmartSpec Web login page
   const hostname = window.location.hostname;
@@ -33,21 +51,72 @@ export default function Login() {
   const loginUrl = `${mainSiteUrl}/login?returnUrl=${returnUrl}`;
 
   useEffect(() => {
-    // Only auto-redirect if NOT coming from a redirect (prevent loop)
-    if (!fromRedirect) {
-      const timer = setTimeout(() => {
-        window.location.href = loginUrl;
-      }, 3000);
-      return () => clearTimeout(timer);
+    // Only auto-redirect if:
+    // 1. NOT coming from a redirect (prevent loop)
+    // 2. Auth check is complete
+    // 3. User is not authenticated or not admin
+    if (!fromRedirect && !isCheckingAuth && !isAuthLoading) {
+      if (!user || user.role !== 'admin') {
+        const timer = setTimeout(() => {
+          window.location.href = loginUrl;
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [loginUrl, fromRedirect]);
+  }, [loginUrl, fromRedirect, isCheckingAuth, isAuthLoading, user]);
 
   const handleManualRedirect = () => {
     window.location.href = loginUrl;
   };
 
+  // Show loading while checking auth
+  if (isAuthLoading || isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-700/50 p-8 shadow-2xl">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/20 mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
+              </div>
+              <h1 className="text-xl font-bold text-white mb-2">
+                Checking authentication...
+              </h1>
+              <p className="text-gray-400 text-sm">
+                Please wait
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is already authenticated as admin, show success message
+  if (user && user.role === 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-700/50 p-8 shadow-2xl">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 mb-4">
+                <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+              </div>
+              <h1 className="text-xl font-bold text-white mb-2">
+                Already authenticated
+              </h1>
+              <p className="text-gray-400 text-sm mb-4">
+                Redirecting to dashboard...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if redirect loop detected
   if (fromRedirect) {
-    // Show error message if redirect loop detected
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
         <div className="w-full max-w-md">
@@ -92,6 +161,7 @@ export default function Login() {
     );
   }
 
+  // Default: show redirect message
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
       <div className="w-full max-w-md">

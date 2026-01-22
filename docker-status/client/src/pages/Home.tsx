@@ -386,12 +386,17 @@ export default function Home() {
   const [confirmAction, setConfirmAction] = useState<{ action: "start" | "stop" | "restart"; containerId: string; containerName: string } | null>(null);
   const [activeTab, setActiveTab] = useState("containers");
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated or not admin
   useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      setLocation('/login');
+    if (!isAuthLoading) {
+      if (!isAuthenticated) {
+        setLocation('/login');
+      } else if (user && user.role !== 'admin') {
+        // Non-admin user, redirect to login with error
+        setLocation('/login?from=redirect');
+      }
     }
-  }, [isAuthLoading, isAuthenticated, setLocation]);
+  }, [isAuthLoading, isAuthenticated, user, setLocation]);
 
   // Fetch containers
   const { data: containersData, isLoading: isLoadingContainers, refetch: refetchContainers } = trpc.docker.list.useQuery(

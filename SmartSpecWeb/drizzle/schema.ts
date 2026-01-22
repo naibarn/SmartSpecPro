@@ -504,3 +504,63 @@ export const seoMetadata = pgTable("seo_metadata", {
 
 export type SeoMetadata = typeof seoMetadata.$inferSelect;
 export type InsertSeoMetadata = typeof seoMetadata.$inferInsert;
+
+/**
+ * Tenant Pages - Domain-specific page content
+ * Each tenant can have completely different content for each page
+ */
+export const tenantPages = pgTable("tenant_pages", {
+  id: serial("id").primaryKey(),
+
+  /** Tenant this page belongs to */
+  tenantId: integer("tenantId").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Page identifier (e.g., "home", "about", "features", "pricing") */
+  pageKey: varchar("pageKey", { length: 64 }).notNull(),
+
+  /** Page title */
+  title: varchar("title", { length: 255 }).notNull(),
+
+  /** Page slug for URL */
+  slug: varchar("slug", { length: 255 }).notNull(),
+
+  /** Page content (HTML or Markdown) */
+  content: text("content"),
+
+  /** Structured content sections (JSON) */
+  sections: json("sections").$type<Array<{
+    id: string;
+    type: "hero" | "features" | "testimonials" | "cta" | "content" | "gallery" | "pricing" | "faq" | "team" | "contact" | "custom";
+    title?: string;
+    subtitle?: string;
+    content?: string;
+    image?: string;
+    buttons?: Array<{ text: string; link: string; style?: string }>;
+    items?: Array<any>;
+    settings?: Record<string, any>;
+  }>>(),
+
+  /** Page metadata */
+  metadata: json("metadata").$type<{
+    description?: string;
+    keywords?: string[];
+    author?: string;
+    ogImage?: string;
+    customMeta?: Record<string, string>;
+  }>(),
+
+  /** Whether page is published */
+  isPublished: boolean("isPublished").default(false).notNull(),
+
+  /** Sort order for menu */
+  sortOrder: integer("sortOrder").default(0).notNull(),
+
+  /** Show in navigation menu */
+  showInMenu: boolean("showInMenu").default(true).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TenantPage = typeof tenantPages.$inferSelect;
+export type InsertTenantPage = typeof tenantPages.$inferInsert;

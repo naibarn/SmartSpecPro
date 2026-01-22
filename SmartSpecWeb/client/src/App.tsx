@@ -32,6 +32,7 @@ import AdminTenants from "./pages/AdminTenants";
 import AdminServices from "./pages/AdminServices";
 import DomainAdmin from "./pages/DomainAdmin";
 import DomainThemeEditor from "./pages/DomainThemeEditor";
+import DomainAdminContent from "./pages/DomainAdminContent";
 import Chat from "./pages/Chat";
 import Generate from "./pages/Generate";
 import Credits from "./pages/Credits";
@@ -56,6 +57,7 @@ function Router() {
       <Route path="/admin/tenants" component={AdminTenants} />
       <Route path="/domain-admin" component={DomainAdmin} />
       <Route path="/domain-admin/theme" component={DomainThemeEditor} />
+      <Route path="/domain-admin/content" component={DomainAdminContent} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />
