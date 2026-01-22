@@ -27,6 +27,9 @@ import { creditsRouter } from "./routers/credits";
 import { usersRouter } from "./routers/users";
 import { packagesRouter } from "./routers/packages";
 import { llmProvidersRouter } from "./routers/llmProviders";
+import { chatRouter } from "./routers/chat";
+import { memoryRouter } from "./routers/memory";
+import { mediaRouter } from "./routers/media";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -223,6 +226,15 @@ export const appRouter = router({
 
   // LLM Provider management (admin)
   llmProviders: llmProvidersRouter,
+
+  // Chat system (conversations, messages, memory)
+  chat: chatRouter,
+
+  // Memory system (entity memories, summaries, context)
+  memory: memoryRouter,
+
+  // Media generation (image, video, audio via Python backend)
+  media: mediaRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

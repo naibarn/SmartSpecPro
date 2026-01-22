@@ -15,6 +15,8 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
 ]);
 export const contentTypeEnum = pgEnum("content_type", ["image", "video", "website"]);
 export const aspectRatioEnum = pgEnum("aspect_ratio", ["1:1", "9:16", "16:9"]);
+export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system"]);
+export const entityTypeEnum = pgEnum("entity_type", ["user", "project", "preference", "technical"]);
 
 /**
  * Core user table backing auth flow.
@@ -564,3 +566,218 @@ export const tenantPages = pgTable("tenant_pages", {
 
 export type TenantPage = typeof tenantPages.$inferSelect;
 export type InsertTenantPage = typeof tenantPages.$inferInsert;
+
+/**
+ * Chat Conversations - Multi-chat support with settings
+ * Each conversation belongs to a user and can have custom settings
+ */
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+
+  /** User who owns this conversation */
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  /** Conversation title (auto-generated or user-set) */
+  title: varchar("title", { length: 255 }).notNull().default("New Chat"),
+
+  /** LLM model to use for this conversation */
+  model: varchar("model", { length: 100 }).default("gpt-4o-mini"),
+
+  /** Temperature setting (0-2) */
+  temperature: numeric("temperature", { precision: 3, scale: 2 }).default("0.7"),
+
+  /** Custom system prompt */
+  systemPrompt: text("systemPrompt"),
+
+  /** Skill settings for this conversation */
+  skillSettings: json("skillSettings").$type<{
+    autoDetect: boolean;
+    enabledSkills: string[];
+    detectionMode: "ask" | "auto" | "explicit";
+  }>().default({ autoDetect: true, enabledSkills: [], detectionMode: "auto" }),
+
+  /** Whether conversation is archived */
+  isArchived: boolean("isArchived").default(false).notNull(),
+
+  /** Whether conversation is pinned */
+  isPinned: boolean("isPinned").default(false).notNull(),
+
+  /** Total credits used in this conversation */
+  totalCreditsUsed: numeric("totalCreditsUsed", { precision: 12, scale: 4 }).default("0"),
+
+  /** Total messages count */
+  messageCount: integer("messageCount").default(0).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+
+/**
+ * Chat Messages - Individual messages within a conversation
+ * Supports multi-modal content (text, images, videos) and artifacts
+ */
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+
+  /** Conversation this message belongs to */
+  conversationId: integer("conversationId").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+
+  /** Message role: user, assistant, or system */
+  role: messageRoleEnum("role").notNull(),
+
+  /** Message content (text) */
+  content: text("content").notNull(),
+
+  /** Input tokens used */
+  inputTokens: integer("inputTokens").default(0),
+
+  /** Output tokens used */
+  outputTokens: integer("outputTokens").default(0),
+
+  /** Credits used for this message */
+  creditsUsed: numeric("creditsUsed", { precision: 10, scale: 4 }).default("0"),
+
+  /** Model used for this message */
+  modelUsed: varchar("modelUsed", { length: 100 }),
+
+  /** Attachments (images, files uploaded by user) */
+  attachments: json("attachments").$type<Array<{
+    type: "image" | "file" | "audio" | "video";
+    url: string;
+    key?: string;
+    name?: string;
+    size?: number;
+    mimeType?: string;
+    thumbnail?: string;
+  }>>().default([]),
+
+  /** Artifacts extracted from response (code, markdown, media) */
+  artifacts: json("artifacts").$type<Array<{
+    id: string;
+    type: "code" | "markdown" | "image" | "video" | "pdf" | "file" | "slideshow" | "chart" | "table";
+    title?: string;
+    content: string | string[];
+    language?: string;
+    metadata?: Record<string, any>;
+  }>>().default([]),
+
+  /** Skill that was used (if any) */
+  skillUsed: varchar("skillUsed", { length: 100 }),
+
+  /** Arguments passed to the skill */
+  skillArgs: json("skillArgs").$type<Record<string, any>>(),
+
+  /** Error if message generation failed */
+  error: text("error"),
+
+  /** Whether message was regenerated */
+  isRegenerated: boolean("isRegenerated").default(false),
+
+  /** Parent message ID (for regenerated messages) */
+  parentMessageId: integer("parentMessageId"),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+
+/**
+ * Conversation Summaries - LLM-generated summaries for memory management
+ * Used to compress old messages while retaining context
+ */
+export const conversationSummaries = pgTable("conversation_summaries", {
+  id: serial("id").primaryKey(),
+
+  /** Conversation this summary belongs to */
+  conversationId: integer("conversationId").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+
+  /** The generated summary text */
+  summary: text("summary").notNull(),
+
+  /** Starting message ID that was summarized */
+  messageRangeStart: integer("messageRangeStart").notNull(),
+
+  /** Ending message ID that was summarized */
+  messageRangeEnd: integer("messageRangeEnd").notNull(),
+
+  /** Number of messages summarized */
+  messageCount: integer("messageCount").notNull(),
+
+  /** Tokens used to generate summary */
+  tokensUsed: integer("tokensUsed"),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ConversationSummary = typeof conversationSummaries.$inferSelect;
+export type InsertConversationSummary = typeof conversationSummaries.$inferInsert;
+
+/**
+ * Entity Memories - Long-term facts about users, projects, and preferences
+ * Persists across conversations and provides personalized context
+ */
+export const entityMemories = pgTable("entity_memories", {
+  id: serial("id").primaryKey(),
+
+  /** User this memory belongs to */
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  /** Type of entity: user, project, preference, technical */
+  entityType: entityTypeEnum("entityType").notNull(),
+
+  /** Name of the entity (e.g., "SmartSpecPro", "coding style") */
+  entityName: varchar("entityName", { length: 255 }).notNull(),
+
+  /** Facts about the entity (JSON array of strings) */
+  facts: json("facts").$type<string[]>().notNull().default([]),
+
+  /** Source conversation ID (where fact was learned) */
+  sourceConversationId: integer("sourceConversationId").references(() => conversations.id, { onDelete: "set null" }),
+
+  /** Confidence score (0-1) */
+  confidence: numeric("confidence", { precision: 3, scale: 2 }).default("0.8"),
+
+  /** Last time this memory was accessed */
+  lastAccessedAt: timestamp("lastAccessedAt", { withTimezone: true }).defaultNow(),
+
+  /** Number of times this memory was reinforced */
+  reinforcementCount: integer("reinforcementCount").default(1),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type EntityMemory = typeof entityMemories.$inferSelect;
+export type InsertEntityMemory = typeof entityMemories.$inferInsert;
+
+/**
+ * Skill Preferences - Per-conversation skill settings
+ * Allows users to enable/disable specific skills for each conversation
+ */
+export const skillPreferences = pgTable("skill_preferences", {
+  id: serial("id").primaryKey(),
+
+  /** Conversation this preference belongs to */
+  conversationId: integer("conversationId").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+
+  /** Skill identifier */
+  skillId: varchar("skillId", { length: 100 }).notNull(),
+
+  /** Whether skill is enabled */
+  enabled: boolean("enabled").default(true).notNull(),
+
+  /** Priority for skill detection (higher = checked first) */
+  priority: integer("priority").default(0).notNull(),
+
+  /** Custom settings for this skill */
+  customSettings: json("customSettings").$type<Record<string, any>>(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SkillPreference = typeof skillPreferences.$inferSelect;
+export type InsertSkillPreference = typeof skillPreferences.$inferInsert;
