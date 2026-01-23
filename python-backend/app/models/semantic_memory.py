@@ -100,7 +100,7 @@ class SemanticMemory(Base):
     is_active = Column(Integer, nullable=False, default=1)
     
     # Relationships
-    user = relationship("User", back_populates="semantic_memories", lazy="selectin")
+    user = relationship("User", lazy="selectin")
     
     # Indexes for efficient querying
     __table_args__ = (

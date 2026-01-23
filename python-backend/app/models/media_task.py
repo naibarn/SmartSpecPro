@@ -56,7 +56,7 @@ class MediaTask(Base):
     completed_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="media_tasks")
+    user = relationship("User")
 
     def to_dict(self):
         """Convert to dictionary"""

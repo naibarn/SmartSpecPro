@@ -80,7 +80,7 @@ class CreditsBalance(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    user = relationship("User", back_populates="credits_balance")
+    user = relationship("User")
     transactions = relationship("CreditTransaction", back_populates="balance", cascade="all, delete-orphan")
     
     # Indexes
@@ -203,7 +203,7 @@ class UsageRecord(Base):
     completed_at = Column(DateTime)
     
     # Relationships
-    user = relationship("User", back_populates="usage_records")
+    user = relationship("User")
     
     # Indexes
     __table_args__ = (

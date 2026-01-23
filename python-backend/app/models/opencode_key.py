@@ -84,7 +84,7 @@ class OpenCodeAPIKey(Base):
     revoked_at = Column(DateTime, nullable=True)
     
     # Relationships
-    user = relationship("User", back_populates="opencode_api_keys")
+    user = relationship("User")
     usage_logs = relationship(
         "OpenCodeAPIKeyUsage", 
         back_populates="api_key", 

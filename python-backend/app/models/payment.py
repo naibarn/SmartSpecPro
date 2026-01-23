@@ -46,7 +46,7 @@ class PaymentTransaction(Base):
     completed_at = Column(DateTime)
     
     # Relationships
-    user = relationship("User", back_populates="payment_transactions")
+    user = relationship("User")
     
     def __repr__(self):
         return f"<PaymentTransaction(id={self.id}, user_id={self.user_id}, amount=${self.amount_usd}, status={self.status})>"

@@ -44,7 +44,7 @@ class APIKey(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    user = relationship("User", back_populates="api_keys")
+    user = relationship("User")
     usage_logs = relationship("APIKeyUsage", back_populates="api_key", cascade="all, delete-orphan")
     
     def __repr__(self):

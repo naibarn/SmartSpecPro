@@ -117,7 +117,7 @@ class MarketplaceTemplate(Base):
     published_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    creator = relationship("User", foreign_keys=[creator_id], backref="created_templates")
+    creator = relationship("User", foreign_keys=[creator_id])
     reviewer = relationship("User", foreign_keys=[reviewed_by])
     purchases = relationship("TemplatePurchase", back_populates="template", lazy="dynamic")
     reviews = relationship("TemplateReview", back_populates="template", lazy="dynamic")
@@ -198,7 +198,7 @@ class TemplatePurchase(Base):
 
     # Relationships
     template = relationship("MarketplaceTemplate", back_populates="purchases")
-    buyer = relationship("User", foreign_keys=[buyer_id], backref="template_purchases")
+    buyer = relationship("User", foreign_keys=[buyer_id])
 
     # Indexes and constraints
     __table_args__ = (

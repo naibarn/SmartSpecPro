@@ -75,7 +75,7 @@ class Webhook(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     # Relationships
-    user = relationship("User", back_populates="webhooks")
+    user = relationship("User")
     deliveries = relationship("WebhookDelivery", back_populates="webhook", cascade="all, delete-orphan")
     
     def __repr__(self):

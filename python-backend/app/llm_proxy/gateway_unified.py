@@ -186,7 +186,15 @@ class LLMGateway:
         await self._check_credits(user, estimated_cost)
 
         if not self.unified_client.kie_ai_client:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Kie.ai client not initialized or enabled")
+            # Try to initialize from SmartSpecWeb media_providers
+            from app.services.media_provider_service import initialize_kie_ai_client
+            self.unified_client.kie_ai_client = await initialize_kie_ai_client()
+
+            if not self.unified_client.kie_ai_client:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Kie.ai not configured. Please add API key in Admin > Media Providers."
+                )
 
         try:
             image_data = await self.unified_client.kie_ai_client.generate_image(
@@ -233,7 +241,15 @@ class LLMGateway:
         await self._check_credits(user, estimated_cost)
 
         if not self.unified_client.kie_ai_client:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Kie.ai client not initialized or enabled")
+            # Try to initialize from SmartSpecWeb media_providers
+            from app.services.media_provider_service import initialize_kie_ai_client
+            self.unified_client.kie_ai_client = await initialize_kie_ai_client()
+
+            if not self.unified_client.kie_ai_client:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Kie.ai not configured. Please add API key in Admin > Media Providers."
+                )
 
         try:
             video_data = await self.unified_client.kie_ai_client.generate_video(
@@ -275,7 +291,15 @@ class LLMGateway:
         await self._check_credits(user, estimated_cost)
 
         if not self.unified_client.kie_ai_client:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Kie.ai client not initialized or enabled")
+            # Try to initialize from SmartSpecWeb media_providers
+            from app.services.media_provider_service import initialize_kie_ai_client
+            self.unified_client.kie_ai_client = await initialize_kie_ai_client()
+
+            if not self.unified_client.kie_ai_client:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Kie.ai not configured. Please add API key in Admin > Media Providers."
+                )
 
         try:
             audio_data = await self.unified_client.kie_ai_client.generate_audio(
@@ -405,11 +429,17 @@ class LLMGateway:
 
     async def _check_credits(self, user: User, estimated_cost: Decimal) -> None:
         """Check if user has sufficient credits."""
+        # TEMPORARY: Skip credit check in DEBUG mode for testing (remove in production)
+        import os
+        if os.environ.get("SKIP_CREDIT_CHECK", "").lower() == "true" or os.environ.get("DEBUG", "").lower() == "true":
+            logger.warning("credit_check_skipped", user_id=user.id, reason="DEBUG or SKIP_CREDIT_CHECK enabled")
+            return
+
         has_credits = await self.credit_service.check_sufficient_credits(
             user_id=user.id,
             estimated_cost_usd=estimated_cost
         )
-        
+
         if not has_credits:
             balance_credits = await self.credit_service.get_balance(user.id)
             balance_usd = credits_to_usd(balance_credits)

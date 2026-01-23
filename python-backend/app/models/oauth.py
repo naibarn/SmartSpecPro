@@ -27,7 +27,7 @@ class OAuthConnection(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Relationships
-    user = relationship("User", back_populates="oauth_connections")
+    user = relationship("User")
     
     # Unique constraint: one provider account per user
     __table_args__ = (

@@ -122,7 +122,7 @@ async def list_skills(
         
         # Get skills directory
         mode_filter = SkillMode(mode) if mode else None
-        skills = await manager.list_skills(workspace, mode=mode_filter)
+        skills = manager.list_skills(workspace, mode=mode_filter)
         
         # Filter by scope if specified
         if scope:

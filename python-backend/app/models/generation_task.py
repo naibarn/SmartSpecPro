@@ -92,7 +92,7 @@ class GenerationTask(Base):
     deleted_at = Column(DateTime, nullable=True)
     
     # Relationships
-    user = relationship("User", back_populates="generation_tasks")
+    user = relationship("User")
     
     # Indexes
     __table_args__ = (
@@ -172,7 +172,7 @@ class GenerationAPIKey(Base):
     metadata = Column(JSON, default=dict)
     
     # Relationships
-    user = relationship("User", back_populates="generation_api_keys")
+    user = relationship("User")
     
     # Indexes
     __table_args__ = (
@@ -227,7 +227,7 @@ class ProviderCredential(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    user = relationship("User", back_populates="provider_credentials")
+    user = relationship("User")
     
     # Indexes
     __table_args__ = (

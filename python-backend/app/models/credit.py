@@ -25,7 +25,8 @@ class CreditTransaction(Base):
     meta_data = Column("metadata", JSON, default={})
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
-    user = relationship("User", back_populates="credit_transactions")
+    # Removed back_populates to avoid circular reference with SmartSpecWeb User schema
+    user = relationship("User")
     
     def __repr__(self):
         return f"<CreditTransaction {self.type} {self.amount} for user {self.user_id}>"

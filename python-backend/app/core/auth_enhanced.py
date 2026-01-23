@@ -29,7 +29,7 @@ security = HTTPBearer()
 
 # JWT settings
 SECRET_KEY = settings.SECRET_KEY
-JWT_SECRET_KEY = getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY)
+JWT_SECRET_KEY = getattr(settings, 'JWT_SECRET', settings.SECRET_KEY)  # Use JWT_SECRET, not JWT_SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = getattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES', 1440)
 REFRESH_TOKEN_EXPIRE_DAYS = 30

@@ -30,7 +30,7 @@ class CustomSkillPrompt(Base):
     )
 
     # Relationships
-    user = relationship("User", back_populates="custom_skill_prompts")
+    user = relationship("User")
 
     def to_dict(self):
         """Convert to dictionary"""

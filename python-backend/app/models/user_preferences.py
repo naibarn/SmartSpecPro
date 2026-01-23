@@ -54,7 +54,7 @@ class UserPreferences(Base):
     custom_settings = Column(JSONB, nullable=True)  # Additional custom settings
     
     # Relationships
-    user = relationship("User", back_populates="preferences")
+    user = relationship("User")
     
     def __repr__(self):
         return f"<UserPreferences(user_id={self.user_id})>"

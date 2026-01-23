@@ -27,18 +27,20 @@ import {
   updateSkillPreference,
   buildChatContext,
 } from "../services/chatService";
-import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "../services/creditService";
+import { hasEnoughCredits, calculateCreditsForLLM } from "../services/creditService";
 import { TRPCError } from "@trpc/server";
 import { getAvailableSkills, getSkillById, getDefaultEnabledSkills } from "../services/skillRegistry";
 import { detectSkill, extractSkillParams, getSkillDetectionSummary } from "../services/skillDetector";
 import { executeSkill, estimateSkillCost, canAutoExecute } from "../services/skillExecutor";
 import { signBearerToken } from "../_core/tokens";
 import { skillDetectionLimiter, skillExecutionLimiter } from "../services/rateLimiter";
+import { debugLog, debugError } from "../_core/logger";
 
 // Helper to create secure token for skill execution
 function createSkillToken(userId: number): string {
   return signBearerToken({
     sub: String(userId),
+    type: "access", // Required by Python backend for token validation
     scopes: ["skill:execute"],
     jti: `skill_${Date.now()}_${Math.random().toString(36).slice(2)}`,
   }, "15m");
@@ -50,7 +52,11 @@ const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 
 const attachmentSchema = z.object({
   type: z.enum(["image", "file", "audio", "video"]),
-  url: z.string().url(),
+  // Allow both full URLs (http/https) and relative paths (/uploads/...)
+  url: z.string().refine(
+    (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/uploads/"),
+    { message: "URL must be a valid http/https URL or a relative /uploads/ path" }
+  ),
   key: z.string().optional(),
   name: z.string().optional(),
   size: z.number().optional(),
@@ -122,7 +128,7 @@ export const chatRouter = router({
         limit: z.number().min(1).max(100).default(20),
         offset: z.number().min(0).default(0),
         isArchived: z.boolean().optional(),
-        search: z.string().optional(),
+        search: z.string().nullable().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -343,36 +349,38 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      debugLog("Chat", "saveAssistantMessage called", {
+        conversationId: input.conversationId,
+        contentLength: input.content?.length,
+        inputTokens: input.inputTokens,
+        outputTokens: input.outputTokens,
+        userId: ctx.user.id,
+      });
+
       // Verify conversation ownership
       const conversation = await getConversationById(input.conversationId, ctx.user.id);
       if (!conversation) {
+        debugLog("Chat", "Conversation not found for user", ctx.user.id);
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Conversation not found",
         });
       }
+      debugLog("Chat", "Found conversation", { id: conversation.id, title: conversation.title });
 
-      // Calculate and deduct credits
+      // Calculate credits for tracking purposes only
+      // NOTE: Credits are already deducted by the streaming endpoint (/api/llm/stream)
+      // This is just for recording the credit usage on the message
       const creditsUsed = calculateCreditsForLLM(input.inputTokens, input.outputTokens);
+      debugLog("Chat", "Calculated credits for tracking", creditsUsed);
 
+      // Update conversation total credits (tracking only, not deducting)
       if (creditsUsed > 0) {
-        await deductCredits({
-          userId: ctx.user.id,
-          amount: creditsUsed,
-          description: `Chat: ${conversation.title?.substring(0, 50) || "Conversation"}`,
-          metadata: {
-            conversationId: input.conversationId,
-            model: input.modelUsed || conversation.model,
-            inputTokens: input.inputTokens,
-            outputTokens: input.outputTokens,
-          },
-        });
-
-        // Update conversation total credits
         await updateConversationCredits(input.conversationId, creditsUsed);
       }
 
       // Create assistant message
+      debugLog("Chat", "Creating assistant message...");
       const message = await createMessage({
         conversationId: input.conversationId,
         role: "assistant",

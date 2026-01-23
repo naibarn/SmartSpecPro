@@ -128,7 +128,7 @@ class APIKeyV2(Base):
     revoked_reason = Column(Text, nullable=True)
     
     # Relationships
-    user = relationship("User", back_populates="api_keys_v2")
+    user = relationship("User")
     versions = relationship("APIKeyVersion", back_populates="api_key", cascade="all, delete-orphan", order_by="desc(APIKeyVersion.version)")
     audit_logs = relationship("KeyAuditLog", back_populates="api_key", cascade="all, delete-orphan")
     

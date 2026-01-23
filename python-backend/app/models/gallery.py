@@ -144,7 +144,7 @@ class GalleryItem(Base):
     deleted_at = Column(DateTime, nullable=True)
     
     # Relationships
-    user = relationship("User", back_populates="gallery_items")
+    user = relationship("User")
     generation_task = relationship("GenerationTask")
     likes = relationship("GalleryLike", back_populates="gallery_item", cascade="all, delete-orphan")
     comments = relationship("GalleryComment", back_populates="gallery_item", cascade="all, delete-orphan")

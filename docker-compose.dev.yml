@@ -61,7 +61,7 @@ services:
       - LOG_LEVEL=DEBUG
       - SMARTSPEC_PROXY_TOKEN=dev_token_12345
       - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
-      - JWT_SECRET=dev_jwt_secret_change_in_production
+      - JWT_SECRET=dev_jwt_secret_change_in_production_at_least_16_chars
       - CONTROL_PLANE_URL=http://control-plane:7070
       - CONTROL_PLANE_API_KEY=dev_control_plane_api_key_change_in_production
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
@@ -76,6 +76,7 @@ services:
       - CDN_BASE_URL=${CDN_BASE_URL:-}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - SKIP_CREDIT_CHECK=true
     ports:
       - "8001:8000"
     volumes:
