@@ -497,6 +497,33 @@ export function getSkillById(id: string): SkillDefinition | undefined {
 }
 
 /**
+ * Get skill by ID or by type (returns first matching skill of that type)
+ * This allows looking up skills by either their slug ID or their type
+ */
+export function getSkillByIdOrType(idOrType: string): SkillDefinition | undefined {
+  const skills = getSkillRegistry();
+
+  // First try exact ID match
+  const byId = skills.find((s) => s.id === idOrType);
+  if (byId) return byId;
+
+  // Then try type match (return first skill of that type)
+  const byType = skills.find((s) => s.type === idOrType);
+  if (byType) return byType;
+
+  // Try normalized variations (underscore <-> hyphen)
+  const normalized = idOrType.replace(/-/g, "_");
+  const normalizedHyphen = idOrType.replace(/_/g, "-");
+
+  return skills.find((s) =>
+    s.id === normalized ||
+    s.id === normalizedHyphen ||
+    s.type === normalized ||
+    s.type === normalizedHyphen
+  );
+}
+
+/**
  * Get skills by type
  */
 export function getSkillsByType(type: SkillType): SkillDefinition[] {

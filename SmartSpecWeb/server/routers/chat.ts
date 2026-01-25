@@ -29,7 +29,7 @@ import {
 } from "../services/chatService";
 import { hasEnoughCredits, calculateCreditsForLLM } from "../services/creditService";
 import { TRPCError } from "@trpc/server";
-import { getAvailableSkills, getSkillById, getDefaultEnabledSkills } from "../services/skillRegistry";
+import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills } from "../services/skillRegistry";
 import { detectSkill, extractSkillParams, getSkillDetectionSummary } from "../services/skillDetector";
 import { executeSkill, estimateSkillCost, canAutoExecute } from "../services/skillExecutor";
 import { signBearerToken } from "../_core/tokens";
@@ -815,12 +815,13 @@ export const chatRouter = router({
         });
       }
 
-      const skill = getSkillById(input.skillId);
+      // Use getSkillByIdOrType to support both skill IDs and skill types
+      const skill = getSkillByIdOrType(input.skillId);
 
       if (!skill) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: `Skill '${input.skillId}' not found`,
+          message: `Skill '${input.skillId}' not found. Available skills can be viewed in Media Studio.`,
         });
       }
 
@@ -873,7 +874,8 @@ export const chatRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const skill = getSkillById(input.skillId);
+      // Use getSkillByIdOrType to support both skill IDs and skill types
+      const skill = getSkillByIdOrType(input.skillId);
 
       if (!skill) {
         throw new TRPCError({

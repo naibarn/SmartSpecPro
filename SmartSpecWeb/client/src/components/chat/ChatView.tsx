@@ -66,6 +66,7 @@ const skillIconMap: Record<string, React.ElementType> = {
   "code-assistant": Code2,
   "document-analysis": FileText,
   "web-search": Search,
+  "prompt-enhancement": Sparkles,
 };
 
 type MessageRole = "user" | "assistant" | "system";
@@ -650,11 +651,12 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     }
 
     // Capture the detected skill before clearing it
-    const currentSkill = detectedSkill?.id;
+    const currentSkillId = detectedSkill?.id;
+    const currentSkillType = detectedSkill?.type;
     const skillPrompt = detectedSkill?.suggestedPrompt || text;
 
-    // Check if this is a media generation skill
-    if (currentSkill && mediaSkills.includes(currentSkill)) {
+    // Check if this is a media generation skill (check by type, not ID)
+    if (currentSkillId && currentSkillType && mediaSkills.includes(currentSkillType)) {
       // Execute media generation skill
       setIsStreaming(true);
       setStreamingContent("Generating media...");
@@ -667,7 +669,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
       try {
         const result = await executeSkillMutation.mutateAsync({
-          skillId: currentSkill,
+          skillId: currentSkillId,
           prompt: skillPrompt,
           conversationId,
           referenceImageUrls: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
@@ -711,7 +713,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             addSkillCreditsMutation.mutate({
               conversationId,
               creditsUsed: result.creditsUsed,
-              skillUsed: currentSkill,
+              skillUsed: currentSkillId,
             });
           }
         } else {
@@ -725,7 +727,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           content: responseContent,
           attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
           creditsUsed: result.creditsUsed?.toString(),
-          skillUsed: currentSkill,
+          skillUsed: currentSkillId,
           createdAt: new Date(),
         };
 
@@ -747,7 +749,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           id: Date.now(),
           role: "assistant" as const,
           content: `Error: ${errorMessage}`,
-          skillUsed: currentSkill,
+          skillUsed: currentSkillId,
           createdAt: new Date(),
         };
 
@@ -763,7 +765,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         role: "user",
         content: typeof content === "string" ? content : text,
         createdAt: new Date(userMessage.createdAt),
-      }, currentSkill);
+      }, currentSkillId);
     }
   };
 
@@ -987,17 +989,17 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         {detectedSkill && (
           <div className={cn(
             "mb-3 flex items-center gap-2 rounded-lg border px-3 py-2",
-            mediaSkills.includes(detectedSkill.id)
+            mediaSkills.includes(detectedSkill.type)
               ? "border-purple-300 bg-purple-50 dark:bg-purple-900/20"
               : "border-primary/30 bg-primary/5"
           )}>
             <Sparkles className={cn(
               "h-4 w-4",
-              mediaSkills.includes(detectedSkill.id) ? "text-purple-600" : "text-primary"
+              mediaSkills.includes(detectedSkill.type) ? "text-purple-600" : "text-primary"
             )} />
             <Badge variant="secondary" className="gap-1">
               {(() => {
-                const SkillIcon = skillIconMap[detectedSkill.id] || Wand2;
+                const SkillIcon = skillIconMap[detectedSkill.type] || Wand2;
                 return <SkillIcon className="h-3 w-3" />;
               })()}
               {detectedSkill.name}
@@ -1005,7 +1007,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             <span className="text-xs text-muted-foreground">
               ({Math.round(detectedSkill.confidence * 100)}%)
             </span>
-            {mediaSkills.includes(detectedSkill.id) && (
+            {mediaSkills.includes(detectedSkill.type) && (
               <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 font-medium">
                 <Zap className="h-3 w-3" />
                 Press Enter to generate
