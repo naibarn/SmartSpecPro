@@ -1,0 +1,176 @@
+{
+  "examples": [
+    {
+      "name": "Product Review - Vertical",
+      "description": "TikTok style product unboxing",
+      "input": {
+        "request": "Unboxing new wireless earbuds with feature highlights",
+        "target_platform": "veo",
+        "aspect_ratio": "9:16",
+        "duration": 8,
+        "content_type": "product_review",
+        "hook_strategy": "curiosity_gap",
+        "camera_movement": "close_up",
+        "pacing": "fast",
+        "music_mood": "upbeat_pop",
+        "cta": "like"
+      }
+    },
+    {
+      "name": "Fashion Transformation",
+      "description": "Instagram Reels outfit changes",
+      "input": {
+        "request": "Woman changes from casual to business to elegant evening wear",
+        "target_platform": "compatible",
+        "aspect_ratio": "9:16",
+        "duration": 15,
+        "content_type": "fashion_content",
+        "montage_style": "fast_cuts",
+        "hook_strategy": "before_after",
+        "camera_movement": "static",
+        "music_mood": "upbeat_pop",
+        "pacing": "fast"
+      }
+    },
+    {
+      "name": "Cinematic Storytelling",
+      "description": "YouTube premium content",
+      "input": {
+        "request": "Young woman discovers old family photos in grandmother's attic, emotional journey through memories",
+        "target_platform": "sora",
+        "aspect_ratio": "16:9",
+        "duration": 20,
+        "cinematic_style": "drama",
+        "camera_movement": "dolly_in",
+        "shot_composition": "medium_close_up",
+        "lighting_style": "golden_hour",
+        "emotion": "nostalgia",
+        "pacing": "slow",
+        "music_mood": "romantic_piano",
+        "script_required": true,
+        "creative_freedom": 60
+      }
+    },
+    {
+      "name": "Lifestyle Vlog",
+      "description": "Morning routine content",
+      "input": {
+        "request": "Morning routine: wake up, make coffee, skincare, choose outfit, head out",
+        "target_platform": "kling",
+        "aspect_ratio": "9:16",
+        "duration": 12,
+        "content_type": "lifestyle_vlog",
+        "camera_movement": "handheld",
+        "shot_composition": "medium_shot",
+        "pacing": "medium",
+        "music_mood": "lo_fi_chill",
+        "sound_design": "balanced",
+        "social_platform": "instagram"
+      }
+    },
+    {
+      "name": "Tech Review - Horizontal",
+      "description": "Professional YouTube review",
+      "input": {
+        "request": "Laptop performance test: gaming, video editing, multitasking with on-screen results",
+        "target_platform": "sora",
+        "aspect_ratio": "16:9",
+        "duration": 30,
+        "content_type": "product_review",
+        "cinematic_style": "commercial",
+        "visual_style": "corporate",
+        "camera_movement": "pan_right",
+        "lighting_style": "studio",
+        "text_overlay": true,
+        "sound_design": "voiceover_dominant",
+        "target_audience": "business"
+      }
+    },
+    {
+      "name": "Recipe Tutorial",
+      "description": "Quick cooking video",
+      "input": {
+        "request": "Make 5-minute pasta: boil water, cook pasta, add sauce, garnish, plate",
+        "target_platform": "compatible",
+        "aspect_ratio": "1:1",
+        "duration": 30,
+        "content_type": "tutorial",
+        "camera_movement": "static",
+        "shot_composition": "close_up",
+        "montage_style": "step_by_step",
+        "pacing": "medium",
+        "text_overlay": true,
+        "social_platform": "instagram"
+      }
+    },
+    {
+      "name": "Behind the Scenes",
+      "description": "Photoshoot BTS content",
+      "input": {
+        "request": "Behind the scenes of fashion photoshoot: setup, lighting, poses, photographer directing",
+        "target_platform": "wan",
+        "aspect_ratio": "9:16",
+        "duration": 15,
+        "content_type": "behind_scenes",
+        "camera_movement": "handheld",
+        "visual_style": "documentary",
+        "pacing": "medium",
+        "music_mood": "upbeat_pop",
+        "emotion": "excitement"
+      }
+    },
+    {
+      "name": "Motivational Quote",
+      "description": "Inspirational short video",
+      "input": {
+        "request": "Person running at sunrise with motivational voiceover about persistence",
+        "target_platform": "seedance",
+        "aspect_ratio": "9:16",
+        "duration": 10,
+        "cinematic_style": "commercial",
+        "camera_movement": "tracking",
+        "lighting_style": "golden_hour",
+        "emotion": "inspiration",
+        "pacing": "slow",
+        "music_mood": "epic_cinematic",
+        "text_overlay": true,
+        "optimize_for_virality": true
+      }
+    },
+    {
+      "name": "Comedy Skit",
+      "description": "Funny reaction video",
+      "input": {
+        "request": "Person's exaggerated reaction to unexpected plot twist while watching show",
+        "target_platform": "compatible",
+        "aspect_ratio": "9:16",
+        "duration": 8,
+        "content_type": "comedy_skit",
+        "camera_movement": "static",
+        "shot_composition": "medium_close_up",
+        "pacing": "variable",
+        "music_mood": "none",
+        "sound_design": "sfx_heavy",
+        "social_platform": "tiktok",
+        "target_audience": "gen_z"
+      }
+    },
+    {
+      "name": "Artistic/Experimental",
+      "description": "Creative visual piece",
+      "input": {
+        "request": "Abstract visualization of time passing through seasons in a single location",
+        "target_platform": "seedance",
+        "aspect_ratio": "21:9",
+        "duration": 12,
+        "cinematic_style": "experimental",
+        "visual_style": "surreal",
+        "camera_movement": "time_lapse",
+        "lighting_style": "dramatic",
+        "color_grading": "vintage",
+        "music_mood": "ambient_nature",
+        "creative_freedom": 90
+      }
+    }
+  ]
+}

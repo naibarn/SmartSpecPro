@@ -192,6 +192,32 @@ export async function addCredits(params: AddCreditsParams) {
 }
 
 /**
+ * Refund credits to user account (for failed operations)
+ */
+export async function refundCredits(params: {
+  userId: number;
+  amount: number;
+  description: string;
+  originalTransactionId?: number;
+  metadata?: Record<string, any>;
+}) {
+  const { userId, amount, description, originalTransactionId, metadata } = params;
+
+  return addCredits({
+    userId,
+    amount,
+    type: "refund",
+    description,
+    referenceId: originalTransactionId ? `refund-${originalTransactionId}` : undefined,
+    metadata: {
+      ...metadata,
+      originalTransactionId,
+      reason: "operation_failed",
+    },
+  });
+}
+
+/**
  * Get transaction history for a user
  */
 export async function getTransactionHistory(params: TransactionHistoryParams) {
@@ -249,22 +275,77 @@ export async function getCreditPackageById(id: number) {
 }
 
 /**
- * Calculate credits needed for LLM usage based on tokens
- * 
- * Pricing model (example):
- * - 1 credit = 1000 tokens (input)
- * - 1 credit = 500 tokens (output)
- * - Minimum 1 credit per request
+ * LLM Model Pricing (per 1M tokens in USD)
+ * Based on actual provider costs - update as needed
  */
-export function calculateCreditsForLLM(inputTokens: number, outputTokens: number): number {
-  const inputCredits = Math.ceil(inputTokens / 1000);
-  const outputCredits = Math.ceil(outputTokens / 500);
-  return Math.max(1, inputCredits + outputCredits);
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  // OpenAI
+  "gpt-4o": { input: 2.50, output: 10.00 },
+  "gpt-4o-mini": { input: 0.15, output: 0.60 },
+  "gpt-4-turbo": { input: 10.00, output: 30.00 },
+  "gpt-4": { input: 30.00, output: 60.00 },
+  "gpt-3.5-turbo": { input: 0.50, output: 1.50 },
+  // Anthropic
+  "claude-3-5-sonnet-20241022": { input: 3.00, output: 15.00 },
+  "claude-3-opus-20240229": { input: 15.00, output: 75.00 },
+  "claude-3-sonnet-20240229": { input: 3.00, output: 15.00 },
+  "claude-3-haiku-20240307": { input: 0.25, output: 1.25 },
+  // Google
+  "gemini-1.5-pro": { input: 1.25, output: 5.00 },
+  "gemini-1.5-flash": { input: 0.075, output: 0.30 },
+  // Default fallback (conservative estimate)
+  "default": { input: 1.00, output: 4.00 },
+};
+
+/**
+ * Get pricing for a model (with fallback to default)
+ */
+function getModelPricing(model: string): { input: number; output: number } {
+  // Try exact match first
+  if (MODEL_PRICING[model]) {
+    return MODEL_PRICING[model];
+  }
+  // Try partial match (e.g., "gpt-4o-mini-2024-07-18" -> "gpt-4o-mini")
+  for (const [key, pricing] of Object.entries(MODEL_PRICING)) {
+    if (model.startsWith(key) || model.includes(key)) {
+      return pricing;
+    }
+  }
+  return MODEL_PRICING["default"];
+}
+
+/**
+ * Calculate USD cost for LLM usage
+ */
+export function calculateLLMCostUsd(inputTokens: number, outputTokens: number, model: string = "gpt-4o-mini"): number {
+  const pricing = getModelPricing(model);
+  const inputCost = (inputTokens / 1_000_000) * pricing.input;
+  const outputCost = (outputTokens / 1_000_000) * pricing.output;
+  return inputCost + outputCost;
+}
+
+/**
+ * Calculate credits needed for LLM usage based on actual cost
+ *
+ * Credit pricing: 1 credit = $0.001 USD (so $1 = 1000 credits)
+ * This means credits deducted = actual LLM cost in USD * 1000
+ *
+ * Example with gpt-4o-mini (1000 input + 500 output tokens):
+ * - Input cost: 1000/1M * $0.15 = $0.00015
+ * - Output cost: 500/1M * $0.60 = $0.0003
+ * - Total cost: $0.00045
+ * - Credits: 0.00045 * 1000 = 0.45 → ceil = 1 credit
+ */
+export function calculateCreditsForLLM(inputTokens: number, outputTokens: number, model: string = "gpt-4o-mini"): number {
+  const costUsd = calculateLLMCostUsd(inputTokens, outputTokens, model);
+  // Convert USD to credits: 1 credit = $0.001
+  const credits = costUsd * 1000;
+  return Math.max(1, Math.ceil(credits));
 }
 
 /**
  * Calculate credits based on USD cost
- * 
+ *
  * Pricing: 1 credit = $0.001 USD
  * So $1 = 1000 credits
  */

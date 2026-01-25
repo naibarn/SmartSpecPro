@@ -1,0 +1,155 @@
+{
+  "supportedLanguages": [
+    {
+      "code": "en",
+      "name": "English",
+      "enabled": true,
+      "intents": [
+        "i want to build",
+        "i want to create",
+        "i want to make",
+        "help me build",
+        "help me create",
+        "help me develop",
+        "can you code",
+        "can you help code",
+        "i need",
+        "i need a tool",
+        "i need a solution",
+        "what should i use",
+        "what's the best",
+        "best solution for",
+        "should i use",
+        "should i build",
+        "should i buy",
+        "how do i implement",
+        "how do i add",
+        "how do i integrate",
+        "how do i set up",
+        "compare",
+        "compare x vs y",
+        "x or y",
+        "any alternative",
+        "any other",
+        "any solution",
+        "any library",
+        "avoid",
+        "don't want to use",
+        "is there a better way",
+        "what's recommended for"
+      ],
+      "characterRanges": [
+        {
+          "from": 97,
+          "to": 122,
+          "description": "a-z"
+        },
+        {
+          "from": 65,
+          "to": 90,
+          "description": "A-Z"
+        }
+      ]
+    },
+    {
+      "code": "th",
+      "name": "ไทย",
+      "enabled": true,
+      "intents": [
+        "อยากจะสร้าง",
+        "อยากสร้าง",
+        "ช่วยสร้าง",
+        "ช่วยพัฒนา",
+        "สามารถเขียนโค้ดได้ไหม",
+        "สามารถช่วยได้ไหม",
+        "ต้องการ",
+        "ฉันต้องการ",
+        "ดีที่สุด",
+        "ดีกว่า",
+        "ควรใช้",
+        "ควรสร้าง",
+        "ควรซื้อ",
+        "เปรียบเทียบ",
+        "เปรียบเทียบ a กับ b",
+        "a หรือ b",
+        "มีอีกไหม",
+        "มีทางเลือกไหม",
+        "มีไลบรารี่ไหน",
+        "วิธีการ",
+        "วิธีใช้",
+        "วิธีรวม",
+        "วิธีตั้งค่า",
+        "ห้ามใช้",
+        "ไม่อยากใช้",
+        "มีวิธีที่ดีกว่า",
+        "แนะนำให้หน่อย",
+        "ควรใช้อะไร",
+        "ข้อแนะนำหน่อย"
+      ],
+      "characterRanges": [
+        {
+          "from": 3584,
+          "to": 3711,
+          "description": "Thai (U+0E00 - U+0E7F)"
+        }
+      ]
+    }
+  ],
+  "detectionStrategy": {
+    "primaryIndicator": "character-count-ratio",
+    "minCharacterThreshold": 10,
+    "thaiCharacterRatio": 0.3,
+    "fallbackLanguage": "en",
+    "keywordMatchWeight": 1.5,
+    "characterCountWeight": 1.0
+  },
+  "responseConfig": {
+    "maintainLanguageConsistency": true,
+    "allowCodeLanguageMixing": true,
+    "preserveUrlsAcrossLanguages": true,
+    "localizeAllUILabels": true,
+    "localizeTableHeaders": true,
+    "codeCommentsFollowUserLanguage": true,
+    "preserveEmojis": true
+  },
+  "localizationPaths": {
+    "english": "./localization/english.json",
+    "thai": "./localization/thai.json"
+  },
+  "codeStyleDetection": {
+    "thaiVariableNaming": {
+      "examples": ["ตัวแปร", "ฟังก์ชัน"],
+      "recommendation": "Use English naming in code, Thai in comments only"
+    },
+    "englishVariableNaming": {
+      "examples": ["camelCase", "SCREAMING_SNAKE_CASE"],
+      "recommendation": "Standard programming convention"
+    }
+  },
+  "features": {
+    "languageAutoDetection": {
+      "enabled": true,
+      "confidence": "high",
+      "description": "Automatically detect user language from first message"
+    },
+    "contextAwareLanguageSwitch": {
+      "enabled": true,
+      "description": "Detect if user switches languages mid-conversation"
+    },
+    "bilingual search": {
+      "enabled": true,
+      "description": "Search results adapted for both English and Thai terms where applicable"
+    },
+    "localized error messages": {
+      "enabled": true,
+      "description": "Error messages shown in user's language"
+    }
+  },
+  "metadata": {
+    "version": "2.0.0",
+    "lastUpdated": "2025-01-22",
+    "contributor": "devbanhmi",
+    "languages": 2,
+    "notes": "Bilingual support for English and Thai with auto-detection"
+  }
+}

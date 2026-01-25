@@ -25,23 +25,26 @@ class LLMProvider(BaseModel):
 # These must be defined before LLMRequest which references them
 
 class ImageGenerationRequest(BaseModel):
+    """Image generation request model with support for both camelCase and snake_case field names"""
     model: str
     prompt: str
     size: Optional[str] = None  # e.g., "1024x1024"
     quality: Optional[Literal["standard", "hd"]] = None
     style: Optional[str] = None
     n: Optional[int] = 1  # Number of images to generate
-    response_format: Optional[Literal["url", "b64_json"]] = "url"
+    response_format: Optional[Literal["url", "b64_json"]] = Field(default="url", alias="responseFormat")
     user: Optional[str] = None
     # Kie.ai specific parameters
-    aspect_ratio: Optional[str] = None # e.g., "16:9", "1:1"
-    negative_prompt: Optional[str] = None
+    aspect_ratio: Optional[str] = Field(default=None, alias="aspectRatio")
+    negative_prompt: Optional[str] = Field(default=None, alias="negativePrompt")
     seed: Optional[int] = None
-    cfg_scale: Optional[float] = None
+    cfg_scale: Optional[float] = Field(default=None, alias="cfgScale")
     steps: Optional[int] = None
     # Reference images/styles
-    reference_image_urls: Optional[List[str]] = None
-    reference_style_url: Optional[str] = None
+    reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
+    reference_style_url: Optional[str] = Field(default=None, alias="referenceStyleUrl")
+
+    model_config = {"populate_by_name": True}  # Accept both alias and field name
 
 
 class ImageGenerationResponse(BaseModel):
@@ -52,9 +55,11 @@ class ImageGenerationResponse(BaseModel):
     data: List[Dict[str, str]]  # List of {'url': '...', 'b64_json': '...'}
     credits_used: Optional[Decimal] = None
     credits_balance: Optional[Decimal] = None
+    task_id: Optional[str] = None  # Internal task ID for history tracking
 
 
 class VideoGenerationRequest(BaseModel):
+    """Video generation request model with support for both camelCase and snake_case field names"""
     model: str
     prompt: str
     duration: Optional[int] = None  # in seconds
@@ -62,11 +67,13 @@ class VideoGenerationRequest(BaseModel):
     fps: Optional[int] = None
     user: Optional[str] = None
     # Kie.ai specific parameters
-    aspect_ratio: Optional[str] = None
-    negative_prompt: Optional[str] = None
+    aspect_ratio: Optional[str] = Field(default=None, alias="aspectRatio")
+    negative_prompt: Optional[str] = Field(default=None, alias="negativePrompt")
     seed: Optional[int] = None
-    reference_video_url: Optional[str] = None
-    reference_image_urls: Optional[List[str]] = None
+    reference_video_url: Optional[str] = Field(default=None, alias="referenceVideoUrl")
+    reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
+
+    model_config = {"populate_by_name": True}  # Accept both alias and field name
 
 
 class VideoGenerationResponse(BaseModel):
@@ -77,19 +84,23 @@ class VideoGenerationResponse(BaseModel):
     data: List[Dict[str, str]]  # List of {'url': '...'}
     credits_used: Optional[Decimal] = None
     credits_balance: Optional[Decimal] = None
+    task_id: Optional[str] = None  # Internal task ID for history tracking
 
 
 class AudioGenerationRequest(BaseModel):
+    """Audio generation request model with support for both camelCase and snake_case field names"""
     model: str
     text: str
     voice: Optional[str] = None
     speed: Optional[float] = None
     user: Optional[str] = None
     # Kie.ai specific parameters
-    voice_id: Optional[str] = None # Elevenlabs specific
+    voice_id: Optional[str] = Field(default=None, alias="voiceId")
     stability: Optional[float] = None
-    similarity_boost: Optional[float] = None
-    output_format: Optional[Literal["mp3", "wav"]] = "mp3"
+    similarity_boost: Optional[float] = Field(default=None, alias="similarityBoost")
+    output_format: Optional[Literal["mp3", "wav"]] = Field(default="mp3", alias="outputFormat")
+
+    model_config = {"populate_by_name": True}  # Accept both alias and field name
 
 
 class AudioGenerationResponse(BaseModel):
@@ -100,6 +111,7 @@ class AudioGenerationResponse(BaseModel):
     data: List[Dict[str, str]]  # List of {'url': '...'}
     credits_used: Optional[Decimal] = None
     credits_balance: Optional[Decimal] = None
+    task_id: Optional[str] = None  # Internal task ID for history tracking
 
 
 # ==================== LLM REQUEST/RESPONSE MODELS ====================

@@ -82,7 +82,7 @@ async def get_media_provider_key(provider_name: str = "kie_ai") -> Optional[Dict
             result = await session.execute(
                 text('''
                     SELECT "providerName", "displayName", "apiKeyEncrypted",
-                           "baseUrl", "configJson", "isEnabled", "hasApiKey"
+                           "baseUrl", "callbackUrl", "configJson", "isEnabled", "hasApiKey"
                     FROM media_providers
                     WHERE "providerName" = :provider_name
                       AND "isEnabled" = true
@@ -112,7 +112,8 @@ async def get_media_provider_key(provider_name: str = "kie_ai") -> Optional[Dict
                 "displayName": row[1],
                 "apiKey": api_key,
                 "baseUrl": row[3],
-                "configJson": row[4],
+                "callbackUrl": row[4],
+                "configJson": row[5],
             }
 
             # Update cache
@@ -152,10 +153,19 @@ async def initialize_kie_ai_client():
 
     api_key = provider_config["apiKey"]
     base_url = provider_config.get("baseUrl") or "https://api.kie.ai/api/v1"
+    callback_url = provider_config.get("callbackUrl")
 
     try:
-        client = KieAIProvider(api_key=api_key, base_url=base_url)
-        logger.info("kie_ai_client_initialized", base_url=base_url)
+        client = KieAIProvider(
+            api_key=api_key,
+            base_url=base_url,
+            callback_url=callback_url
+        )
+        logger.info(
+            "kie_ai_client_initialized",
+            base_url=base_url,
+            has_callback_url=bool(callback_url)
+        )
         return client
     except Exception as e:
         logger.error("kie_ai_client_init_failed", error=str(e))

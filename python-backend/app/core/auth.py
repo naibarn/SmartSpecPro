@@ -6,7 +6,7 @@ JWT token generation and validation using enhanced JWT Manager
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,21 +24,27 @@ logger = structlog.get_logger(__name__)
 # Re-export ACCESS_TOKEN_EXPIRE_MINUTES from settings for backwards compatibility
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # HTTP Bearer token
 security = HTTPBearer()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against a hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a password against a hash using bcrypt directly"""
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception:
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password"""
-    return pwd_context.hash(password)
+    """Hash a password using bcrypt directly"""
+    return bcrypt.hashpw(
+        password.encode('utf-8'),
+        bcrypt.gensalt()
+    ).decode('utf-8')
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -62,7 +68,8 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
         raise ValueError("user_id is required in token data")
 
     # Use JWT Manager for token creation
-    additional_claims = {k: v for k, v in data.items() if k not in ["sub", "exp", "iat"]}
+    # Filter out user_id to avoid duplicate argument error
+    additional_claims = {k: v for k, v in data.items() if k not in ["sub", "exp", "iat", "user_id"]}
     return jwt_create_access(int(user_id), **additional_claims)
 
 

@@ -5,6 +5,10 @@ import { giveSignupBonus } from "../services/creditService";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
+// Credits for first user (admin) vs normal users
+const FIRST_USER_BONUS_CREDITS = 10000; // 10,000 credits for first user (admin)
+const NORMAL_USER_BONUS_CREDITS = 100;  // 100 credits for normal users
+
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
   return typeof value === "string" ? value : undefined;
@@ -33,6 +37,16 @@ export function registerOAuthRoutes(app: Express) {
       const existingUser = await db.getUserByOpenId(userInfo.openId);
       const isNewUser = !existingUser;
 
+      // Check if this is the first user in the system (will become admin)
+      let isFirstUser = false;
+      if (isNewUser) {
+        const userCount = await db.getUserCount();
+        isFirstUser = userCount === 0;
+        if (isFirstUser) {
+          console.log(`[OAuth] First user detected! Will grant admin privileges.`);
+        }
+      }
+
       // Get hostname for registeredDomain
       const hostname = req.hostname || req.get("host")?.split(":")[0] || "localhost";
 
@@ -44,6 +58,8 @@ export function registerOAuthRoutes(app: Express) {
         lastSignedIn: new Date(),
         // Only set registeredDomain for new users (will be ignored on update)
         registeredDomain: isNewUser ? hostname : undefined,
+        // Grant admin role to first user
+        role: isFirstUser ? 'admin' : undefined,
       });
 
       // Give signup bonus to new users
@@ -51,8 +67,10 @@ export function registerOAuthRoutes(app: Express) {
         const newUser = await db.getUserByOpenId(userInfo.openId);
         if (newUser) {
           try {
-            await giveSignupBonus(newUser.id, 100); // 100 credits signup bonus
-            console.log(`[OAuth] Gave signup bonus to new user: ${newUser.id}`);
+            // First user (admin) gets more credits
+            const bonusCredits = isFirstUser ? FIRST_USER_BONUS_CREDITS : NORMAL_USER_BONUS_CREDITS;
+            await giveSignupBonus(newUser.id, bonusCredits);
+            console.log(`[OAuth] Gave signup bonus (${bonusCredits} credits) to new user: ${newUser.id}${isFirstUser ? ' (ADMIN)' : ''}`);
           } catch (err) {
             console.error(`[OAuth] Failed to give signup bonus:`, err);
           }

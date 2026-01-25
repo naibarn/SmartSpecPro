@@ -30,7 +30,11 @@ import {
   X,
   Palette,
   Settings as SettingsIcon,
+  Upload,
+  ImagePlus,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Tenant {
   id: number;
@@ -47,6 +51,15 @@ interface Tenant {
   createdAt: string;
 }
 
+interface ThemePreset {
+  id: number;
+  name: string;
+  displayName: string;
+  description?: string;
+  themeConfig: any;
+  isActive: boolean;
+}
+
 export default function AdminTenants() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
@@ -54,6 +67,11 @@ export default function AdminTenants() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [themePresets, setThemePresets] = useState<ThemePreset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
+  const [applyingPreset, setApplyingPreset] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -65,6 +83,65 @@ export default function AdminTenants() {
     faviconUrl: '',
     isActive: true,
   });
+
+  // File upload handler
+  const handleFileUpload = async (type: 'logo' | 'favicon', file: File) => {
+    if (!editingTenant) {
+      toast.error('Please save the tenant first before uploading files');
+      return;
+    }
+
+    const maxSize = type === 'favicon' ? 1 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(`File too large. Max size: ${type === 'favicon' ? '1MB' : '5MB'}`);
+      return;
+    }
+
+    type === 'logo' ? setUploadingLogo(true) : setUploadingFavicon(true);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const response = await fetch(`/api/admin/tenants/${editingTenant.id}/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type,
+          fileBase64: base64,
+          fileName: file.name,
+          fileType: file.type,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+
+      const data = await response.json();
+
+      // Update form data with new URL
+      setFormData(prev => ({
+        ...prev,
+        [type === 'logo' ? 'logoUrl' : 'faviconUrl']: data.url,
+      }));
+
+      toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`);
+      fetchTenants(); // Refresh list
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload file');
+    } finally {
+      type === 'logo' ? setUploadingLogo(false) : setUploadingFavicon(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -78,7 +155,58 @@ export default function AdminTenants() {
 
   useEffect(() => {
     fetchTenants();
+    fetchThemePresets();
   }, []);
+
+  const fetchThemePresets = async () => {
+    try {
+      const response = await fetch('/api/tenant/theme-presets', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setThemePresets(data.presets || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch theme presets:', error);
+    }
+  };
+
+  const applyThemePreset = async (presetId: number) => {
+    if (!editingTenant) return;
+
+    setApplyingPreset(true);
+    try {
+      const response = await fetch(`/api/admin/tenants/${editingTenant.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...formData,
+          domains: formData.domains ? formData.domains.split(',').map(d => d.trim()) : [],
+          themeConfig: themePresets.find(p => p.id === presetId)?.themeConfig,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Theme preset applied! Refreshing to see changes...');
+        setSelectedPresetId(presetId);
+        await fetchTenants();
+        // Also refresh editingTenant to show updated theme
+        const updatedTenant = tenants.find(t => t.id === editingTenant.id);
+        if (updatedTenant) {
+          setEditingTenant({ ...updatedTenant, themeConfig: themePresets.find(p => p.id === presetId)?.themeConfig });
+        }
+      } else {
+        toast.error('Failed to apply theme preset');
+      }
+    } catch (error) {
+      console.error('Failed to apply theme preset:', error);
+      toast.error('Failed to apply theme preset');
+    } finally {
+      setApplyingPreset(false);
+    }
+  };
 
   const fetchTenants = async () => {
     try {
@@ -368,22 +496,134 @@ export default function AdminTenants() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="logoUrl">Logo URL</Label>
-                <Input
-                  id="logoUrl"
-                  placeholder="https://..."
-                  value={formData.logoUrl}
-                  onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-                />
+                <Label htmlFor="logoUrl">Logo</Label>
+                <div className="space-y-2">
+                  {formData.logoUrl && (
+                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <img
+                        src={formData.logoUrl}
+                        alt="Logo preview"
+                        className="w-10 h-10 object-contain rounded"
+                      />
+                      <span className="text-xs text-gray-500 truncate flex-1">
+                        {formData.logoUrl.split('/').pop()}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFormData({ ...formData, logoUrl: '' })}
+                        className="text-red-500 h-6 w-6 p-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      id="logoUrl"
+                      placeholder="https://... or upload"
+                      value={formData.logoUrl}
+                      onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                      className="flex-1"
+                    />
+                    {editingTenant && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingLogo}
+                        onClick={() => document.getElementById('logoUpload')?.click()}
+                        className="shrink-0"
+                      >
+                        {uploadingLogo ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                    <input
+                      id="logoUpload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload('logo', file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+                  {!editingTenant && (
+                    <p className="text-xs text-gray-500">Save tenant first to enable upload</p>
+                  )}
+                </div>
               </div>
               <div>
-                <Label htmlFor="faviconUrl">Favicon URL</Label>
-                <Input
-                  id="faviconUrl"
-                  placeholder="https://..."
-                  value={formData.faviconUrl}
-                  onChange={(e) => setFormData({ ...formData, faviconUrl: e.target.value })}
-                />
+                <Label htmlFor="faviconUrl">Favicon</Label>
+                <div className="space-y-2">
+                  {formData.faviconUrl && (
+                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <img
+                        src={formData.faviconUrl}
+                        alt="Favicon preview"
+                        className="w-6 h-6 object-contain"
+                      />
+                      <span className="text-xs text-gray-500 truncate flex-1">
+                        {formData.faviconUrl.split('/').pop()}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFormData({ ...formData, faviconUrl: '' })}
+                        className="text-red-500 h-6 w-6 p-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      id="faviconUrl"
+                      placeholder="https://... or upload"
+                      value={formData.faviconUrl}
+                      onChange={(e) => setFormData({ ...formData, faviconUrl: e.target.value })}
+                      className="flex-1"
+                    />
+                    {editingTenant && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingFavicon}
+                        onClick={() => document.getElementById('faviconUpload')?.click()}
+                        className="shrink-0"
+                      >
+                        {uploadingFavicon ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                    <input
+                      id="faviconUpload"
+                      type="file"
+                      accept="image/*,.ico"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload('favicon', file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+                  {!editingTenant && (
+                    <p className="text-xs text-gray-500">Save tenant first to enable upload</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -397,6 +637,63 @@ export default function AdminTenants() {
               />
               <Label htmlFor="isActive">Active</Label>
             </div>
+
+            {/* Theme Preset Selector - Only show when editing */}
+            {editingTenant && themePresets.length > 0 && (
+              <div className="pt-4 border-t">
+                <Label className="flex items-center gap-2 mb-3">
+                  <Palette className="w-4 h-4" />
+                  Theme Preset
+                </Label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {themePresets.map((preset) => {
+                    const isSelected = editingTenant.themeConfig?.primaryColor === preset.themeConfig?.primaryColor;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        disabled={applyingPreset}
+                        onClick={() => applyThemePreset(preset.id)}
+                        className={`relative p-3 rounded-lg border-2 transition-all text-left ${
+                          isSelected
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-1 right-1">
+                            <Check className="w-4 h-4 text-purple-500" />
+                          </div>
+                        )}
+                        <div className="flex gap-1 mb-2">
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: preset.themeConfig?.primaryColor || '#3b82f6' }}
+                          />
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: preset.themeConfig?.secondaryColor || '#6366f1' }}
+                          />
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: preset.themeConfig?.accentColor || '#8b5cf6' }}
+                          />
+                        </div>
+                        <div className="text-xs font-medium text-gray-900 truncate">
+                          {preset.displayName}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {applyingPreset && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Applying theme...
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>

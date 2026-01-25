@@ -6,6 +6,7 @@ import { HelmetProvider } from "react-helmet-async";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { TenantProvider } from "./contexts/TenantContext";
 import Home from "./pages/Home";
 import Pricing from "./pages/Pricing";
 import Features from "./pages/Features";
@@ -30,14 +31,18 @@ import AdminLLMProviders from "./pages/AdminLLMProviders";
 import AdminMediaProviders from "./pages/AdminMediaProviders";
 import AdminMediaModels from "./pages/AdminMediaModels";
 import AdminSkills from "./pages/AdminSkills";
+import AdminStorageSettings from "./pages/AdminStorageSettings";
 import AdminTenants from "./pages/AdminTenants";
 import AdminServices from "./pages/AdminServices";
 import DomainAdmin from "./pages/DomainAdmin";
 import DomainThemeEditor from "./pages/DomainThemeEditor";
 import DomainAdminContent from "./pages/DomainAdminContent";
+import DomainUsers from "./pages/DomainUsers";
 import Chat from "./pages/Chat";
 import Generate from "./pages/Generate";
+import MediaStudio from "./pages/MediaStudio";
 import Credits from "./pages/Credits";
+import MediaHistory from "./pages/MediaHistory";
 import Settings from "./pages/Settings";
 import DockerRedirect from "./pages/DockerRedirect";
 
@@ -59,18 +64,22 @@ function Router() {
       <Route path="/admin/media-providers" component={AdminMediaProviders} />
       <Route path="/admin/media-models" component={AdminMediaModels} />
       <Route path="/admin/skills" component={AdminSkills} />
+      <Route path="/admin/storage-settings" component={AdminStorageSettings} />
       <Route path="/admin/services" component={AdminServices} />
       <Route path="/admin/tenants" component={AdminTenants} />
       <Route path="/domain-admin" component={DomainAdmin} />
       <Route path="/domain-admin/theme" component={DomainThemeEditor} />
       <Route path="/domain-admin/content" component={DomainAdminContent} />
+      <Route path="/domain-admin/users" component={DomainUsers} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/chat" component={Chat} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/generate/:type?" component={Generate} />
+      <Route path="/media-studio" component={MediaStudio} />
       <Route path="/credits" component={Credits} />
+      <Route path="/media-history" component={MediaHistory} />
       <Route path="/settings" component={Settings} />
       <Route path="/profile" component={Profile} />
       <Route path="/terms" component={Terms} />
@@ -91,10 +100,12 @@ function App() {
       <HelmetProvider>
         <ThemeProvider defaultTheme="light">
           <AuthProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Router />
-            </TooltipProvider>
+            <TenantProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Router />
+              </TooltipProvider>
+            </TenantProvider>
           </AuthProvider>
         </ThemeProvider>
       </HelmetProvider>

@@ -80,8 +80,10 @@ class CreditsBalance(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    user = relationship("User")
-    transactions = relationship("CreditTransaction", back_populates="balance", cascade="all, delete-orphan")
+    # NOTE: Using lazy="raise" to prevent MissingGreenlet error in async SQLAlchemy
+    # Access user via user_id instead
+    # user = relationship("User")
+    transactions = relationship("CreditTransaction", back_populates="balance", cascade="all, delete-orphan", lazy="raise")
     
     # Indexes
     __table_args__ = (
@@ -150,7 +152,7 @@ class CreditTransaction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    balance = relationship("CreditsBalance", back_populates="transactions")
+    balance = relationship("CreditsBalance", back_populates="transactions", lazy="raise")
     
     # Indexes
     __table_args__ = (
@@ -203,8 +205,10 @@ class UsageRecord(Base):
     completed_at = Column(DateTime)
     
     # Relationships
-    user = relationship("User")
-    
+    # NOTE: Removed user relationship to prevent MissingGreenlet error in async SQLAlchemy
+    # Access user via user_id instead
+    # user = relationship("User")
+
     # Indexes
     __table_args__ = (
         Index("idx_usage_record_user", "user_id"),

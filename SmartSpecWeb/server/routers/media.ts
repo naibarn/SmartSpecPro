@@ -16,17 +16,23 @@ import {
   type AudioModel,
   type TaskStatus,
 } from "../services/mediaGenerationService";
-import { deductCredits, hasEnoughCredits } from "../services/creditService";
+import { deductCredits, hasEnoughCredits, refundCredits } from "../services/creditService";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 
-// Helper to create secure token for Python backend
-function createMediaToken(userId: number, openId: string | null): string {
+// Helper to create secure token for Python backend (fallback)
+function createMediaToken(userId: number): string {
   return signBearerToken({
     sub: String(userId),
+    type: "access", // Required by Python backend for token validation
     scopes: ["media:generate"],
     jti: `media_${Date.now()}_${Math.random().toString(36).slice(2)}`,
   }, "15m"); // Short-lived token for single request
+}
+
+// Get user token - prefer session token from context, fallback to creating new one
+function getUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
+  return ctx.userToken || createMediaToken(ctx.user.id);
 }
 
 // ==================== Zod Schemas ====================
@@ -154,7 +160,7 @@ export const mediaRouter = router({
       try {
         // For now, we'll use a placeholder token - in production,
         // you'd pass the actual user token to the Python backend
-        const userToken = createMediaToken(ctx.user.id, ctx.user.openId);
+        const userToken = getUserToken(ctx);
 
         const result = await mediaGenerationService.generateImage(
           {
@@ -231,7 +237,7 @@ export const mediaRouter = router({
       }
 
       try {
-        const userToken = createMediaToken(ctx.user.id, ctx.user.openId);
+        const userToken = getUserToken(ctx);
 
         const result = await mediaGenerationService.generateVideo(
           {
@@ -307,7 +313,7 @@ export const mediaRouter = router({
       }
 
       try {
-        const userToken = createMediaToken(ctx.user.id, ctx.user.openId);
+        const userToken = getUserToken(ctx);
 
         const result = await mediaGenerationService.generateAudio(
           {
@@ -400,7 +406,7 @@ export const mediaRouter = router({
       });
 
       try {
-        const userToken = createMediaToken(ctx.user.id, ctx.user.openId);
+        const userToken = getUserToken(ctx);
 
         const task = await mediaGenerationService.generateImageAsync(
           {
@@ -416,7 +422,23 @@ export const mediaRouter = router({
 
         return task;
       } catch (error) {
-        // Note: Credits already deducted - Python backend handles failure refunds
+        // Refund credits on failure
+        console.error("[Media] Image generation failed, refunding credits:", error);
+        try {
+          await refundCredits({
+            userId: ctx.user.id,
+            amount: creditCost,
+            description: `Refund: Image generation failed (${model})`,
+            metadata: {
+              model,
+              prompt: input.prompt.slice(0, 100),
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+          });
+        } catch (refundError) {
+          console.error("[Media] Failed to refund credits:", refundError);
+        }
+
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Async image generation failed",
@@ -485,7 +507,7 @@ export const mediaRouter = router({
       });
 
       try {
-        const userToken = createMediaToken(ctx.user.id, ctx.user.openId);
+        const userToken = getUserToken(ctx);
 
         const task = await mediaGenerationService.generateVideoAsync(
           {
@@ -500,7 +522,24 @@ export const mediaRouter = router({
 
         return task;
       } catch (error) {
-        // Note: Credits already deducted - Python backend handles failure refunds
+        // Refund credits on failure
+        console.error("[Media] Video generation failed, refunding credits:", error);
+        try {
+          await refundCredits({
+            userId: ctx.user.id,
+            amount: creditCost,
+            description: `Refund: Video generation failed (${model})`,
+            metadata: {
+              model,
+              duration,
+              prompt: input.prompt.slice(0, 100),
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+          });
+        } catch (refundError) {
+          console.error("[Media] Failed to refund credits:", refundError);
+        }
+
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Async video generation failed",
@@ -513,7 +552,7 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .query(async ({ input, ctx }) => {
       try {
-        const userToken = createMediaToken(ctx.user.id, ctx.user.openId);
+        const userToken = getUserToken(ctx);
         const task = await mediaGenerationService.getTask(input.taskId, userToken);
         return task;
       } catch (error) {
@@ -536,7 +575,7 @@ export const mediaRouter = router({
     )
     .query(async ({ input, ctx }) => {
       try {
-        const userToken = createMediaToken(ctx.user.id, ctx.user.openId);
+        const userToken = getUserToken(ctx);
         const result = await mediaGenerationService.listTasks(userToken, {
           mediaType: input?.mediaType as MediaType,
           status: input?.status as TaskStatus,
@@ -557,13 +596,81 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const userToken = createMediaToken(ctx.user.id, ctx.user.openId);
+        const userToken = getUserToken(ctx);
         const task = await mediaGenerationService.cancelTask(input.taskId, userToken);
         return task;
       } catch (error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Failed to cancel task",
+        });
+      }
+    }),
+
+  // Delete a task (removes from history)
+  deleteTask: protectedProcedure
+    .input(z.object({ taskId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const userToken = getUserToken(ctx);
+        const PYTHON_BACKEND_URL =
+          process.env.PYTHON_BACKEND_URL ||
+          process.env.BACKEND_URL ||
+          process.env.OAUTH_SERVER_URL ||
+          "http://localhost:8000";
+
+        const response = await fetch(`${PYTHON_BACKEND_URL}/api/v1/media/tasks/${input.taskId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${userToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Delete task failed: ${response.status}`);
+        }
+
+        return { success: true, taskId: input.taskId };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to delete task",
+        });
+      }
+    }),
+
+  // Fetch task result from Kie.ai (useful when callback wasn't received)
+  fetchTaskResult: protectedProcedure
+    .input(z.object({ taskId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const userToken = getUserToken(ctx);
+        const PYTHON_BACKEND_URL =
+          process.env.PYTHON_BACKEND_URL ||
+          process.env.BACKEND_URL ||
+          process.env.OAUTH_SERVER_URL ||
+          "http://localhost:8000";
+
+        const response = await fetch(`${PYTHON_BACKEND_URL}/api/v1/media/tasks/${input.taskId}/fetch-result`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${userToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Fetch result failed: ${response.status}`);
+        }
+
+        return await response.json();
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to fetch task result",
         });
       }
     }),

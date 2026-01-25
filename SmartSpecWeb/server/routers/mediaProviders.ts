@@ -169,6 +169,7 @@ export const mediaProvidersRouter = router({
       description: z.string().optional(),
       providerType: z.enum(["image", "video", "audio", "multimodal"]).default("multimodal"),
       baseUrl: z.string().url().optional(),
+      callbackUrl: z.string().url().optional(),
       apiKey: z.string().optional(),
       defaultModel: z.string().optional(),
       availableModels: z.array(modelSchema).optional(),
@@ -206,6 +207,7 @@ export const mediaProvidersRouter = router({
       description: z.string().optional(),
       providerType: z.enum(["image", "video", "audio", "multimodal"]).optional(),
       baseUrl: z.string().url().optional().nullable(),
+      callbackUrl: z.string().url().optional().nullable(),
       apiKey: z.string().optional(),
       defaultModel: z.string().optional().nullable(),
       availableModels: z.array(modelSchema).optional(),
@@ -216,7 +218,7 @@ export const mediaProvidersRouter = router({
       sortOrder: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, apiKey, ...data } = input;
+      const { id, apiKey, callbackUrl, baseUrl, ...data } = input;
 
       // If setting as primary, unset other primaries of same type
       if (data.isPrimary) {
@@ -238,6 +240,14 @@ export const mediaProvidersRouter = router({
         updatedAt: new Date(),
       };
 
+      // Handle URL fields explicitly - allow clearing with null
+      if (callbackUrl !== undefined) {
+        updateData.callbackUrl = callbackUrl; // null will clear, string will set
+      }
+      if (baseUrl !== undefined) {
+        updateData.baseUrl = baseUrl; // null will clear, string will set
+      }
+
       // Only update API key if provided
       if (apiKey !== undefined) {
         if (apiKey) {
@@ -248,6 +258,8 @@ export const mediaProvidersRouter = router({
           updateData.hasApiKey = false;
         }
       }
+
+      console.log("Updating provider", id, "with data:", JSON.stringify(updateData, null, 2));
 
       await db
         .update(mediaProviders)
@@ -382,6 +394,7 @@ export const mediaProvidersRouter = router({
       return {
         apiKey: decrypt(provider.apiKeyEncrypted),
         baseUrl: provider.baseUrl,
+        callbackUrl: provider.callbackUrl,
         configJson: provider.configJson,
       };
     }),

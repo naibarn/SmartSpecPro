@@ -1,0 +1,344 @@
+{
+  "$schema": "https://smartspec.pro/schemas/skill-input-v1",
+  "version": "1.0",
+  "skillId": "create-image-prompt",
+  "title": "Create Image Prompt",
+  "description": "Generate professional AI image prompts using PromptDepth Pro v8.9",
+  "sections": [
+    {
+      "id": "basic",
+      "title": "Basic Input",
+      "titleTh": "ข้อมูลพื้นฐาน",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "userIdea",
+          "type": "textarea",
+          "label": "Your Idea",
+          "labelTh": "ไอเดียของคุณ",
+          "placeholder": "e.g., A woman in a coffee shop, wearing casual clothes, warm lighting...",
+          "placeholderTh": "บอกสิ่งที่คุณต้องการสร้าง...",
+          "required": false,
+          "rows": 3,
+          "helpText": "Describe the image you want to create. Can be simple or detailed.",
+          "helpTextTh": "อธิบายภาพที่คุณต้องการสร้าง อาจเป็นแบบง่ายหรือละเอียดก็ได้"
+        },
+        {
+          "id": "referenceImages",
+          "type": "imageUpload",
+          "label": "Reference Images",
+          "labelTh": "ภาพอ้างอิง",
+          "required": false,
+          "multiple": true,
+          "maxCount": 5,
+          "accept": "image/*",
+          "helpText": "Upload 1-5 reference images for style transfer or identity preservation",
+          "helpTextTh": "อัพโหลด 1-5 ภาพสำหรับถ่ายทอดสไตล์หรือรักษาเอกลักษณ์"
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Style",
+      "titleTh": "สไตล์",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "styleCategory",
+          "type": "select",
+          "label": "Style Category",
+          "labelTh": "หมวดหมู่สไตล์",
+          "required": false,
+          "default": "",
+          "placeholder": "Choose style: Cinematic, Anime, Fantasy...",
+          "placeholderTh": "เลือกหมวดหมู่สไตล์...",
+          "options": [
+            { "value": "", "label": "No Style (Default Realism)", "labelTh": "ไม่เลือก (Realism เริ่มต้น)" },
+            { "value": "A", "label": "A. Photorealism / Real-World", "labelTh": "A. ภาพถ่ายสมจริง" },
+            { "value": "B", "label": "B. Cinematic / Film", "labelTh": "B. ซีนีมาติก / ภาพยนตร์" },
+            { "value": "C", "label": "C. Illustration & Art", "labelTh": "C. ภาพวาด / งานศิลปะ" },
+            { "value": "D", "label": "D. Fantasy & Mythical", "labelTh": "D. แฟนตาซี / เทพนิยาย" },
+            { "value": "E", "label": "E. Surreal / Abstract", "labelTh": "E. เซอร์เรียล / แอบสแตรค" },
+            { "value": "F", "label": "F. Anime / Manga", "labelTh": "F. อนิเมะ / มังงะ" },
+            { "value": "G", "label": "G. Sci-Fi / Futuristic", "labelTh": "G. ไซไฟ / อนาคต" },
+            { "value": "H", "label": "H. 3D / CGI / Game", "labelTh": "H. 3D / CGI / เกม" },
+            { "value": "I", "label": "I. Minimal / Modern", "labelTh": "I. มินิมอล / โมเดิร์น" },
+            { "value": "J", "label": "J. Vintage / Retro", "labelTh": "J. วินเทจ / เรโทร" },
+            { "value": "K", "label": "K. Nature / Botanical", "labelTh": "K. ธรรมชาติ / พฤกษศาสตร์" },
+            { "value": "L", "label": "L. Character & Fashion", "labelTh": "L. ตัวละคร / แฟชั่น" },
+            { "value": "M", "label": "M. Experimental / Hybrid", "labelTh": "M. ทดลอง / ผสมผสาน" }
+          ],
+          "dynamicOptions": {
+            "source": "styleSubOptions",
+            "dependsOn": "styleCategory"
+          }
+        },
+        {
+          "id": "styleName",
+          "type": "select",
+          "label": "Style Variation",
+          "labelTh": "รูปแบบย่อย",
+          "required": false,
+          "placeholder": "First select a category above",
+          "placeholderTh": "เลือกรูปแบบ...",
+          "dependsOn": {
+            "field": "styleCategory",
+            "notEmpty": true
+          },
+          "optionGroups": {
+            "A": [
+              { "value": "Photorealistic", "label": "Photorealistic", "labelTh": "ภาพถ่ายสมจริง" },
+              { "value": "Ultra-realistic", "label": "Ultra-realistic", "labelTh": "สมจริงสูงสุด" },
+              { "value": "RAW realism", "label": "RAW realism", "labelTh": "โทนไฟล์ RAW" },
+              { "value": "Street photography", "label": "Street photography", "labelTh": "ภาพถ่ายริมถนน" },
+              { "value": "Film photography", "label": "Film photography", "labelTh": "ภาพถ่ายฟิล์ม" }
+            ],
+            "B": [
+              { "value": "Hollywood cinematic", "label": "Hollywood cinematic", "labelTh": "ซีนีมาติกฮอลลีวูด" },
+              { "value": "Teal & Orange", "label": "Teal & Orange", "labelTh": "โทน Teal & Orange" },
+              { "value": "Dark cinematic", "label": "Dark cinematic", "labelTh": "ซีนีมาติกมืด" },
+              { "value": "Film noir", "label": "Film noir", "labelTh": "ฟิล์มนัวร์" },
+              { "value": "Golden hour cinematic", "label": "Golden hour cinematic", "labelTh": "ซีนีมาติก Golden Hour" }
+            ],
+            "C": [
+              { "value": "Watercolor", "label": "Watercolor", "labelTh": "สีน้ำ" },
+              { "value": "Oil painting", "label": "Oil painting", "labelTh": "สีน้ำมัน" },
+              { "value": "Digital illustration", "label": "Digital illustration", "labelTh": "ภาพวาดดิจิทัล" },
+              { "value": "Sketch / Pencil", "label": "Sketch / Pencil", "labelTh": "สเก็ตช์ / ดินสอ" },
+              { "value": "Children-book style", "label": "Children-book style", "labelTh": "สไตล์หนังสือเด็ก" }
+            ],
+            "D": [
+              { "value": "Medieval fantasy", "label": "Medieval fantasy", "labelTh": "แฟนตาซียุคกลาง" },
+              { "value": "Gothic fantasy", "label": "Gothic fantasy", "labelTh": "แฟนตาซีกอธิค" },
+              { "value": "Fairycore", "label": "Fairycore", "labelTh": "แฟรี่คอร์" },
+              { "value": "Magic forest", "label": "Magic forest", "labelTh": "ป่าวิเศษ" },
+              { "value": "Dreamy fantasy", "label": "Dreamy fantasy", "labelTh": "แฟนตาซีฝันหวาน" }
+            ],
+            "E": [
+              { "value": "Dreamlike", "label": "Dreamlike", "labelTh": "เหมือนฝัน" },
+              { "value": "Vaporwave", "label": "Vaporwave", "labelTh": "เวเปอร์เวฟ" },
+              { "value": "Synthwave", "label": "Synthwave", "labelTh": "ซินท์เวฟ" },
+              { "value": "Psychedelic art", "label": "Psychedelic art", "labelTh": "ศิลปะไซเคเดลิก" },
+              { "value": "Glitch art", "label": "Glitch art", "labelTh": "ศิลปะกลิตช์" }
+            ],
+            "F": [
+              { "value": "Modern anime", "label": "Modern anime", "labelTh": "อนิเมะสมัยใหม่" },
+              { "value": "Chibi", "label": "Chibi", "labelTh": "ชิบิ" },
+              { "value": "Ghibli-style", "label": "Ghibli-style", "labelTh": "สไตล์ Ghibli" },
+              { "value": "Shonen", "label": "Shonen", "labelTh": "โชเน็น" },
+              { "value": "Cel-shaded", "label": "Cel-shaded", "labelTh": "เซลเชด" }
+            ],
+            "G": [
+              { "value": "Cyberpunk", "label": "Cyberpunk", "labelTh": "ไซเบอร์พังค์" },
+              { "value": "Post-apocalyptic", "label": "Post-apocalyptic", "labelTh": "หลังวันสิ้นโลก" },
+              { "value": "Space opera", "label": "Space opera", "labelTh": "มหากาพย์อวกาศ" },
+              { "value": "Tech-noir", "label": "Tech-noir", "labelTh": "เทคนัวร์" },
+              { "value": "Hologram UI", "label": "Hologram UI", "labelTh": "UI โฮโลแกรม" }
+            ],
+            "H": [
+              { "value": "Unreal Engine", "label": "Unreal Engine", "labelTh": "Unreal Engine" },
+              { "value": "PBR realistic", "label": "PBR realistic", "labelTh": "PBR สมจริง" },
+              { "value": "RPG concept art", "label": "RPG concept art", "labelTh": "คอนเซ็ปต์ RPG" },
+              { "value": "JRPG illustration", "label": "JRPG illustration", "labelTh": "ภาพวาด JRPG" },
+              { "value": "Creature concept", "label": "Creature concept", "labelTh": "คอนเซ็ปต์สัตว์ประหลาด" }
+            ],
+            "I": [
+              { "value": "Clean minimal", "label": "Clean minimal", "labelTh": "มินิมอลสะอาด" },
+              { "value": "Scandinavian style", "label": "Scandinavian style", "labelTh": "สไตล์สแกนดิเนเวียน" },
+              { "value": "Bauhaus", "label": "Bauhaus", "labelTh": "เบาเฮาส์" },
+              { "value": "Swiss design", "label": "Swiss design", "labelTh": "ดีไซน์สวิส" },
+              { "value": "Magazine editorial", "label": "Magazine editorial", "labelTh": "แมกกาซีนเอดิทอเรียล" }
+            ],
+            "J": [
+              { "value": "80s neon", "label": "80s neon", "labelTh": "นีออนยุค 80" },
+              { "value": "90s grunge", "label": "90s grunge", "labelTh": "กรันจ์ยุค 90" },
+              { "value": "Y2K aesthetic", "label": "Y2K aesthetic", "labelTh": "สไตล์ Y2K" },
+              { "value": "Art Deco", "label": "Art Deco", "labelTh": "อาร์ตเดโค" },
+              { "value": "Victorian", "label": "Victorian", "labelTh": "วิคตอเรียน" }
+            ],
+            "K": [
+              { "value": "Botanical illustration", "label": "Botanical illustration", "labelTh": "ภาพวาดพฤกษศาสตร์" },
+              { "value": "Misty forest", "label": "Misty forest", "labelTh": "ป่าหมอก" },
+              { "value": "Mountain cinematic", "label": "Mountain cinematic", "labelTh": "ภูเขาซีนีมาติก" },
+              { "value": "Ocean realism", "label": "Ocean realism", "labelTh": "ทะเลสมจริง" },
+              { "value": "Underwater", "label": "Underwater", "labelTh": "ใต้น้ำ" }
+            ],
+            "L": [
+              { "value": "Editorial fashion", "label": "Editorial fashion", "labelTh": "แฟชั่นเอดิทอเรียล" },
+              { "value": "Street fashion", "label": "Street fashion", "labelTh": "สตรีทแฟชั่น" },
+              { "value": "Korean soft fashion", "label": "Korean soft fashion", "labelTh": "แฟชั่นเกาหลีนุ่มนวล" },
+              { "value": "Beauty portrait", "label": "Beauty portrait", "labelTh": "บิวตี้พอร์ตเทรต" },
+              { "value": "High-fashion", "label": "High-fashion avant-garde", "labelTh": "ไฮแฟชั่นอาวองการ์ด" }
+            ],
+            "M": [
+              { "value": "Mixed-media", "label": "Mixed-media", "labelTh": "มิกซ์มีเดีย" },
+              { "value": "Collage", "label": "Collage", "labelTh": "คอลลาจ" },
+              { "value": "Double exposure", "label": "Double exposure", "labelTh": "ดับเบิ้ลเอ็กซ์โพเชอร์" },
+              { "value": "Photo-bashing", "label": "Photo-bashing", "labelTh": "โฟโต้แบชชิ่ง" },
+              { "value": "Texture overload", "label": "Texture overload", "labelTh": "เท็กซ์เจอร์เต็ม" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "vfx",
+      "title": "VFX Effects",
+      "titleTh": "เอฟเฟกต์ VFX",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "vfxCategory",
+          "type": "select",
+          "label": "VFX Category",
+          "labelTh": "หมวดหมู่ VFX",
+          "required": false,
+          "default": "",
+          "placeholder": "Add effects: Particles, Lighting, Weather...",
+          "placeholderTh": "เลือกหมวดหมู่ VFX...",
+          "options": [
+            { "value": "", "label": "No VFX", "labelTh": "ไม่ใช้ VFX" },
+            { "value": "P", "label": "P. Particles (dust, smoke, fire)", "labelTh": "P. อนุภาค (ฝุ่น, ควัน, ไฟ)" },
+            { "value": "L", "label": "L. Lighting (glow, flare, rays)", "labelTh": "L. แสง (เรือง, แฟลร์, ลำแสง)" },
+            { "value": "W", "label": "W. Weather (rain, snow, lightning)", "labelTh": "W. สภาพอากาศ (ฝน, หิมะ, ฟ้าผ่า)" },
+            { "value": "M", "label": "M. Magic (aura, portal, runes)", "labelTh": "M. เวทมนตร์ (ออร่า, พอร์ทัล, รูน)" },
+            { "value": "A", "label": "A. Atmospheric (mist, fog, haze)", "labelTh": "A. บรรยากาศ (หมอก, ฝ้า)" },
+            { "value": "T", "label": "T. Motion (blur, speed lines)", "labelTh": "T. การเคลื่อนไหว (เบลอ, เส้นความเร็ว)" }
+          ]
+        },
+        {
+          "id": "vfxEffect",
+          "type": "select",
+          "label": "VFX Effect",
+          "labelTh": "เอฟเฟกต์ VFX",
+          "required": false,
+          "placeholder": "First select a VFX category above",
+          "placeholderTh": "เลือกเอฟเฟกต์...",
+          "dependsOn": {
+            "field": "vfxCategory",
+            "notEmpty": true
+          },
+          "optionGroups": {
+            "P": [
+              { "value": "Dust", "label": "Dust particles", "labelTh": "อนุภาคฝุ่น" },
+              { "value": "Smoke", "label": "Smoke wisps", "labelTh": "ควัน" },
+              { "value": "Fire", "label": "Fire particles", "labelTh": "อนุภาคไฟ" },
+              { "value": "Water", "label": "Water droplets", "labelTh": "หยดน้ำ" },
+              { "value": "Sparks", "label": "Sparks", "labelTh": "ประกายไฟ" },
+              { "value": "Pollen", "label": "Pollen", "labelTh": "ละอองเกสร" }
+            ],
+            "L": [
+              { "value": "Glow", "label": "Ethereal glow", "labelTh": "แสงเรือง" },
+              { "value": "Lens flare", "label": "Lens flare", "labelTh": "เลนส์แฟลร์" },
+              { "value": "God rays", "label": "God rays", "labelTh": "ลำแสงจากฟ้า" },
+              { "value": "Neon", "label": "Neon glow", "labelTh": "แสงนีออน" },
+              { "value": "Bioluminescence", "label": "Bioluminescence", "labelTh": "เรืองแสงชีวภาพ" }
+            ],
+            "W": [
+              { "value": "Rain", "label": "Gentle rain", "labelTh": "ฝนละอองอ่อน" },
+              { "value": "Heavy rain", "label": "Heavy rain", "labelTh": "ฝนตกหนัก" },
+              { "value": "Snow", "label": "Falling snow", "labelTh": "หิมะตก" },
+              { "value": "Lightning", "label": "Lightning", "labelTh": "ฟ้าผ่า" },
+              { "value": "Wind", "label": "Wind effects", "labelTh": "ลมพัด" }
+            ],
+            "M": [
+              { "value": "Aura", "label": "Energy aura", "labelTh": "ออร่าพลังงาน" },
+              { "value": "Magic circle", "label": "Magic circle", "labelTh": "วงกลมเวทมนตร์" },
+              { "value": "Portal", "label": "Portal", "labelTh": "พอร์ทัล" },
+              { "value": "Runes", "label": "Glowing runes", "labelTh": "รูนเรืองแสง" },
+              { "value": "Force field", "label": "Force field", "labelTh": "ฟิลด์พลังงาน" }
+            ],
+            "A": [
+              { "value": "Mist", "label": "Light mist", "labelTh": "หมอกบาง" },
+              { "value": "Fog", "label": "Thick fog", "labelTh": "หมอกหนา" },
+              { "value": "Haze", "label": "Atmospheric haze", "labelTh": "ฝ้าบรรยากาศ" },
+              { "value": "Steam", "label": "Rising steam", "labelTh": "ไอน้ำลอย" },
+              { "value": "Volumetric fog", "label": "Volumetric fog", "labelTh": "หมอก 3D" }
+            ],
+            "T": [
+              { "value": "Motion blur", "label": "Motion blur", "labelTh": "เบลอเคลื่อนไหว" },
+              { "value": "Speed lines", "label": "Speed lines", "labelTh": "เส้นความเร็ว" },
+              { "value": "Trailing", "label": "Trailing effects", "labelTh": "เอฟเฟกต์ตาม" },
+              { "value": "Impact", "label": "Impact waves", "labelTh": "คลื่นกระแทก" },
+              { "value": "Shockwave", "label": "Shockwave", "labelTh": "ช็อคเวฟ" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced Options",
+      "titleTh": "ตัวเลือกขั้นสูง",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "realisticSkin",
+          "type": "boolean",
+          "label": "Realistic Skin (R)",
+          "labelTh": "ผิวสมจริง (R)",
+          "default": false,
+          "helpText": "Add realistic skin texture: visible pores, micro-texture, natural color variations",
+          "helpTextTh": "เพิ่มพื้นผิวผิวสมจริง: รูขุมขน พื้นผิวละเอียด สีผิวธรรมชาติ"
+        },
+        {
+          "id": "faceLock",
+          "type": "boolean",
+          "label": "Face Lock (F)",
+          "labelTh": "ล็อคใบหน้า (F)",
+          "default": false,
+          "helpText": "Preserve 90-95% facial identity. Keep landmarks but allow lighting adjustments",
+          "helpTextTh": "รักษา 90-95% ใบหน้า รักษาจุดสังเกตแต่ปรับแสงเงาได้"
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "default": "9:16",
+          "options": [
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (สี่เหลี่ยมจัตุรัส)" },
+            { "value": "16:9", "label": "16:9 (Landscape)", "labelTh": "16:9 (แนวนอน)" },
+            { "value": "9:16", "label": "9:16 (Portrait)", "labelTh": "9:16 (แนวตั้ง)" },
+            { "value": "4:3", "label": "4:3", "labelTh": "4:3" },
+            { "value": "3:4", "label": "3:4", "labelTh": "3:4" },
+            { "value": "21:9", "label": "21:9 (Ultrawide)", "labelTh": "21:9 (อัลตร้าไวด์)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "output",
+      "title": "Output Settings",
+      "titleTh": "การตั้งค่าผลลัพธ์",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Output Language",
+          "labelTh": "ภาษาผลลัพธ์",
+          "default": "en",
+          "placeholder": "Select output language",
+          "options": [
+            { "value": "en", "label": "English only", "labelTh": "ภาษาอังกฤษเท่านั้น" },
+            { "value": "th", "label": "Thai only", "labelTh": "ภาษาไทยเท่านั้น" },
+            { "value": "both", "label": "Both (EN + TH)", "labelTh": "ทั้งสอง (EN + TH)" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "userIdea": "userInput",
+    "referenceImages": "referenceImages",
+    "styleCategory": "styleCategory",
+    "styleName": "styleName",
+    "vfxCategory": "vfxCategory",
+    "vfxEffect": "vfxEffect",
+    "realisticSkin": "realisticSkin",
+    "faceLock": "faceLock",
+    "aspectRatio": "aspectRatio",
+    "language": "language"
+  }
+}

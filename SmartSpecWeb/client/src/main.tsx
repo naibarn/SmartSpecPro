@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink, TRPCClientError } from "@trpc/client";
+import { httpBatchLink, httpLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
@@ -39,14 +39,23 @@ queryClient.getMutationCache().subscribe(event => {
 
 const trpcClient = trpc.createClient({
   links: [
-    httpBatchLink({
+    // Use httpLink instead of httpBatchLink to isolate issues
+    httpLink({
       url: "/trpc",
       transformer: superjson,
-      fetch(input, init) {
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          credentials: "include",
-        });
+      async fetch(input, init) {
+        console.log("[tRPC Fetch]", typeof input === 'string' ? input : input.url, init?.method);
+        try {
+          const response = await globalThis.fetch(input, {
+            ...(init ?? {}),
+            credentials: "include",
+          });
+          console.log("[tRPC Response]", response.status, response.statusText);
+          return response;
+        } catch (err) {
+          console.error("[tRPC Fetch Error]", err);
+          throw err;
+        }
       },
     }),
   ],

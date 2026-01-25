@@ -88,6 +88,7 @@ interface Provider {
   description: string | null;
   providerType: "image" | "video" | "audio" | "multimodal";
   baseUrl: string | null;
+  callbackUrl: string | null;
   hasApiKey: boolean;
   defaultModel: string | null;
   availableModels: ModelVersion[] | null;
@@ -136,6 +137,7 @@ export default function AdminMediaProviders() {
     description: "",
     providerType: "multimodal" as "image" | "video" | "audio" | "multimodal",
     baseUrl: "",
+    callbackUrl: "",
     apiKey: "",
     defaultModel: "",
     isEnabled: false,
@@ -201,6 +203,7 @@ export default function AdminMediaProviders() {
       description: "",
       providerType: "multimodal",
       baseUrl: "",
+      callbackUrl: "",
       apiKey: "",
       defaultModel: "",
       isEnabled: false,
@@ -218,6 +221,7 @@ export default function AdminMediaProviders() {
       description: template.description,
       providerType: template.providerType,
       baseUrl: template.baseUrl,
+      callbackUrl: "",
       apiKey: "",
       defaultModel: template.defaultModel,
       isEnabled: false,
@@ -234,6 +238,7 @@ export default function AdminMediaProviders() {
       description: provider.description || "",
       providerType: provider.providerType,
       baseUrl: provider.baseUrl || "",
+      callbackUrl: provider.callbackUrl || "",
       apiKey: "",
       defaultModel: provider.defaultModel || "",
       isEnabled: provider.isEnabled,
@@ -251,9 +256,11 @@ export default function AdminMediaProviders() {
         displayName: formData.displayName,
         description: formData.description || undefined,
         providerType: formData.providerType,
-        baseUrl: formData.baseUrl || undefined,
+        // Use null to clear these fields, undefined means "don't update"
+        baseUrl: formData.baseUrl || null,
+        callbackUrl: formData.callbackUrl || null,
         apiKey: formData.apiKey || undefined,
-        defaultModel: formData.defaultModel || undefined,
+        defaultModel: formData.defaultModel || null,
         availableModels: editingModels.length > 0 ? editingModels : undefined,
         isEnabled: formData.isEnabled,
         isPrimary: formData.isPrimary,
@@ -266,6 +273,7 @@ export default function AdminMediaProviders() {
         description: formData.description || undefined,
         providerType: formData.providerType,
         baseUrl: formData.baseUrl || undefined,
+        callbackUrl: formData.callbackUrl || undefined,
         apiKey: formData.apiKey || undefined,
         defaultModel: formData.defaultModel || undefined,
         availableModels: editingModels.length > 0 ? editingModels : undefined,
@@ -792,6 +800,19 @@ function ProviderForm({
               onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
               placeholder="https://api.example.com/v1"
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="callbackUrl">Callback URL (Webhook)</Label>
+            <Input
+              id="callbackUrl"
+              value={formData.callbackUrl}
+              onChange={(e) => setFormData({ ...formData, callbackUrl: e.target.value })}
+              placeholder="https://your-tunnel.trycloudflare.com/api/media/callback"
+            />
+            <p className="text-xs text-muted-foreground">
+              Required for async providers like Kie.ai. Use cloudflared tunnel for local development.
+            </p>
           </div>
 
           <div className="grid gap-2">

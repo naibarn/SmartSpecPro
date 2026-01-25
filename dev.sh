@@ -128,9 +128,9 @@ cmd_start() {
     print_banner
     check_docker
     check_compose
-    
+
     log_step "Starting SmartSpecPro development environment..."
-    
+
     # Check if .env exists
     if [ ! -f ".env" ]; then
         log_warn ".env file not found. Creating from template..."
@@ -141,7 +141,28 @@ cmd_start() {
             log_warn "No .env.example found. Services may not work correctly."
         fi
     fi
-    
+
+    # Stop any conflicting containers from other compose files (e.g., prod nginx using port 80)
+    local conflicting_ports="80 443 3000 3001 5432 6379 8000 8001 7070 5555"
+    for port in $conflicting_ports; do
+        local container_using_port=$(docker ps --filter "publish=$port" --format "{{.Names}}" 2>/dev/null | grep -v "^smartspec-" | head -1)
+        if [ -n "$container_using_port" ]; then
+            log_warn "Port $port is in use by $container_using_port. Stopping it..."
+            docker stop "$container_using_port" 2>/dev/null || true
+            docker rm "$container_using_port" 2>/dev/null || true
+        fi
+    done
+
+    # Also stop any orphan smartspec containers from other compose files
+    local orphan_smartspec=$(docker ps --filter "name=smartspec" --format "{{.Names}}" 2>/dev/null | grep -E "smartspec-nginx-ssl|smartspec-nginx-prod" || true)
+    if [ -n "$orphan_smartspec" ]; then
+        log_warn "Found orphan containers from other compose files. Stopping them..."
+        for container in $orphan_smartspec; do
+            docker stop "$container" 2>/dev/null || true
+            docker rm "$container" 2>/dev/null || true
+        done
+    fi
+
     # Check if containers already exist and handle accordingly
     if compose_cmd ps -q 2>/dev/null | grep -q .; then
         log_info "Found existing containers. Starting them..."
@@ -174,9 +195,26 @@ cmd_start() {
 cmd_stop() {
     check_docker
     check_compose
-    
+
     log_step "Stopping SmartSpecPro development environment..."
-    compose_cmd down
+
+    # First, stop any other smartspec containers that might conflict (from other compose files)
+    local other_containers=$(docker ps -q --filter "name=smartspec" 2>/dev/null)
+    if [ -n "$other_containers" ]; then
+        log_step "Stopping all smartspec containers (including from other compose files)..."
+        docker stop $other_containers 2>/dev/null || true
+    fi
+
+    # Remove any orphan containers with smartspec in the name
+    local orphan_containers=$(docker ps -aq --filter "name=smartspec" 2>/dev/null)
+    if [ -n "$orphan_containers" ]; then
+        log_step "Removing orphan smartspec containers..."
+        docker rm $orphan_containers 2>/dev/null || true
+    fi
+
+    # Now run compose down for the dev environment
+    compose_cmd down 2>/dev/null || true
+
     log_info "All services stopped."
 }
 

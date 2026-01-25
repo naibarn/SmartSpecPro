@@ -372,15 +372,16 @@ class MarketplaceService:
         template = template_lock_result.scalar_one()
 
         # Record balances before transaction
-        buyer_balance_before = buyer.credits_balance
-        creator_balance_before = creator.credits_balance
+        # Use user.credits (the actual column) not user.credits_balance (read-only property)
+        buyer_balance_before = buyer.credits
+        creator_balance_before = creator.credits
 
         # Execute credit transfers
         # 1. Deduct from buyer
-        buyer.credits_balance -= total_credits
+        buyer.credits -= total_credits
 
         # 2. Add to creator
-        creator.credits_balance += creator_revenue
+        creator.credits += creator_revenue
 
         # 3. Platform commission (tracked but not added to any user)
         # Platform earnings are tracked separately
@@ -393,7 +394,7 @@ class MarketplaceService:
             creator_revenue=creator_revenue,
             platform_commission=platform_commission,
             buyer_balance_before=buyer_balance_before,
-            buyer_balance_after=buyer.credits_balance,
+            buyer_balance_after=buyer.credits,
             template_version=template.version
         )
         db.add(purchase)

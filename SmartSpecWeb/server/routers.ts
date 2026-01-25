@@ -32,6 +32,8 @@ import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
 import { mediaProvidersRouter } from "./routers/mediaProviders";
 import { mediaModelsRouter } from "./routers/mediaModels";
+import { skillsRouter } from "./routers/skills";
+import { storageSettingsRouter } from "./routers/storageSettings";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -49,6 +51,7 @@ const createGalleryItemSchema = z.object({
   duration: z.string().optional(),
   demoUrl: z.string().url().optional(),
   tags: z.array(z.string()).optional(),
+  model: z.string().max(128).optional(),
   isPublished: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   authorName: z.string().optional(),
@@ -244,6 +247,12 @@ export const appRouter = router({
   // Media generation (image, video, audio via Python backend)
   media: mediaRouter,
 
+  // Skills management and prompt enhancement
+  skills: skillsRouter,
+
+  // Storage settings management (admin) - R2, S3 configuration
+  storageSettings: storageSettingsRouter,
+
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({
     upload: protectedProcedure
@@ -277,13 +286,14 @@ export const appRouter = router({
 
   // Gallery routes
   gallery: router({
-    // Public: List gallery items (only published)
+    // Public: List gallery items (only published, filtered by tenant)
     list: publicProcedure
       .input(galleryFiltersSchema.omit({ isPublished: true }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         return getGalleryItems({
           ...input,
           isPublished: true, // Only show published items to public
+          tenantId: ctx.tenantId ?? undefined, // Filter by current tenant
         });
       }),
 
@@ -322,11 +332,14 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Admin: List all gallery items (including unpublished)
+    // Admin: List all gallery items (including unpublished, filtered by tenant)
     adminList: adminProcedure
       .input(galleryFiltersSchema)
-      .query(async ({ input }) => {
-        return getGalleryItems(input);
+      .query(async ({ input, ctx }) => {
+        return getGalleryItems({
+          ...input,
+          tenantId: ctx.tenantId ?? undefined, // Filter by current tenant
+        });
       }),
 
     // Admin: Get single gallery item (including unpublished)
@@ -336,13 +349,14 @@ export const appRouter = router({
         return getGalleryItemById(input.id);
       }),
 
-    // Admin: Create gallery item
+    // Admin: Create gallery item (with tenant association)
     create: adminProcedure
       .input(createGalleryItemSchema)
       .mutation(async ({ input, ctx }) => {
         const id = await createGalleryItem({
           ...input,
           authorId: ctx.user.id,
+          tenantId: ctx.tenantId ?? undefined, // Associate with current tenant
           tags: input.tags || [],
         });
         return { id };
@@ -382,22 +396,71 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const { fileName, fileType, fileBase64, folder } = input;
-        
+
         // Generate unique file key
         const ext = fileName.split('.').pop() || '';
         const uniqueId = nanoid(10);
         const fileKey = `gallery/${folder}/${uniqueId}-${Date.now()}.${ext}`;
-        
+
         // Convert base64 to buffer
         const buffer = Buffer.from(fileBase64, 'base64');
-        
+
         // Upload to S3
         const { url } = await storagePut(fileKey, buffer, fileType);
-        
+
         return {
           fileKey,
           fileUrl: url,
         };
+      }),
+
+    // Admin: Import file from external URL and upload to storage
+    importFromUrl: adminProcedure
+      .input(z.object({
+        url: z.string().url(),
+        folder: z.enum(["images", "videos", "thumbnails", "websites"]),
+      }))
+      .mutation(async ({ input }) => {
+        const { url, folder } = input;
+
+        try {
+          // Fetch the file from external URL
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+          }
+
+          // Get content type and determine extension
+          const contentType = response.headers.get('content-type') || 'image/png';
+          let ext = 'png';
+          if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
+          else if (contentType.includes('webp')) ext = 'webp';
+          else if (contentType.includes('gif')) ext = 'gif';
+          else if (contentType.includes('mp4')) ext = 'mp4';
+          else if (contentType.includes('webm')) ext = 'webm';
+          else if (contentType.includes('mp3')) ext = 'mp3';
+          else if (contentType.includes('wav')) ext = 'wav';
+
+          // Read response as buffer
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+
+          // Generate unique file key
+          const uniqueId = nanoid(10);
+          const fileKey = `gallery/${folder}/${uniqueId}-${Date.now()}.${ext}`;
+
+          // Upload to storage
+          const { url: permanentUrl } = await storagePut(fileKey, buffer, contentType);
+
+          return {
+            fileKey,
+            fileUrl: permanentUrl,
+            contentType,
+          };
+        } catch (error) {
+          console.error('Failed to import file from URL:', error);
+          throw new Error(`Failed to import file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
       }),
 
     // Admin: Bulk update sort order

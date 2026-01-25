@@ -1,0 +1,1855 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Image Prompt Engineer Skill Input (v2.0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request"
+  ],
+  "properties": {
+    "request": {
+      "type": "string",
+      "title": "User request",
+      "description": "สิ่งที่ผู้ใช้ต้องการให้สร้างเป็นพรอมต์ (เช่น ฉาก ตัวแบบ วัตถุ อารมณ์ สื่อที่ใช้)"
+    },
+    "generation_mode": {
+      "type": "string",
+      "title": "Generation mode",
+      "description": "โหมดการสร้างภาพ - ระบุว่าต้องการสร้างแบบไหน",
+      "default": "text_to_image",
+      "oneOf": [
+        {
+          "const": "text_to_image",
+          "title": "Text to Image",
+          "description": "สร้างภาพจากคำอธิบาย (ไม่ใช้ภาพอ้างอิง)"
+        },
+        {
+          "const": "image_to_image",
+          "title": "Image to Image",
+          "description": "แปลงภาพจากภาพอ้างอิง (ใช้ reference_images)"
+        },
+        {
+          "const": "inpaint",
+          "title": "Inpaint (Edit region)",
+          "description": "แก้ไขเฉพาะบางส่วนของภาพ (ใช้ mask)"
+        },
+        {
+          "const": "outpaint",
+          "title": "Outpaint (Expand image)",
+          "description": "ขยายภาพออกไปนอกกรอบเดิม"
+        },
+        {
+          "const": "variation",
+          "title": "Variation",
+          "description": "สร้าง variation จากภาพเดิม"
+        }
+      ]
+    },
+    "task": {
+      "type": "string",
+      "title": "Task",
+      "description": "เลือกงานหลักที่ต้องการให้สกิลทำ",
+      "default": "final_prompt",
+      "oneOf": [
+        {
+          "const": "final_prompt",
+          "title": "Generate final prompt",
+          "description": "สร้างพรอมต์สุดท้ายพร้อมรายละเอียดที่จำเป็นตาม detail_level"
+        },
+        {
+          "const": "ideas_10",
+          "title": "Generate 10 concept ideas",
+          "description": "แตกไอเดีย/คอนเซ็ปต์ 10 แบบจากคำขอ"
+        },
+        {
+          "const": "angles_10",
+          "title": "Generate 10 camera/composition angles",
+          "description": "สร้างตัวเลือกมุมกล้อง/คอมโพส 10 แบบ"
+        },
+        {
+          "const": "storyboard_6",
+          "title": "Generate 6-frame storyboard",
+          "description": "สตอรี่บอร์ด 6 เฟรม (ซีนต่อเนื่อง)"
+        },
+        {
+          "const": "infographic_layout",
+          "title": "Design infographic/layout prompt",
+          "description": "โหมดอินโฟกราฟิก/เลย์เอาต์แบบมีโครงสร้าง"
+        },
+        {
+          "const": "style_catalog",
+          "title": "Show style catalog options",
+          "description": "แสดงรายการสไตล์ที่เลือกได้ (สำหรับทำเมนู)"
+        },
+        {
+          "const": "vfx_catalog",
+          "title": "Show VFX catalog options",
+          "description": "แสดงรายการ VFX ที่เลือกได้ (สำหรับทำเมนู)"
+        },
+        {
+          "const": "typography_catalog",
+          "title": "Show typography catalog options",
+          "description": "แสดงรายการ Typography/เลย์เอาต์ตัวอักษรที่เลือกได้"
+        },
+        {
+          "const": "update_preferences",
+          "title": "Update sacred preferences",
+          "description": "อัปเดตค่าความชอบถาวร (sacred_mods/preferences)"
+        }
+      ]
+    },
+    "detail_level": {
+      "type": "string",
+      "title": "Detail level",
+      "description": "กำหนด 'ความละเอียดของผลลัพธ์' (ไม่ใช่คุณภาพภาพ): compact=สั้นที่สุด, standard=พรอมต์+ส่วนสำคัญ, full=ครบพร้อม breakdown/เหตุผล",
+      "default": "standard",
+      "oneOf": [
+        {
+          "const": "compact",
+          "title": "Compact",
+          "description": "ส่งออกสั้นที่สุด: พรอมต์หลัก + รายการหลีกเลี่ยง (ถ้ามี)"
+        },
+        {
+          "const": "standard",
+          "title": "Standard",
+          "description": "ส่งออกมาตรฐาน: พรอมต์หลัก + negative/avoid + พารามิเตอร์แนะนำ (ถ้ามี)"
+        },
+        {
+          "const": "full",
+          "title": "Full",
+          "description": "ส่งออกแบบเต็ม: พรอมต์ + negative/avoid + พารามิเตอร์ + breakdown (subject/scene/light/camera/style/vfx/text) เพื่อแก้ง่าย"
+        }
+      ]
+    },
+    "languages": {
+      "type": "string",
+      "title": "Output language",
+      "description": "ภาษาหลักของผลลัพธ์ (ค่าเริ่มต้น en). ถ้าต้องการผลลัพธ์หลายภาษา ให้ใช้ output_languages (advanced).",
+      "enum": [
+        "en",
+        "th"
+      ],
+      "default": "en"
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "title": "Aspect ratio",
+      "description": "อัตราส่วนภาพที่ต้องการ",
+      "default": "9:16",
+      "enum": [
+        "9:16",
+        "4:5",
+        "1:1",
+        "3:2",
+        "2:3",
+        "16:9",
+        "21:9"
+      ]
+    },
+    "aspect_ratio_custom": {
+      "type": "string",
+      "title": "Custom aspect ratio",
+      "description": "ถ้าต้องการอัตราส่วนอื่น ให้ใส่ที่นี่ (เช่น 5:4, 10:16) — จะถูกใช้แทน aspect_ratio เมื่อระบุ"
+    },
+    "style": {
+      "title": "Image style",
+      "description": "เลือกสไตล์หลักจากแคตตาล็อก หรือใช้ 'na' เพื่อให้สกิลเลือกให้ตามบริบท",
+      "oneOf": [
+        {
+          "const": "na",
+          "title": "N/A — Auto choose",
+          "description": "ไม่ระบุสไตล์ ให้สกิลเลือกให้ตามบริบท"
+        },
+        {
+          "const": "photorealistic",
+          "title": "Photorealistic — สมจริงเหมือนภาพถ่าย"
+        },
+        {
+          "const": "ultra_realistic",
+          "title": "Ultra-realistic — รายละเอียดสูงมาก คมชัดทุกส่วน"
+        },
+        {
+          "const": "raw_realism",
+          "title": "RAW realism — โทนดิบแบบไฟล์ RAW ไม่แต่งสี"
+        },
+        {
+          "const": "dslr_look",
+          "title": "DSLR look — สไตล์กล้อง DSLR"
+        },
+        {
+          "const": "natural_light_realism",
+          "title": "Natural light realism — แสงธรรมชาติสมจริง"
+        },
+        {
+          "const": "street_photography",
+          "title": "Street photography — ภาพชีวิตประจำวันแบบสารคดี"
+        },
+        {
+          "const": "documentary",
+          "title": "Documentary — เล่าเรื่องจริง เน้นความเป็นธรรมชาติ"
+        },
+        {
+          "const": "journalism_style",
+          "title": "Journalism style — ภาพแนวข่าว"
+        },
+        {
+          "const": "candid_realism",
+          "title": "Candid realism — ภาพทีเผลอเป็นธรรมชาติ"
+        },
+        {
+          "const": "soft_commercial",
+          "title": "Soft commercial — โทนสว่างนุ่มแบบโฆษณา"
+        },
+        {
+          "const": "lifestyle_photography",
+          "title": "Lifestyle photography — ชีวิตประจำวันแบบแบรนด์นิยม"
+        },
+        {
+          "const": "beauty_commercial",
+          "title": "Beauty commercial — เน้นผิวและความงาม"
+        },
+        {
+          "const": "product_commercial",
+          "title": "Product commercial — ภาพสินค้าแบบมืออาชีพ"
+        },
+        {
+          "const": "e_commerce_clean_style",
+          "title": "E-commerce clean style — ฉากสะอาด ขาว คมชัด"
+        },
+        {
+          "const": "kodak_portra",
+          "title": "Kodak Portra — โทนฟิล์มอุ่น นุ่ม"
+        },
+        {
+          "const": "fujifilm_superia",
+          "title": "Fujifilm Superia — สีสดใสคอนทราสต์สูง"
+        },
+        {
+          "const": "cinestill_800t",
+          "title": "Cinestill 800T — โทนนีออนกลางคืน"
+        },
+        {
+          "const": "black_and_white_film",
+          "title": "Black & White film — ฟิล์มขาวดำ"
+        },
+        {
+          "const": "grainy_film",
+          "title": "Grainy film — เกรนฟิล์มเด่นชัด"
+        },
+        {
+          "const": "polaroid",
+          "title": "Polaroid — โทนโพลารอยด์คลาสสิก"
+        },
+        {
+          "const": "hollywood_cinematic",
+          "title": "Hollywood cinematic — โทนหนังฮอลลีวูด"
+        },
+        {
+          "const": "teal_and_orange",
+          "title": "Teal & Orange — ตัดสีเด่นในภาพยนตร์"
+        },
+        {
+          "const": "dark_cinematic",
+          "title": "Dark cinematic — โทนมืด ดราม่า"
+        },
+        {
+          "const": "film_noir",
+          "title": "Film noir — ขาวดำลึกลับ"
+        },
+        {
+          "const": "low_key_lighting",
+          "title": "Low-key lighting — แสงมืด คอนทราสต์สูง"
+        },
+        {
+          "const": "high_key_lighting",
+          "title": "High-key lighting — แสงสว่างนวลทั่วภาพ"
+        },
+        {
+          "const": "moody_cinematic",
+          "title": "Moody cinematic — มู้ดเข้ม ขรึม"
+        },
+        {
+          "const": "golden_hour_cinematic",
+          "title": "Golden hour cinematic — แสงพระอาทิตย์สวย"
+        },
+        {
+          "const": "epic_widescreen_2_35_1",
+          "title": "Epic widescreen 2.35:1 — อัตราส่วนแบบภาพยนตร์"
+        },
+        {
+          "const": "suspense_thriller_style",
+          "title": "Suspense / Thriller style — ลึกลับ ระทึก"
+        },
+        {
+          "const": "romance_cinematic",
+          "title": "Romance cinematic — ความรักโทนอ่อนหวาน"
+        },
+        {
+          "const": "action_film_look",
+          "title": "Action film look — แอคชันเคลื่อนไหว"
+        },
+        {
+          "const": "mystery_noir",
+          "title": "Mystery noir — มืด ลึกลับ สืบสวน"
+        },
+        {
+          "const": "sci_fi_cinematic",
+          "title": "Sci-fi cinematic — ไซไฟแบบหนัง"
+        },
+        {
+          "const": "watercolor",
+          "title": "Watercolor — สีน้ำ"
+        },
+        {
+          "const": "oil_painting",
+          "title": "Oil painting — สีน้ำมัน"
+        },
+        {
+          "const": "gouache",
+          "title": "Gouache — สีโปสเตอร์เนื้อแน่น"
+        },
+        {
+          "const": "charcoal",
+          "title": "Charcoal — ถ่านดำ"
+        },
+        {
+          "const": "sketch_pencil",
+          "title": "Sketch / Pencil — ลายเส้นดินสอ"
+        },
+        {
+          "const": "ink_drawing",
+          "title": "Ink drawing — หมึกดำ"
+        },
+        {
+          "const": "woodcut",
+          "title": "Woodcut — ไม้แกะ"
+        },
+        {
+          "const": "etching",
+          "title": "Etching — ลายแกะโลหะ"
+        },
+        {
+          "const": "pastel",
+          "title": "Pastel — สีพาสเทล"
+        },
+        {
+          "const": "clean_vector",
+          "title": "Clean vector — ลายเส้นคมชัดแบบเวกเตอร์"
+        },
+        {
+          "const": "flat_illustration",
+          "title": "Flat illustration — สีเรียบ ไม่มีเงา"
+        },
+        {
+          "const": "isometric",
+          "title": "Isometric — มุมมองสามมิติแบบ 45°"
+        },
+        {
+          "const": "semi_realistic_illustration",
+          "title": "Semi-realistic illustration — คล้ายจริงแต่ยังเป็นภาพวาด"
+        },
+        {
+          "const": "children_book_style",
+          "title": "Children-book style — ลายเส้นน่ารักแบบหนังสือเด็ก"
+        },
+        {
+          "const": "storybook_art",
+          "title": "Storybook art — โทนนิทานแฟนตาซี"
+        },
+        {
+          "const": "clip_art_style",
+          "title": "Clip-art style — ภาพประกอบแบบง่าย"
+        },
+        {
+          "const": "medieval_fantasy",
+          "title": "Medieval fantasy — โลกยุคกลาง"
+        },
+        {
+          "const": "elven_fantasy",
+          "title": "Elven fantasy — เอลฟ์ ป่าเวทมนตร์"
+        },
+        {
+          "const": "magic_forest",
+          "title": "Magic forest — ป่ามหัศจรรย์"
+        },
+        {
+          "const": "dragon_and_creature_fantasy",
+          "title": "Dragon & creature fantasy — มังกรและสัตว์เวทย์"
+        },
+        {
+          "const": "kingdom_fantasy",
+          "title": "Kingdom fantasy — อาณาจักรแฟนตาซี"
+        },
+        {
+          "const": "gothic_fantasy",
+          "title": "Gothic fantasy — มืด ลึกลับ"
+        },
+        {
+          "const": "lovecraftian",
+          "title": "Lovecraftian — อสูรเหนือจินตนาการ"
+        },
+        {
+          "const": "grimdark_fantasy",
+          "title": "Grimdark fantasy — โหด ดิบ มืด"
+        },
+        {
+          "const": "demon_cursed_realm",
+          "title": "Demon / cursed realm — โลกปีศาจ"
+        },
+        {
+          "const": "fairycore",
+          "title": "Fairycore — นางฟ้า ใส สว่าง"
+        },
+        {
+          "const": "cottagecore",
+          "title": "Cottagecore — บ้านชนบทอบอุ่น"
+        },
+        {
+          "const": "dreamy_fantasy",
+          "title": "Dreamy fantasy — ฝันหวาน ลอยๆ"
+        },
+        {
+          "const": "nature_spirits",
+          "title": "Nature spirits — วิญญาณธรรมชาติ"
+        },
+        {
+          "const": "dreamlike",
+          "title": "Dreamlike — คล้ายความฝัน"
+        },
+        {
+          "const": "impossible_geometry",
+          "title": "Impossible geometry — รูปร่างที่เป็นไปไม่ได้"
+        },
+        {
+          "const": "floating_objects",
+          "title": "Floating objects — วัตถุลอย"
+        },
+        {
+          "const": "dali_style_surreal",
+          "title": "Dali-style surreal — บิดเบือนความจริง"
+        },
+        {
+          "const": "reality_distortion",
+          "title": "Reality distortion — บิดภาพจริง"
+        },
+        {
+          "const": "vaporwave",
+          "title": "Vaporwave — ชมพู-ฟ้า เรโทร 80s"
+        },
+        {
+          "const": "synthwave",
+          "title": "Synthwave — ไซไฟนีออน"
+        },
+        {
+          "const": "psychedelic_art",
+          "title": "Psychedelic art — ลายหมุน สีฉูดฉาด"
+        },
+        {
+          "const": "glitch_art",
+          "title": "Glitch art — ภาพรบกวนแบบดิจิทัล"
+        },
+        {
+          "const": "retro_future_surreal",
+          "title": "Retro-future surreal — อนาคตย้อนยุค"
+        },
+        {
+          "const": "modern_anime",
+          "title": "Modern anime — อนิเมะยุคใหม่"
+        },
+        {
+          "const": "old_school_anime",
+          "title": "Old-school anime — ลายเส้นแบบยุค 90s"
+        },
+        {
+          "const": "chibi",
+          "title": "Chibi — ตัวเล็กน่ารัก"
+        },
+        {
+          "const": "shonen",
+          "title": "Shōnen — แอคชันวัยรุ่นชาย"
+        },
+        {
+          "const": "shojo",
+          "title": "Shōjo — ใส หวาน มุ้งมิ้ง"
+        },
+        {
+          "const": "seinen",
+          "title": "Seinen — จริงจัง เข้มลึก"
+        },
+        {
+          "const": "ghibli_style_mood",
+          "title": "Ghibli-style mood — อบอุ่นแบบสตูดิโอจิบลิ"
+        },
+        {
+          "const": "cel_shaded",
+          "title": "Cel-shaded — เงาแบบการ์ตูนชัดเจน"
+        },
+        {
+          "const": "black_and_white_manga",
+          "title": "Black & white manga — ขาวดำ"
+        },
+        {
+          "const": "screentone_style",
+          "title": "Screentone style — แรเงาแบบแมงก้า"
+        },
+        {
+          "const": "emotional_manga_frames",
+          "title": "Emotional manga frames — เฟรมอารมณ์จัด"
+        },
+        {
+          "const": "cyberpunk",
+          "title": "Cyberpunk — เมืองนีออนดาร์ก"
+        },
+        {
+          "const": "neon_city",
+          "title": "Neon city — เมืองแสงสี"
+        },
+        {
+          "const": "biopunk",
+          "title": "Biopunk — เทคโนโลยีชีวภาพ"
+        },
+        {
+          "const": "post_apocalyptic",
+          "title": "Post-apocalyptic — หลังล่มสลาย"
+        },
+        {
+          "const": "tech_noir",
+          "title": "Tech-noir — ไซไฟมืดหม่น"
+        },
+        {
+          "const": "futuristic_armor",
+          "title": "Futuristic armor — เกราะอนาคต"
+        },
+        {
+          "const": "hologram_ui",
+          "title": "Hologram UI — อินเทอร์เฟซโฮโลแกรม"
+        },
+        {
+          "const": "deep_space_realism",
+          "title": "Deep-space realism — อวกาศจริงสมจริง"
+        },
+        {
+          "const": "alien_worlds",
+          "title": "Alien worlds — ดาวต่างดาว"
+        },
+        {
+          "const": "space_opera",
+          "title": "Space opera — มหากาพย์อวกาศ"
+        },
+        {
+          "const": "astrophotography_style",
+          "title": "Astrophotography style — ลักษณะภาพถ่ายดาราศาสตร์"
+        },
+        {
+          "const": "unreal_engine",
+          "title": "Unreal Engine — คมจัด สมจริงสูง"
+        },
+        {
+          "const": "blender_cycles",
+          "title": "Blender Cycles — โทนเรียล CG"
+        },
+        {
+          "const": "vray",
+          "title": "VRay — แสงเงาสมจริงสำหรับสถาปัตย์"
+        },
+        {
+          "const": "octane_render",
+          "title": "Octane render — เรนเดอร์คุณภาพสูง"
+        },
+        {
+          "const": "pbr_realistic",
+          "title": "PBR realistic — วัสดุสมจริงตามฟิสิกส์"
+        },
+        {
+          "const": "clay_render",
+          "title": "Clay render — เรนเดอร์ผิวดินเหนียว"
+        },
+        {
+          "const": "wireframe",
+          "title": "Wireframe — โครงลวดโมเดล"
+        },
+        {
+          "const": "rpg_concept_art",
+          "title": "RPG concept art — ศิลป์ออกแบบโลก ตัวละคร และฉากเกม RPG"
+        },
+        {
+          "const": "moba_splash_art",
+          "title": "MOBA splash art — ภาพโปรโมตตัวละครเกมแนว MOBA ที่จัดท่าทางเท่ ๆ"
+        },
+        {
+          "const": "jrpg_illustration",
+          "title": "JRPG illustration — ลายเส้นแฟนตาซีแบบเกมญี่ปุ่น"
+        },
+        {
+          "const": "sci_fi_armor_concept",
+          "title": "Sci-fi armor concept — ดีไซน์เกราะและชุดไซไฟสำหรับเกม"
+        },
+        {
+          "const": "creature_concept_design",
+          "title": "Creature concept design — ออกแบบมอนสเตอร์และสิ่งมีชีวิตแฟนตาซี"
+        },
+        {
+          "const": "clean_minimal",
+          "title": "Clean minimal — เรียบสะอาด รายละเอียดน้อย"
+        },
+        {
+          "const": "geometric_minimal",
+          "title": "Geometric minimal — ใช้รูปทรงเรขาคณิตเป็นหลัก"
+        },
+        {
+          "const": "scandinavian_style",
+          "title": "Scandinavian style — โทนอบอุ่น เรียบ ใช้ไม้และสีอ่อน"
+        },
+        {
+          "const": "white_space_heavy",
+          "title": "White-space heavy — ปล่อยพื้นที่ว่างเยอะ เน้นจุดสนใจชัดเจน"
+        },
+        {
+          "const": "poster_style",
+          "title": "Poster style — สไตล์โปสเตอร์โฆษณา"
+        },
+        {
+          "const": "magazine_editorial",
+          "title": "Magazine editorial — เลเอาต์แบบนิตยสารแฟชั่น"
+        },
+        {
+          "const": "branding_typography_art",
+          "title": "Branding / Typography art — เน้นตัวอักษรและโลโก้"
+        },
+        {
+          "const": "infographic_style",
+          "title": "Infographic style — นำเสนอข้อมูลแบบอ่านง่าย"
+        },
+        {
+          "const": "bauhaus",
+          "title": "Bauhaus — เรขาคณิต สีจัดจ้าน โครงสร้างชัดเจน"
+        },
+        {
+          "const": "swiss_design",
+          "title": "Swiss design — เรียบ เท่ สมมาตร ใช้กริดชัดเจน"
+        },
+        {
+          "const": "80s_neon",
+          "title": "80s neon — นีออนจัดจ้านแบบยุค 80"
+        },
+        {
+          "const": "90s_grunge",
+          "title": "90s grunge — หยาบ ดิบ โทนหมองแบบยุค 90"
+        },
+        {
+          "const": "y2k_aesthetic",
+          "title": "Y2K aesthetic — อารมณ์ต้นยุค 2000 แวววาว ลายกราฟิกจัด ๆ"
+        },
+        {
+          "const": "retro_camera_look",
+          "title": "Retro camera look — ภาพถ่ายกล้องฟิล์มเก่า สีเพี้ยนเล็กน้อย"
+        },
+        {
+          "const": "victorian",
+          "title": "Victorian — ลายละเอียดเยอะ หรูหราโบราณ"
+        },
+        {
+          "const": "edwardian",
+          "title": "Edwardian — ต่อเนื่องจากวิกตอเรียน แต่นุ่มและเรียบขึ้น"
+        },
+        {
+          "const": "baroque",
+          "title": "Baroque — ลายม้วน หรูหราฟุ่มเฟือย"
+        },
+        {
+          "const": "art_nouveau",
+          "title": "Art Nouveau — ลายเส้นโค้ง ดอกไม้ ผู้หญิงผมยาว"
+        },
+        {
+          "const": "art_deco",
+          "title": "Art Deco — เส้นตรง เหลี่ยม มุมชัด โทนหรู"
+        },
+        {
+          "const": "renaissance_painting",
+          "title": "Renaissance painting — ภาพสีน้ำมันแบบยุคเรอเนซองส์"
+        },
+        {
+          "const": "real_botanical_illustration",
+          "title": "Real botanical illustration — ภาพวาดพฤกษศาสตร์ละเอียด สมจริง"
+        },
+        {
+          "const": "garden_photography",
+          "title": "Garden photography — ภาพสวนดอกไม้และต้นไม้จริง"
+        },
+        {
+          "const": "macro_flowers",
+          "title": "Macro flowers — โคลสอัพกลีบดอก ลายละเอียดผิว"
+        },
+        {
+          "const": "forest_realism",
+          "title": "Forest realism — ป่าจริง มีหมอก แสงลอดต้นไม้"
+        },
+        {
+          "const": "misty_forest",
+          "title": "Misty forest — ป่ามีหมอก บรรยากาศลึกลับ"
+        },
+        {
+          "const": "mountain_cinematic",
+          "title": "Mountain cinematic — ภูเขาแบบภาพยนตร์ ลึกมีมิติ"
+        },
+        {
+          "const": "ocean_realism",
+          "title": "Ocean realism — ทะเลสมจริง คลื่น น้ำสะท้อนแสง"
+        },
+        {
+          "const": "underwater_photography",
+          "title": "Underwater photography — ใต้น้ำมีฟองอากาศ แสงลอดผิวน้ำ"
+        },
+        {
+          "const": "editorial_fashion",
+          "title": "Editorial fashion — แฟชั่นนิตยสาร ภาพจัดท่า แสงสวย"
+        },
+        {
+          "const": "runway_style",
+          "title": "Runway style — เดินแบบบนรันเวย์"
+        },
+        {
+          "const": "street_fashion",
+          "title": "Street fashion — แฟชั่นชีวิตจริงในเมือง"
+        },
+        {
+          "const": "high_fashion_avant_garde",
+          "title": "High-fashion avant-garde — ดีไซน์หลุดกรอบ แปลกตา"
+        },
+        {
+          "const": "korean_soft_fashion",
+          "title": "Korean soft fashion — โทนอ่อน นุ่ม สไตล์เกาหลี"
+        },
+        {
+          "const": "japanese_casual",
+          "title": "Japanese casual — แต่งเรียบง่ายมีดีเทลเล็ก ๆ"
+        },
+        {
+          "const": "portraiture",
+          "title": "Portraiture (classic / dramatic / fine-art) — ภาพบุคคลเน้นอารมณ์และแสง"
+        },
+        {
+          "const": "glamour",
+          "title": "Glamour — เน้นความหรูหรา เซ็กซี่แบบผู้ใหญ่"
+        },
+        {
+          "const": "beauty_portrait",
+          "title": "Beauty portrait — โฟกัสผิวหน้า ตา ปาก การแต่งหน้า"
+        },
+        {
+          "const": "character_portrait",
+          "title": "Character portrait — เจาะดีไซน์ตัวละครเฉพาะบุคคล"
+        },
+        {
+          "const": "mixed_media",
+          "title": "Mixed-media — ผสมหลายเทคนิคทั้งภาพวาดและภาพถ่าย"
+        },
+        {
+          "const": "collage",
+          "title": "Collage — ตัดแปะรูปหลายชิ้นรวมกัน"
+        },
+        {
+          "const": "double_exposure",
+          "title": "Double exposure — ซ้อนภาพสองซีนเป็นภาพเดียว"
+        },
+        {
+          "const": "photo_bashing",
+          "title": "Photo-bashing — ผสมภาพถ่ายหลายแหล่งมาประกอบเป็นฉากใหม่"
+        },
+        {
+          "const": "texture_overload",
+          "title": "Texture overload — เน้นพื้นผิวหลากหลายชนิดแน่น ๆ"
+        },
+        {
+          "const": "deconstruction_style",
+          "title": "Deconstruction style — แตกชิ้นส่วนรูปแล้วจัดใหม่แบบทดลอง"
+        }
+      ],
+      "default": "na"
+    },
+    "style_custom": {
+      "type": "string",
+      "title": "Custom style",
+      "description": "สไตล์แบบกำหนดเอง (อธิบายเป็นข้อความ) — ใช้เมื่อไม่ต้องการจำกัดอยู่ในตัวเลือก style"
+    },
+    "vfx": {
+      "type": "object",
+      "title": "VFX",
+      "description": "เลือกหมวด/เอฟเฟกต์พิเศษ (หลายรายการได้) — เมื่อใช้ VFX จะถือว่า override โหมดความสมจริงเริ่มต้นบางส่วน",
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "title": "VFX category",
+          "description": "เลือกหมวด VFX (ไม่บังคับ) (ค่าเริ่มต้น na: ไม่ระบุ)",
+          "oneOf": [
+            {
+              "const": "na",
+              "title": "N/A — ไม่ระบุหมวด"
+            },
+            {
+              "const": "P",
+              "title": "Particles — อนุภาค"
+            },
+            {
+              "const": "L",
+              "title": "Lighting — แสง"
+            },
+            {
+              "const": "W",
+              "title": "Weather — สภาพอากาศ"
+            },
+            {
+              "const": "M",
+              "title": "Magic — เวทมนตร์"
+            },
+            {
+              "const": "A",
+              "title": "Atmospheric — บรรยากาศ"
+            },
+            {
+              "const": "T",
+              "title": "Motion — การเคลื่อนไหว"
+            }
+          ],
+          "default": "na"
+        },
+        "effects": {
+          "type": "array",
+          "title": "VFX effects",
+          "description": "เลือกเอฟเฟกต์ (หลายรายการได้)",
+          "items": {
+            "oneOf": [
+              {
+                "const": "particles_dust_particles",
+                "title": "Dust particles (P) — ฝุ่นฟุ้ง (บรรยากาศฝุ่นรอบ ๆ)"
+              },
+              {
+                "const": "particles_smoke",
+                "title": "Smoke (P) — ควัน (สีคล้ำ)"
+              },
+              {
+                "const": "particles_fire_particles",
+                "title": "Fire particles (P) — ประกายไฟ (อนุภค ร้อนแรง)"
+              },
+              {
+                "const": "particles_water_droplets",
+                "title": "Water droplets (P) — หยดน้ำ (สดชื่น)"
+              },
+              {
+                "const": "particles_sparks",
+                "title": "Sparks (P) — ประกายไฟฟ้า (พลัง)"
+              },
+              {
+                "const": "particles_embers",
+                "title": "Embers (P) — ถ่านเพลิง (ความอุ่น)"
+              },
+              {
+                "const": "particles_snow_flakes",
+                "title": "Snow flakes (P) — เกล็ดหิมะ (หนาว ลอยฟุ้ง)"
+              },
+              {
+                "const": "particles_pollen",
+                "title": "Pollen (P) — ละอองเกสร (ธรรมชาติ)"
+              },
+              {
+                "const": "lighting_glow_effect",
+                "title": "Glow effect (L) — เรืองแสง"
+              },
+              {
+                "const": "lighting_lens_flare",
+                "title": "Lens flare (L) — แสงจ้าจากเลนส์"
+              },
+              {
+                "const": "lighting_god_rays",
+                "title": "God rays (L) — แสงละ (dramatic ทะลุผ่าน)"
+              },
+              {
+                "const": "lighting_neon_glow",
+                "title": "Neon glow (L) — นีออนเรือง (cyberpunk)"
+              },
+              {
+                "const": "lighting_light_streaks",
+                "title": "Light streaks (L) — ลำแสง (speed)"
+              },
+              {
+                "const": "lighting_bioluminescence",
+                "title": "Bioluminescence (L) — แสงชีวภาพ (fantasy)"
+              },
+              {
+                "const": "lighting_volumetric_light",
+                "title": "Volumetric light (L) — แสง 3D มีมิติ"
+              },
+              {
+                "const": "weather_rain",
+                "title": "Rain (W) — ฝน (เคร่า โรแมนติก)"
+              },
+              {
+                "const": "weather_heavy_rain",
+                "title": "Heavy rain (W) — ฝนหนัก (ดราม่า)"
+              },
+              {
+                "const": "weather_snow",
+                "title": "Snow (W) — หิมะ (หนาว ลงมา)"
+              },
+              {
+                "const": "weather_lightning",
+                "title": "Lightning (W) — ฟ้าผ่า (ระทึก)"
+              },
+              {
+                "const": "weather_storm",
+                "title": "Storm (W) — พายุ (โกรธ)"
+              },
+              {
+                "const": "weather_tornado",
+                "title": "Tornado (W) — พายุทอร์นาโด (ความเข้มข้น)"
+              },
+              {
+                "const": "weather_wind_effects",
+                "title": "Wind effects (W) — ลมพัด (พลัว)"
+              },
+              {
+                "const": "magic_energy_aura",
+                "title": "Energy aura (M) — ออร่าพลังงาน"
+              },
+              {
+                "const": "magic_magic_circle",
+                "title": "Magic circle (M) — วงเวทย์"
+              },
+              {
+                "const": "magic_spell_effects",
+                "title": "Spell effects (M) — เอฟเฟกต์คาถา"
+              },
+              {
+                "const": "magic_portal",
+                "title": "Portal (M) — ประตูมิติ"
+              },
+              {
+                "const": "magic_glowing_runes",
+                "title": "Glowing runes (M) — อักษรรูนเรืองแสง"
+              },
+              {
+                "const": "magic_magical_particles",
+                "title": "Magical particles (M) — อนุภาคเวทมนตร์"
+              },
+              {
+                "const": "magic_force_field",
+                "title": "Force field (M) — สนามพลัง"
+              },
+              {
+                "const": "atmospheric_mist",
+                "title": "Mist (A) — หมอกบาง"
+              },
+              {
+                "const": "atmospheric_fog",
+                "title": "Fog (A) — หมอกหนา"
+              },
+              {
+                "const": "atmospheric_haze",
+                "title": "Haze (A) — ม่านหมอก"
+              },
+              {
+                "const": "atmospheric_steam",
+                "title": "Steam (A) — ไอน้ำ"
+              },
+              {
+                "const": "atmospheric_volumetric_fog",
+                "title": "Volumetric fog (A) — หมอกทึบ 3D"
+              },
+              {
+                "const": "atmospheric_smoke_atmosphere",
+                "title": "Smoke atmosphere (A) — บรรยากาศควัน"
+              },
+              {
+                "const": "motion_motion_blur",
+                "title": "Motion blur (T) — เบลอเคลื่อนไหว"
+              },
+              {
+                "const": "motion_speed_lines",
+                "title": "Speed lines (T) — เส้นความเร็ว"
+              },
+              {
+                "const": "motion_trailing_effects",
+                "title": "Trailing effects (T) — เอฟเฟกต์ตาม"
+              },
+              {
+                "const": "motion_impact_waves",
+                "title": "Impact waves (T) — คลื่นกระแทก"
+              },
+              {
+                "const": "motion_shockwave",
+                "title": "Shockwave (T) — คลื่นช็อก"
+              },
+              {
+                "const": "motion_dynamic_trail",
+                "title": "Dynamic trail (T) — ร่องรอยพลวัต"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "effects_custom": {
+          "type": "array",
+          "title": "Custom VFX effects",
+          "description": "เอฟเฟกต์แบบกำหนดเอง (ข้อความสั้น ๆ ต่อรายการ)",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      }
+    },
+    "text_on_image": {
+      "type": "boolean",
+      "title": "Text on image",
+      "description": "ให้มีข้อความบนภาพหรือไม่",
+      "default": false
+    },
+    "headline": {
+      "type": "string",
+      "title": "Headline",
+      "description": "หัวข้อ/ข้อความหลักบนภาพ (ใช้เมื่อ text_on_image=true)"
+    },
+    "body_text": {
+      "type": "string",
+      "title": "Body text",
+      "description": "ข้อความรองบนภาพ (ใช้เมื่อ text_on_image=true)"
+    },
+    "typography": {
+      "type": "object",
+      "title": "Typography",
+      "description": "ตัวเลือกงานตัวอักษร/เลย์เอาต์ (ใช้เมื่อ text_on_image=true หรือ task=typography_catalog)",
+      "additionalProperties": false,
+      "properties": {
+        "font_personality": {
+          "type": "array",
+          "title": "Font personality",
+          "items": {
+            "oneOf": [
+              {
+                "const": "modern_clean",
+                "title": "Modern Clean — Typography: Clean sans-serif font, modern minimalist style, sharp and clear letterforms"
+              },
+              {
+                "const": "minimal_light",
+                "title": "Minimal Light — Typography: Ultra-light weight font, airy spacing, minimal aesthetic, subtle presence"
+              },
+              {
+                "const": "bold_strong",
+                "title": "Bold Strong — Typography: Heavy bold font, strong visual impact, confident letterforms, powerful presence"
+              },
+              {
+                "const": "elegant_serif",
+                "title": "Elegant Serif — Typography: Refined serif typeface, sophisticated elegance, classic luxury feel"
+              },
+              {
+                "const": "soft_rounded",
+                "title": "Soft Rounded — Typography: Rounded corners font, friendly approachable style, soft gentle curves"
+              },
+              {
+                "const": "handwriting_script",
+                "title": "Handwriting / Script — Typography: Handwritten script font, personal organic feel, flowing natural strokes"
+              },
+              {
+                "const": "retro_vintage",
+                "title": "Retro / Vintage — Typography: Vintage-inspired font, nostalgic retro style, classic heritage feel"
+              },
+              {
+                "const": "tech_futuristic",
+                "title": "Tech / Futuristic — Typography: Geometric technical font, futuristic sci-fi style, modern tech aesthetic"
+              },
+              {
+                "const": "playful_fun",
+                "title": "Playful / Fun — Typography: Playful decorative font, fun energetic style, creative whimsical character"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "composition_style": {
+          "type": "array",
+          "title": "Composition style",
+          "items": {
+            "oneOf": [
+              {
+                "const": "centered_layout",
+                "title": "Centered Layout — Composition: Centered text alignment, balanced symmetrical layout, classic formal arrangement"
+              },
+              {
+                "const": "left_aligned_clean",
+                "title": "Left-aligned Clean — Composition: Left-aligned typography, clean organized hierarchy, editorial style layout"
+              },
+              {
+                "const": "grid_based",
+                "title": "Grid-based (Swiss style) — Composition: Strict grid system, Swiss typography style, mathematical precise layout"
+              },
+              {
+                "const": "big_title_small_subtext",
+                "title": "Big Title + Small Subtext — Composition: Large dominant headline, small supporting subtext, clear hierarchy contrast"
+              },
+              {
+                "const": "overlap_layered_text",
+                "title": "Overlap / Layered Text — Composition: Overlapping text layers, depth through layering, dynamic dimensional composition"
+              },
+              {
+                "const": "asymmetrical_layout",
+                "title": "Asymmetrical Layout — Composition: Asymmetric text placement, dynamic off-balance design, modern editorial style"
+              },
+              {
+                "const": "full_bleed_typography",
+                "title": "Full-bleed Typography — Composition: Text fills entire frame, bold maximalist approach, immersive typographic experience"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "mood_tone": {
+          "type": "array",
+          "title": "Mood & tone",
+          "items": {
+            "oneOf": [
+              {
+                "const": "minimal_and_calm",
+                "title": "Minimal & Calm — Mood: Serene minimalist atmosphere, calm peaceful vibe, zen-like tranquility"
+              },
+              {
+                "const": "energetic_and_bold",
+                "title": "Energetic & Bold — Mood: High-energy dynamic feel, bold confident attitude, vibrant exciting atmosphere"
+              },
+              {
+                "const": "elegant_and_luxury",
+                "title": "Elegant & Luxury — Mood: Sophisticated luxury vibe, elegant refined atmosphere, premium high-end feel"
+              },
+              {
+                "const": "youthful_and_cute",
+                "title": "Youthful & Cute — Mood: Fresh youthful energy, cute playful vibe, cheerful optimistic atmosphere"
+              },
+              {
+                "const": "futuristic_neon",
+                "title": "Futuristic Neon — Mood: Cyberpunk neon aesthetic, futuristic tech vibe, electric digital atmosphere"
+              },
+              {
+                "const": "vintage_warm",
+                "title": "Vintage Warm — Mood: Nostalgic vintage warmth, retro cozy atmosphere, timeless classic feel"
+              },
+              {
+                "const": "high_contrast_dramatic",
+                "title": "High-contrast Dramatic — Mood: Dramatic bold contrast, intense striking atmosphere, powerful visual tension"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "color_direction": {
+          "type": "array",
+          "title": "Color direction",
+          "items": {
+            "oneOf": [
+              {
+                "const": "monochrome",
+                "title": "Monochrome — Colors: Pure monochrome palette, black and white contrast, timeless classic scheme"
+              },
+              {
+                "const": "pastel_soft",
+                "title": "Pastel Soft — Colors: Soft pastel color palette, gentle muted tones, dreamy aesthetic scheme"
+              },
+              {
+                "const": "high_contrast",
+                "title": "High Contrast — Colors: High contrast bold colors, striking visual impact, dramatic color tension"
+              },
+              {
+                "const": "gradient_modern",
+                "title": "Gradient Modern — Colors: Smooth modern gradients, contemporary blend transitions, fluid color flow"
+              },
+              {
+                "const": "neon_glow",
+                "title": "Neon Glow — Colors: Vibrant neon colors, electric glow effect, cyberpunk fluorescent palette"
+              },
+              {
+                "const": "retro_80s",
+                "title": "Retro 80s — Colors: 80s retro color scheme, vintage sunset palette, nostalgic warm tones"
+              },
+              {
+                "const": "cream_and_earth_tone",
+                "title": "Cream & Earth Tone — Colors: Natural earth tone palette, warm cream beige scheme, organic neutral colors"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "text_effects": {
+          "type": "array",
+          "title": "Text effects",
+          "items": {
+            "oneOf": [
+              {
+                "const": "drop_shadow",
+                "title": "Drop shadow — Text Effect: Subtle drop shadow, depth and dimension, classic shadow technique"
+              },
+              {
+                "const": "outline_stroke",
+                "title": "Outline / Stroke — Text Effect: Bold outline stroke, defined edges, strong letter boundaries"
+              },
+              {
+                "const": "glow_neon",
+                "title": "Glow / Neon — Text Effect: Neon glow effect, luminous radiant light, electric shine"
+              },
+              {
+                "const": "3d_extrude",
+                "title": "3D Extrude — Text Effect: 3D extruded depth, dimensional letterforms, volumetric typography"
+              },
+              {
+                "const": "metallic_text",
+                "title": "Metallic Text — Text Effect: Metallic surface finish, chrome reflective quality, polished metal look"
+              },
+              {
+                "const": "paper_cut_text",
+                "title": "Paper-cut Text — Text Effect: Paper-cut layered style, crafted dimensional effect, physical tactile quality"
+              },
+              {
+                "const": "liquid_gel_text",
+                "title": "Liquid / Gel Text — Text Effect: Liquid gel texture, glossy fluid surface, organic flowing quality"
+              },
+              {
+                "const": "glitch_distortion",
+                "title": "Glitch / Distortion — Text Effect: Digital glitch distortion, corrupted data aesthetic, cyberpunk error effect"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "use_case_templates": {
+          "type": "array",
+          "title": "Use-case templates",
+          "items": {
+            "oneOf": [
+              {
+                "const": "poster_typography",
+                "title": "Poster Typography — Format: Bold poster design, impactful headline typography, visual statement piece"
+              },
+              {
+                "const": "quote_design",
+                "title": "Quote Design — Format: Inspirational quote layout, meaningful text presentation, shareable wisdom design"
+              },
+              {
+                "const": "infographic_title",
+                "title": "Infographic Title — Format: Infographic header design, data visualization title, information design approach"
+              },
+              {
+                "const": "magazine_editorial",
+                "title": "Magazine Editorial — Format: Editorial typography layout, magazine-style composition, refined publishing aesthetic"
+              },
+              {
+                "const": "branding_headline",
+                "title": "Branding Headline — Format: Brand identity headline, corporate typography design, professional business style"
+              },
+              {
+                "const": "social_media_post",
+                "title": "Social Media Post — Format: Social media optimized, attention-grabbing headline, platform-ready design"
+              },
+              {
+                "const": "motion_typography",
+                "title": "Motion Typography — Format: Animation-ready typography, dynamic motion design, kinetic text concept"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "modern_trend_packs": {
+          "type": "array",
+          "title": "Modern trend packs",
+          "items": {
+            "oneOf": [
+              {
+                "const": "korean_clean_typography",
+                "title": "Korean Clean Typography — Trend: Korean minimal aesthetic, clean organized layout, Hangul-inspired precision"
+              },
+              {
+                "const": "swiss_modern",
+                "title": "Swiss Modern — Trend: Contemporary Swiss design, functional modernism, systematic grid approach"
+              },
+              {
+                "const": "bauhaus_revival",
+                "title": "Bauhaus Revival — Trend: Neo-Bauhaus style, geometric abstract forms, avant-garde modernist approach"
+              },
+              {
+                "const": "y2k_glossy_text",
+                "title": "Y2K Glossy Text — Trend: Y2K revival aesthetic, glossy chrome effects, early-2000s digital nostalgia"
+              },
+              {
+                "const": "minimal_brutalism",
+                "title": "Minimal Brutalism — Trend: Brutalist minimal design, raw structural approach, anti-aesthetic aesthetic"
+              },
+              {
+                "const": "soft_aesthetic_text",
+                "title": "Soft Aesthetic Text — Trend: Soft dreamy aesthetic, gentle blurred elements, Instagram-core style"
+              },
+              {
+                "const": "cyber_glow_ui",
+                "title": "Cyber Glow UI — Trend: Cyberpunk UI design, neon interface elements, futuristic HUD aesthetic"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "layout_add_ons": {
+          "type": "array",
+          "title": "Layout add-ons",
+          "items": {
+            "oneOf": [
+              {
+                "const": "with_icons",
+                "title": "With Icons — Add-on: Complementary icon elements, visual supporting graphics, symbolic illustrations"
+              },
+              {
+                "const": "with_shapes",
+                "title": "With Shapes — Add-on: Geometric shape elements (circles, squares, lines), structural design accents"
+              },
+              {
+                "const": "with_grid_lines",
+                "title": "With Grid Lines — Add-on: Visible grid structure, Swiss-style guide lines, systematic framework"
+              },
+              {
+                "const": "with_color_palette",
+                "title": "With Color Palette — Add-on: Displayed color swatches, palette showcase, color system visualization"
+              },
+              {
+                "const": "with_texture_background",
+                "title": "With Texture Background — Add-on: Textured background surface, tactile material quality, physical depth"
+              },
+              {
+                "const": "with_photo_background",
+                "title": "With Photo Background — Add-on: Photographic background element, real imagery context, environmental setting"
+              }
+            ]
+          },
+          "default": [],
+          "uniqueItems": true
+        },
+        "typography_custom": {
+          "type": "string",
+          "title": "Custom typography notes",
+          "description": "ข้อกำหนด typography แบบกำหนดเอง (ถ้ามี)"
+        }
+      }
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Reference images",
+      "description": "รายการภาพอ้างอิง (ถ้ามี) เพื่อการผสาน/คงเอกลักษณ์",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "enum": [
+              "na",
+              "primary_subject",
+              "outfit",
+              "additional_person",
+              "product",
+              "prop_or_device",
+              "location_background",
+              "style_reference",
+              "other"
+            ],
+            "default": "na",
+            "description": "บทบาทของภาพอ้างอิง (ค่าเริ่มต้น na: ไม่ระบุ) — เลือกเพื่อช่วยการผสาน/คงเอกลักษณ์"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes",
+            "description": "คำอธิบายสิ่งที่ต้องคงไว้/ดึงมาใช้จากภาพนี้"
+          }
+        }
+      },
+      "default": []
+    },
+    "identity_lock": {
+      "type": "string",
+      "title": "Identity lock",
+      "description": "ระดับการคงเอกลักษณ์ (ถ้าไม่มีภาพอ้างอิงก็ปล่อยว่างได้)",
+      "default": "none",
+      "enum": [
+        "none",
+        "soft_lock_person",
+        "strict_lock_product"
+      ]
+    },
+    "realistic_skin": {
+      "type": "boolean",
+      "title": "Realistic skin preservation",
+      "description": "เน้นผิวสมจริง/รูขุมขน/พื้นผิว (เหมาะกับ portrait/close-up)",
+      "default": false
+    },
+    "preferences": {
+      "type": "array",
+      "title": "Persistent preferences",
+      "description": "ค่าความชอบ/ข้อกำหนดที่ต้อง inject ทุกครั้ง (เช่น โทนสีที่ชอบ, ข้อห้าม, คำที่ต้องมี)",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "options_tokens": {
+      "type": "array",
+      "title": "Legacy option tokens",
+      "description": "โทเค็นโหมดแบบเมนู (เพื่อความเข้ากันได้กับเวิร์กโฟลว์เดิม) — แนะนำให้ใช้ task/ฟิลด์โครงสร้างแทน",
+      "items": {
+        "type": "string",
+        "enum": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "S",
+          "T",
+          "V",
+          "R",
+          "F"
+        ]
+      },
+      "default": [],
+      "uniqueItems": true
+    },
+    "output_languages": {
+      "type": "array",
+      "title": "Output languages (advanced)",
+      "description": "ภาษาที่ต้องการในผลลัพธ์หลายภาษา (ลำดับตามที่ต้องการให้แสดง) — ถ้าไม่ระบุ จะใช้เฉพาะ languages",
+      "items": {
+        "type": "string",
+        "enum": [
+          "en",
+          "th"
+        ]
+      },
+      "default": [
+        "en"
+      ],
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "edit_mask": {
+      "type": "object",
+      "title": "Edit mask (for inpaint mode)",
+      "description": "ระบุพื้นที่ที่ต้องการแก้ไข (สำหรับโหมด inpaint)",
+      "default": {},
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Mask type",
+          "default": "prompt_based",
+          "enum": [
+            "prompt_based",
+            "ai_segment",
+            "rectangle",
+            "brush",
+            "color_range"
+          ],
+          "description": "ประเภทของ mask"
+        },
+        "segment_prompt": {
+          "type": "string",
+          "title": "Segment prompt",
+          "default": "",
+          "description": "คำอธิบายส่วนที่ต้องการแก้ (เช่น 'sky', 'background', 'the woman's dress', 'ท้องฟ้า')"
+        },
+        "coordinates": {
+          "type": "object",
+          "title": "Mask coordinates (for rectangle)",
+          "description": "ตำแหน่งและขนาดของ mask (สำหรับ rectangle type)",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "y": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 512
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 512
+            }
+          }
+        },
+        "preserve_areas": {
+          "type": "array",
+          "title": "Preserve areas",
+          "description": "รายการพื้นที่ที่ต้องการคงไว้ (เช่น ['face', 'hands'], ['ใบหน้า', 'มือ'])",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "feather": {
+          "type": "integer",
+          "title": "Feather (blur edge)",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 10,
+          "description": "ความนุ่มของขอบ mask (พิกเซล)"
+        },
+        "invert": {
+          "type": "boolean",
+          "title": "Invert mask",
+          "default": false,
+          "description": "กลับด้าน mask (แก้ไขส่วนนอก mask แทน)"
+        }
+      }
+    },
+    "outpaint_config": {
+      "type": "object",
+      "title": "Outpaint configuration",
+      "description": "การตั้งค่าสำหรับการขยายภาพ (โหมด outpaint)",
+      "default": {},
+      "additionalProperties": false,
+      "properties": {
+        "expand_left": {
+          "type": "integer",
+          "title": "Expand left (px)",
+          "minimum": 0,
+          "maximum": 2048,
+          "default": 0,
+          "description": "ขยายไปทางซ้าย (พิกเซล)"
+        },
+        "expand_right": {
+          "type": "integer",
+          "title": "Expand right (px)",
+          "minimum": 0,
+          "maximum": 2048,
+          "default": 0,
+          "description": "ขยายไปทางขวา (พิกเซล)"
+        },
+        "expand_top": {
+          "type": "integer",
+          "title": "Expand top (px)",
+          "minimum": 0,
+          "maximum": 2048,
+          "default": 0,
+          "description": "ขยายไปทางบน (พิกเซล)"
+        },
+        "expand_bottom": {
+          "type": "integer",
+          "title": "Expand bottom (px)",
+          "minimum": 0,
+          "maximum": 2048,
+          "default": 0,
+          "description": "ขยายไปทางล่าง (พิกเซล)"
+        },
+        "blend_width": {
+          "type": "integer",
+          "title": "Blend width (px)",
+          "minimum": 0,
+          "maximum": 256,
+          "default": 64,
+          "description": "ความกว้างของโซนผสานระหว่างภาพเดิมกับส่วนขยาย"
+        },
+        "match_style": {
+          "type": "boolean",
+          "title": "Match original style",
+          "default": true,
+          "description": "พยายามให้สไตล์ตรงกับภาพเดิม"
+        }
+      }
+    },
+    "advanced_params": {
+      "type": "object",
+      "title": "Advanced generation parameters",
+      "description": "พารามิเตอร์ขั้นสูงสำหรับการควบคุมการสร้างภาพ",
+      "default": {},
+      "additionalProperties": false,
+      "properties": {
+        "denoising_strength": {
+          "type": "number",
+          "title": "Denoising strength",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.75,
+          "description": "ความแรงในการแปลงภาพ (0=เหมือนเดิม, 1=เปลี่ยนแปลงมาก) - ใช้กับ img2img"
+        },
+        "guidance_scale": {
+          "type": "number",
+          "title": "Guidance scale (CFG)",
+          "minimum": 1,
+          "maximum": 30,
+          "default": 7.5,
+          "description": "ระดับการยึดติดกับ prompt (ยิ่งสูง ยึด prompt มากขึ้น)"
+        },
+        "steps": {
+          "type": "integer",
+          "title": "Sampling steps",
+          "minimum": 1,
+          "maximum": 150,
+          "default": 50,
+          "description": "จำนวนขั้นตอนในการสร้างภาพ (มากขึ้น = คุณภาพดีขึ้น แต่ช้าขึ้น)"
+        },
+        "seed": {
+          "type": "integer",
+          "title": "Random seed",
+          "minimum": -1,
+          "maximum": 2147483647,
+          "default": -1,
+          "description": "Seed สำหรับความสุ่ม (-1 = สุ่มอัตโนมัติ)"
+        },
+        "sampler": {
+          "type": "string",
+          "title": "Sampling method",
+          "default": "dpm_2m_karras",
+          "enum": [
+            "euler_a",
+            "euler",
+            "dpm_2m_karras",
+            "dpm_sde_karras",
+            "ddim",
+            "plms"
+          ],
+          "description": "วิธีการ sampling"
+        },
+        "clip_skip": {
+          "type": "integer",
+          "title": "CLIP skip",
+          "minimum": 1,
+          "maximum": 12,
+          "default": 1,
+          "description": "ข้าม CLIP layers (2 = สไตล์อาร์ตมากขึ้น)"
+        }
+      }
+    },
+    "controlnet": {
+      "type": "object",
+      "title": "ControlNet configuration",
+      "description": "การตั้งค่า ControlNet สำหรับควบคุมโครงสร้างภาพ",
+      "default": {},
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable ControlNet",
+          "default": false
+        },
+        "type": {
+          "type": "string",
+          "title": "ControlNet type",
+          "default": "canny",
+          "enum": [
+            "canny",
+            "depth",
+            "pose",
+            "normal",
+            "scribble",
+            "mlsd",
+            "lineart",
+            "softedge"
+          ],
+          "description": "ประเภทของ ControlNet"
+        },
+        "weight": {
+          "type": "number",
+          "title": "ControlNet weight",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 1.0,
+          "description": "น้ำหนักของ ControlNet (0=ไม่มีผล, 2=แรงมาก)"
+        },
+        "guidance_start": {
+          "type": "number",
+          "title": "Guidance start",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.0,
+          "description": "เริ่มใช้ ControlNet ที่ขั้นตอนไหน (0=เริ่มต้นทันที)"
+        },
+        "guidance_end": {
+          "type": "number",
+          "title": "Guidance end",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1.0,
+          "description": "หยุดใช้ ControlNet ที่ขั้นตอนไหน (1=ใช้จนจบ)"
+        }
+      }
+    },
+    "ip_adapter": {
+      "type": "object",
+      "title": "IP-Adapter configuration",
+      "description": "การตั้งค่า IP-Adapter สำหรับ style/content transfer",
+      "default": {},
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable IP-Adapter",
+          "default": false
+        },
+        "mode": {
+          "type": "string",
+          "title": "IP-Adapter mode",
+          "default": "style",
+          "enum": [
+            "style",
+            "content",
+            "face",
+            "composition"
+          ],
+          "description": "โหมดการทำงาน"
+        },
+        "weight": {
+          "type": "number",
+          "title": "IP-Adapter weight",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.6,
+          "description": "น้ำหนักของ IP-Adapter"
+        },
+        "start_step": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.0
+        },
+        "end_step": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1.0
+        }
+      }
+    },
+    "target_platform": {
+      "type": "string",
+      "title": "Target platform",
+      "description": "Platform ที่จะนำ prompt ไปใช้ - จะปรับรูปแบบให้เหมาะสม",
+      "default": "generic",
+      "oneOf": [
+        {
+          "const": "generic",
+          "title": "Generic (universal)",
+          "description": "พรอมต์ทั่วไป ใช้ได้กับหลาย platform"
+        },
+        {
+          "const": "stable_diffusion",
+          "title": "Stable Diffusion",
+          "description": "เหมาะสำหรับ SD 1.5, SDXL, SD 3"
+        },
+        {
+          "const": "midjourney",
+          "title": "Midjourney",
+          "description": "รูปแบบ prompt สำหรับ Midjourney"
+        },
+        {
+          "const": "dall_e_3",
+          "title": "DALL-E 3",
+          "description": "OpenAI DALL-E 3"
+        },
+        {
+          "const": "gemini_imagen",
+          "title": "Google Gemini / Imagen",
+          "description": "Google's image generation"
+        },
+        {
+          "const": "flux",
+          "title": "Flux (Black Forest Labs)",
+          "description": "Flux.1 Pro/Dev/Schnell"
+        },
+        {
+          "const": "firefly",
+          "title": "Adobe Firefly",
+          "description": "Adobe Firefly"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "text_on_image": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "headline"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "realistic_skin": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "style": {
+            "default": "photorealistic"
+          }
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "request": "ภาพพอร์ตเทรตผู้หญิงในคาเฟ่ตอนเช้า แสงนุ่ม สมจริง",
+      "task": "final_prompt",
+      "style": "photorealistic",
+      "vfx": {
+        "effects": []
+      },
+      "text_on_image": false,
+      "aspect_ratio": "4:5",
+      "detail_level": "compact",
+      "languages": [
+        "en",
+        "th"
+      ]
+    },
+    {
+      "request": "โปสเตอร์โปรโมชันกาแฟเย็นบนพื้นหลังเรียบ",
+      "task": "final_prompt",
+      "style": "product_commercial",
+      "text_on_image": true,
+      "headline": "NEW ICED COFFEE",
+      "body_text": "Fresh • Smooth • 49 THB",
+      "typography": {
+        "font_personality": [
+          "modern_clean"
+        ],
+        "composition_style": [
+          "centered_layout"
+        ],
+        "color_direction": []
+      },
+      "aspect_ratio": "1:1",
+      "detail_level": "full"
+    }
+  ]
+}

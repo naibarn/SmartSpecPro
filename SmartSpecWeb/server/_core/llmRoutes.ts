@@ -1,8 +1,11 @@
 import type { Express, Request, Response } from "express";
+import crypto from "crypto";
 import { ENV } from "./env";
 import { authorizeRequest, AuthResult } from "./authz";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
-import { getUserByOpenId, getDb } from "../db";
+import { getUserByOpenId, getDb, db } from "../db";
+import { llmProviders } from "../../drizzle/schema";
+import { eq, asc } from "drizzle-orm";
 import {
   getCreditBalance,
   getCreditBalanceByOpenId,
@@ -10,15 +13,100 @@ import {
   deductCredits,
   calculateCreditsFromCost,
 } from "../services/creditService";
+import { debugLog, debugError } from "./logger";
+
+// Encryption key for API keys (same as llmProviders.ts)
+const ENCRYPTION_KEY = process.env.LLM_ENCRYPTION_KEY || "smartspec-llm-key-32chars!!";
+
+function decrypt(text: string): string {
+  try {
+    const parts = text.split(":");
+    const iv = Buffer.from(parts[0], "hex");
+    const encryptedText = Buffer.from(parts[1], "hex");
+    const decipher = crypto.createDecipheriv(
+      "aes-256-cbc",
+      Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)),
+      iv
+    );
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch {
+    return "";
+  }
+}
+
+// Cached provider config (refreshed periodically)
+interface LlmProviderConfig {
+  providerName: string;
+  baseUrl: string;
+  apiKey: string;
+  defaultModel: string | null;
+}
+
+let cachedProvider: LlmProviderConfig | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 60000; // Refresh every 60 seconds
+
+/**
+ * Get the active LLM provider configuration from database
+ */
+async function getActiveLlmProvider(): Promise<LlmProviderConfig | null> {
+  const now = Date.now();
+
+  // Return cached config if still valid
+  if (cachedProvider && now - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedProvider;
+  }
+
+  try {
+    // Get the first enabled provider with an API key
+    const [provider] = await db
+      .select({
+        providerName: llmProviders.providerName,
+        baseUrl: llmProviders.baseUrl,
+        apiKeyEncrypted: llmProviders.apiKeyEncrypted,
+        defaultModel: llmProviders.defaultModel,
+      })
+      .from(llmProviders)
+      .where(eq(llmProviders.isEnabled, true))
+      .orderBy(asc(llmProviders.sortOrder))
+      .limit(1);
+
+    if (!provider || !provider.apiKeyEncrypted || !provider.baseUrl) {
+      cachedProvider = null;
+      cacheTimestamp = now;
+      return null;
+    }
+
+    const apiKey = decrypt(provider.apiKeyEncrypted);
+    if (!apiKey) {
+      console.warn("[LLM] Failed to decrypt API key for provider:", provider.providerName);
+      cachedProvider = null;
+      cacheTimestamp = now;
+      return null;
+    }
+
+    cachedProvider = {
+      providerName: provider.providerName,
+      baseUrl: provider.baseUrl,
+      apiKey,
+      defaultModel: provider.defaultModel,
+    };
+    cacheTimestamp = now;
+
+    return cachedProvider;
+  } catch (error) {
+    console.error("[LLM] Failed to get provider config from database:", error);
+    return null;
+  }
+}
 
 const MAX_LLM_BODY_BYTES = parseInt(process.env.WEB_LLM_MAX_BODY_BYTES || "2097152"); // 2MB
 const LLM_RPM = parseInt(process.env.WEB_LLM_RPM || "120");
 
 // Minimum credits required to make an LLM request
 const MIN_CREDITS_REQUIRED = parseInt(process.env.WEB_LLM_MIN_CREDITS || "1");
-
-// Credit cost per 1K tokens (can be configured per model)
-const CREDIT_COST_PER_1K_TOKENS = parseFloat(process.env.WEB_LLM_CREDIT_PER_1K_TOKENS || "0.1");
 
 // Whether to skip credit check for static tokens (server-to-server)
 const SKIP_CREDIT_CHECK_FOR_STATIC = process.env.WEB_LLM_SKIP_CREDIT_FOR_STATIC === "true";
@@ -32,22 +120,18 @@ interface LLMUsageInfo {
   totalTokens: number;
 }
 
-function assertLlmConfig() {
-  if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-    throw new Error(
-      "LLM upstream missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
-    );
+function resolveChatUrl(baseUrl: string): string {
+  const base = baseUrl.replace(/\/+$/, "");
+  // Handle different provider URL patterns
+  if (base.includes("/v1")) {
+    return `${base}/chat/completions`;
   }
-}
-
-function resolveChatUrl(): string {
-  const base = ENV.forgeApiUrl.replace(/\/+$/, "");
   return `${base}/v1/chat/completions`;
 }
 
-function upstreamHeaders() {
+function upstreamHeaders(apiKey: string) {
   return {
-    Authorization: `Bearer ${ENV.forgeApiKey}`,
+    Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
   };
 }
@@ -109,6 +193,7 @@ async function checkCredits(
 
 /**
  * Deduct credits after successful LLM call
+ * Uses actual LLM cost to calculate credits (1 credit = $0.001 USD)
  */
 async function deductCreditsForUsage(
   userId: number,
@@ -116,10 +201,12 @@ async function deductCreditsForUsage(
 ): Promise<void> {
   if (userId === 0) return; // Skip for static tokens
 
-  // Calculate credits based on token usage
-  // Using a simple formula: 1 credit per 1000 tokens (configurable)
-  const totalTokens = usage.totalTokens || (usage.promptTokens + usage.completionTokens);
-  const creditsToDeduct = Math.max(1, Math.ceil(totalTokens * CREDIT_COST_PER_1K_TOKENS / 1000));
+  // Import the cost-based calculation
+  const { calculateCreditsForLLM, calculateLLMCostUsd } = await import("../services/creditService");
+
+  // Calculate based on actual LLM cost
+  const costUsd = calculateLLMCostUsd(usage.promptTokens, usage.completionTokens, usage.model);
+  const creditsToDeduct = calculateCreditsForLLM(usage.promptTokens, usage.completionTokens, usage.model);
 
   try {
     await deductCredits({
@@ -128,10 +215,10 @@ async function deductCreditsForUsage(
       description: `LLM usage: ${usage.model}`,
       metadata: {
         model: usage.model,
-        provider: "forge",
-        tokensUsed: totalTokens,
-        promptTokens: usage.promptTokens,
-        completionTokens: usage.completionTokens,
+        provider: cachedProvider?.providerName || "unknown",
+        inputTokens: usage.promptTokens,
+        outputTokens: usage.completionTokens,
+        costUsd: costUsd.toFixed(6),
         endpoint: "/v1/chat/completions",
       },
     });
@@ -158,16 +245,31 @@ function parseUsageFromResponse(data: any, model: string): LLMUsageInfo {
 
 /**
  * Proxy chat request with credit tracking
+ * If conversationId is provided for streaming, saves the assistant message at the end
  */
 async function proxyChatWithCredits(
   req: Request,
   res: Response,
   mode: "stream" | "json",
-  userId: number
+  userId: number,
+  conversationId?: number,
+  skillUsed?: string
 ) {
-  assertLlmConfig();
-  const url = resolveChatUrl();
-  const model = req.body?.model || "gpt-4.1-mini";
+  debugLog("LLM", "proxyChatWithCredits called", { mode, userId, conversationId, skillUsed });
+
+  // Get LLM provider config from database
+  const provider = await getActiveLlmProvider();
+  debugLog("LLM", "Provider config", provider ? { name: provider.providerName, baseUrl: provider.baseUrl, hasKey: !!provider.apiKey } : null);
+
+  if (!provider) {
+    throw new Error(
+      "No LLM provider configured. Please add and enable an LLM provider with API key in the admin settings."
+    );
+  }
+
+  const url = resolveChatUrl(provider.baseUrl);
+  const model = req.body?.model || provider.defaultModel || "gpt-4o-mini";
+  debugLog("LLM", "Request details", { url, model });
 
   const controller = new AbortController();
   req.on("close", () => controller.abort());
@@ -175,13 +277,16 @@ async function proxyChatWithCredits(
   const stream = mode === "stream";
   const upstream = await fetch(url, {
     method: "POST",
-    headers: upstreamHeaders(),
+    headers: upstreamHeaders(provider.apiKey),
     body: JSON.stringify({ ...req.body, stream }),
     signal: controller.signal,
   });
 
+  debugLog("LLM", "Upstream response", { status: upstream.status, statusText: upstream.statusText });
+
   if (!upstream.ok) {
     const message = await upstream.text().catch(() => upstream.statusText);
+    debugLog("LLM", "Upstream error", message);
     res.status(upstream.status || 500).json({ error: { message } });
     return;
   }
@@ -202,10 +307,11 @@ async function proxyChatWithCredits(
 
     // Add credit info to response (optional, for client awareness)
     if (userId > 0) {
+      const { calculateCreditsForLLM } = await import("../services/creditService");
       const balance = await getCreditBalance(userId);
       if (data && typeof data === "object") {
         data._credits = {
-          used: Math.max(1, Math.ceil((usage.totalTokens * CREDIT_COST_PER_1K_TOKENS) / 1000)),
+          used: calculateCreditsForLLM(usage.promptTokens, usage.completionTokens, usage.model),
           remaining: balance?.credits ?? 0,
         };
       }
@@ -231,6 +337,7 @@ async function proxyChatWithCredits(
   const reader = upstream.body.getReader();
   let totalChunks = 0;
   let accumulatedData = "";
+  let fullContent = ""; // Accumulate the actual content for saving
 
   try {
     while (true) {
@@ -242,7 +349,27 @@ async function proxyChatWithCredits(
         totalChunks++;
 
         // Accumulate data to parse usage at the end
-        accumulatedData += chunk.toString();
+        const chunkStr = chunk.toString();
+        accumulatedData += chunkStr;
+
+        // Extract content from SSE data for saving
+        const lines = chunkStr.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data:")) {
+            const data = line.slice("data:".length).trim();
+            if (data && data !== "[DONE]") {
+              try {
+                const j = JSON.parse(data);
+                const delta = j?.choices?.[0]?.delta?.content;
+                if (typeof delta === "string") {
+                  fullContent += delta;
+                }
+              } catch {
+                // Not JSON, ignore
+              }
+            }
+          }
+        }
       }
     }
   } finally {
@@ -252,19 +379,21 @@ async function proxyChatWithCredits(
 
     // Try to extract usage from the last SSE message
     // OpenAI sends usage in the final message with [DONE]
-    let estimatedTokens = 0;
+    let inputTokens = 0;
+    let outputTokens = 0;
     try {
       // Look for usage in accumulated data
       const usageMatch = accumulatedData.match(/"usage"\s*:\s*(\{[^}]+\})/);
       if (usageMatch) {
         const usage = JSON.parse(usageMatch[1]);
-        estimatedTokens = usage.total_tokens || 0;
+        inputTokens = usage.prompt_tokens || 0;
+        outputTokens = usage.completion_tokens || usage.total_tokens || 0;
       } else {
         // Estimate based on chunks (rough approximation)
-        estimatedTokens = Math.max(100, totalChunks * 10);
+        outputTokens = Math.max(100, totalChunks * 10);
       }
     } catch {
-      estimatedTokens = Math.max(100, totalChunks * 10);
+      outputTokens = Math.max(100, totalChunks * 10);
     }
 
     // Deduct credits for streaming
@@ -272,10 +401,52 @@ async function proxyChatWithCredits(
       userId,
       openId: null,
       model,
-      promptTokens: 0,
-      completionTokens: estimatedTokens,
-      totalTokens: estimatedTokens,
+      promptTokens: inputTokens,
+      completionTokens: outputTokens,
+      totalTokens: inputTokens + outputTokens,
     });
+
+    // If conversationId provided, save the assistant message and send final event
+    if (conversationId && fullContent) {
+      try {
+        const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
+        const { calculateCreditsForLLM } = await import("../services/creditService");
+
+        // Verify conversation ownership
+        const conversation = await getConversationById(conversationId, userId);
+        if (conversation) {
+          // Calculate credits based on actual LLM cost (pass model for accurate pricing)
+          const creditsUsed = calculateCreditsForLLM(inputTokens, outputTokens, model);
+          if (creditsUsed > 0) {
+            await updateConversationCredits(conversationId, creditsUsed);
+          }
+
+          const message = await createMessage({
+            conversationId,
+            role: "assistant",
+            content: fullContent,
+            inputTokens,
+            outputTokens,
+            creditsUsed: creditsUsed.toString(),
+            modelUsed: model || conversation.model || undefined,
+            skillUsed,
+          });
+
+          debugLog("LLM", "Message saved after streaming", { messageId: message.id, creditsUsed });
+
+          // Send final event with saved message info
+          res.write(`event: message_saved\n`);
+          res.write(`data: ${JSON.stringify({ id: message.id, creditsUsed, inputTokens, outputTokens })}\n\n`);
+        } else {
+          debugLog("LLM", "Conversation not found for saving", { conversationId, userId });
+        }
+      } catch (saveError: any) {
+        debugError("LLM", "Failed to save message after streaming", saveError);
+        // Send error event but don't fail the stream
+        res.write(`event: save_error\n`);
+        res.write(`data: ${JSON.stringify({ error: saveError?.message || "Failed to save message" })}\n\n`);
+      }
+    }
 
     res.end();
   }
@@ -332,21 +503,56 @@ export function registerLLMRoutes(app: Express) {
     }
   );
 
-  // Minimal models endpoint (optional but helps OpenAI-compatible clients)
+  // Models endpoint - returns models from enabled providers in database
   app.get("/v1/models", llmLimiter, async (req: Request, res: Response) => {
     const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
     if (!auth.ok) {
       unauthorized(res);
       return;
     }
-    res.json({
-      object: "list",
-      data: [
-        { id: "gpt-4.1-mini", object: "model" },
-        { id: "gpt-4o-mini", object: "model" },
-        { id: "gemini-2.5-flash", object: "model" },
-      ],
-    });
+
+    try {
+      // Fetch enabled providers with their models from database
+      const providers = await db
+        .select({
+          providerName: llmProviders.providerName,
+          availableModels: llmProviders.availableModels,
+          defaultModel: llmProviders.defaultModel,
+        })
+        .from(llmProviders)
+        .where(eq(llmProviders.isEnabled, true))
+        .orderBy(asc(llmProviders.sortOrder));
+
+      const models: Array<{ id: string; object: string; owned_by?: string }> = [];
+
+      for (const provider of providers) {
+        const providerModels = (provider.availableModels as Array<{ id: string; name: string }>) || [];
+        for (const model of providerModels) {
+          models.push({
+            id: model.id,
+            object: "model",
+            owned_by: provider.providerName,
+          });
+        }
+      }
+
+      // If no models configured, return a sensible default
+      if (models.length === 0) {
+        models.push({ id: "gpt-4o-mini", object: "model" });
+      }
+
+      res.json({
+        object: "list",
+        data: models,
+      });
+    } catch (error) {
+      console.error("[LLM] Failed to fetch models:", error);
+      // Fallback to default models
+      res.json({
+        object: "list",
+        data: [{ id: "gpt-4o-mini", object: "model" }],
+      });
+    }
   });
 
   // Credit balance endpoint for LLM clients
@@ -395,8 +601,14 @@ export function registerLLMRoutes(app: Express) {
       const check = await guardWithCredits(req, res);
       if (!check.ok) return;
 
+      // Extract conversationId and skillUsed from request body for server-side message saving
+      const conversationId = req.body?.conversationId ? Number(req.body.conversationId) : undefined;
+      const skillUsed = req.body?.skillUsed;
+
+      debugLog("LLM", "Stream request", { conversationId, skillUsed, userId: check.userId });
+
       try {
-        await proxyChatWithCredits(req, res, "stream", check.userId);
+        await proxyChatWithCredits(req, res, "stream", check.userId, conversationId, skillUsed);
       } catch (err: any) {
         // Best-effort SSE error
         res.status(200);
@@ -407,6 +619,207 @@ export function registerLLMRoutes(app: Express) {
         );
         res.write(`data: [DONE]\n\n`);
         res.end();
+      }
+    }
+  );
+
+  // Test endpoint for debugging
+  app.get("/api/chat/test", (_req: Request, res: Response) => {
+    debugLog("Chat API", "test endpoint hit");
+    res.json({ ok: true, timestamp: Date.now() });
+  });
+
+  // ALTERNATIVE: Save endpoint under /api/llm/ namespace (which we know works)
+  app.post(
+    "/api/llm/save-message",
+    async (req: Request, res: Response) => {
+      debugLog("LLM API", "=== SAVE-MESSAGE HANDLER START ===");
+      debugLog("LLM API", "save-message endpoint hit", req.body);
+
+      const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+      if (!auth.ok) {
+        return res.status(401).json({ error: { message: "Unauthorized" } });
+      }
+
+      const userId = await getUserIdFromAuth(auth);
+      debugLog("LLM API", "Auth result", {
+        mode: auth.mode,
+        sub: auth.sub,
+        hasUser: !!(auth as any).user,
+        userId,
+        userFromAuth: (auth as any).user?.id
+      });
+
+      if (!userId) {
+        debugLog("LLM API", "No userId from auth");
+        return res.status(403).json({ error: { message: "User not found" } });
+      }
+
+      try {
+        const { conversationId: rawConversationId, content, inputTokens, outputTokens, modelUsed, skillUsed } = req.body;
+        if (!rawConversationId || !content) {
+          return res.status(400).json({ error: { message: "conversationId and content are required" } });
+        }
+
+        // Ensure conversationId is a number (in case it's passed as a string)
+        const conversationId = typeof rawConversationId === 'string' ? parseInt(rawConversationId, 10) : rawConversationId;
+        if (isNaN(conversationId)) {
+          debugLog("LLM API", "Invalid conversationId", { rawConversationId });
+          return res.status(400).json({ error: { message: "Invalid conversationId" } });
+        }
+
+        const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
+        const { calculateCreditsForLLM } = await import("../services/creditService");
+
+        debugLog("LLM API", "Looking up conversation", {
+          conversationId,
+          conversationIdType: typeof conversationId,
+          userId,
+          userIdType: typeof userId
+        });
+
+        // First, try to get conversation with user ownership check
+        let conversation = await getConversationById(conversationId, userId);
+        debugLog("LLM API", "Conversation lookup result", { found: !!conversation, conversationId, userId });
+
+        // If not found, check if conversation exists at all (debug)
+        if (!conversation) {
+          // Query conversation without user check for debugging
+          const { db } = await import("../db");
+          const { conversations } = await import("../../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          const dbInstance = await db.instance;
+          const [anyConv] = await dbInstance
+            .select({ id: conversations.id, userId: conversations.userId })
+            .from(conversations)
+            .where(eq(conversations.id, conversationId))
+            .limit(1);
+
+          debugLog("LLM API", "Debug - conversation exists?", {
+            exists: !!anyConv,
+            conversationId,
+            actualUserId: anyConv?.userId,
+            requestUserId: userId,
+            match: anyConv?.userId === userId
+          });
+
+          if (anyConv && anyConv.userId !== userId) {
+            debugLog("LLM API", "User ID mismatch!", {
+              conversationUserId: anyConv.userId,
+              requestUserId: userId
+            });
+          }
+
+          return res.status(404).json({ error: { message: "Conversation not found" } });
+        }
+
+        const effectiveModel = modelUsed || conversation.model || "gpt-4o-mini";
+        const creditsUsed = calculateCreditsForLLM(inputTokens || 0, outputTokens || 0, effectiveModel);
+        if (creditsUsed > 0) {
+          await updateConversationCredits(conversationId, creditsUsed);
+        }
+
+        const message = await createMessage({
+          conversationId,
+          role: "assistant",
+          content,
+          inputTokens: inputTokens || 0,
+          outputTokens: outputTokens || 0,
+          creditsUsed: creditsUsed.toString(),
+          modelUsed: effectiveModel,
+          skillUsed,
+        });
+
+        debugLog("LLM API", "Message saved", { messageId: message.id });
+        res.json({ id: message.id, creditsUsed });
+      } catch (err: any) {
+        debugError("LLM API", "Save failed", err);
+        res.status(500).json({ error: { message: err?.message || "Failed to save message" } });
+      }
+    }
+  );
+
+  // REST endpoint for saving assistant messages (bypasses tRPC)
+  // NOTE: No rate limiter here - this is called after streaming completes
+  app.post(
+    "/api/chat/save-assistant",
+    async (req: Request, res: Response) => {
+      debugLog("Chat API", "=== SAVE-ASSISTANT HANDLER START ===");
+      debugLog("Chat API", "save-assistant endpoint hit", {
+        hasBody: !!req.body,
+        bodyKeys: req.body ? Object.keys(req.body) : [],
+        contentType: req.headers["content-type"],
+      });
+      debugLog("Chat API", "save-assistant body", req.body);
+
+      const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+      if (!auth.ok) {
+        debugLog("Chat API", "Unauthorized");
+        return res.status(401).json({ error: { message: "Unauthorized" } });
+      }
+
+      const userId = await getUserIdFromAuth(auth);
+      if (!userId) {
+        debugLog("Chat API", "User not found");
+        return res.status(403).json({ error: { message: "User not found" } });
+      }
+
+      try {
+        const { conversationId, content, inputTokens, outputTokens, modelUsed, skillUsed } = req.body;
+
+        // Validate required fields
+        if (!conversationId) {
+          debugLog("Chat API", "Missing conversationId");
+          return res.status(400).json({ error: { message: "conversationId is required" } });
+        }
+        if (!content) {
+          debugLog("Chat API", "Missing content");
+          return res.status(400).json({ error: { message: "content is required" } });
+        }
+
+        debugLog("Chat API", "Saving message", { conversationId, contentLength: content?.length, userId });
+
+        // Dynamic import to avoid circular dependencies
+        const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
+        const { calculateCreditsForLLM } = await import("../services/creditService");
+
+        // Verify conversation ownership
+        const conversation = await getConversationById(conversationId, userId);
+        if (!conversation) {
+          debugLog("Chat API", "Conversation not found");
+          return res.status(404).json({ error: { message: "Conversation not found" } });
+        }
+
+        // Calculate credits for tracking (use actual model for accurate cost)
+        const effectiveModel = modelUsed || conversation.model || "gpt-4o-mini";
+        const creditsUsed = calculateCreditsForLLM(inputTokens || 0, outputTokens || 0, effectiveModel);
+
+        // Update conversation credits tracking
+        if (creditsUsed > 0) {
+          await updateConversationCredits(conversationId, creditsUsed);
+        }
+
+        // Create assistant message
+        const message = await createMessage({
+          conversationId,
+          role: "assistant",
+          content,
+          inputTokens: inputTokens || 0,
+          outputTokens: outputTokens || 0,
+          creditsUsed: creditsUsed.toString(),
+          modelUsed: effectiveModel,
+          skillUsed,
+        });
+
+        debugLog("Chat API", "Message saved", { messageId: message.id, creditsUsed });
+
+        res.json({
+          id: message.id,
+          creditsUsed,
+        });
+      } catch (err: any) {
+        debugError("Chat API", "Save failed", err);
+        res.status(500).json({ error: { message: err?.message || "Failed to save message" } });
       }
     }
   );

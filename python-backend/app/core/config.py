@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     KILOCODE_API_KEY: str = ""
     KILOCODE_BASE_URL: str = "https://api.kilo.ai/api/openrouter"
 
+    # Kie.ai API (for multimodal generation: images, videos, audio)
+    KIE_AI_API_KEY: str = ""
+    KIE_AI_BASE_URL: str = "https://api.kie.ai/api/v1"
+    KIE_AI_CALLBACK_URL: str = ""  # Optional webhook for async task completion
+
     # Stripe Payment
     STRIPE_PUBLISHABLE_KEY: str = ""
     STRIPE_SECRET_KEY: str = ""

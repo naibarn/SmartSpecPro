@@ -152,6 +152,10 @@ export interface ImageGenerationRequest {
   aspectRatio?: string;
   negativePrompt?: string;
   numImages?: number;
+  /** Reference images for style transfer or img2img (1-5 URLs) */
+  referenceImageUrls?: string[];
+  /** Reference style URL for style transfer */
+  referenceStyleUrl?: string;
 }
 
 export interface VideoGenerationRequest {
@@ -160,6 +164,10 @@ export interface VideoGenerationRequest {
   duration?: number;
   aspectRatio?: string;
   fps?: number;
+  /** Reference images for video generation (img2vid) */
+  referenceImageUrls?: string[];
+  /** Reference video URL for vid2vid */
+  referenceVideoUrl?: string;
 }
 
 export interface AudioGenerationRequest {
@@ -186,6 +194,7 @@ export interface MediaGenerationResponse {
 
 export interface MediaTask {
   id: string;
+  taskId?: string; // External provider task ID (e.g., Kie.ai)
   userId: string;
   mediaType: MediaType;
   status: TaskStatus;
@@ -219,6 +228,32 @@ const PYTHON_BACKEND_URL =
   process.env.OAUTH_SERVER_URL ||
   "http://localhost:8000";
 const NODE_ENV = process.env.NODE_ENV || "development";
+
+// Internal URL for Python backend to access Node.js server (for file downloads)
+// In Docker, this is the internal container network URL
+const NODE_SERVER_INTERNAL_URL =
+  process.env.NODE_SERVER_INTERNAL_URL ||
+  "http://smartspec-web:3000";
+
+/**
+ * Convert relative URLs (e.g., /uploads/xxx.png) to full URLs
+ * so the Python backend can download the files
+ */
+function resolveReferenceUrl(url: string): string {
+  if (!url) return url;
+
+  // If already a full URL, return as-is
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  // Convert relative path to full URL using internal Docker network
+  if (url.startsWith("/uploads/") || url.startsWith("/")) {
+    return `${NODE_SERVER_INTERNAL_URL}${url}`;
+  }
+
+  return url;
+}
 
 /**
  * Validate and enforce HTTPS for backend URL in production
@@ -277,7 +312,7 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
-    const payload = {
+    const payload: Record<string, unknown> = {
       prompt: request.prompt,
       model: request.model || DEFAULT_MODELS.image,
       size: request.size,
@@ -285,6 +320,19 @@ export class MediaGenerationService {
       negative_prompt: request.negativePrompt,
       n: request.numImages || 1,
     };
+
+    // Add reference images if provided (1-5 images)
+    // Convert relative URLs to full URLs for Python backend
+    if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
+      payload.reference_image_urls = request.referenceImageUrls
+        .slice(0, 5)
+        .map(resolveReferenceUrl);
+    }
+
+    // Add reference style if provided
+    if (request.referenceStyleUrl) {
+      payload.reference_style_url = resolveReferenceUrl(request.referenceStyleUrl);
+    }
 
     const response = await fetch(`${this.baseUrl}/api/v1/media/image`, {
       method: "POST",
@@ -308,13 +356,26 @@ export class MediaGenerationService {
     request: VideoGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
-    const payload = {
+    const payload: Record<string, unknown> = {
       prompt: request.prompt,
       model: request.model || DEFAULT_MODELS.video,
       duration: request.duration,
       aspect_ratio: request.aspectRatio,
       fps: request.fps,
     };
+
+    // Add reference images for img2vid
+    // Convert relative URLs to full URLs for Python backend
+    if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
+      payload.reference_image_urls = request.referenceImageUrls
+        .slice(0, 5)
+        .map(resolveReferenceUrl);
+    }
+
+    // Add reference video for vid2vid
+    if (request.referenceVideoUrl) {
+      payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl);
+    }
 
     const response = await fetch(`${this.baseUrl}/api/v1/media/video`, {
       method: "POST",
@@ -367,7 +428,7 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
-    const payload = {
+    const payload: Record<string, unknown> = {
       prompt: request.prompt,
       model: request.model || DEFAULT_MODELS.image,
       size: request.size,
@@ -375,6 +436,19 @@ export class MediaGenerationService {
       negative_prompt: request.negativePrompt,
       n: request.numImages || 1,
     };
+
+    // Add reference images if provided (1-5 images)
+    // Convert relative URLs to full URLs for Python backend
+    if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
+      payload.reference_image_urls = request.referenceImageUrls
+        .slice(0, 5)
+        .map(resolveReferenceUrl);
+    }
+
+    // Add reference style if provided
+    if (request.referenceStyleUrl) {
+      payload.reference_style_url = resolveReferenceUrl(request.referenceStyleUrl);
+    }
 
     const response = await fetch(`${this.baseUrl}/api/v1/media/async/image`, {
       method: "POST",
@@ -398,13 +472,26 @@ export class MediaGenerationService {
     request: VideoGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
-    const payload = {
+    const payload: Record<string, unknown> = {
       prompt: request.prompt,
       model: request.model || DEFAULT_MODELS.video,
       duration: request.duration,
       aspect_ratio: request.aspectRatio,
       fps: request.fps,
     };
+
+    // Add reference images for img2vid
+    // Convert relative URLs to full URLs for Python backend
+    if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
+      payload.reference_image_urls = request.referenceImageUrls
+        .slice(0, 5)
+        .map(resolveReferenceUrl);
+    }
+
+    // Add reference video for vid2vid
+    if (request.referenceVideoUrl) {
+      payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl);
+    }
 
     const response = await fetch(`${this.baseUrl}/api/v1/media/async/video`, {
       method: "POST",
@@ -562,6 +649,7 @@ export class MediaGenerationService {
   private mapTask(data: Record<string, unknown>): MediaTask {
     return {
       id: data.id as string,
+      taskId: data.task_id as string | undefined, // External provider task ID (e.g., Kie.ai)
       userId: data.user_id as string,
       mediaType: data.media_type as MediaType,
       status: data.status as TaskStatus,

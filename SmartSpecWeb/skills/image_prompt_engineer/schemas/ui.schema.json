@@ -1,0 +1,267 @@
+{
+  "$schema": "https://smartspec.pro/skill-ui-schema/v1",
+  "version": "2.1",
+  "skillId": "image_prompt_engineer",
+  "title": "Image Prompt Engineer",
+  "titleTh": "ตัวช่วยสร้าง Prompt รูปภาพ",
+  "description": "Generate professional AI image prompts with full control over style, VFX, and generation parameters",
+  "sections": [
+    {
+      "id": "basic",
+      "title": "Basic Input",
+      "titleTh": "ข้อมูลพื้นฐาน",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "userIdea",
+          "type": "textarea",
+          "label": "Your Idea",
+          "labelTh": "ไอเดียของคุณ",
+          "placeholder": "Describe what you want to create...",
+          "placeholderTh": "อธิบายสิ่งที่คุณต้องการสร้าง...",
+          "helpText": "Enter your idea or leave empty to analyze reference images",
+          "helpTextTh": "ใส่ไอเดียของคุณ หรือเว้นว่างเพื่อวิเคราะห์ภาพอ้างอิง",
+          "rows": 3,
+          "required": false
+        },
+        {
+          "id": "referenceImages",
+          "type": "imageUpload",
+          "label": "Reference Images",
+          "labelTh": "ภาพอ้างอิง",
+          "helpText": "Upload 1-5 reference images for style transfer or analysis",
+          "helpTextTh": "อัปโหลดภาพอ้างอิง 1-5 ภาพ",
+          "multiple": true,
+          "maxCount": 5,
+          "accept": "image/*"
+        }
+      ]
+    },
+    {
+      "id": "generation",
+      "title": "Generation Mode",
+      "titleTh": "โหมดการสร้าง",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "generationMode",
+          "type": "select",
+          "label": "Generation Mode",
+          "labelTh": "โหมดการสร้าง",
+          "helpText": "Choose how to generate the image",
+          "helpTextTh": "เลือกวิธีการสร้างภาพ",
+          "default": "text_to_image",
+          "options": [
+            { "value": "text_to_image", "label": "Text to Image", "labelTh": "สร้างจากข้อความ" },
+            { "value": "image_to_image", "label": "Image to Image", "labelTh": "แปลงจากภาพ" },
+            { "value": "inpaint", "label": "Inpaint (Edit Region)", "labelTh": "แก้ไขบางส่วน" },
+            { "value": "outpaint", "label": "Outpaint (Expand)", "labelTh": "ขยายภาพ" },
+            { "value": "variation", "label": "Variation", "labelTh": "สร้าง Variation" }
+          ]
+        },
+        {
+          "id": "task",
+          "type": "select",
+          "label": "Task Type",
+          "labelTh": "ประเภทงาน",
+          "helpText": "What should the skill generate?",
+          "helpTextTh": "ต้องการให้สกิลสร้างอะไร?",
+          "default": "final_prompt",
+          "options": [
+            { "value": "final_prompt", "label": "Generate Final Prompt", "labelTh": "สร้าง Prompt สุดท้าย" },
+            { "value": "ideas_10", "label": "10 Concept Ideas", "labelTh": "10 ไอเดียคอนเซ็ปต์" },
+            { "value": "angles_10", "label": "10 Camera Angles", "labelTh": "10 มุมกล้อง" },
+            { "value": "storyboard_6", "label": "6-Frame Storyboard", "labelTh": "สตอรี่บอร์ด 6 เฟรม" }
+          ]
+        },
+        {
+          "id": "detailLevel",
+          "type": "select",
+          "label": "Output Detail",
+          "labelTh": "ระดับรายละเอียด",
+          "helpText": "How detailed should the output be?",
+          "helpTextTh": "ต้องการผลลัพธ์ละเอียดแค่ไหน?",
+          "default": "standard",
+          "options": [
+            { "value": "compact", "label": "Compact (Prompt only)", "labelTh": "กระชับ (แค่ Prompt)" },
+            { "value": "standard", "label": "Standard (+ Parameters)", "labelTh": "มาตรฐาน (+ พารามิเตอร์)" },
+            { "value": "full", "label": "Full (+ Breakdown)", "labelTh": "เต็ม (+ รายละเอียด)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Style & VFX",
+      "titleTh": "สไตล์และเอฟเฟกต์",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "styleCategory",
+          "type": "select",
+          "label": "Style Category",
+          "labelTh": "หมวดสไตล์",
+          "helpText": "Select a style category",
+          "helpTextTh": "เลือกหมวดหมู่สไตล์",
+          "options": [
+            { "value": "", "label": "Auto (AI chooses)", "labelTh": "อัตโนมัติ" },
+            { "value": "A", "label": "A. Photo-Realistic", "labelTh": "A. ภาพสมจริง" },
+            { "value": "B", "label": "B. Documentary & Candid", "labelTh": "B. สารคดีและภาพธรรมชาติ" },
+            { "value": "C", "label": "C. Commercial & Fashion", "labelTh": "C. โฆษณาและแฟชั่น" },
+            { "value": "D", "label": "D. Editorial & Conceptual", "labelTh": "D. บรรณาธิการและคอนเซ็ปต์" },
+            { "value": "E", "label": "E. Cinematic", "labelTh": "E. ภาพยนตร์" },
+            { "value": "F", "label": "F. Art & Illustration", "labelTh": "F. ศิลปะและภาพวาด" },
+            { "value": "G", "label": "G. 3D & CGI", "labelTh": "G. 3D และ CGI" },
+            { "value": "H", "label": "H. Retro & Vintage", "labelTh": "H. เรโทรและวินเทจ" },
+            { "value": "I", "label": "I. Experimental", "labelTh": "I. ทดลอง" },
+            { "value": "J", "label": "J. Genre Specific", "labelTh": "J. เฉพาะแนว" },
+            { "value": "K", "label": "K. Abstract & Surreal", "labelTh": "K. นามธรรมและเหนือจริง" },
+            { "value": "L", "label": "L. Product & Technical", "labelTh": "L. ผลิตภัณฑ์และเทคนิค" },
+            { "value": "M", "label": "M. Lifestyle", "labelTh": "M. ไลฟ์สไตล์" }
+          ]
+        },
+        {
+          "id": "styleName",
+          "type": "text",
+          "label": "Style Name",
+          "labelTh": "ชื่อสไตล์",
+          "placeholder": "e.g., photorealistic, anime, oil_painting",
+          "placeholderTh": "เช่น photorealistic, anime, oil_painting",
+          "helpText": "Enter specific style name or leave empty",
+          "helpTextTh": "ใส่ชื่อสไตล์เฉพาะหรือเว้นว่าง"
+        },
+        {
+          "id": "styleCustom",
+          "type": "textarea",
+          "label": "Custom Style Description",
+          "labelTh": "คำอธิบายสไตล์เพิ่มเติม",
+          "placeholder": "Describe your custom style...",
+          "placeholderTh": "อธิบายสไตล์ที่คุณต้องการ...",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "id": "options",
+      "title": "Advanced Options",
+      "titleTh": "ตัวเลือกขั้นสูง",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "default": "9:16",
+          "options": [
+            { "value": "9:16", "label": "9:16 (Portrait)", "labelTh": "9:16 (แนวตั้ง)" },
+            { "value": "16:9", "label": "16:9 (Landscape)", "labelTh": "16:9 (แนวนอน)" },
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" },
+            { "value": "4:5", "label": "4:5 (Instagram)", "labelTh": "4:5 (อินสตาแกรม)" },
+            { "value": "3:2", "label": "3:2 (Photo)", "labelTh": "3:2 (ภาพถ่าย)" },
+            { "value": "21:9", "label": "21:9 (Ultrawide)", "labelTh": "21:9 (จอกว้างพิเศษ)" }
+          ]
+        },
+        {
+          "id": "realisticSkin",
+          "type": "boolean",
+          "label": "Realistic Skin",
+          "labelTh": "ผิวสมจริง",
+          "helpText": "Add realistic skin texture with pores and imperfections",
+          "helpTextTh": "เพิ่มเนื้อผิวสมจริงพร้อมรูขุมขนและความไม่สมบูรณ์แบบ",
+          "default": false
+        },
+        {
+          "id": "identityLock",
+          "type": "select",
+          "label": "Identity Lock",
+          "labelTh": "ล็อคตัวตน",
+          "helpText": "Preserve face or product identity",
+          "helpTextTh": "รักษาตัวตนใบหน้าหรือผลิตภัณฑ์",
+          "default": "none",
+          "options": [
+            { "value": "none", "label": "None", "labelTh": "ไม่ใช้" },
+            { "value": "soft_lock_person", "label": "Soft Lock (Person)", "labelTh": "ล็อคอ่อน (คน)" },
+            { "value": "strict_lock_product", "label": "Strict Lock (Product)", "labelTh": "ล็อคเข้ม (ผลิตภัณฑ์)" }
+          ]
+        },
+        {
+          "id": "targetPlatform",
+          "type": "select",
+          "label": "Target Platform",
+          "labelTh": "แพลตฟอร์มเป้าหมาย",
+          "helpText": "Optimize prompt for specific AI platform",
+          "helpTextTh": "ปรับ Prompt ให้เหมาะกับแพลตฟอร์ม AI",
+          "default": "generic",
+          "options": [
+            { "value": "generic", "label": "Generic (All)", "labelTh": "ทั่วไป (ใช้ได้ทุกที่)" },
+            { "value": "stable_diffusion", "label": "Stable Diffusion", "labelTh": "Stable Diffusion" },
+            { "value": "midjourney", "label": "Midjourney", "labelTh": "Midjourney" },
+            { "value": "dall_e_3", "label": "DALL-E 3", "labelTh": "DALL-E 3" },
+            { "value": "flux", "label": "Flux", "labelTh": "Flux" },
+            { "value": "firefly", "label": "Adobe Firefly", "labelTh": "Adobe Firefly" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "typography",
+      "title": "Text on Image",
+      "titleTh": "ข้อความบนภาพ",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "textOnImage",
+          "type": "boolean",
+          "label": "Include Text",
+          "labelTh": "ใส่ข้อความ",
+          "helpText": "Enable to add text overlay on the image",
+          "helpTextTh": "เปิดเพื่อเพิ่มข้อความบนภาพ",
+          "default": false
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "label": "Headline",
+          "labelTh": "หัวข้อ",
+          "placeholder": "Enter headline text...",
+          "placeholderTh": "ใส่ข้อความหัวข้อ...",
+          "dependsOn": {
+            "field": "textOnImage",
+            "value": true
+          }
+        },
+        {
+          "id": "bodyText",
+          "type": "textarea",
+          "label": "Body Text",
+          "labelTh": "ข้อความเนื้อหา",
+          "placeholder": "Enter body text...",
+          "placeholderTh": "ใส่ข้อความเนื้อหา...",
+          "rows": 2,
+          "dependsOn": {
+            "field": "textOnImage",
+            "value": true
+          }
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "userIdea": "userInput",
+    "referenceImages": "referenceImages",
+    "generationMode": "generationMode",
+    "task": "task",
+    "detailLevel": "detailLevel",
+    "styleCategory": "styleCategory",
+    "styleName": "styleName",
+    "styleCustom": "styleCustom",
+    "aspectRatio": "aspectRatio",
+    "realisticSkin": "realisticSkin",
+    "identityLock": "identityLock",
+    "targetPlatform": "targetPlatform",
+    "textOnImage": "textOnImage",
+    "headline": "headline",
+    "bodyText": "bodyText"
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "version": "2.1.0",
+  "description": "Confidence scoring system for recommendations",
+  "scoringCriteria": {
+    "githubStars": {
+      "weight": 20,
+      "description": "Popularity indicator",
+      "thresholds": {
+        "below1k": 1,
+        "1k-5k": 2,
+        "5k-10k": 3,
+        "10k-20k": 4,
+        "above20k": 5
+      }
+    },
+    "projectsUsing": {
+      "weight": 20,
+      "description": "Real-world adoption",
+      "thresholds": {
+        "below100": 1,
+        "100-1k": 2,
+        "1k-5k": 3,
+        "5k-10k": 4,
+        "above10k": 5
+      }
+    },
+    "securityAudit": {
+      "weight": 15,
+      "description": "Security assurance level",
+      "scores": {
+        "notAudited": 2,
+        "communityReviewed": 3,
+        "independentAudit": 4,
+        "securityCertified": 5
+      }
+    },
+    "maintenance": {
+      "weight": 15,
+      "description": "Active development status",
+      "scores": {
+        "abandoned": 1,
+        "infrequent": 2,
+        "regular": 3,
+        "active": 4,
+        "veryActive": 5
+      }
+    },
+    "documentation": {
+      "weight": 15,
+      "description": "Quality of documentation",
+      "scores": {
+        "minimal": 1,
+        "basic": 2,
+        "good": 3,
+        "excellent": 4,
+        "comprehensive": 5
+      }
+    },
+    "bundleSize": {
+      "weight": 15,
+      "description": "Performance impact (smaller is better)",
+      "thresholds": {
+        "above50kb": 1,
+        "30-50kb": 2,
+        "10-30kb": 3,
+        "5-10kb": 4,
+        "below5kb": 5
+      }
+    }
+  },
+  "confidenceThresholds": {
+    "veryHigh": {
+      "min": 90,
+      "max": 100,
+      "stars": 5,
+      "label": "Very High Confidence",
+      "recommendation": "Highly Recommended"
+    },
+    "high": {
+      "min": 80,
+      "max": 89,
+      "stars": 4,
+      "label": "High Confidence",
+      "recommendation": "Recommended"
+    },
+    "medium": {
+      "min": 60,
+      "max": 79,
+      "stars": 3,
+      "label": "Medium Confidence",
+      "recommendation": "Good Option"
+    },
+    "low": {
+      "min": 40,
+      "max": 59,
+      "stars": 2,
+      "label": "Low Confidence",
+      "recommendation": "Consider Carefully"
+    },
+    "veryLow": {
+      "min": 0,
+      "max": 39,
+      "stars": 1,
+      "label": "Very Low Confidence",
+      "recommendation": "Not Recommended"
+    }
+  },
+  "exampleScores": {
+    "zod": {
+      "githubStars": 5,
+      "projectsUsing": 5,
+      "securityAudit": 5,
+      "maintenance": 5,
+      "documentation": 5,
+      "bundleSize": 5,
+      "totalScore": 98,
+      "confidence": "99%"
+    },
+    "formik": {
+      "githubStars": 5,
+      "projectsUsing": 4,
+      "securityAudit": 4,
+      "maintenance": 3,
+      "documentation": 5,
+      "bundleSize": 2,
+      "totalScore": 84,
+      "confidence": "85%"
+    },
+    "diy": {
+      "githubStars": 0,
+      "projectsUsing": 0,
+      "securityAudit": 1,
+      "maintenance": 0,
+      "documentation": 0,
+      "bundleSize": 0,
+      "totalScore": 15,
+      "confidence": "15%"
+    },
+    "auth0": {
+      "githubStars": 5,
+      "projectsUsing": 5,
+      "securityAudit": 5,
+      "maintenance": 5,
+      "documentation": 5,
+      "bundleSize": 3,
+      "totalScore": 93,
+      "confidence": "95%"
+    },
+    "firebase": {
+      "githubStars": 5,
+      "projectsUsing": 5,
+      "securityAudit": 5,
+      "maintenance": 5,
+      "documentation": 5,
+      "bundleSize": 4,
+      "totalScore": 96,
+      "confidence": "97%"
+    }
+  }
+}

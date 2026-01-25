@@ -1,21 +1,83 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
+// Storage helpers with local fallback
+// Uses Forge storage when configured, otherwise falls back to local file storage
 
 import { ENV } from './_core/env';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-type StorageConfig = { baseUrl: string; apiKey: string };
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Local uploads directory (relative to server folder)
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+
+type StorageConfig = { baseUrl: string; apiKey: string } | null;
 
 function getStorageConfig(): StorageConfig {
   const baseUrl = ENV.forgeApiUrl;
   const apiKey = ENV.forgeApiKey;
 
   if (!baseUrl || !apiKey) {
-    throw new Error(
-      "Storage proxy credentials missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
-    );
+    // Return null to indicate local storage should be used
+    return null;
   }
 
   return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
+}
+
+/**
+ * Check if local storage should be used
+ */
+export function useLocalStorage(): boolean {
+  return getStorageConfig() === null;
+}
+
+/**
+ * Ensure uploads directory exists
+ */
+function ensureUploadsDir(subPath?: string): string {
+  const dir = subPath ? path.join(UPLOADS_DIR, subPath) : UPLOADS_DIR;
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+/**
+ * Save file locally and return URL
+ */
+async function localStoragePut(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType: string
+): Promise<{ key: string; url: string }> {
+  const key = normalizeKey(relKey);
+  const filePath = path.join(UPLOADS_DIR, key);
+  const dir = path.dirname(filePath);
+
+  // Ensure directory exists
+  ensureUploadsDir(path.dirname(key));
+
+  // Write file
+  const buffer = typeof data === 'string' ? Buffer.from(data) : Buffer.from(data);
+  fs.writeFileSync(filePath, buffer);
+
+  // Return URL that will be served by Express static middleware
+  const url = `/uploads/${key}`;
+
+  return { key, url };
+}
+
+/**
+ * Get file URL from local storage
+ */
+async function localStorageGet(relKey: string): Promise<{ key: string; url: string }> {
+  const key = normalizeKey(relKey);
+  return {
+    key,
+    url: `/uploads/${key}`,
+  };
 }
 
 function buildUploadUrl(baseUrl: string, relKey: string): URL {
@@ -72,7 +134,14 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
-  const { baseUrl, apiKey } = getStorageConfig();
+  const config = getStorageConfig();
+
+  // Use local storage if Forge is not configured
+  if (!config) {
+    return localStoragePut(relKey, data, contentType);
+  }
+
+  const { baseUrl, apiKey } = config;
   const key = normalizeKey(relKey);
   const uploadUrl = buildUploadUrl(baseUrl, key);
   const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
@@ -93,10 +162,25 @@ export async function storagePut(
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
-  const { baseUrl, apiKey } = getStorageConfig();
+  const config = getStorageConfig();
+
+  // Use local storage if Forge is not configured
+  if (!config) {
+    return localStorageGet(relKey);
+  }
+
+  const { baseUrl, apiKey } = config;
   const key = normalizeKey(relKey);
   return {
     key,
     url: await buildDownloadUrl(baseUrl, key, apiKey),
   };
+}
+
+/**
+ * Get the uploads directory path (for static serving)
+ */
+export function getUploadsDir(): string {
+  ensureUploadsDir();
+  return UPLOADS_DIR;
 }

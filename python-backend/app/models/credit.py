@@ -1,33 +1,67 @@
 '''
 Credit Management Models
+Compatible with SmartSpecWeb's Drizzle schema (camelCase columns)
 '''
 
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, JSON, Index
-from sqlalchemy.orm import relationship
+import enum
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, JSON, Index, Enum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
-import uuid
 
 from app.core.database import Base
 
 
-class CreditTransaction(Base):
-    """Credit transaction model for tracking credit changes"""
-    
-    __tablename__ = "credit_transactions"
-    
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
-    type = Column(String(20), nullable=False)  # topup, deduction, refund, adjustment
-    amount = Column(Integer, nullable=False)  # Credits (1 USD = 1,000 credits)
-    description = Column(Text)
-    balance_before = Column(Integer, nullable=False)  # Credits
-    balance_after = Column(Integer, nullable=False)  # Credits
-    meta_data = Column("metadata", JSON, default={})
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+class TransactionType(str, enum.Enum):
+    """Transaction type enum - must match SmartSpecWeb's transaction_type enum exactly"""
+    purchase = "purchase"
+    usage = "usage"
+    bonus = "bonus"
+    refund = "refund"
+    adjustment = "adjustment"
 
-    # Removed back_populates to avoid circular reference with SmartSpecWeb User schema
-    user = relationship("User")
-    
+
+class CreditTransaction(Base):
+    """
+    Credit transaction model - matches SmartSpecWeb's credit_transactions table
+    Uses camelCase column names to be compatible with Drizzle ORM
+    """
+
+    __tablename__ = "credit_transactions"
+
+    # Serial primary key (auto-increment)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # User ID - camelCase to match SmartSpecWeb
+    user_id = Column("userId", Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    # Amount of credits (positive for additions, negative for deductions)
+    amount = Column(Integer, nullable=False)
+
+    # Transaction type: usage, purchase, refund, bonus, adjustment
+    # Use create_type=False since the enum already exists in PostgreSQL
+    type = Column(
+        Enum(TransactionType, name="transaction_type", create_type=False),
+        nullable=False
+    )
+
+    # Human-readable description
+    description = Column(String(512))
+
+    # Additional metadata (model, tokens, cost, etc.)
+    # Note: Using 'meta' as Python attribute because 'metadata' is reserved in SQLAlchemy
+    meta = Column("metadata", JSONB, default={})
+
+    # Balance after this transaction - camelCase to match SmartSpecWeb
+    balance_after = Column("balanceAfter", Integer, nullable=False)
+
+    # Reference ID for external systems (e.g., Stripe payment ID)
+    reference_id = Column("referenceId", String(128))
+
+    # Timestamp - camelCase to match SmartSpecWeb
+    created_at = Column("createdAt", DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    # NOTE: No user relationship to avoid MissingGreenlet error in async SQLAlchemy
+
     def __repr__(self):
         return f"<CreditTransaction {self.type} {self.amount} for user {self.user_id}>"
 

@@ -17,12 +17,16 @@ import { registerTenantRoutes } from "../routers/tenant";
 import { registerAdminTenantsRoutes } from "../routers/adminTenants";
 import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
+import { debugError } from "./logger";
+import { getUploadsDir, useLocalStorage } from "../storage";
+import { initializeSkillRegistry } from "../services/skillRegistry";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 app.disable("x-powered-by");
+
 
 // CORS for cross-domain access (Docker Status, etc.)
 app.use((req, res, next) => {
@@ -57,9 +61,29 @@ app.use((_req, res, next) => {
   next();
 });
 
+// JSON body parser with error logging
 app.use(express.json({ limit: "50mb" }));
+app.use((err: any, req: any, res: any, next: any) => {
+  // Catch JSON parse errors (SyntaxError from body-parser)
+  if (err instanceof SyntaxError && 'body' in err) {
+    debugError("JSON Parse", `Failed to parse JSON body for ${req.url}`, err);
+    return res.status(400).json({ error: { message: "Invalid JSON in request body" } });
+  }
+  next(err);
+});
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser(ENV.cookieSecret));
+
+// Serve uploaded files BEFORE tenant middleware (internal Docker access)
+// This allows services like smartspec-backend to access files without tenant validation
+if (useLocalStorage()) {
+  const uploadsDir = getUploadsDir();
+  console.log(`[Storage] Using local storage at: ${uploadsDir}`);
+  app.use('/uploads', express.static(uploadsDir, {
+    maxAge: '1d',
+    etag: true,
+  }));
+}
 
 // Multi-tenant middleware - identifies tenant from domain
 app.use(tenantMiddleware);
@@ -88,11 +112,30 @@ app.use(
   createExpressMiddleware({
     router: appRouter,
     createContext,
+    onError: ({ error, path }) => {
+      debugError("tRPC", `${path}: ${error.message}`, error);
+    },
   })
 );
 
+// Global error handler - must be last
+app.use((err: any, req: any, res: any, next: any) => {
+  debugError("Express", "Unhandled error", err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: { message: "Internal server error" } });
+  }
+});
+
 async function main() {
   const server = createServer(app);
+
+  // Initialize skill registry - auto-sync skills from folder to database
+  try {
+    await initializeSkillRegistry();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize skill registry:", error);
+    // Continue starting server even if skill sync fails
+  }
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -108,6 +151,15 @@ async function main() {
     console.log(`SmartSpecWeb listening on http://0.0.0.0:${port}`);
   });
 }
+
+// Handle uncaught errors
+process.on("uncaughtException", (err) => {
+  debugError("Process", "Uncaught Exception", err);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  debugError("Process", "Unhandled Rejection", reason);
+});
 
 main().catch((err) => {
   console.error(err);

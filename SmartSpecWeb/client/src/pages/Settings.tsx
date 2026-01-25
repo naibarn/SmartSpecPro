@@ -9,6 +9,15 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { trpc } from '@/lib/trpc';
+import {
   Settings as SettingsIcon,
   User,
   Mail,
@@ -28,16 +37,34 @@ import {
   EyeOff,
   Trash2,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
 type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing';
 
 export default function Settings() {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Delete account states
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+
+  // Delete account mutation
+  const deleteAccountMutation = trpc.users.deleteAccount.useMutation({
+    onSuccess: async () => {
+      // Logout and redirect to home after deletion
+      await logout();
+      setLocation('/');
+    },
+    onError: (error) => {
+      setDeleteError(error.message);
+    },
+  });
 
   // Form states
   const [name, setName] = useState('');
@@ -288,7 +315,15 @@ export default function Settings() {
                           <p className="text-sm text-red-700 mb-3">
                             Permanently delete your account and all associated data. This action cannot be undone.
                           </p>
-                          <Button variant="destructive" size="sm">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setDeleteConfirmEmail('');
+                              setDeleteError('');
+                              setShowDeleteDialog(true);
+                            }}
+                          >
                             <Trash2 className="w-4 h-4 mr-2" />
                             Delete Account
                           </Button>
@@ -561,6 +596,75 @@ export default function Settings() {
           </motion.div>
         </div>
       </main>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              Delete Account
+            </DialogTitle>
+            <DialogDescription>
+              This action is permanent and cannot be undone. All your data including conversations,
+              credits, and settings will be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                To confirm, type your email address: <strong>{user?.email}</strong>
+              </label>
+              <input
+                type="email"
+                value={deleteConfirmEmail}
+                onChange={(e) => {
+                  setDeleteConfirmEmail(e.target.value);
+                  setDeleteError('');
+                }}
+                placeholder="Enter your email to confirm"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
+
+            {deleteError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                {deleteError}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleteAccountMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                deleteAccountMutation.mutate({ confirmEmail: deleteConfirmEmail });
+              }}
+              disabled={deleteAccountMutation.isPending || deleteConfirmEmail.toLowerCase() !== user?.email?.toLowerCase()}
+            >
+              {deleteAccountMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete My Account
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

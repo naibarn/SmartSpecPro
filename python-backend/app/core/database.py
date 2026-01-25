@@ -30,12 +30,15 @@ if settings.DATABASE_URL.startswith("sqlite"):
         echo=settings.DEBUG,
     )
 else:
+    # NOTE: pool_pre_ping=False because it's incompatible with asyncpg
+    # (causes MissingGreenlet error). Use pool_recycle instead.
     engine = create_async_engine(
         settings.DATABASE_URL,
         echo=settings.DEBUG,
-        pool_pre_ping=True,
+        pool_pre_ping=False,
         pool_size=10,
         max_overflow=20,
+        pool_recycle=300,  # Recycle connections every 5 minutes
     )
 
 # Create async session factory

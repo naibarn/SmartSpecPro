@@ -3,7 +3,7 @@ Media Generation Task Model
 Tracks async media generation tasks with status and results
 """
 
-from sqlalchemy import Column, String, Integer, Text, DateTime, Enum, ForeignKey, JSON
+from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -12,7 +12,7 @@ from app.core.database import Base
 
 
 class TaskStatus(str, enum.Enum):
-    """Task status enum"""
+    """Task status enum - used for validation in Python code"""
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -21,7 +21,7 @@ class TaskStatus(str, enum.Enum):
 
 
 class MediaType(str, enum.Enum):
-    """Media type enum"""
+    """Media type enum - used for validation in Python code"""
     IMAGE = "image"
     VIDEO = "video"
     AUDIO = "audio"
@@ -32,9 +32,11 @@ class MediaTask(Base):
     __tablename__ = "media_tasks"
 
     id = Column(String(36), primary_key=True)
+    task_id = Column(String(64), nullable=True, index=True)  # External provider task ID (e.g., Kie.ai task ID)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    media_type = Column(Enum(MediaType), nullable=False)
-    status = Column(Enum(TaskStatus), default=TaskStatus.PENDING, nullable=False)
+    # Use String instead of Enum to match existing database schema (varchar columns)
+    media_type = Column(String(20), nullable=False)
+    status = Column(String(20), default=TaskStatus.PENDING.value, nullable=False)
 
     # Request parameters
     model = Column(String(100), nullable=False)
@@ -56,15 +58,24 @@ class MediaTask(Base):
     completed_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship("User")
+    # NOTE: Removed user relationship to prevent MissingGreenlet error in async SQLAlchemy
+    # Access user via user_id instead
+    # user = relationship("User")
 
     def to_dict(self):
         """Convert to dictionary"""
+        # Helper to get value from enum or string
+        def get_value(val):
+            if val is None:
+                return None
+            return val.value if hasattr(val, 'value') else val
+
         return {
             "id": self.id,
+            "task_id": self.task_id,
             "user_id": self.user_id,
-            "media_type": self.media_type.value if self.media_type else None,
-            "status": self.status.value if self.status else None,
+            "media_type": get_value(self.media_type),
+            "status": get_value(self.status),
             "model": self.model,
             "prompt": self.prompt,
             "parameters": self.parameters,

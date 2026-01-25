@@ -122,6 +122,13 @@ export default function DomainAdmin() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
+                onClick={() => setLocation('/domain-admin/users')}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Manage Users
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setLocation('/domain-admin/content')}
               >
                 <Globe className="w-4 h-4 mr-2" />

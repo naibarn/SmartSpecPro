@@ -17,6 +17,9 @@ import {
   Save,
   Eye,
   RotateCcw,
+  Sparkles,
+  Check,
+  Loader2,
 } from "lucide-react";
 
 interface ThemeConfig {
@@ -32,6 +35,17 @@ interface ThemeConfig {
   footerStyle?: "minimal" | "detailed" | "hidden";
   buttonStyle?: "rounded" | "square" | "pill";
   cardStyle?: "elevated" | "flat" | "outlined";
+}
+
+interface ThemePreset {
+  id: number;
+  name: string;
+  displayName: string;
+  description: string | null;
+  previewImageUrl: string | null;
+  themeConfig: ThemeConfig;
+  isDefault: boolean;
+  sortOrder: number;
 }
 
 export default function DomainThemeEditor() {
@@ -56,11 +70,62 @@ export default function DomainThemeEditor() {
   const [originalTheme, setOriginalTheme] = useState<ThemeConfig>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [presets, setPresets] = useState<ThemePreset[]>([]);
+  const [presetsLoading, setPresetsLoading] = useState(true);
+  const [applyingPreset, setApplyingPreset] = useState<number | null>(null);
 
-  // Fetch current theme
+  // Fetch current theme and presets
   useEffect(() => {
     fetchCurrentTheme();
+    fetchPresets();
   }, []);
+
+  const fetchPresets = async () => {
+    try {
+      const response = await fetch("/api/tenant/theme-presets", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPresets(data.presets || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch presets:", error);
+    } finally {
+      setPresetsLoading(false);
+    }
+  };
+
+  const handleApplyPreset = async (preset: ThemePreset) => {
+    setApplyingPreset(preset.id);
+    try {
+      const response = await fetch("/api/tenant/apply-preset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ presetId: preset.id }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update local theme with the preset values
+        setTheme({ ...theme, ...preset.themeConfig });
+        setOriginalTheme({ ...theme, ...preset.themeConfig });
+        toast.success(data.message || `Theme "${preset.displayName}" applied!`);
+        // Reload page to apply new theme
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to apply theme preset");
+      }
+    } catch (error) {
+      console.error("Failed to apply preset:", error);
+      toast.error("Failed to apply theme preset");
+    } finally {
+      setApplyingPreset(null);
+    }
+  };
 
   const fetchCurrentTheme = async () => {
     try {
@@ -148,7 +213,7 @@ export default function DomainThemeEditor() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setLocation('/domain-admin')}
+                onClick={() => setLocation('/dashboard')}
                 className="text-gray-600"
               >
                 <ChevronLeft className="w-5 h-5 mr-1" />
@@ -183,12 +248,90 @@ export default function DomainThemeEditor() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Theme Presets Section */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Sparkles className="w-5 h-5 text-purple-500" />
+            <h2 className="text-lg font-semibold text-gray-900">Quick Theme Presets</h2>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">
+            Select a pre-built theme to quickly style your domain, or customize the colors below.
+          </p>
+
+          {presetsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+            </div>
+          ) : presets.length === 0 ? (
+            <p className="text-center text-gray-400 py-4">No theme presets available</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {presets.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => handleApplyPreset(preset)}
+                  disabled={applyingPreset !== null}
+                  className="group relative p-4 rounded-lg border-2 border-gray-200 hover:border-purple-400 transition-all text-left disabled:opacity-50"
+                  style={{ backgroundColor: preset.themeConfig.backgroundColor || '#ffffff' }}
+                >
+                  {/* Color Preview Dots */}
+                  <div className="flex gap-1.5 mb-3">
+                    <div
+                      className="w-4 h-4 rounded-full border border-white shadow-sm"
+                      style={{ backgroundColor: preset.themeConfig.primaryColor }}
+                    />
+                    <div
+                      className="w-4 h-4 rounded-full border border-white shadow-sm"
+                      style={{ backgroundColor: preset.themeConfig.secondaryColor }}
+                    />
+                    <div
+                      className="w-4 h-4 rounded-full border border-white shadow-sm"
+                      style={{ backgroundColor: preset.themeConfig.accentColor }}
+                    />
+                  </div>
+
+                  <p
+                    className="font-medium text-sm"
+                    style={{ color: preset.themeConfig.textColor || '#111827' }}
+                  >
+                    {preset.displayName}
+                  </p>
+                  {preset.description && (
+                    <p
+                      className="text-xs mt-1 opacity-70"
+                      style={{ color: preset.themeConfig.textColor || '#111827' }}
+                    >
+                      {preset.description}
+                    </p>
+                  )}
+
+                  {preset.isDefault && (
+                    <span className="absolute top-2 right-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                      Default
+                    </span>
+                  )}
+
+                  {/* Loading/Applied Overlay */}
+                  {applyingPreset === preset.id && (
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-lg">
+                      <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                    </div>
+                  )}
+
+                  {/* Hover Effect */}
+                  <div className="absolute inset-0 border-2 border-purple-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Settings Panel */}
           <div className="space-y-6">
             {/* Colors */}
             <div className="bg-white rounded-xl p-6 shadow-sm border">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Colors</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Custom Colors</h2>
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="primaryColor">Primary Color</Label>

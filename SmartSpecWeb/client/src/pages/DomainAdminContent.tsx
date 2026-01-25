@@ -190,9 +190,7 @@ export default function DomainAdminContent() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({
-          json: currentPage,
-        }),
+        body: JSON.stringify(currentPage),
       });
 
       if (response.ok) {
@@ -264,7 +262,7 @@ export default function DomainAdminContent() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setLocation('/domain-admin')}
+                onClick={() => setLocation('/dashboard')}
               >
                 <ChevronLeft className="w-5 h-5 mr-1" />
                 Back

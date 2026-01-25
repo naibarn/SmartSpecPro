@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Image Prompt Engineer Skill Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "prompt",
+    "detail_level",
+    "avoid"
+  ],
+  "properties": {
+    "prompt": {
+      "type": "string",
+      "description": "พรอมต์หลักในภาษาที่เลือก (languages)"
+    },
+    "prompts": {
+      "type": "object",
+      "description": "พรอมต์หลายภาษา (ถ้ามี output_languages)",
+      "additionalProperties": false,
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "th": {
+          "type": "string"
+        }
+      }
+    },
+    "negative_prompt": {
+      "type": "string",
+      "description": "คำ/วลีที่ควรหลีกเลี่ยง (ถ้ามี)"
+    },
+    "avoid": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "รายการสิ่งที่ควรหลีกเลี่ยง",
+      "default": []
+    },
+    "parameters": {
+      "type": "object",
+      "description": "พารามิเตอร์แนะนำ (อัตราส่วนภาพ/โทน/หมายเหตุ)",
+      "additionalProperties": true
+    },
+    "breakdown": {
+      "type": "object",
+      "description": "โครงสร้างองค์ประกอบ (ปรากฏเมื่อ detail_level=full)",
+      "additionalProperties": true
+    },
+    "detail_level": {
+      "type": "string",
+      "enum": [
+        "compact",
+        "standard",
+        "full"
+      ]
+    },
+    "task": {
+      "type": "string",
+      "description": "งานที่ถูกดำเนินการ"
+    },
+    "menu": {
+      "type": "string",
+      "description": "ข้อความเมนู/แคตตาล็อก (ถ้า task เป็น catalog)"
+    }
+  }
+}

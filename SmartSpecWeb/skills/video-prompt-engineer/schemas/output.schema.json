@@ -1,0 +1,265 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Video Prompt Engineer Output Schema",
+  "description": "Output format for generated video prompts",
+  "type": "object",
+  "required": ["prompt", "platform", "metadata"],
+  "properties": {
+    "prompt": {
+      "type": "string",
+      "description": "The generated video prompt"
+    },
+    
+    "platform": {
+      "type": "string",
+      "enum": ["compatible", "sora", "veo", "kling", "wan", "seedance"],
+      "description": "Target platform"
+    },
+    
+    "metadata": {
+      "type": "object",
+      "required": ["duration", "aspect_ratio"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Video title"
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Duration in seconds"
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "description": "Video aspect ratio"
+        },
+        "language": {
+          "type": "string",
+          "description": "Output language"
+        }
+      }
+    },
+    
+    "structure": {
+      "type": "object",
+      "description": "Structured prompt breakdown (platform-specific)",
+      "properties": {
+        "cinematography": {
+          "type": "string",
+          "description": "Camera and shot details"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Main subject description"
+        },
+        "action": {
+          "type": "string",
+          "description": "Actions and movements"
+        },
+        "setting": {
+          "type": "string",
+          "description": "Environment and location"
+        },
+        "lighting": {
+          "type": "string",
+          "description": "Lighting setup"
+        },
+        "movement": {
+          "type": "string",
+          "description": "Camera movement"
+        },
+        "audio": {
+          "type": "string",
+          "description": "Audio description"
+        },
+        "style": {
+          "type": "string",
+          "description": "Visual style and ambiance"
+        }
+      }
+    },
+    
+    "script": {
+      "type": "object",
+      "properties": {
+        "dialogue": {
+          "type": "string",
+          "description": "Dialogue/voiceover text"
+        },
+        "translation": {
+          "type": "string",
+          "description": "Translation if bilingual"
+        },
+        "timing": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "description": "Timestamp (e.g., '0:00-0:03')"
+              },
+              "text": {
+                "type": "string",
+                "description": "Text at this timestamp"
+              }
+            }
+          }
+        }
+      }
+    },
+    
+    "audio": {
+      "type": "object",
+      "properties": {
+        "music": {
+          "type": "string",
+          "description": "Background music description"
+        },
+        "sfx": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sound effects"
+        },
+        "voiceover": {
+          "type": "string",
+          "description": "Voiceover instructions"
+        },
+        "ambient": {
+          "type": "string",
+          "description": "Ambient sound"
+        }
+      }
+    },
+    
+    "technical_specs": {
+      "type": "object",
+      "properties": {
+        "camera": {
+          "type": "string",
+          "description": "Camera type/setup"
+        },
+        "lens": {
+          "type": "string",
+          "description": "Lens type"
+        },
+        "fps": {
+          "type": "integer",
+          "description": "Frames per second"
+        },
+        "resolution": {
+          "type": "string",
+          "description": "Video resolution"
+        }
+      }
+    },
+    
+    "platform_specific": {
+      "type": "object",
+      "description": "Platform-specific requirements",
+      "properties": {
+        "character_count": {
+          "type": "integer",
+          "description": "Prompt character count (for Veo limit check)"
+        },
+        "supports_text_overlay": {
+          "type": "boolean",
+          "description": "Whether platform supports text overlay"
+        },
+        "max_duration": {
+          "type": "integer",
+          "description": "Platform max duration"
+        }
+      }
+    },
+    
+    "optimization": {
+      "type": "object",
+      "properties": {
+        "hook_strength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Hook effectiveness score"
+        },
+        "engagement_potential": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "viral"],
+          "description": "Predicted engagement level"
+        },
+        "seo_keywords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Relevant keywords for discoverability"
+        }
+      }
+    },
+    
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Any warnings or constraints applied"
+    },
+    
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Improvement suggestions"
+    },
+    
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "variation": {
+            "type": "string",
+            "description": "Alternative prompt variation"
+          },
+          "description": {
+            "type": "string",
+            "description": "What makes this variation different"
+          }
+        }
+      },
+      "description": "Alternative prompt variations"
+    }
+  },
+  
+  "examples": [
+    {
+      "prompt": "A cinematic tracking shot follows a young woman in her 20s walking through a vibrant Tokyo street market at golden hour. The camera moves smoothly alongside her, capturing the warm amber light filtering through colorful market stalls. Street vendors call out, lanterns glow, and the atmosphere buzzes with energy. Shot on 35mm film with shallow depth of field, creating a dreamy bokeh effect in the background.",
+      "platform": "sora",
+      "metadata": {
+        "title": "Tokyo Market Walk",
+        "duration": 12,
+        "aspect_ratio": "16:9",
+        "language": "en"
+      },
+      "structure": {
+        "cinematography": "Cinematic tracking shot, 35mm film, shallow depth of field",
+        "subject": "Young woman in her 20s",
+        "action": "Walking through market, browsing stalls",
+        "setting": "Vibrant Tokyo street market",
+        "lighting": "Golden hour, warm amber light, glowing lanterns",
+        "movement": "Smooth tracking shot alongside subject"
+      },
+      "script": {
+        "dialogue": "The best moments happen when you least expect them.",
+        "translation": "ช่วงเวลาที่ดีที่สุดเกิดขึ้นเมื่อคุณไม่คาดคิด"
+      },
+      "technical_specs": {
+        "camera": "35mm film camera",
+        "lens": "50mm f/1.4",
+        "fps": 24
+      }
+    }
+  ]
+}

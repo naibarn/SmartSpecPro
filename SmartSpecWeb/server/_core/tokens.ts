@@ -12,6 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_change_in_productio
  */
 export interface TokenClaims {
   sub: string;
+  type?: string; // "access" or "refresh" - required by Python backend
   scopes?: string[];
   jti?: string;
   exp?: number;

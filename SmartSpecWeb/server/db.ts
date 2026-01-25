@@ -144,6 +144,21 @@ export async function getUserByEmail(email: string) {
 }
 
 /**
+ * Get total user count
+ * Used for determining if this is the first user (auto-admin)
+ */
+export async function getUserCount(): Promise<number> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user count: database not available");
+    return 0;
+  }
+
+  const result = await db.select({ count: sql<number>`COUNT(*)` }).from(users);
+  return Number(result[0]?.count) || 0;
+}
+
+/**
  * Update a user's role by their ID
  * Used for promoting users to admin in local development
  */

@@ -33,6 +33,8 @@ export const users = pgTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  /** Password hash for local login (optional, null for OAuth-only users) */
+  password: text("password"),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: roleEnum("role").default("user").notNull(),
 
@@ -180,6 +182,9 @@ export const galleryItems = pgTable("gallery_items", {
 
   /** Tags for filtering and SEO (stored as JSON array) */
   tags: json("tags").$type<string[]>(),
+
+  /** AI model used to generate this content */
+  model: varchar("model", { length: 128 }),
 
   /** View count */
   views: integer("views").default(0).notNull(),
@@ -397,6 +402,72 @@ export const tenants = pgTable("tenants", {
 
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = typeof tenants.$inferInsert;
+
+/**
+ * Theme configuration type (shared between tenants and presets)
+ */
+export type ThemeConfig = {
+  // Brand Colors
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+
+  // Typography
+  fontFamily?: string;
+  headingFont?: string;
+
+  // Layout
+  layout?: "modern" | "classic" | "minimal" | "creative";
+  headerStyle?: "transparent" | "solid" | "blur";
+  footerStyle?: "minimal" | "detailed" | "hidden";
+
+  // Components
+  buttonStyle?: "rounded" | "square" | "pill";
+  cardStyle?: "elevated" | "flat" | "outlined";
+
+  // Custom CSS
+  customCss?: string;
+};
+
+/**
+ * Theme Presets - Pre-built themes for domain admins to select
+ * Provides quick styling options without manual configuration
+ */
+export const themePresets = pgTable("theme_presets", {
+  id: serial("id").primaryKey(),
+
+  /** Unique identifier for the theme preset */
+  name: varchar("name", { length: 128 }).notNull().unique(),
+
+  /** Display name shown in UI */
+  displayName: varchar("displayName", { length: 255 }).notNull(),
+
+  /** Description of the theme style */
+  description: text("description"),
+
+  /** Preview image URL for the theme */
+  previewImageUrl: varchar("previewImageUrl", { length: 512 }),
+
+  /** Theme configuration (colors, layout, etc.) */
+  themeConfig: json("themeConfig").$type<ThemeConfig>().notNull(),
+
+  /** Whether this preset is available for selection */
+  isActive: boolean("isActive").default(true).notNull(),
+
+  /** Whether this is the default theme for new tenants */
+  isDefault: boolean("isDefault").default(false).notNull(),
+
+  /** Sort order for display */
+  sortOrder: integer("sortOrder").default(0).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ThemePreset = typeof themePresets.$inferSelect;
+export type InsertThemePreset = typeof themePresets.$inferInsert;
 
 /**
  * SEO Metadata - AI-Optimized SEO for pages and content
@@ -810,6 +881,9 @@ export const mediaProviders = pgTable("media_providers", {
   /** API base URL */
   baseUrl: varchar("baseUrl", { length: 512 }),
 
+  /** Callback URL for async operations (e.g., Kie.ai task completion webhook) */
+  callbackUrl: varchar("callbackUrl", { length: 512 }),
+
   /** Encrypted API key (stored securely) */
   apiKeyEncrypted: text("apiKeyEncrypted"),
 
@@ -944,3 +1018,207 @@ export const mediaModels = pgTable("media_models", {
 
 export type MediaModel = typeof mediaModels.$inferSelect;
 export type InsertMediaModel = typeof mediaModels.$inferInsert;
+
+/**
+ * Skill Category Enum
+ * Categorizes skills for filtering and organization
+ */
+export const skillCategoryEnum = pgEnum("skill_category", [
+  "image_generation",      // Generate Images
+  "video_generation",      // Generate Video
+  "audio_generation",      // Generate Text To Speech
+  "sound_effects",         // Generate Sound Effects
+  "prompt_enhancement",    // Enhance prompts
+  "code_assistant",        // Code help
+  "document_analysis",     // Document processing
+  "web_search",            // Web search
+  "data_analysis",         // Data analysis
+  "translation",           // Translation
+  "summarization",         // Summarization
+  "chat_assistant",        // General chat
+  "automation",            // Workflow automation
+  "other",                 // Other
+]);
+
+/**
+ * Skills - Centralized skill registry for Claude/OpenCode compatibility
+ * Each skill maps to a folder structure: skills/<skill_slug>/
+ * Contains skill.md, python/, js/, tests/ directories
+ */
+export const skills = pgTable("skills", {
+  id: serial("id").primaryKey(),
+
+  /** Unique identifier/slug (folder name, e.g., "create-image-prompt") */
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+
+  /** Display name */
+  name: varchar("name", { length: 255 }).notNull(),
+
+  /** Detailed description */
+  description: text("description"),
+
+  /** Skill category for filtering */
+  category: skillCategoryEnum("category").notNull().default("other"),
+
+  /** Version string (semantic versioning) */
+  version: varchar("version", { length: 20 }).default("1.0.0"),
+
+  /** Author name or email */
+  author: varchar("author", { length: 255 }),
+
+  /** Icon identifier (lucide icon name) */
+  icon: varchar("icon", { length: 50 }).default("sparkles"),
+
+  /** Tags for additional filtering (JSON array) */
+  tags: json("tags").$type<string[]>().default([]),
+
+  /** Folder path relative to skills/ directory */
+  folderPath: varchar("folderPath", { length: 512 }),
+
+  /** Whether skill can auto-trigger on intent detection */
+  isAutoTrigger: boolean("isAutoTrigger").default(false).notNull(),
+
+  /** Regex patterns for auto-detection (JSON array of pattern strings) */
+  triggerPatterns: json("triggerPatterns").$type<string[]>().default([]),
+
+  /** Whether skill is enabled globally */
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+
+  /** Whether skill is enabled by default for new conversations */
+  enabledByDefault: boolean("enabledByDefault").default(true).notNull(),
+
+  /** Credit cost multiplier (1.0 = standard rate) */
+  creditMultiplier: numeric("creditMultiplier", { precision: 5, scale: 2 }).default("1.0"),
+
+  /** Priority for detection (higher = checked first) */
+  priority: integer("priority").default(50).notNull(),
+
+  /** Available models for this skill (if media-related) */
+  availableModels: json("availableModels").$type<string[]>(),
+
+  /** Default model for this skill */
+  defaultModel: varchar("defaultModel", { length: 128 }),
+
+  /** System prompt override (optional) */
+  systemPrompt: text("systemPrompt"),
+
+  /** Skill content/instructions from skill.md (cached) */
+  skillContent: text("skillContent"),
+
+  /** Knowledgebase content (for imported Custom GPTs) */
+  knowledgebase: text("knowledgebase"),
+
+  /** Additional configuration */
+  configJson: json("configJson").$type<{
+    requiresExplicit?: boolean;
+    maxInputLength?: number;
+    maxOutputLength?: number;
+    supportedLanguages?: string[];
+    pythonEntry?: string;  // python/tool.py
+    jsEntry?: string;      // js/index.js
+    [key: string]: any;
+  }>(),
+
+  /** Import source (manual, folder, zip, custom-gpt) */
+  importSource: varchar("importSource", { length: 50 }).default("manual"),
+
+  /** Original ZIP file path (if imported from ZIP) */
+  importedFromZip: varchar("importedFromZip", { length: 512 }),
+
+  /** User who created/imported this skill */
+  createdBy: integer("createdBy").references(() => users.id),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Skill = typeof skills.$inferSelect;
+export type InsertSkill = typeof skills.$inferInsert;
+
+/**
+ * Storage Provider Type Enum
+ * Defines the type of object storage provider
+ */
+export const storageProviderTypeEnum = pgEnum("storage_provider_type", ["r2", "s3", "local"]);
+
+/**
+ * Storage Settings - Configuration for S3-compatible object storage (R2, S3, etc.)
+ * Used for storing reference images, generated media, and other files
+ * that need to be publicly accessible (e.g., for Kie.ai to download reference images)
+ */
+export const storageSettings = pgTable("storage_settings", {
+  id: serial("id").primaryKey(),
+
+  /** Setting name/identifier (e.g., "primary", "backup", "development") */
+  name: varchar("name", { length: 64 }).notNull().unique(),
+
+  /** Display name for UI */
+  displayName: varchar("displayName", { length: 128 }).notNull(),
+
+  /** Description of this storage configuration */
+  description: text("description"),
+
+  /** Storage provider type */
+  providerType: storageProviderTypeEnum("providerType").notNull().default("r2"),
+
+  /** S3 Endpoint URL (e.g., https://xxx.r2.cloudflarestorage.com) */
+  endpoint: varchar("endpoint", { length: 512 }),
+
+  /** S3 Region (e.g., auto for R2, us-east-1 for S3) */
+  region: varchar("region", { length: 64 }).default("auto"),
+
+  /** Bucket name */
+  bucket: varchar("bucket", { length: 128 }),
+
+  /** Access Key ID (encrypted) */
+  accessKeyIdEncrypted: text("accessKeyIdEncrypted"),
+
+  /** Secret Access Key (encrypted) */
+  secretAccessKeyEncrypted: text("secretAccessKeyEncrypted"),
+
+  /** Whether credentials are configured */
+  hasCredentials: boolean("hasCredentials").default(false).notNull(),
+
+  /** Public URL prefix for serving files (e.g., https://cdn.example.com or R2 public URL) */
+  publicUrlPrefix: varchar("publicUrlPrefix", { length: 512 }),
+
+  /** Development Tunnel URL (e.g., cloudflared tunnel URL for local development) */
+  devTunnelUrl: varchar("devTunnelUrl", { length: 512 }),
+
+  /** Path prefix for uploaded files (e.g., "uploads/" or "media/") */
+  pathPrefix: varchar("pathPrefix", { length: 128 }).default("uploads/"),
+
+  /** Whether this is the active/primary storage */
+  isActive: boolean("isActive").default(false).notNull(),
+
+  /** Additional configuration */
+  configJson: json("configJson").$type<{
+    /** Whether to use path-style URLs (required for some S3-compatible services) */
+    forcePathStyle?: boolean;
+    /** Custom headers for requests */
+    customHeaders?: Record<string, string>;
+    /** Lifecycle rules (e.g., auto-delete after X days) */
+    lifecycleDays?: number;
+    /** Max file size in MB */
+    maxFileSizeMb?: number;
+    /** Allowed MIME types */
+    allowedMimeTypes?: string[];
+    [key: string]: any;
+  }>(),
+
+  /** Last successful connection test */
+  lastTestedAt: timestamp("lastTestedAt", { withTimezone: true }),
+
+  /** Last test result */
+  lastTestResult: json("lastTestResult").$type<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+  }>(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type StorageSettings = typeof storageSettings.$inferSelect;
+export type InsertStorageSettings = typeof storageSettings.$inferInsert;

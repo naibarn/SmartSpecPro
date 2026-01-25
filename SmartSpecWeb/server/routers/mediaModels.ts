@@ -350,10 +350,12 @@ export const mediaModelsRouter = router({
 
   /**
    * List enabled models (for clients)
+   * Returns { models: [...], providers: [...] } for UI consumption
    */
   list: protectedProcedure
     .input(z.object({
       type: mediaModelTypeSchema.optional(),
+      search: z.string().optional(),
     }).optional())
     .query(async ({ input }) => {
       try {
@@ -361,6 +363,12 @@ export const mediaModelsRouter = router({
 
         if (input?.type) {
           conditions.push(eq(mediaModels.modelType, input.type));
+        }
+
+        if (input?.search) {
+          conditions.push(
+            sql`(${mediaModels.name} ILIKE ${`%${input.search}%`} OR ${mediaModels.modelId} ILIKE ${`%${input.search}%`} OR ${mediaModels.provider} ILIKE ${`%${input.search}%`})`
+          );
         }
 
         const models = await db
@@ -382,10 +390,13 @@ export const mediaModelsRouter = router({
           .where(and(...conditions))
           .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority));
 
-        return models;
+        // Get unique providers for grouping
+        const providers = [...new Set(models.map(m => m.provider))];
+
+        return { models, providers };
       } catch (error: any) {
         console.warn("[MediaModels] Public list query failed:", error.message);
-        return [];
+        return { models: [], providers: [] };
       }
     }),
 

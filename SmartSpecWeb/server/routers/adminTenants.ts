@@ -9,6 +9,8 @@ import { tenants, users, type InsertTenant } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import { clearTenantCache } from "../_core/tenant";
+import { storagePut } from "../storage";
+import { nanoid } from "nanoid";
 
 // Middleware to check admin role
 const requireAdmin = async (req: any, res: any, next: any) => {
@@ -163,6 +165,81 @@ export function registerAdminTenantsRoutes(app: Express) {
     } catch (error) {
       console.error('Error deleting tenant:', error);
       res.status(500).json({ error: 'Failed to delete tenant' });
+    }
+  });
+
+  // Upload tenant logo or favicon
+  app.post('/api/admin/tenants/:id/upload', requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type, fileBase64, fileName, fileType } = req.body;
+
+      // Validate upload type
+      if (!['logo', 'favicon'].includes(type)) {
+        return res.status(400).json({ error: 'Type must be "logo" or "favicon"' });
+      }
+
+      // Validate file data
+      if (!fileBase64 || !fileName || !fileType) {
+        return res.status(400).json({ error: 'Missing required fields: fileBase64, fileName, fileType' });
+      }
+
+      // Validate file type
+      const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/x-icon', 'image/vnd.microsoft.icon'];
+      if (!allowedMimeTypes.includes(fileType)) {
+        return res.status(400).json({ error: 'Invalid file type. Allowed: PNG, JPEG, WebP, SVG, ICO' });
+      }
+
+      const dbInstance = await db.instance;
+
+      // Check tenant exists
+      const [tenant] = await dbInstance.select().from(tenants).where(eq(tenants.id, parseInt(id)));
+      if (!tenant) {
+        return res.status(404).json({ error: 'Tenant not found' });
+      }
+
+      // Generate unique file key
+      const ext = fileName.split('.').pop() || 'png';
+      const uniqueId = nanoid(10);
+      const fileKey = `tenants/${id}/${type}/${uniqueId}-${Date.now()}.${ext}`;
+
+      // Convert base64 to buffer
+      const parts = fileBase64.split(',', 2);
+      const base64Data = parts.length === 2 ? parts[1] : fileBase64;
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Validate file size (max 5MB for logo, 1MB for favicon)
+      const maxSize = type === 'favicon' ? 1 * 1024 * 1024 : 5 * 1024 * 1024;
+      if (buffer.length > maxSize) {
+        return res.status(400).json({
+          error: `File too large. Max size: ${type === 'favicon' ? '1MB' : '5MB'}`
+        });
+      }
+
+      // Upload to storage
+      const { url } = await storagePut(fileKey, buffer, fileType);
+
+      // Update tenant with new URL
+      const updateField = type === 'logo' ? { logoUrl: url } : { faviconUrl: url };
+      await dbInstance.update(tenants)
+        .set({
+          ...updateField,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenants.id, parseInt(id)));
+
+      // Clear tenant cache
+      clearTenantCache();
+
+      res.json({
+        success: true,
+        url,
+        fileKey,
+        type,
+      });
+    } catch (error) {
+      console.error('Error uploading tenant asset:', error);
+      res.status(500).json({ error: 'Failed to upload file' });
     }
   });
 }

@@ -26,11 +26,14 @@ class MediaTaskService:
         parameters: Optional[dict] = None
     ) -> MediaTask:
         """Create a new media generation task"""
+        # Convert enum to string value for database storage
+        media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+
         task = MediaTask(
             id=str(uuid.uuid4()),
             user_id=user.id,
-            media_type=media_type,
-            status=TaskStatus.PENDING,
+            media_type=media_type_value,
+            status=TaskStatus.PENDING.value,
             model=model,
             prompt=prompt,
             parameters=parameters or {},
@@ -63,14 +66,18 @@ class MediaTaskService:
         result_data: Optional[dict] = None,
         error_message: Optional[str] = None,
         credits_used: Optional[int] = None,
-        credits_balance: Optional[int] = None
+        credits_balance: Optional[int] = None,
+        external_task_id: Optional[str] = None
     ) -> Optional[MediaTask]:
         """Update task status and results"""
         task = await MediaTaskService.get_task(db, task_id)
         if not task:
             return None
 
-        task.status = status
+        # Convert enum to string value for database storage
+        status_value = status.value if isinstance(status, TaskStatus) else str(status)
+        task.status = status_value
+
         if result_url:
             task.result_url = result_url
         if result_data:
@@ -81,11 +88,13 @@ class MediaTaskService:
             task.credits_used = credits_used
         if credits_balance is not None:
             task.credits_balance = credits_balance
+        if external_task_id:
+            task.task_id = external_task_id  # Store external provider's task ID
 
-        # Update timestamps
-        if status == TaskStatus.PROCESSING and not task.started_at:
+        # Update timestamps - compare with string values
+        if status_value == TaskStatus.PROCESSING.value and not task.started_at:
             task.started_at = datetime.utcnow()
-        if status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]:
+        if status_value in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value]:
             task.completed_at = datetime.utcnow()
 
         await db.commit()
@@ -103,8 +112,8 @@ class MediaTaskService:
         if not task:
             return None
 
-        # Only allow cancelling pending or processing tasks
-        if task.status not in [TaskStatus.PENDING, TaskStatus.PROCESSING]:
+        # Only allow cancelling pending or processing tasks - compare with string values
+        if task.status not in [TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]:
             return None
 
         return await MediaTaskService.update_task_status(
@@ -112,6 +121,25 @@ class MediaTaskService:
             task_id,
             TaskStatus.CANCELLED
         )
+
+    @staticmethod
+    async def delete_task(
+        db: AsyncSession,
+        task_id: str,
+        user_id: str
+    ) -> bool:
+        """Delete a task from the database"""
+        task = await MediaTaskService.get_task(db, task_id, user_id)
+        if not task:
+            return False
+
+        try:
+            await db.delete(task)
+            await db.commit()
+            return True
+        except Exception as e:
+            await db.rollback()
+            return False
 
     @staticmethod
     async def list_user_tasks(
@@ -126,9 +154,13 @@ class MediaTaskService:
         query = select(MediaTask).where(MediaTask.user_id == user_id)
 
         if media_type:
-            query = query.where(MediaTask.media_type == media_type)
+            # Convert enum to string value for comparison
+            media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            query = query.where(MediaTask.media_type == media_type_value)
         if status:
-            query = query.where(MediaTask.status == status)
+            # Convert enum to string value for comparison
+            status_value = status.value if isinstance(status, TaskStatus) else str(status)
+            query = query.where(MediaTask.status == status_value)
 
         query = query.order_by(MediaTask.created_at.desc())
         query = query.limit(limit).offset(offset)
@@ -149,9 +181,64 @@ class MediaTaskService:
         query = select(func.count(MediaTask.id)).where(MediaTask.user_id == user_id)
 
         if media_type:
-            query = query.where(MediaTask.media_type == media_type)
+            # Convert enum to string value for comparison
+            media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            query = query.where(MediaTask.media_type == media_type_value)
         if status:
-            query = query.where(MediaTask.status == status)
+            # Convert enum to string value for comparison
+            status_value = status.value if isinstance(status, TaskStatus) else str(status)
+            query = query.where(MediaTask.status == status_value)
 
         result = await db.execute(query)
         return result.scalar() or 0
+
+    @staticmethod
+    async def get_task_by_external_id(
+        db: AsyncSession,
+        external_task_id: str
+    ) -> Optional[MediaTask]:
+        """Get a task by external provider task ID (e.g., Kie.ai task ID)"""
+        query = select(MediaTask).where(MediaTask.task_id == external_task_id)
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def update_task_by_external_id(
+        db: AsyncSession,
+        external_task_id: str,
+        status: TaskStatus,
+        result_url: Optional[str] = None,
+        result_data: Optional[dict] = None,
+        error_message: Optional[str] = None,
+        credits_used: Optional[int] = None,
+        credits_balance: Optional[int] = None
+    ) -> Optional[MediaTask]:
+        """Update task by external provider task ID (e.g., Kie.ai callback)"""
+        task = await MediaTaskService.get_task_by_external_id(db, external_task_id)
+        if not task:
+            return None
+
+        # Convert enum to string value for database storage
+        status_value = status.value if isinstance(status, TaskStatus) else str(status)
+        task.status = status_value
+
+        if result_url:
+            task.result_url = result_url
+        if result_data:
+            task.result_data = result_data
+        if error_message:
+            task.error_message = error_message
+        if credits_used is not None:
+            task.credits_used = credits_used
+        if credits_balance is not None:
+            task.credits_balance = credits_balance
+
+        # Update timestamps - compare with string values
+        if status_value == TaskStatus.PROCESSING.value and not task.started_at:
+            task.started_at = datetime.utcnow()
+        if status_value in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value]:
+            task.completed_at = datetime.utcnow()
+
+        await db.commit()
+        await db.refresh(task)
+        return task

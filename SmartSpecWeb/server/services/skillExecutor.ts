@@ -27,6 +27,10 @@ export interface SkillExecutionParams {
   numImages?: number;
   duration?: number;
   voice?: string;
+  /** Reference images for image/video generation (1-5 URLs) */
+  referenceImageUrls?: string[];
+  /** Reference style URL for style transfer */
+  referenceStyleUrl?: string;
 }
 
 export interface SkillExecutionResult {
@@ -115,6 +119,8 @@ async function executeImageGeneration(
         model,
         aspectRatio: params.aspectRatio,
         numImages: params.numImages,
+        referenceImageUrls: params.referenceImageUrls,
+        referenceStyleUrl: params.referenceStyleUrl,
       },
       userToken
     );
@@ -202,6 +208,7 @@ async function executeVideoGeneration(
         model,
         duration,
         aspectRatio: params.aspectRatio,
+        referenceImageUrls: params.referenceImageUrls,
       },
       userToken
     );

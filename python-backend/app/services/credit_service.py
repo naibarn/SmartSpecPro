@@ -16,7 +16,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.models.user import User
-from app.models.credit import CreditTransaction, SystemConfig
+from app.models.credit import CreditTransaction, SystemConfig, TransactionType
 from app.core.credits import (
     usd_to_credits,
     credits_to_usd,
@@ -167,14 +167,16 @@ class CreditService:
             InsufficientCreditsError: If insufficient credits
         """
         # R2.1: Lock user row to prevent race conditions
+        # Convert user_id to int since User.id is Integer type in database
+        user_id_int = int(user_id) if isinstance(user_id, str) else user_id
         result = await self.db.execute(
-            select(User).where(User.id == user_id).with_for_update()
+            select(User).where(User.id == user_id_int).with_for_update()
         )
         user = result.scalar_one_or_none()
-        
+
         if not user:
             raise ValueError(f"User not found: {user_id}")
-        
+
         # Convert USD to credits (no markup)
         credits_to_deduct = usd_to_credits(llm_cost_usd)
         
@@ -187,25 +189,27 @@ class CreditService:
         
         # Deduct credits with transaction rollback
         try:
-            balance_before = user.credits_balance
-            user.credits_balance -= credits_to_deduct
-            balance_after = user.credits_balance
-            
+            # Use user.credits (the actual column) not user.credits_balance (read-only property)
+            balance_before = user.credits
+            user.credits -= credits_to_deduct
+            balance_after = user.credits
+
             # Add cost info to metadata
             if metadata is None:
                 metadata = {}
             metadata["llm_cost_usd"] = float(llm_cost_usd)
             metadata["credits_deducted"] = credits_to_deduct
-            
-            # Create transaction record
+            metadata["balance_before"] = balance_before  # Track in metadata since column removed
+
+            # Create transaction record - matches SmartSpecWeb schema
+            # Note: Using negative amount for deductions to match SmartSpecWeb convention
             transaction = CreditTransaction(
-                user_id=user_id,
-                type="deduction",
-                amount=credits_to_deduct,
+                user_id=user_id_int,
+                type=TransactionType.usage,  # SmartSpecWeb uses 'usage' for deductions
+                amount=-credits_to_deduct,  # Negative for deductions
                 description=description,
-                balance_before=balance_before,
                 balance_after=balance_after,
-                metadata=metadata
+                meta=metadata
             )
             
             self.db.add(transaction)
@@ -276,7 +280,7 @@ class CreditService:
             user_id=user_id,
             amount=credits_to_add,
             description=description,
-            transaction_type="topup",
+            transaction_type=TransactionType.purchase,  # 'topup' maps to 'purchase' in schema
             metadata=metadata
         )
     
@@ -285,51 +289,57 @@ class CreditService:
         user_id: str,
         amount: int,
         description: str,
-        transaction_type: str = "adjustment",
+        transaction_type: TransactionType = TransactionType.adjustment,
         metadata: Optional[Dict[str, Any]] = None
     ) -> CreditTransaction:
         """
         Add credits to user account (direct, no markup)
-        
+
         For refunds and adjustments. Use topup_credits() for payments.
-        
+
         Args:
             user_id: User ID
             amount: Amount to add in credits
             description: Transaction description
-            transaction_type: Transaction type (topup, refund, adjustment)
+            transaction_type: Transaction type (purchase, refund, bonus, adjustment)
             metadata: Additional metadata
-        
+
         Returns:
             Credit transaction record
-        
+
         Raises:
             ValueError: If user not found
         """
         # R2.1: Lock user row to prevent race conditions
+        # Convert user_id to int since User.id is Integer type in database
+        user_id_int = int(user_id) if isinstance(user_id, str) else user_id
         result = await self.db.execute(
-            select(User).where(User.id == user_id).with_for_update()
+            select(User).where(User.id == user_id_int).with_for_update()
         )
         user = result.scalar_one_or_none()
-        
+
         if not user:
             raise ValueError(f"User not found: {user_id}")
-        
+
         # Add credits with transaction rollback
         try:
-            balance_before = user.credits_balance
-            user.credits_balance += amount
-            balance_after = user.credits_balance
-            
-            # Create transaction record
+            # Use user.credits (the actual column) not user.credits_balance (read-only property)
+            balance_before = user.credits
+            user.credits += amount
+            balance_after = user.credits
+
+            # Track balance_before in metadata since column removed
+            meta = metadata or {}
+            meta["balance_before"] = balance_before
+
+            # Create transaction record - matches SmartSpecWeb schema
             transaction = CreditTransaction(
-                user_id=user_id,
-                type=transaction_type,
-                amount=amount,
+                user_id=user_id_int,
+                type=transaction_type,  # TransactionType enum: purchase, refund, bonus, adjustment
+                amount=amount,  # Positive for additions
                 description=description,
-                balance_before=balance_before,
                 balance_after=balance_after,
-                metadata=metadata or {}
+                meta=meta
             )
             
             self.db.add(transaction)
@@ -380,22 +390,27 @@ class CreditService:
         Returns:
             Transaction statistics
         """
-        # Total credits added
+        # Total credits added (purchase, refund, bonus, adjustment)
         result_added = await self.db.execute(
             select(func.sum(CreditTransaction.amount))
             .where(
                 CreditTransaction.user_id == user_id,
-                CreditTransaction.type.in_(["topup", "refund", "adjustment"])
+                CreditTransaction.type.in_([
+                    TransactionType.purchase,
+                    TransactionType.refund,
+                    TransactionType.bonus,
+                    TransactionType.adjustment
+                ])
             )
         )
         total_added = result_added.scalar() or 0
-        
-        # Total credits deducted
+
+        # Total credits deducted (usage type with negative amount)
         result_deducted = await self.db.execute(
             select(func.sum(CreditTransaction.amount))
             .where(
                 CreditTransaction.user_id == user_id,
-                CreditTransaction.type == "deduction"
+                CreditTransaction.type == TransactionType.usage
             )
         )
         total_deducted = result_deducted.scalar() or 0

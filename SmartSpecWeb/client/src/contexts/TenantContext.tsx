@@ -137,16 +137,68 @@ export function useTenant() {
 }
 
 /**
+ * Convert hex color to oklch for better color manipulation
+ */
+function hexToOklch(hex: string): string {
+  // Remove # if present
+  hex = hex.replace('#', '');
+
+  // Parse RGB values
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+
+  // Simple conversion - approximate oklch values
+  // For more accurate results, a proper color library would be needed
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const lightness = Math.pow(l, 0.43);
+
+  // Estimate chroma and hue
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const chroma = (max - min) * 0.4;
+
+  let hue = 0;
+  if (max !== min) {
+    if (max === r) hue = ((g - b) / (max - min)) * 60;
+    else if (max === g) hue = (2 + (b - r) / (max - min)) * 60;
+    else hue = (4 + (r - g) / (max - min)) * 60;
+    if (hue < 0) hue += 360;
+  }
+
+  return `oklch(${lightness.toFixed(2)} ${chroma.toFixed(2)} ${hue.toFixed(0)})`;
+}
+
+/**
  * Apply theme to document CSS variables
  */
 function applyTheme(theme: TenantTheme) {
   const root = document.documentElement;
 
-  root.style.setProperty("--color-primary", theme.primaryColor);
-  root.style.setProperty("--color-secondary", theme.secondaryColor);
-  root.style.setProperty("--color-accent", theme.accentColor);
-  root.style.setProperty("--color-background", theme.backgroundColor);
-  root.style.setProperty("--color-text", theme.textColor);
+  // Convert hex colors to oklch format for shadcn/ui compatibility
+  const primaryOklch = hexToOklch(theme.primaryColor);
+  const secondaryOklch = hexToOklch(theme.secondaryColor);
+  const accentOklch = hexToOklch(theme.accentColor);
+  const bgOklch = hexToOklch(theme.backgroundColor);
+  const textOklch = hexToOklch(theme.textColor);
+
+  // Set the base CSS variables that shadcn/ui uses
+  root.style.setProperty("--primary", primaryOklch);
+  root.style.setProperty("--primary-foreground", "oklch(0.98 0.01 285)");
+  root.style.setProperty("--secondary", secondaryOklch);
+  root.style.setProperty("--secondary-foreground", textOklch);
+  root.style.setProperty("--accent", accentOklch);
+  root.style.setProperty("--accent-foreground", textOklch);
+  root.style.setProperty("--background", bgOklch);
+  root.style.setProperty("--foreground", textOklch);
+  root.style.setProperty("--ring", primaryOklch);
+
+  // Also set color- prefixed variables for direct use
+  root.style.setProperty("--color-primary", primaryOklch);
+  root.style.setProperty("--color-secondary", secondaryOklch);
+  root.style.setProperty("--color-accent", accentOklch);
+  root.style.setProperty("--color-background", bgOklch);
+  root.style.setProperty("--color-text", textOklch);
   root.style.setProperty("--font-family", theme.fontFamily);
   root.style.setProperty("--font-heading", theme.headingFont);
 

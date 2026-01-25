@@ -1,8 +1,20 @@
 /**
- * Skill Registry - Defines available skills and their configurations
+ * Skill Registry - Manages skill loading from database and folder
+ *
+ * Skills are loaded from:
+ * 1. Database (primary source) - skills table
+ * 2. Folder auto-sync - skills/ directory is scanned and imported to DB on startup
+ *
+ * NO hardcoded fallback skills - all skills must come from database or folder.
  */
 
+import { getDb } from "../db";
+import { skills as skillsTable } from "../../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 import { getModelIdsByType, getDefaultModel } from "./modelRegistry";
+import fs from "fs";
+import path from "path";
+import yaml from "js-yaml";
 
 export type SkillType =
   | "image-generation"
@@ -10,7 +22,8 @@ export type SkillType =
   | "audio-generation"
   | "code-assistant"
   | "document-analysis"
-  | "web-search";
+  | "web-search"
+  | "prompt-enhancement";
 
 export interface SkillDefinition {
   id: string;
@@ -39,151 +52,120 @@ export interface SkillDefinition {
 
   /** Priority for detection (higher = checked first) */
   priority: number;
+
+  /** System prompt for LLM-based skills (like prompt-enhancement) */
+  systemPrompt?: string;
+
+  /** Skill content (markdown instructions) */
+  skillContent?: string;
+
+  /** Reference to external skill file path */
+  skillFilePath?: string;
+
+  /** Database ID if from database */
+  dbId?: number;
 }
 
 /**
- * Base skill definitions (without models - models are added dynamically)
+ * Skills directory path
  */
-const BASE_SKILL_DEFINITIONS: Omit<SkillDefinition, "models" | "defaultModel">[] = [
-  // Image Generation
-  {
-    id: "image-generation",
-    name: "Image Generation",
-    description: "Generate images using AI models",
-    icon: "image",
-    type: "image-generation",
-    triggers: [
-      /สร้าง(รูป|ภาพ|image)/i,
-      /generate\s+(an?\s+)?image/i,
-      /create\s+(an?\s+)?(picture|image|photo)/i,
-      /draw\s+(me\s+)?/i,
-      /paint\s+(me\s+)?/i,
-      /ขอรูป/i,
-      /วาด(รูป|ภาพ)?/i,
-    ],
-    requiresExplicit: false,
-    creditMultiplier: 2.0,
-    enabledByDefault: true,
-    priority: 90,
-  },
-
-  // Video Generation
-  {
-    id: "video-generation",
-    name: "Video Generation",
-    description: "Generate videos using AI models",
-    icon: "video",
-    type: "video-generation",
-    triggers: [
-      /สร้าง(วีดีโอ|วิดีโอ|คลิป|video)/i,
-      /generate\s+(a\s+)?video/i,
-      /create\s+(a\s+)?(video|clip|animation)/i,
-      /ทำวีดีโอ/i,
-      /make\s+(a\s+)?video/i,
-    ],
-    requiresExplicit: false,
-    creditMultiplier: 10.0,
-    enabledByDefault: true,
-    priority: 85,
-  },
-
-  // Audio Generation
-  {
-    id: "audio-generation",
-    name: "Audio Generation",
-    description: "Generate speech and sound effects",
-    icon: "music",
-    type: "audio-generation",
-    triggers: [
-      /สร้าง(เสียง|audio|sound)/i,
-      /generate\s+(a\s+)?(audio|sound|speech)/i,
-      /create\s+(a\s+)?(voice|speech|audio)/i,
-      /text\s+to\s+speech/i,
-      /tts/i,
-      /speak\s+(this|the)/i,
-      /read\s+(this\s+)?(text\s+)?aloud/i,
-      /อ่านออกเสียง/i,
-      /พูดให้ฟัง/i,
-      /แปลงเป็นเสียง/i,
-    ],
-    requiresExplicit: false,
-    creditMultiplier: 1.0,
-    enabledByDefault: true,
-    priority: 80,
-  },
-
-];
+const SKILLS_DIR = path.resolve(process.cwd(), "skills");
 
 /**
- * Non-media skills (don't need dynamic model loading)
+ * Skill metadata from skill.md frontmatter
  */
-const NON_MEDIA_SKILLS: SkillDefinition[] = [
-  // Code Assistant
-  {
-    id: "code-assistant",
-    name: "Code Assistant",
-    description: "Help with code review, refactoring, and generation",
-    icon: "code",
-    type: "code-assistant",
-    triggers: [
-      /review\s+(this\s+)?code/i,
-      /refactor\s+(this\s+)?/i,
-      /write\s+(me\s+)?(a\s+)?code/i,
-      /debug\s+(this)?/i,
-      /fix\s+(this\s+)?(bug|error|issue)/i,
-      /explain\s+(this\s+)?code/i,
-      /เขียนโค้ด/i,
-      /แก้โค้ด/i,
-      /รีวิวโค้ด/i,
-    ],
-    requiresExplicit: false,
-    creditMultiplier: 1.0,
-    enabledByDefault: true,
-    priority: 70,
-  },
+interface SkillMetadata {
+  name: string;
+  version?: string;
+  author?: string;
+  description?: string;
+  category?: string;
+  icon?: string;
+  tags?: string[];
+  auto_trigger?: boolean;
+  trigger_patterns?: string[];
+  credit_multiplier?: number;
+  priority?: number;
+  enabled_by_default?: boolean;
+  config?: Record<string, any>;
+}
 
-  // Document Analysis
-  {
-    id: "document-analysis",
-    name: "Document Analysis",
-    description: "Analyze PDFs, documents, and extract information",
-    icon: "file-text",
-    type: "document-analysis",
-    triggers: [
-      /analyze\s+(this\s+)?(document|file|pdf)/i,
-      /summarize\s+(this\s+)?(document|file|pdf|text)/i,
-      /extract\s+(from|info|data)/i,
-      /read\s+(this\s+)?(document|file|pdf)/i,
-      /วิเคราะห์(เอกสาร|ไฟล์)/i,
-      /สรุป(เอกสาร|ไฟล์|ข้อความ)/i,
-    ],
-    requiresExplicit: false,
-    creditMultiplier: 1.5,
-    enabledByDefault: true,
-    priority: 60,
-  },
+/**
+ * Parse skill.md file - extract frontmatter and content
+ */
+function parseSkillFile(content: string): { metadata: SkillMetadata; content: string } {
+  if (content.startsWith("---")) {
+    const parts = content.split("---");
+    if (parts.length >= 3) {
+      try {
+        const frontmatter = yaml.load(parts[1]) as SkillMetadata;
+        const body = parts.slice(2).join("---").trim();
+        return { metadata: frontmatter || {}, content: body };
+      } catch {
+        return { metadata: {} as SkillMetadata, content };
+      }
+    }
+  }
+  return { metadata: {} as SkillMetadata, content };
+}
 
-  // Web Search
-  {
-    id: "web-search",
-    name: "Web Search",
-    description: "Search the web for information",
-    icon: "search",
-    type: "web-search",
-    triggers: [
-      /search\s+(the\s+)?(web|internet|online)/i,
-      /find\s+(info|information)\s+(about|on)/i,
-      /look\s+up/i,
-      /ค้นหา(ข้อมูล)?/i,
-      /หาข้อมูล/i,
-      /search\s+for/i,
-    ],
-    requiresExplicit: false,
-    creditMultiplier: 0.5,
-    enabledByDefault: false, // Disabled by default
-    priority: 50,
-  },
-];
+/**
+ * Map category string to database enum value
+ */
+function mapCategoryToEnum(category?: string): string {
+  const categoryMap: Record<string, string> = {
+    "prompt_enhancement": "prompt_enhancement",
+    "prompt-enhancement": "prompt_enhancement",
+    "image_generation": "image_generation",
+    "image-generation": "image_generation",
+    "video_generation": "video_generation",
+    "video-generation": "video_generation",
+    "audio_generation": "audio_generation",
+    "audio-generation": "audio_generation",
+    "sound_effects": "sound_effects",
+    "sound-effects": "sound_effects",
+    "code_assistant": "code_assistant",
+    "code-assistant": "code_assistant",
+    "document_analysis": "document_analysis",
+    "document-analysis": "document_analysis",
+    "web_search": "web_search",
+    "web-search": "web_search",
+  };
+  return categoryMap[category || ""] || "prompt_enhancement";
+}
+
+/**
+ * Map database category to skill type
+ */
+function categoryToType(category: string): SkillType {
+  const categoryMap: Record<string, SkillType> = {
+    "image_generation": "image-generation",
+    "video_generation": "video-generation",
+    "audio_generation": "audio-generation",
+    "sound_effects": "audio-generation",
+    "code_assistant": "code-assistant",
+    "document_analysis": "document-analysis",
+    "web_search": "web-search",
+    "prompt_enhancement": "prompt-enhancement",
+  };
+  return categoryMap[category] || "prompt-enhancement";
+}
+
+/**
+ * Parse trigger patterns from database (stored as JSON array of strings)
+ */
+function parseTriggerPatterns(patterns: string[] | null | undefined): RegExp[] {
+  if (!patterns || !Array.isArray(patterns)) return [];
+  return patterns
+    .map((p) => {
+      try {
+        return new RegExp(p, "i");
+      } catch {
+        return null;
+      }
+    })
+    .filter((r): r is RegExp => r !== null);
+}
 
 /**
  * Map skill type to media type for model lookup
@@ -195,61 +177,320 @@ const SKILL_TO_MEDIA_TYPE: Record<string, "image" | "video" | "audio"> = {
 };
 
 /**
- * Build complete skill registry with dynamic model data
+ * Convert database skill to SkillDefinition
  */
-function buildSkillRegistry(): SkillDefinition[] {
-  // Enrich media skills with dynamic model data
-  const mediaSkills = BASE_SKILL_DEFINITIONS.map((baseSkill) => {
-    const mediaType = SKILL_TO_MEDIA_TYPE[baseSkill.type];
+function dbSkillToDefinition(dbSkill: {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  category: string;
+  icon: string | null;
+  isAutoTrigger: boolean;
+  triggerPatterns: string[] | null;
+  isEnabled: boolean;
+  enabledByDefault: boolean;
+  creditMultiplier: string | null;
+  priority: number;
+  availableModels: string[] | null;
+  defaultModel: string | null;
+  systemPrompt: string | null;
+  skillContent: string | null;
+  folderPath: string | null;
+}): SkillDefinition {
+  const skillType = categoryToType(dbSkill.category);
+  const mediaType = SKILL_TO_MEDIA_TYPE[skillType];
 
-    if (mediaType) {
-      const modelIds = getModelIdsByType(mediaType);
-      const defaultModelDef = getDefaultModel(mediaType);
+  // Get models for media skills if not explicitly set
+  let models = dbSkill.availableModels || undefined;
+  let defaultModel = dbSkill.defaultModel || undefined;
 
-      return {
-        ...baseSkill,
-        models: modelIds,
-        defaultModel: defaultModelDef?.id,
-      } as SkillDefinition;
-    }
+  if (mediaType && (!models || models.length === 0)) {
+    const modelIds = getModelIdsByType(mediaType);
+    const defaultModelDef = getDefaultModel(mediaType);
+    models = modelIds;
+    defaultModel = defaultModelDef?.id;
+  }
 
-    return baseSkill as SkillDefinition;
-  });
-
-  return [...mediaSkills, ...NON_MEDIA_SKILLS];
+  return {
+    id: dbSkill.slug,
+    dbId: dbSkill.id,
+    name: dbSkill.name,
+    description: dbSkill.description || "",
+    icon: dbSkill.icon || "sparkles",
+    type: skillType,
+    triggers: dbSkill.isAutoTrigger ? parseTriggerPatterns(dbSkill.triggerPatterns) : [],
+    requiresExplicit: !dbSkill.isAutoTrigger,
+    creditMultiplier: Number(dbSkill.creditMultiplier) || 1.0,
+    enabledByDefault: dbSkill.enabledByDefault,
+    priority: dbSkill.priority,
+    models,
+    defaultModel,
+    systemPrompt: dbSkill.systemPrompt || undefined,
+    skillContent: dbSkill.skillContent || undefined,
+    skillFilePath: dbSkill.folderPath ? `${dbSkill.folderPath}/skill.md` : undefined,
+  };
 }
 
 /**
- * Cached skill registry (rebuilt when needed)
+ * Cached skill registry
  */
 let _skillRegistryCache: SkillDefinition[] | null = null;
+let _skillRegistryCacheTime: number = 0;
+const CACHE_TTL_MS = 60000; // 1 minute cache
+
+/**
+ * Auto-sync flag to prevent multiple syncs
+ */
+let _autoSyncCompleted = false;
+
+/**
+ * Scan skills folder and return folder info
+ */
+function scanSkillsFolder(): Array<{
+  slug: string;
+  skillMdPath: string;
+  hasSkillMd: boolean;
+}> {
+  const folders: Array<{
+    slug: string;
+    skillMdPath: string;
+    hasSkillMd: boolean;
+  }> = [];
+
+  // Check multiple possible paths
+  const possibleDirs = [
+    SKILLS_DIR,
+    path.resolve(process.cwd(), "..", "skills"),
+    path.resolve(process.cwd(), "SmartSpecWeb", "skills"),
+  ];
+
+  for (const dir of possibleDirs) {
+    if (fs.existsSync(dir)) {
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+
+          const slug = entry.name;
+          const skillMdPath = path.join(dir, slug, "skill.md");
+          const hasSkillMd = fs.existsSync(skillMdPath);
+
+          // Only add if not already found
+          if (hasSkillMd && !folders.find(f => f.slug === slug)) {
+            folders.push({ slug, skillMdPath, hasSkillMd });
+          }
+        }
+      } catch (error) {
+        console.error(`[SkillRegistry] Error scanning ${dir}:`, error);
+      }
+    }
+  }
+
+  return folders;
+}
+
+/**
+ * Auto-sync skills from folder to database
+ * Called on startup to ensure all folder skills are in database
+ */
+export async function autoSyncSkillsFromFolder(): Promise<{
+  synced: string[];
+  skipped: string[];
+  errors: string[];
+}> {
+  const result = {
+    synced: [] as string[],
+    skipped: [] as string[],
+    errors: [] as string[],
+  };
+
+  if (_autoSyncCompleted) {
+    console.log("[SkillRegistry] Auto-sync already completed, skipping");
+    return result;
+  }
+
+  const db = await getDb();
+  if (!db) {
+    console.warn("[SkillRegistry] Database not available, cannot auto-sync skills");
+    return result;
+  }
+
+  // Get existing skills from database
+  const existingSkills = await db.select({ slug: skillsTable.slug }).from(skillsTable);
+  const existingSlugs = new Set(existingSkills.map(s => s.slug));
+
+  // Scan folder for skills
+  const folderSkills = scanSkillsFolder();
+  console.log(`[SkillRegistry] Found ${folderSkills.length} skill folder(s): ${folderSkills.map(f => f.slug).join(", ")}`);
+
+  for (const folder of folderSkills) {
+    if (existingSlugs.has(folder.slug)) {
+      result.skipped.push(folder.slug);
+      continue;
+    }
+
+    try {
+      // Read and parse skill.md
+      const content = fs.readFileSync(folder.skillMdPath, "utf-8");
+      const parsed = parseSkillFile(content);
+      const metadata: SkillMetadata = { name: folder.slug, ...parsed.metadata };
+
+      // Insert into database
+      await db.insert(skillsTable).values({
+        slug: folder.slug,
+        name: metadata.name || folder.slug,
+        description: metadata.description || `Auto-imported from skills/${folder.slug}`,
+        category: mapCategoryToEnum(metadata.category) as any,
+        version: metadata.version || "1.0.0",
+        author: metadata.author,
+        icon: metadata.icon || "sparkles",
+        tags: metadata.tags || [],
+        folderPath: `skills/${folder.slug}`,
+        isAutoTrigger: metadata.auto_trigger ?? false,
+        triggerPatterns: metadata.trigger_patterns || [],
+        isEnabled: true,
+        enabledByDefault: metadata.enabled_by_default ?? true,
+        creditMultiplier: String(metadata.credit_multiplier ?? 1.0),
+        priority: metadata.priority ?? 50,
+        skillContent: parsed.content,
+        configJson: metadata.config,
+        importSource: "folder",
+      });
+
+      result.synced.push(folder.slug);
+      console.log(`[SkillRegistry] Auto-synced skill: ${folder.slug}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      result.errors.push(`${folder.slug}: ${errorMsg}`);
+      console.error(`[SkillRegistry] Error syncing skill ${folder.slug}:`, error);
+    }
+  }
+
+  _autoSyncCompleted = true;
+
+  // Clear cache to reload with new skills
+  if (result.synced.length > 0) {
+    clearSkillRegistryCache();
+  }
+
+  console.log(`[SkillRegistry] Auto-sync complete: ${result.synced.length} synced, ${result.skipped.length} skipped, ${result.errors.length} errors`);
+  return result;
+}
+
+/**
+ * Load skills from database
+ */
+async function loadSkillsFromDatabase(): Promise<SkillDefinition[]> {
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.warn("[SkillRegistry] Database not available");
+      return [];
+    }
+
+    // Run auto-sync first if not done
+    if (!_autoSyncCompleted) {
+      await autoSyncSkillsFromFolder();
+    }
+
+    const dbSkills = await db
+      .select()
+      .from(skillsTable)
+      .where(eq(skillsTable.isEnabled, true))
+      .orderBy(desc(skillsTable.priority));
+
+    if (dbSkills.length === 0) {
+      console.log("[SkillRegistry] No skills in database");
+      return [];
+    }
+
+    console.log(`[SkillRegistry] Loaded ${dbSkills.length} skills from database`);
+    return dbSkills.map((s) => dbSkillToDefinition(s as any));
+  } catch (error) {
+    console.error("[SkillRegistry] Error loading skills from database:", error);
+    return [];
+  }
+}
 
 /**
  * Get the complete skill registry (with caching)
+ * Note: This is now async to support database loading
  */
-export function getSkillRegistry(): SkillDefinition[] {
-  if (!_skillRegistryCache) {
-    _skillRegistryCache = buildSkillRegistry();
+export async function getSkillRegistryAsync(): Promise<SkillDefinition[]> {
+  const now = Date.now();
+
+  if (_skillRegistryCache && now - _skillRegistryCacheTime < CACHE_TTL_MS) {
+    return _skillRegistryCache;
   }
+
+  _skillRegistryCache = await loadSkillsFromDatabase();
+  _skillRegistryCacheTime = now;
   return _skillRegistryCache;
 }
 
 /**
- * Clear skill registry cache (call when models are updated)
+ * Get the skill registry (synchronous, uses cache only)
+ * For backward compatibility with existing synchronous code
+ * NOTE: Returns empty array if cache not populated - use async version when possible
  */
-export function clearSkillRegistryCache(): void {
-  _skillRegistryCache = null;
+export function getSkillRegistry(): SkillDefinition[] {
+  if (_skillRegistryCache) {
+    return _skillRegistryCache;
+  }
+
+  // Load from database in background
+  loadSkillsFromDatabase().then((skills) => {
+    _skillRegistryCache = skills;
+    _skillRegistryCacheTime = Date.now();
+  }).catch((error) => {
+    console.error("[SkillRegistry] Background load failed:", error);
+  });
+
+  // Return empty array - no fallback
+  return [];
 }
 
 /**
- * Get all available skills
+ * Clear skill registry cache (call when skills are updated)
+ */
+export function clearSkillRegistryCache(): void {
+  _skillRegistryCache = null;
+  _skillRegistryCacheTime = 0;
+}
+
+/**
+ * Reset auto-sync flag (for testing)
+ */
+export function resetAutoSyncFlag(): void {
+  _autoSyncCompleted = false;
+}
+
+/**
+ * Get all available skills (async version)
+ */
+export async function getAvailableSkillsAsync(): Promise<SkillDefinition[]> {
+  const skills = await getSkillRegistryAsync();
+  return [...skills].sort((a, b) => b.priority - a.priority);
+}
+
+/**
+ * Get all available skills (sync version for backward compatibility)
  */
 export function getAvailableSkills(): SkillDefinition[] {
   return [...getSkillRegistry()].sort((a, b) => b.priority - a.priority);
 }
 
 /**
- * Get skill by ID
+ * Get skill by ID (async version)
+ */
+export async function getSkillByIdAsync(id: string): Promise<SkillDefinition | undefined> {
+  const skills = await getSkillRegistryAsync();
+  return skills.find((s) => s.id === id);
+}
+
+/**
+ * Get skill by ID (sync version for backward compatibility)
  */
 export function getSkillById(id: string): SkillDefinition | undefined {
   return getSkillRegistry().find((s) => s.id === id);
@@ -269,4 +510,29 @@ export function getDefaultEnabledSkills(): string[] {
   return getSkillRegistry()
     .filter((s) => s.enabledByDefault)
     .map((s) => s.id);
+}
+
+/**
+ * Refresh the skill cache from database
+ * Call this when skills are updated via admin panel
+ */
+export async function refreshSkillCache(): Promise<void> {
+  clearSkillRegistryCache();
+  await getSkillRegistryAsync();
+}
+
+/**
+ * Initialize skill registry on server startup
+ * Should be called once when server starts
+ */
+export async function initializeSkillRegistry(): Promise<void> {
+  console.log("[SkillRegistry] Initializing...");
+
+  // Run auto-sync
+  const syncResult = await autoSyncSkillsFromFolder();
+
+  // Load skills into cache
+  await getSkillRegistryAsync();
+
+  console.log("[SkillRegistry] Initialization complete");
 }

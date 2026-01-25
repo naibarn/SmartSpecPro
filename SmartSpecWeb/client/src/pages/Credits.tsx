@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import {
   Zap,
@@ -21,6 +22,8 @@ import {
   Sparkles,
   ArrowRight,
   Download,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 
 interface CreditPackage {
@@ -33,19 +36,20 @@ interface CreditPackage {
   savings?: string;
 }
 
-interface Transaction {
-  id: string;
-  type: 'purchase' | 'usage';
-  amount: number;
-  description: string;
-  date: string;
-  credits: number;
-}
-
 export default function Credits() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
+
+  // Fetch real data from API
+  const { data: balance } = trpc.credits.balance.useQuery();
+  const { data: history, isLoading: historyLoading, refetch: refetchHistory } = trpc.credits.history.useQuery({
+    limit: pageSize,
+    offset: page * pageSize,
+  });
+  const { data: usageStats } = trpc.credits.stats.useQuery({ days: 30 });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -99,66 +103,50 @@ export default function Credits() {
     },
   ];
 
-  const transactions: Transaction[] = [
-    {
-      id: '1',
-      type: 'purchase',
-      amount: 45,
-      description: 'Popular Package',
-      date: '2 days ago',
-      credits: 500,
-    },
-    {
-      id: '2',
-      type: 'usage',
-      amount: 0,
-      description: 'Image Generation - Abstract Art',
-      date: '2 days ago',
-      credits: -10,
-    },
-    {
-      id: '3',
-      type: 'usage',
-      amount: 0,
-      description: 'Video Generation - Product Demo',
-      date: '3 days ago',
-      credits: -50,
-    },
-    {
-      id: '4',
-      type: 'purchase',
-      amount: 10,
-      description: 'Starter Package',
-      date: '1 week ago',
-      credits: 100,
-    },
-  ];
+  // Format date and time for display
+  const formatDateTime = (date: Date | string) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    const timeStr = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours}h ago (${timeStr})`;
+    if (diffDays === 1) return `Yesterday ${timeStr}`;
+    if (diffDays < 7) return `${diffDays}d ago ${timeStr}`;
+    return `${d.toLocaleDateString('th-TH')} ${timeStr}`;
+  };
 
   const stats = [
     {
       label: 'Current Balance',
-      value: (user.credits ?? 0).toString(),
+      value: (balance?.credits ?? user.credits ?? 0).toString(),
       icon: Zap,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-50',
     },
     {
       label: 'Total Purchased',
-      value: '600',
+      value: (usageStats?.totalPurchased ?? 0).toString(),
       icon: Package,
       color: 'text-blue-500',
       bgColor: 'bg-blue-50',
     },
     {
-      label: 'Total Spent',
-      value: '$55',
+      label: 'Transactions',
+      value: (usageStats?.transactionCount ?? 0).toString(),
       icon: DollarSign,
       color: 'text-green-500',
       bgColor: 'bg-green-50',
     },
     {
-      label: 'Credits Used',
-      value: '60',
+      label: 'Credits Used (30d)',
+      value: (usageStats?.totalUsage ?? 0).toString(),
       icon: TrendingUp,
       color: 'text-purple-500',
       bgColor: 'bg-purple-50',
@@ -318,86 +306,181 @@ export default function Credits() {
               <Clock className="w-5 h-5 text-gray-400" />
               <h2 className="text-xl font-bold text-gray-900">Transaction History</h2>
             </div>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export
+            <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
             </Button>
           </div>
 
           <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50/50 border-b border-gray-100">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Credits
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {transactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                            transaction.type === 'purchase'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}
-                        >
-                          {transaction.type === 'purchase' ? (
-                            <>
-                              <CreditCard className="w-3 h-3" />
-                              Purchase
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="w-3 h-3" />
-                              Usage
-                            </>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-medium text-gray-900">
-                          {transaction.description}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`text-sm font-semibold ${
-                            transaction.credits > 0 ? 'text-green-600' : 'text-red-600'
-                          }`}
-                        >
-                          {transaction.credits > 0 ? '+' : ''}
-                          {transaction.credits}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-900">
-                          {transaction.amount > 0 ? `$${transaction.amount}` : '-'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-500">{transaction.date}</span>
-                      </td>
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+              </div>
+            ) : !history || history.length === 0 ? (
+              <div className="text-center py-12">
+                <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No transactions yet</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50/50 border-b border-gray-100">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Description
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Details
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Credits
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Balance After
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Date
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {history.map((transaction) => (
+                      <tr key={transaction.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              transaction.type === 'purchase' || transaction.type === 'bonus'
+                                ? 'bg-green-100 text-green-700'
+                                : transaction.type === 'usage'
+                                ? 'bg-blue-100 text-blue-700'
+                                : transaction.type === 'refund'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {transaction.type === 'purchase' ? (
+                              <>
+                                <CreditCard className="w-3 h-3" />
+                                Purchase
+                              </>
+                            ) : transaction.type === 'usage' ? (
+                              <>
+                                <Zap className="w-3 h-3" />
+                                Usage
+                              </>
+                            ) : transaction.type === 'bonus' ? (
+                              <>
+                                <Sparkles className="w-3 h-3" />
+                                Bonus
+                              </>
+                            ) : (
+                              <>
+                                <Package className="w-3 h-3" />
+                                {transaction.type}
+                              </>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-medium text-gray-900">
+                            {transaction.description}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {transaction.metadata && (
+                            <div className="text-xs text-gray-500 space-y-0.5">
+                              {transaction.metadata.model && (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">Model:</span>
+                                  <span className="text-gray-700">{String(transaction.metadata.model).split('/').pop()}</span>
+                                </div>
+                              )}
+                              {(transaction.metadata.inputTokens || transaction.metadata.tokensUsed) && (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">Tokens:</span>
+                                  <span className="text-gray-700">
+                                    {transaction.metadata.inputTokens && transaction.metadata.outputTokens
+                                      ? `${transaction.metadata.inputTokens}→${transaction.metadata.outputTokens}`
+                                      : transaction.metadata.tokensUsed}
+                                  </span>
+                                </div>
+                              )}
+                              {transaction.metadata.skill && (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">Skill:</span>
+                                  <span className="text-gray-700">{String(transaction.metadata.skill)}</span>
+                                </div>
+                              )}
+                              {transaction.metadata.referenceImageCount > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">Images:</span>
+                                  <span className="text-gray-700">{transaction.metadata.referenceImageCount}</span>
+                                </div>
+                              )}
+                              {transaction.metadata.mediaType && (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">Media:</span>
+                                  <span className="text-gray-700">{String(transaction.metadata.mediaType)}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`text-sm font-semibold ${
+                              transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
+                            }`}
+                          >
+                            {transaction.amount > 0 ? '+' : ''}
+                            {transaction.amount}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-900">
+                            {transaction.balanceAfter}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-500">
+                            {formatDateTime(transaction.createdAt)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                  <div className="text-sm text-gray-500">
+                    Page {page + 1} • Showing {history?.length || 0} items
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(Math.max(0, page - 1))}
+                      disabled={page === 0}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page + 1)}
+                      disabled={!history || history.length < pageSize}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </main>

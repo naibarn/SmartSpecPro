@@ -1,0 +1,98 @@
+{
+  "language": "en",
+  "langName": "English",
+  "labels": {
+    "existingSolutionsFound": "🔍 Existing Solutions Found",
+    "libraries": "📦 Libraries/Packages",
+    "openSourceTools": "🔧 Open Source Tools",
+    "saasOptions": "☁️ SaaS Options",
+    "buildVsBuyComparison": "📊 Build vs Buy Comparison",
+    "costAnalysis": "💰 Cost Analysis",
+    "recommendation": "💡 Recommendation",
+    "ifYouStillWantToBuild": "🔧 If You Still Want to Build",
+    "integrationPlan": "🚀 Integration Plan: ",
+    "yourProjectContext": "📋 Your Project Context",
+    "detected": "✅ Detected",
+    "projectStructure": "📁 Project Structure",
+    "step1InstallDependencies": "Step 1: Install Dependencies",
+    "step2Configuration": "Step 2: Configuration",
+    "step3CreateNewFiles": "Step 3: Create New Files",
+    "step4UpdateExistingFiles": "Step 4: Update Existing Files",
+    "notes": "⚠️ Notes",
+    "resources": "📚 Resources",
+    "breakEven": "💡 Break-even",
+    "hiddenCosts": "⚠️ Hidden costs",
+    "recommended": "✅ Recommended",
+    "fastest": "⚡ Fastest",
+    "fullControl": "🎯 Full control"
+  },
+  "responses": {
+    "captureIntent": {
+      "what": "What: Core functionality needed",
+      "why": "Why: Use case / problem being solved",
+      "constraints": "Constraints: Language, platform, budget, licensing requirements"
+    },
+    "searchStrategy": {
+      "instruction": "I'll search for existing solutions:",
+      "strategy1": "'{functionality} library {language}'",
+      "strategy2": "'{functionality} open source'",
+      "strategy3": "'{functionality} SaaS tool'",
+      "strategy4": "'best {functionality} solution 2024'",
+      "strategy5": "'{functionality} npm/pip/cargo package'"
+    },
+    "categorize": {
+      "libraries": "📦 Libraries/Packages: npm, pip, cargo, etc. (free, integrate into code)",
+      "openSource": "🔧 Open Source Tools: Full applications (free, self-host)",
+      "saas": "☁️ SaaS/Commercial: Paid services (cost, no maintenance)",
+      "frameworks": "🏗️ Frameworks: Scaffolding for common patterns"
+    },
+    "vibeCodeCost": "Vibe Coding Cost:",
+    "shortRecommendation": "Building from scratch burns tokens, time, and creates maintenance burden",
+    "whenToUseExisting": "Use existing solutions when:",
+    "matureLibrary": "- Mature library exists with >1K GitHub stars",
+    "saasAffordable": "- SaaS solves it for <$20/mo",
+    "commonProblem": "- Common problem with well-tested solutions",
+    "securitity": "- Security-sensitive (auth, crypto, payments)",
+    "whenToBuildCustom": "Build custom when:",
+    "specificLogic": "- Highly specific business logic",
+    "simpleGlueCode": "- Simple glue code (<50 lines)",
+    "learningExercise": "- Learning exercise (explicitly stated)",
+    "noGoodSolution": "- No good existing solution found",
+    "unusualIntegration": "- Integration requirements are unusual"
+  },
+  "antiPatterns": {
+    "auth": "🔐 Authentication systems → Use Auth0, Clerk, Supabase Auth",
+    "stateManagement": "📊 State management → Consider Zustand, Redux Toolkit, Jotai",
+    "formValidation": "✅ Form validation → Check out Zod, Yup, React Hook Form",
+    "apiClient": "🌐 API clients → Look at Axios, ky, ofetch",
+    "dateHandling": "📅 Date handling → Use date-fns, dayjs, Luxon",
+    "cliTools": "⌨️ CLI tools → Consider Commander, yargs, oclif",
+    "pdfGeneration": "📄 PDF generation → Use pdf-lib, jsPDF, Puppeteer",
+    "emailSending": "📧 Email sending → Check Resend, SendGrid, Nodemailer",
+    "cronJobs": "⏰ Cron jobs → Use node-cron, Bull, Agenda",
+    "orm": "🗄️ Database ORMs → Consider Prisma, Drizzle, TypeORM"
+  },
+  "commonTokenBurns": {
+    "simple": "Simple script (<100 LOC)",
+    "utility": "Utility module (100-500 LOC)",
+    "feature": "Feature component (500-2K LOC)",
+    "fullApp": "Full application"
+  },
+  "costCalculation": {
+    "setupCost": "Setup",
+    "monthly": "Monthly",
+    "year1": "Year 1",
+    "year3": "Year 3",
+    "notes": "Notes",
+    "freeFromage": "Free tier",
+    "selfHostRequired": "Self-host required",
+    "maintenanceBurden": "Maintenance"
+  },
+  "projectDetection": {
+    "packageManager": "🔧 Package Manager",
+    "framework": "🏗️ Framework",
+    "language": "📝 Language",
+    "projectStructure": "📁 Project Structure",
+    "codeStyle": "🎨 Code Style"
+  }
+}

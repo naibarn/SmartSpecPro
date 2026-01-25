@@ -1,15 +1,23 @@
 /**
  * SafeMarkdown - XSS-safe markdown rendering component
  * Sanitizes content before rendering to prevent script injection
+ * Supports clickable images with lightbox integration
  */
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { Streamdown } from "streamdown";
 import DOMPurify from "dompurify";
+
+interface ImageInfo {
+  src: string;
+  alt?: string;
+}
 
 interface SafeMarkdownProps {
   children: string;
   className?: string;
+  /** Callback when an image is clicked. Receives all images in the content and the clicked index. */
+  onImageClick?: (images: ImageInfo[], index: number) => void;
 }
 
 // Configure DOMPurify to allow safe markdown elements
@@ -99,7 +107,23 @@ function sanitizeUrls(content: string): string {
   );
 }
 
-export function SafeMarkdown({ children, className }: SafeMarkdownProps) {
+// Extract image URLs from markdown content
+function extractImages(content: string): ImageInfo[] {
+  const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const images: ImageInfo[] = [];
+  let match;
+
+  while ((match = imageRegex.exec(content)) !== null) {
+    images.push({
+      alt: match[1] || undefined,
+      src: match[2],
+    });
+  }
+
+  return images;
+}
+
+export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdownProps) {
   const sanitizedContent = useMemo(() => {
     if (!children || typeof children !== "string") {
       return "";
@@ -112,9 +136,46 @@ export function SafeMarkdown({ children, className }: SafeMarkdownProps) {
     return sanitizeContent(urlSanitized);
   }, [children]);
 
+  // Extract all images from content for lightbox navigation
+  const allImages = useMemo(() => extractImages(children || ""), [children]);
+
+  // Handle image click - find index and call callback
+  const handleImageClick = useCallback((src: string) => {
+    if (!onImageClick) return;
+    const index = allImages.findIndex((img) => img.src === src);
+    onImageClick(allImages, index >= 0 ? index : 0);
+  }, [allImages, onImageClick]);
+
+  // If we have onImageClick, we need to intercept image rendering
+  // Replace markdown images with custom clickable thumbnails
+  const processedContent = useMemo(() => {
+    if (!onImageClick || !sanitizedContent) return sanitizedContent;
+
+    // Replace image markdown with a placeholder that we'll render as clickable
+    // We add a data attribute to identify the image
+    return sanitizedContent.replace(
+      /!\[([^\]]*)\]\(([^)]+)\)/g,
+      (match, alt, src) => {
+        // Create a custom HTML that will be rendered as a clickable thumbnail
+        return `<img src="${src}" alt="${alt || 'Generated image'}" class="markdown-image cursor-pointer max-w-[300px] max-h-[200px] rounded-lg border hover:opacity-90 transition-opacity object-contain" data-clickable="true" />`;
+      }
+    );
+  }, [sanitizedContent, onImageClick]);
+
+  // Add click handler for images after render
+  const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "IMG" && target.getAttribute("data-clickable") === "true") {
+      const src = target.getAttribute("src");
+      if (src) {
+        handleImageClick(src);
+      }
+    }
+  }, [handleImageClick]);
+
   return (
-    <div className={className}>
-      <Streamdown>{sanitizedContent}</Streamdown>
+    <div className={className} onClick={onImageClick ? handleContainerClick : undefined}>
+      <Streamdown>{processedContent}</Streamdown>
     </div>
   );
 }

@@ -12,6 +12,14 @@ from app.services.web_gateway_client import get_gateway_client
 from app.core.credits import usd_to_credits, credits_to_usd
 from app.models.user import User
 
+# R2 storage is optional - only needed for uploading reference images
+try:
+    from app.services.r2_storage_service import get_r2_storage_service
+    R2_STORAGE_AVAILABLE = True
+except ImportError:
+    R2_STORAGE_AVAILABLE = False
+    get_r2_storage_service = None
+
 logger = structlog.get_logger()
 
 
@@ -166,7 +174,7 @@ class LLMGateway:
         )
         
         # Step 6: Add credit info to response
-        response.credits_used = transaction.amount
+        response.credits_used = abs(transaction.amount)  # Return positive value for credits used
         response.credits_balance = transaction.balance_after
         
         return response
@@ -197,29 +205,128 @@ class LLMGateway:
                 )
 
         try:
+            # Log incoming request for debugging
+            logger.info(
+                "generate_image_start",
+                user_id=user.id,
+                model=request.model,
+                has_reference_urls=bool(request.reference_image_urls),
+                reference_url_count=len(request.reference_image_urls) if request.reference_image_urls else 0,
+            )
+
+            # Resolve reference image URLs to public URLs via R2 storage
+            # This is needed because Kie.ai needs to download images from public URLs
+            resolved_reference_urls = request.reference_image_urls
+            resolved_style_url = request.reference_style_url
+
+            if request.reference_image_urls or request.reference_style_url:
+                logger.info("r2_resolution_starting", urls=request.reference_image_urls)
+                try:
+                    if not R2_STORAGE_AVAILABLE:
+                        raise ImportError("R2 storage not available (boto3 not installed)")
+                    r2_service = get_r2_storage_service()
+                    # Pass db_session as parameter (NOT stored on singleton to avoid async context issues)
+
+                    if request.reference_image_urls:
+                        resolved_reference_urls = await r2_service.resolve_reference_urls(
+                            request.reference_image_urls,
+                            db_session=self.db
+                        )
+                        logger.info(
+                            "reference_urls_resolved",
+                            original=request.reference_image_urls,
+                            resolved=resolved_reference_urls
+                        )
+
+                    if request.reference_style_url:
+                        resolved_style_url = await r2_service.resolve_reference_url(
+                            request.reference_style_url,
+                            db_session=self.db
+                        )
+                        logger.info(
+                            "style_url_resolved",
+                            original=request.reference_style_url,
+                            resolved=resolved_style_url
+                        )
+                except Exception as e:
+                    logger.warning(
+                        "reference_url_resolution_failed",
+                        error=str(e),
+                        reference_urls=request.reference_image_urls
+                    )
+                    # Continue with original URLs if R2 resolution fails
+
+            # For synchronous generation, always use polling mode (not callback mode)
+            # This ensures we wait for the result before returning to the client
+            # Callback mode is only suitable for async endpoints (/async/image)
             image_data = await self.unified_client.kie_ai_client.generate_image(
                 model=request.model,
                 prompt=request.prompt,
+                callback_url="",  # Force polling mode - empty string disables callback
+                reference_image_urls=resolved_reference_urls,  # Pass resolved URLs to Kie.ai
+                reference_style_url=resolved_style_url,  # Pass resolved style URL to Kie.ai
                 **request.dict(exclude_unset=True, exclude={
                     "model", "prompt", "user", "reference_image_urls", "reference_style_url"
                 })
             )
-            # Handle reference images if any
-            if request.reference_image_urls:
-                # This part needs more sophisticated handling, e.g., uploading to Kie.ai first
-                logger.warning("Reference image URLs are not fully supported yet for Kie.ai direct generation.")
+
+            # Check for None response from Kie.ai
+            if image_data is None:
+                logger.error("kie_ai_returned_none", user_id=user.id, model=request.model)
+                raise ValueError("No response received from Kie.ai image generation API")
+
+            # Log full response for debugging
+            logger.info(
+                "kie_ai_image_response",
+                user_id=user.id,
+                id=image_data.get("id"),
+                data_count=len(image_data.get("data", [])),
+                data=image_data.get("data", []),
+                raw_keys=list(image_data.keys()) if image_data else None,
+                has_reference_images=bool(request.reference_image_urls),
+            )
+
+            # Extract data - check both 'data' and 'raw_response' fields
+            result_data = image_data.get("data", [])
+
+            # If data is empty but we have raw_response, try to extract from there
+            if not result_data and image_data.get("raw_response"):
+                raw_response = image_data.get("raw_response", {})
+                logger.info("kie_ai_checking_raw_response", raw_keys=list(raw_response.keys()) if isinstance(raw_response, dict) else "not_dict")
+
+                # Try nested paths in raw_response
+                if isinstance(raw_response, dict):
+                    nested = raw_response.get("data", {})
+                    if isinstance(nested, dict):
+                        result_json = nested.get("resultJson", {})
+                        # Parse if it's a string
+                        if isinstance(result_json, str):
+                            import json
+                            try:
+                                result_json = json.loads(result_json)
+                            except:
+                                pass
+                        if isinstance(result_json, dict):
+                            urls = result_json.get("resultUrls", [])
+                            for url in urls:
+                                if isinstance(url, str):
+                                    result_data.append({"url": url})
+                                elif isinstance(url, dict):
+                                    result_data.append({"url": url.get("url")})
+                            if result_data:
+                                logger.info("kie_ai_extracted_from_raw", count=len(result_data))
 
             response = ImageGenerationResponse(
                 id=image_data.get("id", ""),
                 model=request.model,
                 provider="kie_ai",
                 created=image_data.get("created", 0),
-                data=image_data.get("data", []),
+                data=result_data,
             )
 
             actual_cost = estimated_cost # For now, assume estimated is actual
             transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
-            response.credits_used = transaction.amount
+            response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
             return response
         except Exception as e:
@@ -252,9 +359,11 @@ class LLMGateway:
                 )
 
         try:
+            # For synchronous generation, always use polling mode (not callback mode)
             video_data = await self.unified_client.kie_ai_client.generate_video(
                 model=request.model,
                 prompt=request.prompt,
+                callback_url="",  # Force polling mode
                 **request.dict(exclude_unset=True, exclude={
                     "model", "prompt", "user", "reference_video_url", "reference_image_urls"
                 })
@@ -269,7 +378,7 @@ class LLMGateway:
 
             actual_cost = estimated_cost
             transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
-            response.credits_used = transaction.amount
+            response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
             return response
         except Exception as e:
@@ -302,9 +411,11 @@ class LLMGateway:
                 )
 
         try:
+            # For synchronous generation, always use polling mode (not callback mode)
             audio_data = await self.unified_client.kie_ai_client.generate_audio(
                 model=request.model,
                 text=request.text,
+                callback_url="",  # Force polling mode
                 **request.dict(exclude_unset=True, exclude={
                     "model", "text", "user"
                 })
@@ -319,7 +430,7 @@ class LLMGateway:
 
             actual_cost = estimated_cost
             transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
-            response.credits_used = transaction.amount
+            response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
             return response
         except Exception as e:
@@ -366,9 +477,13 @@ class LLMGateway:
     ):
         """
         Deduct credits from user account via Web Gateway or local service.
+
+        IMPORTANT: Uses a fresh database session to avoid MissingGreenlet errors
+        that can occur when the original session becomes stale after long-running
+        operations (like Kie.ai image generation which can take 40+ seconds).
         """
         request_type = request.__class__.__name__
-        
+
         # Determine request type for gateway
         if isinstance(request, LLMRequest):
             gateway_request_type = "llm"
@@ -380,7 +495,7 @@ class LLMGateway:
             gateway_request_type = "audio"
         else:
             gateway_request_type = "unknown"
-        
+
         metadata = {
             "request_type": request_type,
             "model": request.model,
@@ -390,7 +505,7 @@ class LLMGateway:
             "response_id": getattr(response, "id", None),
             "provider": getattr(response, "provider", None),
         }
-        
+
         # Try to deduct via Web Gateway first
         gateway_result = await self.web_gateway.deduct_credits(
             user_id=user.id,
@@ -400,7 +515,7 @@ class LLMGateway:
             model=request.model,
             metadata=metadata
         )
-        
+
         if gateway_result:
             logger.info(
                 "credits_deducted_via_gateway",
@@ -410,22 +525,28 @@ class LLMGateway:
                 balance_after=gateway_result.balance_after_usd,
             )
             return gateway_result
-        
-        # Fall back to local credit service
-        transaction = await self.credit_service.deduct_credits(
-            user_id=user.id,
-            amount_usd=actual_cost,
-            description=f"{gateway_request_type.upper()} Generation: {request.model}",
-            metadata=metadata
-        )
-        logger.info(
-            "credits_deducted_locally",
-            user_id=user.id,
-            amount_usd=float(actual_cost),
-            balance_after=float(transaction.balance_after),
-            transaction_id=transaction.id,
-        )
-        return transaction
+
+        # Fall back to local credit service with a FRESH database session
+        # This is critical for long-running operations like Kie.ai image generation
+        # which can take 40+ seconds, causing the original session to become stale
+        from app.core.database import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as fresh_db:
+            fresh_credit_service = CreditService(fresh_db)
+            transaction = await fresh_credit_service.deduct_credits(
+                user_id=str(user.id),
+                llm_cost_usd=Decimal(str(actual_cost)) if not isinstance(actual_cost, Decimal) else actual_cost,
+                description=f"{gateway_request_type.upper()} Generation: {request.model}",
+                metadata=metadata
+            )
+            logger.info(
+                "credits_deducted_locally",
+                user_id=str(user.id),
+                amount_usd=float(actual_cost),
+                balance_after=float(transaction.balance_after),
+                transaction_id=transaction.id,
+            )
+            return transaction
 
     async def _check_credits(self, user: User, estimated_cost: Decimal) -> None:
         """Check if user has sufficient credits."""

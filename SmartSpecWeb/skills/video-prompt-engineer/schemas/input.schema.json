@@ -1,0 +1,534 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Video Prompt Engineer Input Schema",
+  "description": "Comprehensive input schema for AI video prompt generation supporting Sora, Veo, Kling, Wan, and Seedance",
+  "type": "object",
+  "required": ["request"],
+  "properties": {
+    "request": {
+      "type": "string",
+      "description": "The main video concept or description (user input)",
+      "examples": [
+        "A woman walking through a busy street market",
+        "Product review of latest smartphone",
+        "Fashion outfit transformation video"
+      ]
+    },
+    
+    "target_platform": {
+      "type": "string",
+      "enum": ["compatible", "sora", "veo", "kling", "wan", "seedance"],
+      "default": "compatible",
+      "description": "Target AI video generation platform",
+      "enumDescriptions": {
+        "compatible": "Universal format compatible with all platforms",
+        "sora": "OpenAI Sora 2 (4-20s, detailed prompts, cinematic)",
+        "veo": "Google Veo 3.1 (4-8s, 500 char limit, structured)",
+        "kling": "Kling AI (cinematic, photorealistic)",
+        "wan": "Wan Show AI (narrative-focused)",
+        "seedance": "Seedance (creative, artistic)"
+      }
+    },
+    
+    "language": {
+      "type": "string",
+      "enum": ["en", "th", "auto"],
+      "default": "en",
+      "description": "Output language",
+      "enumDescriptions": {
+        "en": "English",
+        "th": "Thai",
+        "auto": "Auto-detect from request"
+      }
+    },
+    
+    "duration": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 60,
+      "default": 8,
+      "description": "Video duration in seconds (platform limits apply)"
+    },
+    
+    "aspect_ratio": {
+      "type": "string",
+      "enum": ["9:16", "16:9", "1:1", "4:5", "21:9"],
+      "default": "9:16",
+      "description": "Video aspect ratio",
+      "enumDescriptions": {
+        "9:16": "Vertical (TikTok, Instagram Reels, YouTube Shorts)",
+        "16:9": "Horizontal (YouTube, standard video)",
+        "1:1": "Square (Instagram feed)",
+        "4:5": "Portrait (Instagram)",
+        "21:9": "Cinematic ultra-wide"
+      }
+    },
+    
+    "cinematic_style": {
+      "type": "string",
+      "enum": [
+        "none",
+        "cinematic",
+        "documentary",
+        "commercial",
+        "music_video",
+        "vlog",
+        "narrative",
+        "experimental",
+        "noir",
+        "sci_fi",
+        "horror",
+        "romance",
+        "action",
+        "drama"
+      ],
+      "default": "cinematic",
+      "description": "Overall cinematic style and aesthetic"
+    },
+    
+    "visual_style": {
+      "type": "string",
+      "enum": [
+        "photorealistic",
+        "cinematic",
+        "corporate",
+        "minimalist",
+        "vibrant",
+        "documentary",
+        "retro",
+        "neon",
+        "pastel",
+        "dark",
+        "hand_drawn",
+        "anime",
+        "surreal",
+        "vintage_film",
+        "modern_clean"
+      ],
+      "default": "cinematic",
+      "description": "Visual treatment and color grading style"
+    },
+    
+    "camera_movement": {
+      "type": "string",
+      "enum": [
+        "static",
+        "dolly_in",
+        "dolly_out",
+        "pan_left",
+        "pan_right",
+        "tilt_up",
+        "tilt_down",
+        "tracking",
+        "crane",
+        "handheld",
+        "steadicam",
+        "orbit",
+        "zoom_in",
+        "zoom_out",
+        "dynamic"
+      ],
+      "default": "dynamic",
+      "description": "Primary camera movement"
+    },
+    
+    "shot_composition": {
+      "type": "string",
+      "enum": [
+        "extreme_close_up",
+        "close_up",
+        "medium_close_up",
+        "medium_shot",
+        "medium_wide",
+        "wide_shot",
+        "extreme_wide",
+        "over_shoulder",
+        "pov",
+        "dutch_angle",
+        "low_angle",
+        "high_angle",
+        "birds_eye"
+      ],
+      "default": "medium_shot",
+      "description": "Shot framing and composition"
+    },
+    
+    "lighting_style": {
+      "type": "string",
+      "enum": [
+        "natural",
+        "golden_hour",
+        "blue_hour",
+        "studio",
+        "dramatic",
+        "soft",
+        "hard",
+        "neon",
+        "sunset",
+        "sunrise",
+        "moonlight",
+        "candlelight",
+        "volumetric",
+        "rim_light",
+        "silhouette"
+      ],
+      "default": "natural",
+      "description": "Lighting setup and mood"
+    },
+    
+    "audio_language": {
+      "type": "string",
+      "enum": ["english", "thai", "no_dialogue", "ambient_only"],
+      "default": "english",
+      "description": "Spoken language in video (dialogue/voiceover)"
+    },
+    
+    "sound_design": {
+      "type": "string",
+      "enum": [
+        "silent_subtitles",
+        "music_only",
+        "voiceover_dominant",
+        "balanced",
+        "asmr",
+        "sfx_heavy",
+        "dramatic",
+        "upbeat",
+        "lo_fi",
+        "epic",
+        "ambient",
+        "minimal"
+      ],
+      "default": "balanced",
+      "description": "Audio mix and sound design approach"
+    },
+    
+    "music_mood": {
+      "type": "string",
+      "enum": [
+        "none",
+        "upbeat_pop",
+        "dramatic_orchestral",
+        "lo_fi_chill",
+        "epic_cinematic",
+        "romantic_piano",
+        "suspense_tension",
+        "corporate_motivational",
+        "ambient_nature",
+        "electronic_modern",
+        "acoustic_warm"
+      ],
+      "default": "none",
+      "description": "Background music style"
+    },
+    
+    "emotion": {
+      "type": "string",
+      "enum": [
+        "neutral",
+        "joy",
+        "surprise",
+        "curiosity",
+        "trust",
+        "urgency",
+        "nostalgia",
+        "empathy",
+        "excitement",
+        "calm",
+        "tension",
+        "inspiration"
+      ],
+      "default": "neutral",
+      "description": "Emotional tone"
+    },
+    
+    "pacing": {
+      "type": "string",
+      "enum": ["fast", "medium", "slow", "variable", "suspenseful"],
+      "default": "medium",
+      "description": "Video pacing and rhythm"
+    },
+    
+    "hook_strategy": {
+      "type": "string",
+      "enum": [
+        "none",
+        "question",
+        "shock_value",
+        "before_after",
+        "problem_statement",
+        "curiosity_gap",
+        "pattern_interrupt"
+      ],
+      "default": "none",
+      "description": "Opening hook strategy (first 3 seconds)"
+    },
+    
+    "cta": {
+      "type": "string",
+      "enum": [
+        "none",
+        "like",
+        "comment",
+        "share",
+        "follow",
+        "save",
+        "soft_reminder",
+        "website_visit",
+        "product_link"
+      ],
+      "default": "none",
+      "description": "Call-to-action type"
+    },
+    
+    "target_audience": {
+      "type": "string",
+      "enum": [
+        "general",
+        "gen_z",
+        "millennials",
+        "gen_x_plus",
+        "business",
+        "lifestyle",
+        "educational",
+        "entertainment"
+      ],
+      "default": "general",
+      "description": "Target audience demographic"
+    },
+    
+    "social_platform": {
+      "type": "string",
+      "enum": [
+        "universal",
+        "tiktok",
+        "instagram",
+        "youtube_shorts",
+        "youtube",
+        "facebook",
+        "linkedin",
+        "twitter"
+      ],
+      "default": "universal",
+      "description": "Social media platform optimization"
+    },
+    
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "general",
+        "product_review",
+        "fashion_content",
+        "lifestyle_vlog",
+        "comedy_skit",
+        "storytelling",
+        "behind_scenes",
+        "tutorial",
+        "announcement",
+        "testimonial",
+        "montage"
+      ],
+      "default": "general",
+      "description": "Content category"
+    },
+    
+    "montage_style": {
+      "type": "string",
+      "enum": [
+        "none",
+        "fast_cuts",
+        "smooth_transitions",
+        "split_screen",
+        "zoom_focus",
+        "pan_scan",
+        "time_lapse",
+        "before_after",
+        "step_by_step",
+        "parallel_action",
+        "slow_motion"
+      ],
+      "default": "none",
+      "description": "Multi-shot editing style"
+    },
+    
+    "text_overlay": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include text overlays/graphics (Sora only)"
+    },
+    
+    "text_overlay_style": {
+      "type": "string",
+      "enum": [
+        "none",
+        "keywords",
+        "subtitles",
+        "emojis",
+        "animated_text",
+        "emphasis",
+        "minimal",
+        "bold_impact"
+      ],
+      "default": "none",
+      "description": "Text overlay treatment (if enabled)"
+    },
+    
+    "brand_elements": {
+      "type": "object",
+      "properties": {
+        "include_branding": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include brand elements"
+        },
+        "brand_colors": {
+          "type": "string",
+          "description": "Brand color palette (e.g., 'blue and gold', 'red and black')"
+        },
+        "brand_tone": {
+          "type": "string",
+          "enum": ["professional", "casual", "playful", "luxury", "minimal"],
+          "default": "professional"
+        }
+      }
+    },
+    
+    "reference_images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["start_frame", "end_frame", "style_reference", "subject", "environment"],
+            "description": "Purpose of the reference image"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes about the image"
+          }
+        }
+      },
+      "description": "Reference images with their purposes"
+    },
+    
+    "script_required": {
+      "type": "boolean",
+      "default": true,
+      "description": "Generate dialogue/voiceover script"
+    },
+    
+    "script_language": {
+      "type": "string",
+      "enum": ["english", "thai", "bilingual"],
+      "default": "english",
+      "description": "Script language (with translation if applicable)"
+    },
+    
+    "creative_freedom": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50,
+      "description": "AI creative freedom level (0=conservative, 100=chaotic)",
+      "enumDescriptions": {
+        "0": "Conservative - stick to basics",
+        "20": "Professional - polished and safe",
+        "50": "Balanced - creative with structure",
+        "70": "Creative - experimental elements",
+        "85": "Bold - pushing boundaries",
+        "100": "Chaotic - maximum creativity"
+      }
+    },
+    
+    "include_sfx": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include sound effects descriptions"
+    },
+    
+    "cinematography_notes": {
+      "type": "string",
+      "description": "Additional cinematography instructions"
+    },
+    
+    "color_grading": {
+      "type": "string",
+      "enum": [
+        "natural",
+        "warm",
+        "cool",
+        "desaturated",
+        "vibrant",
+        "vintage",
+        "teal_orange",
+        "noir",
+        "bleach_bypass",
+        "custom"
+      ],
+      "default": "natural",
+      "description": "Color grading preset"
+    },
+    
+    "output_format": {
+      "type": "string",
+      "enum": ["standard", "compact", "detailed", "json"],
+      "default": "detailed",
+      "description": "Output verbosity level"
+    },
+    
+    "include_technical_specs": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include technical specifications in output"
+    },
+    
+    "optimize_for_virality": {
+      "type": "boolean",
+      "default": false,
+      "description": "Optimize for viral potential"
+    },
+    
+    "accessibility": {
+      "type": "object",
+      "properties": {
+        "include_captions": {
+          "type": "boolean",
+          "default": true
+        },
+        "audio_description": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  },
+  
+  "examples": [
+    {
+      "request": "A woman walking through a busy Tokyo street market at sunset",
+      "target_platform": "sora",
+      "aspect_ratio": "16:9",
+      "cinematic_style": "cinematic",
+      "duration": 12,
+      "camera_movement": "tracking",
+      "lighting_style": "golden_hour"
+    },
+    {
+      "request": "Product unboxing of new smartphone",
+      "target_platform": "veo",
+      "aspect_ratio": "9:16",
+      "content_type": "product_review",
+      "duration": 8,
+      "sound_design": "balanced"
+    },
+    {
+      "request": "Fashion transformation - changing 3 outfits",
+      "target_platform": "compatible",
+      "aspect_ratio": "9:16",
+      "content_type": "fashion_content",
+      "montage_style": "fast_cuts",
+      "hook_strategy": "before_after"
+    }
+  ]
+}

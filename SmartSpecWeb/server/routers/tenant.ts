@@ -7,8 +7,8 @@ import type { Express } from "express";
 import type { TenantRequest } from "../_core/tenant";
 import { getTenantTheme, getTenantSeo, clearTenantCache } from "../_core/tenant";
 import { db } from "../db";
-import { tenants, tenantPages } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { tenants, tenantPages, themePresets } from "../../drizzle/schema";
+import { eq, and, asc } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 
 export function registerTenantRoutes(app: Express) {
@@ -334,6 +334,112 @@ export function registerTenantRoutes(app: Express) {
     } catch (error) {
       console.error("Error deleting page:", error);
       res.status(500).json({ error: "Failed to delete page" });
+    }
+  });
+
+  // Get all available theme presets (public)
+  app.get("/api/tenant/theme-presets", async (req, res) => {
+    try {
+      const dbInstance = await db.instance;
+      const presets = await dbInstance
+        .select()
+        .from(themePresets)
+        .where(eq(themePresets.isActive, true))
+        .orderBy(asc(themePresets.sortOrder));
+
+      res.json({ presets });
+    } catch (error) {
+      console.error("Error fetching theme presets:", error);
+      res.status(500).json({ error: "Failed to fetch theme presets" });
+    }
+  });
+
+  // Get a single theme preset by ID
+  app.get("/api/tenant/theme-presets/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const dbInstance = await db.instance;
+      const [preset] = await dbInstance
+        .select()
+        .from(themePresets)
+        .where(eq(themePresets.id, parseInt(id)));
+
+      if (!preset) {
+        return res.status(404).json({ error: "Theme preset not found" });
+      }
+
+      res.json({ preset });
+    } catch (error) {
+      console.error("Error fetching theme preset:", error);
+      res.status(500).json({ error: "Failed to fetch theme preset" });
+    }
+  });
+
+  // Apply theme preset to tenant (domain admin only)
+  app.post("/api/tenant/apply-preset", async (req: TenantRequest, res) => {
+    try {
+      // Authenticate user
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Check if user is domain admin or admin
+      if (user.role !== "domain_admin" && user.role !== "admin") {
+        return res.status(403).json({ error: "Only domain admins can apply theme presets" });
+      }
+
+      if (!req.tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      // Domain admins can only update their own domain
+      if (user.role === "domain_admin" && user.registeredDomain !== req.tenant.primaryDomain) {
+        return res.status(403).json({ error: "You can only update your own domain's theme" });
+      }
+
+      const { presetId } = req.body;
+
+      if (!presetId) {
+        return res.status(400).json({ error: "presetId is required" });
+      }
+
+      const dbInstance = await db.instance;
+
+      // Get the preset
+      const [preset] = await dbInstance
+        .select()
+        .from(themePresets)
+        .where(eq(themePresets.id, presetId));
+
+      if (!preset) {
+        return res.status(404).json({ error: "Theme preset not found" });
+      }
+
+      if (!preset.isActive) {
+        return res.status(400).json({ error: "This theme preset is not available" });
+      }
+
+      // Apply the preset's theme config to the tenant
+      await dbInstance
+        .update(tenants)
+        .set({
+          themeConfig: preset.themeConfig,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenants.id, req.tenant.id));
+
+      // Clear cache
+      clearTenantCache();
+
+      res.json({
+        success: true,
+        message: `Theme "${preset.displayName}" applied successfully`,
+        appliedTheme: preset.themeConfig,
+      });
+    } catch (error) {
+      console.error("Error applying theme preset:", error);
+      res.status(500).json({ error: "Failed to apply theme preset" });
     }
   });
 }

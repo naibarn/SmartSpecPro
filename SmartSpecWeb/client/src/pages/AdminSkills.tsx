@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -36,50 +38,143 @@ import {
   Plus,
   Trash2,
   RefreshCw,
-  Download,
+  FolderOpen,
   Upload,
   Search,
   Edit,
   CheckCircle2,
   XCircle,
   ChevronLeft,
+  Sparkles,
+  Image,
+  Video,
+  Music,
+  Code,
+  FileText,
+  Globe,
+  Bot,
+  Zap,
+  FolderSync,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Skill interface matching database schema
 interface Skill {
-  id: string;
+  id: number;
+  slug: string;
   name: string;
-  description: string;
-  content: string;
-  scope: "global" | "project" | "user";
-  mode: "generic" | "code" | "architect" | "debug" | "ask";
-  version?: string;
-  author?: string;
+  description: string | null;
+  category: string;
+  version: string | null;
+  author: string | null;
+  icon: string | null;
   tags: string[];
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  folderPath: string | null;
+  isAutoTrigger: boolean;
+  triggerPatterns: string[];
+  isEnabled: boolean;
+  enabledByDefault: boolean;
+  creditMultiplier: number;
+  priority: number;
+  availableModels: string[] | null;
+  defaultModel: string | null;
+  systemPrompt: string | null;
+  skillContent: string | null;
+  knowledgebase: string | null;
+  configJson: Record<string, unknown> | null;
+  importSource: string | null;
+  importedFromZip: string | null;
+  createdBy: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
+
+interface FolderInfo {
+  slug: string;
+  hasSkillMd: boolean;
+  hasPython: boolean;
+  hasJs: boolean;
+  metadata?: {
+    name?: string;
+    description?: string;
+    category?: string;
+    version?: string;
+  };
+  existsInDb: boolean;
+}
+
+// Category icon mapping
+const categoryIcons: Record<string, typeof Sparkles> = {
+  image_generation: Image,
+  video_generation: Video,
+  audio_generation: Music,
+  sound_effects: Music,
+  prompt_enhancement: Sparkles,
+  code_assistant: Code,
+  document_analysis: FileText,
+  web_search: Globe,
+  chat_assistant: Bot,
+  automation: Zap,
+  other: Brain,
+};
+
+// Category labels
+const categoryLabels: Record<string, string> = {
+  image_generation: "Image Generation",
+  video_generation: "Video Generation",
+  audio_generation: "Audio Generation",
+  sound_effects: "Sound Effects",
+  prompt_enhancement: "Prompt Enhancement",
+  code_assistant: "Code Assistant",
+  document_analysis: "Document Analysis",
+  web_search: "Web Search",
+  data_analysis: "Data Analysis",
+  translation: "Translation",
+  summarization: "Summarization",
+  chat_assistant: "Chat Assistant",
+  automation: "Automation",
+  other: "Other",
+};
 
 export default function AdminSkills() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const zipInputRef = useRef<HTMLInputElement>(null);
+
+  // UI state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
+  const [isZipDialogOpen, setIsZipDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterScope, setFilterScope] = useState<string>("all");
-  const [filterMode, setFilterMode] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [showEnabledOnly, setShowEnabledOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState("skills");
+
+  // ZIP import state
+  const [zipFile, setZipFile] = useState<File | null>(null);
+  const [zipSlug, setZipSlug] = useState("");
+
+  // New skill form state
   const [newSkillData, setNewSkillData] = useState({
+    slug: "",
     name: "",
     description: "",
-    content: "",
-    scope: "project" as const,
-    mode: "generic" as const,
-    tags: [] as string[],
+    category: "other",
     version: "1.0.0",
     author: "",
+    icon: "sparkles",
+    tags: [] as string[],
+    isAutoTrigger: false,
+    triggerPatterns: [] as string[],
+    isEnabled: true,
+    enabledByDefault: true,
+    creditMultiplier: 1.0,
+    priority: 50,
+    systemPrompt: "",
+    skillContent: "",
   });
 
   // Check auth
@@ -89,117 +184,203 @@ export default function AdminSkills() {
     }
   }, [user, authLoading, setLocation]);
 
-  // Fetch skills
-  const { data: skills, isLoading } = useQuery({
-    queryKey: ["admin-skills"],
-    queryFn: async () => {
-      const response = await fetch("/api/v1/admin/skills", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch skills");
-      return response.json() as Promise<Skill[]>;
-    },
+  // Fetch skills from database
+  const { data: skills, isLoading } = trpc.skills.listFromDb.useQuery({
+    category: filterCategory !== "all" ? filterCategory : undefined,
+    search: searchQuery || undefined,
+    enabledOnly: showEnabledOnly || undefined,
+  });
+
+  // Fetch categories
+  const { data: categories } = trpc.skills.getCategories.useQuery();
+
+  // Fetch vision-capable LLM models for default model selection
+  const { data: visionModels } = trpc.skills.getVisionModels.useQuery();
+
+  // Scan folders
+  const { data: folders, refetch: refetchFolders } = trpc.skills.scanFolders.useQuery(undefined, {
+    enabled: activeTab === "import",
   });
 
   // Create skill mutation
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof newSkillData) => {
-      const response = await fetch("/api/v1/admin/skills", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to create skill");
-      return response.json();
-    },
+  const createMutation = trpc.skills.create.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-skills"] });
+      utils.skills.listFromDb.invalidate();
       setIsCreateDialogOpen(false);
-      setNewSkillData({
-        name: "",
-        description: "",
-        content: "",
-        scope: "project",
-        mode: "generic",
-        tags: [],
-        version: "1.0.0",
-        author: "",
-      });
+      resetNewSkillForm();
       toast({
         title: "Skill Created",
         description: "The skill has been created successfully",
       });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to create skill",
+        description: error.message || "Failed to create skill",
         variant: "destructive",
       });
     },
   });
 
   // Update skill mutation
-  const updateMutation = useMutation({
-    mutationFn: async (skill: Skill) => {
-      const response = await fetch(`/api/v1/admin/skills/${skill.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(skill),
-      });
-      if (!response.ok) throw new Error("Failed to update skill");
-      return response.json();
-    },
+  const updateMutation = trpc.skills.update.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-skills"] });
+      utils.skills.listFromDb.invalidate();
       setEditingSkill(null);
       toast({
         title: "Skill Updated",
         description: "The skill has been updated successfully",
       });
     },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update skill",
+        variant: "destructive",
+      });
+    },
   });
 
   // Delete skill mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/v1/admin/skills/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to delete skill");
-    },
+  const deleteMutation = trpc.skills.delete.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-skills"] });
+      utils.skills.listFromDb.invalidate();
       toast({
         title: "Skill Deleted",
         description: "The skill has been permanently deleted",
       });
     },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete skill",
+        variant: "destructive",
+      });
+    },
   });
 
-  // Filter skills
-  const filteredSkills = skills?.filter((skill) => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (
-        !skill.name.toLowerCase().includes(query) &&
-        !skill.description.toLowerCase().includes(query) &&
-        !skill.tags.some((tag) => tag.toLowerCase().includes(query))
-      ) {
-        return false;
-      }
-    }
-    if (filterScope !== "all" && skill.scope !== filterScope) {
-      return false;
-    }
-    if (filterMode !== "all" && skill.mode !== filterMode) {
-      return false;
-    }
-    return true;
+  // Import folder mutation
+  const importFolderMutation = trpc.skills.importFolder.useMutation({
+    onSuccess: (data) => {
+      utils.skills.listFromDb.invalidate();
+      refetchFolders();
+      toast({
+        title: "Skill Imported",
+        description: `Successfully imported "${data.name}" from folder`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import skill from folder",
+        variant: "destructive",
+      });
+    },
   });
+
+  // Import ZIP mutation
+  const importZipMutation = trpc.skills.importZip.useMutation({
+    onSuccess: (data: any) => {
+      utils.skills.listFromDb.invalidate();
+      refetchFolders();
+      setIsZipDialogOpen(false);
+      setZipFile(null);
+      setZipSlug("");
+      const formatLabel = data.importFormat === "claude" ? "Claude/OpenCode Skill" : "Custom GPT";
+      const extras = [];
+      if (data.hasPython) extras.push("Python");
+      if (data.hasJs) extras.push("JavaScript");
+      if (data.knowledgeFilesCount > 0) extras.push(`${data.knowledgeFilesCount} knowledge files`);
+      toast({
+        title: `${formatLabel} Imported`,
+        description: `Successfully imported "${data.name}"${extras.length > 0 ? ` with ${extras.join(", ")}` : ""}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import from ZIP",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetNewSkillForm = () => {
+    setNewSkillData({
+      slug: "",
+      name: "",
+      description: "",
+      category: "other",
+      version: "1.0.0",
+      author: "",
+      icon: "sparkles",
+      tags: [],
+      isAutoTrigger: false,
+      triggerPatterns: [],
+      isEnabled: true,
+      enabledByDefault: true,
+      creditMultiplier: 1.0,
+      priority: 50,
+      systemPrompt: "",
+      skillContent: "",
+    });
+  };
+
+  const handleCreateSkill = () => {
+    createMutation.mutate({
+      ...newSkillData,
+      description: newSkillData.description || undefined,
+      author: newSkillData.author || undefined,
+      systemPrompt: newSkillData.systemPrompt || undefined,
+      skillContent: newSkillData.skillContent || undefined,
+    });
+  };
+
+  const handleUpdateSkill = () => {
+    if (!editingSkill) return;
+    updateMutation.mutate({
+      id: editingSkill.id,
+      name: editingSkill.name,
+      description: editingSkill.description || undefined,
+      category: editingSkill.category,
+      version: editingSkill.version || undefined,
+      author: editingSkill.author || undefined,
+      icon: editingSkill.icon || undefined,
+      tags: editingSkill.tags,
+      isAutoTrigger: editingSkill.isAutoTrigger,
+      triggerPatterns: editingSkill.triggerPatterns,
+      isEnabled: editingSkill.isEnabled,
+      enabledByDefault: editingSkill.enabledByDefault,
+      creditMultiplier: editingSkill.creditMultiplier,
+      priority: editingSkill.priority,
+      defaultModel: editingSkill.defaultModel, // Add default LLM model
+      systemPrompt: editingSkill.systemPrompt,
+      skillContent: editingSkill.skillContent,
+      knowledgebase: editingSkill.knowledgebase,
+    });
+  };
+
+  const handleZipUpload = async () => {
+    if (!zipFile || !zipSlug) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = (e.target?.result as string)?.split(",")[1];
+      if (base64) {
+        importZipMutation.mutate({
+          fileName: zipFile.name,
+          base64Content: base64,
+          slug: zipSlug,
+        });
+      }
+    };
+    reader.readAsDataURL(zipFile);
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const Icon = categoryIcons[category] || Brain;
+    return <Icon className="h-4 w-4" />;
+  };
 
   if (authLoading || !user || user.role !== "admin") {
     return (
@@ -214,219 +395,368 @@ export default function AdminSkills() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setLocation('/dashboard')}
+        onClick={() => setLocation("/dashboard")}
         className="text-gray-600 mb-4"
       >
         <ChevronLeft className="w-5 h-5 mr-1" />
         Back to Dashboard
       </Button>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Skills Management</h1>
           <p className="text-muted-foreground">
-            Manage global AI agent skills and knowledge bases
+            Manage AI agent skills, import from folders or Custom GPTs
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Skill
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsZipDialogOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import ZIP
+          </Button>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Skill
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Search & Filter
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="search">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Name, description, tags..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="skills">
+            <Brain className="mr-2 h-4 w-4" />
+            Skills ({skills?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="import">
+            <FolderSync className="mr-2 h-4 w-4" />
+            Import Folders
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="skills" className="space-y-6">
+          {/* Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                Search & Filter
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="space-y-2">
+                  <Label htmlFor="search">Search</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="search"
+                      placeholder="Name, description..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name} ({cat.count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Switch
+                      checked={showEnabledOnly}
+                      onCheckedChange={setShowEnabledOnly}
+                    />
+                    <span className="text-sm">Enabled only</span>
+                  </div>
+                </div>
+
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setFilterCategory("all");
+                      setShowEnabledOnly(false);
+                    }}
+                  >
+                    Reset Filters
+                  </Button>
+                </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="scope">Scope</Label>
-              <Select value={filterScope} onValueChange={setFilterScope}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All scopes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Scopes</SelectItem>
-                  <SelectItem value="global">Global</SelectItem>
-                  <SelectItem value="project">Project</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Skills List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Skills Library</CardTitle>
+              <CardDescription>
+                {skills?.length || 0} skill(s) in database
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Auto-Trigger</TableHead>
+                      <TableHead>Credits</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {skills?.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground">
+                          No skills found. Create one or import from folders.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      skills?.map((skill) => (
+                        <TableRow key={skill.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getCategoryIcon(skill.category)}
+                              <div>
+                                <div className="font-medium">{skill.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {skill.slug}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {categoryLabels[skill.category] || skill.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {skill.isAutoTrigger ? (
+                              <Badge className="bg-purple-100 text-purple-800">
+                                <Zap className="mr-1 h-3 w-3" />
+                                Auto
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">Manual</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <span className={skill.creditMultiplier > 1 ? "text-orange-600 font-medium" : ""}>
+                              {skill.creditMultiplier}x
+                            </span>
+                          </TableCell>
+                          <TableCell>{skill.priority}</TableCell>
+                          <TableCell>
+                            {skill.isEnabled ? (
+                              <Badge variant="outline" className="border-green-500 text-green-500">
+                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                Enabled
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-red-500 text-red-500">
+                                <XCircle className="mr-1 h-3 w-3" />
+                                Disabled
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {skill.importSource || "manual"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingSkill(skill)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteMutation.mutate({ id: skill.id })}
+                              >
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            <div className="space-y-2">
-              <Label htmlFor="mode">Mode</Label>
-              <Select value={filterMode} onValueChange={setFilterMode}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All modes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Modes</SelectItem>
-                  <SelectItem value="generic">Generic</SelectItem>
-                  <SelectItem value="code">Code</SelectItem>
-                  <SelectItem value="architect">Architect</SelectItem>
-                  <SelectItem value="debug">Debug</SelectItem>
-                  <SelectItem value="ask">Ask</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="import" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5" />
+                Skill Folders
+              </CardTitle>
+              <CardDescription>
+                Skill folders found in /skills directory. Import them into the database.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-end mb-4">
+                <Button variant="outline" onClick={() => refetchFolders()}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Scan Folders
+                </Button>
+              </div>
 
-      {/* Skills List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Global Skills</CardTitle>
-          <CardDescription>
-            {filteredSkills?.length || 0} skill(s) found
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Scope</TableHead>
-                  <TableHead>Mode</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSkills?.length === 0 ? (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      No skills found. Create one to get started.
-                    </TableCell>
+                    <TableHead>Folder</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Has skill.md</TableHead>
+                    <TableHead>Has Python</TableHead>
+                    <TableHead>Has JS</TableHead>
+                    <TableHead>In Database</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredSkills?.map((skill) => (
-                    <TableRow key={skill.id}>
-                      <TableCell className="font-medium">{skill.name}</TableCell>
-                      <TableCell className="max-w-xs truncate">{skill.description}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{skill.scope}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{skill.mode}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          {skill.tags.slice(0, 2).map((tag) => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {skill.tags.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{skill.tags.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {skill.is_active ? (
-                          <Badge variant="outline" className="border-green-500 text-green-500">
-                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-red-500 text-red-500">
-                            <XCircle className="mr-1 h-3 w-3" />
-                            Inactive
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingSkill(skill)}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteMutation.mutate(skill.id)}
-                          >
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {(!folders || folders.length === 0) ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        No skill folders found. Create folders in /skills directory.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                  ) : (
+                    folders.map((folder) => (
+                      <TableRow key={folder.slug}>
+                        <TableCell className="font-mono">{folder.slug}</TableCell>
+                        <TableCell>
+                          {folder.metadata?.name || folder.slug}
+                        </TableCell>
+                        <TableCell>
+                          {folder.hasSkillMd ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {folder.hasPython ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {folder.hasJs ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {folder.existsInDb ? (
+                            <Badge variant="outline" className="border-green-500 text-green-500">
+                              Imported
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">Not imported</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {folder.existsInDb ? (
+                            <span className="text-muted-foreground text-sm">Already imported</span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => importFolderMutation.mutate({ slug: folder.slug })}
+                              disabled={importFolderMutation.isPending}
+                            >
+                              <FolderSync className="mr-2 h-3 w-3" />
+                              Import
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Create Skill Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Skill</DialogTitle>
             <DialogDescription>
-              Add a new AI agent skill to the global library
+              Add a new AI agent skill to the database
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label htmlFor="name">Skill Name *</Label>
+                <Label htmlFor="slug">Slug *</Label>
+                <Input
+                  id="slug"
+                  placeholder="my-skill"
+                  value={newSkillData.slug}
+                  onChange={(e) => {
+                    const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+                    setNewSkillData({ ...newSkillData, slug });
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Lowercase letters, numbers, and dashes only
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="name">Name *</Label>
                 <Input
                   id="name"
-                  placeholder="my-skill"
+                  placeholder="My Skill"
                   value={newSkillData.name}
                   onChange={(e) =>
                     setNewSkillData({ ...newSkillData, name: e.target.value })
                   }
                 />
               </div>
-              <div>
-                <Label htmlFor="version">Version</Label>
-                <Input
-                  id="version"
-                  placeholder="1.0.0"
-                  value={newSkillData.version}
-                  onChange={(e) =>
-                    setNewSkillData({ ...newSkillData, version: e.target.value })
-                  }
-                />
-              </div>
             </div>
 
             <div>
-              <Label htmlFor="description">Description *</Label>
+              <Label htmlFor="description">Description</Label>
               <Input
                 id="description"
                 placeholder="Brief description of what this skill does"
@@ -437,59 +767,115 @@ export default function AdminSkills() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div>
-                <Label htmlFor="scope">Scope</Label>
+                <Label>Category</Label>
                 <Select
-                  value={newSkillData.scope}
-                  onValueChange={(value: any) =>
-                    setNewSkillData({ ...newSkillData, scope: value })
+                  value={newSkillData.category}
+                  onValueChange={(value) =>
+                    setNewSkillData({ ...newSkillData, category: value })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="global">Global</SelectItem>
-                    <SelectItem value="project">Project</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
+                    {Object.entries(categoryLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="mode">Mode</Label>
-                <Select
-                  value={newSkillData.mode}
-                  onValueChange={(value: any) =>
-                    setNewSkillData({ ...newSkillData, mode: value })
+                <Label htmlFor="priority">Priority</Label>
+                <Input
+                  id="priority"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={newSkillData.priority}
+                  onChange={(e) =>
+                    setNewSkillData({ ...newSkillData, priority: parseInt(e.target.value) || 50 })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="generic">Generic</SelectItem>
-                    <SelectItem value="code">Code</SelectItem>
-                    <SelectItem value="architect">Architect</SelectItem>
-                    <SelectItem value="debug">Debug</SelectItem>
-                    <SelectItem value="ask">Ask</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="creditMultiplier">Credit Multiplier</Label>
+                <Input
+                  id="creditMultiplier"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={newSkillData.creditMultiplier}
+                  onChange={(e) =>
+                    setNewSkillData({ ...newSkillData, creditMultiplier: parseFloat(e.target.value) || 1 })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={newSkillData.isAutoTrigger}
+                  onCheckedChange={(checked) =>
+                    setNewSkillData({ ...newSkillData, isAutoTrigger: checked })
+                  }
+                />
+                <Label>Auto-Trigger</Label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={newSkillData.isEnabled}
+                  onCheckedChange={(checked) =>
+                    setNewSkillData({ ...newSkillData, isEnabled: checked })
+                  }
+                />
+                <Label>Enabled</Label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={newSkillData.enabledByDefault}
+                  onCheckedChange={(checked) =>
+                    setNewSkillData({ ...newSkillData, enabledByDefault: checked })
+                  }
+                />
+                <Label>Enabled by Default</Label>
               </div>
             </div>
 
             <div>
-              <Label htmlFor="content">Content (Markdown) *</Label>
+              <Label htmlFor="systemPrompt">System Prompt</Label>
               <Textarea
-                id="content"
-                placeholder="# Skill Name&#10;&#10;## Description&#10;...&#10;&#10;## Instructions&#10;..."
-                value={newSkillData.content}
+                id="systemPrompt"
+                placeholder="The system prompt for this skill..."
+                value={newSkillData.systemPrompt}
                 onChange={(e) =>
-                  setNewSkillData({ ...newSkillData, content: e.target.value })
+                  setNewSkillData({ ...newSkillData, systemPrompt: e.target.value })
                 }
-                rows={8}
-                className="font-mono"
+                rows={4}
+                className="font-mono text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="skillContent">Skill Content (Markdown)</Label>
+              <Textarea
+                id="skillContent"
+                placeholder="# Skill Instructions&#10;&#10;..."
+                value={newSkillData.skillContent}
+                onChange={(e) =>
+                  setNewSkillData({ ...newSkillData, skillContent: e.target.value })
+                }
+                rows={6}
+                className="font-mono text-sm"
               />
             </div>
           </div>
@@ -498,8 +884,8 @@ export default function AdminSkills() {
               Cancel
             </Button>
             <Button
-              onClick={() => createMutation.mutate(newSkillData)}
-              disabled={!newSkillData.name || !newSkillData.description || !newSkillData.content || createMutation.isPending}
+              onClick={handleCreateSkill}
+              disabled={!newSkillData.slug || !newSkillData.name || createMutation.isPending}
             >
               {createMutation.isPending ? "Creating..." : "Create Skill"}
             </Button>
@@ -510,49 +896,220 @@ export default function AdminSkills() {
       {/* Edit Skill Dialog */}
       {editingSkill && (
         <Dialog open={!!editingSkill} onOpenChange={() => setEditingSkill(null)}>
-          <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Skill</DialogTitle>
               <DialogDescription>
-                Update the skill details
+                Update skill configuration for "{editingSkill.slug}"
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label>Skill Name</Label>
-                <Input value={editingSkill.name} disabled />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label>Slug</Label>
+                  <Input value={editingSkill.slug} disabled className="bg-muted" />
+                </div>
+                <div>
+                  <Label htmlFor="edit-name">Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editingSkill.name}
+                    onChange={(e) =>
+                      setEditingSkill({ ...editingSkill, name: e.target.value })
+                    }
+                  />
+                </div>
               </div>
 
               <div>
                 <Label htmlFor="edit-description">Description</Label>
                 <Input
                   id="edit-description"
-                  value={editingSkill.description}
+                  value={editingSkill.description || ""}
                   onChange={(e) =>
                     setEditingSkill({ ...editingSkill, description: e.target.value })
                   }
                 />
               </div>
 
-              <div>
-                <Label htmlFor="edit-content">Content (Markdown)</Label>
-                <Textarea
-                  id="edit-content"
-                  value={editingSkill.content}
-                  onChange={(e) =>
-                    setEditingSkill({ ...editingSkill, content: e.target.value })
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <Label>Category</Label>
+                  <Select
+                    value={editingSkill.category}
+                    onValueChange={(value) =>
+                      setEditingSkill({ ...editingSkill, category: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(categoryLabels).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-priority">Priority</Label>
+                  <Input
+                    id="edit-priority"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={editingSkill.priority}
+                    onChange={(e) =>
+                      setEditingSkill({ ...editingSkill, priority: parseInt(e.target.value) || 50 })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-creditMultiplier">Credit Multiplier</Label>
+                  <Input
+                    id="edit-creditMultiplier"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={editingSkill.creditMultiplier}
+                    onChange={(e) =>
+                      setEditingSkill({ ...editingSkill, creditMultiplier: parseFloat(e.target.value) || 1 })
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Default LLM Model for Skill Execution */}
+              <div className="space-y-2 pt-2 border-t">
+                <Label className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  Default LLM Model (Auto Prompt)
+                </Label>
+                <Select
+                  value={editingSkill.defaultModel || "__system_default__"}
+                  onValueChange={(value) =>
+                    setEditingSkill({ ...editingSkill, defaultModel: value === "__system_default__" ? null : value })
                   }
-                  rows={8}
-                  className="font-mono"
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select default model..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__system_default__">
+                      <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>
+                    </SelectItem>
+                    {visionModels?.models?.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{model.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({model.providerDisplayName})
+                          </span>
+                          {model.isDefault && (
+                            <Badge variant="secondary" className="text-[10px] h-4">
+                              provider default
+                            </Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  The LLM model used for Auto Prompt in Media Studio. Users can override in Advanced Mode.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={editingSkill.isAutoTrigger}
+                    onCheckedChange={(checked) =>
+                      setEditingSkill({ ...editingSkill, isAutoTrigger: checked })
+                    }
+                  />
+                  <Label>Auto-Trigger</Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={editingSkill.isEnabled}
+                    onCheckedChange={(checked) =>
+                      setEditingSkill({ ...editingSkill, isEnabled: checked })
+                    }
+                  />
+                  <Label>Enabled</Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={editingSkill.enabledByDefault}
+                    onCheckedChange={(checked) =>
+                      setEditingSkill({ ...editingSkill, enabledByDefault: checked })
+                    }
+                  />
+                  <Label>Enabled by Default</Label>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-systemPrompt">System Prompt</Label>
+                <Textarea
+                  id="edit-systemPrompt"
+                  value={editingSkill.systemPrompt || ""}
+                  onChange={(e) =>
+                    setEditingSkill({ ...editingSkill, systemPrompt: e.target.value })
+                  }
+                  rows={4}
+                  className="font-mono text-sm"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="edit-skillContent">Skill Content (Markdown)</Label>
+                <Textarea
+                  id="edit-skillContent"
+                  value={editingSkill.skillContent || ""}
+                  onChange={(e) =>
+                    setEditingSkill({ ...editingSkill, skillContent: e.target.value })
+                  }
+                  rows={6}
+                  className="font-mono text-sm"
+                />
+              </div>
+
+              {editingSkill.knowledgebase && (
+                <div>
+                  <Label>Knowledgebase</Label>
+                  <Textarea
+                    value={editingSkill.knowledgebase}
+                    onChange={(e) =>
+                      setEditingSkill({ ...editingSkill, knowledgebase: e.target.value })
+                    }
+                    rows={4}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              )}
+
+              {editingSkill.folderPath && (
+                <div>
+                  <Label>Folder Path</Label>
+                  <Input value={editingSkill.folderPath} disabled className="bg-muted" />
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingSkill(null)}>
                 Cancel
               </Button>
               <Button
-                onClick={() => updateMutation.mutate(editingSkill)}
+                onClick={handleUpdateSkill}
                 disabled={updateMutation.isPending}
               >
                 {updateMutation.isPending ? "Saving..." : "Save Changes"}
@@ -561,6 +1118,91 @@ export default function AdminSkills() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Import ZIP Dialog */}
+      <Dialog open={isZipDialogOpen} onOpenChange={setIsZipDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Skill from ZIP</DialogTitle>
+            <DialogDescription className="space-y-2">
+              <span className="block">Supports two formats:</span>
+              <span className="block text-xs">
+                <strong>1. Claude/OpenCode:</strong> ZIP with skill.md, python/, js/ folders
+              </span>
+              <span className="block text-xs">
+                <strong>2. Custom GPT:</strong> ZIP with system prompt + knowledge files
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="zipSlug">Skill Slug *</Label>
+              <Input
+                id="zipSlug"
+                placeholder="my-custom-gpt"
+                value={zipSlug}
+                onChange={(e) => {
+                  const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+                  setZipSlug(slug);
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Unique identifier for this skill
+              </p>
+            </div>
+
+            <div>
+              <Label>ZIP File *</Label>
+              <div className="mt-2">
+                <input
+                  ref={zipInputRef}
+                  type="file"
+                  accept=".zip"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setZipFile(file);
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => zipInputRef.current?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {zipFile ? zipFile.name : "Select ZIP file"}
+                </Button>
+              </div>
+            </div>
+
+            {zipFile && (
+              <div className="p-3 bg-muted rounded-md">
+                <p className="text-sm">
+                  <span className="font-medium">File:</span> {zipFile.name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium">Size:</span> {(zipFile.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsZipDialogOpen(false);
+              setZipFile(null);
+              setZipSlug("");
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleZipUpload}
+              disabled={!zipFile || !zipSlug || importZipMutation.isPending}
+            >
+              {importZipMutation.isPending ? "Importing..." : "Import"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

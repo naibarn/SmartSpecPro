@@ -800,6 +800,9 @@ export const chatRouter = router({
         quality: skillQualitySchema.optional(),
         style: skillStyleSchema.optional(),
         conversationId: z.number().optional(),
+        // Reference images support (1-5 images) - accept relative URLs like /uploads/...
+        referenceImageUrls: z.array(z.string().min(1)).max(5).optional(),
+        referenceStyleUrl: z.string().min(1).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -831,8 +834,9 @@ export const chatRouter = router({
         };
       }
 
-      // Get secure token for media generation
-      const userToken = createSkillToken(ctx.user.id);
+      // Use the user's session token for media generation (from context)
+      // This ensures the Python backend receives a valid token signed with the same secret
+      const userToken = ctx.userToken || createSkillToken(ctx.user.id);
 
       // Execute the skill
       const result = await executeSkill(
@@ -846,6 +850,8 @@ export const chatRouter = router({
           voice: input.voice,
           quality: input.quality,
           style: input.style,
+          referenceImageUrls: input.referenceImageUrls,
+          referenceStyleUrl: input.referenceStyleUrl,
         },
         ctx.user.id,
         userToken
@@ -889,5 +895,40 @@ export const chatRouter = router({
         estimatedCredits: cost,
         model: input.model || skill.defaultModel,
       };
+    }),
+
+  /**
+   * Add skill/media credits to conversation total
+   * Called after skill execution (image/video/audio generation) to track usage
+   */
+  addSkillCreditsToConversation: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.number(),
+        creditsUsed: z.number().min(0),
+        skillUsed: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify conversation ownership
+      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      if (!conversation) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Conversation not found",
+        });
+      }
+
+      // Update conversation total credits
+      if (input.creditsUsed > 0) {
+        await updateConversationCredits(input.conversationId, input.creditsUsed);
+        debugLog("Chat", "Added skill credits to conversation", {
+          conversationId: input.conversationId,
+          creditsUsed: input.creditsUsed,
+          skillUsed: input.skillUsed,
+        });
+      }
+
+      return { success: true, creditsAdded: input.creditsUsed };
     }),
 });

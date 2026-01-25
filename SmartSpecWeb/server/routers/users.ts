@@ -422,6 +422,39 @@ export const usersRouter = router({
     }),
 
   /**
+   * Delete own account (for authenticated users)
+   */
+  deleteAccount: protectedProcedure
+    .input(z.object({
+      confirmEmail: z.string().email(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Verify the email matches the logged-in user
+      if (input.confirmEmail.toLowerCase() !== ctx.user.email?.toLowerCase()) {
+        throw new Error("Email confirmation does not match your account email");
+      }
+
+      // Prevent admins from deleting their own accounts through this endpoint
+      if (ctx.user.role === "admin") {
+        throw new Error("Admin accounts cannot be deleted through this endpoint. Please contact support.");
+      }
+
+      const userId = ctx.user.id;
+
+      // Delete user's data in order (due to foreign key constraints)
+      // 1. Delete credit transactions
+      await db.delete(creditTransactions).where(eq(creditTransactions.userId, userId));
+
+      // 2. Delete the user
+      await db.delete(users).where(eq(users.id, userId));
+
+      return { success: true, message: "Account deleted successfully" };
+    }),
+
+  /**
    * Get current user's profile (for any authenticated user)
    */
   me: protectedProcedure.query(async ({ ctx }) => {
@@ -522,4 +555,142 @@ export const usersRouter = router({
       domain: ctx.user.role === 'domain_admin' ? ctx.user.registeredDomain : null,
     };
   }),
+
+  /**
+   * Domain Admin: List users in their domain
+   * Domain admins can only see users registered in their domain
+   */
+  listByDomain: domainAdminProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
+    }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const conditions = [];
+
+      // Force filter by domain admin's domain
+      if (ctx.user.role === 'domain_admin') {
+        conditions.push(eq(users.registeredDomain, ctx.user.registeredDomain || ''));
+      }
+
+      if (input.search) {
+        conditions.push(
+          or(
+            like(users.name, `%${input.search}%`),
+            like(users.email, `%${input.search}%`)
+          )
+        );
+      }
+
+      // Get total count
+      const [countResult] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(users)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+      // Get users
+      let query = db.select().from(users);
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as typeof query;
+      }
+
+      const userList = await query
+        .orderBy(desc(users.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      return {
+        users: userList.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          credits: u.credits,
+          plan: u.plan,
+          isDisabled: u.isDisabled,
+          createdAt: u.createdAt,
+          lastSignedIn: u.lastSignedIn,
+        })),
+        total: Number(countResult.count),
+        limit: input.limit,
+        offset: input.offset,
+      };
+    }),
+
+  /**
+   * Domain Admin: Transfer own credits to a user in the same domain
+   * Domain admins can only transfer from their own balance, not create credits
+   */
+  transferCredits: domainAdminProcedure
+    .input(z.object({
+      toUserId: z.number(),
+      amount: z.number().min(1),
+      note: z.string().max(512).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // 1. Get target user
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, input.toUserId))
+        .limit(1);
+
+      if (!targetUser) {
+        throw new Error("User not found");
+      }
+
+      // 2. Verify target user is in same domain
+      if (ctx.user.role === 'domain_admin' && targetUser.registeredDomain !== ctx.user.registeredDomain) {
+        throw new Error("You can only transfer credits to users in your domain");
+      }
+
+      // 3. Cannot transfer to self
+      if (targetUser.id === ctx.user.id) {
+        throw new Error("Cannot transfer credits to yourself");
+      }
+
+      // 4. Check domain admin has enough credits
+      if (ctx.user.credits < input.amount) {
+        throw new Error("Insufficient credits for transfer");
+      }
+
+      // 5. Deduct from domain admin
+      const deductResult = await deductCredits({
+        userId: ctx.user.id,
+        amount: input.amount,
+        description: `Transfer to ${targetUser.email || targetUser.name}: ${input.note || 'Credit transfer'}`,
+        metadata: {
+          action: 'domain_admin_transfer',
+          toUserId: input.toUserId,
+          toUserEmail: targetUser.email,
+        },
+      });
+
+      // 6. Add to target user
+      const addResult = await addCredits({
+        userId: input.toUserId,
+        amount: input.amount,
+        type: 'bonus' as TransactionType,
+        description: `Transfer from domain admin (${ctx.user.email || ctx.user.name}): ${input.note || 'Credit transfer'}`,
+        metadata: {
+          action: 'domain_admin_transfer',
+          fromUserId: ctx.user.id,
+          fromUserEmail: ctx.user.email,
+        },
+      });
+
+      return {
+        success: true,
+        senderNewBalance: deductResult.newBalance,
+        recipientNewBalance: addResult.newBalance,
+      };
+    }),
 });

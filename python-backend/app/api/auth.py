@@ -182,8 +182,8 @@ async def login(
             detail="Incorrect email or password"
         )
     
-    # Verify password
-    if not verify_password(request.password, user.password_hash):
+    # Verify password (user.password is the hash stored in database)
+    if not user.password or not verify_password(request.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"

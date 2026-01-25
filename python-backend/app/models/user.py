@@ -11,15 +11,16 @@ from app.core.database import Base
 
 
 class Role(str, enum.Enum):
-    """User role enum"""
+    """User role enum - must match SmartSpecWeb schema exactly"""
     user = "user"
     admin = "admin"
+    domain_admin = "domain_admin"
 
 
 class Plan(str, enum.Enum):
-    """User plan enum"""
+    """User plan enum - must match SmartSpecWeb schema exactly"""
     free = "free"
-    basic = "basic"
+    starter = "starter"  # SmartSpecWeb uses 'starter', not 'basic'
     pro = "pro"
     enterprise = "enterprise"
 
@@ -106,6 +107,11 @@ class User(Base):
     def updated_at(self):
         """Compatibility: returns updatedAt field"""
         return self.updatedAt
+
+    @property
+    def email_verified(self) -> bool:
+        """Compatibility: always returns True (no email verification in SmartSpecWeb)"""
+        return True
 
     def __repr__(self):
         return f"<User {self.email}>"

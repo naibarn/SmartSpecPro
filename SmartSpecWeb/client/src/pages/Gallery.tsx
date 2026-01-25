@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { trpc } from '@/lib/trpc';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Image as ImageIcon,
   Video,
@@ -40,7 +41,9 @@ import {
   Clock,
   User,
   Tag,
-  Loader2
+  Loader2,
+  Cpu,
+  Trash2
 } from 'lucide-react';
 import {
   Select,
@@ -80,6 +83,7 @@ interface GalleryItem {
   createdAt: Date;
   demoUrl: string | null;
   duration: string | null;
+  model: string | null;
 }
 
 // Aspect ratio styles
@@ -121,6 +125,9 @@ const formatDate = (date: Date): string => {
 };
 
 export default function Gallery() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const [activeTab, setActiveTab] = useState<ContentType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -128,7 +135,7 @@ export default function Gallery() {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   // Fetch gallery items from API
-  const { data: items, isLoading, error } = trpc.gallery.list.useQuery({
+  const { data: items, isLoading, error, refetch } = trpc.gallery.list.useQuery({
     type: activeTab === 'all' ? undefined : activeTab,
     search: searchQuery || undefined,
     limit: 50,
@@ -138,6 +145,17 @@ export default function Gallery() {
   const viewMutation = trpc.gallery.view.useMutation();
   const likeMutation = trpc.gallery.like.useMutation();
   const downloadMutation = trpc.gallery.download.useMutation();
+  const deleteMutation = trpc.gallery.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Item deleted successfully');
+      refetch();
+      setIsLightboxOpen(false);
+      setSelectedItem(null);
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete: ${error.message}`);
+    },
+  });
 
   // Tab configuration
   const tabs = useMemo(() => {
@@ -200,6 +218,14 @@ export default function Gallery() {
     const url = `${window.location.origin}/gallery?item=${item.id}`;
     navigator.clipboard.writeText(url);
     toast.success('Link copied to clipboard!');
+  };
+
+  // Handle delete (admin only)
+  const handleDelete = (item: GalleryItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to delete "${item.title}"?`)) {
+      deleteMutation.mutate({ id: item.id });
+    }
   };
 
   // Navigate lightbox
@@ -459,6 +485,21 @@ export default function Gallery() {
                               >
                                 <Share2 className="w-4 h-4" />
                               </Button>
+                              {isAdmin && (
+                                <Button
+                                  size="icon"
+                                  variant="secondary"
+                                  className="h-8 w-8 bg-red-500/90 hover:bg-red-600 text-white"
+                                  onClick={(e) => handleDelete(item, e)}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  {deleteMutation.isPending ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              )}
                             </div>
                             {item.type === 'website' && item.demoUrl && (
                               <Button
@@ -479,7 +520,7 @@ export default function Gallery() {
                         {/* Content */}
                         <CardContent className="p-4">
                           <h3 className="font-semibold truncate mb-1">{item.title}</h3>
-                          
+
                           {/* Author */}
                           {item.authorName && (
                             <div className="flex items-center gap-2 mb-2">
@@ -489,6 +530,14 @@ export default function Gallery() {
                               <span className="text-sm text-muted-foreground truncate">
                                 {item.authorName}
                               </span>
+                            </div>
+                          )}
+
+                          {/* Model */}
+                          {item.model && (
+                            <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
+                              <Cpu className="w-3 h-3" />
+                              <span className="truncate">{item.model}</span>
                             </div>
                           )}
 
@@ -578,7 +627,15 @@ export default function Gallery() {
                         <span>{selectedItem.authorName}</span>
                       </div>
                     )}
-                    
+
+                    {/* Model */}
+                    {selectedItem.model && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Cpu className="w-4 h-4" />
+                        <span>{selectedItem.model}</span>
+                      </div>
+                    )}
+
                     {/* Date */}
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="w-4 h-4" />
@@ -636,6 +693,20 @@ export default function Gallery() {
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />
                         View Demo
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <Button
+                        variant="destructive"
+                        onClick={(e) => handleDelete(selectedItem, e)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        {deleteMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-2" />
+                        )}
+                        Delete
                       </Button>
                     )}
                   </div>
