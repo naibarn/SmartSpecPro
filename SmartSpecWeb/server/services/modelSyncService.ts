@@ -16,6 +16,7 @@ interface OpenRouterModel {
   name: string;
   description?: string;
   context_length?: number;
+  created?: number; // Unix timestamp when model was added to OpenRouter
   pricing?: {
     prompt: string;
     completion: string;
@@ -38,6 +39,23 @@ interface OpenRouterModel {
   };
 }
 
+// Configuration for model sync
+const SYNC_CONFIG = {
+  // Only sync models created within the last N days (3 months = ~90 days)
+  maxAgeDays: 90,
+  // Set to false to sync all models regardless of age
+  filterByDate: true,
+};
+
+// Configuration for model cleanup
+const CLEANUP_CONFIG = {
+  // Delete models older than N days (6 months = ~180 days)
+  maxAgeDays: 180,
+  // If true, only delete models that have createdAt date
+  // Models without createdAt will be kept (safety measure)
+  requireCreatedAt: true,
+};
+
 interface SyncedModel {
   id: string;
   name: string;
@@ -48,6 +66,21 @@ interface SyncedModel {
   };
   provider?: string;
   description?: string;
+  createdAt?: number; // Unix timestamp when model was added
+}
+
+/**
+ * Check if a model is within the allowed age range
+ */
+function isModelRecent(model: OpenRouterModel): boolean {
+  if (!SYNC_CONFIG.filterByDate) return true;
+  if (!model.created) return true; // If no date, include it
+
+  const now = Math.floor(Date.now() / 1000);
+  const maxAgeSeconds = SYNC_CONFIG.maxAgeDays * 24 * 60 * 60;
+  const modelAge = now - model.created;
+
+  return modelAge <= maxAgeSeconds;
 }
 
 interface SyncResult {
@@ -125,10 +158,10 @@ function parsePricing(priceStr?: string): number {
 function convertModel(model: OpenRouterModel): SyncedModel {
   // Extract provider from model ID (e.g., "openai/gpt-4" -> "openai")
   const provider = model.id.includes("/") ? model.id.split("/")[0] : undefined;
-  
+
   // Create display name from model ID
   const displayName = model.name || model.id.split("/").pop() || model.id;
-  
+
   return {
     id: model.id,
     name: displayName,
@@ -139,35 +172,50 @@ function convertModel(model: OpenRouterModel): SyncedModel {
     } : undefined,
     provider,
     description: model.description,
+    createdAt: model.created, // Preserve creation timestamp
   };
 }
 
 /**
  * Filter models by provider prefix
+ *
+ * Special case: "openrouter" provider gets ALL models since it's a gateway
  */
 function filterModelsByProvider(models: SyncedModel[], providerName: string): SyncedModel[] {
-  const prefixes = PROVIDER_PREFIXES[providerName.toLowerCase()];
+  const lowerName = providerName.toLowerCase();
+
+  // OpenRouter is a gateway - it should have access to ALL models
+  if (lowerName === "openrouter") {
+    return models; // Return all models without filtering
+  }
+
+  const prefixes = PROVIDER_PREFIXES[lowerName];
   if (!prefixes) {
     // If no prefix defined, try to match by provider field
-    return models.filter(m => 
-      m.provider?.toLowerCase() === providerName.toLowerCase()
+    return models.filter(m =>
+      m.provider?.toLowerCase() === lowerName
     );
   }
-  
-  return models.filter(m => 
+
+  return models.filter(m =>
     prefixes.some(prefix => m.id.toLowerCase().startsWith(prefix.toLowerCase()))
   );
 }
 
 /**
  * Sync models for a specific provider from OpenRouter
+ *
+ * Behavior:
+ * - KEEPS all existing models (never removes old models)
+ * - ADDS only new models that are recent (within SYNC_CONFIG.maxAgeDays)
+ * - UPDATES existing models if pricing/context length changed
  */
 export async function syncProviderModels(
   providerId: number,
   openRouterApiKey?: string
 ): Promise<SyncResult> {
   const startTime = Date.now();
-  
+
   try {
     // Get provider from database
     const [provider] = await db
@@ -175,55 +223,71 @@ export async function syncProviderModels(
       .from(llmProviders)
       .where(eq(llmProviders.id, providerId))
       .limit(1);
-    
+
     if (!provider) {
       throw new Error("Provider not found");
     }
-    
+
     // Fetch all models from OpenRouter
     const allModels = await fetchOpenRouterModels(openRouterApiKey);
-    const convertedModels = allModels.map(convertModel);
-    
+
+    // Filter by date first (only recent models for adding new ones)
+    const recentModels = allModels.filter(isModelRecent);
+    const convertedRecentModels = recentModels.map(convertModel);
+
+    // All models for updating existing ones (no date filter)
+    const allConvertedModels = allModels.map(convertModel);
+
     // Filter models for this provider
-    const providerModels = filterModelsByProvider(convertedModels, provider.providerName);
-    
+    const recentProviderModels = filterModelsByProvider(convertedRecentModels, provider.providerName);
+    const allProviderModels = filterModelsByProvider(allConvertedModels, provider.providerName);
+
     // Get existing models
     const existingModels = (provider.availableModels as SyncedModel[]) || [];
     const existingIds = new Set(existingModels.map(m => m.id));
-    const newIds = new Set(providerModels.map(m => m.id));
-    
+    const allProviderIds = new Set(allProviderModels.map(m => m.id));
+
     // Calculate diff
-    const addedModels = providerModels.filter(m => !existingIds.has(m.id));
-    const removedModels = existingModels.filter(m => !newIds.has(m.id));
+    // Only add models that are recent AND not already in our list
+    const addedModels = recentProviderModels.filter(m => !existingIds.has(m.id));
     const updatedModels: SyncedModel[] = [];
-    
-    // Check for updates (context length or pricing changes)
-    for (const newModel of providerModels) {
+    const skippedOldModels: string[] = [];
+
+    // Count how many old models we're skipping
+    const oldModelsNotAdded = allProviderModels.filter(m =>
+      !existingIds.has(m.id) && !recentProviderModels.some(r => r.id === m.id)
+    );
+    skippedOldModels.push(...oldModelsNotAdded.map(m => m.id));
+
+    // Check for updates (context length or pricing changes) - update all existing models
+    for (const newModel of allProviderModels) {
       const existing = existingModels.find(m => m.id === newModel.id);
       if (existing) {
-        const hasChanges = 
+        const hasChanges =
           existing.contextLength !== newModel.contextLength ||
           existing.pricing?.input !== newModel.pricing?.input ||
           existing.pricing?.output !== newModel.pricing?.output;
-        
+
         if (hasChanges) {
           updatedModels.push(newModel);
         }
       }
     }
-    
-    // Merge: keep existing models that are still available, add new ones
+
+    // Merge: KEEP ALL existing models + add only recent new ones
     const mergedModels = [
-      ...existingModels.filter(m => newIds.has(m.id)).map(existing => {
-        const updated = providerModels.find(m => m.id === existing.id);
-        return updated || existing;
+      // Keep all existing models, but update if changes found
+      ...existingModels.map(existing => {
+        const updated = allProviderModels.find(m => m.id === existing.id);
+        return updated || existing; // Use updated data if available, otherwise keep as-is
       }),
+      // Add only new recent models
       ...addedModels,
     ];
-    
+
     // Sort by name
     mergedModels.sort((a, b) => a.name.localeCompare(b.name));
-    
+
     // Update database
     await db
       .update(llmProviders)
@@ -232,16 +296,16 @@ export async function syncProviderModels(
         updatedAt: new Date(),
       })
       .where(eq(llmProviders.id, providerId));
-    
+
     return {
       success: true,
       provider: provider.displayName,
       modelsAdded: addedModels.length,
-      modelsRemoved: removedModels.length,
+      modelsRemoved: 0, // Never remove models
       modelsUpdated: updatedModels.length,
       totalModels: mergedModels.length,
       addedModels: addedModels.map(m => m.id),
-      removedModels: removedModels.map(m => m.id),
+      removedModels: [], // Never remove models
       updatedModels: updatedModels.map(m => m.id),
       syncedAt: new Date(),
     };
@@ -389,4 +453,164 @@ export async function importModelsFromOpenRouter(
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
+}
+
+/**
+ * Check if a synced model is too old and should be cleaned up
+ */
+function isModelTooOld(model: SyncedModel): boolean {
+  // If model has no createdAt and we require it, keep the model (safety)
+  if (!model.createdAt) {
+    return !CLEANUP_CONFIG.requireCreatedAt;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const maxAgeSeconds = CLEANUP_CONFIG.maxAgeDays * 24 * 60 * 60;
+  const modelAge = now - model.createdAt;
+
+  return modelAge > maxAgeSeconds;
+}
+
+/**
+ * Cleanup result interface
+ */
+interface CleanupResult {
+  success: boolean;
+  provider: string;
+  modelsRemoved: number;
+  modelsKept: number;
+  removedModels: string[];
+  error?: string;
+}
+
+/**
+ * Clean up old models from a specific provider
+ * Removes models older than CLEANUP_CONFIG.maxAgeDays
+ */
+export async function cleanupOldModels(providerId: number): Promise<CleanupResult> {
+  try {
+    const [provider] = await db
+      .select()
+      .from(llmProviders)
+      .where(eq(llmProviders.id, providerId))
+      .limit(1);
+
+    if (!provider) {
+      return {
+        success: false,
+        provider: "Unknown",
+        modelsRemoved: 0,
+        modelsKept: 0,
+        removedModels: [],
+        error: "Provider not found",
+      };
+    }
+
+    const existingModels = (provider.availableModels as SyncedModel[]) || [];
+
+    // Separate models to keep and remove
+    const modelsToKeep: SyncedModel[] = [];
+    const modelsToRemove: SyncedModel[] = [];
+
+    for (const model of existingModels) {
+      if (isModelTooOld(model)) {
+        modelsToRemove.push(model);
+      } else {
+        modelsToKeep.push(model);
+      }
+    }
+
+    // Update database if any models were removed
+    if (modelsToRemove.length > 0) {
+      await db
+        .update(llmProviders)
+        .set({
+          availableModels: modelsToKeep,
+          updatedAt: new Date(),
+        })
+        .where(eq(llmProviders.id, providerId));
+    }
+
+    return {
+      success: true,
+      provider: provider.displayName,
+      modelsRemoved: modelsToRemove.length,
+      modelsKept: modelsToKeep.length,
+      removedModels: modelsToRemove.map(m => m.id),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      provider: "Unknown",
+      modelsRemoved: 0,
+      modelsKept: 0,
+      removedModels: [],
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Clean up old models from all providers
+ */
+export async function cleanupAllOldModels(): Promise<CleanupResult[]> {
+  const providers = await db.select().from(llmProviders);
+
+  const results: CleanupResult[] = [];
+
+  for (const provider of providers) {
+    const result = await cleanupOldModels(provider.id);
+    results.push(result);
+  }
+
+  return results;
+}
+
+/**
+ * Get cleanup preview - shows what would be deleted without actually deleting
+ */
+export async function getCleanupPreview(providerId?: number): Promise<{
+  providers: Array<{
+    id: number;
+    name: string;
+    modelsToRemove: string[];
+    modelsToKeep: number;
+  }>;
+  totalToRemove: number;
+  totalToKeep: number;
+}> {
+  const query = providerId
+    ? db.select().from(llmProviders).where(eq(llmProviders.id, providerId))
+    : db.select().from(llmProviders);
+
+  const providers = await query;
+
+  const result = {
+    providers: [] as Array<{
+      id: number;
+      name: string;
+      modelsToRemove: string[];
+      modelsToKeep: number;
+    }>,
+    totalToRemove: 0,
+    totalToKeep: 0,
+  };
+
+  for (const provider of providers) {
+    const models = (provider.availableModels as SyncedModel[]) || [];
+    const toRemove = models.filter(isModelTooOld);
+    const toKeep = models.filter(m => !isModelTooOld(m));
+
+    result.providers.push({
+      id: provider.id,
+      name: provider.displayName,
+      modelsToRemove: toRemove.map(m => m.id),
+      modelsToKeep: toKeep.length,
+    });
+
+    result.totalToRemove += toRemove.length;
+    result.totalToKeep += toKeep.length;
+  }
+
+  return result;
 }

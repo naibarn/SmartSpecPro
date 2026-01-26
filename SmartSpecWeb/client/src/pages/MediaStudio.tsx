@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -65,6 +66,7 @@ import {
   Maximize2,
   Copy,
   CheckCircle,
+  Search,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -170,6 +172,7 @@ export default function MediaStudio() {
 
   // LLM model selection for Auto Prompt (Advanced Mode)
   const [selectedLlmModel, setSelectedLlmModel] = useState<string>("");
+  const [llmModelSearch, setLlmModelSearch] = useState("");
 
   // API queries
   const { data: credits } = trpc.credits.balance.useQuery();
@@ -306,8 +309,14 @@ export default function MediaStudio() {
     // Advanced Mode is OFF by default - user must enable it manually
   }, [selectedSkillId]);
 
+  // Track if user has manually selected a model (to avoid overriding their choice)
+  const [llmModelManuallySet, setLlmModelManuallySet] = useState(false);
+
   // Set default LLM model when skill config loads (from Skills Management default)
+  // Only set default if user hasn't manually selected a model
   useEffect(() => {
+    if (llmModelManuallySet) return; // Don't override user's manual selection
+
     if (skillConfig?.defaultModel) {
       setSelectedLlmModel(skillConfig.defaultModel);
     } else if (visionModels?.models?.length && !selectedLlmModel) {
@@ -315,7 +324,7 @@ export default function MediaStudio() {
       const defaultModel = visionModels.models.find(m => m.isDefault) || visionModels.models[0];
       setSelectedLlmModel(defaultModel.id);
     }
-  }, [skillConfig, visionModels, selectedLlmModel]);
+  }, [skillConfig, visionModels, llmModelManuallySet]);
 
   // Handle file upload for reference images
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -552,11 +561,13 @@ export default function MediaStudio() {
     setIsGenerating(true);
     console.log("[handleGenerate] Starting generation...");
     try {
-      const skillId = activeTab === "image"
+      // Use selected skill ID, or fall back to media type for skill lookup
+      const skillId = selectedSkillId || (activeTab === "image"
         ? "image-generation"
         : activeTab === "video"
         ? "video-generation"
-        : "audio-generation";
+        : "audio-generation");
+      console.log("[handleGenerate] Using skillId:", skillId, "selectedSkillId:", selectedSkillId);
 
       // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
       // Otherwise use aspectRatio from Settings section
@@ -1336,7 +1347,10 @@ export default function MediaStudio() {
                     </label>
                     <Select
                       value={selectedLlmModel || undefined}
-                      onValueChange={setSelectedLlmModel}
+                      onValueChange={(value) => {
+                        setSelectedLlmModel(value);
+                        setLlmModelManuallySet(true); // Mark as user's manual choice
+                      }}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select LLM model...">
@@ -1345,13 +1359,52 @@ export default function MediaStudio() {
                             : selectedLlmModel || "Select LLM model..."}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
-                        {visionModels?.models?.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.name} ({model.providerDisplayName})
-                            {model.isDefault && " • default"}
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="max-h-[300px]">
+                        {/* Search input */}
+                        <div className="sticky top-0 bg-white p-2 border-b z-10">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Search models..."
+                              value={llmModelSearch}
+                              onChange={(e) => setLlmModelSearch(e.target.value)}
+                              className="pl-8 h-8"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                        <ScrollArea className="max-h-[240px]">
+                          {visionModels?.models
+                            ?.filter((model) => {
+                              if (!llmModelSearch) return true;
+                              const search = llmModelSearch.toLowerCase();
+                              return (
+                                model.name.toLowerCase().includes(search) ||
+                                model.id.toLowerCase().includes(search) ||
+                                model.providerDisplayName?.toLowerCase().includes(search)
+                              );
+                            })
+                            .map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name} ({model.providerDisplayName})
+                                {model.isDefault && " • default"}
+                              </SelectItem>
+                            ))}
+                          {visionModels?.models?.filter((model) => {
+                            if (!llmModelSearch) return true;
+                            const search = llmModelSearch.toLowerCase();
+                            return (
+                              model.name.toLowerCase().includes(search) ||
+                              model.id.toLowerCase().includes(search) ||
+                              model.providerDisplayName?.toLowerCase().includes(search)
+                            );
+                          }).length === 0 && (
+                            <div className="py-4 text-center text-sm text-muted-foreground">
+                              No models found
+                            </div>
+                          )}
+                        </ScrollArea>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">

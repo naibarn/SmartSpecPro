@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,15 +108,24 @@ export default function AdminLLMProviders() {
   const [testResult, setTestResult] = useState<{ id: number; success: boolean; message: string } | null>(null);
   const [activeTab, setActiveTab] = useState("settings");
   const [syncResult, setSyncResult] = useState<any>(null);
+  const [cleanupResult, setCleanupResult] = useState<any>(null);
+  const [isCleanupDialogOpen, setIsCleanupDialogOpen] = useState(false);
   const [isBrowseDialogOpen, setIsBrowseDialogOpen] = useState(false);
   const [browseSearch, setBrowseSearch] = useState("");
   const [browseProvider, setBrowseProvider] = useState("");
   const [selectedModelsToImport, setSelectedModelsToImport] = useState<string[]>([]);
+  const [browsePage, setBrowsePage] = useState(0);
+  const BROWSE_MODELS_PER_PAGE = 50;
 
   // Model editing state
   const [editingModels, setEditingModels] = useState<ModelVersion[]>([]);
   const [newModel, setNewModel] = useState<ModelVersion>({ id: "", name: "" });
   const [deleteModelConfirm, setDeleteModelConfirm] = useState<string | null>(null);
+
+  // Pagination and search for models
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [modelPage, setModelPage] = useState(0);
+  const MODELS_PER_PAGE = 20;
 
   // Form state
   const [formData, setFormData] = useState({
@@ -229,13 +238,36 @@ export default function AdminLLMProviders() {
     },
   });
 
+  // Cleanup mutations
+  const cleanupAllMutation = trpc.llmProviders.cleanupAll.useMutation({
+    onSuccess: (results: any[]) => {
+      queryClient.invalidateQueries({ queryKey: [["llmProviders"]] });
+      const totalRemoved = results.reduce((sum: number, r: any) => sum + r.modelsRemoved, 0);
+      setCleanupResult({
+        success: true,
+        message: `Cleaned up ${results.length} providers: ${totalRemoved} old models removed`,
+        results,
+      });
+      setIsCleanupDialogOpen(false);
+      setTimeout(() => setCleanupResult(null), 10000);
+    },
+    onError: (error: any) => {
+      setCleanupResult({ success: false, error: error.message });
+      setTimeout(() => setCleanupResult(null), 10000);
+    },
+  });
+
+  // Cleanup preview query
+  const { data: cleanupPreview, isLoading: isCleanupPreviewLoading, refetch: refetchCleanupPreview } = trpc.llmProviders.cleanupPreview.useQuery(
+    undefined,
+    { enabled: isCleanupDialogOpen }
+  );
+
   // Browse OpenRouter models query
-  const { data: browseData, isLoading: isBrowseLoading, refetch: refetchBrowse } = useQuery({
-    queryKey: ["llmProviders", "browseOpenRouterModels", browseSearch, browseProvider],
-    queryFn: () => trpc.llmProviders.browseOpenRouterModels.query({
-      search: browseSearch || undefined,
-      provider: browseProvider || undefined,
-    }),
+  const { data: browseData, isLoading: isBrowseLoading, refetch: refetchBrowse } = trpc.llmProviders.browseOpenRouterModels.useQuery({
+    search: browseSearch || undefined,
+    provider: browseProvider || undefined,
+  }, {
     enabled: isBrowseDialogOpen,
   });
 
@@ -250,7 +282,21 @@ export default function AdminLLMProviders() {
     });
     setEditingModels([]);
     setActiveTab("settings");
+    setModelSearchQuery("");
+    setModelPage(0);
   };
+
+  // Filter and paginate models
+  const filteredModels = editingModels.filter(model =>
+    modelSearchQuery === "" ||
+    model.id.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
+    model.name.toLowerCase().includes(modelSearchQuery.toLowerCase())
+  );
+  const totalModelPages = Math.ceil(filteredModels.length / MODELS_PER_PAGE);
+  const paginatedModels = filteredModels.slice(
+    modelPage * MODELS_PER_PAGE,
+    (modelPage + 1) * MODELS_PER_PAGE
+  );
 
   const handleCreateFromTemplate = (template: ProviderTemplate) => {
     setSelectedTemplate(template);
@@ -462,6 +508,27 @@ export default function AdminLLMProviders() {
         </div>
       )}
 
+      {/* Cleanup Result Notification */}
+      {cleanupResult && (
+        <div className={`mb-4 p-4 rounded-lg flex items-center gap-3 ${
+          cleanupResult.success ? "bg-blue-50 border border-blue-200" : "bg-red-50 border border-red-200"
+        }`}>
+          {cleanupResult.success ? (
+            <CheckCircle2 className="h-5 w-5 text-blue-600" />
+          ) : (
+            <XCircle className="h-5 w-5 text-red-600" />
+          )}
+          <div className="flex-1">
+            {cleanupResult.message || (
+              <span className="text-red-600">Cleanup failed: {cleanupResult.error}</span>
+            )}
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setCleanupResult(null)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Configured Providers */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -487,6 +554,15 @@ export default function AdminLLMProviders() {
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
               Sync All from OpenRouter
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCleanupDialogOpen(true)}
+              className="text-orange-600 hover:text-orange-700"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Cleanup Old Models
             </Button>
           </div>
         </div>
@@ -752,6 +828,37 @@ export default function AdminLLMProviders() {
                   </div>
                   <Badge variant="outline">{editingModels.length} models</Badge>
                 </div>
+
+                {/* Search models */}
+                {editingModels.length > 10 && (
+                  <div className="flex items-center gap-2">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search models by ID or name..."
+                      value={modelSearchQuery}
+                      onChange={(e) => {
+                        setModelSearchQuery(e.target.value);
+                        setModelPage(0);
+                      }}
+                      className="flex-1"
+                    />
+                    {modelSearchQuery && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setModelSearchQuery("");
+                          setModelPage(0);
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {filteredModels.length} of {editingModels.length}
+                    </span>
+                  </div>
+                )}
                 
                 {/* Add new model form */}
                 <Card>
@@ -797,71 +904,122 @@ export default function AdminLLMProviders() {
                 
                 {/* Models table */}
                 {editingModels.length > 0 ? (
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[40px]"></TableHead>
-                          <TableHead>Model ID</TableHead>
-                          <TableHead>Display Name</TableHead>
-                          <TableHead className="w-[120px]">Context</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {editingModels.map((model, index) => (
-                          <TableRow key={model.id}>
-                            <TableCell>
-                              <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={model.id}
-                                onChange={(e) => handleUpdateModel(index, "id", e.target.value)}
-                                className="h-8 font-mono text-sm"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={model.name}
-                                onChange={(e) => handleUpdateModel(index, "name", e.target.value)}
-                                className="h-8"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                value={model.contextLength || ""}
-                                onChange={(e) => handleUpdateModel(index, "contextLength", e.target.value ? parseInt(e.target.value) : undefined)}
-                                className="h-8"
-                                placeholder="-"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDuplicateModel(model)}
-                                  title="Duplicate"
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600"
-                                  onClick={() => setDeleteModelConfirm(model.id)}
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </TableCell>
+                  <div className="space-y-3">
+                    <div className="border rounded-lg max-h-[400px] overflow-auto">
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-background">
+                          <TableRow>
+                            <TableHead className="w-[40px]">#</TableHead>
+                            <TableHead>Model ID</TableHead>
+                            <TableHead>Display Name</TableHead>
+                            <TableHead className="w-[120px]">Context</TableHead>
+                            <TableHead className="w-[100px]">Actions</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedModels.map((model) => {
+                            const actualIndex = editingModels.findIndex(m => m.id === model.id);
+                            return (
+                              <TableRow key={model.id}>
+                                <TableCell className="text-muted-foreground text-xs">
+                                  {actualIndex + 1}
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    value={model.id}
+                                    onChange={(e) => handleUpdateModel(actualIndex, "id", e.target.value)}
+                                    className="h-8 font-mono text-xs"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    value={model.name}
+                                    onChange={(e) => handleUpdateModel(actualIndex, "name", e.target.value)}
+                                    className="h-8 text-sm"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    type="number"
+                                    value={model.contextLength || ""}
+                                    onChange={(e) => handleUpdateModel(actualIndex, "contextLength", e.target.value ? parseInt(e.target.value) : undefined)}
+                                    className="h-8"
+                                    placeholder="-"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDuplicateModel(model)}
+                                      title="Duplicate"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-red-600"
+                                      onClick={() => setDeleteModelConfirm(model.id)}
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Pagination controls */}
+                    {totalModelPages > 1 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Page {modelPage + 1} of {totalModelPages} ({filteredModels.length} models)
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModelPage(0)}
+                            disabled={modelPage === 0}
+                          >
+                            First
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModelPage(Math.max(0, modelPage - 1))}
+                            disabled={modelPage === 0}
+                          >
+                            Previous
+                          </Button>
+                          <span className="px-2 text-sm">
+                            {modelPage + 1} / {totalModelPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModelPage(Math.min(totalModelPages - 1, modelPage + 1))}
+                            disabled={modelPage >= totalModelPages - 1}
+                          >
+                            Next
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModelPage(totalModelPages - 1)}
+                            disabled={modelPage >= totalModelPages - 1}
+                          >
+                            Last
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <Card>
@@ -953,10 +1111,10 @@ export default function AdminLLMProviders() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Globe className="h-5 w-5" />
-              Browse OpenRouter Models
+              Browse Available Models
             </DialogTitle>
             <DialogDescription>
-              Discover and import models from OpenRouter's catalog of 420+ models
+              Discover and import models from OpenRouter's catalog of 420+ models. Filter by provider to find specific models.
             </DialogDescription>
           </DialogHeader>
 
@@ -965,14 +1123,20 @@ export default function AdminLLMProviders() {
               <Input
                 placeholder="Search models..."
                 value={browseSearch}
-                onChange={(e) => setBrowseSearch(e.target.value)}
+                onChange={(e) => {
+                  setBrowseSearch(e.target.value);
+                  setBrowsePage(0);
+                }}
                 className="w-full"
               />
             </div>
             <select
               className="px-3 py-2 border rounded-md bg-background"
               value={browseProvider}
-              onChange={(e) => setBrowseProvider(e.target.value)}
+              onChange={(e) => {
+                setBrowseProvider(e.target.value);
+                setBrowsePage(0);
+              }}
             >
               <option value="">All Providers</option>
               {browseData?.providers.map((p) => (
@@ -993,18 +1157,43 @@ export default function AdminLLMProviders() {
             </Button>
           </div>
 
-          <div className="text-sm text-muted-foreground mb-2">
-            {browseData ? (
-              <span>
-                Showing {browseData.filteredCount} of {browseData.totalCount} models
-                {selectedModelsToImport.length > 0 && (
-                  <span className="ml-2 text-primary">
-                    • {selectedModelsToImport.length} selected
-                  </span>
-                )}
-              </span>
-            ) : (
-              <span>Loading models...</span>
+          <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+            <div>
+              {browseData ? (
+                <span>
+                  Showing {Math.min((browsePage + 1) * BROWSE_MODELS_PER_PAGE, browseData.filteredCount)} of {browseData.filteredCount} models
+                  {selectedModelsToImport.length > 0 && (
+                    <span className="ml-2 text-primary">
+                      • {selectedModelsToImport.length} selected
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span>Loading models...</span>
+              )}
+            </div>
+            {browseData && browseData.filteredCount > BROWSE_MODELS_PER_PAGE && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBrowsePage(Math.max(0, browsePage - 1))}
+                  disabled={browsePage === 0}
+                >
+                  Previous
+                </Button>
+                <span className="px-2">
+                  {browsePage + 1} / {Math.ceil(browseData.filteredCount / BROWSE_MODELS_PER_PAGE)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBrowsePage(browsePage + 1)}
+                  disabled={(browsePage + 1) * BROWSE_MODELS_PER_PAGE >= browseData.filteredCount}
+                >
+                  Next
+                </Button>
+              </div>
             )}
           </div>
 
@@ -1042,7 +1231,9 @@ export default function AdminLLMProviders() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {browseData?.models.slice(0, 100).map((model) => (
+                  {browseData?.models
+                    .slice(browsePage * BROWSE_MODELS_PER_PAGE, (browsePage + 1) * BROWSE_MODELS_PER_PAGE)
+                    .map((model) => (
                     <TableRow
                       key={model.id}
                       className={selectedModelsToImport.includes(model.id) ? "bg-primary/5" : ""}
@@ -1076,11 +1267,6 @@ export default function AdminLLMProviders() {
                 </TableBody>
               </Table>
             )}
-            {browseData && browseData.models.length > 100 && (
-              <div className="p-4 text-center text-sm text-muted-foreground border-t">
-                Showing first 100 models. Use search to find specific models.
-              </div>
-            )}
           </div>
 
           <DialogFooter className="mt-4">
@@ -1102,6 +1288,7 @@ export default function AdminLLMProviders() {
                 setSelectedModelsToImport([]);
                 setBrowseSearch("");
                 setBrowseProvider("");
+                setBrowsePage(0);
               }}
             >
               Cancel
@@ -1125,6 +1312,110 @@ export default function AdminLLMProviders() {
                 <Download className="h-4 w-4 mr-2" />
               )}
               Import {selectedModelsToImport.length} Models
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cleanup Old Models Dialog */}
+      <Dialog open={isCleanupDialogOpen} onOpenChange={setIsCleanupDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <Trash2 className="h-5 w-5" />
+              Cleanup Old Models
+            </DialogTitle>
+            <DialogDescription>
+              Remove models older than 6 months that are unlikely to be used. This helps keep the model list manageable.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {isCleanupPreviewLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : cleanupPreview ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Models to Remove</CardDescription>
+                      <CardTitle className="text-2xl text-orange-600">
+                        {cleanupPreview.totalToRemove}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Models to Keep</CardDescription>
+                      <CardTitle className="text-2xl text-green-600">
+                        {cleanupPreview.totalToKeep}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                </div>
+
+                {cleanupPreview.totalToRemove > 0 ? (
+                  <div className="border rounded-lg max-h-[300px] overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Provider</TableHead>
+                          <TableHead className="text-right">To Remove</TableHead>
+                          <TableHead className="text-right">To Keep</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {cleanupPreview.providers
+                          .filter(p => p.modelsToRemove.length > 0)
+                          .map((p) => (
+                          <TableRow key={p.id}>
+                            <TableCell className="font-medium">{p.name}</TableCell>
+                            <TableCell className="text-right text-orange-600">
+                              {p.modelsToRemove.length}
+                            </TableCell>
+                            <TableCell className="text-right text-green-600">
+                              {p.modelsToKeep}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                    <p>No old models to clean up!</p>
+                    <p className="text-sm">All models are within the 6-month retention period.</p>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCleanupDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => cleanupAllMutation.mutate()}
+              disabled={
+                cleanupAllMutation.isPending ||
+                !cleanupPreview ||
+                cleanupPreview.totalToRemove === 0
+              }
+            >
+              {cleanupAllMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Remove {cleanupPreview?.totalToRemove || 0} Old Models
             </Button>
           </DialogFooter>
         </DialogContent>

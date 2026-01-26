@@ -10,6 +10,9 @@ import {
   fetchAllOpenRouterModels,
   getProviderSyncStatus,
   importModelsFromOpenRouter,
+  cleanupOldModels,
+  cleanupAllOldModels,
+  getCleanupPreview,
 } from "../services/modelSyncService";
 
 // Simple encryption for API keys (in production, use proper key management)
@@ -607,9 +610,28 @@ export const llmProvidersRouter = router({
         .from(llmProviders)
         .where(eq(llmProviders.providerName, "openrouter"))
         .limit(1);
-      
+
       const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
-      
+
       return importModelsFromOpenRouter(input.providerId, input.modelIds, apiKey);
     }),
+
+  // Get cleanup preview - shows what would be deleted
+  cleanupPreview: adminProcedure
+    .input(z.object({ providerId: z.number().optional() }).optional())
+    .query(async ({ input }) => {
+      return getCleanupPreview(input?.providerId);
+    }),
+
+  // Cleanup old models from a specific provider
+  cleanupProvider: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      return cleanupOldModels(input.id);
+    }),
+
+  // Cleanup old models from all providers
+  cleanupAll: adminProcedure.mutation(async () => {
+    return cleanupAllOldModels();
+  }),
 });

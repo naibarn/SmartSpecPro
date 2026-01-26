@@ -72,10 +72,11 @@ export function getSessionCookieOptions(
     domain,
     httpOnly: true,
     path: "/",
-    // Always use SameSite=none for cross-subdomain cookie sharing
-    // This requires secure=true in production (HTTPS)
-    // In development with HTTP, this may not work in all browsers
-    sameSite: "none",
+    // SameSite handling:
+    // - HTTPS: Use SameSite=none with secure=true (cross-subdomain sharing works)
+    // - HTTP (localhost): Use SameSite=lax (required for modern browsers to accept cookie)
+    // Modern browsers REQUIRE secure=true when sameSite=none
+    sameSite: isSecure ? "none" : "lax",
     secure: isSecure,
   };
 }

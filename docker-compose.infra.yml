@@ -1,0 +1,67 @@
+# SmartSpecPro - Infrastructure Only
+# For local development: run databases via Docker, apps on host
+# Usage: docker-compose -f docker-compose.infra.yml up -d
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartspec-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smartspec}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartspec_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-smartspec}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartspec} -d ${POSTGRES_DB:-smartspec}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================
+  # Redis Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: smartspec-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================
+  # ChromaDB (Vector Database) - Optional
+  # ============================================
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: smartspec-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+    profiles:
+      - ai
+
+volumes:
+  postgres_data:
+    name: smartspec_postgres_data
+  redis_data:
+    name: smartspec_redis_data
+  chroma_data:
+    name: smartspec_chroma_data
