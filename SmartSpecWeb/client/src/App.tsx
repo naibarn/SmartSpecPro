@@ -34,10 +34,12 @@ import AdminSkills from "./pages/AdminSkills";
 import AdminStorageSettings from "./pages/AdminStorageSettings";
 import AdminTenants from "./pages/AdminTenants";
 import AdminServices from "./pages/AdminServices";
+import AdminSettings from "./pages/AdminSettings";
 import DomainAdmin from "./pages/DomainAdmin";
 import DomainThemeEditor from "./pages/DomainThemeEditor";
 import DomainAdminContent from "./pages/DomainAdminContent";
 import DomainUsers from "./pages/DomainUsers";
+import DomainAdminInvoice from "./pages/DomainAdminInvoice";
 import Chat from "./pages/Chat";
 import Generate from "./pages/Generate";
 import MediaStudio from "./pages/MediaStudio";
@@ -66,11 +68,13 @@ function Router() {
       <Route path="/admin/skills" component={AdminSkills} />
       <Route path="/admin/storage-settings" component={AdminStorageSettings} />
       <Route path="/admin/services" component={AdminServices} />
+      <Route path="/admin/settings" component={AdminSettings} />
       <Route path="/admin/tenants" component={AdminTenants} />
       <Route path="/domain-admin" component={DomainAdmin} />
       <Route path="/domain-admin/theme" component={DomainThemeEditor} />
       <Route path="/domain-admin/content" component={DomainAdminContent} />
       <Route path="/domain-admin/users" component={DomainUsers} />
+      <Route path="/domain-admin/invoice" component={DomainAdminInvoice} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />

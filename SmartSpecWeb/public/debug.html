@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartSpecPro - Debug Page</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-box {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ccc;
+        }
+        .test-box.success {
+            border-left-color: #22c55e;
+        }
+        .test-box.fail {
+            border-left-color: #ef4444;
+        }
+        .test-box.warning {
+            border-left-color: #f59e0b;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            font-size: 18px;
+            margin-top: 0;
+        }
+        pre {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.ok {
+            background: #22c55e;
+            color: white;
+        }
+        .status.fail {
+            background: #ef4444;
+            color: white;
+        }
+        .status.warn {
+            background: #f59e0b;
+            color: white;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        #console-output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 SmartSpecPro Debug Console</h1>
+    <p>หน้านี้ใช้ทดสอบว่า JavaScript และ React ทำงานหรือไม่</p>
+
+    <div id="test-results"></div>
+
+    <div class="test-box">
+        <h2>Console Output</h2>
+        <div id="console-output">Waiting for tests...</div>
+    </div>
+
+    <div class="test-box">
+        <h2>Actions</h2>
+        <button onclick="runAllTests()">🔄 Run All Tests Again</button>
+        <button onclick="testBackendAPI()">🌐 Test Backend API</button>
+        <button onclick="testReactMount()">⚛️ Test React Mount</button>
+        <button onclick="location.href='/'">🏠 Go to Main Page</button>
+    </div>
+
+    <script>
+        const consoleDiv = document.getElementById('console-output');
+        const resultsDiv = document.getElementById('test-results');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#00ff00' : '#00bfff';
+            consoleDiv.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function addTestResult(title, status, details) {
+            const box = document.createElement('div');
+            box.className = `test-box ${status}`;
+
+            const statusClass = status === 'success' ? 'ok' : status === 'fail' ? 'fail' : 'warn';
+            const statusText = status === 'success' ? '✅ PASS' : status === 'fail' ? '❌ FAIL' : '⚠️ WARN';
+
+            box.innerHTML = `
+                <h2>${title} <span class="status ${statusClass}">${statusText}</span></h2>
+                <pre>${details}</pre>
+            `;
+            resultsDiv.appendChild(box);
+        }
+
+        async function runAllTests() {
+            resultsDiv.innerHTML = '';
+            consoleDiv.innerHTML = '<div style="color: #00bfff">Starting debug tests...</div>';
+
+            // Test 1: Basic JavaScript
+            log('Test 1: JavaScript Execution', 'info');
+            try {
+                const testVar = 'JavaScript is working!';
+                addTestResult(
+                    'JavaScript Execution',
+                    'success',
+                    `✓ JavaScript engine is running\n✓ Variables: ${testVar}\n✓ Date: ${new Date().toISOString()}`
+                );
+                log('JavaScript test: PASS', 'success');
+            } catch (e) {
+                addTestResult('JavaScript Execution', 'fail', e.message);
+                log('JavaScript test: FAIL - ' + e.message, 'error');
+            }
+
+            // Test 2: DOM API
+            log('Test 2: DOM API', 'info');
+            try {
+                const rootDiv = document.getElementById('test-results');
+                const computed = window.getComputedStyle(document.body);
+                addTestResult(
+                    'DOM API',
+                    'success',
+                    `✓ document.getElementById: Working\n✓ window.getComputedStyle: Working\n✓ Body background: ${computed.backgroundColor}`
+                );
+                log('DOM API test: PASS', 'success');
+            } catch (e) {
+                addTestResult('DOM API', 'fail', e.message);
+                log('DOM API test: FAIL - ' + e.message, 'error');
+            }
+
+            // Test 3: Fetch API
+            log('Test 3: Fetch API', 'info');
+            try {
+                const response = await fetch('/debug.html');
+                addTestResult(
+                    'Fetch API',
+                    response.ok ? 'success' : 'warning',
+                    `✓ Fetch API available\n✓ Response status: ${response.status}\n✓ Content-Type: ${response.headers.get('content-type')}`
+                );
+                log('Fetch API test: PASS', 'success');
+            } catch (e) {
+                addTestResult('Fetch API', 'fail', e.message);
+                log('Fetch API test: FAIL - ' + e.message, 'error');
+            }
+
+            // Test 4: localStorage
+            log('Test 4: LocalStorage', 'info');
+            try {
+                localStorage.setItem('debug_test', 'working');
+                const value = localStorage.getItem('debug_test');
+                localStorage.removeItem('debug_test');
+                addTestResult(
+                    'LocalStorage',
+                    'success',
+                    `✓ localStorage.setItem: Working\n✓ localStorage.getItem: Working\n✓ Test value: ${value}`
+                );
+                log('LocalStorage test: PASS', 'success');
+            } catch (e) {
+                addTestResult('LocalStorage', 'fail', e.message);
+                log('LocalStorage test: FAIL - ' + e.message, 'error');
+            }
+
+            // Test 5: Console API
+            log('Test 5: Console API', 'info');
+            try {
+                console.log('Console.log test');
+                console.error('Console.error test');
+                console.warn('Console.warn test');
+                addTestResult(
+                    'Console API',
+                    'success',
+                    `✓ console.log: Working\n✓ console.error: Working\n✓ console.warn: Working\n\n👉 Check browser console (F12) for messages`
+                );
+                log('Console API test: PASS', 'success');
+            } catch (e) {
+                addTestResult('Console API', 'fail', e.message);
+                log('Console API test: FAIL - ' + e.message, 'error');
+            }
+
+            // Test 6: ES6 Features
+            log('Test 6: ES6 Features', 'info');
+            try {
+                const arrow = () => 'arrow function';
+                const [a, b] = [1, 2];
+                const obj = { a, b, method() { return 'ok'; } };
+                const template = `Template literal: ${a + b}`;
+                addTestResult(
+                    'ES6 Features',
+                    'success',
+                    `✓ Arrow functions: ${arrow()}\n✓ Destructuring: [${a}, ${b}]\n✓ Object shorthand: ${JSON.stringify(obj)}\n✓ Template literals: ${template}`
+                );
+                log('ES6 test: PASS', 'success');
+            } catch (e) {
+                addTestResult('ES6 Features', 'fail', e.message);
+                log('ES6 test: FAIL - ' + e.message, 'error');
+            }
+
+            // Test 7: Check main page elements
+            log('Test 7: Checking main page...', 'info');
+            setTimeout(testMainPage, 100);
+        }
+
+        async function testMainPage() {
+            try {
+                const response = await fetch('/');
+                const html = await response.text();
+
+                const hasRootDiv = html.includes('<div id="root"');
+                const hasViteClient = html.includes('/@vite/client');
+                const hasMainTsx = html.includes('/src/main.tsx');
+
+                const allGood = hasRootDiv && hasViteClient && hasMainTsx;
+
+                addTestResult(
+                    'Main Page Structure',
+                    allGood ? 'success' : 'warning',
+                    `${hasRootDiv ? '✓' : '✗'} Root div found\n${hasViteClient ? '✓' : '✗'} Vite client loaded\n${hasMainTsx ? '✓' : '✗'} Main.tsx loaded\n\n${allGood ? '✅ Main page structure is correct!' : '⚠️ Main page may have issues'}`
+                );
+                log('Main page test: ' + (allGood ? 'PASS' : 'WARN'), allGood ? 'success' : 'error');
+            } catch (e) {
+                addTestResult('Main Page Structure', 'fail', e.message);
+                log('Main page test: FAIL - ' + e.message, 'error');
+            }
+        }
+
+        async function testBackendAPI() {
+            log('Testing Backend API...', 'info');
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                const data = await response.json();
+
+                addTestResult(
+                    'Backend API',
+                    response.ok ? 'success' : 'warning',
+                    `Status: ${response.status}\nData: ${JSON.stringify(data, null, 2)}`
+                );
+                log('Backend API test: PASS', 'success');
+            } catch (e) {
+                addTestResult('Backend API', 'fail', e.message);
+                log('Backend API test: FAIL - ' + e.message, 'error');
+            }
+        }
+
+        async function testReactMount() {
+            log('Testing React mount simulation...', 'info');
+
+            // Create a test div
+            const testDiv = document.createElement('div');
+            testDiv.id = 'react-test';
+            testDiv.style.cssText = 'background: #e0f2fe; padding: 20px; margin: 10px 0; border-radius: 8px;';
+
+            // Simulate React mounting
+            testDiv.innerHTML = `
+                <h3 style="color: #0369a1; margin: 0 0 10px 0;">⚛️ React Mount Simulation</h3>
+                <p style="margin: 5px 0;">This div was created and mounted dynamically!</p>
+                <p style="margin: 5px 0; color: #0891b2;">✓ createElement: Working</p>
+                <p style="margin: 5px 0; color: #0891b2;">✓ appendChild: Working</p>
+                <p style="margin: 5px 0; color: #0891b2;">✓ innerHTML: Working</p>
+                <p style="margin: 5px 0; color: #0891b2;">✓ style: Working</p>
+            `;
+
+            resultsDiv.appendChild(testDiv);
+
+            addTestResult(
+                'React Mount Simulation',
+                'success',
+                '✓ Dynamic element creation successful\n✓ This is how React mounts components\n✓ If you see the blue box above, React should work!'
+            );
+            log('React mount simulation: PASS', 'success');
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            log('Page loaded successfully!', 'success');
+            runAllTests();
+        });
+
+        // Catch any global errors
+        window.addEventListener('error', (e) => {
+            log(`Global error: ${e.message} at ${e.filename}:${e.lineno}`, 'error');
+        });
+    </script>
+</body>
+</html>

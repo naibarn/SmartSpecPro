@@ -63,7 +63,7 @@ class ApprovalRequest(Base):
     execution_id = Column(String(36), nullable=True)
     
     # Requester
-    requester_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    requester_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     requester_type = Column(String(50), default="agent")  # "agent", "user", "system"
     
     # Status
@@ -115,7 +115,7 @@ class ApprovalResponse(Base):
     request_id = Column(String(36), ForeignKey("approval_requests.id", ondelete="CASCADE"), nullable=False)
     
     # Approver
-    approver_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    approver_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
     # Decision
     decision = Column(String(20), nullable=False)  # "approved", "rejected"

@@ -83,9 +83,9 @@ export async function tenantMiddleware(
     // Get hostname from request
     const hostname = req.hostname || req.get("host")?.split(":")[0] || "localhost";
 
-    // Skip tenant detection for localhost in development
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      // Use default tenant or first tenant
+    // Skip tenant detection for localhost and private IPs in development
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.") || hostname.startsWith("172.")) {
+      // Use default tenant or first tenant for local/private IPs
       const dbInstance = await db.instance;
       const [defaultTenant] = await dbInstance
         .select()

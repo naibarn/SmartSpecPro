@@ -326,18 +326,50 @@ cmd_start() {
 cmd_stop() {
     log_step "Stopping all local development services..."
 
+    # Stop host processes using ports 3000 and 8000
+    log_step "Stopping host applications..."
+
+    # Kill process on port 3000 (SmartSpec Web)
+    if lsof -i:3000 &>/dev/null; then
+        local web_pid=$(lsof -t -i:3000 2>/dev/null)
+        if [ -n "$web_pid" ]; then
+            log_info "Stopping SmartSpec Web (PID: $web_pid)..."
+            kill $web_pid 2>/dev/null || true
+            sleep 1
+            # Force kill if still running
+            if kill -0 $web_pid 2>/dev/null; then
+                log_warn "Force killing SmartSpec Web..."
+                kill -9 $web_pid 2>/dev/null || true
+            fi
+        fi
+    fi
+
+    # Kill process on port 8000 (Python Backend)
+    if lsof -i:8000 &>/dev/null; then
+        local backend_pid=$(lsof -t -i:8000 2>/dev/null)
+        if [ -n "$backend_pid" ]; then
+            log_info "Stopping Python Backend (PID: $backend_pid)..."
+            kill $backend_pid 2>/dev/null || true
+            sleep 1
+            # Force kill if still running
+            if kill -0 $backend_pid 2>/dev/null; then
+                log_warn "Force killing Python Backend..."
+                kill -9 $backend_pid 2>/dev/null || true
+            fi
+        fi
+    fi
+
+    log_info "Host applications stopped."
+
     # Stop infrastructure
     cmd_infra stop
 
-    # Note: App processes running on host need to be stopped manually (Ctrl+C)
-    log_warn "Note: Apps running on host need to be stopped manually with Ctrl+C"
-
-    log_info "Infrastructure stopped."
+    log_info "All services stopped."
 }
 
 cmd_status() {
     echo ""
-    echo -e "${CYAN}Infrastructure Status:${NC}"
+    echo -e "${CYAN}Infrastructure Status (Docker):${NC}"
     docker ps --filter "name=smartspec-postgres" --filter "name=smartspec-redis" --filter "name=smartspec-chromadb" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No containers running"
 
     echo ""
@@ -355,6 +387,16 @@ cmd_status() {
         echo -e "  ${GREEN}✓${NC} Python Backend (port 8000)"
     else
         echo -e "  ${RED}✗${NC} Python Backend (not running)"
+    fi
+
+    echo ""
+    echo -e "${CYAN}System Services:${NC}"
+
+    # Check if nginx is running
+    if systemctl is-active --quiet nginx 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} nginx (reverse proxy → https)"
+    else
+        echo -e "  ${RED}✗${NC} nginx (not running)"
     fi
 
     echo ""

@@ -1,6 +1,6 @@
 /**
  * Services Management Router
- * API endpoints for managing Docker services
+ * API endpoints for managing Docker services + Host processes (hybrid mode)
  */
 
 import type { Express } from "express";
@@ -13,20 +13,80 @@ import { promisify } from 'util';
 import { sdk } from "../_core/sdk";
 
 const execAsync = promisify(exec);
-const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
-// Service configurations matching docker-compose.dev.yml
-const SERVICE_CONFIGS = [
-  { id: 'smartspec-nginx', name: 'nginx', displayName: 'Nginx (Reverse Proxy)', ports: ['80', '443'] },
-  { id: 'smartspec-postgres', name: 'postgres', displayName: 'PostgreSQL', ports: ['5432'] },
-  { id: 'smartspec-redis', name: 'redis', displayName: 'Redis', ports: ['6379'] },
-  { id: 'smartspec-backend', name: 'python-backend', displayName: 'Python Backend', ports: ['8001'] },
-  { id: 'smartspec-celery-worker', name: 'celery-worker', displayName: 'Celery Worker', ports: [] },
-  { id: 'smartspec-celery-beat', name: 'celery-beat', displayName: 'Celery Beat', ports: [] },
-  { id: 'smartspec-flower', name: 'flower', displayName: 'Flower', ports: ['5555'] },
-  { id: 'smartspec-control-plane', name: 'control-plane', displayName: 'Control Plane', ports: ['7070'] },
-  { id: 'smartspec-web', name: 'smartspec-web', displayName: 'SmartSpec Web', ports: ['3000'] },
-  { id: 'smartspec-docker-status', name: 'docker-status', displayName: 'Docker Status', ports: ['3001'] },
+// Try to connect to Docker, may fail if not available
+let docker: Docker | null = null;
+try {
+  docker = new Docker({ socketPath: '/var/run/docker.sock' });
+} catch (e) {
+  console.log('[Services] Docker not available, running in host-only mode');
+}
+
+// Service type: docker = Docker container, host = host process, systemd = system service
+type ServiceType = 'docker' | 'host' | 'systemd';
+
+interface ServiceConfig {
+  id: string;
+  name: string;
+  displayName: string;
+  ports: string[];
+  type: ServiceType;
+  description: string;       // What this service does
+  checkPort?: number;        // For host processes (by port)
+  checkProcess?: string;     // For host processes (by process name pattern)
+  systemdName?: string;      // For systemd services
+  dockerContainer?: string;  // For Docker containers (if different from id)
+}
+
+// Service configurations - supports Docker, host processes, and systemd services
+const SERVICE_CONFIGS: ServiceConfig[] = [
+  // Infrastructure (Docker containers via docker-compose.infra.yml)
+  {
+    id: 'smartspec-postgres', name: 'postgres', displayName: 'PostgreSQL',
+    ports: ['5432'], type: 'docker',
+    description: 'Database - stores all application data'
+  },
+  {
+    id: 'smartspec-redis', name: 'redis', displayName: 'Redis',
+    ports: ['6379'], type: 'docker',
+    description: 'Cache & message broker for background tasks'
+  },
+
+  // Applications (can be Docker or host processes)
+  {
+    id: 'smartspec-web', name: 'smartspec-web', displayName: 'SmartSpec Web',
+    ports: ['3000'], type: 'host', checkPort: 3000,
+    description: 'Frontend & tRPC API (Node.js)'
+  },
+  {
+    id: 'smartspec-backend', name: 'python-backend', displayName: 'Python Backend',
+    ports: ['8000'], type: 'host', checkPort: 8000,
+    description: 'REST API & AI services (FastAPI)'
+  },
+
+  // System services
+  {
+    id: 'nginx', name: 'nginx', displayName: 'Nginx',
+    ports: ['80', '443'], type: 'systemd', systemdName: 'nginx',
+    description: 'Reverse proxy with HTTPS'
+  },
+
+  // Optional services (Docker or host mode)
+  {
+    id: 'smartspec-celery-worker', name: 'celery-worker', displayName: 'Celery Worker',
+    ports: [], type: 'host', checkProcess: 'celery.*worker',
+    description: 'Background task processor (optional - for async jobs)'
+  },
+  {
+    id: 'smartspec-celery-beat', name: 'celery-beat', displayName: 'Celery Beat',
+    ports: [], type: 'host', checkProcess: 'celery.*beat',
+    description: 'Task scheduler (optional - for cron jobs)'
+  },
+  {
+    id: 'smartspec-flower', name: 'flower', displayName: 'Flower',
+    ports: ['5555'], type: 'host', checkPort: 5555, checkProcess: 'flower',
+    description: 'Celery monitoring UI (optional)'
+  },
 ];
 
 interface ServiceStatus {
@@ -36,6 +96,8 @@ interface ServiceStatus {
   status: 'running' | 'stopped' | 'starting' | 'unhealthy' | 'unknown';
   uptime: string;
   ports: string[];
+  type: ServiceType;       // docker, host, or systemd
+  description?: string;    // What this service does
   healthCheck?: string;
   cpu?: number;
   memory?: number;
@@ -84,81 +146,295 @@ function formatUptime(startedAt: string): string {
   return `${seconds}s`;
 }
 
-// Get service status from Docker
+// Check if a port is in use (for host processes)
+async function isPortInUse(port: number): Promise<boolean> {
+  try {
+    const { stdout } = await execAsync(`lsof -i:${port} -t 2>/dev/null || true`);
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// Get process info by port
+async function getProcessByPort(port: number): Promise<{ pid: number; uptime: string; memory?: number } | null> {
+  try {
+    const { stdout: pidStr } = await execAsync(`lsof -i:${port} -t 2>/dev/null | head -1 || true`);
+    const pid = parseInt(pidStr.trim());
+    if (!pid) return null;
+
+    // Get process start time for uptime calculation
+    const { stdout: startTime } = await execAsync(`ps -o lstart= -p ${pid} 2>/dev/null || true`);
+    let uptime = '-';
+    if (startTime.trim()) {
+      const started = new Date(startTime.trim()).getTime();
+      uptime = formatUptime(new Date(started).toISOString());
+    }
+
+    // Get memory usage in MB
+    const { stdout: memStr } = await execAsync(`ps -o rss= -p ${pid} 2>/dev/null || true`);
+    const memoryKB = parseInt(memStr.trim()) || 0;
+
+    return { pid, uptime, memory: memoryKB / 1024 };
+  } catch {
+    return null;
+  }
+}
+
+// Get process info by name pattern (using pgrep)
+async function getProcessByName(pattern: string): Promise<{ pid: number; uptime: string; memory?: number } | null> {
+  try {
+    // Find process by name pattern
+    const { stdout: pidStr } = await execAsync(`pgrep -f "${pattern}" 2>/dev/null | head -1 || true`);
+    const pid = parseInt(pidStr.trim());
+    if (!pid) return null;
+
+    // Get process start time for uptime calculation
+    const { stdout: startTime } = await execAsync(`ps -o lstart= -p ${pid} 2>/dev/null || true`);
+    let uptime = '-';
+    if (startTime.trim()) {
+      const started = new Date(startTime.trim()).getTime();
+      uptime = formatUptime(new Date(started).toISOString());
+    }
+
+    // Get memory usage in MB
+    const { stdout: memStr } = await execAsync(`ps -o rss= -p ${pid} 2>/dev/null || true`);
+    const memoryKB = parseInt(memStr.trim()) || 0;
+
+    return { pid, uptime, memory: memoryKB / 1024 };
+  } catch {
+    return null;
+  }
+}
+
+// Check systemd service status
+async function getSystemdStatus(serviceName: string): Promise<{ running: boolean; uptime: string }> {
+  try {
+    const { stdout: activeState } = await execAsync(`systemctl is-active ${serviceName} 2>/dev/null || true`);
+    const running = activeState.trim() === 'active';
+
+    let uptime = '-';
+    if (running) {
+      try {
+        const { stdout: propStr } = await execAsync(
+          `systemctl show ${serviceName} --property=ActiveEnterTimestamp 2>/dev/null || true`
+        );
+        const match = propStr.match(/ActiveEnterTimestamp=(.+)/);
+        if (match && match[1] && match[1] !== 'n/a') {
+          const started = new Date(match[1]).getTime();
+          uptime = formatUptime(new Date(started).toISOString());
+        }
+      } catch {}
+    }
+
+    return { running, uptime };
+  } catch {
+    return { running: false, uptime: '-' };
+  }
+}
+
+// Get Docker container status
+async function getDockerContainerStatus(containerId: string): Promise<{
+  running: boolean;
+  uptime: string;
+  cpu?: number;
+  memory?: number;
+  health?: string;
+  restarts?: number;
+} | null> {
+  if (!docker) return null;
+
+  try {
+    const container = docker.getContainer(containerId);
+    const info = await container.inspect();
+
+    let cpu = 0;
+    let memory = 0;
+
+    if (info.State.Running) {
+      try {
+        const stats = await container.stats({ stream: false });
+        const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+        const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+        cpu = systemDelta > 0 ? (cpuDelta / systemDelta) * stats.cpu_stats.online_cpus * 100 : 0;
+        memory = stats.memory_stats.usage / (1024 * 1024);
+      } catch {}
+    }
+
+    return {
+      running: info.State.Running,
+      uptime: info.State.Running ? formatUptime(info.State.StartedAt) : '-',
+      cpu: Math.min(100, Math.max(0, cpu)),
+      memory,
+      health: info.State.Health?.Status,
+      restarts: info.RestartCount,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Get service status (hybrid: Docker, host process, or systemd)
 async function getServiceStatus(serviceId: string): Promise<ServiceStatus> {
   const config = SERVICE_CONFIGS.find(s => s.id === serviceId);
   if (!config) {
     throw new Error(`Service not found: ${serviceId}`);
   }
 
+  // Default response
+  const baseStatus: ServiceStatus = {
+    id: serviceId,
+    name: config.name,
+    displayName: config.displayName,
+    status: 'stopped',
+    uptime: '-',
+    ports: config.ports,
+    type: config.type,
+    description: config.description,
+  };
+
   try {
-    const container = docker.getContainer(serviceId);
-    const info = await container.inspect();
-    const stats = await container.stats({ stream: false });
-
-    // Calculate CPU percentage
-    const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
-    const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
-    const cpuPercent = systemDelta > 0 ? (cpuDelta / systemDelta) * stats.cpu_stats.online_cpus * 100 : 0;
-
-    // Calculate memory in MB
-    const memoryMB = stats.memory_stats.usage / (1024 * 1024);
-
-    // Determine status
-    let status: ServiceStatus['status'] = 'unknown';
-    if (info.State.Running) {
-      if (info.State.Health?.Status === 'healthy') {
-        status = 'running';
-      } else if (info.State.Health?.Status === 'unhealthy') {
-        status = 'unhealthy';
-      } else if (info.State.Health?.Status === 'starting') {
-        status = 'starting';
-      } else {
-        status = 'running';
+    // Handle different service types
+    switch (config.type) {
+      case 'docker': {
+        // First check if running as Docker container
+        const dockerStatus = await getDockerContainerStatus(serviceId);
+        if (dockerStatus) {
+          return {
+            ...baseStatus,
+            status: dockerStatus.running
+              ? (dockerStatus.health === 'unhealthy' ? 'unhealthy' : dockerStatus.health === 'starting' ? 'starting' : 'running')
+              : 'stopped',
+            uptime: dockerStatus.uptime,
+            cpu: dockerStatus.cpu,
+            memory: dockerStatus.memory,
+            healthCheck: dockerStatus.health,
+            restarts: dockerStatus.restarts,
+          };
+        }
+        // Container not found - might not exist in this mode
+        return baseStatus;
       }
-    } else {
-      status = 'stopped';
-    }
 
-    return {
-      id: serviceId,
-      name: config.name,
-      displayName: config.displayName,
-      status,
-      uptime: info.State.Running ? formatUptime(info.State.StartedAt) : '-',
-      ports: config.ports,
-      healthCheck: info.State.Health?.Status,
-      cpu: Math.min(100, Math.max(0, cpuPercent)), // Clamp between 0-100
-      memory: memoryMB,
-      restarts: info.RestartCount,
-    };
+      case 'host': {
+        // First check if running as Docker container (full Docker mode)
+        const dockerStatus = await getDockerContainerStatus(serviceId);
+        if (dockerStatus && dockerStatus.running) {
+          return {
+            ...baseStatus,
+            status: 'running',
+            uptime: dockerStatus.uptime,
+            cpu: dockerStatus.cpu,
+            memory: dockerStatus.memory,
+            healthCheck: dockerStatus.health,
+            restarts: dockerStatus.restarts,
+          };
+        }
+
+        // Check if running as host process by port
+        if (config.checkPort) {
+          const processInfo = await getProcessByPort(config.checkPort);
+          if (processInfo) {
+            return {
+              ...baseStatus,
+              status: 'running',
+              uptime: processInfo.uptime,
+              memory: processInfo.memory,
+            };
+          }
+        }
+
+        // Check if running as host process by name pattern (for services without ports like Celery)
+        if (config.checkProcess) {
+          const processInfo = await getProcessByName(config.checkProcess);
+          if (processInfo) {
+            return {
+              ...baseStatus,
+              status: 'running',
+              uptime: processInfo.uptime,
+              memory: processInfo.memory,
+            };
+          }
+        }
+
+        return baseStatus;
+      }
+
+      case 'systemd': {
+        // First check if running as Docker container (full Docker mode)
+        const dockerStatus = await getDockerContainerStatus(`smartspec-${config.name}`);
+        if (dockerStatus && dockerStatus.running) {
+          return {
+            ...baseStatus,
+            status: 'running',
+            uptime: dockerStatus.uptime,
+            cpu: dockerStatus.cpu,
+            memory: dockerStatus.memory,
+            healthCheck: dockerStatus.health,
+            restarts: dockerStatus.restarts,
+          };
+        }
+
+        // Check systemd service
+        if (config.systemdName) {
+          const systemdStatus = await getSystemdStatus(config.systemdName);
+          return {
+            ...baseStatus,
+            status: systemdStatus.running ? 'running' : 'stopped',
+            uptime: systemdStatus.uptime,
+          };
+        }
+        return baseStatus;
+      }
+
+      default:
+        return baseStatus;
+    }
   } catch (error) {
     console.error(`Error getting status for ${serviceId}:`, error);
-    return {
-      id: serviceId,
-      name: config.name,
-      displayName: config.displayName,
-      status: 'stopped',
-      uptime: '-',
-      ports: config.ports,
-    };
+    return baseStatus;
   }
 }
 
 // Docker API helper functions
 async function startContainer(containerId: string): Promise<void> {
+  if (!docker) throw new Error('Docker not available');
   const container = docker.getContainer(containerId);
   await container.start();
 }
 
 async function stopContainer(containerId: string): Promise<void> {
+  if (!docker) throw new Error('Docker not available');
   const container = docker.getContainer(containerId);
   await container.stop({ t: 10 }); // 10 second graceful shutdown
 }
 
 async function restartContainer(containerId: string): Promise<void> {
+  if (!docker) throw new Error('Docker not available');
   const container = docker.getContainer(containerId);
   await container.restart({ t: 10 }); // 10 second graceful shutdown
+}
+
+// Host process helper functions
+async function stopHostProcess(port: number): Promise<void> {
+  try {
+    await execAsync(`lsof -t -i:${port} | xargs -r kill 2>/dev/null || true`);
+  } catch (e) {
+    console.error(`Failed to stop process on port ${port}:`, e);
+  }
+}
+
+// Systemd service helper functions
+async function startSystemdService(serviceName: string): Promise<void> {
+  await execAsync(`sudo systemctl start ${serviceName}`);
+}
+
+async function stopSystemdService(serviceName: string): Promise<void> {
+  await execAsync(`sudo systemctl stop ${serviceName}`);
+}
+
+async function restartSystemdService(serviceName: string): Promise<void> {
+  await execAsync(`sudo systemctl restart ${serviceName}`);
 }
 
 export function registerServicesRoutes(app: Express) {
@@ -169,22 +445,35 @@ export function registerServicesRoutes(app: Express) {
         SERVICE_CONFIGS.map(config => getServiceStatus(config.id))
       );
 
-      // Get system-wide disk usage using Docker system df
+      // Get system-wide disk usage
       let diskInfo = null;
       try {
-        const dfResult = await docker.df();
-        const volumes = dfResult.Volumes || [];
-        const images = dfResult.Images || [];
+        // Try Docker disk usage first
+        if (docker) {
+          const dfResult = await docker.df();
+          const volumes = dfResult.Volumes || [];
+          const images = dfResult.Images || [];
 
-        // Calculate total sizes
-        const volumesSize = volumes.reduce((sum: number, v: any) => sum + (v.UsageData?.Size || 0), 0);
-        const imagesSize = images.reduce((sum: number, img: any) => sum + (img.Size || 0), 0);
+          const volumesSize = volumes.reduce((sum: number, v: any) => sum + (v.UsageData?.Size || 0), 0);
+          const imagesSize = images.reduce((sum: number, img: any) => sum + (img.Size || 0), 0);
 
-        diskInfo = {
-          volumesSize: Math.round(volumesSize / (1024 * 1024 * 1024) * 100) / 100, // GB
-          imagesSize: Math.round(imagesSize / (1024 * 1024 * 1024) * 100) / 100, // GB
-          totalUsed: Math.round((volumesSize + imagesSize) / (1024 * 1024 * 1024) * 100) / 100, // GB
-        };
+          diskInfo = {
+            volumesSize: Math.round(volumesSize / (1024 * 1024 * 1024) * 100) / 100,
+            imagesSize: Math.round(imagesSize / (1024 * 1024 * 1024) * 100) / 100,
+            totalUsed: Math.round((volumesSize + imagesSize) / (1024 * 1024 * 1024) * 100) / 100,
+          };
+        }
+
+        // Fallback: get system disk usage
+        if (!diskInfo) {
+          const { stdout } = await execAsync("df -BG / | tail -1 | awk '{print $3}'");
+          const usedGB = parseFloat(stdout.replace('G', '').trim()) || 0;
+          diskInfo = {
+            volumesSize: 0,
+            imagesSize: 0,
+            totalUsed: usedGB,
+          };
+        }
       } catch (diskError) {
         console.error('Error fetching disk info:', diskError);
       }
@@ -210,9 +499,25 @@ export function registerServicesRoutes(app: Express) {
       }
 
       console.log(`[Services] Starting service: ${config.name} (${serviceId})`);
-      await startContainer(serviceId);
-      console.log(`[Services] Service ${config.name} started successfully`);
 
+      switch (config.type) {
+        case 'docker':
+          await startContainer(serviceId);
+          break;
+        case 'host':
+          // Host processes need to be started via dev-local.sh script
+          return res.status(400).json({
+            error: 'Cannot start host process from web UI',
+            details: 'Use: bash dev-local.sh web (or backend)'
+          });
+        case 'systemd':
+          if (config.systemdName) {
+            await startSystemdService(config.systemdName);
+          }
+          break;
+      }
+
+      console.log(`[Services] Service ${config.name} started successfully`);
       res.json({ message: `Service ${config.displayName} started successfully` });
     } catch (error: any) {
       console.error('Error starting service:', error);
@@ -234,9 +539,24 @@ export function registerServicesRoutes(app: Express) {
       }
 
       console.log(`[Services] Stopping service: ${config.name} (${serviceId})`);
-      await stopContainer(serviceId);
-      console.log(`[Services] Service ${config.name} stopped successfully`);
 
+      switch (config.type) {
+        case 'docker':
+          await stopContainer(serviceId);
+          break;
+        case 'host':
+          if (config.checkPort) {
+            await stopHostProcess(config.checkPort);
+          }
+          break;
+        case 'systemd':
+          if (config.systemdName) {
+            await stopSystemdService(config.systemdName);
+          }
+          break;
+      }
+
+      console.log(`[Services] Service ${config.name} stopped successfully`);
       res.json({ message: `Service ${config.displayName} stopped successfully` });
     } catch (error: any) {
       console.error('Error stopping service:', error);
@@ -258,9 +578,25 @@ export function registerServicesRoutes(app: Express) {
       }
 
       console.log(`[Services] Restarting service: ${config.name} (${serviceId})`);
-      await restartContainer(serviceId);
-      console.log(`[Services] Service ${config.name} restarted successfully`);
 
+      switch (config.type) {
+        case 'docker':
+          await restartContainer(serviceId);
+          break;
+        case 'host':
+          // Host processes need to be restarted manually
+          return res.status(400).json({
+            error: 'Cannot restart host process from web UI',
+            details: 'Use: bash dev-local.sh stop && bash dev-local.sh web (or backend)'
+          });
+        case 'systemd':
+          if (config.systemdName) {
+            await restartSystemdService(config.systemdName);
+          }
+          break;
+      }
+
+      console.log(`[Services] Service ${config.name} restarted successfully`);
       res.json({ message: `Service ${config.displayName} restarted successfully` });
     } catch (error: any) {
       console.error('Error restarting service:', error);
@@ -281,15 +617,43 @@ export function registerServicesRoutes(app: Express) {
         return res.status(404).json({ error: 'Service not found' });
       }
 
-      const container = docker.getContainer(serviceId);
-      const logs = await container.logs({
-        stdout: true,
-        stderr: true,
-        tail: 100,
-        timestamps: true
-      });
+      let logs = '';
 
-      res.json({ logs: logs.toString('utf-8') });
+      switch (config.type) {
+        case 'docker':
+          if (docker) {
+            try {
+              const container = docker.getContainer(serviceId);
+              const containerLogs = await container.logs({
+                stdout: true,
+                stderr: true,
+                tail: 100,
+                timestamps: true
+              });
+              logs = containerLogs.toString('utf-8');
+            } catch {
+              logs = 'Container not found or not running';
+            }
+          } else {
+            logs = 'Docker not available';
+          }
+          break;
+        case 'host':
+          logs = `Host process logs are not available from web UI.\n\nView logs in the terminal where the process is running, or check:\n- SmartSpec Web: terminal running 'bash dev-local.sh web'\n- Python Backend: terminal running 'bash dev-local.sh backend'`;
+          break;
+        case 'systemd':
+          if (config.systemdName) {
+            try {
+              const { stdout } = await execAsync(`sudo journalctl -u ${config.systemdName} -n 100 --no-pager 2>/dev/null || journalctl -u ${config.systemdName} -n 100 --no-pager 2>/dev/null || echo "Cannot read logs"`);
+              logs = stdout;
+            } catch {
+              logs = 'Cannot read systemd logs (may require sudo)';
+            }
+          }
+          break;
+      }
+
+      res.json({ logs });
     } catch (error: any) {
       console.error('Error fetching logs:', error);
       res.status(500).json({
@@ -299,15 +663,23 @@ export function registerServicesRoutes(app: Express) {
     }
   });
 
-  // Start all services
+  // Start all services (Docker and systemd only, host processes need manual start)
   app.post('/api/admin/services/start-all', requireAdmin, async (req, res) => {
     try {
-      await Promise.all(
-        SERVICE_CONFIGS.map(config => startContainer(config.id).catch(e => {
-          console.error(`Failed to start ${config.id}:`, e);
-        }))
+      const results = await Promise.allSettled(
+        SERVICE_CONFIGS.filter(c => c.type !== 'host').map(async (config) => {
+          if (config.type === 'docker') {
+            await startContainer(config.id);
+          } else if (config.type === 'systemd' && config.systemdName) {
+            await startSystemdService(config.systemdName);
+          }
+        })
       );
-      res.json({ message: 'All services started successfully' });
+      const failed = results.filter(r => r.status === 'rejected').length;
+      res.json({
+        message: `Services started (${results.length - failed} succeeded, ${failed} failed)`,
+        note: 'Host processes need to be started manually with dev-local.sh'
+      });
     } catch (error: any) {
       console.error('Error starting all services:', error);
       res.status(500).json({
@@ -320,12 +692,19 @@ export function registerServicesRoutes(app: Express) {
   // Stop all services
   app.post('/api/admin/services/stop-all', requireAdmin, async (req, res) => {
     try {
-      await Promise.all(
-        SERVICE_CONFIGS.map(config => stopContainer(config.id).catch(e => {
-          console.error(`Failed to stop ${config.id}:`, e);
-        }))
+      const results = await Promise.allSettled(
+        SERVICE_CONFIGS.map(async (config) => {
+          if (config.type === 'docker') {
+            await stopContainer(config.id);
+          } else if (config.type === 'host' && config.checkPort) {
+            await stopHostProcess(config.checkPort);
+          } else if (config.type === 'systemd' && config.systemdName) {
+            await stopSystemdService(config.systemdName);
+          }
+        })
       );
-      res.json({ message: 'All services stopped successfully' });
+      const failed = results.filter(r => r.status === 'rejected').length;
+      res.json({ message: `Services stopped (${results.length - failed} succeeded, ${failed} failed)` });
     } catch (error: any) {
       console.error('Error stopping all services:', error);
       res.status(500).json({
@@ -335,15 +714,23 @@ export function registerServicesRoutes(app: Express) {
     }
   });
 
-  // Restart all services
+  // Restart all services (Docker and systemd only)
   app.post('/api/admin/services/restart-all', requireAdmin, async (req, res) => {
     try {
-      await Promise.all(
-        SERVICE_CONFIGS.map(config => restartContainer(config.id).catch(e => {
-          console.error(`Failed to restart ${config.id}:`, e);
-        }))
+      const results = await Promise.allSettled(
+        SERVICE_CONFIGS.filter(c => c.type !== 'host').map(async (config) => {
+          if (config.type === 'docker') {
+            await restartContainer(config.id);
+          } else if (config.type === 'systemd' && config.systemdName) {
+            await restartSystemdService(config.systemdName);
+          }
+        })
       );
-      res.json({ message: 'All services restarted successfully' });
+      const failed = results.filter(r => r.status === 'rejected').length;
+      res.json({
+        message: `Services restarted (${results.length - failed} succeeded, ${failed} failed)`,
+        note: 'Host processes need to be restarted manually with dev-local.sh'
+      });
     } catch (error: any) {
       console.error('Error restarting all services:', error);
       res.status(500).json({

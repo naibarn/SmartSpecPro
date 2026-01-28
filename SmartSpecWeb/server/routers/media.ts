@@ -126,6 +126,10 @@ export const mediaRouter = router({
         aspectRatio: aspectRatioSchema.optional(),
         negativePrompt: z.string().max(1000).optional(),
         numImages: z.number().min(1).max(4).optional(),
+        resolution: z.string().optional(),
+        outputFormat: z.string().optional(),
+        apiConfig: z.record(z.string()).optional(),
+        extraParams: z.record(z.any()).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -170,7 +174,11 @@ export const mediaRouter = router({
             aspectRatio: input.aspectRatio,
             negativePrompt: input.negativePrompt,
             numImages: input.numImages,
-          },
+            resolution: input.resolution,
+            outputFormat: input.outputFormat,
+            apiConfig: input.apiConfig,
+            extraParams: input.extraParams,
+          } as any,
           userToken
         );
 
@@ -205,6 +213,9 @@ export const mediaRouter = router({
         duration: z.number().min(1).max(60).optional(),
         aspectRatio: aspectRatioSchema.optional(),
         fps: z.number().min(15).max(60).optional(),
+        resolution: z.string().optional(),
+        apiConfig: z.record(z.string()).optional(),
+        extraParams: z.record(z.any()).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -357,6 +368,10 @@ export const mediaRouter = router({
         aspectRatio: aspectRatioSchema.optional(),
         negativePrompt: z.string().max(1000).optional(),
         numImages: z.number().min(1).max(4).optional(),
+        resolution: z.string().optional(),
+        outputFormat: z.string().optional(),
+        apiConfig: z.record(z.string()).optional(),
+        extraParams: z.record(z.any()).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -455,6 +470,9 @@ export const mediaRouter = router({
         duration: z.number().min(1).max(60).optional(),
         aspectRatio: aspectRatioSchema.optional(),
         fps: z.number().min(15).max(60).optional(),
+        resolution: z.string().optional(),
+        apiConfig: z.record(z.string()).optional(),
+        extraParams: z.record(z.any()).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {

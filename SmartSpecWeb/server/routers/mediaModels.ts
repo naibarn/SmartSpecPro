@@ -385,6 +385,7 @@ export const mediaModelsRouter = router({
             durations: mediaModels.durations,
             voices: mediaModels.voices,
             priority: mediaModels.priority,
+            configJson: mediaModels.configJson,
           })
           .from(mediaModels)
           .where(and(...conditions))

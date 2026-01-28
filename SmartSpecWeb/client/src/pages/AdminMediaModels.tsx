@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "../lib/trpc";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,6 +65,8 @@ import {
   Coins,
   ArrowUpDown,
   GripVertical,
+  Settings2,
+  Code,
 } from "lucide-react";
 
 interface MediaModel {
@@ -101,6 +104,14 @@ interface FormData {
   voices: string;
   isEnabled: boolean;
   priority: number;
+  // API Config (configJson)
+  apiEndpoint: string;
+  apiPayloadFormat: string;
+  kieModelId: string;
+  pricingFormula: string;
+  generateType: string;
+  inputFieldsJson: string;
+  pricingTiersJson: string;
 }
 
 const DEFAULT_FORM_DATA: FormData = {
@@ -117,6 +128,13 @@ const DEFAULT_FORM_DATA: FormData = {
   voices: "",
   isEnabled: true,
   priority: 99,
+  apiEndpoint: "/api/v1/jobs/createTask",
+  apiPayloadFormat: "market",
+  kieModelId: "",
+  pricingFormula: "flat",
+  generateType: "",
+  inputFieldsJson: "[]",
+  pricingTiersJson: '{"default": 10}',
 };
 
 export default function AdminMediaModels() {
@@ -129,6 +147,9 @@ export default function AdminMediaModels() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
+  // Debounce search query to prevent focus loss during typing
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+
   // Form state
   const [formData, setFormData] = useState<FormData>(DEFAULT_FORM_DATA);
 
@@ -139,10 +160,10 @@ export default function AdminMediaModels() {
     }
   }, [user, authLoading, setLocation]);
 
-  // Queries using tRPC hooks
+  // Queries using tRPC hooks (use debounced search to prevent focus loss)
   const { data: models = [], isLoading, refetch } = trpc.mediaModels.adminList.useQuery(
     {
-      search: searchQuery || undefined,
+      search: debouncedSearch || undefined,
       type: typeFilter !== "all" ? (typeFilter as "image" | "video" | "audio") : undefined,
       includeDisabled: true,
     },
@@ -192,6 +213,7 @@ export default function AdminMediaModels() {
 
   const handleEditModel = (model: MediaModel) => {
     setEditingModel(model);
+    const cfg = model.configJson || {};
     setFormData({
       modelId: model.modelId,
       name: model.name,
@@ -206,6 +228,13 @@ export default function AdminMediaModels() {
       voices: (model.voices || []).join(", "),
       isEnabled: model.isEnabled,
       priority: model.priority,
+      apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
+      apiPayloadFormat: cfg.apiPayloadFormat || "market",
+      kieModelId: cfg.kieModelId || "",
+      pricingFormula: cfg.pricingFormula || "flat",
+      generateType: cfg.generateType || "",
+      inputFieldsJson: cfg.inputFields ? JSON.stringify(cfg.inputFields, null, 2) : "[]",
+      pricingTiersJson: cfg.pricingTiers ? JSON.stringify(cfg.pricingTiers, null, 2) : '{"default": 10}',
     });
     setActiveTab("basic");
   };
@@ -232,7 +261,30 @@ export default function AdminMediaModels() {
       .map((s) => s.trim())
       .filter(Boolean);
 
+    // Build configJson from structured fields
+    let inputFields: any[] = [];
+    let pricingTiers: Record<string, number> = {};
+    try {
+      inputFields = JSON.parse(formData.inputFieldsJson);
+    } catch {}
+    try {
+      pricingTiers = JSON.parse(formData.pricingTiersJson);
+    } catch {}
+
+    const configJson: Record<string, any> = {
+      apiEndpoint: formData.apiEndpoint,
+      apiPayloadFormat: formData.apiPayloadFormat,
+      kieModelId: formData.kieModelId || undefined,
+      pricingFormula: formData.pricingFormula,
+      generateType: formData.generateType || undefined,
+      inputFields,
+      pricingTiers,
+    };
+
     if (editingModel) {
+      // Preserve any extra configJson keys the seed script set
+      const existing = editingModel.configJson || {};
+      const merged = { ...existing, ...configJson };
       updateMutation.mutate({
         id: editingModel.id,
         modelId: formData.modelId,
@@ -246,6 +298,7 @@ export default function AdminMediaModels() {
         sizes: sizes.length > 0 ? sizes : null,
         durations: durations.length > 0 ? durations : null,
         voices: voices.length > 0 ? voices : null,
+        configJson: merged,
         isEnabled: formData.isEnabled,
         priority: formData.priority,
       });
@@ -262,6 +315,7 @@ export default function AdminMediaModels() {
         sizes: sizes.length > 0 ? sizes : undefined,
         durations: durations.length > 0 ? durations : undefined,
         voices: voices.length > 0 ? voices : undefined,
+        configJson,
         isEnabled: formData.isEnabled,
         priority: formData.priority,
       });
@@ -642,10 +696,11 @@ function ModelForm({
 }) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="basic">Basic Info</TabsTrigger>
         <TabsTrigger value="aliases">Aliases</TabsTrigger>
         <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
+        <TabsTrigger value="apiConfig">API Config</TabsTrigger>
       </TabsList>
 
       <TabsContent value="basic" className="space-y-4 mt-4">
@@ -881,6 +936,124 @@ function ModelForm({
                 <p>Select a model type to see capability options</p>
               </div>
             )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="apiConfig" className="space-y-4 mt-4">
+        <div className="grid gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="apiEndpoint">API Endpoint</Label>
+              <Select
+                value={formData.apiEndpoint}
+                onValueChange={(value) => setFormData({ ...formData, apiEndpoint: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="/api/v1/jobs/createTask">Market Unified</SelectItem>
+                  <SelectItem value="/api/v1/veo/generate">Veo Native</SelectItem>
+                  <SelectItem value="/api/v1/runway/generate">Runway Native</SelectItem>
+                  <SelectItem value="/api/v1/generate">Suno Native</SelectItem>
+                  <SelectItem value="/api/v1/audio/speech">ElevenLabs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="apiPayloadFormat">Payload Format</Label>
+              <Select
+                value={formData.apiPayloadFormat}
+                onValueChange={(value) => setFormData({ ...formData, apiPayloadFormat: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="market">Market</SelectItem>
+                  <SelectItem value="veo">Veo</SelectItem>
+                  <SelectItem value="runway">Runway</SelectItem>
+                  <SelectItem value="suno">Suno</SelectItem>
+                  <SelectItem value="elevenlabs">ElevenLabs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="kieModelId">Kie Model ID</Label>
+              <Input
+                id="kieModelId"
+                value={formData.kieModelId}
+                onChange={(e) => setFormData({ ...formData, kieModelId: e.target.value })}
+                placeholder="e.g., wan/2-6-text-to-video"
+              />
+              <p className="text-xs text-muted-foreground">
+                Model identifier sent to Kie AI API
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="generateType">Generate Type</Label>
+              <Input
+                id="generateType"
+                value={formData.generateType}
+                onChange={(e) => setFormData({ ...formData, generateType: e.target.value })}
+                placeholder="e.g., text-to-video, image-to-video"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="pricingFormula">Pricing Formula</Label>
+            <Select
+              value={formData.pricingFormula}
+              onValueChange={(value) => setFormData({ ...formData, pricingFormula: value })}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="flat">Flat (single price or by resolution)</SelectItem>
+                <SelectItem value="per_duration">Per Duration (5s, 10s...)</SelectItem>
+                <SelectItem value="matrix">Matrix (resolution x duration)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="pricingTiersJson">
+              Pricing Tiers (JSON)
+            </Label>
+            <Textarea
+              id="pricingTiersJson"
+              value={formData.pricingTiersJson}
+              onChange={(e) => setFormData({ ...formData, pricingTiersJson: e.target.value })}
+              placeholder='{"720p-5s": 350, "1080p-10s": 1050}'
+              rows={4}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Tier key → credit cost. Keys depend on pricing formula (e.g., "720p-5s" for matrix, "5s" for per_duration, "default" for flat).
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="inputFieldsJson">
+              Input Fields (JSON)
+            </Label>
+            <Textarea
+              id="inputFieldsJson"
+              value={formData.inputFieldsJson}
+              onChange={(e) => setFormData({ ...formData, inputFieldsJson: e.target.value })}
+              placeholder='[{"key":"duration","label":"Duration","type":"select","options":[{"value":"5","label":"5s"}],"default":"5","affectsPricing":true}]'
+              rows={8}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Defines dynamic UI controls in Media Studio. Each field: key, label, type (select/boolean/number/text/image_urls), options, default, affectsPricing.
+            </p>
+          </div>
         </div>
       </TabsContent>
     </Tabs>

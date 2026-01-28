@@ -3,7 +3,7 @@ Support Ticket Model
 User support ticket system
 '''
 
-from sqlalchemy import Column, String, Text, DateTime, Enum, ForeignKey, Index
+from sqlalchemy import Column, String, Integer, Text, DateTime, Enum, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -46,13 +46,13 @@ class SupportTicket(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     ticket_number = Column(String(20), unique=True, nullable=False, index=True)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     subject = Column(String(500), nullable=False)
     description = Column(Text, nullable=False)
     category = Column(Enum(TicketCategory), nullable=False, index=True)
     priority = Column(Enum(TicketPriority), default=TicketPriority.MEDIUM, nullable=False, index=True)
     status = Column(Enum(TicketStatus), default=TicketStatus.OPEN, nullable=False, index=True)
-    assigned_to = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    assigned_to = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     resolved_at = Column(DateTime, nullable=True)
@@ -93,7 +93,7 @@ class TicketMessage(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     ticket_id = Column(String(36), ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     message = Column(Text, nullable=False)
     is_staff_response = Column(String(10), default="false")
     attachments = Column(Text, nullable=True)

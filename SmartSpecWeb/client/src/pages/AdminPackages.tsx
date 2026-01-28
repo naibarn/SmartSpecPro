@@ -30,7 +30,27 @@ import {
   Check,
   AlertTriangle,
   ChevronLeft,
+  Calendar,
+  Repeat,
+  Zap,
 } from "lucide-react";
+
+type PackageType = "one_time" | "subscription";
+type BillingPeriod = "monthly" | "quarterly" | "semi_annual" | "yearly";
+
+interface StripePriceIds {
+  monthly?: string;
+  quarterly?: string;
+  semi_annual?: string;
+  yearly?: string;
+}
+
+interface BillingPrices {
+  monthly: number;
+  quarterly: number;
+  semi_annual: number;
+  yearly: number;
+}
 
 interface PackageData {
   id: number;
@@ -38,21 +58,46 @@ interface PackageData {
   description: string | null;
   credits: number;
   priceUsd: number;
+  packageType: PackageType;
+  billingPeriod: BillingPeriod | null;
+  discountPercent: number;
   stripePriceId: string | null;
+  stripeProductId: string | null;
+  stripePriceIds: StripePriceIds | null;
   isActive: boolean;
   isFeatured: boolean;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
   pricePerCredit: number;
+  billingPrices?: BillingPrices;
 }
+
+const BILLING_DISCOUNTS: Record<BillingPeriod, number> = {
+  monthly: 0,
+  quarterly: 5,
+  semi_annual: 7,
+  yearly: 10,
+};
+
+const BILLING_LABELS: Record<BillingPeriod, string> = {
+  monthly: "Monthly",
+  quarterly: "Quarterly (5% off)",
+  semi_annual: "Semi-Annual (7% off)",
+  yearly: "Yearly (10% off)",
+};
 
 interface PackageFormData {
   name: string;
   description: string;
   credits: string;
   priceUsd: string;
+  packageType: PackageType;
+  billingPeriod: BillingPeriod;
+  discountPercent: string;
   stripePriceId: string;
+  stripeProductId: string;
+  stripePriceIds: StripePriceIds;
   isActive: boolean;
   isFeatured: boolean;
   sortOrder: string;
@@ -63,7 +108,12 @@ const defaultFormData: PackageFormData = {
   description: "",
   credits: "",
   priceUsd: "",
+  packageType: "one_time",
+  billingPeriod: "monthly",
+  discountPercent: "0",
   stripePriceId: "",
+  stripeProductId: "",
+  stripePriceIds: {},
   isActive: true,
   isFeatured: false,
   sortOrder: "0",
@@ -185,7 +235,12 @@ export default function AdminPackages() {
       description: pkg.description || "",
       credits: pkg.credits.toString(),
       priceUsd: pkg.priceUsd.toString(),
+      packageType: pkg.packageType || "one_time",
+      billingPeriod: pkg.billingPeriod || "monthly",
+      discountPercent: (pkg.discountPercent || 0).toString(),
       stripePriceId: pkg.stripePriceId || "",
+      stripeProductId: pkg.stripeProductId || "",
+      stripePriceIds: pkg.stripePriceIds || {},
       isActive: pkg.isActive,
       isFeatured: pkg.isFeatured,
       sortOrder: pkg.sortOrder.toString(),
@@ -197,6 +252,7 @@ export default function AdminPackages() {
     const credits = parseInt(formData.credits);
     const priceUsd = parseFloat(formData.priceUsd);
     const sortOrder = parseInt(formData.sortOrder) || 0;
+    const discountPercent = parseInt(formData.discountPercent) || 0;
 
     if (!formData.name.trim()) {
       toast.error("Please enter a package name");
@@ -211,12 +267,24 @@ export default function AdminPackages() {
       return;
     }
 
+    // For subscriptions, validate Stripe Product ID
+    if (formData.packageType === "subscription" && !formData.stripeProductId.trim()) {
+      toast.warning("Stripe Product ID is recommended for subscription packages");
+    }
+
     const data = {
       name: formData.name.trim(),
       description: formData.description.trim() || undefined,
       credits,
       priceUsd,
+      packageType: formData.packageType,
+      billingPeriod: formData.packageType === "subscription" ? formData.billingPeriod : undefined,
+      discountPercent,
       stripePriceId: formData.stripePriceId.trim() || undefined,
+      stripeProductId: formData.stripeProductId.trim() || undefined,
+      stripePriceIds: formData.packageType === "subscription" && Object.keys(formData.stripePriceIds).length > 0
+        ? formData.stripePriceIds
+        : undefined,
       isActive: formData.isActive,
       isFeatured: formData.isFeatured,
       sortOrder,
@@ -270,14 +338,14 @@ export default function AdminPackages() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
             <div className="bg-white rounded-xl p-6 shadow-sm border">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-purple-100 rounded-lg">
                   <Package className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Total Packages</p>
+                  <p className="text-sm text-gray-500">Total</p>
                   <p className="text-2xl font-bold">{stats.totalPackages}</p>
                 </div>
               </div>
@@ -290,6 +358,28 @@ export default function AdminPackages() {
                 <div>
                   <p className="text-sm text-gray-500">Active</p>
                   <p className="text-2xl font-bold">{stats.activePackages}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-6 shadow-sm border">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-orange-100 rounded-lg">
+                  <Zap className="w-6 h-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">One-Time</p>
+                  <p className="text-2xl font-bold">{stats.oneTimePackages || 0}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-6 shadow-sm border">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-indigo-100 rounded-lg">
+                  <Repeat className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Subscription</p>
+                  <p className="text-2xl font-bold">{stats.subscriptionPackages || 0}</p>
                 </div>
               </div>
             </div>
@@ -311,8 +401,8 @@ export default function AdminPackages() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Price Range</p>
-                  <p className="text-2xl font-bold">
-                    ${stats.priceRange.min} - ${stats.priceRange.max}
+                  <p className="text-lg font-bold">
+                    ${stats.priceRange.min}-${stats.priceRange.max}
                   </p>
                 </div>
               </div>
@@ -342,13 +432,16 @@ export default function AdminPackages() {
                       Package
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Type
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Credits
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Price
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Per Credit
+                      Stripe
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Status
@@ -359,121 +452,167 @@ export default function AdminPackages() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {packages.map((pkg) => (
-                    <tr key={pkg.id} className={`hover:bg-gray-50 ${!pkg.isActive ? "opacity-50" : ""}`}>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              pkg.isFeatured
-                                ? "bg-gradient-to-br from-yellow-400 to-orange-500"
-                                : "bg-gradient-to-br from-purple-400 to-pink-500"
+                  {packages.map((pkg) => {
+                    const isSubscription = pkg.packageType === "subscription";
+                    const hasStripeConfig = isSubscription
+                      ? !!(pkg.stripeProductId && pkg.stripePriceIds && Object.keys(pkg.stripePriceIds).length > 0)
+                      : !!pkg.stripePriceId;
+
+                    return (
+                      <tr key={pkg.id} className={`hover:bg-gray-50 ${!pkg.isActive ? "opacity-50" : ""}`}>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                pkg.isFeatured
+                                  ? "bg-gradient-to-br from-yellow-400 to-orange-500"
+                                  : isSubscription
+                                  ? "bg-gradient-to-br from-indigo-400 to-purple-500"
+                                  : "bg-gradient-to-br from-purple-400 to-pink-500"
+                              }`}
+                            >
+                              {pkg.isFeatured ? (
+                                <Star className="w-5 h-5 text-white" />
+                              ) : isSubscription ? (
+                                <Repeat className="w-5 h-5 text-white" />
+                              ) : (
+                                <Zap className="w-5 h-5 text-white" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {pkg.name}
+                                {pkg.isFeatured && (
+                                  <span className="ml-2 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+                                    Featured
+                                  </span>
+                                )}
+                              </p>
+                              {pkg.description && (
+                                <div
+                                  className="text-sm text-gray-500 max-w-xs line-clamp-1"
+                                  dangerouslySetInnerHTML={{ __html: pkg.description }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                                isSubscription
+                                  ? "bg-indigo-100 text-indigo-700"
+                                  : "bg-orange-100 text-orange-700"
+                              }`}
+                            >
+                              {isSubscription ? <Repeat className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+                              {isSubscription ? "Subscription" : "One-Time"}
+                            </span>
+                            {isSubscription && pkg.billingPeriod && (
+                              <span className="text-xs text-gray-500">
+                                {BILLING_LABELS[pkg.billingPeriod as BillingPeriod]?.split(" ")[0] || pkg.billingPeriod}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="font-semibold text-gray-900">
+                            {pkg.credits.toLocaleString()}
+                          </span>
+                          <span className="block text-xs text-gray-500">
+                            ${pkg.pricePerCredit.toFixed(4)}/cr
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="font-semibold text-green-600">
+                            ${pkg.priceUsd.toFixed(2)}
+                          </span>
+                          {isSubscription && pkg.billingPrices && (
+                            <span className="block text-xs text-gray-500">
+                              /mo base
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          {hasStripeConfig ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              <Check className="w-3 h-3" />
+                              Ready
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                              <AlertTriangle className="w-3 h-3" />
+                              Missing
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              pkg.isActive
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-600"
                             }`}
                           >
-                            {pkg.isFeatured ? (
-                              <Star className="w-5 h-5 text-white" />
-                            ) : (
-                              <CreditCard className="w-5 h-5 text-white" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {pkg.name}
-                              {pkg.isFeatured && (
-                                <span className="ml-2 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
-                                  Featured
-                                </span>
+                            {pkg.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleActiveMutation.mutate({ id: pkg.id })}
+                              title={pkg.isActive ? "Deactivate" : "Activate"}
+                            >
+                              {pkg.isActive ? (
+                                <EyeOff className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <Eye className="w-4 h-4 text-green-500" />
                               )}
-                            </p>
-                            {pkg.description && (
-                              <div
-                                className="text-sm text-gray-500 max-w-xs line-clamp-2"
-                                dangerouslySetInnerHTML={{ __html: pkg.description }}
-                              />
-                            )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleFeaturedMutation.mutate({ id: pkg.id })}
+                              title={pkg.isFeatured ? "Unfeature" : "Feature"}
+                            >
+                              {pkg.isFeatured ? (
+                                <StarOff className="w-4 h-4 text-yellow-500" />
+                              ) : (
+                                <Star className="w-4 h-4 text-gray-400" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(pkg)}
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4 text-blue-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => duplicateMutation.mutate({ id: pkg.id })}
+                              title="Duplicate"
+                            >
+                              <Copy className="w-4 h-4 text-purple-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteConfirm(pkg.id)}
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="font-semibold text-gray-900">
-                          {pkg.credits.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="font-semibold text-green-600">
-                          ${pkg.priceUsd.toFixed(2)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-gray-500">
-                          ${pkg.pricePerCredit.toFixed(4)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            pkg.isActive
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {pkg.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleActiveMutation.mutate({ id: pkg.id })}
-                            title={pkg.isActive ? "Deactivate" : "Activate"}
-                          >
-                            {pkg.isActive ? (
-                              <EyeOff className="w-4 h-4 text-gray-500" />
-                            ) : (
-                              <Eye className="w-4 h-4 text-green-500" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleFeaturedMutation.mutate({ id: pkg.id })}
-                            title={pkg.isFeatured ? "Unfeature" : "Feature"}
-                          >
-                            {pkg.isFeatured ? (
-                              <StarOff className="w-4 h-4 text-yellow-500" />
-                            ) : (
-                              <Star className="w-4 h-4 text-gray-400" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditModal(pkg)}
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4 text-blue-500" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => duplicateMutation.mutate({ id: pkg.id })}
-                            title="Duplicate"
-                          >
-                            <Copy className="w-4 h-4 text-purple-500" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteConfirm(pkg.id)}
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -528,18 +667,95 @@ export default function AdminPackages() {
                     placeholder="Enter package description. You can use HTML tags like <strong>, <ul>, <li>, <p>, etc."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="min-h-[200px] font-mono text-sm"
-                    rows={10}
+                    className="min-h-[120px] font-mono text-sm"
+                    rows={5}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Tip: Use HTML tags for formatting. Example: &lt;ul&gt;&lt;li&gt;Feature 1&lt;/li&gt;&lt;/ul&gt;
                   </p>
                 </div>
 
+                {/* Package Type Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Package Type *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, packageType: "one_time" })}
+                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                        formData.packageType === "one_time"
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <Zap className={`w-5 h-5 ${formData.packageType === "one_time" ? "text-orange-500" : "text-gray-400"}`} />
+                      <div className="text-left">
+                        <p className={`text-sm font-medium ${formData.packageType === "one_time" ? "text-orange-700" : "text-gray-700"}`}>
+                          One-Time
+                        </p>
+                        <p className="text-xs text-gray-500">Single purchase</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, packageType: "subscription" })}
+                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                        formData.packageType === "subscription"
+                          ? "border-indigo-500 bg-indigo-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <Repeat className={`w-5 h-5 ${formData.packageType === "subscription" ? "text-indigo-500" : "text-gray-400"}`} />
+                      <div className="text-left">
+                        <p className={`text-sm font-medium ${formData.packageType === "subscription" ? "text-indigo-700" : "text-gray-700"}`}>
+                          Subscription
+                        </p>
+                        <p className="text-xs text-gray-500">Recurring billing</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Billing Period for Subscriptions */}
+                {formData.packageType === "subscription" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Default Billing Period
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(Object.entries(BILLING_LABELS) as [BillingPeriod, string][]).map(([period, label]) => (
+                        <button
+                          key={period}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, billingPeriod: period })}
+                          className={`flex items-center justify-between p-2 rounded-lg border text-sm transition-all ${
+                            formData.billingPeriod === period
+                              ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                              : "border-gray-200 hover:border-gray-300 text-gray-700"
+                          }`}
+                        >
+                          <span>{label.split(" ")[0]}</span>
+                          {BILLING_DISCOUNTS[period] > 0 && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              formData.billingPeriod === period
+                                ? "bg-indigo-100 text-indigo-600"
+                                : "bg-gray-100 text-gray-500"
+                            }`}>
+                              -{BILLING_DISCOUNTS[period]}%
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Credits *
+                      Credits {formData.packageType === "subscription" ? "(per period)" : ""} *
                     </label>
                     <Input
                       type="number"
@@ -551,7 +767,7 @@ export default function AdminPackages() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Price (USD) *
+                      {formData.packageType === "subscription" ? "Monthly Price (USD) *" : "Price (USD) *"}
                     </label>
                     <Input
                       type="number"
@@ -574,33 +790,146 @@ export default function AdminPackages() {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Stripe Price ID (optional)
-                  </label>
-                  <Input
-                    placeholder="price_xxxxx"
-                    value={formData.stripePriceId}
-                    onChange={(e) => setFormData({ ...formData, stripePriceId: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Required for Stripe checkout integration
-                  </p>
+                {/* Billing Period Pricing Preview for Subscriptions */}
+                {formData.packageType === "subscription" && formData.priceUsd && (
+                  <div className="bg-indigo-50 rounded-lg p-3">
+                    <p className="text-sm font-medium text-indigo-700 mb-2">Billing Period Pricing:</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {(Object.entries(BILLING_DISCOUNTS) as [BillingPeriod, number][]).map(([period, discount]) => {
+                        const basePrice = parseFloat(formData.priceUsd) || 0;
+                        const months = period === "monthly" ? 1 : period === "quarterly" ? 3 : period === "semi_annual" ? 6 : 12;
+                        const totalPrice = basePrice * months * (1 - discount / 100);
+                        return (
+                          <div key={period} className="flex justify-between text-indigo-600">
+                            <span>{BILLING_LABELS[period].split(" ")[0]}:</span>
+                            <span className="font-medium">${totalPrice.toFixed(2)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Stripe Configuration */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Stripe Configuration
+                  </h4>
+
+                  {formData.packageType === "one_time" ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Stripe Price ID
+                      </label>
+                      <Input
+                        placeholder="price_xxxxx"
+                        value={formData.stripePriceId}
+                        onChange={(e) => setFormData({ ...formData, stripePriceId: e.target.value })}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Required for Stripe checkout integration
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Stripe Product ID
+                        </label>
+                        <Input
+                          placeholder="prod_xxxxx"
+                          value={formData.stripeProductId}
+                          onChange={(e) => setFormData({ ...formData, stripeProductId: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Stripe Price IDs (per billing period)
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Monthly</label>
+                            <Input
+                              placeholder="price_xxxxx"
+                              value={formData.stripePriceIds.monthly || ""}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                stripePriceIds: { ...formData.stripePriceIds, monthly: e.target.value || undefined }
+                              })}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Quarterly</label>
+                            <Input
+                              placeholder="price_xxxxx"
+                              value={formData.stripePriceIds.quarterly || ""}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                stripePriceIds: { ...formData.stripePriceIds, quarterly: e.target.value || undefined }
+                              })}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Semi-Annual</label>
+                            <Input
+                              placeholder="price_xxxxx"
+                              value={formData.stripePriceIds.semi_annual || ""}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                stripePriceIds: { ...formData.stripePriceIds, semi_annual: e.target.value || undefined }
+                              })}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Yearly</label>
+                            <Input
+                              placeholder="price_xxxxx"
+                              value={formData.stripePriceIds.yearly || ""}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                stripePriceIds: { ...formData.stripePriceIds, yearly: e.target.value || undefined }
+                              })}
+                              className="text-sm"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Create prices in Stripe Dashboard for each billing period
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sort Order
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={formData.sortOrder}
-                    onChange={(e) => setFormData({ ...formData, sortOrder: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Lower numbers appear first
-                  </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Discount % (optional)
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={formData.discountPercent}
+                      onChange={(e) => setFormData({ ...formData, discountPercent: e.target.value })}
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Sort Order
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={formData.sortOrder}
+                      onChange={(e) => setFormData({ ...formData, sortOrder: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-6">

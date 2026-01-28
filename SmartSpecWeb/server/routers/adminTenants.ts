@@ -55,7 +55,7 @@ export function registerAdminTenantsRoutes(app: Express) {
     try {
       const { id } = req.params;
       const dbInstance = await db.instance;
-      const [tenant] = await dbInstance.select().from(tenants).where(eq(tenants.id, parseInt(id)));
+      const [tenant] = await dbInstance.select().from(tenants).where(eq(tenants.id, id));
 
       if (!tenant) {
         return res.status(404).json({ error: 'Tenant not found' });
@@ -87,7 +87,11 @@ export function registerAdminTenantsRoutes(app: Express) {
         return res.status(409).json({ error: 'Tenant with this slug already exists' });
       }
 
+      // Generate unique tenant ID
+      const tenantId = `tenant-${nanoid(8)}`;
+
       const [tenant] = await dbInstance.insert(tenants).values({
+        id: tenantId,
         slug,
         name,
         primaryDomain,
@@ -99,7 +103,11 @@ export function registerAdminTenantsRoutes(app: Express) {
         seoConfig: seoConfig || {},
         settings: settings || {},
         ownerId: req.user.id,
-      }).returning();
+        status: 'ACTIVE',
+        plan: 'FREE',
+        created_at: new Date(),
+        createdAt: new Date(),
+      } as any).returning();
 
       // Clear tenant cache
       clearTenantCache();
@@ -133,7 +141,7 @@ export function registerAdminTenantsRoutes(app: Express) {
           settings,
           updatedAt: new Date(),
         })
-        .where(eq(tenants.id, parseInt(id)))
+        .where(eq(tenants.id, id))
         .returning();
 
       if (!tenant) {
@@ -156,7 +164,7 @@ export function registerAdminTenantsRoutes(app: Express) {
       const { id } = req.params;
       const dbInstance = await db.instance;
 
-      await dbInstance.delete(tenants).where(eq(tenants.id, parseInt(id)));
+      await dbInstance.delete(tenants).where(eq(tenants.id, id));
 
       // Clear tenant cache
       clearTenantCache();
@@ -193,7 +201,7 @@ export function registerAdminTenantsRoutes(app: Express) {
       const dbInstance = await db.instance;
 
       // Check tenant exists
-      const [tenant] = await dbInstance.select().from(tenants).where(eq(tenants.id, parseInt(id)));
+      const [tenant] = await dbInstance.select().from(tenants).where(eq(tenants.id, id));
       if (!tenant) {
         return res.status(404).json({ error: 'Tenant not found' });
       }
@@ -226,7 +234,7 @@ export function registerAdminTenantsRoutes(app: Express) {
           ...updateField,
           updatedAt: new Date(),
         })
-        .where(eq(tenants.id, parseInt(id)));
+        .where(eq(tenants.id, id));
 
       // Clear tenant cache
       clearTenantCache();

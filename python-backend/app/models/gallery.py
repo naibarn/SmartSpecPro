@@ -82,7 +82,7 @@ class GalleryItem(Base):
     slug = Column(String(200), unique=True, nullable=False, index=True)
     
     # Owner
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Source task (optional)
     generation_task_id = Column(String(36), ForeignKey("generation_tasks.id"), nullable=True)
@@ -214,7 +214,7 @@ class GalleryLike(Base):
     
     # References
     gallery_item_id = Column(String(36), ForeignKey("gallery_items.id"), nullable=False, index=True)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Timestamp
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -240,7 +240,7 @@ class GalleryComment(Base):
     
     # References
     gallery_item_id = Column(String(36), ForeignKey("gallery_items.id"), nullable=False, index=True)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     parent_id = Column(String(36), ForeignKey("gallery_comments.id"), nullable=True)  # For replies
     
     # Content
@@ -284,7 +284,7 @@ class GalleryCollection(Base):
     slug = Column(String(200), unique=True, nullable=False, index=True)
     
     # Owner
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Metadata
     title = Column(String(200), nullable=False)

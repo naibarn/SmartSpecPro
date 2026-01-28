@@ -41,7 +41,7 @@ class OpenCodeAPIKey(Base):
     __tablename__ = "opencode_api_keys"
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Key identification
     name = Column(String(255), nullable=False)

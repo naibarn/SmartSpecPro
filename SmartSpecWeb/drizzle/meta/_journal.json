@@ -1,26 +1,26 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1767452664221,
-      "tag": "0000_greedy_otto_octavius",
+      "version": "7",
+      "when": 1769517788097,
+      "tag": "0000_fine_pretty_boy",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "5",
-      "when": 1768970001650,
-      "tag": "0001_previous_peter_quill",
+      "version": "7",
+      "when": 1769613142659,
+      "tag": "0001_sad_marvel_apes",
       "breakpoints": true
     },
     {
       "idx": 2,
-      "version": "5",
-      "when": 1769004930545,
-      "tag": "0002_mature_firestar",
+      "version": "7",
+      "when": 1769613500000,
+      "tag": "0002_add_agency_package_type",
       "breakpoints": true
     }
   ]

@@ -17,6 +17,7 @@ import {
   getDefaultModel,
   mapToApiModelId,
 } from "./modelRegistry";
+import { calculateCreditCost } from "./pricingCalculator";
 
 export interface SkillExecutionParams {
   prompt: string;
@@ -97,8 +98,12 @@ async function executeImageGeneration(
     };
   }
 
-  // Calculate credits needed
-  const creditCost = modelMeta.creditCost * (params.numImages || 1);
+  // Calculate credits using pricing tiers
+  const creditCost = calculateCreditCost(modelMeta, {
+    numImages: params.numImages,
+    resolution: (params as any).resolution,
+    quality: params.quality,
+  });
 
   // Check credits
   const hasCredits = await hasEnoughCredits(userId, creditCost);
@@ -184,10 +189,13 @@ async function executeVideoGeneration(
     };
   }
 
-  // Calculate credits needed (based on duration)
+  // Calculate credits using pricing tiers
   const duration = params.duration || 5;
-  const durationMultiplier = Math.ceil(duration / 5);
-  const creditCost = modelMeta.creditCost * durationMultiplier;
+  const creditCost = calculateCreditCost(modelMeta, {
+    duration: String(duration),
+    resolution: (params as any).resolution,
+    quality: params.quality,
+  });
 
   // Check credits
   const hasCredits = await hasEnoughCredits(userId, creditCost);
@@ -255,14 +263,17 @@ export async function executeAudioGeneration(
     };
   }
 
-  // Check credits
-  const hasCredits = await hasEnoughCredits(userId, modelMeta.creditCost);
+  // Calculate credits using pricing tiers
+  const audioCreditCost = calculateCreditCost(modelMeta, {
+    voice: params.voice,
+  });
+  const hasCredits = await hasEnoughCredits(userId, audioCreditCost);
   if (!hasCredits) {
     return {
       success: false,
       skillId: "audio-generation",
       type: "audio",
-      error: `Insufficient credits. Need ${modelMeta.creditCost} credits for audio generation.`,
+      error: `Insufficient credits. Need ${audioCreditCost} credits for audio generation.`,
     };
   }
 
@@ -279,7 +290,7 @@ export async function executeAudioGeneration(
     // Deduct credits
     await deductCredits({
       userId,
-      amount: result.creditsUsed || modelMeta.creditCost,
+      amount: result.creditsUsed || audioCreditCost,
       description: `Audio generation: ${model}`,
       metadata: {
         model,
@@ -297,7 +308,7 @@ export async function executeAudioGeneration(
       data: result,
       resultUrl: url,
       message: `Generated audio using ${modelMeta.name}`,
-      creditsUsed: result.creditsUsed || modelMeta.creditCost,
+      creditsUsed: result.creditsUsed || audioCreditCost,
     };
   } catch (error) {
     return {

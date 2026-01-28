@@ -63,7 +63,7 @@ class CreditsBalance(Base):
     __tablename__ = "credits_balances"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     
     # Credit amounts
     total_credits = Column(Float, default=0.0, nullable=False)
@@ -177,7 +177,7 @@ class UsageRecord(Base):
     __tablename__ = "usage_records"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys_v2.id"), nullable=True)
     
     # Usage details

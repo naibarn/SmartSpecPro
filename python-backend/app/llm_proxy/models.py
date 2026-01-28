@@ -40,9 +40,14 @@ class ImageGenerationRequest(BaseModel):
     seed: Optional[int] = None
     cfg_scale: Optional[float] = Field(default=None, alias="cfgScale")
     steps: Optional[int] = None
+    resolution: Optional[str] = None  # e.g., "1K", "2K", "4K"
+    output_format: Optional[str] = Field(default=None, alias="outputFormat")  # e.g., "png", "jpg"
     # Reference images/styles
     reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
     reference_style_url: Optional[str] = Field(default=None, alias="referenceStyleUrl")
+    # Per-model API config (passed from Node.js based on configJson)
+    api_config: Optional[Dict[str, str]] = Field(default=None, alias="apiConfig")
+    extra_params: Optional[Dict[str, Union[str, int, float, bool, List]]] = Field(default=None, alias="extraParams")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 
@@ -72,6 +77,9 @@ class VideoGenerationRequest(BaseModel):
     seed: Optional[int] = None
     reference_video_url: Optional[str] = Field(default=None, alias="referenceVideoUrl")
     reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
+    # Per-model API config (passed from Node.js based on configJson)
+    api_config: Optional[Dict[str, str]] = Field(default=None, alias="apiConfig")
+    extra_params: Optional[Dict[str, Union[str, int, float, bool, List]]] = Field(default=None, alias="extraParams")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 

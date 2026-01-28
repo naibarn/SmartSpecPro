@@ -92,6 +92,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     } else if (user.openId === ENV.ownerOpenId) {
       values.role = 'admin';
       updateSet.role = 'admin';
+    } else {
+      // Always include default role for INSERT to avoid NOT NULL constraint violation
+      values.role = 'user';
+      // Don't update role if not specified - keep existing role on conflict
     }
 
     // Set registeredDomain only on first insert (new user)
@@ -116,6 +120,27 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
+  }
+}
+
+/**
+ * Update only the lastSignedIn timestamp for an existing user
+ * This avoids the INSERT...ON CONFLICT issues with NOT NULL constraints
+ */
+export async function updateLastSignedIn(openId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot update lastSignedIn: database not available");
+    return;
+  }
+
+  try {
+    await db.update(users)
+      .set({ lastSignedIn: new Date() })
+      .where(eq(users.openId, openId));
+  } catch (error) {
+    console.warn("[Database] Failed to update lastSignedIn:", error);
+    // Don't throw - this is a non-critical operation
   }
 }
 

@@ -82,7 +82,7 @@ class APIKeyV2(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     
     # Ownership
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     project_id = Column(String(36), nullable=True, index=True)
     
     # Key identification
@@ -248,7 +248,7 @@ class KeyAuditLog(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     
     # Actor info
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     
     # Target info
     api_key_id = Column(String(36), ForeignKey("api_keys_v2.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -320,7 +320,7 @@ class KeyMFAVerification(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     
     # User and key
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     api_key_id = Column(String(36), ForeignKey("api_keys_v2.id", ondelete="CASCADE"), nullable=True)
     
     # Operation being authorized

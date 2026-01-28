@@ -116,7 +116,7 @@ class RoleAssignment(Base):
     id = Column(String(36), primary_key=True)
     
     # User
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     
     # Role
     role_id = Column(String(36), ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
@@ -126,7 +126,7 @@ class RoleAssignment(Base):
     project_id = Column(String(36), nullable=True)  # Optional project-level assignment
     
     # Assignment metadata
-    assigned_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    assigned_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     reason = Column(Text, nullable=True)
     
     # Validity

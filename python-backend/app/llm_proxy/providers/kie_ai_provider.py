@@ -383,13 +383,21 @@ class KieAIProvider:
         Args:
             model: Model name (e.g., "google-nano-banana-pro", "flux-1-1-pro")
             prompt: Text prompt for image generation
-            **kwargs: Additional parameters like aspect_ratio, resolution, output_format
+            **kwargs: Additional parameters like aspect_ratio, resolution, output_format,
+                      api_config (endpoint/format from configJson), extra_params
 
         Returns:
             Generation result with image URL
         """
-        # Normalize model name for Kie.ai API
-        api_model = normalize_model_name(model)
+        # Check for per-model API config from configJson
+        api_config = kwargs.pop("api_config", None)
+        extra_params = kwargs.pop("extra_params", None)
+
+        # Determine API model name
+        if api_config and api_config.get("kie_model_id"):
+            api_model = api_config["kie_model_id"]
+        else:
+            api_model = normalize_model_name(model)
 
         # Build input parameters for image generation
         input_params = {
@@ -406,6 +414,12 @@ class KieAIProvider:
             input_params["seed"] = kwargs["seed"]
         if kwargs.get("num_images"):
             input_params["num_images"] = kwargs["num_images"]
+
+        # Merge extra_params from configJson-based dynamic fields
+        if extra_params and isinstance(extra_params, dict):
+            for key, value in extra_params.items():
+                if value is not None:
+                    input_params[key] = value
 
         # Add reference images for style transfer / img2img
         # Kie.ai uses "image_input" field for reference images
@@ -433,10 +447,21 @@ class KieAIProvider:
         logger.info("kie_ai_generate_image",
                     model=api_model,
                     has_callback=bool(callback_url),
+                    has_api_config=bool(api_config),
                     callback_url=callback_url[:50] if callback_url else None)
 
-        # Create task
-        result = await self.create_task(api_model, input_params, callback_url)
+        # Determine endpoint — use api_config endpoint or default to create_task
+        api_endpoint = api_config.get("endpoint") if api_config else None
+
+        if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
+            # Use custom endpoint directly (e.g., /api/v1/veo/generate)
+            payload = {"prompt": prompt, **input_params}
+            if callback_url:
+                payload["callBackUrl"] = callback_url
+            result = await self._make_request("POST", api_endpoint.lstrip("/api/v1/"), data=payload)
+        else:
+            # Default: use Market Unified createTask endpoint
+            result = await self.create_task(api_model, input_params, callback_url)
 
         # Extract taskId - Kie.ai wraps response in {"code": 200, "data": {"taskId": "..."}}
         task_id = (
@@ -474,13 +499,21 @@ class KieAIProvider:
         Args:
             model: Model name (e.g., "veo-3-1", "sora-2", "kling-2-6")
             prompt: Text prompt for video generation
-            **kwargs: Additional parameters like duration, aspect_ratio
+            **kwargs: Additional parameters like duration, aspect_ratio,
+                      api_config (endpoint/format from configJson), extra_params
 
         Returns:
             Generation result with video URL
         """
-        # Normalize model name for Kie.ai API
-        api_model = normalize_model_name(model)
+        # Check for per-model API config from configJson
+        api_config = kwargs.pop("api_config", None)
+        extra_params = kwargs.pop("extra_params", None)
+
+        # Determine API model name
+        if api_config and api_config.get("kie_model_id"):
+            api_model = api_config["kie_model_id"]
+        else:
+            api_model = normalize_model_name(model)
 
         input_params = {
             "prompt": prompt,
@@ -493,6 +526,18 @@ class KieAIProvider:
         if kwargs.get("fps"):
             input_params["fps"] = kwargs["fps"]
 
+        # Merge extra_params from configJson-based dynamic fields
+        if extra_params and isinstance(extra_params, dict):
+            for key, value in extra_params.items():
+                if value is not None:
+                    input_params[key] = value
+
+        # Add reference images if provided
+        if kwargs.get("reference_image_urls"):
+            ref_urls = kwargs["reference_image_urls"]
+            if isinstance(ref_urls, list) and len(ref_urls) > 0:
+                input_params["image_urls"] = ref_urls
+
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
         callback_url = kwargs.get("callback_url")
@@ -501,7 +546,19 @@ class KieAIProvider:
         if callback_url == "":  # Empty string means explicitly disable callback
             callback_url = None
 
-        result = await self.create_task(api_model, input_params, callback_url)
+        # Determine endpoint — use api_config endpoint or default to create_task
+        api_endpoint = api_config.get("endpoint") if api_config else None
+
+        if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
+            # Use custom endpoint (e.g., /api/v1/veo/generate, /api/v1/runway/generate)
+            payload = {"prompt": prompt, **input_params}
+            if api_config.get("kie_model_id"):
+                payload["model"] = api_config["kie_model_id"]
+            if callback_url:
+                payload["callBackUrl"] = callback_url
+            result = await self._make_request("POST", api_endpoint.lstrip("/api/v1/"), data=payload)
+        else:
+            result = await self.create_task(api_model, input_params, callback_url)
 
         # Extract taskId from nested response
         task_id = (

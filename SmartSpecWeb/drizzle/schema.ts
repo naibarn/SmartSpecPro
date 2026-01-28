@@ -13,6 +13,12 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   "adjustment",
   "subscription",
 ]);
+
+// Package type: one-time purchase or subscription
+export const packageTypeEnum = pgEnum("package_type", ["one_time", "subscription", "agency"]);
+
+// Billing period for subscription packages
+export const billingPeriodEnum = pgEnum("billing_period", ["monthly", "quarterly", "semi_annual", "yearly"]);
 export const contentTypeEnum = pgEnum("content_type", ["image", "video", "website"]);
 export const aspectRatioEnum = pgEnum("aspect_ratio", ["1:1", "9:16", "16:9"]);
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system"]);
@@ -105,6 +111,7 @@ export type InsertCreditTransaction = typeof creditTransactions.$inferInsert;
 
 /**
  * Credit packages available for purchase
+ * Supports both one-time purchases and subscription plans with multiple billing periods
  */
 export const creditPackages = pgTable("credit_packages", {
   id: serial("id").primaryKey(),
@@ -115,14 +122,34 @@ export const creditPackages = pgTable("credit_packages", {
   /** Package description */
   description: text("description"),
 
-  /** Number of credits in package */
+  /** Number of credits in package (for one-time) or monthly credits (for subscription) */
   credits: integer("credits").notNull(),
 
-  /** Price in USD (stored as numeric for precision) */
+  /** Price in USD (stored as numeric for precision) - base monthly price for subscriptions */
   priceUsd: numeric("priceUsd", { precision: 10, scale: 2 }).notNull(),
 
-  /** Stripe Price ID for checkout */
+  /** Package type: one_time or subscription */
+  packageType: packageTypeEnum("packageType").default("one_time").notNull(),
+
+  /** Billing period for subscription packages (null for one-time) */
+  billingPeriod: billingPeriodEnum("billingPeriod"),
+
+  /** Discount percentage for non-monthly billing (e.g., 5 for quarterly, 7 for semi-annual, 10 for yearly) */
+  discountPercent: integer("discountPercent").default(0),
+
+  /** Stripe Price ID for checkout (monthly for subscriptions) */
   stripePriceId: varchar("stripePriceId", { length: 128 }),
+
+  /** Stripe Product ID (for managing multiple prices per product) */
+  stripeProductId: varchar("stripeProductId", { length: 128 }),
+
+  /** Stripe Price IDs for different billing periods (JSON object) */
+  stripePriceIds: json("stripePriceIds").$type<{
+    monthly?: string;
+    quarterly?: string;
+    semi_annual?: string;
+    yearly?: string;
+  }>(),
 
   /** Whether package is active/available */
   isActive: boolean("isActive").default(true).notNull(),
@@ -286,7 +313,8 @@ export type InsertLlmProvider = typeof llmProviders.$inferInsert;
  * Each tenant represents a separate branded instance with its own domain
  */
 export const tenants = pgTable("tenants", {
-  id: serial("id").primaryKey(),
+  /** Tenant ID (e.g., "tenant-abc123") */
+  id: varchar("id", { length: 36 }).primaryKey(),
 
   /** Unique slug for URL routing (e.g., "smartspec", "acme-corp") */
   slug: varchar("slug", { length: 64 }).notNull().unique(),
@@ -395,6 +423,15 @@ export const tenants = pgTable("tenants", {
 
   /** Owner/Admin user ID */
   ownerId: integer("ownerId").references(() => users.id),
+
+  /** Tenant status (from Python backend) */
+  status: varchar("status", { length: 20 }).notNull().default("ACTIVE"),
+
+  /** Tenant plan (from Python backend) */
+  plan: varchar("plan", { length: 20 }).notNull().default("FREE"),
+
+  /** Created at (snake_case, from Python backend) */
+  created_at: timestamp("created_at").defaultNow().notNull(),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -1222,3 +1259,114 @@ export const storageSettings = pgTable("storage_settings", {
 
 export type StorageSettings = typeof storageSettings.$inferSelect;
 export type InsertStorageSettings = typeof storageSettings.$inferInsert;
+
+// ============================================================
+// System Settings - Platform-wide configuration
+// ============================================================
+
+/**
+ * System Settings - Stores platform-wide configuration
+ * Used for Stripe settings, Invoice settings, etc.
+ */
+export const systemSettings = pgTable("system_settings", {
+  id: serial("id").primaryKey(),
+
+  /** Setting category (stripe, invoice, email, etc.) */
+  category: varchar("category", { length: 64 }).notNull(),
+
+  /** Setting key within the category */
+  key: varchar("key", { length: 128 }).notNull(),
+
+  /** Setting value (JSON for complex values, string for simple) */
+  value: text("value"),
+
+  /** JSON value for complex settings */
+  valueJson: json("valueJson").$type<Record<string, any>>(),
+
+  /** Is this setting sensitive (should be masked in UI) */
+  isSensitive: boolean("isSensitive").default(false),
+
+  /** Description of this setting */
+  description: text("description"),
+
+  /** Last updated by user ID */
+  updatedBy: integer("updatedBy"),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SystemSettings = typeof systemSettings.$inferSelect;
+export type InsertSystemSettings = typeof systemSettings.$inferInsert;
+
+// ============================================================
+// Invoice Configuration - Per-tenant or global invoice settings
+// ============================================================
+
+/**
+ * Invoice Configuration - Customizable invoice headers
+ * Supports both global defaults and per-tenant (White Label) customization
+ */
+export const invoiceConfig = pgTable("invoice_config", {
+  id: serial("id").primaryKey(),
+
+  /** Tenant ID (null for global default) */
+  tenantId: integer("tenantId").references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Company name on invoice */
+  companyName: varchar("companyName", { length: 256 }),
+
+  /** Company address lines */
+  addressLine1: varchar("addressLine1", { length: 256 }),
+  addressLine2: varchar("addressLine2", { length: 256 }),
+  city: varchar("city", { length: 128 }),
+  state: varchar("state", { length: 128 }),
+  postalCode: varchar("postalCode", { length: 32 }),
+  country: varchar("country", { length: 128 }),
+
+  /** Tax ID / VAT number */
+  taxId: varchar("taxId", { length: 64 }),
+
+  /** Company email */
+  email: varchar("email", { length: 256 }),
+
+  /** Company phone */
+  phone: varchar("phone", { length: 64 }),
+
+  /** Company website */
+  website: varchar("website", { length: 256 }),
+
+  /** Logo URL for invoice header */
+  logoUrl: varchar("logoUrl", { length: 512 }),
+
+  /** Invoice footer text */
+  footerText: text("footerText"),
+
+  /** Invoice terms and conditions */
+  termsText: text("termsText"),
+
+  /** Bank details for wire transfer */
+  bankDetails: json("bankDetails").$type<{
+    bankName?: string;
+    accountName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+    swiftCode?: string;
+    iban?: string;
+  }>(),
+
+  /** Additional custom fields */
+  customFields: json("customFields").$type<Array<{
+    label: string;
+    value: string;
+  }>>(),
+
+  /** Is this config active */
+  isActive: boolean("isActive").default(true),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type InvoiceConfig = typeof invoiceConfig.$inferSelect;
+export type InsertInvoiceConfig = typeof invoiceConfig.$inferInsert;

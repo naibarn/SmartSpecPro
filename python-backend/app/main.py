@@ -51,6 +51,7 @@ from app.api import (
     control_plane_proxy,  # Control Plane Proxy for desktop-app
     opencode_gateway,  # Phase 2: OpenCode Gateway API
     tenants,  # Phase 3: Multi-tenancy
+    tenant_current,  # Phase 3: Current tenant API for frontend
     rbac,  # Phase 3: RBAC
     approvals,  # Phase 3: Approval Gates
     csrf,  # CSRF Protection
@@ -91,20 +92,14 @@ async def lifespan(app: FastAPI):
         await init_db()
         logger.info("Database initialized successfully")
 
-        # NOTE: Admin seeding disabled - first OAuth user will automatically become admin
-        # See SmartSpecWeb/server/_core/oauth.ts for first-user-becomes-admin logic
-        # To re-enable Python seed, uncomment the code below:
-        #
-        # try:
-        #     from app.core.seed import seed_admin_user
-        #     from app.core.database import AsyncSessionLocal
-        #
-        #     async with AsyncSessionLocal() as session:
-        #         created = await seed_admin_user(session)
-        #         if created:
-        #             logger.info("Default admin user created")
-        # except Exception as seed_error:
-        #     logger.warning("Admin seeding skipped", error=str(seed_error))
+        # Seed default admin user and tenant on first startup
+        try:
+            from app.core.seed import run_seed
+
+            await run_seed()
+            logger.info("Database seeding completed")
+        except Exception as seed_error:
+            logger.warning("Database seeding skipped", error=str(seed_error))
 
     except Exception as e:
         logger.warning("Database initialization failed", error=str(e))
@@ -221,6 +216,7 @@ app.include_router(opencode_gateway.router, tags=["OpenCode Gateway"])
 
 # Phase 3: SaaS Features
 app.include_router(tenants.router, tags=["Tenants"])
+app.include_router(tenant_current.router, tags=["Tenant Current"])
 app.include_router(rbac.router, tags=["RBAC"])
 app.include_router(approvals.router, tags=["Approvals"])
 

@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Sparkles } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -47,12 +48,13 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
+  const { isLoading: tenantLoading } = useTenant();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  if (loading) {
+  if (loading || tenantLoading) {
     return <DashboardLayoutSkeleton />
   }
 
@@ -107,6 +109,7 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
+  const { tenant } = useTenant();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -166,12 +169,22 @@ function DashboardLayoutContent({
                 className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
                 aria-label="Toggle navigation"
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                {tenant?.logoUrl ? (
+                  <img
+                    src={tenant.logoUrl}
+                    alt={tenant.name || "Logo"}
+                    className="h-7 w-7 object-contain rounded"
+                  />
+                ) : (
+                  <div className="h-7 w-7 rounded bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-white" />
+                  </div>
+                )}
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    {tenant?.name || "SmartSpec Pro"}
                   </span>
                 </div>
               ) : null}
@@ -248,11 +261,20 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
+                {tenant?.logoUrl ? (
+                  <img
+                    src={tenant.logoUrl}
+                    alt={tenant.name || "Logo"}
+                    className="h-7 w-7 object-contain rounded"
+                  />
+                ) : (
+                  <div className="h-7 w-7 rounded bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-white" />
+                  </div>
+                )}
+                <span className="font-semibold tracking-tight text-foreground">
+                  {tenant?.name || "SmartSpec Pro"}
+                </span>
               </div>
             </div>
           </div>

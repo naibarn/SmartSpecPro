@@ -33,6 +33,8 @@ import {
 
 type ServiceStatus = 'running' | 'stopped' | 'starting' | 'unhealthy' | 'unknown';
 
+type ServiceType = 'docker' | 'host' | 'systemd';
+
 interface Service {
   id: string;
   name: string;
@@ -40,6 +42,8 @@ interface Service {
   status: ServiceStatus;
   uptime: string;
   ports: string[];
+  type: ServiceType;
+  description?: string;
   healthCheck?: string;
   cpu?: number;
   memory?: number;
@@ -370,8 +374,18 @@ export default function AdminServices() {
                       <div className="flex items-center gap-3">
                         {getStatusIcon(service.status)}
                         <div>
-                          <div className="font-medium text-gray-900">{service.displayName}</div>
-                          <div className="text-sm text-gray-500">{service.id}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{service.displayName}</span>
+                            <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                              service.type === 'docker' ? 'bg-blue-100 text-blue-700' :
+                              service.type === 'host' ? 'bg-green-100 text-green-700' :
+                              'bg-purple-100 text-purple-700'
+                            }`}>
+                              {service.type === 'docker' ? 'Docker' :
+                               service.type === 'host' ? 'Host' : 'System'}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500">{service.description || service.id}</div>
                         </div>
                       </div>
                     </td>

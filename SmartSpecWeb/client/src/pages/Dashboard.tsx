@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +41,7 @@ import {
 
 export default function Dashboard() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { tenant, isLoading: tenantLoading } = useTenant();
   const [, setLocation] = useLocation();
 
   // Fetch real media tasks for recent activity
@@ -54,7 +56,7 @@ export default function Dashboard() {
     }
   }, [isLoading, isAuthenticated, setLocation]);
 
-  if (isLoading) {
+  if (isLoading || tenantLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full" />
@@ -119,10 +121,18 @@ export default function Dashboard() {
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white/70 backdrop-blur-xl border-r border-gray-200/50 hidden lg:flex lg:flex-col">
         <div className="flex items-center gap-3 p-6 pb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-gray-900">SmartSpec</span>
+          {tenant?.logoUrl ? (
+            <img
+              src={tenant.logoUrl}
+              alt={tenant.name || "Logo"}
+              className="w-10 h-10 object-contain rounded-xl"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+          )}
+          <span className="text-xl font-bold text-gray-900">{tenant?.name || 'SmartSpec'}</span>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-6 space-y-1">

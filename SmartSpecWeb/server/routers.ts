@@ -34,6 +34,7 @@ import { mediaProvidersRouter } from "./routers/mediaProviders";
 import { mediaModelsRouter } from "./routers/mediaModels";
 import { skillsRouter } from "./routers/skills";
 import { storageSettingsRouter } from "./routers/storageSettings";
+import { systemSettingsRouter } from "./routers/systemSettings";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -252,6 +253,9 @@ export const appRouter = router({
 
   // Storage settings management (admin) - R2, S3 configuration
   storageSettings: storageSettingsRouter,
+
+  // System settings management (admin) - Stripe, Invoice configuration
+  systemSettings: systemSettingsRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

@@ -31,33 +31,40 @@ import {
   Palette,
   Settings as SettingsIcon,
   Upload,
+  Download,
   ImagePlus,
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Tenant {
-  id: number;
+  id: string;
   slug: string;
   name: string;
   primaryDomain: string;
-  domains: string[];
+  domains?: string[];
   logoUrl?: string;
   faviconUrl?: string;
   isActive: boolean;
+  plan?: string;
+  status?: string;
   themeConfig?: any;
+  theme?: any;
   seoConfig?: any;
   settings?: any;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface ThemePreset {
-  id: number;
+  id: string;
   name: string;
-  displayName: string;
+  displayName?: string;
   description?: string;
-  themeConfig: any;
-  isActive: boolean;
+  theme?: any;
+  themeConfig?: any;
+  preview?: string;
+  isActive?: boolean;
 }
 
 export default function AdminTenants() {
@@ -70,8 +77,10 @@ export default function AdminTenants() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [themePresets, setThemePresets] = useState<ThemePreset[]>([]);
-  const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [applyingPreset, setApplyingPreset] = useState(false);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [pendingFaviconFile, setPendingFaviconFile] = useState<File | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -85,56 +94,76 @@ export default function AdminTenants() {
   });
 
   // File upload handler
-  const handleFileUpload = async (type: 'logo' | 'favicon', file: File) => {
-    if (!editingTenant) {
-      toast.error('Please save the tenant first before uploading files');
-      return;
+  // Upload file to a specific tenant
+  const uploadFileToTenant = async (tenantId: string, type: 'logo' | 'favicon', file: File) => {
+    const reader = new FileReader();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const response = await fetch(`/api/admin/tenants/${tenantId}/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        type,
+        fileBase64: base64,
+        fileName: file.name,
+        fileType: file.type,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Upload failed');
     }
 
+    return await response.json();
+  };
+
+  const handleFileUpload = async (type: 'logo' | 'favicon', file: File) => {
     const maxSize = type === 'favicon' ? 1 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error(`File too large. Max size: ${type === 'favicon' ? '1MB' : '5MB'}`);
       return;
     }
 
-    type === 'logo' ? setUploadingLogo(true) : setUploadingFavicon(true);
-
-    try {
-      // Convert file to base64
+    // If no tenant yet (create mode), store file for later upload and show preview
+    if (!editingTenant) {
       const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
 
-      const response = await fetch(`/api/admin/tenants/${editingTenant.id}/upload`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          type,
-          fileBase64: base64,
-          fileName: file.name,
-          fileType: file.type,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Upload failed');
+      if (type === 'logo') {
+        setPendingLogoFile(file);
+      } else {
+        setPendingFaviconFile(file);
       }
+      setFormData(prev => ({
+        ...prev,
+        [type === 'logo' ? 'logoUrl' : 'faviconUrl']: dataUrl,
+      }));
+      toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} selected. It will be uploaded when you create the tenant.`);
+      return;
+    }
 
-      const data = await response.json();
+    type === 'logo' ? setUploadingLogo(true) : setUploadingFavicon(true);
 
-      // Update form data with new URL
+    try {
+      const data = await uploadFileToTenant(editingTenant.id, type, file);
+
       setFormData(prev => ({
         ...prev,
         [type === 'logo' ? 'logoUrl' : 'faviconUrl']: data.url,
       }));
 
       toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`);
-      fetchTenants(); // Refresh list
+      fetchTenants();
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to upload file');
@@ -172,11 +201,13 @@ export default function AdminTenants() {
     }
   };
 
-  const applyThemePreset = async (presetId: number) => {
+  const applyThemePreset = async (presetId: string) => {
     if (!editingTenant) return;
 
     setApplyingPreset(true);
     try {
+      const preset = themePresets.find(p => p.id === presetId);
+      const themeConfig = preset?.theme || preset?.themeConfig;
       const response = await fetch(`/api/admin/tenants/${editingTenant.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -184,7 +215,7 @@ export default function AdminTenants() {
         body: JSON.stringify({
           ...formData,
           domains: formData.domains ? formData.domains.split(',').map(d => d.trim()) : [],
-          themeConfig: themePresets.find(p => p.id === presetId)?.themeConfig,
+          themeConfig: themeConfig,
         }),
       });
 
@@ -195,7 +226,8 @@ export default function AdminTenants() {
         // Also refresh editingTenant to show updated theme
         const updatedTenant = tenants.find(t => t.id === editingTenant.id);
         if (updatedTenant) {
-          setEditingTenant({ ...updatedTenant, themeConfig: themePresets.find(p => p.id === presetId)?.themeConfig });
+          const preset = themePresets.find(p => p.id === presetId);
+          setEditingTenant({ ...updatedTenant, themeConfig: preset?.theme || preset?.themeConfig });
         }
       } else {
         toast.error('Failed to apply theme preset');
@@ -215,7 +247,8 @@ export default function AdminTenants() {
       });
       if (response.ok) {
         const data = await response.json();
-        setTenants(data.tenants || []);
+        // API returns array directly, not {tenants: [...]}
+        setTenants(Array.isArray(data) ? data : (data.tenants || []));
       }
     } catch (error) {
       console.error('Failed to fetch tenants:', error);
@@ -224,23 +257,52 @@ export default function AdminTenants() {
 
   const handleCreate = async () => {
     try {
+      // Strip data URLs from logoUrl/faviconUrl before sending (pending files will be uploaded after)
+      const submitData = {
+        ...formData,
+        logoUrl: formData.logoUrl?.startsWith('data:') ? '' : formData.logoUrl,
+        faviconUrl: formData.faviconUrl?.startsWith('data:') ? '' : formData.faviconUrl,
+        domains: formData.domains ? formData.domains.split(',').map(d => d.trim()) : [],
+      };
+
       const response = await fetch('/api/admin/tenants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          ...formData,
-          domains: formData.domains ? formData.domains.split(',').map(d => d.trim()) : [],
-        }),
+        body: JSON.stringify(submitData),
       });
 
       if (response.ok) {
+        const { tenant } = await response.json();
+
+        // Upload pending files now that we have a tenant ID
+        if (pendingLogoFile && tenant?.id) {
+          try {
+            await uploadFileToTenant(tenant.id, 'logo', pendingLogoFile);
+          } catch (err) {
+            console.error('Failed to upload logo:', err);
+            toast.error('Tenant created but logo upload failed');
+          }
+        }
+        if (pendingFaviconFile && tenant?.id) {
+          try {
+            await uploadFileToTenant(tenant.id, 'favicon', pendingFaviconFile);
+          } catch (err) {
+            console.error('Failed to upload favicon:', err);
+            toast.error('Tenant created but favicon upload failed');
+          }
+        }
+
         await fetchTenants();
         setIsCreateDialogOpen(false);
         resetForm();
+        setPendingLogoFile(null);
+        setPendingFaviconFile(null);
+        toast.success('Tenant created successfully');
       }
     } catch (error) {
       console.error('Failed to create tenant:', error);
+      toast.error('Failed to create tenant');
     }
   };
 
@@ -508,6 +570,22 @@ export default function AdminTenants() {
                       <span className="text-xs text-gray-500 truncate flex-1">
                         {formData.logoUrl.split('/').pop()}
                       </span>
+                      <a
+                        href={formData.logoUrl}
+                        download={formData.logoUrl.split('/').pop() || 'logo'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-500 h-6 w-6 p-0"
+                          title="Download logo"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </a>
                       <Button
                         type="button"
                         variant="ghost"
@@ -527,22 +605,20 @@ export default function AdminTenants() {
                       onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
                       className="flex-1"
                     />
-                    {editingTenant && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={uploadingLogo}
-                        onClick={() => document.getElementById('logoUpload')?.click()}
-                        className="shrink-0"
-                      >
-                        {uploadingLogo ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Upload className="w-4 h-4" />
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingLogo}
+                      onClick={() => document.getElementById('logoUpload')?.click()}
+                      className="shrink-0"
+                    >
+                      {uploadingLogo ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                    </Button>
                     <input
                       id="logoUpload"
                       type="file"
@@ -555,9 +631,6 @@ export default function AdminTenants() {
                       }}
                     />
                   </div>
-                  {!editingTenant && (
-                    <p className="text-xs text-gray-500">Save tenant first to enable upload</p>
-                  )}
                 </div>
               </div>
               <div>
@@ -573,6 +646,22 @@ export default function AdminTenants() {
                       <span className="text-xs text-gray-500 truncate flex-1">
                         {formData.faviconUrl.split('/').pop()}
                       </span>
+                      <a
+                        href={formData.faviconUrl}
+                        download={formData.faviconUrl.split('/').pop() || 'favicon'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-500 h-6 w-6 p-0"
+                          title="Download favicon"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </a>
                       <Button
                         type="button"
                         variant="ghost"
@@ -592,22 +681,20 @@ export default function AdminTenants() {
                       onChange={(e) => setFormData({ ...formData, faviconUrl: e.target.value })}
                       className="flex-1"
                     />
-                    {editingTenant && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={uploadingFavicon}
-                        onClick={() => document.getElementById('faviconUpload')?.click()}
-                        className="shrink-0"
-                      >
-                        {uploadingFavicon ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Upload className="w-4 h-4" />
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingFavicon}
+                      onClick={() => document.getElementById('faviconUpload')?.click()}
+                      className="shrink-0"
+                    >
+                      {uploadingFavicon ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                    </Button>
                     <input
                       id="faviconUpload"
                       type="file"
@@ -620,9 +707,6 @@ export default function AdminTenants() {
                       }}
                     />
                   </div>
-                  {!editingTenant && (
-                    <p className="text-xs text-gray-500">Save tenant first to enable upload</p>
-                  )}
                 </div>
               </div>
             </div>
@@ -647,7 +731,8 @@ export default function AdminTenants() {
                 </Label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {themePresets.map((preset) => {
-                    const isSelected = editingTenant.themeConfig?.primaryColor === preset.themeConfig?.primaryColor;
+                    const colors = preset.themeConfig || preset.theme || {};
+                    const isSelected = editingTenant.themeConfig?.primaryColor === colors.primaryColor;
                     return (
                       <button
                         key={preset.id}
@@ -668,19 +753,19 @@ export default function AdminTenants() {
                         <div className="flex gap-1 mb-2">
                           <div
                             className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: preset.themeConfig?.primaryColor || '#3b82f6' }}
+                            style={{ backgroundColor: colors.primaryColor || '#3b82f6' }}
                           />
                           <div
                             className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: preset.themeConfig?.secondaryColor || '#6366f1' }}
+                            style={{ backgroundColor: colors.secondaryColor || '#6366f1' }}
                           />
                           <div
                             className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: preset.themeConfig?.accentColor || '#8b5cf6' }}
+                            style={{ backgroundColor: colors.accentColor || '#8b5cf6' }}
                           />
                         </div>
                         <div className="text-xs font-medium text-gray-900 truncate">
-                          {preset.displayName}
+                          {preset.displayName || preset.name}
                         </div>
                       </button>
                     );

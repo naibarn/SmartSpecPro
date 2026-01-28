@@ -55,7 +55,7 @@ class Tenant(Base):
     plan = Column(SQLEnum(TenantPlan), default=TenantPlan.FREE, nullable=False)
     
     # Owner information
-    owner_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     owner_email = Column(String(255), nullable=True)
     
     # Settings (JSON)
@@ -108,7 +108,7 @@ class TenantUser(Base):
 
     id = Column(String(36), primary_key=True)
     tenant_id = Column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     
     # Role within tenant
     role = Column(String(50), default="member", nullable=False)  # owner, admin, member, viewer

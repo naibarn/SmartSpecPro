@@ -54,7 +54,7 @@ class Asset(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     
     # User and project association
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     project_id = Column(String(36), nullable=True, index=True)
     spec_id = Column(String(100), nullable=True, index=True)  # e.g., "SPEC-004-DESKTOP-APP"
     

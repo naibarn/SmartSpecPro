@@ -72,7 +72,7 @@ class Secret(Base):
     allowed_services = Column(JSON, default=list)  # Services that can access this secret
     
     # Audit
-    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     last_accessed_at = Column(DateTime, nullable=True)
     access_count = Column(Integer, default=0)
     
@@ -107,7 +107,7 @@ class SecretVersion(Base):
     value_hash = Column(String(64), nullable=True)
     
     # Metadata
-    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     reason = Column(Text, nullable=True)  # Why this version was created
     
     # Status

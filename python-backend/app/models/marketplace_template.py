@@ -59,7 +59,7 @@ class MarketplaceTemplate(Base):
 
     # Primary fields
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-    creator_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     # Template info
     name = Column(String(255), nullable=False)
@@ -107,7 +107,7 @@ class MarketplaceTemplate(Base):
     # Review process
     submitted_at = Column(DateTime(timezone=True), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
-    reviewed_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     review_notes = Column(Text, nullable=True)  # Admin feedback
     rejection_reason = Column(Text, nullable=True)
 
@@ -177,7 +177,7 @@ class TemplatePurchase(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     template_id = Column(String(36), ForeignKey("marketplace_templates.id"), nullable=False, index=True)
-    buyer_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    buyer_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     # Transaction details
     price_paid_credits = Column(Integer, nullable=False)  # Price at time of purchase
@@ -229,7 +229,7 @@ class TemplateReview(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     template_id = Column(String(36), ForeignKey("marketplace_templates.id"), nullable=False, index=True)
-    reviewer_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     purchase_id = Column(String(36), ForeignKey("template_purchases.id"), nullable=False)
 
     # Review content
@@ -286,8 +286,8 @@ class TemplateRevenueLedger(Base):
     template_id = Column(String(36), ForeignKey("marketplace_templates.id"), nullable=False, index=True)
 
     # Parties involved
-    buyer_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    creator_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    buyer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     # Credit flow
     total_credits = Column(Integer, nullable=False)  # 100%

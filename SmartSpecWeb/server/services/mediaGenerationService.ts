@@ -321,6 +321,26 @@ export class MediaGenerationService {
       n: request.numImages || 1,
     };
 
+    // Add resolution if provided (e.g., "1K", "2K", "4K")
+    if ((request as any).resolution) {
+      payload.resolution = (request as any).resolution;
+    }
+
+    // Add output format if provided
+    if ((request as any).outputFormat) {
+      payload.output_format = (request as any).outputFormat;
+    }
+
+    // Add per-model API config from configJson
+    if ((request as any).apiConfig) {
+      payload.api_config = (request as any).apiConfig;
+    }
+
+    // Add extra params from dynamic input fields
+    if ((request as any).extraParams) {
+      payload.extra_params = (request as any).extraParams;
+    }
+
     // Add reference images if provided (1-5 images)
     // Convert relative URLs to full URLs for Python backend
     if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
@@ -363,6 +383,21 @@ export class MediaGenerationService {
       aspect_ratio: request.aspectRatio,
       fps: request.fps,
     };
+
+    // Add resolution if provided (e.g., "720p", "1080p")
+    if (request.resolution) {
+      payload.resolution = request.resolution;
+    }
+
+    // Add per-model API config from configJson
+    if ((request as any).apiConfig) {
+      payload.api_config = (request as any).apiConfig;
+    }
+
+    // Add extra params from dynamic input fields
+    if ((request as any).extraParams) {
+      payload.extra_params = (request as any).extraParams;
+    }
 
     // Add reference images for img2vid
     // Convert relative URLs to full URLs for Python backend

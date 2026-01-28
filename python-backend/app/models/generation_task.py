@@ -51,7 +51,7 @@ class GenerationTask(Base):
     id = Column(String(36), primary_key=True)
     
     # User and project
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     project_id = Column(String(36), nullable=True, index=True)
     
     # Task type and model
@@ -137,7 +137,7 @@ class GenerationAPIKey(Base):
     id = Column(String(36), primary_key=True)
     
     # Owner
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     project_id = Column(String(36), nullable=True, index=True)
     
     # Key info
@@ -209,7 +209,7 @@ class ProviderCredential(Base):
     id = Column(String(36), primary_key=True)
     
     # Owner
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     project_id = Column(String(36), nullable=True, index=True)
     
     # Provider info

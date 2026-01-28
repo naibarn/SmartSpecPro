@@ -22,6 +22,7 @@ import {
   UserCog,
   Globe,
   Palette,
+  FileText,
 } from "lucide-react";
 
 interface UserData {
@@ -140,6 +141,13 @@ export default function DomainAdmin() {
               >
                 <Palette className="w-4 h-4 mr-2" />
                 Edit Theme
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setLocation('/domain-admin/invoice')}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Invoice Settings
               </Button>
             </div>
           </div>

@@ -58,7 +58,7 @@ class User(Base):
 
     # Domain and tenant
     registeredDomain = Column(String(255), nullable=True)
-    currentTenantId = Column(Integer, ForeignKey("tenants.id"), nullable=True)
+    currentTenantId = Column(String(36), ForeignKey("tenants.id"), nullable=True)
 
     # Status (SmartSpecWeb uses 'isDisabled' not 'is_active')
     isDisabled = Column(Boolean, default=False, nullable=False)

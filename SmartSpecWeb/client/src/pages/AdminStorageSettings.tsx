@@ -128,12 +128,20 @@ export default function AdminStorageSettings() {
     enabled: !!user && user.role === "admin",
   });
 
+  // Error state for mutations
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
   // Mutations
   const createMutation = trpc.storageSettings.create.useMutation({
     onSuccess: () => {
       refetch();
       setIsCreateDialogOpen(false);
       resetForm();
+      setMutationError(null);
+    },
+    onError: (error) => {
+      console.error("Create storage error:", error);
+      setMutationError(error.message || "Failed to create storage configuration");
     },
   });
 
@@ -142,6 +150,11 @@ export default function AdminStorageSettings() {
       refetch();
       setEditingSetting(null);
       resetForm();
+      setMutationError(null);
+    },
+    onError: (error) => {
+      console.error("Update storage error:", error);
+      setMutationError(error.message || "Failed to update storage configuration");
     },
   });
 
@@ -506,6 +519,7 @@ export default function AdminStorageSettings() {
             setIsCreateDialogOpen(false);
             setEditingSetting(null);
             resetForm();
+            setMutationError(null);
           }
         }}
       >
@@ -520,6 +534,25 @@ export default function AdminStorageSettings() {
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {/* Error Message */}
+            {mutationError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-start gap-2">
+                <XCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Error</p>
+                  <p className="text-sm">{mutationError}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto -mt-1 -mr-2"
+                  onClick={() => setMutationError(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
             {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -740,13 +773,19 @@ export default function AdminStorageSettings() {
                 setIsCreateDialogOpen(false);
                 setEditingSetting(null);
                 resetForm();
+                setMutationError(null);
               }}
             >
               Cancel
             </Button>
             <Button
               onClick={handleSave}
-              disabled={createMutation.isPending || updateMutation.isPending || !formData.displayName}
+              disabled={
+                createMutation.isPending ||
+                updateMutation.isPending ||
+                !formData.displayName ||
+                (!editingSetting && !formData.name) // Require name for new storage
+              }
             >
               {(createMutation.isPending || updateMutation.isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

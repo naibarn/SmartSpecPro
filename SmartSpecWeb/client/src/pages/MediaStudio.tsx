@@ -148,10 +148,18 @@ export default function MediaStudio() {
   // Model selection dialog state
   const [showModelDialog, setShowModelDialog] = useState(false);
 
-  // Aspect ratio state
-  const [aspectRatio, setAspectRatio] = useState("1:1");
+  // Aspect ratio state - initialized from localStorage or defaults
+  const [aspectRatio, setAspectRatio] = useState(() => {
+    return localStorage.getItem("smartspec_aspect_image") || "1:1";
+  });
   const [numImages, setNumImages] = useState(1);
-  const [duration, setDuration] = useState(5);
+  const [duration, setDuration] = useState(() => {
+    const saved = localStorage.getItem("smartspec_duration_video");
+    return saved ? parseInt(saved, 10) : 5;
+  });
+  const [videoAspectRatio, setVideoAspectRatio] = useState(() => {
+    return localStorage.getItem("smartspec_aspect_video") || "16:9";
+  });
 
   // Drag & drop state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -173,6 +181,9 @@ export default function MediaStudio() {
   // LLM model selection for Auto Prompt (Advanced Mode)
   const [selectedLlmModel, setSelectedLlmModel] = useState<string>("");
   const [llmModelSearch, setLlmModelSearch] = useState("");
+
+  // Dynamic model input field values (from configJson.inputFields)
+  const [modelInputValues, setModelInputValues] = useState<Record<string, any>>({});
 
   // API queries
   const { data: credits } = trpc.credits.balance.useQuery();
@@ -213,18 +224,99 @@ export default function MediaStudio() {
     }
   }, [isLoading, isAuthenticated, setLocation]);
 
-  // Reset model when media type changes
+  // Track if model has been initialized for current tab
+  const [modelInitialized, setModelInitialized] = useState(false);
+
+  // Reset model initialization when media type changes
   useEffect(() => {
+    setModelInitialized(false);
     setSelectedModel("");
   }, [activeTab]);
 
-  // Set default model when models load
+  // Set model from localStorage or default when models load
   useEffect(() => {
-    if (mediaModels?.models && mediaModels.models.length > 0 && !selectedModel) {
-      // Select the first model (lowest priority = highest priority)
-      setSelectedModel(mediaModels.models[0].modelId);
+    if (modelInitialized) return;
+    if (!mediaModels?.models || mediaModels.models.length === 0) return;
+
+    // 1. Check localStorage for last used model for this media type
+    const storageKey = `smartspec_model_${activeTab}`;
+    const savedModelId = localStorage.getItem(storageKey);
+
+    if (savedModelId) {
+      // Verify the saved model still exists
+      const savedModel = mediaModels.models.find(m => m.modelId === savedModelId);
+      if (savedModel) {
+        setSelectedModel(savedModelId);
+        setModelInitialized(true);
+        return;
+      }
     }
-  }, [mediaModels, selectedModel]);
+
+    // 2. Fallback: select first model (sorted by priority in API)
+    setSelectedModel(mediaModels.models[0].modelId);
+    setModelInitialized(true);
+  }, [mediaModels, activeTab, modelInitialized]);
+
+  // Save selected model to localStorage when user changes it
+  useEffect(() => {
+    if (modelInitialized && selectedModel) {
+      const storageKey = `smartspec_model_${activeTab}`;
+      localStorage.setItem(storageKey, selectedModel);
+    }
+  }, [selectedModel, activeTab, modelInitialized]);
+
+  // Reset dynamic model input values when model changes, populate with defaults
+  useEffect(() => {
+    if (!selectedModel || !mediaModels?.models) {
+      setModelInputValues({});
+      return;
+    }
+    const model = mediaModels.models.find(m => m.modelId === selectedModel);
+    const config = model?.configJson as any;
+    if (!config?.inputFields) {
+      setModelInputValues({});
+      return;
+    }
+    const defaults: Record<string, any> = {};
+    for (const field of config.inputFields) {
+      if (field.default !== undefined) {
+        defaults[field.key] = field.default;
+      }
+    }
+    setModelInputValues(defaults);
+
+    // Reset aspect ratio if current value is not supported by the new model
+    const arField = config.inputFields.find((f: any) => f.key === "aspect_ratio");
+    const arOptions = arField?.options?.map((o: any) => o.value) as string[] | undefined;
+    const modelAr = model?.aspectRatios as string[] | null;
+    const supportedAr = arOptions || (modelAr?.length ? modelAr : null);
+    if (supportedAr) {
+      const currentAr = activeTab === "video" ? videoAspectRatio : aspectRatio;
+      if (!supportedAr.includes(currentAr)) {
+        const defaultAr = arField?.default || supportedAr[0] || "1:1";
+        if (activeTab === "video") {
+          setVideoAspectRatio(defaultAr);
+        } else {
+          setAspectRatio(defaultAr);
+        }
+      }
+    }
+  }, [selectedModel, mediaModels]);
+
+  // Save aspect ratio to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem("smartspec_aspect_image", aspectRatio);
+  }, [aspectRatio]);
+
+  // Save video aspect ratio to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem("smartspec_aspect_video", videoAspectRatio);
+  }, [videoAspectRatio]);
+
+  // Save duration to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem("smartspec_duration_video", duration.toString());
+  }, [duration]);
 
   // Smart skill selection: localStorage > priority > type match > first enabled
   useEffect(() => {
@@ -570,17 +662,42 @@ export default function MediaStudio() {
       console.log("[handleGenerate] Using skillId:", skillId, "selectedSkillId:", selectedSkillId);
 
       // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
-      // Otherwise use aspectRatio from Settings section
+      // Otherwise use aspectRatio from Settings section (respecting media type)
+      const currentAspectRatio = activeTab === "video" ? videoAspectRatio : aspectRatio;
       const finalAspectRatio = useAdvancedMode && dynamicFormValues.aspectRatio
         ? dynamicFormValues.aspectRatio
-        : aspectRatio;
+        : currentAspectRatio;
 
       console.log("[handleGenerate] aspectRatio decision:", {
         useAdvancedMode,
         advancedAspectRatio: dynamicFormValues.aspectRatio,
-        settingsAspectRatio: aspectRatio,
+        settingsAspectRatio: currentAspectRatio,
         finalAspectRatio,
       });
+
+      // Build extra params from dynamic model input fields
+      const selectedModelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+      const modelConfig = selectedModelData?.configJson as any;
+      const extraParams: Record<string, any> = {};
+      const apiConfig: Record<string, string> = {};
+
+      if (modelConfig) {
+        // Populate apiConfig from configJson
+        if (modelConfig.apiEndpoint) apiConfig.endpoint = modelConfig.apiEndpoint;
+        if (modelConfig.apiPayloadFormat) apiConfig.payload_format = modelConfig.apiPayloadFormat;
+        if (modelConfig.kieModelId) apiConfig.kie_model_id = modelConfig.kieModelId;
+
+        // Populate extraParams from dynamic input field values
+        for (const field of (modelConfig.inputFields || [])) {
+          const val = modelInputValues[field.key];
+          if (val !== undefined && val !== null && val !== "") {
+            // Skip fields handled by standard params (aspect_ratio, duration)
+            if (field.key === "aspect_ratio") continue;
+            if (field.key === "duration" && activeTab === "video") continue;
+            extraParams[field.key] = val;
+          }
+        }
+      }
 
       const result = await executeSkillMutation.mutateAsync({
         skillId,
@@ -588,9 +705,12 @@ export default function MediaStudio() {
         model: selectedModel,
         aspectRatio: finalAspectRatio,
         numImages: activeTab === "image" ? numImages : undefined,
-        duration: activeTab === "video" ? duration : undefined,
+        duration: activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined,
         referenceImageUrls: referenceImages.length > 0 ? referenceImages.map(r => r.url) : undefined,
-      });
+        ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
+        ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+        ...(modelInputValues.resolution ? { resolution: modelInputValues.resolution } : {}),
+      } as any);
 
       if (result.success) {
         const urls = result.resultUrls || (result.resultUrl ? [result.resultUrl] : []);
@@ -674,19 +794,49 @@ export default function MediaStudio() {
     }
   };
 
-  // Get model credit cost
+  // Get model credit cost using pricing tiers from configJson
   const getModelCost = () => {
     if (!mediaModels?.models) return 10;
     const model = mediaModels.models.find(m => m.modelId === selectedModel);
     if (!model) return 10;
 
-    let cost = model.creditCost || 10;
-    if (activeTab === "image") {
-      cost *= numImages;
-    } else if (activeTab === "video") {
-      cost *= Math.ceil(duration / 5);
+    const config = model.configJson as any;
+    const baseCost = model.creditCost || 10;
+
+    // If no pricing tiers, use legacy calculation
+    if (!config?.pricingTiers) {
+      if (activeTab === "image") return baseCost * numImages;
+      if (activeTab === "video") return baseCost * Math.ceil(duration / 5);
+      return baseCost;
     }
-    return cost;
+
+    // Build tier key from current selections
+    const pricingFields = (config.inputFields || []).filter((f: any) => f.affectsPricing);
+    let tierKey = "default";
+
+    if (config.pricingFormula === "matrix" && pricingFields.length > 0) {
+      const parts: string[] = [];
+      const fieldOrder: Record<string, number> = { resolution: 0, quality: 1, duration: 2 };
+      const sorted = [...pricingFields].sort((a: any, b: any) => (fieldOrder[a.key] ?? 99) - (fieldOrder[b.key] ?? 99));
+      for (const field of sorted) {
+        const val = modelInputValues[field.key] ?? field.default;
+        if (val !== undefined) {
+          const s = String(val);
+          parts.push(field.key === "duration" && !s.endsWith("s") ? `${s}s` : s);
+        }
+      }
+      tierKey = parts.length > 0 ? parts.join("-") : "default";
+    } else if (config.pricingFormula === "per_duration") {
+      const dur = modelInputValues.duration ?? duration;
+      tierKey = dur ? `${dur}s` : "default";
+    } else if (config.pricingFormula === "flat") {
+      const res = modelInputValues.resolution;
+      tierKey = res && config.pricingTiers[res] !== undefined ? res : "default";
+    }
+
+    const tierCost = config.pricingTiers[tierKey] ?? baseCost;
+    const multiplier = activeTab === "image" ? numImages : 1;
+    return tierCost * multiplier;
   };
 
   if (isLoading) {
@@ -945,18 +1095,18 @@ export default function MediaStudio() {
                   <label className="text-sm text-muted-foreground">Model</label>
                   <Button
                     variant="outline"
-                    className="w-full justify-start h-10"
+                    className="w-full justify-start h-auto min-h-10 py-2"
                     onClick={() => setShowModelDialog(true)}
                   >
                     <Bot className="h-4 w-4 mr-2" />
-                    <span className="flex-1 text-left truncate">
+                    <span className="flex-1 text-left break-words whitespace-normal">
                       {selectedModel
                         ? mediaModels?.models?.find((m) => m.modelId === selectedModel)?.name || "Select model"
                         : "Select model"}
                     </span>
                     {selectedModel && mediaModels?.models?.find((m) => m.modelId === selectedModel) && (
                       <Badge variant="outline" className="ml-2 text-xs shrink-0">
-                        {mediaModels.models.find((m) => m.modelId === selectedModel)?.creditCost}c
+                        {getModelCost()}c
                       </Badge>
                     )}
                   </Button>
@@ -972,34 +1122,51 @@ export default function MediaStudio() {
                   />
                 </div>
 
-                {/* Aspect Ratio */}
-                <div className="space-y-1">
-                  <label className={cn(
-                    "text-sm text-muted-foreground",
-                    isFieldDisabledByAdvancedMode("aspectRatio") && "opacity-50"
-                  )}>
-                    Aspect Ratio
-                    {isFieldDisabledByAdvancedMode("aspectRatio") && (
-                      <span className="ml-1 text-xs text-purple-500">(use Advanced)</span>
-                    )}
-                  </label>
-                  <Select
-                    value={aspectRatio}
-                    onValueChange={setAspectRatio}
-                    disabled={isFieldDisabledByAdvancedMode("aspectRatio")}
-                  >
-                    <SelectTrigger className={cn(isFieldDisabledByAdvancedMode("aspectRatio") && "opacity-50")}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1:1">1:1 (Square)</SelectItem>
-                      <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
-                      <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
-                      <SelectItem value="4:3">4:3</SelectItem>
-                      <SelectItem value="3:4">3:4</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Aspect Ratio — uses model-specific options from configJson when available */}
+                {(() => {
+                  const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+                  const config = modelData?.configJson as any;
+                  const arField = config?.inputFields?.find((f: any) => f.key === "aspect_ratio");
+                  const arOptions = arField?.options as { value: string; label: string }[] | undefined;
+                  // Also check model's top-level aspectRatios array
+                  const modelAspectRatios = modelData?.aspectRatios as string[] | null;
+                  const defaultOptions = [
+                    { value: "1:1", label: "1:1 (Square)" },
+                    { value: "16:9", label: "16:9 (Landscape)" },
+                    { value: "9:16", label: "9:16 (Portrait)" },
+                    { value: "4:3", label: "4:3" },
+                    { value: "3:4", label: "3:4" },
+                  ];
+                  const options = arOptions
+                    || (modelAspectRatios?.length ? modelAspectRatios.map(r => ({ value: r, label: r })) : null)
+                    || defaultOptions;
+                  const isDisabled = isFieldDisabledByAdvancedMode("aspectRatio");
+                  return (
+                    <div className="space-y-1">
+                      <label className={cn("text-sm text-muted-foreground", isDisabled && "opacity-50")}>
+                        Aspect Ratio
+                        {arField?.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
+                        {isDisabled && <span className="ml-1 text-xs text-purple-500">(use Advanced)</span>}
+                      </label>
+                      <Select
+                        value={activeTab === "video" ? videoAspectRatio : aspectRatio}
+                        onValueChange={activeTab === "video" ? setVideoAspectRatio : setAspectRatio}
+                        disabled={isDisabled}
+                      >
+                        <SelectTrigger className={cn(isDisabled && "opacity-50")}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {options.filter(opt => opt.value != null && opt.value !== "").map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })()}
 
                 {/* Number of Images (for image only) */}
                 {activeTab === "image" && (
@@ -1020,24 +1187,108 @@ export default function MediaStudio() {
                   </div>
                 )}
 
-                {/* Duration (for video only) */}
-                {activeTab === "video" && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Duration</label>
-                    <Select value={String(duration)} onValueChange={(v) => setDuration(Number(v))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[5, 10, 15, 20].map((d) => (
-                          <SelectItem key={d} value={String(d)}>
-                            {d} seconds
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                {/* Duration (for video only) — uses model-specific options from configJson when available */}
+                {activeTab === "video" && (() => {
+                  const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+                  const config = modelData?.configJson as any;
+                  const durationField = config?.inputFields?.find((f: any) => f.key === "duration");
+                  const durationOptions = durationField?.options as { value: string; label: string }[] | undefined;
+                  const currentVal = String(modelInputValues.duration ?? duration);
+                  return (
+                    <div className="space-y-1">
+                      <label className="text-sm text-muted-foreground">
+                        Duration
+                        {durationField?.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
+                      </label>
+                      <Select
+                        value={currentVal}
+                        onValueChange={(v) => {
+                          setDuration(Number(v));
+                          setModelInputValues(prev => ({ ...prev, duration: v }));
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {durationOptions
+                            ? durationOptions.filter(opt => opt.value != null && opt.value !== "").map((opt) => (
+                                <SelectItem key={String(opt.value)} value={String(opt.value)}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))
+                            : [5, 10, 15, 20].map((d) => (
+                                <SelectItem key={d} value={String(d)}>
+                                  {d} seconds
+                                </SelectItem>
+                              ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })()}
+
+                {/* Dynamic Model Input Fields from configJson */}
+                {(() => {
+                  const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+                  const config = modelData?.configJson as any;
+                  const fields = config?.inputFields || [];
+                  // Filter out fields already handled by standard UI (aspect_ratio, duration for video)
+                  const dynamicFields = fields.filter((f: any) => {
+                    if (f.key === "aspect_ratio") return false;
+                    if (f.key === "duration" && activeTab === "video") return false;
+                    if (f.type === "image_urls" || f.type === "video_urls" || f.type === "audio_urls") return false;
+                    return true;
+                  });
+                  if (dynamicFields.length === 0) return null;
+                  return dynamicFields.map((field: any) => (
+                    <div key={field.key} className="space-y-1">
+                      <label className="text-sm text-muted-foreground">
+                        {field.label}
+                        {field.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
+                      </label>
+                      {field.type === "select" && field.options ? (
+                        <Select
+                          value={String(modelInputValues[field.key] ?? field.default ?? field.options?.[0]?.value ?? "")}
+                          onValueChange={(v) => setModelInputValues(prev => ({ ...prev, [field.key]: v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options.filter((opt: any) => opt.value != null && opt.value !== "").map((opt: any) => (
+                              <SelectItem key={String(opt.value)} value={String(opt.value)}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : field.type === "boolean" ? (
+                        <div className="flex items-center gap-2 h-10">
+                          <Switch
+                            checked={!!modelInputValues[field.key]}
+                            onCheckedChange={(v) => setModelInputValues(prev => ({ ...prev, [field.key]: v }))}
+                          />
+                          <span className="text-sm">{modelInputValues[field.key] ? "On" : "Off"}</span>
+                        </div>
+                      ) : field.type === "number" ? (
+                        <Input
+                          type="number"
+                          value={modelInputValues[field.key] ?? field.default ?? ""}
+                          onChange={(e) => setModelInputValues(prev => ({ ...prev, [field.key]: Number(e.target.value) }))}
+                        />
+                      ) : (
+                        <Input
+                          type="text"
+                          placeholder={field.label}
+                          value={modelInputValues[field.key] ?? ""}
+                          onChange={(e) => setModelInputValues(prev => ({ ...prev, [field.key]: e.target.value }))}
+                        />
+                      )}
+                    </div>
+                  ));
+                })()}
 
                 {/* Style Selection */}
                 <div className="space-y-1">
