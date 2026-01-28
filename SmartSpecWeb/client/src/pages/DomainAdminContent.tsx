@@ -101,9 +101,7 @@ export default function DomainAdminContent() {
 
   // Load pages
   useEffect(() => {
-    if (tenant?.id) {
-      fetchPages();
-    }
+    fetchPages();
   }, [tenant]);
 
   const fetchPages = async () => {
@@ -122,10 +120,14 @@ export default function DomainAdminContent() {
           // Create default page
           setCurrentPage(createDefaultPage(selectedPageKey));
         }
+      } else {
+        // API failed (no tenant, etc.) — still show defaults
+        setCurrentPage(createDefaultPage(selectedPageKey));
       }
     } catch (error) {
       console.error('Failed to fetch pages:', error);
-      toast.error('Failed to load pages');
+      // Still show defaults on error so the page is usable
+      setCurrentPage(createDefaultPage(selectedPageKey));
     }
   };
 
