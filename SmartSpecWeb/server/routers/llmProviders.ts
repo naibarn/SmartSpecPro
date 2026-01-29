@@ -20,7 +20,7 @@ function validateExternalUrl(url: string): void {
   const parsed = new URL(url);
   const hostname = parsed.hostname.toLowerCase();
   const blocked = [
-    /^localhost$/,
+    /^localhost$/i,
     /^127\.\d+\.\d+\.\d+$/,
     /^10\.\d+\.\d+\.\d+$/,
     /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
@@ -28,9 +28,10 @@ function validateExternalUrl(url: string): void {
     /^169\.254\.\d+\.\d+$/,
     /^0\.0\.0\.0$/,
     /^\[::1?\]$/,
-    /^fd[0-9a-f]{2}:/i,
-    /\.internal$/,
-    /\.local$/,
+    /^::1$/, /^::ffff:127\./i, /^fe80:/i,
+    /^fc[0-9a-f]{2}:/i, /^fd[0-9a-f]{2}:/i,
+    /\.internal$/i,
+    /\.local$/i,
   ];
   if (blocked.some(r => r.test(hostname))) {
     throw new Error("URL points to a private/internal network address");

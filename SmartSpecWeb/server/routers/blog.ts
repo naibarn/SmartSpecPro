@@ -9,19 +9,24 @@ import { db } from "../db";
 import { blogPosts } from "../../drizzle/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
+import sanitizeHtml from "sanitize-html";
 
-/** Server-side HTML sanitization for blog content */
+/** Server-side HTML sanitization for blog content using sanitize-html */
 function sanitizeBlogHtml(html: string): string {
-  // Strip script tags, event handlers, and dangerous protocols
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
-    .replace(/<object[\s\S]*?<\/object>/gi, "")
-    .replace(/<embed[\s\S]*?>/gi, "")
-    .replace(/\bon\w+\s*=\s*(['"]?)[\s\S]*?\1/gi, "")
-    .replace(/javascript\s*:/gi, "")
-    .replace(/vbscript\s*:/gi, "")
-    .replace(/data\s*:\s*text\/html/gi, "");
+  return sanitizeHtml(html, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+      "img", "figure", "figcaption", "details", "summary",
+      "mark", "del", "ins", "sub", "sup", "hr",
+    ]),
+    allowedAttributes: {
+      ...sanitizeHtml.defaults.allowedAttributes,
+      img: ["src", "alt", "title", "width", "height", "loading"],
+      a: ["href", "target", "rel", "title"],
+      "*": ["class", "id"],
+    },
+    allowedSchemes: ["http", "https", "mailto", "tel"],
+    disallowedTagsMode: "discard",
+  });
 }
 
 export function registerBlogRoutes(app: Express) {

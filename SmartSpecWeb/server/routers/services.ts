@@ -666,6 +666,7 @@ export function registerServicesRoutes(app: Express) {
         case 'systemd':
           if (config.systemdName) {
             try {
+              validateName(config.systemdName);
               const { stdout } = await execAsync(`sudo journalctl -u ${config.systemdName} -n 100 --no-pager 2>/dev/null || journalctl -u ${config.systemdName} -n 100 --no-pager 2>/dev/null || echo "Cannot read logs"`);
               logs = stdout;
             } catch {

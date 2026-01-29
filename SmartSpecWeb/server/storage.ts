@@ -108,7 +108,18 @@ function ensureTrailingSlash(value: string): string {
 }
 
 function normalizeKey(relKey: string): string {
-  const cleaned = relKey.replace(/^\/+/, "");
+  // Decode URL encoding to catch encoded traversal attempts
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(relKey);
+  } catch {
+    throw new Error("Invalid storage key: malformed encoding");
+  }
+  // Block null bytes
+  if (decoded.includes('\0')) {
+    throw new Error("Invalid storage key: null byte detected");
+  }
+  const cleaned = decoded.replace(/^\/+/, "");
   if (cleaned.includes("..") || path.isAbsolute(cleaned)) {
     throw new Error("Invalid storage key: path traversal detected");
   }
