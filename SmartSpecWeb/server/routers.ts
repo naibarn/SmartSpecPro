@@ -279,7 +279,35 @@ export const appRouter = router({
         const max = 15 * 1024 * 1024;
         if (buf.length > max) throw new Error("File too large (max 15MB)");
 
-        const ext = (input.fileName.split(".").pop() || "").replace(/[^a-zA-Z0-9]/g, "");
+        // Whitelist allowed extensions
+        const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "webm", "mov", "avi"]);
+        const ext = (input.fileName.split(".").pop() || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+        if (ext && !ALLOWED_EXTENSIONS.has(ext)) {
+          throw new Error(`File extension .${ext} is not allowed. Allowed: ${[...ALLOWED_EXTENSIONS].join(", ")}`);
+        }
+
+        // Validate magic bytes match claimed MIME type
+        const magicBytes = buf.slice(0, 12);
+        const isValidImage = (
+          (magicBytes[0] === 0xFF && magicBytes[1] === 0xD8) || // JPEG
+          (magicBytes[0] === 0x89 && magicBytes[1] === 0x50) || // PNG
+          (magicBytes[0] === 0x47 && magicBytes[1] === 0x49) || // GIF
+          (magicBytes[0] === 0x52 && magicBytes[1] === 0x49 && magicBytes[2] === 0x46 && magicBytes[3] === 0x46) || // WEBP (RIFF)
+          (magicBytes[0] === 0x3C) // SVG (<)
+        );
+        const isValidVideo = (
+          (magicBytes[4] === 0x66 && magicBytes[5] === 0x74 && magicBytes[6] === 0x79 && magicBytes[7] === 0x70) || // MP4/MOV (ftyp)
+          (magicBytes[0] === 0x1A && magicBytes[1] === 0x45 && magicBytes[2] === 0xDF && magicBytes[3] === 0xA3) || // WEBM (EBML)
+          (magicBytes[0] === 0x52 && magicBytes[1] === 0x49 && magicBytes[2] === 0x46 && magicBytes[3] === 0x46) // AVI (RIFF)
+        );
+
+        if (input.fileType.startsWith("image/") && !isValidImage) {
+          throw new Error("File content does not match claimed image type");
+        }
+        if (input.fileType.startsWith("video/") && !isValidVideo) {
+          throw new Error("File content does not match claimed video type");
+        }
+
         const id = nanoid(10);
         const key = `chat/uploads/${ctx.user?.id || "anon"}/${id}-${Date.now()}${ext ? "." + ext : ""}`;
 

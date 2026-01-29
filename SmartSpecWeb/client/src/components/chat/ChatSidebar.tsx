@@ -177,6 +177,12 @@ export function ChatSidebar({
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{conv.messageCount} messages</span>
+                          {(conv as any).projectId && (
+                            <>
+                              <span>·</span>
+                              <span className="text-primary">{(conv as any).projectId}</span>
+                            </>
+                          )}
                           {conv.totalCreditsUsed && Number(conv.totalCreditsUsed) > 0 && (
                             <>
                               <span>·</span>

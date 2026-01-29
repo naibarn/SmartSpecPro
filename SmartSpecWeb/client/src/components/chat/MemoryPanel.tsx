@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
 import {
   Card,
   CardContent,
@@ -47,25 +49,71 @@ import {
   Code2,
   Loader2,
   RefreshCw,
+  GitBranch,
+  Map,
+  Building2,
+  Puzzle,
+  CheckSquare,
+  BookOpen,
+  Shield,
+  Package,
+  ToggleLeft,
+  Archive,
+  MessageSquarePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const entityTypeConfig = {
+  rule: { icon: Shield, label: "Rule", color: "bg-amber-600" },
   user: { icon: User, label: "User", color: "bg-blue-500" },
   project: { icon: FolderGit2, label: "Project", color: "bg-green-500" },
   preference: { icon: Settings2, label: "Preference", color: "bg-purple-500" },
   technical: { icon: Code2, label: "Technical", color: "bg-orange-500" },
+  decision: { icon: GitBranch, label: "Decision", color: "bg-red-500" },
+  plan: { icon: Map, label: "Plan", color: "bg-cyan-500" },
+  architecture: { icon: Building2, label: "Architecture", color: "bg-indigo-500" },
+  component: { icon: Puzzle, label: "Component", color: "bg-teal-500" },
+  task: { icon: CheckSquare, label: "Task", color: "bg-yellow-500" },
+  code_knowledge: { icon: BookOpen, label: "Code Knowledge", color: "bg-pink-500" },
 };
 
 type EntityType = keyof typeof entityTypeConfig;
 
-interface MemoryPanelProps {
-  onClose?: () => void;
+function importanceBadge(importance: number) {
+  if (importance >= 8) return <Badge variant="destructive" className="text-xs">{importance}</Badge>;
+  if (importance >= 5) return <Badge variant="secondary" className="text-xs">{importance}</Badge>;
+  return <Badge variant="outline" className="text-xs">{importance}</Badge>;
 }
 
-export function MemoryPanel({ onClose }: MemoryPanelProps) {
+const memoryModeLabels: Record<string, { label: string; desc: string }> = {
+  full: { label: "Full Memory", desc: "All tiers active" },
+  no_long: { label: "No Long Memory", desc: "Summaries + buffer only" },
+  off: { label: "Memory Off", desc: "Raw messages only" },
+};
+
+interface MemoryPanelProps {
+  onClose?: () => void;
+  conversationId?: number | null;
+  onNewChatFromProject?: (projectId: string, summary: string) => void;
+}
+
+export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: MemoryPanelProps) {
   const [selectedType, setSelectedType] = useState<EntityType | "all">("all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearDays, setClearDays] = useState(90);
+
+  // Capture selected text from chat when opening Add Memory dialog
+  const handleOpenAddDialog = useCallback((open: boolean) => {
+    if (open) {
+      const selection = window.getSelection()?.toString().trim();
+      if (selection) {
+        setNewMemory((prev) => ({ ...prev, fact: selection }));
+      }
+    }
+    setAddDialogOpen(open);
+  }, []);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [memoryToDelete, setMemoryToDelete] = useState<number | null>(null);
 
@@ -74,9 +122,20 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
     entityType: "preference" as EntityType,
     entityName: "",
     fact: "",
+    importance: 5,
   });
 
   const utils = trpc.useUtils();
+
+  // Fetch conversation details for projectId and memoryMode
+  const { data: conversation } = trpc.chat.getConversation.useQuery(
+    { id: conversationId! },
+    { enabled: !!conversationId }
+  );
+
+  // Project ID state (local editable)
+  const [editingProjectId, setEditingProjectId] = useState(false);
+  const [projectIdInput, setProjectIdInput] = useState("");
 
   // Fetch memories
   const { data: memories, isLoading } = trpc.memory.getEntityMemories.useQuery({
@@ -89,7 +148,7 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
     onSuccess: () => {
       utils.memory.getEntityMemories.invalidate();
       setAddDialogOpen(false);
-      setNewMemory({ entityType: "preference", entityName: "", fact: "" });
+      setNewMemory({ entityType: "preference", entityName: "", fact: "", importance: 5 });
     },
   });
 
@@ -101,6 +160,17 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
     },
   });
 
+  const updateConversationMutation = trpc.chat.updateConversation.useMutation({
+    onSuccess: () => {
+      if (conversationId) {
+        utils.chat.getConversation.invalidate({ id: conversationId });
+      }
+    },
+  });
+
+  const compactMutation = trpc.memory.compactConversation.useMutation();
+  const clearOldMutation = trpc.memory.clearOldMemories.useMutation();
+
   const handleAddMemory = () => {
     if (!newMemory.entityName.trim() || !newMemory.fact.trim()) return;
 
@@ -108,6 +178,8 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
       entityType: newMemory.entityType,
       entityName: newMemory.entityName.trim(),
       facts: [newMemory.fact.trim()],
+      importance: newMemory.importance,
+      source: "manual" as const,
     });
   };
 
@@ -122,6 +194,63 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
     }
   };
 
+  const handleSaveProjectId = () => {
+    if (!conversationId) return;
+    updateConversationMutation.mutate({
+      id: conversationId,
+      projectId: projectIdInput.trim() || null,
+    });
+    setEditingProjectId(false);
+    toast.success("Project ID updated");
+  };
+
+  const handleMemoryModeChange = (mode: string) => {
+    if (!conversationId) return;
+    updateConversationMutation.mutate({
+      id: conversationId,
+      memoryMode: mode as "full" | "no_long" | "off",
+    });
+    toast.success(`Memory mode: ${memoryModeLabels[mode]?.label || mode}`);
+  };
+
+  const handleCompact = async () => {
+    if (!conversationId) return;
+    try {
+      const result = await compactMutation.mutateAsync({ conversationId });
+      if (result.compacted) {
+        toast.success(`Compacted: ${result.messageCount} messages summarized`);
+      } else {
+        toast.info("ข้อความยังไม่เพียงพอสำหรับการ compact (ต้องมีมากกว่า 5 ข้อความ)");
+      }
+    } catch {
+      toast.error("Failed to compact conversation");
+    }
+  };
+
+  const handleNewChatFromProject = async () => {
+    if (!conversationId || !currentProjectId || !onNewChatFromProject) return;
+    try {
+      const { summary } = await utils.memory.getConversationSummary.fetch({ conversationId });
+      onNewChatFromProject(currentProjectId, summary);
+    } catch {
+      toast.error("Failed to get conversation summary");
+    }
+  };
+
+  const handleClearOld = async () => {
+    try {
+      const result = await clearOldMutation.mutateAsync({ olderThanDays: clearDays });
+      utils.memory.getEntityMemories.invalidate();
+      setClearDialogOpen(false);
+      toast.success(`Deleted ${result.deletedCount} old memories (rules preserved)`);
+    } catch {
+      toast.error("Failed to clear old memories");
+    }
+  };
+
+  const currentMemoryMode = (conversation as any)?.memoryMode || "full";
+  const currentProjectId = (conversation as any)?.projectId || "";
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
@@ -129,19 +258,25 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
           <div className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
             <CardTitle className="text-lg">Memory</CardTitle>
+            {currentMemoryMode !== "full" && (
+              <Badge variant="outline" className="text-xs">
+                {memoryModeLabels[currentMemoryMode]?.label || currentMemoryMode}
+              </Badge>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
+              className="h-7 w-7"
               onClick={() => utils.memory.getEntityMemories.invalidate()}
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
-            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <Dialog open={addDialogOpen} onOpenChange={handleOpenAddDialog}>
               <DialogTrigger asChild>
-                <Button size="sm" className="gap-1">
-                  <Plus className="h-4 w-4" />
+                <Button size="sm" className="gap-1 h-7 text-xs">
+                  <Plus className="h-3.5 w-3.5" />
                   Add
                 </Button>
               </DialogTrigger>
@@ -187,14 +322,31 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Fact</label>
-                    <Input
+                    <label className="text-sm font-medium">Content</label>
+                    <Textarea
                       placeholder="e.g., 'I prefer TypeScript over JavaScript'"
                       value={newMemory.fact}
                       onChange={(e) =>
                         setNewMemory({ ...newMemory, fact: e.target.value })
                       }
+                      rows={3}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Importance: {newMemory.importance}
+                    </label>
+                    <Slider
+                      value={[newMemory.importance]}
+                      onValueChange={([v]) => setNewMemory({ ...newMemory, importance: v })}
+                      min={1}
+                      max={10}
+                      step={1}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Low</span>
+                      <span>High</span>
+                    </div>
                   </div>
                 </div>
                 <DialogFooter>
@@ -227,12 +379,119 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
         </CardDescription>
       </CardHeader>
 
+      {/* Project & Controls Section */}
+      {conversationId && (
+        <div className="px-4 pb-3 space-y-3">
+          {/* Project ID */}
+          <div className="rounded-lg border p-2.5 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Package className="h-3.5 w-3.5" />
+              Project
+            </div>
+            {editingProjectId ? (
+              <div className="flex gap-1.5">
+                <Input
+                  value={projectIdInput}
+                  onChange={(e) => setProjectIdInput(e.target.value)}
+                  placeholder="Project name or ID"
+                  className="h-7 text-xs"
+                />
+                <Button size="sm" className="h-7 text-xs px-2" onClick={handleSaveProjectId}>
+                  Save
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditingProjectId(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-xs">
+                  {currentProjectId || <span className="text-muted-foreground italic">Not set</span>}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs px-2"
+                  onClick={() => {
+                    setProjectIdInput(currentProjectId);
+                    setEditingProjectId(true);
+                  }}
+                >
+                  Edit
+                </Button>
+              </div>
+            )}
+            {currentProjectId && onNewChatFromProject && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-7 text-xs gap-1 mt-2"
+                onClick={handleNewChatFromProject}
+              >
+                <MessageSquarePlus className="h-3 w-3" />
+                New Chat in "{currentProjectId}"
+              </Button>
+            )}
+          </div>
+
+          {/* Memory Mode Toggle */}
+          <div className="rounded-lg border p-2.5 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <ToggleLeft className="h-3.5 w-3.5" />
+              Memory Mode
+            </div>
+            <div className="flex gap-1">
+              {Object.entries(memoryModeLabels).map(([mode, { label }]) => (
+                <Button
+                  key={mode}
+                  variant={currentMemoryMode === mode ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  onClick={() => handleMemoryModeChange(mode)}
+                  disabled={updateConversationMutation.isPending}
+                >
+                  {label.replace(" Memory", "")}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions row */}
+          <div className="flex gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs flex-1 gap-1"
+              onClick={handleCompact}
+              disabled={compactMutation.isPending}
+            >
+              {compactMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Archive className="h-3 w-3" />
+              )}
+              Compact
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs flex-1 gap-1 text-destructive hover:text-destructive"
+              onClick={() => setClearDialogOpen(true)}
+            >
+              <Trash2 className="h-3 w-3" />
+              Clear Old
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 pb-3">
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
           <Button
             variant={selectedType === "all" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setSelectedType("all")}
+            className="h-7 text-xs"
           >
             All
           </Button>
@@ -244,7 +503,7 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
                 variant={selectedType === type ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setSelectedType(type as EntityType)}
-                className="gap-1"
+                className="gap-1 h-7 text-xs"
               >
                 <Icon className="h-3 w-3" />
                 {config.label}
@@ -269,6 +528,7 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
               {memories.map((memory) => {
                 const config = entityTypeConfig[memory.entityType as EntityType];
                 const Icon = config?.icon || Brain;
+                const imp = memory.importance ?? 5;
                 return (
                   <div
                     key={memory.id}
@@ -287,6 +547,7 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
                         <span className="font-medium text-sm">
                           {memory.entityName}
                         </span>
+                        {importanceBadge(imp)}
                       </div>
                       <Button
                         variant="ghost"
@@ -313,6 +574,16 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
                       <Badge variant="outline" className="text-xs">
                         {config?.label || memory.entityType}
                       </Badge>
+                      {memory.entityType === "rule" && (
+                        <Badge className="text-xs bg-amber-600 text-white">
+                          Always Active
+                        </Badge>
+                      )}
+                      {memory.source && memory.source !== "auto" && (
+                        <Badge variant="outline" className="text-xs">
+                          {memory.source}
+                        </Badge>
+                      )}
                       <span>•</span>
                       <span>
                         Reinforced {memory.reinforcementCount}x
@@ -346,6 +617,42 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear Old Memories Confirmation */}
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear old memories?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete memories older than the selected period. Rules are never deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Select value={String(clearDays)} onValueChange={(v) => setClearDays(Number(v))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30">1 month</SelectItem>
+                <SelectItem value="90">3 months</SelectItem>
+                <SelectItem value="180">6 months</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearOld}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {clearOldMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Clear Old Memories
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

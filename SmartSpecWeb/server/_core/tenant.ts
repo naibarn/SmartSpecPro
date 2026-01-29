@@ -4,7 +4,7 @@
  */
 
 import type { Request, Response, NextFunction } from "express";
-import { db } from "../db";
+import { getDb } from "../db";
 import { tenants, type Tenant } from "../../drizzle/schema";
 import { eq, or } from "drizzle-orm";
 
@@ -23,20 +23,20 @@ export interface TenantRequest extends Request {
 async function getTenantByDomain(domain: string): Promise<Tenant | null> {
   // Check cache
   const cached = tenantCache.get(domain);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (cached && cached.tenant && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.tenant;
   }
 
   // Query database
-  const dbInstance = await db.instance;
+  const dbInstance = await getDb();
+  if (!dbInstance) return null;
+
   const result = await dbInstance
     .select()
     .from(tenants)
     .where(
       or(
         eq(tenants.primaryDomain, domain),
-        // Check if domain is in the domains array using raw SQL
-        // PostgreSQL has better JSON support
       )
     )
     .limit(1);
@@ -80,13 +80,21 @@ export async function tenantMiddleware(
   next: NextFunction
 ) {
   try {
+    // Skip tenant detection for static asset requests
+    const urlPath = req.path || req.url;
+    if (/\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|woff2?|ttf|eot|map)(\?.*)?$/.test(urlPath)) {
+      return next();
+    }
+
     // Get hostname from request
     const hostname = req.hostname || req.get("host")?.split(":")[0] || "localhost";
 
-    // Skip tenant detection for localhost and private IPs in development
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.") || hostname.startsWith("172.")) {
+    // Skip tenant detection for localhost only (not spoofable private IPs from Host header)
+    // Only trust loopback — actual private network access should go through a known domain
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
       // Use default tenant or first tenant for local/private IPs
-      const dbInstance = await db.instance;
+      const dbInstance = await getDb();
+      if (!dbInstance) return next();
       const [defaultTenant] = await dbInstance
         .select()
         .from(tenants)

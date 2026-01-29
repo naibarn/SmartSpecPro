@@ -22,7 +22,7 @@ export const billingPeriodEnum = pgEnum("billing_period", ["monthly", "quarterly
 export const contentTypeEnum = pgEnum("content_type", ["image", "video", "website"]);
 export const aspectRatioEnum = pgEnum("aspect_ratio", ["1:1", "9:16", "16:9"]);
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system"]);
-export const entityTypeEnum = pgEnum("entity_type", ["user", "project", "preference", "technical"]);
+export const entityTypeEnum = pgEnum("entity_type", ["user", "project", "preference", "technical", "decision", "plan", "architecture", "component", "task", "code_knowledge", "rule"]);
 
 /**
  * Core user table backing auth flow.
@@ -716,6 +716,12 @@ export const conversations = pgTable("conversations", {
   /** Total messages count */
   messageCount: integer("messageCount").default(0).notNull(),
 
+  /** Project ID for cross-session memory linking */
+  projectId: varchar("project_id", { length: 100 }),
+
+  /** Memory mode: full | no_long | off */
+  memoryMode: varchar("memory_mode", { length: 20 }).default("full"),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -818,6 +824,9 @@ export const conversationSummaries = pgTable("conversation_summaries", {
   /** Tokens used to generate summary */
   tokensUsed: integer("tokensUsed"),
 
+  /** Project ID for cross-session summary sharing */
+  projectId: varchar("project_id", { length: 100 }),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -851,6 +860,12 @@ export const entityMemories = pgTable("entity_memories", {
 
   /** Last time this memory was accessed */
   lastAccessedAt: timestamp("lastAccessedAt", { withTimezone: true }).defaultNow(),
+
+  /** Importance score (1-10) */
+  importance: integer("importance").default(5),
+
+  /** Source: 'auto', 'manual', 'suggested' */
+  source: varchar("source", { length: 20 }).default("auto"),
 
   /** Number of times this memory was reinforced */
   reinforcementCount: integer("reinforcementCount").default(1),
@@ -1370,3 +1385,63 @@ export const invoiceConfig = pgTable("invoice_config", {
 
 export type InvoiceConfig = typeof invoiceConfig.$inferSelect;
 export type InsertInvoiceConfig = typeof invoiceConfig.$inferInsert;
+
+/**
+ * Blog Posts - Multi-tenant blog system
+ * Each tenant has its own blog posts with full CRUD support
+ */
+export const blogPosts = pgTable("blog_posts", {
+  id: serial("id").primaryKey(),
+
+  /** Tenant this post belongs to */
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** URL-friendly slug */
+  slug: varchar("slug", { length: 255 }).notNull(),
+
+  /** Post title */
+  title: varchar("title", { length: 500 }).notNull(),
+
+  /** Short excerpt/summary */
+  excerpt: text("excerpt"),
+
+  /** Full post content (HTML) */
+  content: text("content"),
+
+  /** Cover image URL */
+  coverImage: varchar("coverImage", { length: 1024 }),
+
+  /** Author name */
+  author: varchar("author", { length: 255 }),
+
+  /** Author avatar URL */
+  authorAvatar: varchar("authorAvatar", { length: 1024 }),
+
+  /** Category */
+  category: varchar("category", { length: 100 }),
+
+  /** Tags (JSON array) */
+  tags: json("tags").$type<string[]>(),
+
+  /** Estimated read time e.g. "5 min read" */
+  readTime: varchar("readTime", { length: 50 }),
+
+  /** Whether post is published */
+  isPublished: boolean("isPublished").default(false).notNull(),
+
+  /** Whether post is featured */
+  isFeatured: boolean("isFeatured").default(false).notNull(),
+
+  /** SEO metadata */
+  metaDescription: text("metaDescription"),
+  metaKeywords: varchar("metaKeywords", { length: 500 }),
+
+  /** Publish date (can be set to future for scheduling) */
+  publishedAt: timestamp("publishedAt", { withTimezone: true }),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type BlogPost = typeof blogPosts.$inferSelect;
+export type InsertBlogPost = typeof blogPosts.$inferInsert;

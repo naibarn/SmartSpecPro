@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
-import { db } from "../db";
+import { db, getDb } from "../db";
 import { llmProviders } from "../../drizzle/schema";
 import { eq, asc, desc, sql } from "drizzle-orm";
-import crypto from "crypto";
 import {
   syncProviderModels,
   syncAllProviderModels,
@@ -14,30 +13,30 @@ import {
   cleanupAllOldModels,
   getCleanupPreview,
 } from "../services/modelSyncService";
+import { encrypt, decrypt } from "../services/crypto";
 
-// Simple encryption for API keys (in production, use proper key management)
-const ENCRYPTION_KEY = process.env.LLM_ENCRYPTION_KEY || "smartspec-llm-key-32chars!!";
-const IV_LENGTH = 16;
-
-function encrypt(text: string): string {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString("hex") + ":" + encrypted.toString("hex");
-}
-
-function decrypt(text: string): string {
-  try {
-    const parts = text.split(":");
-    const iv = Buffer.from(parts[0], "hex");
-    const encryptedText = Buffer.from(parts[1], "hex");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)), iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
-  } catch {
-    return "";
+/** Block SSRF: reject URLs pointing to private/internal networks */
+function validateExternalUrl(url: string): void {
+  const parsed = new URL(url);
+  const hostname = parsed.hostname.toLowerCase();
+  const blocked = [
+    /^localhost$/,
+    /^127\.\d+\.\d+\.\d+$/,
+    /^10\.\d+\.\d+\.\d+$/,
+    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+    /^192\.168\.\d+\.\d+$/,
+    /^169\.254\.\d+\.\d+$/,
+    /^0\.0\.0\.0$/,
+    /^\[::1?\]$/,
+    /^fd[0-9a-f]{2}:/i,
+    /\.internal$/,
+    /\.local$/,
+  ];
+  if (blocked.some(r => r.test(hostname))) {
+    throw new Error("URL points to a private/internal network address");
+  }
+  if (!["https:", "http:"].includes(parsed.protocol)) {
+    throw new Error("Only HTTP(S) URLs are allowed");
   }
 }
 
@@ -124,7 +123,9 @@ export const llmProvidersRouter = router({
   // Get all available models from enabled providers (for Desktop App model selector)
   // This is a public endpoint that returns flattened model list
   availableModels: protectedProcedure.query(async () => {
-    const providers = await db
+    const dbInstance = await getDb();
+    if (!dbInstance) return { models: [], providers: [] };
+    const providers = await dbInstance
       .select({
         providerName: llmProviders.providerName,
         displayName: llmProviders.displayName,
@@ -439,7 +440,8 @@ export const llmProvidersRouter = router({
             // Anthropic doesn't have a simple test endpoint
             return { success: true, message: "API key configured (Anthropic)" };
           case "google":
-            testUrl = `${provider.baseUrl}/models?key=${apiKey}`;
+            testUrl = `${provider.baseUrl}/models`;
+            headers = { "x-goog-api-key": apiKey };
             break;
           case "minimax":
           case "qwen":
@@ -453,17 +455,19 @@ export const llmProvidersRouter = router({
             headers = { Authorization: `Bearer ${apiKey}` };
         }
         
+        // SSRF protection: block private/internal URLs
+        validateExternalUrl(testUrl);
+
         const response = await fetch(testUrl, {
           method: "GET",
           headers,
           signal: AbortSignal.timeout(10000),
         });
-        
+
         if (response.ok) {
           return { success: true, message: "Connection successful" };
         } else {
-          const error = await response.text();
-          return { success: false, message: `Connection failed: ${response.status} - ${error.slice(0, 200)}` };
+          return { success: false, message: `Connection failed: HTTP ${response.status}` };
         }
       } catch (error: any) {
         return { success: false, message: `Connection failed: ${error.message}` };
@@ -472,7 +476,7 @@ export const llmProvidersRouter = router({
 
   // Get API key for internal use (not exposed to client)
   // This is used by the LLM gateway
-  getApiKey: protectedProcedure
+  getApiKey: adminProcedure
     .input(z.object({ providerName: z.string() }))
     .query(async ({ input }) => {
       const [provider] = await db

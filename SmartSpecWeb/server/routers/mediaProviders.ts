@@ -1,35 +1,9 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
-import { db } from "../db";
+import { db, getDb } from "../db";
 import { mediaProviders } from "../../drizzle/schema";
 import { eq, asc, desc, sql } from "drizzle-orm";
-import crypto from "crypto";
-
-// Simple encryption for API keys (in production, use proper key management)
-const ENCRYPTION_KEY = process.env.MEDIA_ENCRYPTION_KEY || process.env.LLM_ENCRYPTION_KEY || "smartspec-media-key-32chars!";
-const IV_LENGTH = 16;
-
-function encrypt(text: string): string {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString("hex") + ":" + encrypted.toString("hex");
-}
-
-function decrypt(text: string): string {
-  try {
-    const parts = text.split(":");
-    const iv = Buffer.from(parts[0], "hex");
-    const encryptedText = Buffer.from(parts[1], "hex");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)), iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
-  } catch {
-    return "";
-  }
-}
+import { encrypt, decrypt } from "../services/crypto";
 
 // Provider templates for adding new providers
 const PROVIDER_TEMPLATES = [
@@ -122,7 +96,9 @@ export const mediaProvidersRouter = router({
   // Admin: List all media providers
   adminList: adminProcedure.query(async () => {
     try {
-      const providers = await db
+      const dbInstance = await getDb();
+      if (!dbInstance) return [];
+      const providers = await dbInstance
         .select()
         .from(mediaProviders)
         .orderBy(asc(mediaProviders.sortOrder), asc(mediaProviders.displayName));
@@ -259,7 +235,8 @@ export const mediaProvidersRouter = router({
         }
       }
 
-      console.log("Updating provider", id, "with data:", JSON.stringify(updateData, null, 2));
+      // Log only non-sensitive fields
+      console.log("[MediaProviders] Updating provider", id);
 
       await db
         .update(mediaProviders)
@@ -347,7 +324,9 @@ export const mediaProvidersRouter = router({
   // Admin: Get provider stats
   stats: adminProcedure.query(async () => {
     try {
-      const providers = await db.select().from(mediaProviders);
+      const dbInstance = await getDb();
+      if (!dbInstance) return { total: 0, enabled: 0, withApiKey: 0, byType: { image: 0, video: 0, audio: 0, multimodal: 0 } };
+      const providers = await dbInstance.select().from(mediaProviders);
 
       return {
         total: providers.length,
@@ -400,10 +379,24 @@ export const mediaProvidersRouter = router({
     }),
 });
 
+/** Block SSRF: reject URLs pointing to private/internal networks */
+function validateExternalUrl(url: string): void {
+  const parsed = new URL(url);
+  const hostname = parsed.hostname.toLowerCase();
+  const blocked = [
+    /^localhost$/, /^127\.\d+\.\d+\.\d+$/, /^10\.\d+\.\d+\.\d+$/,
+    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/, /^192\.168\.\d+\.\d+$/,
+    /^169\.254\.\d+\.\d+$/, /^0\.0\.0\.0$/, /^\[::1?\]$/,
+  ];
+  if (blocked.some(r => r.test(hostname))) {
+    throw new Error("URL points to a private/internal network address");
+  }
+}
+
 // Test functions for each provider
 async function testKieAI(apiKey: string, baseUrl: string): Promise<{ success: boolean; message: string; balance?: number }> {
   // Kie AI uses Bearer token authentication
-  // Test by checking account balance or a lightweight endpoint
+  validateExternalUrl(baseUrl);
   const response = await fetch(`${baseUrl}/account/balance`, {
     method: "GET",
     headers: {
@@ -466,6 +459,7 @@ async function testGenericProvider(apiKey: string, baseUrl: string): Promise<{ s
   }
 
   try {
+    validateExternalUrl(baseUrl);
     const response = await fetch(baseUrl, {
       method: "HEAD",
       headers: {

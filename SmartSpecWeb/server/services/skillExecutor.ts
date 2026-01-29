@@ -19,6 +19,31 @@ import {
 } from "./modelRegistry";
 import { calculateCreditCost } from "./pricingCalculator";
 
+// Simple in-memory rate limiter per user per skill type
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60_000; // 1 minute
+const RATE_LIMITS: Record<string, number> = {
+  "image-generation": 10,
+  "video-generation": 5,
+  "audio-generation": 10,
+};
+const DEFAULT_RATE_LIMIT = 20;
+
+function checkRateLimit(userId: number, skillType: string): boolean {
+  const key = `${userId}:${skillType}`;
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  const limit = RATE_LIMITS[skillType] || DEFAULT_RATE_LIMIT;
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  if (entry.count >= limit) return false;
+  entry.count++;
+  return true;
+}
+
 export interface SkillExecutionParams {
   prompt: string;
   model?: string;
@@ -57,6 +82,16 @@ export async function executeSkill(
   userId: number,
   userToken: string
 ): Promise<SkillExecutionResult> {
+  // Rate limit check
+  if (!checkRateLimit(userId, skill.type)) {
+    return {
+      success: false,
+      skillId: skill.id,
+      type: skill.type as any,
+      error: "Rate limit exceeded. Please wait before trying again.",
+    };
+  }
+
   switch (skill.type) {
     case "image-generation":
       return executeImageGeneration(skill, params, userId, userToken);

@@ -47,6 +47,16 @@ import Credits from "./pages/Credits";
 import MediaHistory from "./pages/MediaHistory";
 import Settings from "./pages/Settings";
 import DockerRedirect from "./pages/DockerRedirect";
+import DocPage from "./pages/DocPage";
+import About from "./pages/About";
+import Changelog from "./pages/Changelog";
+import Careers from "./pages/Careers";
+import Community from "./pages/Community";
+import Support from "./pages/Support";
+import Status from "./pages/Status";
+import Security from "./pages/Security";
+import BlogPost from "./pages/BlogPost";
+import DomainBlogAdmin from "./pages/DomainBlogAdmin";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -56,8 +66,17 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/features" component={Features} />
       <Route path="/docs" component={Docs} />
+      <Route path="/docs/:slug+" component={DocPage} />
       <Route path="/contact" component={Contact} />
+      <Route path="/about" component={About} />
+      <Route path="/changelog" component={Changelog} />
+      <Route path="/careers" component={Careers} />
+      <Route path="/community" component={Community} />
+      <Route path="/support" component={Support} />
+      <Route path="/status" component={Status} />
+      <Route path="/security" component={Security} />
       <Route path="/blog" component={Blog} />
+      <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/gallery" component={Gallery} />
       <Route path="/admin/gallery" component={AdminGallery} />
       <Route path="/admin/users" component={AdminUsers} />
@@ -75,6 +94,7 @@ function Router() {
       <Route path="/domain-admin/content" component={DomainAdminContent} />
       <Route path="/domain-admin/users" component={DomainUsers} />
       <Route path="/domain-admin/invoice" component={DomainAdminInvoice} />
+      <Route path="/domain-admin/blog" component={DomainBlogAdmin} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />

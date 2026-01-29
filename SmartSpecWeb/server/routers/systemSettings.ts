@@ -4,10 +4,11 @@
  */
 
 import { z } from "zod";
-import { router, adminProcedure } from "../_core/trpc";
+import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { systemSettings, invoiceConfig, tenants } from "../../drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
+import { encrypt, decrypt } from "../services/crypto";
 
 // ============================================================
 // System Settings Router
@@ -81,10 +82,8 @@ export const systemSettingsRouter = router({
 
     for (const setting of settings) {
       if (setting.key === "secretKey" && setting.value) {
-        // Mask secret key - show last 4 characters
-        result.secretKey = setting.value.length > 4
-          ? "sk_" + "*".repeat(20) + setting.value.slice(-4)
-          : "***configured***";
+        // Mask secret key - never reveal any part of the actual key
+        result.secretKey = "sk_" + "*".repeat(24);
         result.secretKeyConfigured = "true";
       } else if (setting.key === "publishableKey") {
         result.publishableKey = setting.value || undefined;
@@ -117,6 +116,9 @@ export const systemSettingsRouter = router({
 
       for (const update of updates) {
         if (update.value !== undefined) {
+          // Encrypt sensitive values before storage
+          const storedValue = update.sensitive ? encrypt(update.value) : update.value;
+
           // Check if setting exists
           const existing = await db
             .select()
@@ -131,7 +133,7 @@ export const systemSettingsRouter = router({
             await db
               .update(systemSettings)
               .set({
-                value: update.value,
+                value: storedValue,
                 isSensitive: update.sensitive,
                 updatedBy: ctx.user?.id,
                 updatedAt: new Date(),
@@ -141,7 +143,7 @@ export const systemSettingsRouter = router({
             await db.insert(systemSettings).values({
               category: "stripe",
               key: update.key,
-              value: update.value,
+              value: storedValue,
               isSensitive: update.sensitive,
               description: `Stripe ${update.key}`,
               updatedBy: ctx.user?.id,
@@ -177,7 +179,11 @@ export const systemSettingsRouter = router({
     try {
       // Dynamic import to avoid issues if stripe is not installed
       const stripe = await import("stripe");
-      const stripeClient = new stripe.default(secretKeySetting[0].value);
+      const decryptedKey = decrypt(secretKeySetting[0].value || "");
+      if (!decryptedKey) {
+        return { success: false, message: "Failed to decrypt Stripe key" };
+      }
+      const stripeClient = new stripe.default(decryptedKey);
 
       // Try to fetch account info to verify the key
       const account = await stripeClient.accounts.retrieve();
@@ -316,7 +322,7 @@ export const systemSettingsRouter = router({
   getSetting: adminProcedure
     .input(z.object({
       category: settingCategorySchema,
-      key: z.string(),
+      key: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
     }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -373,7 +379,7 @@ export const systemSettingsRouter = router({
   updateSetting: adminProcedure
     .input(z.object({
       category: settingCategorySchema,
-      key: z.string(),
+      key: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
       value: z.string().optional(),
       valueJson: z.record(z.any()).optional(),
       isSensitive: z.boolean().optional(),
@@ -415,6 +421,116 @@ export const systemSettingsRouter = router({
           updatedBy: ctx.user?.id,
         });
       }
+
+      return { success: true };
+    }),
+
+  // ============================================================
+  // User-level API Keys (Context7, etc.)
+  // ============================================================
+
+  /**
+   * Get user's Context7 API key (masked)
+   */
+  getContext7Key: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { configured: false, maskedKey: "" };
+
+      const userId = ctx.user?.id;
+      if (!userId) return { configured: false, maskedKey: "" };
+
+      const result = await db
+        .select()
+        .from(systemSettings)
+        .where(and(
+          eq(systemSettings.category, "context7"),
+          eq(systemSettings.key, `api_key_user_${userId}`)
+        ))
+        .limit(1);
+
+      if (result.length > 0 && result[0].value) {
+        // Decrypt the stored key for masking display
+        const { decrypt } = await import("../services/crypto");
+        const val = decrypt(result[0].value) || result[0].value;
+        const masked = val.length > 8
+          ? val.substring(0, 4) + "••••••••" + val.substring(val.length - 4)
+          : "••••••••";
+        return { configured: true, maskedKey: masked };
+      }
+
+      return { configured: false, maskedKey: "" };
+    }),
+
+  /**
+   * Save user's Context7 API key
+   */
+  saveContext7Key: protectedProcedure
+    .input(z.object({
+      apiKey: z.string().min(1).max(256),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const userId = ctx.user?.id;
+      if (!userId) throw new Error("User not found");
+
+      const settingKey = `api_key_user_${userId}`;
+
+      const existing = await db
+        .select()
+        .from(systemSettings)
+        .where(and(
+          eq(systemSettings.category, "context7"),
+          eq(systemSettings.key, settingKey)
+        ))
+        .limit(1);
+
+      // Encrypt the API key before storage
+      const { encrypt } = await import("../services/crypto");
+      const encryptedKey = encrypt(input.apiKey);
+
+      if (existing.length > 0) {
+        await db
+          .update(systemSettings)
+          .set({
+            value: encryptedKey,
+            updatedBy: userId,
+            updatedAt: new Date(),
+          })
+          .where(eq(systemSettings.id, existing[0].id));
+      } else {
+        await db.insert(systemSettings).values({
+          category: "context7",
+          key: settingKey,
+          value: encryptedKey,
+          isSensitive: true,
+          description: "Context7 API Key (per-user)",
+          updatedBy: userId,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Delete user's Context7 API key
+   */
+  deleteContext7Key: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const userId = ctx.user?.id;
+      if (!userId) throw new Error("User not found");
+
+      await db
+        .delete(systemSettings)
+        .where(and(
+          eq(systemSettings.category, "context7"),
+          eq(systemSettings.key, `api_key_user_${userId}`)
+        ));
 
       return { success: true };
     }),

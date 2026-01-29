@@ -24,6 +24,11 @@ export async function setupVite(app: Express, server: Server) {
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
+    // Skip static asset requests that Vite didn't serve (return 404 instead of 500)
+    if (/\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|woff2?|ttf|eot|map|json)(\?.*)?$/.test(url)) {
+      return res.status(404).end();
+    }
+
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,

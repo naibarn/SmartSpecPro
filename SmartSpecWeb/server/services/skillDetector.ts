@@ -203,8 +203,10 @@ export function extractSkillParams(
   message: string,
   skill: SkillDefinition
 ): Record<string, unknown> {
+  // Sanitize and limit prompt length to prevent abuse
+  const sanitizedMessage = message.slice(0, 4000).trim();
   const params: Record<string, unknown> = {
-    prompt: message,
+    prompt: sanitizedMessage,
   };
 
   // Determine media type from skill type

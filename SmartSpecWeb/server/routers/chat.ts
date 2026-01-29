@@ -101,6 +101,7 @@ export const chatRouter = router({
         title: z.string().max(255).optional(),
         model: z.string().max(100).optional(),
         systemPrompt: z.string().optional(),
+        projectId: z.string().max(100).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -109,12 +110,14 @@ export const chatRouter = router({
         title: input.title,
         model: input.model,
         systemPrompt: input.systemPrompt,
+        projectId: input.projectId,
       });
 
       return {
         id: conversation.id,
         title: conversation.title,
         model: conversation.model,
+        projectId: (conversation as any).projectId,
         createdAt: conversation.createdAt,
       };
     }),
@@ -151,6 +154,7 @@ export const chatRouter = router({
           isPinned: c.isPinned,
           isArchived: c.isArchived,
           totalCreditsUsed: c.totalCreditsUsed,
+          projectId: (c as any).projectId || null,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         })),
@@ -185,6 +189,8 @@ export const chatRouter = router({
         isPinned: conversation.isPinned,
         isArchived: conversation.isArchived,
         totalCreditsUsed: conversation.totalCreditsUsed,
+        projectId: (conversation as any).projectId || null,
+        memoryMode: (conversation as any).memoryMode || "full",
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
       };
@@ -204,6 +210,8 @@ export const chatRouter = router({
         skillSettings: skillSettingsSchema.optional(),
         isPinned: z.boolean().optional(),
         isArchived: z.boolean().optional(),
+        projectId: z.string().max(100).nullable().optional(),
+        memoryMode: z.enum(["full", "no_long", "off"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

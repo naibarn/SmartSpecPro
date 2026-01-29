@@ -14,6 +14,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
+import { registerBlogRoutes } from "../routers/blog";
 import { registerAdminTenantsRoutes } from "../routers/adminTenants";
 import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
@@ -33,11 +34,10 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
 
   // Allow Docker Status subdomains to access token generation API
-  if (origin && (
-    origin.includes('docker.smartspec.local') ||
-    origin.includes('docker.smartspec.pro') ||
-    origin.includes('docker.localhost')
-  )) {
+  // Use strict suffix matching to prevent subdomain spoofing
+  const allowedSuffixes = ['.smartspec.local', '.smartspec.pro', '.localhost'];
+  const originHost = origin ? new URL(origin).hostname : '';
+  if (origin && allowedSuffixes.some(suffix => originHost === suffix.slice(1) || originHost.endsWith(suffix))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -58,11 +58,12 @@ app.use((_req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data:; frame-ancestors 'none';");
   next();
 });
 
-// JSON body parser with error logging
-app.use(express.json({ limit: "50mb" }));
+// JSON body parser — limit to 10MB to prevent DoS
+app.use(express.json({ limit: "10mb" }));
 app.use((err: any, req: any, res: any, next: any) => {
   // Catch JSON parse errors (SyntaxError from body-parser)
   if (err instanceof SyntaxError && 'body' in err) {
@@ -71,11 +72,13 @@ app.use((err: any, req: any, res: any, next: any) => {
   }
   next(err);
 });
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser(ENV.cookieSecret));
 
-// Serve uploaded files BEFORE tenant middleware (internal Docker access)
-// This allows services like smartspec-backend to access files without tenant validation
+// Multi-tenant middleware - identifies tenant from domain
+app.use(tenantMiddleware);
+
+// Serve uploaded files AFTER tenant middleware for access control
 if (useLocalStorage()) {
   const uploadsDir = getUploadsDir();
   console.log(`[Storage] Using local storage at: ${uploadsDir}`);
@@ -84,9 +87,6 @@ if (useLocalStorage()) {
     etag: true,
   }));
 }
-
-// Multi-tenant middleware - identifies tenant from domain
-app.use(tenantMiddleware);
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
@@ -106,6 +106,9 @@ registerTenantRoutes(app);
 
 // Admin tenant management routes
 registerAdminTenantsRoutes(app);
+
+// Blog routes
+registerBlogRoutes(app);
 
 app.use(
   "/trpc",

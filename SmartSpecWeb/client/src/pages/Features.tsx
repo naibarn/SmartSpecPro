@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { useTenantPage } from '@/hooks/useTenantPage';
 import {
   Code2,
   Sparkles,
@@ -130,10 +131,82 @@ const integrations = [
 ];
 
 export default function Features() {
+  const { page: tenantPage } = useTenantPage('features');
+
+  // Parse content HTML when sections are null
+  const parsed = (() => {
+    if (!tenantPage?.content || tenantPage?.sections) return null;
+    const html = tenantPage.content;
+    const getText = (tag: string, src: string) => {
+      const m = src.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
+      return m?.[1]?.replace(/<[^>]*>/g, '').trim() || null;
+    };
+    // Hero
+    const heroMatch = html.match(/<section[^>]*class="[^"]*hero[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const heroHtml = heroMatch?.[1] || '';
+    const heroTitle = getText('h1', heroHtml);
+    const heroDesc = getText('p', heroHtml);
+    // Main features with benefits
+    const mainMatch = html.match(/<section[^>]*class="[^"]*main[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const mainHtml = mainMatch?.[1] || '';
+    const mainItems: Array<{ title: string; description: string; benefits: string[] }> = [];
+    const detailRegex = /<div[^>]*class="[^"]*feature-detail[^"]*"[^>]*>([\s\S]*?)<\/div>\s*(?=<div|$)/g;
+    let dm;
+    while ((dm = detailRegex.exec(mainHtml)) !== null) {
+      const block = dm[1];
+      const title = getText('h2', block) || '';
+      const desc = getText('p', block) || '';
+      const benefits: string[] = [];
+      const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
+      let lm;
+      while ((lm = liRegex.exec(block)) !== null) {
+        benefits.push(lm[1].replace(/<[^>]*>/g, '').trim());
+      }
+      mainItems.push({ title, description: desc, benefits });
+    }
+    // Additional features
+    const addMatch = html.match(/<section[^>]*class="[^"]*additional[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const addHtml = addMatch?.[1] || '';
+    const addTitle = getText('h2', addHtml);
+    const addItems: Array<{ title: string; description: string }> = [];
+    const addItemRegex = /<h3[^>]*>([\s\S]*?)<\/h3>\s*<p[^>]*>([\s\S]*?)<\/p>/g;
+    let am;
+    while ((am = addItemRegex.exec(addHtml)) !== null) {
+      addItems.push({
+        title: am[1].replace(/<[^>]*>/g, '').trim(),
+        description: am[2].replace(/<[^>]*>/g, '').trim(),
+      });
+    }
+    // CTA
+    const ctaMatch = html.match(/<section[^>]*class="[^"]*cta[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const ctaHtml = ctaMatch?.[1] || '';
+    const ctaTitle = getText('h2', ctaHtml);
+    const ctaDesc = getText('p', ctaHtml);
+    return { heroTitle, heroDesc, mainItems, addTitle, addItems, ctaTitle, ctaDesc };
+  })();
+
+  // Merge parsed data into display arrays
+  const displayMainFeatures = parsed?.mainItems && parsed.mainItems.length > 0
+    ? parsed.mainItems.map((item, i) => ({
+        ...mainFeatures[i] || mainFeatures[0],
+        title: item.title,
+        description: item.description,
+        benefits: item.benefits.length > 0 ? item.benefits : (mainFeatures[i]?.benefits || []),
+      }))
+    : mainFeatures;
+
+  const displayAdditionalFeatures = parsed?.addItems && parsed.addItems.length > 0
+    ? parsed.addItems.map((item, i) => ({
+        icon: additionalFeatures[i]?.icon || Sparkles,
+        title: item.title,
+        description: item.description,
+      }))
+    : additionalFeatures;
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       {/* Hero Section */}
       <section className="relative pt-32 pb-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 via-transparent to-transparent" />
@@ -151,11 +224,10 @@ export default function Features() {
               Powerful Features
             </span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
-              Everything You Need to{' '}
-              <span className="gradient-text">Build Faster</span>
+              {parsed?.heroTitle || (<>Everything You Need to{' '}<span className="gradient-text">Build Faster</span></>)}
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              SmartSpec Pro combines cutting-edge AI with developer-friendly tools to supercharge your productivity.
+              {parsed?.heroDesc || 'SmartSpec Pro combines cutting-edge AI with developer-friendly tools to supercharge your productivity.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -178,7 +250,7 @@ export default function Features() {
       {/* Main Features */}
       <section className="py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {mainFeatures.map((feature, index) => (
+          {displayMainFeatures.map((feature, index) => (
             <motion.div
               key={feature.title}
               initial={{ opacity: 0, y: 40 }}
@@ -233,7 +305,7 @@ export default function Features() {
               And Much More
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Packed with <span className="gradient-text">Powerful Tools</span>
+              {parsed?.addTitle || (<>Packed with <span className="gradient-text">Powerful Tools</span></>)}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Every feature is designed to help you build better software, faster.
@@ -241,7 +313,7 @@ export default function Features() {
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {additionalFeatures.map((feature, index) => (
+            {displayAdditionalFeatures.map((feature: any, index: number) => (
               <motion.div
                 key={feature.title}
                 initial={{ opacity: 0, y: 20 }}
@@ -314,10 +386,10 @@ export default function Features() {
           >
             <Sparkles className="w-16 h-16 mx-auto mb-6 text-primary" />
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Ready to Experience the Future of Development?
+              {parsed?.ctaTitle || 'Ready to Experience the Future of Development?'}
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join thousands of developers who are already building faster with SmartSpec Pro.
+              {parsed?.ctaDesc || 'Join thousands of developers who are already building faster with SmartSpec Pro.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -336,7 +408,6 @@ export default function Features() {
           </motion.div>
         </div>
       </section>
-
       <Footer />
     </div>
   );

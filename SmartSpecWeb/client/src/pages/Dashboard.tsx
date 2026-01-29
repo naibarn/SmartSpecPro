@@ -3,7 +3,7 @@
  * User dashboard after login
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,12 +37,16 @@ import {
   Cloud,
   FileText,
   Palette,
+  PenLine,
+  Menu,
+  X,
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const { tenant, isLoading: tenantLoading } = useTenant();
   const [, setLocation] = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Fetch real media tasks for recent activity
   const { data: mediaTasksData } = trpc.media.listTasks.useQuery(
@@ -118,6 +122,99 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+      {/* Mobile menu button */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="fixed top-4 left-4 z-50 lg:hidden bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-2 shadow-md"
+      >
+        <Menu className="w-6 h-6 text-gray-700" />
+      </button>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 flex flex-col shadow-xl">
+            <div className="flex items-center justify-between p-4">
+              <span className="font-bold text-gray-900">{tenant?.name || 'Dashboard'}</span>
+              <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg hover:bg-gray-100">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1">
+              {quickActions.map((action, index) => (
+                <button
+                  key={index}
+                  onClick={() => { setLocation(action.href); setSidebarOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-gray-600 hover:bg-gray-100 text-sm"
+                >
+                  <action.icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium truncate">{action.label}</span>
+                </button>
+              ))}
+
+              {user.role === 'admin' && (
+                <div className="pt-3 mt-3 border-t border-gray-200">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">Admin</div>
+                  {[
+                    { label: 'Tenants', icon: Building2, path: '/admin/tenants' },
+                    { label: 'Services', icon: Server, path: '/admin/services' },
+                    { label: 'Settings', icon: Activity, path: '/admin/settings' },
+                    { label: 'Users', icon: Users, path: '/admin/users' },
+                    { label: 'Packages', icon: Package, path: '/admin/packages' },
+                    { label: 'LLM Providers', icon: Brain, path: '/admin/llm-providers' },
+                    { label: 'Media Providers', icon: Layers, path: '/admin/media-providers' },
+                    { label: 'Skills', icon: Wand2, path: '/admin/skills' },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      onClick={() => { setLocation(item.path); setSidebarOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-gray-600 hover:bg-gray-100 text-sm"
+                    >
+                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="font-medium truncate">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {(user.role === 'domain_admin' || user.role === 'admin') && (
+                <div className="pt-3 mt-3 border-t border-gray-200">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">
+                    {user.role === 'admin' ? 'Tenant Management' : 'Domain Admin'}
+                  </div>
+                  {[
+                    { href: '/domain-admin/users', icon: UserCog, label: 'Manage Users' },
+                    { href: '/domain-admin/content', icon: FileText, label: 'Edit Content' },
+                    { href: '/domain-admin/theme', icon: Palette, label: 'Edit Theme' },
+                    { href: '/domain-admin/blog', icon: PenLine, label: 'Manage Blog' },
+                  ].map((item) => (
+                    <button
+                      key={item.href}
+                      onClick={() => { setLocation(item.href); setSidebarOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-gray-600 hover:bg-gray-100 text-sm"
+                    >
+                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="font-medium truncate">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </nav>
+            <div className="p-4 border-t border-gray-200">
+              <Button
+                variant="ghost"
+                onClick={() => { logout(); setSidebarOpen(false); }}
+                className="w-full justify-start text-gray-600 hover:text-red-600 text-sm"
+              >
+                <LogOut className="w-4 h-4 mr-3" />
+                Sign Out
+              </Button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white/70 backdrop-blur-xl border-r border-gray-200/50 hidden lg:flex lg:flex-col">
         <div className="flex items-center gap-3 p-6 pb-4">
@@ -223,6 +320,13 @@ export default function Dashboard() {
                 >
                   <Palette className="w-4 h-4 flex-shrink-0" />
                   <span className="font-medium truncate">Edit Theme</span>
+                </button>
+                <button
+                  onClick={() => setLocation('/domain-admin/blog')}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all text-gray-600 hover:bg-gray-100 text-sm"
+                >
+                  <PenLine className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium truncate">Manage Blog</span>
                 </button>
               </div>
             </>

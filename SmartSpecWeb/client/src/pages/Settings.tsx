@@ -17,6 +17,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Settings as SettingsIcon,
   User,
@@ -64,6 +67,32 @@ export default function Settings() {
     onError: (error) => {
       setDeleteError(error.message);
     },
+  });
+
+  // Context7 states
+  const [context7Key, setContext7Key] = useState('');
+  const [showContext7Key, setShowContext7Key] = useState(false);
+
+  const { data: context7Data, refetch: refetchContext7 } =
+    trpc.systemSettings.getContext7Key.useQuery(undefined, {
+      enabled: isAuthenticated,
+    });
+
+  const saveContext7Mutation = trpc.systemSettings.saveContext7Key.useMutation({
+    onSuccess: () => {
+      toast.success("Context7 API key saved");
+      setContext7Key('');
+      refetchContext7();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const deleteContext7Mutation = trpc.systemSettings.deleteContext7Key.useMutation({
+    onSuccess: () => {
+      toast.success("Context7 API key removed");
+      refetchContext7();
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   // Form states
@@ -537,6 +566,70 @@ export default function Settings() {
                     <Key className="w-4 h-4 mr-2" />
                     Create New Key
                   </Button>
+
+                  {/* Context7 API Key */}
+                  <div className="border-t border-gray-200 pt-6 mt-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">Context7 API Key</h3>
+                      {context7Data?.configured && (
+                        <Badge variant="outline" className="text-green-600 border-green-600">
+                          <Check className="w-3 h-3 mr-1" />
+                          Configured
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Your personal Context7 API key for fetching up-to-date library documentation in chat.
+                      Get a free key at{' '}
+                      <a href="https://context7.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
+                        context7.com/dashboard
+                      </a>
+                    </p>
+
+                    {context7Data?.configured && (
+                      <div className="p-3 bg-gray-50 rounded-lg mb-3 flex items-center justify-between">
+                        <code className="text-sm text-gray-600">{context7Data.maskedKey}</code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => deleteContext7Mutation.mutate()}
+                          disabled={deleteContext7Mutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type={showContext7Key ? "text" : "password"}
+                          placeholder={context7Data?.configured ? "Enter new key to update..." : "Enter your Context7 API key"}
+                          value={context7Key}
+                          onChange={(e) => setContext7Key(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowContext7Key(!showContext7Key)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showContext7Key ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <Button
+                        onClick={() => saveContext7Mutation.mutate({ apiKey: context7Key })}
+                        disabled={!context7Key.trim() || saveContext7Mutation.isPending}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        {saveContext7Mutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 

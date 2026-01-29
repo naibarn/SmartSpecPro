@@ -44,7 +44,7 @@ const SYNC_CONFIG = {
   // Only sync models created within the last N days (3 months = ~90 days)
   maxAgeDays: 90,
   // Set to false to sync all models regardless of age
-  filterByDate: true,
+  filterByDate: false,
 };
 
 // Configuration for model cleanup

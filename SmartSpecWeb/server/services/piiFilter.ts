@@ -77,7 +77,7 @@ const PII_PATTERNS: Array<{ name: string; pattern: RegExp; replacement: string }
     pattern: /\b(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}\b/g,
     replacement: "[AWS_KEY_REDACTED]",
   },
-  // Private keys (partial match for safety)
+  // Private keys (partial match for safety — use non-greedy with bounded match)
   {
     name: "private_key",
     pattern: /-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:RSA\s+)?PRIVATE\s+KEY-----/gi,
@@ -119,7 +119,10 @@ export interface PIIDetectionResult {
  * Detect and redact PII from text
  */
 export function detectAndRedactPII(text: string): PIIDetectionResult {
-  let sanitizedText = text;
+  // Normalize Unicode to prevent bypass via fullwidth chars or homoglyphs
+  let sanitizedText = text.normalize("NFKC")
+    // Strip zero-width characters that could be inserted between digits
+    .replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, "");
   const detectedTypes: Set<string> = new Set();
   let redactedCount = 0;
 

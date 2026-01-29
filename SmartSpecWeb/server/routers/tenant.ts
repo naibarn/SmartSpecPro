@@ -106,6 +106,33 @@ export function registerTenantRoutes(app: Express) {
         return res.status(400).json({ error: "themeConfig is required" });
       }
 
+      // Validate themeConfig values to prevent CSS injection
+      const validColor = /^(#[0-9a-fA-F]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+))?\s*\)|hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*(,\s*(0|1|0?\.\d+))?\s*\)|transparent|inherit|currentColor)$/i;
+      const validFontFamily = /^[a-zA-Z0-9\s,'"-]+$/;
+      const validCssValue = /^[a-zA-Z0-9\s#.,%()\-]+$/;
+
+      function validateThemeValues(obj: any, depth = 0): boolean {
+        if (depth > 5) return false; // prevent deep nesting attacks
+        if (typeof obj !== "object" || obj === null) {
+          if (typeof obj === "string") {
+            // Block script injection, url(), expression(), etc.
+            if (/(?:javascript|expression|url\s*\(|@import|<script|<\/script)/i.test(obj)) {
+              return false;
+            }
+            return obj.length <= 200; // reasonable max length
+          }
+          return typeof obj === "number" || typeof obj === "boolean";
+        }
+        for (const val of Object.values(obj)) {
+          if (!validateThemeValues(val, depth + 1)) return false;
+        }
+        return true;
+      }
+
+      if (!validateThemeValues(themeConfig)) {
+        return res.status(400).json({ error: "Invalid theme configuration values" });
+      }
+
       // Update tenant theme
       const dbInstance = await db.instance;
       await dbInstance
@@ -334,6 +361,37 @@ export function registerTenantRoutes(app: Express) {
     } catch (error) {
       console.error("Error deleting page:", error);
       res.status(500).json({ error: "Failed to delete page" });
+    }
+  });
+
+  // Get published page content for current tenant (public, no auth)
+  app.get("/api/tenant/public-pages/:pageKey", async (req: TenantRequest, res) => {
+    try {
+      if (!req.tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      const { pageKey } = req.params;
+
+      const dbInstance = await db.instance;
+      const [page] = await dbInstance
+        .select()
+        .from(tenantPages)
+        .where(
+          and(
+            eq(tenantPages.tenantId, req.tenant.id),
+            eq(tenantPages.pageKey, pageKey)
+          )
+        );
+
+      if (!page) {
+        return res.status(404).json({ error: "Page not found" });
+      }
+
+      res.json(page);
+    } catch (error) {
+      console.error("Error fetching public page:", error);
+      res.status(500).json({ error: "Failed to fetch page" });
     }
   });
 

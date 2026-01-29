@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { useTenantPage } from '@/hooks/useTenantPage';
 import { 
   Sparkles, 
   Code2, 
@@ -87,11 +88,52 @@ const howItWorks = [
 ];
 
 export default function Home() {
+  const { page: tenantPage } = useTenantPage('home');
+
+  // Extract tenant section data if available, to merge into the luxurious design
+  const heroSection = tenantPage?.sections?.find(s => s.type === 'hero');
+  const featuresSection = tenantPage?.sections?.find(s => s.type === 'features');
+  const ctaSection = tenantPage?.sections?.find(s => s.type === 'cta');
+
+  // Parse content HTML as fallback when sections are null
+  const parsedContent = (() => {
+    if (heroSection || !tenantPage?.content) return null;
+    const html = tenantPage.content;
+    const getTextBetween = (tag: string, src: string) => {
+      const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`);
+      const match = src.match(regex);
+      return match?.[1]?.replace(/<[^>]*>/g, '').trim() || null;
+    };
+    // Extract hero h1 and first p from first section
+    const heroMatch = html.match(/<section[^>]*class="[^"]*hero[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const heroHtml = heroMatch?.[1] || '';
+    const heroTitle = getTextBetween('h1', heroHtml);
+    const heroDesc = getTextBetween('p', heroHtml);
+    // Extract features section items
+    const featMatch = html.match(/<section[^>]*class="[^"]*feature[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const featHtml = featMatch?.[1] || '';
+    const featTitle = getTextBetween('h2', featHtml);
+    const featItems: Array<{ title: string; description: string }> = [];
+    const itemRegex = /<h3[^>]*>([\s\S]*?)<\/h3>\s*<p[^>]*>([\s\S]*?)<\/p>/g;
+    let itemMatch;
+    while ((itemMatch = itemRegex.exec(featHtml)) !== null) {
+      featItems.push({
+        title: itemMatch[1].replace(/<[^>]*>/g, '').trim(),
+        description: itemMatch[2].replace(/<[^>]*>/g, '').trim(),
+      });
+    }
+    // Extract CTA section
+    const ctaMatch = html.match(/<section[^>]*class="[^"]*cta[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const ctaHtml = ctaMatch?.[1] || '';
+    const ctaTitle = getTextBetween('h2', ctaHtml);
+    const ctaDesc = getTextBetween('p', ctaHtml);
+    return { heroTitle, heroDesc, featTitle, featItems, ctaTitle, ctaDesc };
+  })();
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
         {/* Background */}
@@ -124,21 +166,19 @@ export default function Home() {
             </motion.div>
             
             {/* Headline */}
-            <motion.h1 
+            <motion.h1
               variants={fadeInUp}
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
             >
-              Transform Ideas into{' '}
-              <span className="gradient-text">Production-Ready</span>{' '}
-              Applications
+              {heroSection?.title || parsedContent?.heroTitle || (<>Transform Ideas into{' '}<span className="gradient-text">Production-Ready</span>{' '}Applications</>)}
             </motion.h1>
-            
+
             {/* Subheadline */}
-            <motion.p 
+            <motion.p
               variants={fadeInUp}
               className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
             >
-              SmartSpec Pro uses cutting-edge AI to generate clean, scalable code from natural language descriptions. Build SaaS applications 10x faster.
+              {heroSection?.subtitle || heroSection?.content || parsedContent?.heroDesc || 'SmartSpec Pro uses cutting-edge AI to generate clean, scalable code from natural language descriptions. Build SaaS applications 10x faster.'}
             </motion.p>
             
             {/* CTA Buttons */}
@@ -237,16 +277,30 @@ export default function Home() {
               Powerful Features
             </span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-              Everything You Need to{' '}
-              <span className="gradient-text">Build Faster</span>
+              {featuresSection?.title || parsedContent?.featTitle || (<>Everything You Need to{' '}<span className="gradient-text">Build Faster</span></>)}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From code generation to deployment, SmartSpec Pro provides all the tools you need to accelerate your development workflow.
+              {featuresSection?.subtitle || 'From code generation to deployment, SmartSpec Pro provides all the tools you need to accelerate your development workflow.'}
             </p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
+            {(featuresSection?.items && featuresSection.items.length > 0
+              ? featuresSection.items.map((item: any, index: number) => ({
+                  icon: features[index]?.icon || Code2,
+                  title: item.title,
+                  description: item.description,
+                  image: features[index]?.image || '/images/ai-code-generation.png',
+                }))
+              : parsedContent?.featItems && parsedContent.featItems.length > 0
+              ? parsedContent.featItems.map((item, index) => ({
+                  icon: features[index]?.icon || Code2,
+                  title: item.title,
+                  description: item.description,
+                  image: features[index]?.image || '/images/ai-code-generation.png',
+                }))
+              : features
+            ).map((feature: any, index: number) => (
               <motion.div
                 key={feature.title}
                 initial={{ opacity: 0, y: 30 }}
@@ -257,14 +311,14 @@ export default function Home() {
                 <Card className="glass-card h-full hover:shadow-2xl transition-all duration-300 group overflow-hidden">
                   <CardContent className="p-6">
                     <div className="aspect-square rounded-xl overflow-hidden mb-6 bg-gradient-to-br from-violet-100 to-teal-100">
-                      <img 
-                        src={feature.image} 
+                      <img
+                        src={feature.image}
                         alt={feature.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-teal-400 flex items-center justify-center mb-4">
-                      <feature.icon className="w-6 h-6 text-white" />
+                      {feature.icon && <feature.icon className="w-6 h-6 text-white" />}
                     </div>
                     <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                     <p className="text-muted-foreground">{feature.description}</p>
@@ -418,10 +472,10 @@ export default function Home() {
               >
                 <Rocket className="w-16 h-16 mx-auto mb-6 opacity-80" />
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-                  Ready to Build Something Amazing?
+                  {ctaSection?.title || parsedContent?.ctaTitle || 'Ready to Build Something Amazing?'}
                 </h2>
                 <p className="text-lg sm:text-xl opacity-90 mb-8 max-w-2xl mx-auto">
-                  Join thousands of developers who are already building faster with SmartSpec Pro. Start your free trial today.
+                  {ctaSection?.subtitle || ctaSection?.content || parsedContent?.ctaDesc || 'Join thousands of developers who are already building faster with SmartSpec Pro. Start your free trial today.'}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button 
@@ -460,7 +514,6 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
-
       <Footer />
     </div>
   );

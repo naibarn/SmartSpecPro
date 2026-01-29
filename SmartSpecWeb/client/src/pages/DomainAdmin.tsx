@@ -23,6 +23,7 @@ import {
   Globe,
   Palette,
   FileText,
+  PenLine,
 } from "lucide-react";
 
 interface UserData {
@@ -148,6 +149,13 @@ export default function DomainAdmin() {
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Invoice Settings
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setLocation('/domain-admin/blog')}
+              >
+                <PenLine className="w-4 h-4 mr-2" />
+                Manage Blog
               </Button>
             </div>
           </div>

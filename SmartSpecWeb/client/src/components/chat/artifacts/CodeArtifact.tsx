@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -249,7 +250,7 @@ function HighlightedLine({ line, language }: { line: string; language: string })
     '<span class="text-blue-400">$1</span>('
   );
 
-  return <span dangerouslySetInnerHTML={{ __html: result }} />;
+  return <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result, { ALLOWED_TAGS: ['span'], ALLOWED_ATTR: ['class'] }) }} />;
 }
 
 // Export a simpler inline code component

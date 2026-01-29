@@ -5,15 +5,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 import {
+  Check,
   Loader2,
   Paperclip,
   Send,
@@ -41,6 +41,15 @@ import {
 import { cn } from "@/lib/utils";
 import { ImageLightbox } from "./media/ImageLightbox";
 import { SafeMarkdown } from "./SafeMarkdown";
+import { SaveMemoryDialog, type SaveMemoryInitialData } from "./SaveMemoryDialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { Brain } from "lucide-react";
+import { toast } from "sonner";
 
 // Debounce hook for skill detection
 function useDebounce<T>(value: T, delay: number): T {
@@ -113,6 +122,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [modelDialogOpen, setModelDialogOpen] = useState(false);
   // Track when we last added a local message to prevent useEffect from overwriting
   const lastLocalAddTime = useRef<number>(0);
 
@@ -139,19 +149,27 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   // Get available models from LLM providers
   const { data: modelsData } = trpc.llmProviders.availableModels.useQuery();
 
-  // Current selected model (use conversation model or first available)
-  const [selectedModel, setSelectedModel] = useState<string>("");
+  // Current selected model (use conversation model, localStorage fallback, or first available)
+  const [selectedModel, setSelectedModel] = useState<string>(
+    () => localStorage.getItem("smartspec_lastModel") || ""
+  );
 
   // Sync selected model with conversation model
   useEffect(() => {
     if (conversation?.model) {
       setSelectedModel(conversation.model);
-    } else if (modelsData?.models && modelsData.models.length > 0) {
-      // Find default model or use first
+    } else if (!selectedModel && modelsData?.models && modelsData.models.length > 0) {
       const defaultModel = modelsData.models.find(m => m.isDefault);
       setSelectedModel(defaultModel?.id || modelsData.models[0].id);
     }
   }, [conversation?.model, modelsData?.models]);
+
+  // Persist selected model to localStorage
+  useEffect(() => {
+    if (selectedModel) {
+      localStorage.setItem("smartspec_lastModel", selectedModel);
+    }
+  }, [selectedModel]);
 
   // Mutations
   const uploadMutation = trpc.ai.upload.useMutation();
@@ -163,6 +181,11 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
   const addSkillCreditsMutation = trpc.chat.addSkillCreditsToConversation.useMutation();
   const buildPromptMutation = trpc.skills.buildPrompt.useMutation();
+
+  // Memory auto-save state
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [suggestedMemory, setSuggestedMemory] = useState<SaveMemoryInitialData | null>(null);
+  const autoSaveCooldownRef = useRef(0); // message count since last suggestion
 
   // Auto Prompt state
   const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
@@ -448,7 +471,14 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     // Get memory-aware context from server
     let apiMessages: Array<{ role: string; content: string }>;
     try {
-      const contextData = await utils.memory.getChatContext.fetch({ conversationId });
+      const selectedModelData = modelsData?.models?.find(m => m.id === selectedModel);
+      const memoryMode = (conversation as any)?.memoryMode || "full";
+      const contextData = await utils.memory.getChatContext.fetch({
+        conversationId,
+        modelContextLength: selectedModelData?.contextLength,
+        currentMessage: userMessage.content,
+        memoryMode,
+      });
       apiMessages = [
         ...contextData.messages,
         { role: "user", content: userMessage.content },
@@ -588,7 +618,29 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         utils.credits.balance.invalidate();
 
         // Process memory in background (entity extraction, summarization check)
-        processMemoryMutation.mutate({ conversationId });
+        processMemoryMutation.mutateAsync({ conversationId }).then((result) => {
+          // Show auto-compact notification
+          if (result.compacted && result.compactedMessageCount > 0) {
+            toast.info(`Auto-compacted: ${result.compactedMessageCount} messages summarized to save context`);
+          }
+
+          autoSaveCooldownRef.current++;
+          if (
+            result.suggestedMemories?.length > 0 &&
+            autoSaveCooldownRef.current >= 3 // cooldown: at least 3 messages between suggestions
+          ) {
+            const suggested = result.suggestedMemories[0];
+            setSuggestedMemory({
+              content: suggested.fact,
+              type: suggested.type,
+              name: suggested.name,
+              importance: suggested.importance,
+              source: "suggested",
+            });
+            setSaveDialogOpen(true);
+            autoSaveCooldownRef.current = 0;
+          }
+        }).catch(() => { /* non-fatal */ });
 
         if (!savedMessageId) {
           console.warn("[ChatView] Message displayed but may not be saved - no message_saved event received");
@@ -818,41 +870,54 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           <h2 className="font-semibold">{conversation?.title || "Chat"}</h2>
           {/* Model Selector */}
           {modelsData?.models && modelsData.models.length > 0 ? (
-            <Select
-              value={selectedModel}
-              onValueChange={handleModelChange}
-              disabled={isStreaming || updateConversationMutation.isPending}
-            >
-              <SelectTrigger className="h-8 w-[200px] text-xs">
-                <Bot className="mr-2 h-3 w-3" />
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(modelsByProvider).map(([provider, models]) => (
-                  <SelectGroup key={provider}>
-                    <SelectLabel className="text-xs font-semibold text-muted-foreground">
-                      {provider}
-                    </SelectLabel>
-                    {models.map((model) => (
-                      <SelectItem
-                        key={model.id}
-                        value={model.id}
-                        className="text-xs"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span>{model.name}</span>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 max-w-[280px] justify-start gap-2 text-xs font-normal"
+                onClick={() => setModelDialogOpen(true)}
+                disabled={isStreaming || updateConversationMutation.isPending}
+              >
+                <Bot className="h-3 w-3 shrink-0" />
+                <span className="truncate">
+                  {modelsData.models.find(m => m.id === selectedModel)?.name || selectedModel || "Select model"}
+                </span>
+              </Button>
+              <CommandDialog
+                open={modelDialogOpen}
+                onOpenChange={setModelDialogOpen}
+                title="Select Model"
+                description="Search and select an LLM model"
+              >
+                <CommandInput placeholder="Search models..." />
+                <CommandList className="max-h-[60vh]">
+                  <CommandEmpty>No models found.</CommandEmpty>
+                  {Object.entries(modelsByProvider).map(([provider, models]) => (
+                    <CommandGroup key={provider} heading={provider}>
+                      {models.map((model) => (
+                        <CommandItem
+                          key={model.id}
+                          value={`${model.name} ${model.id} ${provider}`}
+                          onSelect={() => {
+                            handleModelChange(model.id);
+                            setModelDialogOpen(false);
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <Check className={cn("h-3.5 w-3.5 shrink-0", selectedModel === model.id ? "opacity-100" : "opacity-0")} />
+                          <span className="flex-1 truncate">{model.name}</span>
                           {model.isDefault && (
-                            <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                            <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
                               Default
                             </Badge>
                           )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ))}
+                </CommandList>
+              </CommandDialog>
+            </>
           ) : (
             <Badge variant="outline" className="text-xs">
               {selectedModel || "No model"}
@@ -896,43 +961,75 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             </div>
           ) : (
             <>
-              {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={cn(
-                    "max-w-[85%] rounded-lg px-4 py-3",
-                    m.role === "user"
-                      ? "ml-auto bg-primary text-primary-foreground"
-                      : "mr-auto bg-muted"
-                  )}
-                >
-                  {m.role === "assistant" ? (
-                    <SafeMarkdown
-                      onImageClick={(images, index) => openImageLightbox(images, index)}
-                    >
-                      {m.content}
-                    </SafeMarkdown>
-                  ) : (
-                    renderUserContent(m)
-                  )}
-                  {m.role === "assistant" && (m.creditsUsed || m.skillUsed) && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      {m.skillUsed && (
-                        <Badge variant="outline" className="gap-1 text-xs">
-                          {(() => {
-                            const SkillIcon = skillIconMap[m.skillUsed] || Sparkles;
-                            return <SkillIcon className="h-3 w-3" />;
-                          })()}
-                          {m.skillUsed.replace(/-/g, " ")}
-                        </Badge>
-                      )}
-                      {m.creditsUsed && Number(m.creditsUsed) > 0 && (
-                        <span>{Number(m.creditsUsed)} credit{Number(m.creditsUsed) !== 1 ? 's' : ''}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {messages.map((m) => {
+                const messageBubble = (
+                  <div
+                    className={cn(
+                      "max-w-[85%] rounded-lg px-4 py-3",
+                      m.role === "user"
+                        ? "ml-auto bg-primary text-primary-foreground"
+                        : "mr-auto bg-muted"
+                    )}
+                  >
+                    {m.role === "assistant" ? (
+                      <SafeMarkdown
+                        onImageClick={(images, index) => openImageLightbox(images, index)}
+                      >
+                        {m.content}
+                      </SafeMarkdown>
+                    ) : (
+                      renderUserContent(m)
+                    )}
+                    {m.role === "assistant" && (m.creditsUsed || m.skillUsed) && (
+                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                        {m.skillUsed && (
+                          <Badge variant="outline" className="gap-1 text-xs">
+                            {(() => {
+                              const SkillIcon = skillIconMap[m.skillUsed] || Sparkles;
+                              return <SkillIcon className="h-3 w-3" />;
+                            })()}
+                            {m.skillUsed.replace(/-/g, " ")}
+                          </Badge>
+                        )}
+                        {m.creditsUsed && Number(m.creditsUsed) > 0 && (
+                          <span>{Number(m.creditsUsed)} credit{Number(m.creditsUsed) !== 1 ? 's' : ''}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+
+                if (m.role === "assistant") {
+                  return (
+                    <ContextMenu key={m.id}>
+                      <ContextMenuTrigger asChild>
+                        {messageBubble}
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem
+                          onSelect={() => {
+                            const selected = window.getSelection()?.toString();
+                            const content = selected && selected.length > 10
+                              ? selected
+                              : m.content.substring(0, 500);
+                            setSuggestedMemory({
+                              content,
+                              importance: 7,
+                              source: "manual",
+                            });
+                            setSaveDialogOpen(true);
+                          }}
+                        >
+                          <Brain className="mr-2 h-4 w-4" />
+                          Save to Memory
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  );
+                }
+
+                return <div key={m.id}>{messageBubble}</div>;
+              })}
 
               {/* Streaming message */}
               {streamingContent && (
@@ -1170,6 +1267,14 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         initialIndex={lightboxIndex}
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
+      />
+
+      {/* Save Memory Dialog (auto-save suggestions + manual right-click) */}
+      <SaveMemoryDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        initialData={suggestedMemory || undefined}
+        conversationId={conversationId}
       />
     </div>
   );

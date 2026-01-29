@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import crypto from "crypto";
+import { decrypt } from "../services/crypto";
 import { ENV } from "./env";
 import { authorizeRequest, AuthResult } from "./authz";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
@@ -15,26 +15,7 @@ import {
 } from "../services/creditService";
 import { debugLog, debugError } from "./logger";
 
-// Encryption key for API keys (same as llmProviders.ts)
-const ENCRYPTION_KEY = process.env.LLM_ENCRYPTION_KEY || "smartspec-llm-key-32chars!!";
 
-function decrypt(text: string): string {
-  try {
-    const parts = text.split(":");
-    const iv = Buffer.from(parts[0], "hex");
-    const encryptedText = Buffer.from(parts[1], "hex");
-    const decipher = crypto.createDecipheriv(
-      "aes-256-cbc",
-      Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)),
-      iv
-    );
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
-  } catch {
-    return "";
-  }
-}
 
 // Cached provider config (refreshed periodically)
 interface LlmProviderConfig {
@@ -333,6 +314,8 @@ async function proxyChatWithCredits(
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
 
   const reader = upstream.body.getReader();
   let totalChunks = 0;
@@ -607,6 +590,60 @@ export function registerLLMRoutes(app: Express) {
 
       debugLog("LLM", "Stream request", { conversationId, skillUsed, userId: check.userId });
 
+      // Context7 integration: inject library docs when code-docs-assistant skill is active
+      if (skillUsed === "code-docs-assistant" && Array.isArray(req.body?.messages)) {
+        try {
+          const { fetchDocsForMessage } = await import("../services/context7");
+
+          // Fetch user's personal Context7 API key from DB
+          let userContext7Key: string | undefined;
+          try {
+            const { getDb } = await import("../db");
+            const { systemSettings: sysSettings } = await import("../../drizzle/schema");
+            const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+            const dbInst = await getDb();
+            if (dbInst && check.userId) {
+              const [row] = await dbInst
+                .select()
+                .from(sysSettings)
+                .where(andOp(
+                  eqOp(sysSettings.category, "context7"),
+                  eqOp(sysSettings.key, `api_key_user_${check.userId}`)
+                ))
+                .limit(1);
+              if (row?.value) {
+                // Decrypt the stored key
+                const { decrypt } = await import("../services/crypto");
+                const decrypted = decrypt(row.value);
+                userContext7Key = decrypted || undefined;
+              }
+            }
+          } catch { /* use env fallback */ }
+
+          const lastUserMsg = [...req.body.messages].reverse().find((m: any) => m.role === "user");
+          if (lastUserMsg?.content) {
+            const result = await fetchDocsForMessage(lastUserMsg.content, userContext7Key);
+            if (result?.docs) {
+              // Inject docs as a system message right before the last user message
+              const docsMessage = {
+                role: "system",
+                content: `## Reference Documentation for ${result.libraryName} (from Context7)\n\nUse the following up-to-date documentation to answer the user's question accurately:\n\n${result.docs}`,
+              };
+              // Insert after the first system message but before user messages
+              const firstNonSystem = req.body.messages.findIndex((m: any) => m.role !== "system");
+              if (firstNonSystem > 0) {
+                req.body.messages.splice(firstNonSystem, 0, docsMessage);
+              } else {
+                req.body.messages.unshift(docsMessage);
+              }
+              debugLog("LLM", `Context7: injected ${result.docs.length} chars of ${result.libraryName} docs`);
+            }
+          }
+        } catch (err: any) {
+          debugLog("LLM", "Context7 injection failed (non-fatal)", err?.message);
+        }
+      }
+
       try {
         await proxyChatWithCredits(req, res, "stream", check.userId, conversationId, skillUsed);
       } catch (err: any) {
@@ -682,34 +719,7 @@ export function registerLLMRoutes(app: Express) {
         let conversation = await getConversationById(conversationId, userId);
         debugLog("LLM API", "Conversation lookup result", { found: !!conversation, conversationId, userId });
 
-        // If not found, check if conversation exists at all (debug)
         if (!conversation) {
-          // Query conversation without user check for debugging
-          const { db } = await import("../db");
-          const { conversations } = await import("../../drizzle/schema");
-          const { eq } = await import("drizzle-orm");
-          const dbInstance = await db.instance;
-          const [anyConv] = await dbInstance
-            .select({ id: conversations.id, userId: conversations.userId })
-            .from(conversations)
-            .where(eq(conversations.id, conversationId))
-            .limit(1);
-
-          debugLog("LLM API", "Debug - conversation exists?", {
-            exists: !!anyConv,
-            conversationId,
-            actualUserId: anyConv?.userId,
-            requestUserId: userId,
-            match: anyConv?.userId === userId
-          });
-
-          if (anyConv && anyConv.userId !== userId) {
-            debugLog("LLM API", "User ID mismatch!", {
-              conversationUserId: anyConv.userId,
-              requestUserId: userId
-            });
-          }
-
           return res.status(404).json({ error: { message: "Conversation not found" } });
         }
 

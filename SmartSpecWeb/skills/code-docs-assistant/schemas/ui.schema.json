@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "skillId": "code-docs-assistant",
+  "title": "Code Docs Assistant",
+  "description": "Search up-to-date library documentation using Context7",
+  "sections": [
+    {
+      "id": "basic",
+      "title": "Query",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "libraryName",
+          "type": "text",
+          "label": "Library Name",
+          "placeholder": "e.g., next.js, react, express, drizzle",
+          "required": false
+        },
+        {
+          "id": "userIdea",
+          "type": "textarea",
+          "label": "Your Question",
+          "placeholder": "What do you want to know? e.g., How to set up authentication with JWT",
+          "required": false,
+          "rows": 3
+        }
+      ]
+    }
+  ]
+}

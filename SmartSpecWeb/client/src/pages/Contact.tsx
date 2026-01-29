@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { useTenantPage } from '@/hooks/useTenantPage';
 import {
   Mail,
   MessageSquare,
@@ -95,6 +96,7 @@ const contactInfo = [
 ];
 
 export default function Contact() {
+  const { page: tenantPage } = useTenantPage('contact');
   const [selectedType, setSelectedType] = useState<ContactType>('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -452,7 +454,6 @@ export default function Contact() {
           </div>
         </div>
       </section>
-
       <Footer />
     </div>
   );

@@ -9,9 +9,13 @@ import { ENV } from "./env";
 const GATEWAY_KEY = process.env.SMARTSPEC_WEB_GATEWAY_KEY ?? "";
 
 function requireGatewayKey(req: any, res: any): boolean {
-  if (!GATEWAY_KEY) return true;
+  // Fail closed: if no gateway key configured, reject all requests
+  if (!GATEWAY_KEY) {
+    res.status(503).json({ error: { message: "gateway_not_configured" } });
+    return false;
+  }
   const k = req.header("x-gateway-key") || "";
-  if (k !== GATEWAY_KEY) {
+  if (k.length !== GATEWAY_KEY.length || !require("crypto").timingSafeEqual(Buffer.from(k), Buffer.from(GATEWAY_KEY))) {
     res.status(401).json({ error: { message: "invalid_gateway_key" } });
     return false;
   }
@@ -67,6 +71,8 @@ export function registerOpenAICompatRoutes(app: any) {
       res.setHeader("content-type", "text/event-stream");
       res.setHeader("cache-control", "no-cache, no-transform");
       res.setHeader("connection", "keep-alive");
+      res.setHeader("x-content-type-options", "nosniff");
+      res.setHeader("x-frame-options", "DENY");
 
       const body = upstream.body;
       if (!body) {

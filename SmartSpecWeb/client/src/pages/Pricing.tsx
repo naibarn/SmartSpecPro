@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { trpc } from '@/lib/trpc';
+import { useTenantPage } from '@/hooks/useTenantPage';
 import {
   Check,
   X,
@@ -156,9 +157,54 @@ const billingPeriodMonths: Record<BillingPeriod, number> = {
 
 export default function Pricing() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const { page: tenantPage } = useTenantPage('pricing');
 
   // Fetch packages from API
   const { data: packages, isLoading, error } = trpc.packages.list.useQuery();
+
+  // Parse tenant content HTML for text sections (hero, FAQ, CTA)
+  const parsed = (() => {
+    if (!tenantPage?.content) return null;
+    const html = tenantPage.content;
+    const getText = (tag: string, src: string) => {
+      const m = src.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
+      return m?.[1]?.replace(/<[^>]*>/g, '').trim() || null;
+    };
+    // Hero
+    const heroMatch = html.match(/<section[^>]*class="[^"]*hero[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const heroHtml = heroMatch?.[1] || '';
+    const heroTitle = getText('h1', heroHtml);
+    const heroDesc = getText('p', heroHtml);
+    // FAQ
+    const faqMatch = html.match(/<section[^>]*class="[^"]*faq[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const faqHtml = faqMatch?.[1] || '';
+    const faqTitle = getText('h2', faqHtml);
+    const faqItems: Array<{ question: string; answer: string }> = [];
+    const faqRegex = /<dt[^>]*>([\s\S]*?)<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/g;
+    let fm;
+    while ((fm = faqRegex.exec(faqHtml)) !== null) {
+      faqItems.push({
+        question: fm[1].replace(/<[^>]*>/g, '').trim(),
+        answer: fm[2].replace(/<[^>]*>/g, '').trim(),
+      });
+    }
+    // Pricing info section (additional descriptions)
+    const infoMatch = html.match(/<section[^>]*class="[^"]*(?:pricing-info|info)[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const infoHtml = infoMatch?.[1] || '';
+    const infoTexts: string[] = [];
+    const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/g;
+    let pm;
+    while ((pm = pRegex.exec(infoHtml)) !== null) {
+      const text = pm[1].replace(/<[^>]*>/g, '').trim();
+      if (text) infoTexts.push(text);
+    }
+    // CTA / Enterprise
+    const ctaMatch = html.match(/<section[^>]*class="[^"]*(?:cta|enterprise)[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+    const ctaHtml = ctaMatch?.[1] || '';
+    const ctaTitle = getText('h2', ctaHtml);
+    const ctaDesc = getText('p', ctaHtml);
+    return { heroTitle, heroDesc, infoTexts, faqTitle, faqItems, ctaTitle, ctaDesc };
+  })();
 
   // Separate packages by type
   const subscriptionPackages = packages?.filter(p => p.packageType === 'subscription') || [];
@@ -256,11 +302,7 @@ export default function Pricing() {
               transition={{ delay: 0.2 }}
               className="text-5xl sm:text-6xl md:text-7xl font-bold mb-6 tracking-tight"
             >
-              <span className="text-gray-900">Choose Your</span>
-              <br />
-              <span className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
-                Perfect Plan
-              </span>
+              {parsed?.heroTitle || (<><span className="text-gray-900">Choose Your</span><br /><span className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">Perfect Plan</span></>)}
             </motion.h1>
 
             <motion.p
@@ -269,8 +311,7 @@ export default function Pricing() {
               transition={{ delay: 0.3 }}
               className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto"
             >
-              All plans include full access to every feature.
-              Choose based on the credits you need.
+              {parsed?.heroDesc || 'All plans include full access to every feature. Choose based on the credits you need.'}
             </motion.p>
 
             {/* Billing Period Toggle */}
@@ -624,7 +665,9 @@ export default function Pricing() {
             </span>
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Full Feature Access</h2>
             <p className="text-xl text-gray-600">
-              Every plan gives you complete access to all features
+              {parsed?.infoTexts && parsed.infoTexts.length > 0
+                ? parsed.infoTexts.join(' ')
+                : 'Every plan gives you complete access to all features'}
             </p>
           </motion.div>
 
@@ -673,7 +716,7 @@ export default function Pricing() {
               <HelpCircle className="w-4 h-4" />
               Got Questions?
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">{parsed?.faqTitle || 'Frequently Asked Questions'}</h2>
             <p className="text-xl text-gray-600">
               Everything you need to know about our pricing and plans
             </p>
@@ -681,7 +724,7 @@ export default function Pricing() {
 
           <div className="max-w-3xl mx-auto">
             <Accordion type="single" collapsible className="space-y-4">
-              {faqs.map((faq, index) => (
+              {(parsed?.faqItems && parsed.faqItems.length > 0 ? parsed.faqItems : faqs).map((faq, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 10 }}
@@ -728,11 +771,10 @@ export default function Pricing() {
                     Enterprise Solutions
                   </div>
                   <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-                    Need a Custom Solution?
+                    {parsed?.ctaTitle || 'Need a Custom Solution?'}
                   </h2>
                   <p className="text-xl text-white/80 mb-8 max-w-xl">
-                    Get dedicated support, custom integrations, on-premise deployment,
-                    and volume discounts tailored to your organization.
+                    {parsed?.ctaDesc || 'Get dedicated support, custom integrations, on-premise deployment, and volume discounts tailored to your organization.'}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                     <Link href="/contact">

@@ -67,6 +67,21 @@ export default function Chat() {
     setSelectedConversationId(result.id);
   };
 
+  // Create new chat continuing the same project, with summary from previous chat
+  const handleNewChatFromProject = async (projectId: string, summary: string) => {
+    const defaultModel = modelsData?.models?.find(m => m.isDefault);
+
+    const result = await createConversationMutation.mutateAsync({
+      title: `${projectId} - continued`,
+      model: defaultModel?.id,
+      projectId,
+      systemPrompt: summary
+        ? `Context from previous conversation in project "${projectId}":\n\n${summary}`
+        : undefined,
+    });
+    setSelectedConversationId(result.id);
+  };
+
   // Handle title update
   const handleTitleUpdate = (title: string) => {
     if (selectedConversationId) {
@@ -217,7 +232,11 @@ export default function Chat() {
           )}
         >
           {rightPanel === "memory" && (
-            <MemoryPanel onClose={() => setRightPanel("none")} />
+            <MemoryPanel
+              onClose={() => setRightPanel("none")}
+              conversationId={selectedConversationId}
+              onNewChatFromProject={handleNewChatFromProject}
+            />
           )}
           {rightPanel === "skills" && selectedConversationId && (
             <SkillSettings

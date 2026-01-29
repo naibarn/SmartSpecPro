@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -491,7 +492,7 @@ export default function AdminPackages() {
                               {pkg.description && (
                                 <div
                                   className="text-sm text-gray-500 max-w-xs line-clamp-1"
-                                  dangerouslySetInnerHTML={{ __html: pkg.description }}
+                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(pkg.description || '') }}
                                 />
                               )}
                             </div>
