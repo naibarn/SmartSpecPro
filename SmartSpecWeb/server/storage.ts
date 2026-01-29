@@ -108,7 +108,15 @@ function ensureTrailingSlash(value: string): string {
 }
 
 function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
+  const cleaned = relKey.replace(/^\/+/, "");
+  if (cleaned.includes("..") || path.isAbsolute(cleaned)) {
+    throw new Error("Invalid storage key: path traversal detected");
+  }
+  const resolved = path.resolve(UPLOADS_DIR, cleaned);
+  if (!resolved.startsWith(UPLOADS_DIR + path.sep) && resolved !== UPLOADS_DIR) {
+    throw new Error("Invalid storage key: escapes uploads directory");
+  }
+  return cleaned;
 }
 
 function toFormData(

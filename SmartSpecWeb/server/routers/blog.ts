@@ -10,6 +10,20 @@ import { blogPosts } from "../../drizzle/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 
+/** Server-side HTML sanitization for blog content */
+function sanitizeBlogHtml(html: string): string {
+  // Strip script tags, event handlers, and dangerous protocols
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<object[\s\S]*?<\/object>/gi, "")
+    .replace(/<embed[\s\S]*?>/gi, "")
+    .replace(/\bon\w+\s*=\s*(['"]?)[\s\S]*?\1/gi, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/vbscript\s*:/gi, "")
+    .replace(/data\s*:\s*text\/html/gi, "");
+}
+
 export function registerBlogRoutes(app: Express) {
   // ===== PUBLIC ENDPOINTS =====
 
@@ -188,7 +202,7 @@ export function registerBlogRoutes(app: Express) {
           slug,
           title: data.title,
           excerpt: data.excerpt || null,
-          content: data.content || null,
+          content: data.content ? sanitizeBlogHtml(data.content) : null,
           coverImage: data.coverImage || null,
           author: data.author || user.name || 'Admin',
           authorAvatar: data.authorAvatar || null,
@@ -255,7 +269,7 @@ export function registerBlogRoutes(app: Express) {
       if (data.title !== undefined) updateData.title = data.title;
       if (data.slug !== undefined) updateData.slug = data.slug;
       if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
-      if (data.content !== undefined) updateData.content = data.content;
+      if (data.content !== undefined) updateData.content = data.content ? sanitizeBlogHtml(data.content) : data.content;
       if (data.coverImage !== undefined) updateData.coverImage = data.coverImage;
       if (data.author !== undefined) updateData.author = data.author;
       if (data.authorAvatar !== undefined) updateData.authorAvatar = data.authorAvatar;

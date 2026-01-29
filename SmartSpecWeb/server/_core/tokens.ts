@@ -5,7 +5,7 @@
 
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret_change_in_production";
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? (() => { throw new Error("CRITICAL: JWT_SECRET must be set in production"); })() : "dev_jwt_secret_change_in_production");
 
 /**
  * Token claims interface

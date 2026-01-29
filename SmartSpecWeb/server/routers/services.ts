@@ -146,9 +146,24 @@ function formatUptime(startedAt: string): string {
   return `${seconds}s`;
 }
 
+/** Validate port number to prevent shell injection */
+function validatePort(port: number): void {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("Invalid port number");
+  }
+}
+
+/** Validate service/process name — alphanumeric, hyphens, dots, regex wildcards only */
+function validateName(name: string): void {
+  if (!/^[a-zA-Z0-9._*-]+$/.test(name) || name.length > 128) {
+    throw new Error("Invalid service/process name");
+  }
+}
+
 // Check if a port is in use (for host processes)
 async function isPortInUse(port: number): Promise<boolean> {
   try {
+    validatePort(port);
     const { stdout } = await execAsync(`lsof -i:${port} -t 2>/dev/null || true`);
     return stdout.trim().length > 0;
   } catch {
@@ -159,9 +174,10 @@ async function isPortInUse(port: number): Promise<boolean> {
 // Get process info by port
 async function getProcessByPort(port: number): Promise<{ pid: number; uptime: string; memory?: number } | null> {
   try {
+    validatePort(port);
     const { stdout: pidStr } = await execAsync(`lsof -i:${port} -t 2>/dev/null | head -1 || true`);
     const pid = parseInt(pidStr.trim());
-    if (!pid) return null;
+    if (!pid || !Number.isInteger(pid)) return null;
 
     // Get process start time for uptime calculation
     const { stdout: startTime } = await execAsync(`ps -o lstart= -p ${pid} 2>/dev/null || true`);
@@ -185,6 +201,7 @@ async function getProcessByPort(port: number): Promise<{ pid: number; uptime: st
 async function getProcessByName(pattern: string): Promise<{ pid: number; uptime: string; memory?: number } | null> {
   try {
     // Find process by name pattern
+    validateName(pattern);
     const { stdout: pidStr } = await execAsync(`pgrep -f "${pattern}" 2>/dev/null | head -1 || true`);
     const pid = parseInt(pidStr.trim());
     if (!pid) return null;
@@ -210,6 +227,7 @@ async function getProcessByName(pattern: string): Promise<{ pid: number; uptime:
 // Check systemd service status
 async function getSystemdStatus(serviceName: string): Promise<{ running: boolean; uptime: string }> {
   try {
+    validateName(serviceName);
     const { stdout: activeState } = await execAsync(`systemctl is-active ${serviceName} 2>/dev/null || true`);
     const running = activeState.trim() === 'active';
 
@@ -418,6 +436,7 @@ async function restartContainer(containerId: string): Promise<void> {
 // Host process helper functions
 async function stopHostProcess(port: number): Promise<void> {
   try {
+    validatePort(port);
     await execAsync(`lsof -t -i:${port} | xargs -r kill 2>/dev/null || true`);
   } catch (e) {
     console.error(`Failed to stop process on port ${port}:`, e);
@@ -426,14 +445,17 @@ async function stopHostProcess(port: number): Promise<void> {
 
 // Systemd service helper functions
 async function startSystemdService(serviceName: string): Promise<void> {
+  validateName(serviceName);
   await execAsync(`sudo systemctl start ${serviceName}`);
 }
 
 async function stopSystemdService(serviceName: string): Promise<void> {
+  validateName(serviceName);
   await execAsync(`sudo systemctl stop ${serviceName}`);
 }
 
 async function restartSystemdService(serviceName: string): Promise<void> {
+  validateName(serviceName);
   await execAsync(`sudo systemctl restart ${serviceName}`);
 }
 

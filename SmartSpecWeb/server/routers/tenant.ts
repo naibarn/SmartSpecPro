@@ -384,7 +384,7 @@ export function registerTenantRoutes(app: Express) {
           )
         );
 
-      if (!page) {
+      if (!page || !page.isPublished) {
         return res.status(404).json({ error: "Page not found" });
       }
 

@@ -76,7 +76,7 @@ export function getSessionCookieOptions(
     // - HTTPS: Use SameSite=none with secure=true (cross-subdomain sharing works)
     // - HTTP (localhost): Use SameSite=lax (required for modern browsers to accept cookie)
     // Modern browsers REQUIRE secure=true when sameSite=none
-    sameSite: isSecure ? "none" : "lax",
+    sameSite: "lax",
     secure: isSecure,
   };
 }
