@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, boolean, numeric, serial } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, boolean, numeric, serial, uniqueIndex } from "drizzle-orm/pg-core";
 
 /**
  * Enums
@@ -1216,6 +1216,33 @@ export const skills = pgTable("skills", {
 
 export type Skill = typeof skills.$inferSelect;
 export type InsertSkill = typeof skills.$inferInsert;
+
+/**
+ * Skill Likes — per-user like tracking for marketplace
+ */
+export const skillLikes = pgTable("skill_likes", {
+  id: serial("id").primaryKey(),
+  skillId: integer("skillId").notNull().references(() => skills.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("skill_likes_unique").on(t.skillId, t.userId),
+]);
+
+export type SkillLike = typeof skillLikes.$inferSelect;
+
+/**
+ * Skill Comments — flat comments for marketplace skill pages
+ */
+export const skillComments = pgTable("skill_comments", {
+  id: serial("id").primaryKey(),
+  skillId: integer("skillId").notNull().references(() => skills.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SkillComment = typeof skillComments.$inferSelect;
 
 /**
  * Storage Provider Type Enum

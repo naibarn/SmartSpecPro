@@ -39,6 +39,7 @@ import { scheduledMessagesRouter } from "./routers/scheduledMessages";
 import { followsRouter } from "./routers/follows";
 import { accountSecurityRouter } from "./routers/accountSecurity";
 import { translationRouter } from "./routers/translation";
+import { marketplaceRouter } from "./routers/marketplace";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -270,6 +271,7 @@ export const appRouter = router({
   // Account Security (admin)
   accountSecurity: accountSecurityRouter,
   translation: translationRouter,
+  marketplace: marketplaceRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

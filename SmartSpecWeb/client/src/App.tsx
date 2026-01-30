@@ -23,6 +23,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import VerifyEmail from "./pages/VerifyEmail";
 import Gallery from "./pages/Gallery";
+import Marketplace from "./pages/Marketplace";
 import DeviceAuth from "./pages/DeviceAuth";
 import AdminGallery from "./pages/AdminGallery";
 import AdminUsers from "./pages/AdminUsers";
@@ -77,6 +78,8 @@ function Router() {
       <Route path="/security" component={Security} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
+      <Route path="/marketplace" component={Marketplace} />
+      <Route path="/marketplace/:slug" component={Marketplace} />
       <Route path="/gallery" component={Gallery} />
       <Route path="/admin/gallery" component={AdminGallery} />
       <Route path="/admin/users" component={AdminUsers} />
