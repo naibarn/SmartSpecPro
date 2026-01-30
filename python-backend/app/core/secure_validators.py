@@ -220,23 +220,29 @@ class PathValidator:
         Raises:
             ValueError: If path contains traversal
         """
-        # Check for path traversal
-        if '..' in path:
-            raise ValueError("Path traversal detected")
+        # URL-decode the path first to catch encoded traversal attempts
+        from urllib.parse import unquote
+        decoded = unquote(unquote(path))  # double-decode to handle %252e etc.
 
-        if path.startswith('/'):
+        # Check for path traversal in both original and decoded forms
+        for p in (path, decoded):
+            if '..' in p:
+                raise ValueError("Path traversal detected")
+
+        if path.startswith('/') or decoded.startswith('/'):
             raise ValueError("Absolute paths not allowed")
 
-        # Check for suspicious patterns
+        # Check for suspicious patterns in decoded path
         suspicious_patterns = [
             '../',
             '..\\',
             '%2e%2e',
             '..%2f',
             '..%5c',
+            '%252e',  # double-encoded
         ]
 
-        path_lower = path.lower()
+        path_lower = decoded.lower()
         for pattern in suspicious_patterns:
             if pattern in path_lower:
                 raise ValueError(f"Suspicious pattern detected: {pattern}")

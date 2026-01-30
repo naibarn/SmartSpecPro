@@ -11,9 +11,6 @@ const STOPWORDS = new Set([
   "how", "what", "do", "can", "will", "be", "are", "was", "were", "been", "have",
   "has", "had", "not", "no", "so", "if", "from", "by", "as", "all", "would",
   "there", "their", "about", "up", "out", "just", "than", "them", "some", "its",
-  // Thai common particles
-  "ที่", "ของ", "และ", "ใน", "มี", "ไม่", "ได้", "เป็น", "จะ", "กับ", "ว่า",
-  "ให้", "แล้ว", "ก็", "ไป", "มา", "อยู่", "คือ", "นี้", "นั้น",
 ]);
 
 function tokenize(text: string): string[] {

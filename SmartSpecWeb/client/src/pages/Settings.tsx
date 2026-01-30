@@ -41,6 +41,9 @@ import {
   Trash2,
   AlertCircle,
   Loader2,
+  Languages,
+  Search,
+  Bot,
 } from 'lucide-react';
 
 type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing';
@@ -104,6 +107,30 @@ export default function Settings() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light');
+
+  // Translation preferences
+  const [translationLanguage, setTranslationLanguage] = useState('');
+  const [translationModel, setTranslationModel] = useState('');
+  const [modelSearch, setModelSearch] = useState('');
+  const [showModelPicker, setShowModelPicker] = useState(false);
+
+  const { data: prefsData, isLoading: prefsLoading } = trpc.users.getPreferences.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const { data: modelsData } = trpc.llmProviders.availableModels.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const updatePrefsMutation = trpc.users.updatePreferences.useMutation({
+    onSuccess: () => toast.success('Translation preferences saved'),
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  useEffect(() => {
+    if (prefsData) {
+      setTranslationLanguage(prefsData.translationLanguage || '');
+      setTranslationModel(prefsData.translationModel || '');
+    }
+  }, [prefsData]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -513,8 +540,126 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  <Button onClick={handleSave} className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                    <Save className="w-4 h-4 mr-2" />
+                  {/* Translation */}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Languages className="w-5 h-5" />
+                      Translation
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Translation Language
+                        </label>
+                        <select
+                          value={translationLanguage}
+                          onChange={(e) => setTranslationLanguage(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                        >
+                          <option value="">Select language...</option>
+                          <option value="th">Thai</option>
+                          <option value="zh">Chinese (Simplified)</option>
+                          <option value="zh-TW">Chinese (Traditional)</option>
+                          <option value="ja">Japanese</option>
+                          <option value="ko">Korean</option>
+                          <option value="fr">French</option>
+                          <option value="es">Spanish</option>
+                          <option value="de">German</option>
+                          <option value="pt">Portuguese</option>
+                          <option value="ar">Arabic</option>
+                          <option value="ru">Russian</option>
+                          <option value="hi">Hindi</option>
+                          <option value="vi">Vietnamese</option>
+                          <option value="id">Indonesian</option>
+                          <option value="it">Italian</option>
+                          <option value="nl">Dutch</option>
+                          <option value="pl">Polish</option>
+                          <option value="tr">Turkish</option>
+                          <option value="sv">Swedish</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Translation Model
+                        </label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setShowModelPicker(!showModelPicker)}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-left flex items-center justify-between bg-white hover:border-gray-300 transition-colors"
+                          >
+                            <span className={translationModel ? 'text-gray-900' : 'text-gray-400'}>
+                              {translationModel || 'Select model...'}
+                            </span>
+                            <Bot className="w-4 h-4 text-gray-400" />
+                          </button>
+                          {showModelPicker && (
+                            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-hidden">
+                              <div className="p-2 border-b border-gray-100">
+                                <div className="relative">
+                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                  <input
+                                    type="text"
+                                    placeholder="Search models..."
+                                    value={modelSearch}
+                                    onChange={(e) => setModelSearch(e.target.value)}
+                                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    autoFocus
+                                  />
+                                </div>
+                              </div>
+                              <div className="overflow-y-auto max-h-48">
+                                {(modelsData?.models || [])
+                                  .filter((m: any) => !modelSearch || m.id?.toLowerCase().includes(modelSearch.toLowerCase()) || m.name?.toLowerCase().includes(modelSearch.toLowerCase()))
+                                  .map((m: any) => (
+                                    <button
+                                      key={m.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setTranslationModel(m.id);
+                                        setShowModelPicker(false);
+                                        setModelSearch('');
+                                      }}
+                                      className={`w-full px-4 py-2 text-left text-sm hover:bg-purple-50 flex items-center justify-between ${
+                                        translationModel === m.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                                      }`}
+                                    >
+                                      <div>
+                                        <div className="font-medium">{m.name || m.id}</div>
+                                        {m.providerDisplayName && (
+                                          <div className="text-xs text-gray-400">{m.providerDisplayName}</div>
+                                        )}
+                                      </div>
+                                      {translationModel === m.id && <Check className="w-4 h-4 text-purple-500" />}
+                                    </button>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Dedicated model for translations. Uses credits based on token usage.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      updatePrefsMutation.mutate({
+                        translationLanguage: translationLanguage || undefined,
+                        translationModel: translationModel || undefined,
+                      });
+                    }}
+                    disabled={updatePrefsMutation.isPending}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                  >
+                    {updatePrefsMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
                     Save Preferences
                   </Button>
                 </div>

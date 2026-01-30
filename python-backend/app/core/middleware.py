@@ -383,15 +383,9 @@ def setup_middleware(app):
     from app.core.csrf import CSRFMiddleware
     from app.core.config import settings
 
-    # Only enable CSRF in production or if explicitly enabled
-    if not settings.DEBUG or getattr(settings, "ENABLE_CSRF", False):
-        app.add_middleware(CSRFMiddleware)
-        logger.info("CSRF protection enabled")
-    else:
-        logger.warning(
-            "CSRF protection disabled in development",
-            message="Set ENABLE_CSRF=true to enable CSRF protection in development"
-        )
+    # CSRF protection enabled in ALL environments for security
+    app.add_middleware(CSRFMiddleware)
+    logger.info("CSRF protection enabled", environment=settings.ENVIRONMENT)
 
     # 6. Rate limiting (with JWT support)
     app.add_middleware(RateLimitMiddleware)

@@ -2,9 +2,9 @@
 
 ## 🆕 v2.1 Update: Hallucination Control
 
-- ✅ **Prevents nationality/ethnicity hallucination** — ป้องกันการเพิ่มข้อมูลสัญชาติที่ไม่ได้ระบุ
-- ✅ **Auto-correction** — แก้ไขอัตโนมัติ (เช่น "Korean fashion" → "modern fashion")
-- ✅ **Warnings in output** — แจ้งเตือนเมื่อตรวจพบ hallucination
+- ✅ **Prevents nationality/ethnicity hallucination** — Prevents adding unspecified nationality data
+- ✅ **Auto-correction** — Automatic correction (e.g. "Korean fashion" → "modern fashion")
+- ✅ **Warnings in output** — Alerts when hallucination is detected
 
 id: image_prompt_engineer
 name: Image Prompt Engineer
@@ -17,22 +17,22 @@ category: creative
 # Image Prompt Engineer (v2.1)
 
 ## 🎯 Purpose
-สร้าง "พรอมต์สำหรับระบบสร้างภาพ AI" ที่ครบถ้วน ชัดเจน และรองรับทุกโหมดการสร้างภาพ:
+Create comprehensive, clear "prompts for AI image generation systems" that support all image generation modes:
 
-### ✅ โหมดที่รองรับ (New in v2.1!)
-1. **Text-to-Image** — สร้างภาพจากคำอธิบาย
-2. **Image-to-Image** — แปลงภาพจากภาพอ้างอิง
-3. **Inpaint** — แก้ไขเฉพาะส่วนที่เลือก (Text-based masking)
-4. **Outpaint** — ขยายภาพออกนอกกรอบเดิม
-5. **Variation** — สร้างรูปแบบต่างๆ จากภาพเดิม
+### ✅ Supported Modes (New in v2.1!)
+1. **Text-to-Image** — Generate images from text descriptions
+2. **Image-to-Image** — Transform images from reference images
+3. **Inpaint** — Edit only selected areas (Text-based masking)
+4. **Outpaint** — Expand images beyond the original frame
+5. **Variation** — Create variations from an existing image
 
-### 🌟 จุดเด่น
-- **โหมดเริ่มต้นเน้นความสมจริง** (สามารถเปลี่ยนด้วย Style/VFX)
-- รองรับ **ข้อความบนภาพ (Typography)** แบบเลือกหมวด/สไตล์ได้
-- รองรับ **ภาพอ้างอิงหลายภาพ** (กำหนดบทบาทของภาพแต่ละใบได้)
-- **Text-based Masking** — ระบุพื้นที่แก้ไขด้วยภาษาธรรมชาติ
-- **Platform-specific Output** — ปรับ prompt ตาม platform
-- **Advanced Controls** — ควบคุม parameters ขั้นสูง
+### 🌟 Key Features
+- **Default mode emphasizes realism** (can be changed with Style/VFX)
+- Supports **text on image (Typography)** with selectable categories/styles
+- Supports **multiple reference images** (assign roles to each image)
+- **Text-based Masking** — Specify edit areas using natural language
+- **Platform-specific Output** — Adjust prompts per platform
+- **Advanced Controls** — Fine-tune advanced parameters
 
 ---
 
@@ -41,7 +41,7 @@ category: creative
 ### 🚀 Major Features
 
 #### 1. Generation Mode Selection
-ระบุโหมดการสร้างภาพได้ชัดเจน:
+Clearly specify the image generation mode:
 ```json
 {
   "generation_mode": "text_to_image" | "image_to_image" | "inpaint" | "outpaint" | "variation"
@@ -49,7 +49,7 @@ category: creative
 ```
 
 #### 2. Text-based Inpainting
-แก้ไขเฉพาะส่วนที่ต้องการด้วยภาษาธรรมชาติ:
+Edit only the desired areas using natural language:
 ```json
 {
   "generation_mode": "inpaint",
@@ -62,7 +62,7 @@ category: creative
 ```
 
 #### 3. Outpainting Support
-ขยายภาพออกไปทุกทิศทาง:
+Expand images in all directions:
 ```json
 {
   "generation_mode": "outpaint",
@@ -76,7 +76,7 @@ category: creative
 ```
 
 #### 4. Advanced Parameters
-ควบคุมการสร้างภาพแบบละเอียด:
+Fine-grained control over image generation:
 ```json
 {
   "advanced_params": {
@@ -106,7 +106,7 @@ category: creative
 ```
 
 #### 6. Platform Selection
-ปรับ prompt ให้เหมาะกับ platform:
+Adjust prompts to suit the target platform:
 ```json
 {
   "target_platform": "stable_diffusion" | "midjourney" | "dall_e_3" | "gemini_imagen" | "flux" | "firefly"
@@ -120,20 +120,20 @@ category: creative
 ### Required Fields
 ```json
 {
-  "request": "คำอธิบายสิ่งที่ต้องการ" // เพียงฟิลด์เดียวที่ required!
+  "request": "Description of what you want" // The only required field!
 }
 ```
 
-### Core Fields (มี Default ทั้งหมด)
+### Core Fields (All have defaults)
 ```json
 {
   "generation_mode": "text_to_image",  // default
   "task": "final_prompt",              // default
   "detail_level": "standard",          // compact | standard | full
   "languages": "en",                   // en | th
-  "aspect_ratio": "9:16",              // มีตัวเลือก 7 แบบ
-  "aspect_ratio_custom": "",           // เช่น "5:4"
-  "style": "photorealistic",           // 151+ สไตล์
+  "aspect_ratio": "9:16",              // 7 options available
+  "aspect_ratio_custom": "",           // e.g. "5:4"
+  "style": "photorealistic",           // 151+ styles
   "target_platform": "generic"         // 7 platforms
 }
 ```
@@ -144,7 +144,7 @@ category: creative
   "reference_images": [
     {
       "role": "primary_subject" | "outfit" | "product" | "location_background" | ...,
-      "notes": "คำอธิบายเพิ่มเติม"
+      "notes": "Additional description"
     }
   ],
   "identity_lock": "none" | "soft_lock_person" | "strict_lock_product",
@@ -156,11 +156,11 @@ category: creative
 ```json
 {
   "edit_mask": {
-    "type": "prompt_based",              // หรือ ai_segment, rectangle, brush
-    "segment_prompt": "sky",             // "ท้องฟ้า", "background", "the woman's dress"
-    "preserve_areas": ["face", "hands"], // พื้นที่ที่ต้องการคงไว้
-    "feather": 10,                       // ความนุ่มขอบ (px)
-    "invert": false                      // กลับด้าน mask
+    "type": "prompt_based",              // or ai_segment, rectangle, brush
+    "segment_prompt": "sky",             // "sky", "background", "the woman's dress"
+    "preserve_areas": ["face", "hands"], // Areas to preserve
+    "feather": 10,                       // Edge softness (px)
+    "invert": false                      // Invert mask
   }
 }
 ```
@@ -173,8 +173,8 @@ category: creative
     "expand_right": 0,     // px  
     "expand_top": 0,       // px
     "expand_bottom": 0,    // px
-    "blend_width": 64,     // px (โซนผสาน)
-    "match_style": true    // จับสไตล์เดิม
+    "blend_width": 64,     // px (blend zone)
+    "match_style": true    // Match original style
   }
 }
 ```
@@ -257,8 +257,8 @@ category: creative
 
 ```json
 {
-  "prompt": "พรอมต์หลักในภาษาที่เลือก",
-  "avoid": ["รายการสิ่งที่ควรหลีกเลี่ยง"],
+  "prompt": "Main prompt in the selected language",
+  "avoid": ["List of things to avoid"],
   "detail_level": "standard",
   "task": "final_prompt",
   "generation_mode": "text_to_image",
@@ -266,11 +266,11 @@ category: creative
   "parameters": {
     "aspect_ratio": "9:16",
     "generation_mode": "text_to_image",
-    "denoising_strength": 0.75,  // ถ้ามี
-    "cfg_scale": 7.5,            // ถ้ามี
-    "steps": 50                  // ถ้ามี
+    "denoising_strength": 0.75,  // if applicable
+    "cfg_scale": 7.5,            // if applicable
+    "steps": 50                  // if applicable
   },
-  "breakdown": {               // ถ้า detail_level = full
+  "breakdown": {               // if detail_level = full
     "generation_mode": "...",
     "subject": "...",
     "style": "..."
@@ -285,20 +285,20 @@ category: creative
 ### Example 1: Text-to-Image (Simple)
 ```json
 {
-  "request": "สาวสวยยืนในสวนดอกไม้ยามเช้า"
+  "request": "Beautiful woman standing in a flower garden in the morning"
 }
 ```
-✅ ใช้ default ทั้งหมด: photorealistic style, 9:16 aspect ratio, standard detail
+✅ Uses all defaults: photorealistic style, 9:16 aspect ratio, standard detail
 
 ### Example 2: Image-to-Image (Style Transfer)
 ```json
 {
-  "request": "เปลี่ยนให้เป็นภาพวาดสีน้ำมัน",
+  "request": "Transform into an oil painting",
   "generation_mode": "image_to_image",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "คงองค์ประกอบหลักเดิม"
+      "notes": "Keep the original main composition"
     }
   ],
   "style": "oil_painting",
@@ -311,12 +311,12 @@ category: creative
 ### Example 3: Inpainting (Replace Background)
 ```json
 {
-  "request": "เปลี่ยนพื้นหลังเป็นชายหาดตอนพระอาทิตย์ตก",
+  "request": "Change the background to a beach at sunset",
   "generation_mode": "inpaint",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "คงบุคคลในภาพเดิม 100%"
+      "notes": "Keep the person in the original image 100%"
     }
   ],
   "edit_mask": {
@@ -333,12 +333,12 @@ category: creative
 ### Example 4: Outpainting (Expand Canvas)
 ```json
 {
-  "request": "ขยายภาพออกไปทุกด้าน แสดงฉากรอบๆ เพิ่มเติม",
+  "request": "Expand the image in all directions, show more of the surrounding scene",
   "generation_mode": "outpaint",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "ภาพต้นฉบับที่ต้องการขยาย"
+      "notes": "Original image to expand"
     }
   ],
   "outpaint_config": {
@@ -355,16 +355,16 @@ category: creative
 ### Example 5: Advanced - ControlNet + Style
 ```json
 {
-  "request": "สร้างภาพในท่าทางเดียวกันแต่เป็นสไตล์การ์ตูน",
+  "request": "Create an image in the same pose but in cartoon style",
   "generation_mode": "image_to_image",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "อ้างอิงท่าทาง"
+      "notes": "Pose reference"
     },
     {
       "role": "style_reference",
-      "notes": "อ้างอิงสไตล์การ์ตูน"
+      "notes": "Cartoon style reference"
     }
   ],
   "style": "anime_style",
@@ -389,15 +389,15 @@ category: creative
 
 ## 📚 Knowledge Base
 
-Skill นี้มาพร้อม knowledge files เพื่อเป็นแคตตาล็อกและ best practices:
+This skill comes with knowledge files serving as catalogs and best practices:
 
-1. **ai_image_style_categories.md** — แคตตาล็อกสไตล์ (151+ styles)
-2. **prompt_depth_reference.md** — ตรรกะและโครงสร้างพรอมต์
-3. **vfx_effects_menu.md** — เมนู VFX ทั้งหมด (50+ effects)
-4. **realistic_skin_preservation_rules.md** — กฎผิวสมจริง
-5. **identity_consistency_rules.md** — กฎคงเอกลักษณ์
-6. **photorealistic_prompting_research_notes.md** — โน้ตวิจัย
-7. **legacy_system_prompt_reference.md** — อ้างอิงเวิร์กโฟลว์เดิม
+1. **ai_image_style_categories.md** — Style catalog (151+ styles)
+2. **prompt_depth_reference.md** — Prompt logic and structure
+3. **vfx_effects_menu.md** — Complete VFX menu (50+ effects)
+4. **realistic_skin_preservation_rules.md** — Realistic skin rules
+5. **identity_consistency_rules.md** — Identity preservation rules
+6. **photorealistic_prompting_research_notes.md** — Research notes
+7. **legacy_system_prompt_reference.md** — Legacy workflow reference
 
 ---
 
@@ -423,7 +423,7 @@ Skill นี้มาพร้อม knowledge files เพื่อเป็น
 - medieval_fantasy, cyberpunk_neon, steampunk_industrial
 - post_apocalyptic, alien_world, underwater_fantasy
 
-...และอีกมากมาย! ดู full catalog ใน schema
+...and many more! See the full catalog in the schema
 
 ---
 
@@ -443,21 +443,21 @@ Skill นี้มาพร้อม knowledge files เพื่อเป็น
 
 ## ⚙️ Task Types
 
-- `final_prompt` — สร้างพรอมต์สุดท้ายพร้อมใช้งาน
-- `ideas_10` — สร้างไอเดีย 10 แบบ
-- `angles_10` — สร้างมุมกล้อง/คอมโพส 10 แบบ
-- `storyboard_6` — สร้าง storyboard 6 ซีน
-- `infographic_layout` — โครงสร้างเลย์เอาต์แบบอินโฟกราฟิก
-- `style_catalog` — แสดงเมนูสไตล์
-- `vfx_catalog` — แสดงเมนู VFX
-- `typography_catalog` — แสดงเมนู Typography
-- `update_preferences` — อัปเดต preferences
+- `final_prompt` — Generate the final ready-to-use prompt
+- `ideas_10` — Generate 10 ideas
+- `angles_10` — Generate 10 camera angles/compositions
+- `storyboard_6` — Create a 6-scene storyboard
+- `infographic_layout` — Infographic layout structure
+- `style_catalog` — Show style menu
+- `vfx_catalog` — Show VFX menu
+- `typography_catalog` — Show Typography menu
+- `update_preferences` — Update preferences
 
 ---
 
 ## 🔧 Default Values Summary
 
-ทุกๆ input มี default values ดังนี้:
+All inputs have the following default values:
 
 ```json
 {
@@ -502,36 +502,36 @@ Skill นี้มาพร้อม knowledge files เพื่อเป็น
 ## 📝 Version History
 
 ### v2.1 (Current)
-- ✅ เพิ่ม generation_mode สำหรับทุกโหมดการสร้างภาพ
-- ✅ เพิ่ม text-based inpainting (edit_mask)
-- ✅ เพิ่ม outpainting support (outpaint_config)
-- ✅ เพิ่ม advanced_params (strength, CFG, steps, seed, sampler)
-- ✅ เพิ่ม ControlNet และ IP-Adapter support
-- ✅ เพิ่ม target_platform selection
-- ✅ ปรับปรุง validation และ error handling
-- ✅ ทุก input มี default values
+- ✅ Added generation_mode for all image generation modes
+- ✅ Added text-based inpainting (edit_mask)
+- ✅ Added outpainting support (outpaint_config)
+- ✅ Added advanced_params (strength, CFG, steps, seed, sampler)
+- ✅ Added ControlNet and IP-Adapter support
+- ✅ Added target_platform selection
+- ✅ Improved validation and error handling
+- ✅ All inputs have default values
 
 ### v1.0 (Legacy)
-- Text-to-image พื้นฐาน
-- Style catalog และ VFX
+- Basic text-to-image
+- Style catalog and VFX
 - Typography support
-- Reference images พื้นฐาน
+- Basic reference images
 
 ---
 
 ## 🎯 Best Practices
 
-1. **ใช้ generation_mode ให้ชัดเจน** — ระบุ mode ที่ต้องการทุกครั้ง
-2. **Text-based masking** — ใช้ภาษาธรรมชาติระบุพื้นที่แก้ไข
-3. **Identity lock** — เลือกระดับที่เหมาะสม (soft สำหรับคน, strict สำหรับสินค้า)
+1. **Use generation_mode clearly** — Always specify the desired mode
+2. **Text-based masking** — Use natural language to specify edit areas
+3. **Identity lock** — Choose the appropriate level (soft for people, strict for products)
 4. **Denoising strength** — 0.3-0.6 = subtle, 0.7-0.9 = strong transformation
-5. **Platform-specific** — เลือก target_platform ให้ตรงกับที่จะใช้จริง
+5. **Platform-specific** — Choose the target_platform matching your actual platform
 
 ---
 
 ## 📞 Support
 
-สำหรับคำถามหรือข้อเสนอแนะเพิ่มเติม กรุณาติดต่อทีมพัฒนา
+For questions or additional suggestions, please contact the development team
 
 **Version**: 2.0  
 **Last Updated**: January 24, 2026  

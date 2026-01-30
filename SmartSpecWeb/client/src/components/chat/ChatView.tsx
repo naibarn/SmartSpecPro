@@ -31,6 +31,8 @@ import {
   ImagePlus,
   Music,
   Zap,
+  ChevronsUp,
+  ChevronsDown,
 } from "lucide-react";
 import {
   Tooltip,
@@ -48,7 +50,9 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Brain } from "lucide-react";
+import { Brain, Lightbulb, Languages, Mic } from "lucide-react";
+import { usePushToTalk } from "@/hooks/usePushToTalk";
+import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 import { toast } from "sonner";
 
 // Debounce hook for skill detection
@@ -101,6 +105,7 @@ interface Message {
   creditsUsed?: string;
   modelUsed?: string;
   skillUsed?: string;
+  skillArgs?: { brainstormRound?: number; brainstormRole?: string };
   createdAt: Date;
 }
 
@@ -128,6 +133,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
 
@@ -191,6 +197,34 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
   const [enhancedPrompt, setEnhancedPrompt] = useState<string | null>(null);
 
+  // Translation state
+  const [translatedMessages, setTranslatedMessages] = useState<Record<number, string>>({});
+  const [translatingMsgId, setTranslatingMsgId] = useState<number | null>(null);
+  const translateMutation = trpc.translation.translate.useMutation({
+    onSuccess: (data, variables) => {
+      // variables won't have msgId, use translatingMsgId from closure
+      setTranslatedMessages((prev) => ({ ...prev, [translatingMsgId!]: data.translatedText }));
+      setTranslatingMsgId(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Translation failed');
+      setTranslatingMsgId(null);
+    },
+  });
+
+  // Push-to-talk
+  const { isRecording, isTranscribing, startRecording, stopRecording } = usePushToTalk({
+    onTranscription: (text) => setInput((prev) => prev ? `${prev} ${text}` : text),
+    onError: (err) => toast.error(err),
+  });
+
+  // Brainstorm mode state
+  const [brainstormMode, setBrainstormMode] = useState(false);
+  const [brainstormPartnerModel, setBrainstormPartnerModel] = useState("");
+  const [brainstormModelDialogOpen, setBrainstormModelDialogOpen] = useState(false);
+  const [brainstormStreamingRole, setBrainstormStreamingRole] = useState<string | null>(null);
+  const [brainstormStreamingRound, setBrainstormStreamingRound] = useState(0);
+
   // Media generation skills that should be executed automatically
   const mediaSkills = ["image-generation", "video-generation", "audio-generation"];
 
@@ -241,6 +275,11 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     suggestedPrompt: string | null;
   } | null>(null);
 
+  // Schedule confirm card state
+  const [pendingSchedule, setPendingSchedule] = useState<any>(null);
+
+  const parseIntentMutation = trpc.scheduledMessages.parseIntent.useMutation();
+
   // Lightbox state for viewing images
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<Array<{ src: string; alt?: string }>>([]);
@@ -254,7 +293,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   };
 
   // Debounce input for skill detection
-  const debouncedInput = useDebounce(input, 300);
+  const debouncedInput = useDebounce(input, 800);
 
   // Detect skills when input changes
   useEffect(() => {
@@ -356,9 +395,12 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     });
   }, [messages]);
 
-  // Scroll to bottom when messages change
+  // Scroll helpers
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+  const scrollToTop = useCallback(() => {
+    topRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   useEffect(() => {
@@ -657,6 +699,145 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   };
 
   // Send message
+  // ─── Brainstorm streaming ─────────────────────────────────────────
+  const streamBrainstorm = async (userMessage: Message) => {
+    if (!conversationId) return;
+    setIsStreaming(true);
+    setStreamingContent("");
+
+    try {
+      // Build memory context
+      const contextData = await utils.memory.getChatContext.fetch({ conversationId });
+      const apiMessages = [
+        ...(contextData?.messages || []),
+        { role: "user", content: userMessage.content },
+      ];
+
+      const resp = await fetch("/api/llm/brainstorm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          messages: apiMessages,
+          modelA: selectedModel || conversation?.model || "gpt-4o-mini",
+          modelB: brainstormPartnerModel,
+          conversationId,
+          maxRounds: 3,
+          userMessage: userMessage.content,
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: { message: "Brainstorm request failed" } }));
+        throw new Error(err?.error?.message || "Brainstorm failed");
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buf = "";
+      let currentContent = "";
+      let currentRole = "";
+      let currentRound = 0;
+      let currentModel = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buf += decoder.decode(value, { stream: true });
+
+        while (true) {
+          const nlIdx = buf.indexOf("\n");
+          if (nlIdx < 0) break;
+
+          const line = buf.slice(0, nlIdx).replace(/\r$/, "");
+          buf = buf.slice(nlIdx + 1);
+
+          if (line.startsWith("event:")) {
+            const eventName = line.slice("event:".length).trim();
+
+            // Read data line
+            const dataIdx = buf.indexOf("\n");
+            if (dataIdx < 0) continue;
+            const dataLine = buf.slice(0, dataIdx).replace(/\r$/, "");
+            buf = buf.slice(dataIdx + 1);
+
+            if (!dataLine.startsWith("data:")) continue;
+            const dataStr = dataLine.slice("data:".length).trim();
+
+            try {
+              const data = JSON.parse(dataStr);
+
+              if (eventName === "brainstorm_skill") {
+                toast.info(`Using ${data.skillName} expertise`);
+              } else if (eventName === "brainstorm_turn") {
+                if (data.status === "start") {
+                  currentContent = "";
+                  currentRole = data.role;
+                  currentRound = data.round;
+                  currentModel = data.model;
+                  setBrainstormStreamingRole(data.role);
+                  setBrainstormStreamingRound(data.round);
+                  setStreamingContent("");
+                } else if (data.status === "end" && currentContent) {
+                  // Finalize this turn as a message
+                  lastLocalAddTime.current = Date.now();
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: Date.now() + Math.random(),
+                      role: "assistant" as const,
+                      content: currentContent,
+                      modelUsed: currentModel,
+                      skillUsed: "brainstorm",
+                      creditsUsed: undefined,
+                      createdAt: new Date(),
+                      // Store brainstorm metadata in a way that's accessible
+                      skillArgs: { brainstormRound: currentRound, brainstormRole: currentRole } as any,
+                    } as any,
+                  ]);
+                  setStreamingContent("");
+                  setBrainstormStreamingRole(null);
+                }
+              } else if (eventName === "brainstorm_credits") {
+                // Update the last message with credits info
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  // Find last message matching this role/round
+                  for (let i = updated.length - 1; i >= 0; i--) {
+                    const m = updated[i] as any;
+                    if (m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === data.role) {
+                      updated[i] = { ...m, creditsUsed: String(data.credits) };
+                      break;
+                    }
+                  }
+                  return updated;
+                });
+              } else if (eventName === "brainstorm_chunk") {
+                currentContent += data.content;
+                setStreamingContent(currentContent);
+              } else if (eventName === "brainstorm_done") {
+                // Refresh messages from server to get proper IDs
+                utils.chat.getMessages.invalidate({ conversationId });
+                utils.credits.balance.invalidate();
+                toast.success(`Brainstorm complete — ${data.totalCredits} credits used`);
+              } else if (eventName === "brainstorm_error") {
+                toast.error(data.error || "Brainstorm failed");
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Brainstorm failed");
+    } finally {
+      setIsStreaming(false);
+      setStreamingContent("");
+      setBrainstormStreamingRole(null);
+      setBrainstormStreamingRound(0);
+    }
+  };
+
   const onSend = async () => {
     if (isStreaming || !conversationId) return;
     const text = input.trim();
@@ -706,6 +887,32 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     const currentSkillId = detectedSkill?.id;
     const currentSkillType = detectedSkill?.type;
     const skillPrompt = detectedSkill?.suggestedPrompt || text;
+
+    // Check if this is a chat-alert (scheduling) skill
+    if (currentSkillId === "chat-alert" || currentSkillType === "automation") {
+      try {
+        const parsed = await parseIntentMutation.mutateAsync({
+          message: text,
+          model: selectedModel || conversation?.model || undefined,
+        });
+        setPendingSchedule(parsed);
+        // Add assistant message about the schedule
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            conversationId: conversationId || 0,
+            role: "assistant" as const,
+            content: `I detected a scheduling request. Please confirm the details below.`,
+            createdAt: new Date(),
+            skillUsed: "chat-alert",
+          },
+        ]);
+      } catch {
+        // Fall through to normal chat if parse fails
+      }
+      return;
+    }
 
     // Check if this is a media generation skill (check by type, not ID)
     if (currentSkillId && currentSkillType && mediaSkills.includes(currentSkillType)) {
@@ -810,6 +1017,14 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         setStreamingContent("");
         setIsStreaming(false);
       }
+    } else if (brainstormMode && brainstormPartnerModel) {
+      // Brainstorm mode: multi-model debate
+      await streamBrainstorm({
+        id: userMessage.id,
+        role: "user",
+        content: typeof content === "string" ? content : text,
+        createdAt: new Date(userMessage.createdAt),
+      });
     } else {
       // Stream response for regular chat (non-media skills)
       await streamResponse({
@@ -923,6 +1138,79 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               {selectedModel || "No model"}
             </Badge>
           )}
+
+          {/* Brainstorm Toggle */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={brainstormMode ? "default" : "ghost"}
+                  size="sm"
+                  className={cn("h-8 gap-1", brainstormMode && "bg-yellow-500 hover:bg-yellow-600 text-white")}
+                  onClick={() => setBrainstormMode(!brainstormMode)}
+                  disabled={isStreaming}
+                >
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  {brainstormMode && <span className="text-xs">Brainstorm</span>}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Toggle Brainstorm Mode (two models collaborate)</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Model B selector (when brainstorm is ON) */}
+          {brainstormMode && modelsData?.models && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 max-w-[220px] justify-start gap-2 text-xs font-normal border-purple-300"
+                onClick={() => setBrainstormModelDialogOpen(true)}
+                disabled={isStreaming}
+              >
+                <Brain className="h-3 w-3 shrink-0 text-purple-500" />
+                <span className="truncate text-purple-700">
+                  {modelsData.models.find(m => m.id === brainstormPartnerModel)?.name || "Select Model B"}
+                </span>
+              </Button>
+              <CommandDialog
+                open={brainstormModelDialogOpen}
+                onOpenChange={setBrainstormModelDialogOpen}
+                title="Select Brainstorm Partner (Model B)"
+                description="Choose a second model for collaborative brainstorming"
+              >
+                <CommandInput placeholder="Search models..." />
+                <CommandList className="max-h-[60vh]">
+                  <CommandEmpty>No models found.</CommandEmpty>
+                  {Object.entries(modelsByProvider).map(([provider, models]) => (
+                    <CommandGroup key={provider} heading={provider}>
+                      {models.map((model) => (
+                        <CommandItem
+                          key={model.id}
+                          value={`${model.name} ${model.id} ${provider}`}
+                          onSelect={() => {
+                            setBrainstormPartnerModel(model.id);
+                            setBrainstormModelDialogOpen(false);
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <Check className={cn("h-3.5 w-3.5 shrink-0", brainstormPartnerModel === model.id ? "opacity-100" : "opacity-0")} />
+                          <span className="flex-1 truncate">{model.name}</span>
+                          {model.id === selectedModel && (
+                            <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+                              Model A
+                            </Badge>
+                          )}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ))}
+                </CommandList>
+              </CommandDialog>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* Session credits (total used in this conversation) */}
@@ -946,8 +1234,32 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="flex-1 min-h-0 relative">
+        {/* Floating scroll buttons */}
+        {messages.length > 3 && (
+          <div className="sticky top-2 right-2 z-10 flex flex-col gap-1 float-right mr-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 rounded-full bg-background/80 backdrop-blur-sm shadow-sm"
+              onClick={scrollToTop}
+              title="Scroll to top"
+            >
+              <ChevronsUp className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 rounded-full bg-background/80 backdrop-blur-sm shadow-sm"
+              onClick={scrollToBottom}
+              title="Scroll to bottom"
+            >
+              <ChevronsDown className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
         <div className="flex flex-col gap-4 p-4">
+          <div ref={topRef} />
           {loadingMessages ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -968,9 +1280,30 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                       "max-w-[85%] rounded-lg px-4 py-3",
                       m.role === "user"
                         ? "ml-auto bg-primary text-primary-foreground"
+                        : m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === "model_a"
+                        ? "mr-auto bg-blue-50 border-l-4 border-blue-400"
+                        : m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === "model_b"
+                        ? "mr-auto bg-purple-50 border-l-4 border-purple-400"
+                        : m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === "summary"
+                        ? "mr-auto bg-green-50 border-l-4 border-green-400"
                         : "mr-auto bg-muted"
                     )}
                   >
+                    {/* Brainstorm badge */}
+                    {m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole && (
+                      <div className="mb-2">
+                        <Badge variant="outline" className={cn(
+                          "text-[10px]",
+                          m.skillArgs.brainstormRole === "model_a" && "border-blue-400 text-blue-600",
+                          m.skillArgs.brainstormRole === "model_b" && "border-purple-400 text-purple-600",
+                          m.skillArgs.brainstormRole === "summary" && "border-green-400 text-green-600",
+                        )}>
+                          {m.skillArgs.brainstormRole === "summary"
+                            ? `Brainstorm Summary · ${m.modelUsed || ""}`
+                            : `${m.skillArgs.brainstormRole === "model_a" ? "Model A" : "Model B"} · Round ${m.skillArgs.brainstormRound || "?"} · ${m.modelUsed || ""}`}
+                        </Badge>
+                      </div>
+                    )}
                     {m.role === "assistant" ? (
                       <SafeMarkdown
                         onImageClick={(images, index) => openImageLightbox(images, index)}
@@ -982,7 +1315,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                     )}
                     {m.role === "assistant" && (m.creditsUsed || m.skillUsed) && (
                       <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                        {m.skillUsed && (
+                        {m.skillUsed && m.skillUsed !== "brainstorm" && (
                           <Badge variant="outline" className="gap-1 text-xs">
                             {(() => {
                               const SkillIcon = skillIconMap[m.skillUsed] || Sparkles;
@@ -992,7 +1325,10 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                           </Badge>
                         )}
                         {m.creditsUsed && Number(m.creditsUsed) > 0 && (
-                          <span>{Number(m.creditsUsed)} credit{Number(m.creditsUsed) !== 1 ? 's' : ''}</span>
+                          <span>
+                            {Number(m.creditsUsed)} credit{Number(m.creditsUsed) !== 1 ? 's' : ''}
+                            {m.modelUsed && m.skillUsed !== "brainstorm" && ` — ${m.modelUsed}`}
+                          </span>
                         )}
                       </div>
                     )}
@@ -1001,7 +1337,8 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
                 if (m.role === "assistant") {
                   return (
-                    <ContextMenu key={m.id}>
+                    <div key={m.id}>
+                    <ContextMenu>
                       <ContextMenuTrigger asChild>
                         {messageBubble}
                       </ContextMenuTrigger>
@@ -1023,17 +1360,98 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                           <Brain className="mr-2 h-4 w-4" />
                           Save to Memory
                         </ContextMenuItem>
+                        <ContextMenuItem
+                          onSelect={() => {
+                            const selected = window.getSelection()?.toString();
+                            const text = selected && selected.length > 5
+                              ? selected
+                              : m.content.substring(0, 2000);
+                            setTranslatingMsgId(m.id);
+                            translateMutation.mutate({ text });
+                          }}
+                          disabled={translatingMsgId === m.id}
+                        >
+                          <Languages className="mr-2 h-4 w-4" />
+                          {translatingMsgId === m.id ? 'Translating...' : 'Translate'}
+                        </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>
+                    {translatedMessages[m.id] && (
+                      <div className="mt-1 mr-auto max-w-[85%] bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-blue-600 flex items-center gap-1">
+                            <Languages className="h-3 w-3" /> Translation
+                          </span>
+                          <button
+                            onClick={() => setTranslatedMessages((prev) => {
+                              const next = { ...prev };
+                              delete next[m.id];
+                              return next;
+                            })}
+                            className="text-blue-400 hover:text-blue-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-blue-900 whitespace-pre-wrap">{translatedMessages[m.id]}</p>
+                      </div>
+                    )}
+                  </div>
                   );
                 }
 
                 return <div key={m.id}>{messageBubble}</div>;
               })}
 
+              {/* Schedule Confirm Card */}
+              {pendingSchedule && (
+                <div className="mr-auto max-w-[85%]">
+                  <ScheduleConfirmCard
+                    parsed={pendingSchedule}
+                    conversationId={conversationId || undefined}
+                    model={selectedModel || conversation?.model || undefined}
+                    onConfirmed={() => {
+                      setPendingSchedule(null);
+                      setMessages((prev) => [
+                        ...prev,
+                        {
+                          id: Date.now(),
+                          conversationId: conversationId || 0,
+                          role: "assistant" as const,
+                          content: `Schedule created successfully! You can manage it in the Alerts panel.`,
+                          createdAt: new Date(),
+                          skillUsed: "chat-alert",
+                        },
+                      ]);
+                    }}
+                    onCancel={() => setPendingSchedule(null)}
+                  />
+                </div>
+              )}
+
               {/* Streaming message */}
               {streamingContent && (
-                <div className="mr-auto max-w-[85%] rounded-lg bg-muted px-4 py-3">
+                <div className={cn(
+                  "mr-auto max-w-[85%] rounded-lg px-4 py-3",
+                  brainstormStreamingRole === "model_a" ? "bg-blue-50 border-l-4 border-blue-400" :
+                  brainstormStreamingRole === "model_b" ? "bg-purple-50 border-l-4 border-purple-400" :
+                  brainstormStreamingRole === "summary" ? "bg-green-50 border-l-4 border-green-400" :
+                  "bg-muted",
+                )}>
+                  {brainstormStreamingRole && (
+                    <div className="mb-2 flex items-center gap-2">
+                      <Badge variant="outline" className={cn(
+                        "text-[10px]",
+                        brainstormStreamingRole === "model_a" && "border-blue-400 text-blue-600",
+                        brainstormStreamingRole === "model_b" && "border-purple-400 text-purple-600",
+                        brainstormStreamingRole === "summary" && "border-green-400 text-green-600",
+                      )}>
+                        {brainstormStreamingRole === "summary" ? "Summary" :
+                          `${brainstormStreamingRole === "model_a" ? "Model A" : "Model B"} · Round ${brainstormStreamingRound}`}
+                      </Badge>
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
                   <SafeMarkdown
                     onImageClick={(images, index) => openImageLightbox(images, index)}
                   >
@@ -1244,6 +1662,21 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             }}
             disabled={isStreaming}
           />
+          <Button
+            variant={isRecording ? "destructive" : "outline"}
+            size="icon"
+            onPointerDown={startRecording}
+            onPointerUp={stopRecording}
+            onPointerLeave={isRecording ? stopRecording : undefined}
+            disabled={isTranscribing || isStreaming}
+            title="Hold to record"
+          >
+            {isTranscribing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Mic className={cn("h-4 w-4", isRecording && "animate-pulse text-white")} />
+            )}
+          </Button>
           <Button
             onClick={onSend}
             disabled={isStreaming || uploadMutation.isPending || (!input.trim() && attachments.length === 0)}

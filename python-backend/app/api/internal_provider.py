@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional, List, Dict, Any
+import secrets
 import structlog
 
 from app.core.database import get_db
@@ -24,11 +25,11 @@ async def verify_cli_token(x_proxy_token: Optional[str] = Header(None)):
         raise HTTPException(status_code=401, detail="Missing proxy token")
 
     # In development, allow dev token
-    if settings.DEBUG and x_proxy_token == "dev-token-smartspec-2026":
+    if settings.DEBUG and secrets.compare_digest(x_proxy_token, "dev-token-smartspec-2026"):
         return True
 
     # TODO: Add proper token validation
-    if x_proxy_token != settings.PROXY_TOKEN:
+    if not secrets.compare_digest(x_proxy_token, settings.PROXY_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid proxy token")
 
     return True

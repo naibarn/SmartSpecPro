@@ -30,17 +30,22 @@ class JWTManager:
             self.public_key = None
             logger.info("jwt_manager_initialized", algorithm="HS256")
 
-        # For RS256, load keys from files (TODO: implement key loading)
+        # For RS256, load keys from files
         elif self.algorithm == "RS256":
-            # For now, fall back to HS256 if RS256 keys not available
             try:
                 self.secret_key = self._load_private_key()
                 self.public_key = self._load_public_key()
                 logger.info("jwt_manager_initialized", algorithm="RS256")
             except Exception as e:
+                if settings.ENVIRONMENT == "production":
+                    raise ValueError(
+                        f"RS256 keys are required in production but not found: {e}. "
+                        "Generate keys with: python -m app.core.keys.generate_keys"
+                    )
                 logger.warning(
                     "rs256_keys_not_found_fallback_to_hs256",
-                    error=str(e)
+                    error=str(e),
+                    environment=settings.ENVIRONMENT,
                 )
                 self.algorithm = "HS256"
                 self.secret_key = settings.JWT_SECRET
@@ -50,14 +55,25 @@ class JWTManager:
 
     def _load_private_key(self) -> str:
         """Load RS256 private key from file"""
-        # TODO: Implement key loading from JWT_PRIVATE_KEY_PATH
-        # For now, return None to trigger fallback
-        raise FileNotFoundError("RS256 private key not configured")
+        import os
+        key_path = getattr(settings, 'JWT_PRIVATE_KEY_PATH', None)
+        if not key_path:
+            key_path = os.path.join(os.path.dirname(__file__), 'keys', 'private.pem')
+        if not os.path.exists(key_path):
+            raise FileNotFoundError(f"RS256 private key not found at {key_path}")
+        with open(key_path, 'r') as f:
+            return f.read()
 
     def _load_public_key(self) -> str:
         """Load RS256 public key from file"""
-        # TODO: Implement key loading from JWT_PUBLIC_KEY_PATH
-        raise FileNotFoundError("RS256 public key not configured")
+        import os
+        key_path = getattr(settings, 'JWT_PUBLIC_KEY_PATH', None)
+        if not key_path:
+            key_path = os.path.join(os.path.dirname(__file__), 'keys', 'public.pem')
+        if not os.path.exists(key_path):
+            raise FileNotFoundError(f"RS256 public key not found at {key_path}")
+        with open(key_path, 'r') as f:
+            return f.read()
 
     def create_access_token(
         self,
@@ -164,8 +180,12 @@ class JWTManager:
             if expected_type and payload.get("type") != expected_type:
                 raise JWTError(f"Invalid token type. Expected {expected_type}, got {payload.get('type')}")
 
-            # TODO: Check if token is revoked (check Redis blacklist)
-            # For now, just validate the token structure
+            # Check if token is revoked (in-memory blacklist)
+            jti = payload.get("jti")
+            if jti:
+                from app.core.security import is_token_blacklisted
+                if is_token_blacklisted(jti):
+                    raise JWTError("Token has been revoked")
 
             logger.debug(
                 "token_verified",

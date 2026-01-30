@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, Github, Twitter, Linkedin, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useTenant } from '@/contexts/TenantContext';
 
 const footerLinks = {
   product: [
@@ -43,6 +44,7 @@ const socialLinks = [
 ];
 
 export function Footer() {
+  const { tenant } = useTenant();
   return (
     <footer className="relative bg-gradient-to-b from-background to-muted/30 border-t border-border/50">
       {/* Decorative gradient orbs */}
@@ -85,10 +87,16 @@ export function Footer() {
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <Link href="/">
               <div className="flex items-center gap-2 mb-4 cursor-pointer">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold gradient-text">SmartSpec</span>
+                {(tenant?.websiteLogoUrl || tenant?.logoUrl) ? (
+                  <img src={tenant.websiteLogoUrl || tenant.logoUrl} alt={tenant.name || "Logo"} className="h-10 w-auto object-contain" />
+                ) : (
+                  <>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-xl font-bold gradient-text">SmartSpec</span>
+                  </>
+                )}
               </div>
             </Link>
             <p className="text-muted-foreground mb-6 max-w-sm">

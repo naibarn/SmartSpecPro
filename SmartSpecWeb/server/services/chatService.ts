@@ -1,7 +1,7 @@
 /**
  * Chat Service - Database operations for conversations, messages, and memory
  */
-import { eq, desc, asc, and, sql, or, inArray, lt, gte, SQL, ilike } from "drizzle-orm";
+import { eq, desc, asc, and, sql, or, inArray, lt, gte, SQL, ilike, isNull, isNotNull } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   conversations,
@@ -38,6 +38,7 @@ export async function createConversation(data: {
   title?: string;
   model?: string;
   systemPrompt?: string;
+  projectId?: string;
 }): Promise<Conversation> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -49,6 +50,7 @@ export async function createConversation(data: {
       title: data.title || "New Chat",
       model: data.model || "gpt-4o-mini",
       systemPrompt: data.systemPrompt,
+      projectId: data.projectId,
     })
     .returning();
 
@@ -63,6 +65,13 @@ export async function getConversations(filters: ConversationFilters): Promise<Co
   if (!db) return [];
 
   const conditions: SQL<unknown>[] = [eq(conversations.userId, filters.userId)];
+
+  // Exclude trashed conversations by default
+  if ((filters as any).trashedOnly) {
+    conditions.push(isNotNull(conversations.trashedAt));
+  } else {
+    conditions.push(isNull(conversations.trashedAt));
+  }
 
   if (filters.isArchived !== undefined) {
     conditions.push(eq(conversations.isArchived, filters.isArchived));
@@ -130,13 +139,100 @@ export async function updateConversation(
 /**
  * Delete conversation
  */
+/**
+ * Soft-delete: move conversation to trash (sets trashedAt)
+ */
 export async function deleteConversation(id: number, userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(conversations)
+    .set({ trashedAt: new Date() })
+    .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
+}
+
+/**
+ * Restore a trashed conversation
+ */
+export async function restoreConversation(id: number, userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(conversations)
+    .set({ trashedAt: null })
+    .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
+}
+
+/**
+ * Permanently delete a conversation (from trash)
+ */
+export async function permanentlyDeleteConversation(id: number, userId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   await db
     .delete(conversations)
     .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
+}
+
+/**
+ * Empty trash — permanently delete all trashed conversations
+ */
+export async function emptyTrash(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .delete(conversations)
+    .where(
+      and(
+        eq(conversations.userId, userId),
+        isNotNull(conversations.trashedAt)
+      )
+    )
+    .returning({ id: conversations.id });
+
+  return result.length;
+}
+
+/**
+ * Auto-purge conversations trashed more than 30 days ago
+ */
+export async function purgeOldTrash(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const result = await db
+    .delete(conversations)
+    .where(lt(conversations.trashedAt, thirtyDaysAgo))
+    .returning({ id: conversations.id });
+
+  return result.length;
+}
+
+/**
+ * Soft-delete empty conversations (0 messages) for a user
+ */
+export async function deleteEmptyConversations(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .update(conversations)
+    .set({ trashedAt: new Date() })
+    .where(
+      and(
+        eq(conversations.userId, userId),
+        eq(conversations.messageCount, 0),
+        isNull(conversations.trashedAt)
+      )
+    )
+    .returning({ id: conversations.id });
+
+  return result.length;
 }
 
 /**
@@ -347,9 +443,23 @@ export async function upsertEntityMemory(data: {
   entityName: string;
   facts: string[];
   sourceConversationId?: number;
+  projectId?: string | null;
 }): Promise<EntityMemory> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // If projectId not provided but sourceConversationId exists, look it up
+  let projectId = data.projectId ?? null;
+  if (!projectId && data.sourceConversationId) {
+    try {
+      const [conv] = await db
+        .select({ projectId: conversations.projectId })
+        .from(conversations)
+        .where(eq(conversations.id, data.sourceConversationId))
+        .limit(1);
+      projectId = conv?.projectId ?? null;
+    } catch {}
+  }
 
   // Try to find existing memory
   const [existing] = await db
@@ -375,6 +485,7 @@ export async function upsertEntityMemory(data: {
         reinforcementCount: sql`${entityMemories.reinforcementCount} + 1`,
         lastAccessedAt: new Date(),
         updatedAt: new Date(),
+        ...(projectId && !existing.projectId ? { projectId } : {}),
       })
       .where(eq(entityMemories.id, existing.id));
 
@@ -390,6 +501,7 @@ export async function upsertEntityMemory(data: {
       entityName: data.entityName,
       facts: data.facts,
       sourceConversationId: data.sourceConversationId,
+      projectId: projectId ?? undefined,
     })
     .returning();
 

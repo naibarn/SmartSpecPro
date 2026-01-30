@@ -21,18 +21,18 @@ from app.models.user import User
 
 logger = structlog.get_logger()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing — delegate to unified module
+from app.core.security import pwd_context
 
 # HTTP Bearer token
 security = HTTPBearer()
 
-# JWT settings
+# JWT settings — sourced from config (no hardcoded fallbacks)
 SECRET_KEY = settings.SECRET_KEY
-JWT_SECRET_KEY = getattr(settings, 'JWT_SECRET', settings.SECRET_KEY)  # Use JWT_SECRET, not JWT_SECRET_KEY
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = getattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES', 1440)
-REFRESH_TOKEN_EXPIRE_DAYS = 30
+JWT_SECRET_KEY = settings.JWT_SECRET
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES  # no 1440 fallback
+REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

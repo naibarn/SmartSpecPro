@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,9 @@ import {
   ToggleLeft,
   Archive,
   MessageSquarePlus,
+  FileText,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -116,6 +119,8 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
   }, []);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [memoryToDelete, setMemoryToDelete] = useState<number | null>(null);
+  const [expandedMemoryId, setExpandedMemoryId] = useState<number | null>(null);
+  const [controlsCollapsed, setControlsCollapsed] = useState(false);
 
   // Form state for adding new memory
   const [newMemory, setNewMemory] = useState({
@@ -127,6 +132,19 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
 
   const utils = trpc.useUtils();
 
+  // Invalidate all memory data when conversation changes (new chat, switch chat)
+  const prevConversationId = useRef(conversationId);
+  useEffect(() => {
+    if (prevConversationId.current !== conversationId) {
+      prevConversationId.current = conversationId;
+      utils.memory.getEntityMemories.invalidate();
+      utils.memory.getSummaries.invalidate();
+      if (conversationId) {
+        utils.chat.getConversation.invalidate({ id: conversationId });
+      }
+    }
+  }, [conversationId, utils]);
+
   // Fetch conversation details for projectId and memoryMode
   const { data: conversation } = trpc.chat.getConversation.useQuery(
     { id: conversationId! },
@@ -137,11 +155,19 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
   const [editingProjectId, setEditingProjectId] = useState(false);
   const [projectIdInput, setProjectIdInput] = useState("");
 
-  // Fetch memories
-  const { data: memories, isLoading } = trpc.memory.getEntityMemories.useQuery({
+  // Fetch memories — scoped by project when conversation has a projectId
+  // Don't fetch memories until a conversation exists (new chat = no memories shown)
+  const currentProjectId = (conversation as any)?.projectId || "";
+  const hasProject = !!currentProjectId;
+  const { data: rawMemories, isLoading } = trpc.memory.getEntityMemories.useQuery({
     entityType: selectedType === "all" ? undefined : selectedType,
     limit: 50,
+    projectId: currentProjectId || null,
+  }, {
+    enabled: !!conversationId && hasProject,
   });
+  // Only show memories when conversation has a project — no project = empty panel
+  const memories = (conversationId && hasProject) ? rawMemories : undefined;
 
   // Mutations
   const addMemoryMutation = trpc.memory.upsertEntityMemory.useMutation({
@@ -170,6 +196,12 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
 
   const compactMutation = trpc.memory.compactConversation.useMutation();
   const clearOldMutation = trpc.memory.clearOldMemories.useMutation();
+
+  // Fetch summaries for current conversation
+  const { data: summaries } = trpc.memory.getSummaries.useQuery(
+    { conversationId: conversationId! },
+    { enabled: !!conversationId }
+  );
 
   const handleAddMemory = () => {
     if (!newMemory.entityName.trim() || !newMemory.fact.trim()) return;
@@ -220,7 +252,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
       if (result.compacted) {
         toast.success(`Compacted: ${result.messageCount} messages summarized`);
       } else {
-        toast.info("ข้อความยังไม่เพียงพอสำหรับการ compact (ต้องมีมากกว่า 5 ข้อความ)");
+        toast.info("Not enough messages to compact (requires more than 5 messages)");
       }
     } catch {
       toast.error("Failed to compact conversation");
@@ -249,7 +281,6 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
   };
 
   const currentMemoryMode = (conversation as any)?.memoryMode || "full";
-  const currentProjectId = (conversation as any)?.projectId || "";
 
   return (
     <Card className="h-full flex flex-col">
@@ -379,8 +410,21 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
         </CardDescription>
       </CardHeader>
 
-      {/* Project & Controls Section */}
+      {/* Collapsible Controls Toggle */}
       {conversationId && (
+        <div className="px-4 pb-1">
+          <button
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground w-full"
+            onClick={() => setControlsCollapsed(!controlsCollapsed)}
+          >
+            {controlsCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+            {controlsCollapsed ? "Show controls" : "Hide controls"}
+          </button>
+        </div>
+      )}
+
+      {/* Project & Controls Section */}
+      {conversationId && !controlsCollapsed && (
         <div className="px-4 pb-3 space-y-3">
           {/* Project ID */}
           <div className="rounded-lg border p-2.5 space-y-2">
@@ -485,6 +529,28 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
         </div>
       )}
 
+      {/* Summaries Section */}
+      {conversationId && !controlsCollapsed && summaries && summaries.length > 0 && (
+        <div className="px-4 pb-3">
+          <div className="rounded-lg border p-2.5 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <FileText className="h-3.5 w-3.5" />
+              Summaries ({summaries.length})
+            </div>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {summaries.map((s) => (
+                <div key={s.id} className="text-xs text-muted-foreground bg-muted/50 rounded p-1.5">
+                  <span className="text-foreground/70">{s.summary.slice(0, 150)}{s.summary.length > 150 ? "..." : ""}</span>
+                  <div className="mt-1 text-[10px] opacity-60">
+                    {s.messageCount} messages
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 pb-3">
         <div className="flex gap-1.5 flex-wrap">
           <Button
@@ -559,15 +625,25 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
                       </Button>
                     </div>
                     <div className="mt-2 space-y-1">
-                      {memory.facts.slice(0, 3).map((fact, i) => (
+                      {(expandedMemoryId === memory.id
+                        ? memory.facts
+                        : memory.facts.slice(0, 3)
+                      ).map((fact, i) => (
                         <p key={i} className="text-sm text-muted-foreground">
                           • {fact}
                         </p>
                       ))}
                       {memory.facts.length > 3 && (
-                        <p className="text-xs text-muted-foreground">
-                          +{memory.facts.length - 3} more facts
-                        </p>
+                        <button
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => setExpandedMemoryId(
+                            expandedMemoryId === memory.id ? null : memory.id
+                          )}
+                        >
+                          {expandedMemoryId === memory.id
+                            ? "Show less"
+                            : `+${memory.facts.length - 3} more facts`}
+                        </button>
                       )}
                     </div>
                     <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">

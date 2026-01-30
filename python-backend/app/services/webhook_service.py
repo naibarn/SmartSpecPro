@@ -3,13 +3,50 @@ Webhook Service for Media Generation Callbacks
 Sends notifications when tasks complete/fail
 """
 
+import ipaddress
+import socket
 import httpx
 import structlog
 from typing import Optional, Dict, Any
+from urllib.parse import urlparse
 from app.models.media_task import MediaTask, TaskStatus
 from datetime import datetime
 
 logger = structlog.get_logger()
+
+
+# --- SSRF protection ---
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),  # link-local / cloud metadata
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _is_safe_webhook_url(url: str) -> bool:
+    """Return False if URL targets a private/internal network (SSRF protection)."""
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        return False
+    # Block non-HTTPS in production
+    if parsed.scheme != "https":
+        logger.warning("webhook_non_https", url=url)
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+        for _family, _type, _proto, _canonname, sockaddr in infos:
+            ip = ipaddress.ip_address(sockaddr[0])
+            for net in _BLOCKED_NETWORKS:
+                if ip in net:
+                    logger.warning("ssrf_blocked_webhook", url=url, resolved_ip=str(ip))
+                    return False
+    except (socket.gaierror, ValueError):
+        return False  # unresolvable → block
+    return True
 
 
 class WebhookService:
@@ -53,6 +90,11 @@ class WebhookService:
                 "completed_at": task.completed_at.isoformat() if task.completed_at else None,
             }
         }
+
+        # SSRF protection — block requests to internal networks
+        if not _is_safe_webhook_url(webhook_url):
+            logger.error("webhook_ssrf_blocked", webhook_url=webhook_url, task_id=task.id)
+            return False
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             for attempt in range(retry_count):

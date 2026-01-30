@@ -159,7 +159,7 @@ export default function Dashboard() {
                   {[
                     { label: 'Tenants', icon: Building2, path: '/admin/tenants' },
                     { label: 'Services', icon: Server, path: '/admin/services' },
-                    { label: 'Settings', icon: Activity, path: '/admin/settings' },
+                    { label: 'Admin Settings', icon: Settings, path: '/admin/settings' },
                     { label: 'Users', icon: Users, path: '/admin/users' },
                     { label: 'Packages', icon: Package, path: '/admin/packages' },
                     { label: 'LLM Providers', icon: Brain, path: '/admin/llm-providers' },
@@ -273,6 +273,7 @@ export default function Dashboard() {
                   { label: 'AI Models', icon: Sparkles, path: '/admin/media-models' },
                   { label: 'Skills', icon: Wand2, path: '/admin/skills' },
                   { label: 'Storage (R2/S3)', icon: Cloud, path: '/admin/storage-settings' },
+                  { label: 'Admin Settings', icon: Settings, path: '/admin/settings' },
                 ].map((item) => (
                   <button
                     key={item.label}
@@ -327,6 +328,13 @@ export default function Dashboard() {
                 >
                   <PenLine className="w-4 h-4 flex-shrink-0" />
                   <span className="font-medium truncate">Manage Blog</span>
+                </button>
+                <button
+                  onClick={() => setLocation('/admin/settings')}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all text-gray-600 hover:bg-gray-100 text-sm"
+                >
+                  <FileText className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium truncate">Invoice Settings</span>
                 </button>
               </div>
             </>

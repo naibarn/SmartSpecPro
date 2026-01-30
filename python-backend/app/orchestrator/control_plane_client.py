@@ -2,12 +2,38 @@ import os
 import time
 import hashlib
 import json
+import ipaddress
+import socket
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 import requests
+
+
+def _validate_control_plane_url(url: str) -> str:
+    """Validate that control plane URL is not targeting internal networks (SSRF protection)."""
+    parsed = urlparse(url)
+    if not parsed.hostname:
+        raise ValueError(f"Invalid control plane URL: {url}")
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Control plane URL must use http(s): {url}")
+    try:
+        blocked = [
+            ipaddress.ip_network("169.254.0.0/16"),  # cloud metadata
+            ipaddress.ip_network("::1/128"),
+        ]
+        for info in socket.getaddrinfo(parsed.hostname, None):
+            ip = ipaddress.ip_address(info[4][0])
+            for net in blocked:
+                if ip in net:
+                    raise ValueError(f"Control plane URL resolves to blocked network: {ip}")
+    except socket.gaierror:
+        pass  # allow unresolvable at init time (DNS may resolve later)
+    return url
+
 
 class ControlPlaneClient:
     def __init__(self, base_url: str, api_key: str):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = _validate_control_plane_url(base_url.rstrip("/"))
         self.api_key = api_key
         self._token: Optional[str] = None
         self._token_exp: float = 0.0

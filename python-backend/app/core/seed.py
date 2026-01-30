@@ -12,9 +12,12 @@ from app.core.auth import get_password_hash
 from app.models.user import User, Role, Plan
 
 
-# Default admin credentials - CHANGE THESE IN PRODUCTION!
-DEFAULT_ADMIN_EMAIL = "admin@smartspec.pro"
-DEFAULT_ADMIN_PASSWORD = "Admin@123!"  # Meets password requirements
+# Admin credentials — loaded from environment variables (no hardcoded defaults)
+import os
+import secrets as _secrets
+
+DEFAULT_ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@smartspec.pro")
+DEFAULT_ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")  # MUST be set via env
 DEFAULT_ADMIN_NAME = "System Admin"
 DEFAULT_ADMIN_CREDITS = 100000  # 100k credits for admin
 
@@ -39,6 +42,13 @@ async def seed_admin_user(db: AsyncSession) -> bool:
         print(f"[Seed] Admin user already exists: {existing_admin.email}")
         return False
 
+    # Resolve password: env var, or generate a secure random one
+    admin_password = DEFAULT_ADMIN_PASSWORD
+    generated = False
+    if not admin_password:
+        admin_password = _secrets.token_urlsafe(16)
+        generated = True
+
     # Check if admin email already exists as regular user
     result = await db.execute(
         select(User).where(User.email == DEFAULT_ADMIN_EMAIL).limit(1)
@@ -50,15 +60,18 @@ async def seed_admin_user(db: AsyncSession) -> bool:
         existing_user.role = Role.admin
         existing_user.credits = DEFAULT_ADMIN_CREDITS
         existing_user.plan = Plan.enterprise
-        existing_user.password = get_password_hash(DEFAULT_ADMIN_PASSWORD)
+        existing_user.password = get_password_hash(admin_password)
         await db.commit()
         print(f"[Seed] Upgraded existing user to admin: {existing_user.email}")
+        if generated:
+            print(f"       Generated password: {admin_password}")
+            print(f"       CHANGE PASSWORD AFTER FIRST LOGIN!")
         return True
 
     # Create new admin user
     admin_user = User(
         email=DEFAULT_ADMIN_EMAIL,
-        password=get_password_hash(DEFAULT_ADMIN_PASSWORD),
+        password=get_password_hash(admin_password),
         name=DEFAULT_ADMIN_NAME,
         role=Role.admin,
         plan=Plan.enterprise,
@@ -74,9 +87,12 @@ async def seed_admin_user(db: AsyncSession) -> bool:
 
     print(f"[Seed] Created default admin user:")
     print(f"       Email: {DEFAULT_ADMIN_EMAIL}")
-    print(f"       Password: {DEFAULT_ADMIN_PASSWORD}")
+    if generated:
+        print(f"       Generated password: {admin_password}")
+    else:
+        print(f"       Password: (set via ADMIN_PASSWORD env var)")
     print(f"       Credits: {DEFAULT_ADMIN_CREDITS}")
-    print(f"       ⚠️  CHANGE PASSWORD AFTER FIRST LOGIN!")
+    print(f"       CHANGE PASSWORD AFTER FIRST LOGIN!")
 
     return True
 

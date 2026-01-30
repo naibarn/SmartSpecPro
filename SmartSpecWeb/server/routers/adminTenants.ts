@@ -71,7 +71,7 @@ export function registerAdminTenantsRoutes(app: Express) {
   // Create tenant
   app.post('/api/admin/tenants', requireAdmin, async (req, res) => {
     try {
-      const { slug, name, primaryDomain, domains, logoUrl, faviconUrl, isActive, themeConfig, seoConfig, settings } = req.body;
+      const { slug, name, primaryDomain, domains, logoUrl, websiteLogoUrl, faviconUrl, isActive, themeConfig, seoConfig, settings } = req.body;
 
       if (!slug || !name || !primaryDomain) {
         return res.status(400).json({ error: 'Missing required fields: slug, name, primaryDomain' });
@@ -97,6 +97,7 @@ export function registerAdminTenantsRoutes(app: Express) {
         primaryDomain,
         domains: domains || [],
         logoUrl,
+        websiteLogoUrl,
         faviconUrl,
         isActive: isActive !== undefined ? isActive : true,
         themeConfig: themeConfig || {},
@@ -123,7 +124,7 @@ export function registerAdminTenantsRoutes(app: Express) {
   app.put('/api/admin/tenants/:id', requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const { slug, name, primaryDomain, domains, logoUrl, faviconUrl, isActive, themeConfig, seoConfig, settings } = req.body;
+      const { slug, name, primaryDomain, domains, logoUrl, websiteLogoUrl, faviconUrl, isActive, themeConfig, seoConfig, settings } = req.body;
 
       const dbInstance = await db.instance;
 
@@ -134,6 +135,7 @@ export function registerAdminTenantsRoutes(app: Express) {
           primaryDomain,
           domains,
           logoUrl,
+          websiteLogoUrl,
           faviconUrl,
           isActive,
           themeConfig,
@@ -183,8 +185,8 @@ export function registerAdminTenantsRoutes(app: Express) {
       const { type, fileBase64, fileName, fileType } = req.body;
 
       // Validate upload type
-      if (!['logo', 'favicon'].includes(type)) {
-        return res.status(400).json({ error: 'Type must be "logo" or "favicon"' });
+      if (!['logo', 'website-logo', 'favicon'].includes(type)) {
+        return res.status(400).json({ error: 'Type must be "logo", "website-logo", or "favicon"' });
       }
 
       // Validate file data
@@ -216,11 +218,11 @@ export function registerAdminTenantsRoutes(app: Express) {
       const base64Data = parts.length === 2 ? parts[1] : fileBase64;
       const buffer = Buffer.from(base64Data, 'base64');
 
-      // Validate file size (max 5MB for logo, 1MB for favicon)
-      const maxSize = type === 'favicon' ? 1 * 1024 * 1024 : 5 * 1024 * 1024;
+      // Validate file size (max 10MB for website-logo, 5MB for logo, 1MB for favicon)
+      const maxSize = type === 'favicon' ? 1 * 1024 * 1024 : type === 'website-logo' ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
       if (buffer.length > maxSize) {
         return res.status(400).json({
-          error: `File too large. Max size: ${type === 'favicon' ? '1MB' : '5MB'}`
+          error: `File too large. Max size: ${type === 'favicon' ? '1MB' : type === 'website-logo' ? '10MB' : '5MB'}`
         });
       }
 
@@ -228,7 +230,7 @@ export function registerAdminTenantsRoutes(app: Express) {
       const { url } = await storagePut(fileKey, buffer, fileType);
 
       // Update tenant with new URL
-      const updateField = type === 'logo' ? { logoUrl: url } : { faviconUrl: url };
+      const updateField = type === 'logo' ? { logoUrl: url } : type === 'website-logo' ? { websiteLogoUrl: url } : { faviconUrl: url };
       await dbInstance.update(tenants)
         .set({
           ...updateField,

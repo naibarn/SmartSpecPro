@@ -660,6 +660,84 @@ export function registerLLMRoutes(app: Express) {
     }
   );
 
+  // Speech-to-Text endpoint
+  app.post(
+    "/api/stt/transcribe",
+    llmLimiter,
+    async (req: Request, res: Response) => {
+      const check = await guardWithCredits(req, res);
+      if (!check.ok) return;
+
+      try {
+        const { audioBase64, mimeType = "audio/webm", language } = req.body || {};
+        if (!audioBase64 || typeof audioBase64 !== "string") {
+          res.status(400).json({ error: "audioBase64 is required" });
+          return;
+        }
+
+        const audioBuffer = Buffer.from(audioBase64, "base64");
+        const sizeMB = audioBuffer.length / (1024 * 1024);
+        if (sizeMB > 16) {
+          res.status(400).json({ error: "Audio exceeds 16MB limit" });
+          return;
+        }
+
+        // Forward to Whisper API directly
+        const { ENV } = await import("./env");
+        if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
+          res.status(500).json({ error: "STT service not configured" });
+          return;
+        }
+
+        const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "mp4" : mimeType.includes("wav") ? "wav" : "webm";
+        const formData = new FormData();
+        const audioBlob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
+        formData.append("file", audioBlob, `audio.${ext}`);
+        formData.append("model", "whisper-1");
+        formData.append("response_format", "verbose_json");
+        if (language) formData.append("language", language);
+
+        const baseUrl = ENV.forgeApiUrl.endsWith("/") ? ENV.forgeApiUrl : `${ENV.forgeApiUrl}/`;
+        const fullUrl = new URL("v1/audio/transcriptions", baseUrl).toString();
+
+        const whisperRes = await fetch(fullUrl, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${ENV.forgeApiKey}`,
+            "Accept-Encoding": "identity",
+          },
+          body: formData,
+        });
+
+        if (!whisperRes.ok) {
+          const errText = await whisperRes.text().catch(() => "");
+          res.status(500).json({ error: "Transcription failed", details: errText });
+          return;
+        }
+
+        const result = await whisperRes.json() as { text: string; language: string; duration: number };
+
+        // Calculate credits: Whisper costs ~$0.006/min → credits = ceil(durationMin * 6)
+        const durationMin = (result.duration || 0) / 60;
+        const creditsUsed = Math.max(1, Math.ceil(durationMin * 6));
+
+        // Deduct credits
+        const { deductCredits } = await import("../services/creditService");
+        await deductCredits(check.userId, creditsUsed, `STT transcription (${Math.round(result.duration || 0)}s)`);
+
+        res.json({
+          text: result.text,
+          language: result.language,
+          duration: result.duration,
+          creditsUsed,
+        });
+      } catch (err: any) {
+        debugError("STT", "Transcription error", err);
+        res.status(500).json({ error: err?.message || "STT failed" });
+      }
+    }
+  );
+
   // Test endpoint for debugging
   app.get("/api/chat/test", (_req: Request, res: Response) => {
     debugLog("Chat API", "test endpoint hit");
@@ -831,6 +909,306 @@ export function registerLLMRoutes(app: Express) {
         debugError("Chat API", "Save failed", err);
         res.status(500).json({ error: { message: err?.message || "Failed to save message" } });
       }
+    }
+  );
+
+  // ─── Brainstorm endpoint ───────────────────────────────────────────
+  // Multi-round debate between two LLM models with skill-aware context
+  app.post(
+    "/api/llm/brainstorm",
+    llmLimiter,
+    enforceJsonBodyMaxBytes(MAX_LLM_BODY_BYTES * 2), // Allow larger payload for multi-round context
+    async (req: Request, res: Response) => {
+      const check = await guardWithCredits(req, res);
+      if (!check.ok) return;
+
+      const { userId } = check;
+      const {
+        messages: contextMessages = [],
+        modelA,
+        modelB,
+        conversationId,
+        maxRounds = 3,
+        userMessage,
+      } = req.body;
+
+      if (!modelA || !modelB || !userMessage) {
+        return res.status(400).json({ error: { message: "modelA, modelB, and userMessage are required" } });
+      }
+
+      const HARD_LIMIT = Math.min(Math.max(1, maxRounds), 6);
+
+      const provider = await getActiveLlmProvider();
+      if (!provider) {
+        return res.status(500).json({ error: { message: "No LLM provider configured" } });
+      }
+
+      const url = resolveChatUrl(provider.baseUrl);
+      const controller = new AbortController();
+      req.on("close", () => controller.abort());
+
+      // Setup SSE
+      res.status(200);
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+
+      // Helper: stream a single model turn and return full content + usage
+      async function streamModelTurn(
+        model: string,
+        msgs: Array<{ role: string; content: string }>,
+        meta: { round: number; role: string },
+      ): Promise<{ content: string; inputTokens: number; outputTokens: number }> {
+        // Send turn start
+        res.write(`event: brainstorm_turn\ndata: ${JSON.stringify({ round: meta.round, role: meta.role, model, status: "start" })}\n\n`);
+
+        const upstream = await fetch(url, {
+          method: "POST",
+          headers: upstreamHeaders(provider!.apiKey),
+          body: JSON.stringify({ model, messages: msgs, stream: true }),
+          signal: controller.signal,
+        });
+
+        if (!upstream.ok || !upstream.body) {
+          const errText = await upstream.text().catch(() => "LLM request failed");
+          throw new Error(`Model ${model} failed: ${errText}`);
+        }
+
+        const reader = upstream.body.getReader();
+        let fullContent = "";
+        let accData = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              const chunkStr = Buffer.from(value).toString();
+              accData += chunkStr;
+
+              const lines = chunkStr.split("\n");
+              for (const line of lines) {
+                if (line.startsWith("data:")) {
+                  const d = line.slice("data:".length).trim();
+                  if (d && d !== "[DONE]") {
+                    try {
+                      const j = JSON.parse(d);
+                      const delta = j?.choices?.[0]?.delta?.content;
+                      if (typeof delta === "string") {
+                        fullContent += delta;
+                        res.write(`event: brainstorm_chunk\ndata: ${JSON.stringify({ round: meta.round, role: meta.role, model, content: delta })}\n\n`);
+                      }
+                    } catch {}
+                  }
+                }
+              }
+            }
+          }
+        } finally {
+          try { reader.releaseLock(); } catch {}
+        }
+
+        // Parse usage from the last SSE chunk that contains it
+        let inputTokens = 0, outputTokens = 0;
+        try {
+          // Look for usage in each SSE data line (last occurrence wins)
+          const dataLines = accData.split("\n").filter(l => l.startsWith("data:"));
+          for (const line of dataLines) {
+            const raw = line.slice("data:".length).trim();
+            if (raw && raw !== "[DONE]") {
+              try {
+                const parsed = JSON.parse(raw);
+                if (parsed?.usage) {
+                  inputTokens = Math.round(parsed.usage.prompt_tokens || 0);
+                  outputTokens = Math.round(parsed.usage.completion_tokens || parsed.usage.total_tokens || 0);
+                }
+              } catch {}
+            }
+          }
+          if (outputTokens === 0) {
+            outputTokens = Math.max(50, Math.ceil(fullContent.length / 4));
+          }
+        } catch {
+          outputTokens = Math.max(50, Math.ceil(fullContent.length / 4));
+        }
+
+        // Send turn end
+        res.write(`event: brainstorm_turn\ndata: ${JSON.stringify({ round: meta.round, role: meta.role, model, status: "end" })}\n\n`);
+
+        return { content: fullContent, inputTokens, outputTokens };
+      }
+
+      try {
+        const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
+        const { calculateCreditsForLLM } = await import("../services/creditService");
+        const { detectSkill } = await import("../services/skillDetector");
+
+        // Skill-aware context injection
+        let skillContext = "";
+        let detectedSkillSlug = "";
+        let detectedSkillName = "";
+        try {
+          const skillResult = await detectSkill(userMessage);
+          if (skillResult.detected && skillResult.skill && skillResult.confidence >= 0.5) {
+            detectedSkillSlug = skillResult.skill.slug;
+            detectedSkillName = skillResult.skill.name;
+
+            // Load skill knowledge from DB
+            const { skills: skillsTable } = await import("../../drizzle/schema");
+            const [skillRow] = await db
+              .select({ knowledgebase: skillsTable.knowledgebase, systemPrompt: skillsTable.systemPrompt })
+              .from(skillsTable)
+              .where(eq(skillsTable.slug, detectedSkillSlug))
+              .limit(1);
+
+            if (skillRow?.knowledgebase || skillRow?.systemPrompt) {
+              skillContext = [
+                skillRow.systemPrompt ? `[SKILL EXPERTISE: ${detectedSkillName}]\n${skillRow.systemPrompt}` : "",
+                skillRow.knowledgebase ? `[DOMAIN KNOWLEDGE]\n${skillRow.knowledgebase.substring(0, 8000)}` : "",
+              ].filter(Boolean).join("\n\n");
+
+              res.write(`event: brainstorm_skill\ndata: ${JSON.stringify({ skillSlug: detectedSkillSlug, skillName: detectedSkillName })}\n\n`);
+            }
+          }
+        } catch (err) {
+          debugLog("Brainstorm", "Skill detection failed (non-fatal)", err);
+        }
+
+        // System prompts
+        const SYSTEM_A = `You are Model A in a collaborative brainstorm with another AI model.
+Round 1: Provide your thorough initial analysis of the user's question.
+Rounds 2+: Read Model B's response carefully. Acknowledge valid points, challenge weak ones, and add new insights. Do NOT repeat what you already said.
+Be concise (200-400 words per round). Use structured formatting (bullets, headers).${skillContext ? `\n\n${skillContext}` : ""}`;
+
+        const SYSTEM_B = `You are Model B in a collaborative brainstorm with another AI model.
+Read Model A's response carefully before responding.
+Offer different angles, identify blind spots, play devil's advocate where appropriate.
+Agree and reinforce strong points, but always add something new.
+Be concise (200-400 words per round). Use structured formatting (bullets, headers).${skillContext ? `\n\n${skillContext}` : ""}`;
+
+        const SUMMARY_PROMPT = `You have completed a multi-round brainstorm debate. Now produce a final synthesized answer.
+Integrate the strongest points from ALL rounds of both Model A and Model B.
+Resolve any contradictions by explaining the nuance.
+Structure as: Key Findings → Detailed Analysis → Recommendations (if applicable).
+Start with "## Brainstorm Summary"
+Be comprehensive but avoid redundancy.`;
+
+        let totalCredits = 0;
+        const debateHistory: Array<{ role: string; content: string }> = [];
+        const savedMessageIds: number[] = [];
+
+        // Verify conversation ownership
+        const conversation = conversationId ? await getConversationById(conversationId, userId) : null;
+
+        for (let round = 1; round <= HARD_LIMIT; round++) {
+          // ── Model A turn ──
+          const msgsA = [
+            { role: "system", content: SYSTEM_A },
+            ...contextMessages,
+            { role: "user", content: userMessage },
+            ...debateHistory,
+            ...(round > 1 ? [{ role: "user", content: `Round ${round}: Build on or challenge the previous points. Add new insights.` }] : []),
+          ];
+
+          const resultA = await streamModelTurn(modelA, msgsA, { round, role: "model_a" });
+
+          // Deduct credits
+          await deductCreditsForUsage(userId, {
+            userId, openId: null, model: modelA,
+            promptTokens: resultA.inputTokens, completionTokens: resultA.outputTokens,
+            totalTokens: resultA.inputTokens + resultA.outputTokens,
+          });
+          const creditsA = calculateCreditsForLLM(resultA.inputTokens, resultA.outputTokens, modelA);
+          totalCredits += creditsA;
+          res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round, role: "model_a", credits: creditsA, totalCredits })}\n\n`);
+
+          debateHistory.push({ role: "assistant", content: `[Model A - Round ${round}]: ${resultA.content}` });
+
+          // Save message
+          if (conversation) {
+            const msg = await createMessage({
+              conversationId, role: "assistant", content: resultA.content,
+              inputTokens: resultA.inputTokens, outputTokens: resultA.outputTokens,
+              creditsUsed: creditsA.toString(), modelUsed: modelA, skillUsed: "brainstorm",
+              skillArgs: { brainstormRound: round, brainstormRole: "model_a" } as any,
+            });
+            savedMessageIds.push(msg.id);
+          }
+
+          // ── Model B turn ──
+          const msgsB = [
+            { role: "system", content: SYSTEM_B },
+            ...contextMessages,
+            { role: "user", content: userMessage },
+            ...debateHistory,
+          ];
+
+          const resultB = await streamModelTurn(modelB, msgsB, { round, role: "model_b" });
+
+          await deductCreditsForUsage(userId, {
+            userId, openId: null, model: modelB,
+            promptTokens: resultB.inputTokens, completionTokens: resultB.outputTokens,
+            totalTokens: resultB.inputTokens + resultB.outputTokens,
+          });
+          const creditsB = calculateCreditsForLLM(resultB.inputTokens, resultB.outputTokens, modelB);
+          totalCredits += creditsB;
+          res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round, role: "model_b", credits: creditsB, totalCredits })}\n\n`);
+
+          debateHistory.push({ role: "assistant", content: `[Model B - Round ${round}]: ${resultB.content}` });
+
+          if (conversation) {
+            const msg = await createMessage({
+              conversationId, role: "assistant", content: resultB.content,
+              inputTokens: resultB.inputTokens, outputTokens: resultB.outputTokens,
+              creditsUsed: creditsB.toString(), modelUsed: modelB, skillUsed: "brainstorm",
+              skillArgs: { brainstormRound: round, brainstormRole: "model_b" } as any,
+            });
+            savedMessageIds.push(msg.id);
+          }
+        }
+
+        // ── Final Summary ──
+        const summaryMsgs = [
+          { role: "system", content: SUMMARY_PROMPT },
+          ...contextMessages,
+          { role: "user", content: userMessage },
+          ...debateHistory,
+        ];
+
+        const summaryResult = await streamModelTurn(modelA, summaryMsgs, { round: HARD_LIMIT + 1, role: "summary" });
+
+        await deductCreditsForUsage(userId, {
+          userId, openId: null, model: modelA,
+          promptTokens: summaryResult.inputTokens, completionTokens: summaryResult.outputTokens,
+          totalTokens: summaryResult.inputTokens + summaryResult.outputTokens,
+        });
+        const creditsSummary = calculateCreditsForLLM(summaryResult.inputTokens, summaryResult.outputTokens, modelA);
+        totalCredits += creditsSummary;
+        res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round: 0, role: "summary", credits: creditsSummary, totalCredits })}\n\n`);
+
+        if (conversation) {
+          const msg = await createMessage({
+            conversationId, role: "assistant", content: summaryResult.content,
+            inputTokens: summaryResult.inputTokens, outputTokens: summaryResult.outputTokens,
+            creditsUsed: creditsSummary.toString(), modelUsed: modelA, skillUsed: "brainstorm",
+            skillArgs: { brainstormRound: 0, brainstormRole: "summary" } as any,
+          });
+          savedMessageIds.push(msg.id);
+          await updateConversationCredits(conversationId, totalCredits);
+        }
+
+        // Done event
+        res.write(`event: brainstorm_done\ndata: ${JSON.stringify({
+          totalCredits, totalRounds: HARD_LIMIT, messageIds: savedMessageIds,
+          skillUsed: detectedSkillSlug || null,
+        })}\n\n`);
+      } catch (err: any) {
+        debugError("Brainstorm", "Error", err);
+        res.write(`event: brainstorm_error\ndata: ${JSON.stringify({ error: err?.message || "Brainstorm failed" })}\n\n`);
+      }
+
+      res.end();
     }
   );
 }

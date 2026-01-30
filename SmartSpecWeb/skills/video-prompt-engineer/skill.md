@@ -327,7 +327,7 @@ high_angle          - Looking down
   },
   "script": {
     "dialogue": "The best moments...",
-    "translation": "ช่วงเวลาที่ดีที่สุด..."
+    "translation": "The best moments..."
   },
   "technical_specs": {
     "camera": "35mm film camera",

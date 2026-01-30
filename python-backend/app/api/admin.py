@@ -394,16 +394,24 @@ async def ban_user(
             detail="Admin cannot ban themselves"
         )
 
-    # TODO: Implement ban functionality
-    # user.is_banned = True
-    # user.ban_reason = request.reason
-    # if request.duration_days:
-    #     user.banned_until = datetime.utcnow() + timedelta(days=request.duration_days)
-    # await db.commit()
-    
+    user.is_banned = True
+    user.ban_reason = request.reason
+    if request.duration_days:
+        user.banned_until = datetime.utcnow() + timedelta(days=request.duration_days)
+    else:
+        user.banned_until = None  # Permanent ban
+
+    await db.commit()
+
+    # Invalidate all user sessions
+    from app.services.auth_service import AuthService
+    auth_service = AuthService(db)
+    await auth_service.logout_all_sessions(request.user_id)
+
     return {
-        "message": "User ban feature not yet implemented",
-        "note": "This requires database schema changes (is_banned, banned_until, ban_reason fields)"
+        "message": f"User {user.email} has been banned",
+        "banned_until": user.banned_until.isoformat() if user.banned_until else "permanent",
+        "reason": user.ban_reason
     }
 
 

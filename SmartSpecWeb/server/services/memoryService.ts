@@ -6,7 +6,7 @@
  * 3. Entity Memory: Persistent facts about user/project
  */
 
-import { eq, desc, asc, and, sql, lt, gte, inArray } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, lt, gte, inArray, isNull } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   conversations,
@@ -337,11 +337,11 @@ export function extractEntitiesFromMessage(
     addMatch("project", projectMatch[1], `Project name: ${projectMatch[1]}`);
   }
 
-  // --- New types (EN + TH) ---
+  // --- New types ---
 
   // Decision patterns
   const decisionPatterns = [
-    /(?:we decided|I decided|decision:|decided to|the decision is|let's go with|เลือกใช้|ตัดสินใจ(?:ว่า|ให้)?)\s+(.+?)(?:\.|$)/gi,
+    /(?:we decided|I decided|decision:|decided to|the decision is|let's go with|chose to use|made the decision)\s+(.+?)(?:\.|$)/gi,
   ];
   for (const pattern of decisionPatterns) {
     let match;
@@ -352,7 +352,7 @@ export function extractEntitiesFromMessage(
 
   // Plan patterns
   const planPatterns = [
-    /(?:the plan is|we plan to|planning to|roadmap:|next steps:|milestone:|phase \d|แผน(?:งาน)?|แผนการ)\s+(.+?)(?:\.|$)/gi,
+    /(?:the plan is|we plan to|planning to|roadmap:|next steps:|milestone:|phase \d)\s+(.+?)(?:\.|$)/gi,
   ];
   for (const pattern of planPatterns) {
     let match;
@@ -363,7 +363,7 @@ export function extractEntitiesFromMessage(
 
   // Architecture patterns
   const architecturePatterns = [
-    /(?:architecture:|the architecture|system design|design pattern|โครงสร้าง(?:ระบบ)?|สถาปัตยกรรม)\s+(.+?)(?:\.|$)/gi,
+    /(?:architecture:|the architecture|system design|design pattern)\s+(.+?)(?:\.|$)/gi,
   ];
   for (const pattern of architecturePatterns) {
     let match;
@@ -385,7 +385,7 @@ export function extractEntitiesFromMessage(
 
   // Task patterns
   const taskPatterns = [
-    /(?:todo:|task:|action item:|need to|ต้อง(?:ทำ)?|งาน(?:ที่)?)\s+(.+?)(?:\.|$)/gi,
+    /(?:todo:|task:|action item:|need to)\s+(.+?)(?:\.|$)/gi,
   ];
   for (const pattern of taskPatterns) {
     let match;
@@ -396,7 +396,7 @@ export function extractEntitiesFromMessage(
 
   // Code knowledge patterns
   const codeKnowledgePatterns = [
-    /(?:note:|important:|remember:|จำไว้|หมายเหตุ|สำคัญ)\s+(.+?)(?:\.|$)/gi,
+    /(?:note:|important:|remember:)\s+(.+?)(?:\.|$)/gi,
   ];
   for (const pattern of codeKnowledgePatterns) {
     let match;
@@ -465,7 +465,8 @@ export async function upsertEntityMemory(
   facts: string[],
   sourceConversationId?: number,
   importance?: number,
-  source?: string
+  source?: string,
+  projectId?: string | null
 ): Promise<EntityMemory> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -483,6 +484,19 @@ export async function upsertEntityMemory(
   // If all facts were removed due to PII, don't create/update
   if (filteredFacts.length === 0) {
     throw new Error("All facts contained sensitive information and were filtered");
+  }
+
+  // Resolve projectId from conversation if not provided
+  let resolvedProjectId = projectId ?? null;
+  if (!resolvedProjectId && sourceConversationId) {
+    try {
+      const [conv] = await db
+        .select({ projectId: conversations.projectId })
+        .from(conversations)
+        .where(eq(conversations.id, sourceConversationId))
+        .limit(1);
+      resolvedProjectId = conv?.projectId ?? null;
+    } catch {}
   }
 
   // Check if entity exists
@@ -510,6 +524,8 @@ export async function upsertEntityMemory(
         reinforcementCount: sql`${entityMemories.reinforcementCount} + 1`,
         lastAccessedAt: new Date(),
         updatedAt: new Date(),
+        // Set projectId if existing memory has none and we now know the project
+        ...(resolvedProjectId && !existing.projectId ? { projectId: resolvedProjectId } : {}),
       })
       .where(eq(entityMemories.id, existing.id));
 
@@ -525,6 +541,7 @@ export async function upsertEntityMemory(
       entityName,
       facts: filteredFacts,
       sourceConversationId,
+      projectId: resolvedProjectId ?? undefined,
       importance: importance ?? IMPORTANCE_BY_TYPE[entityType] ?? 5,
       source: source ?? "auto",
     })
@@ -534,19 +551,37 @@ export async function upsertEntityMemory(
 }
 
 /**
- * Get entity memories for context building
+ * Get entity memories for context building.
+ * If projectId is provided: returns memories for that project + global (null projectId) memories.
+ * If projectId is null/undefined: returns only global (null projectId) memories.
  */
 export async function getEntityMemoriesForContext(
   userId: number,
-  limit: number = MAX_ENTITIES_IN_CONTEXT
+  limit: number = MAX_ENTITIES_IN_CONTEXT,
+  projectId?: string | null
 ): Promise<EntityMemory[]> {
   const db = await getDb();
   if (!db) return [];
 
+  const conditions = [eq(entityMemories.userId, userId)];
+
+  if (projectId) {
+    // Include project-specific + global memories
+    conditions.push(
+      or(
+        eq(entityMemories.projectId, projectId),
+        isNull(entityMemories.projectId)
+      )!
+    );
+  } else {
+    // No project — only global memories
+    conditions.push(isNull(entityMemories.projectId));
+  }
+
   return await db
     .select()
     .from(entityMemories)
-    .where(eq(entityMemories.userId, userId))
+    .where(and(...conditions))
     .orderBy(
       desc(entityMemories.importance),
       desc(entityMemories.reinforcementCount),
@@ -608,7 +643,7 @@ export async function buildChatContext(
   if (memoryMode !== "off") {
     // 1. Get entity memories (only in "full" mode)
     if (memoryMode === "full") {
-      const allEntities = await getEntityMemoriesForContext(userId, 50);
+      const allEntities = await getEntityMemoriesForContext(userId, 50, options?.projectId || null);
 
       // Separate rules from other entities
       const rules = allEntities.filter((e) => e.entityType === "rule");
@@ -788,6 +823,20 @@ export async function processConversationMemory(
     }
   }
 
+  // Look up conversation's projectId for scoping entity memories
+  let conversationProjectId: string | null = null;
+  try {
+    const db = await getDb();
+    if (db) {
+      const [conv] = await db
+        .select({ projectId: conversations.projectId })
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .limit(1);
+      conversationProjectId = conv?.projectId ?? null;
+    }
+  } catch {}
+
   // Extract entities from recent messages (both user and assistant)
   const recentMessages = await getBufferMessages(conversationId, 5);
   for (const msg of recentMessages) {
@@ -803,7 +852,8 @@ export async function processConversationMemory(
             [entity.fact],
             conversationId,
             entity.importance,
-            "auto"
+            "auto",
+            conversationProjectId
           );
           entitiesExtracted++;
         } else {

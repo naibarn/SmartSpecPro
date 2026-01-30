@@ -191,9 +191,25 @@ class AuthService:
         if not user:
             return None
         
+        # Refresh token rotation: blacklist the old refresh token
+        if jti:
+            add_to_blacklist(jti)
+            db_entry = await self.db.execute(select(TokenBlacklist).where(TokenBlacklist.jti == jti))
+            if db_entry.scalar_one_or_none() is None:
+                exp = payload.get("exp")
+                blacklist_entry = TokenBlacklist(
+                    jti=jti,
+                    user_id=user_id,
+                    token_type="refresh",
+                    expires_at=datetime.fromtimestamp(exp) if exp else datetime.utcnow() + timedelta(days=30),
+                    reason="token_rotation"
+                )
+                self.db.add(blacklist_entry)
+                await self.db.commit()
+
         # Create new token pair
         return self.create_token_pair(user_id, email)
-    
+
     # ============================================================
     # Logout
     # ============================================================
@@ -250,23 +266,23 @@ class AuthService:
     
     async def logout_all_sessions(self, user_id: str) -> int:
         """
-        Logout all sessions for a user
-        
-        This is a placeholder - in production, you'd need to track all active sessions
-        
+        Logout all sessions for a user by setting a "password_changed_at" marker
+        in Redis. Tokens issued before this timestamp are rejected.
+
         Args:
             user_id: User ID
-        
+
         Returns:
-            Number of sessions logged out
+            Number of sessions invalidated (1 = marker set)
         """
-        # In a real implementation, you'd:
-        # 1. Store all active sessions in Redis
-        # 2. Blacklist all JTIs for this user
-        # 3. Clear session storage
-        
-        # For now, just return 0 as we don't track sessions
-        return 0
+        from app.core.cache import cache_manager
+        import time
+
+        # Set a marker in Redis so that all tokens for this user issued
+        # before this timestamp are considered invalid.
+        marker_key = f"user_pw_changed:{user_id}"
+        await cache_manager.set(marker_key, int(time.time()), ttl=30 * 86400)  # 30 days
+        return 1
     
     # ============================================================
     # Password Reset
@@ -355,35 +371,39 @@ class AuthService:
         Returns:
             True if successful, False otherwise
         """
-        # Verify token
-        user_id = await self.verify_password_reset_token(token)
-        if not user_id:
-            return False
-        
-        # Get user
-        result = await self.db.execute(
-            select(User).where(User.id == user_id)
-        )
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            return False
-        
-        # Update password
-        user.hashed_password = get_password_hash(new_password)
-        
-        # Mark token as used
         import hashlib
+
+        # Hash the token to find the reset record
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        
+
+        # Use SELECT FOR UPDATE to prevent race condition (concurrent reset attempts)
         result = await self.db.execute(
-            select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+            select(PasswordResetToken)
+            .where(PasswordResetToken.token_hash == token_hash)
+            .with_for_update()
         )
         reset_token = result.scalar_one_or_none()
-        
-        if reset_token:
-            reset_token.used_at = datetime.utcnow()
-        
+
+        if not reset_token or not reset_token.is_valid():
+            return False
+
+        # Mark token as used immediately to prevent reuse
+        reset_token.used_at = datetime.utcnow()
+
+        user_id = reset_token.user_id
+
+        # Get user with lock
+        result = await self.db.execute(
+            select(User).where(User.id == user_id).with_for_update()
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return False
+
+        # Update password
+        user.hashed_password = get_password_hash(new_password)
+
         await self.db.commit()
         
         # Logout all sessions (invalidate all tokens)

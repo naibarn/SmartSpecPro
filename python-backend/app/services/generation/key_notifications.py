@@ -491,16 +491,40 @@ class KeyNotificationService:
         days_threshold: int = 7,
     ) -> List[tuple]:
         """Get keys expiring within threshold days."""
-        # TODO: Implement database query
-        return []
-    
+        from sqlalchemy import select, and_
+        threshold = datetime.utcnow() + timedelta(days=days_threshold)
+        result = await self.db.execute(
+            select(APIKeyV2).where(
+                and_(
+                    APIKeyV2.expires_at.isnot(None),
+                    APIKeyV2.expires_at <= threshold,
+                    APIKeyV2.expires_at > datetime.utcnow(),
+                    APIKeyV2.status == KeyStatus.active,
+                )
+            )
+        )
+        keys = result.scalars().all()
+        return [(k.id, k.user_id, k.name, k.expires_at) for k in keys]
+
     async def _get_grace_periods_ending_soon(
         self,
         hours_threshold: int = 4,
     ) -> List[tuple]:
         """Get grace periods ending within threshold hours."""
-        # TODO: Implement database query
-        return []
+        from sqlalchemy import select, and_
+        threshold = datetime.utcnow() + timedelta(hours=hours_threshold)
+        result = await self.db.execute(
+            select(APIKeyV2).where(
+                and_(
+                    APIKeyV2.status == KeyStatus.grace_period,
+                    APIKeyV2.grace_period_end.isnot(None),
+                    APIKeyV2.grace_period_end <= threshold,
+                    APIKeyV2.grace_period_end > datetime.utcnow(),
+                )
+            )
+        )
+        keys = result.scalars().all()
+        return [(k.id, k.user_id, k.name, k.grace_period_end) for k in keys]
     
     # =========================================================================
     # NOTIFICATION RETRIEVAL

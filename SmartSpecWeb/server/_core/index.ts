@@ -21,6 +21,7 @@ import { ENV } from "./env";
 import { debugError } from "./logger";
 import { getUploadsDir, useLocalStorage } from "../storage";
 import { initializeSkillRegistry } from "../services/skillRegistry";
+import { initializeScheduler } from "../services/scheduler";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,7 +139,13 @@ async function main() {
     await initializeSkillRegistry();
   } catch (error) {
     console.error("[Startup] Failed to initialize skill registry:", error);
-    // Continue starting server even if skill sync fails
+  }
+
+  // Initialize scheduled messages worker (BullMQ + Redis)
+  try {
+    initializeScheduler();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize scheduler:", error);
   }
 
   if (process.env.NODE_ENV === "development") {
@@ -156,12 +163,18 @@ async function main() {
   });
 }
 
-// Handle uncaught errors
+// Suppress EPIPE on stdout/stderr to prevent crash loops when pipe is broken
+process.stdout?.on?.("error", () => {});
+process.stderr?.on?.("error", () => {});
+
+// Handle uncaught errors — ignore EPIPE (broken pipe) to prevent crash loops
 process.on("uncaughtException", (err) => {
+  if ((err as any)?.code === "EPIPE" || String(err).includes("EPIPE")) return;
   debugError("Process", "Uncaught Exception", err);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
+  if ((reason as any)?.code === "EPIPE" || String(reason).includes("EPIPE")) return;
   debugError("Process", "Unhandled Rejection", reason);
 });
 

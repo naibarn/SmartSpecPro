@@ -463,10 +463,22 @@ class StreamingService:
             logger.error("Credit deduction failed", error=str(e))
             return False
     
+    # Track active streams for cancellation
+    _cancelled_requests: set = set()
+
     async def cancel_stream(self, request_id: str):
-        """Cancel an ongoing stream (placeholder for future implementation)"""
-        # TODO: Implement stream cancellation with cancellation tokens
-        pass
+        """Cancel an ongoing stream by marking the request as cancelled.
+        Active stream generators should check is_cancelled() periodically."""
+        self._cancelled_requests.add(request_id)
+        logger.info("stream_cancel_requested", request_id=request_id)
+
+    def is_cancelled(self, request_id: str) -> bool:
+        """Check if a stream has been cancelled."""
+        return request_id in self._cancelled_requests
+
+    def clear_cancelled(self, request_id: str):
+        """Remove request from cancelled set after stream ends."""
+        self._cancelled_requests.discard(request_id)
 
 
 # Backward compatibility aliases

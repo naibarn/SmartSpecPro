@@ -165,14 +165,14 @@ async def change_password(
     
     await db.commit()
     
-    # TODO: Invalidate all sessions (logout all devices)
-    # from app.services.auth_service import AuthService
-    # auth_service = AuthService(db)
-    # await auth_service.logout_all_sessions(str(current_user.id))
-    
+    # Invalidate all sessions (logout all devices)
+    from app.services.auth_service import AuthService
+    auth_service = AuthService(db)
+    await auth_service.logout_all_sessions(str(current_user.id))
+
     return {
         "message": "Password changed successfully",
-        "note": "Please login again with your new password"
+        "note": "All sessions have been invalidated. Please login again with your new password."
     }
 
 

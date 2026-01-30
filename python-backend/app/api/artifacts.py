@@ -13,9 +13,13 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/artifacts", tags=["Artifacts"])
 
-# Storage directory
-ARTIFACT_STORAGE_DIR = Path("/tmp/smartspec_artifacts")
+# Storage directory — use app data dir, NOT /tmp (which is world-readable)
+_DATA_DIR = Path(os.environ.get("SMARTSPEC_DATA_DIR", "./data"))
+ARTIFACT_STORAGE_DIR = _DATA_DIR / "artifacts"
 ARTIFACT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Upload limits
+MAX_ARTIFACT_SIZE = 10 * 1024 * 1024  # 10 MB
 
 # Metadata storage files
 SESSIONS_FILE = ARTIFACT_STORAGE_DIR / "sessions.json"
@@ -141,11 +145,24 @@ async def upload_artifact(
     if artifact_key not in ARTIFACTS:
         raise HTTPException(status_code=404, detail="Artifact not found")
 
+    # Check Content-Length header before reading body
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_ARTIFACT_SIZE:
+        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
+
     # Read file content
     content = await request.body()
 
-    # Save to disk
-    artifact_path = ARTIFACT_STORAGE_DIR / artifact_key.replace("/", "_")
+    if len(content) > MAX_ARTIFACT_SIZE:
+        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
+
+    # Save to disk — sanitize artifact_key to prevent path traversal
+    import re as _re
+    safe_name = _re.sub(r'[^a-zA-Z0-9_\-.]', '_', artifact_key)
+    artifact_path = (ARTIFACT_STORAGE_DIR / safe_name).resolve()
+    # Verify resolved path is within storage dir
+    if not str(artifact_path).startswith(str(ARTIFACT_STORAGE_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="Invalid artifact path")
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(artifact_path, "wb") as f:
@@ -199,7 +216,11 @@ async def download_artifact(artifact_key: str):
     if not artifact_meta.get("uploaded"):
         raise HTTPException(status_code=404, detail="Artifact not uploaded yet")
 
-    artifact_path = Path(artifact_meta["path"])
+    artifact_path = Path(artifact_meta["path"]).resolve()
+
+    # Ensure path is within storage dir (prevent path traversal)
+    if not str(artifact_path).startswith(str(ARTIFACT_STORAGE_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     if not artifact_path.exists():
         raise HTTPException(status_code=404, detail="Artifact file not found")

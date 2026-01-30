@@ -14,7 +14,7 @@ Features:
 import json
 import hashlib
 import gzip
-import pickle
+
 from typing import Any, Optional, Callable, TypeVar, Generic, Dict, List, Set
 from datetime import datetime, timedelta
 from functools import wraps
@@ -301,11 +301,11 @@ class OptimizedCacheManager:
     def _generate_key(self, prefix: str, *args, **kwargs) -> str:
         """Generate cache key from arguments"""
         key_data = f"{prefix}:{args}:{sorted(kwargs.items())}"
-        return f"smartspec:{hashlib.md5(key_data.encode()).hexdigest()}"
+        return f"smartspec:{hashlib.sha256(key_data.encode()).hexdigest()}"
     
     def _serialize(self, value: Any) -> bytes:
         """Serialize value for storage"""
-        data = pickle.dumps(value)
+        data = json.dumps(value, default=str).encode()
         
         # Compress if large enough
         if self.enable_compression and len(data) > self.COMPRESSION_THRESHOLD:
@@ -322,7 +322,7 @@ class OptimizedCacheManager:
         elif data.startswith(b"RAW:"):
             data = data[4:]
         
-        return pickle.loads(data)
+        return json.loads(data)
     
     async def get(
         self,

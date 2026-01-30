@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ import {
   MapPin,
   Plus,
   Trash2,
+  Users,
 } from "lucide-react";
 
 interface StripeSettings {
@@ -84,8 +86,13 @@ interface InvoiceConfig {
 
 export default function AdminSettings() {
   const { user, isLoading: authLoading } = useAuth();
+  const { tenant } = useTenant();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("stripe");
+
+  // Tenant selection for invoice config
+  // domain_admin: auto-set to their tenant; admin: can pick or use global (null)
+  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
 
   // Stripe settings state
   const [stripeForm, setStripeForm] = useState<StripeSettings>({
@@ -99,16 +106,48 @@ export default function AdminSettings() {
     customFields: [],
   });
 
+  // OAuth settings state
+  const [oauthForm, setOauthForm] = useState<{
+    googleClientId?: string;
+    googleClientSecret?: string;
+    googleRedirectUri?: string;
+    githubClientId?: string;
+    githubClientSecret?: string;
+    githubRedirectUri?: string;
+  }>({});
+  const [showGoogleSecret, setShowGoogleSecret] = useState(false);
+  const [showGithubSecret, setShowGithubSecret] = useState(false);
+  const [googleSecretConfigured, setGoogleSecretConfigured] = useState(false);
+  const [githubSecretConfigured, setGithubSecretConfigured] = useState(false);
+
   // Queries
   const { data: stripeSettings, isLoading: stripeLoading, refetch: refetchStripe } =
     trpc.systemSettings.getStripeSettings.useQuery(undefined, {
       enabled: !!user && user.role === "admin",
     });
 
-  const { data: invoiceConfig, isLoading: invoiceLoading, refetch: refetchInvoice } =
+  // Invoice: global config (when no tenant selected)
+  const { data: globalInvoiceConfig, refetch: refetchGlobalInvoice } =
     trpc.systemSettings.getGlobalInvoiceConfig.useQuery(undefined, {
-      enabled: !!user && user.role === "admin",
+      enabled: !!user && (user.role === "admin" || user.role === "domain_admin") && selectedTenantId === null,
     });
+
+  // Invoice: tenant-specific config
+  const { data: tenantInvoiceConfig, refetch: refetchTenantInvoice } =
+    trpc.systemSettings.getTenantInvoiceConfig.useQuery(
+      { tenantId: selectedTenantId! },
+      {
+        enabled: !!user && (user.role === "admin" || user.role === "domain_admin") && selectedTenantId !== null,
+      }
+    );
+
+  // Tenants list for admin selector
+  const { data: allTenants } = trpc.systemSettings.listTenants.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+  });
+
+  const invoiceConfig = selectedTenantId !== null ? tenantInvoiceConfig : globalInvoiceConfig;
+  const refetchInvoice = selectedTenantId !== null ? refetchTenantInvoice : refetchGlobalInvoice;
 
   // Mutations
   const updateStripeMutation = trpc.systemSettings.updateStripeSettings.useMutation({
@@ -144,6 +183,23 @@ export default function AdminSettings() {
     },
   });
 
+  // OAuth queries & mutations
+  const { data: oauthSettings, isLoading: oauthLoading, refetch: refetchOAuth } =
+    trpc.systemSettings.getOAuthSettings.useQuery(undefined, {
+      enabled: !!user && user.role === "admin",
+    });
+
+  const updateOAuthMutation = trpc.systemSettings.updateOAuthSettings.useMutation({
+    onSuccess: () => {
+      toast.success("OAuth settings saved successfully");
+      refetchOAuth();
+      setOauthForm((prev) => ({ ...prev, googleClientSecret: undefined, githubClientSecret: undefined }));
+    },
+    onError: (err) => {
+      toast.error(`Failed to save OAuth settings: ${err.message}`);
+    },
+  });
+
   // Load settings into form
   useEffect(() => {
     if (stripeSettings) {
@@ -162,14 +218,39 @@ export default function AdminSettings() {
     }
   }, [invoiceConfig]);
 
-  // Redirect if not admin
   useEffect(() => {
-    if (!authLoading && (!user || user.role !== "admin")) {
+    if (oauthSettings) {
+      setOauthForm({
+        googleClientId: (oauthSettings.googleClientId as string) || "",
+        googleRedirectUri: (oauthSettings.googleRedirectUri as string) || "",
+        githubClientId: (oauthSettings.githubClientId as string) || "",
+        githubRedirectUri: (oauthSettings.githubRedirectUri as string) || "",
+      });
+      setGoogleSecretConfigured(!!oauthSettings.googleClientSecretConfigured);
+      setGithubSecretConfigured(!!oauthSettings.githubClientSecretConfigured);
+    }
+  }, [oauthSettings]);
+
+  const isAdmin = user?.role === "admin";
+  const isDomainAdmin = user?.role === "domain_admin";
+  const hasAccess = isAdmin || isDomainAdmin;
+
+  // Redirect if not admin or domain_admin
+  useEffect(() => {
+    if (!authLoading && !hasAccess) {
       setLocation("/");
     }
-  }, [user, authLoading, setLocation]);
+  }, [user, authLoading, setLocation, hasAccess]);
 
-  if (authLoading || !user || user.role !== "admin") {
+  // Domain admins: default to invoice tab and auto-select their tenant
+  useEffect(() => {
+    if (isDomainAdmin && !isAdmin) {
+      if (activeTab !== "invoice") setActiveTab("invoice");
+      if (tenant?.id && selectedTenantId === null) setSelectedTenantId(tenant.id);
+    }
+  }, [isDomainAdmin, isAdmin]);
+
+  if (authLoading || !user || !hasAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
@@ -186,9 +267,20 @@ export default function AdminSettings() {
     });
   };
 
+  const handleSaveOAuth = () => {
+    updateOAuthMutation.mutate({
+      googleClientId: oauthForm.googleClientId,
+      googleClientSecret: oauthForm.googleClientSecret,
+      googleRedirectUri: oauthForm.googleRedirectUri,
+      githubClientId: oauthForm.githubClientId,
+      githubClientSecret: oauthForm.githubClientSecret,
+      githubRedirectUri: oauthForm.githubRedirectUri,
+    });
+  };
+
   const handleSaveInvoice = () => {
     upsertInvoiceMutation.mutate({
-      tenantId: null, // Global config
+      tenantId: selectedTenantId,
       ...invoiceForm,
     });
   };
@@ -243,14 +335,22 @@ export default function AdminSettings() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
-            <TabsTrigger value="stripe" className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              Stripe Payments
-            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="stripe" className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4" />
+                Stripe Payments
+              </TabsTrigger>
+            )}
             <TabsTrigger value="invoice" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Invoice Settings
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="oauth" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                OAuth / Social Login
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Stripe Settings Tab */}
@@ -437,13 +537,55 @@ export default function AdminSettings() {
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5 text-purple-500" />
                   Invoice Configuration
+                  {selectedTenantId !== null && (
+                    <Badge variant="secondary" className="ml-2">Tenant-specific</Badge>
+                  )}
+                  {selectedTenantId === null && isAdmin && (
+                    <Badge variant="outline" className="ml-2">Global Default</Badge>
+                  )}
                 </CardTitle>
                 <CardDescription>
-                  Configure the default company information that appears on invoices.
-                  White Label tenants can override these settings.
+                  {isDomainAdmin && !isAdmin
+                    ? "Configure your domain's company information for invoices."
+                    : "Configure invoice settings. Select a tenant for tenant-specific config, or use Global Default."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Tenant Selector (admin only) */}
+                {isAdmin && (
+                  <div className="pb-4 border-b">
+                    <Label>Invoice Config Scope</Label>
+                    <Select
+                      value={selectedTenantId === null ? "global" : String(selectedTenantId)}
+                      onValueChange={(val) => {
+                        const tid = val === "global" ? null : Number(val);
+                        setSelectedTenantId(tid);
+                        setInvoiceForm({ customFields: [] });
+                      }}
+                    >
+                      <SelectTrigger className="w-full mt-1">
+                        <SelectValue placeholder="Select scope" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="global">
+                          <span className="flex items-center gap-2">
+                            <Globe className="w-4 h-4" /> Global Default
+                          </span>
+                        </SelectItem>
+                        {allTenants?.map((t) => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            <span className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4" /> {t.name} ({t.domain})
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tenant-specific settings override global defaults when generating invoices for that domain.
+                    </p>
+                  </div>
+                )}
                 {/* Company Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
@@ -767,6 +909,166 @@ export default function AdminSettings() {
                       <Save className="w-4 h-4 mr-2" />
                     )}
                     Save Invoice Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          {/* OAuth Settings Tab */}
+          <TabsContent value="oauth">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-purple-500" />
+                  OAuth / Social Login Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure Google and GitHub OAuth credentials for social login.
+                  Users will be able to sign in with these providers once configured.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {/* Google OAuth */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    Google OAuth
+                  </h3>
+                  <div>
+                    <Label htmlFor="googleClientId">Client ID</Label>
+                    <Input
+                      id="googleClientId"
+                      placeholder="xxxxx.apps.googleusercontent.com"
+                      value={oauthForm.googleClientId || ""}
+                      onChange={(e) =>
+                        setOauthForm((prev) => ({ ...prev, googleClientId: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="googleClientSecret">
+                      Client Secret
+                      {googleSecretConfigured && (
+                        <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
+                          <Check className="w-3 h-3 mr-1" />
+                          Configured
+                        </Badge>
+                      )}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="googleClientSecret"
+                        type={showGoogleSecret ? "text" : "password"}
+                        placeholder={googleSecretConfigured ? "Enter new secret to update..." : "GOCSPX-..."}
+                        value={oauthForm.googleClientSecret || ""}
+                        onChange={(e) =>
+                          setOauthForm((prev) => ({ ...prev, googleClientSecret: e.target.value }))
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2"
+                        onClick={() => setShowGoogleSecret(!showGoogleSecret)}
+                      >
+                        {showGoogleSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="googleRedirectUri">Redirect URI</Label>
+                    <Input
+                      id="googleRedirectUri"
+                      placeholder="http://localhost:3000/auth/callback/google"
+                      value={oauthForm.googleRedirectUri || ""}
+                      onChange={(e) =>
+                        setOauthForm((prev) => ({ ...prev, googleRedirectUri: e.target.value }))
+                      }
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Must match the authorized redirect URI in Google Cloud Console
+                    </p>
+                  </div>
+                </div>
+
+                {/* GitHub OAuth */}
+                <div className="space-y-4 pt-6 border-t">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Key className="w-5 h-5" />
+                    GitHub OAuth
+                  </h3>
+                  <div>
+                    <Label htmlFor="githubClientId">Client ID</Label>
+                    <Input
+                      id="githubClientId"
+                      placeholder="Iv1.xxxxxxxxxxxxxxxx"
+                      value={oauthForm.githubClientId || ""}
+                      onChange={(e) =>
+                        setOauthForm((prev) => ({ ...prev, githubClientId: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="githubClientSecret">
+                      Client Secret
+                      {githubSecretConfigured && (
+                        <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
+                          <Check className="w-3 h-3 mr-1" />
+                          Configured
+                        </Badge>
+                      )}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="githubClientSecret"
+                        type={showGithubSecret ? "text" : "password"}
+                        placeholder={githubSecretConfigured ? "Enter new secret to update..." : "Enter GitHub client secret"}
+                        value={oauthForm.githubClientSecret || ""}
+                        onChange={(e) =>
+                          setOauthForm((prev) => ({ ...prev, githubClientSecret: e.target.value }))
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2"
+                        onClick={() => setShowGithubSecret(!showGithubSecret)}
+                      >
+                        {showGithubSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="githubRedirectUri">Redirect URI</Label>
+                    <Input
+                      id="githubRedirectUri"
+                      placeholder="http://localhost:3000/auth/callback/github"
+                      value={oauthForm.githubRedirectUri || ""}
+                      onChange={(e) =>
+                        setOauthForm((prev) => ({ ...prev, githubRedirectUri: e.target.value }))
+                      }
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Must match the authorization callback URL in GitHub OAuth App settings
+                    </p>
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    onClick={handleSaveOAuth}
+                    disabled={updateOAuthMutation.isPending}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {updateOAuthMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Save OAuth Settings
                   </Button>
                 </div>
               </CardContent>

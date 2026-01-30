@@ -44,6 +44,7 @@ interface Tenant {
   primaryDomain: string;
   domains?: string[];
   logoUrl?: string;
+  websiteLogoUrl?: string;
   faviconUrl?: string;
   isActive: boolean;
   plan?: string;
@@ -75,11 +76,13 @@ export default function AdminTenants() {
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingWebsiteLogo, setUploadingWebsiteLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [themePresets, setThemePresets] = useState<ThemePreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [applyingPreset, setApplyingPreset] = useState(false);
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [pendingWebsiteLogoFile, setPendingWebsiteLogoFile] = useState<File | null>(null);
   const [pendingFaviconFile, setPendingFaviconFile] = useState<File | null>(null);
 
   // Form state
@@ -89,13 +92,14 @@ export default function AdminTenants() {
     primaryDomain: '',
     domains: '',
     logoUrl: '',
+    websiteLogoUrl: '',
     faviconUrl: '',
     isActive: true,
   });
 
   // File upload handler
   // Upload file to a specific tenant
-  const uploadFileToTenant = async (tenantId: string, type: 'logo' | 'favicon', file: File) => {
+  const uploadFileToTenant = async (tenantId: string, type: 'logo' | 'website-logo' | 'favicon', file: File) => {
     const reader = new FileReader();
     const base64 = await new Promise<string>((resolve, reject) => {
       reader.onload = () => resolve(reader.result as string);
@@ -123,12 +127,15 @@ export default function AdminTenants() {
     return await response.json();
   };
 
-  const handleFileUpload = async (type: 'logo' | 'favicon', file: File) => {
-    const maxSize = type === 'favicon' ? 1 * 1024 * 1024 : 5 * 1024 * 1024;
+  const handleFileUpload = async (type: 'logo' | 'website-logo' | 'favicon', file: File) => {
+    const maxSize = type === 'favicon' ? 1 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error(`File too large. Max size: ${type === 'favicon' ? '1MB' : '5MB'}`);
+      toast.error(`File too large. Max size: ${type === 'favicon' ? '1MB' : '10MB'}`);
       return;
     }
+
+    const fieldKey = type === 'logo' ? 'logoUrl' : type === 'website-logo' ? 'websiteLogoUrl' : 'faviconUrl';
+    const label = type === 'logo' ? 'Logo' : type === 'website-logo' ? 'Website Logo' : 'Favicon';
 
     // If no tenant yet (create mode), store file for later upload and show preview
     if (!editingTenant) {
@@ -139,36 +146,31 @@ export default function AdminTenants() {
         reader.readAsDataURL(file);
       });
 
-      if (type === 'logo') {
-        setPendingLogoFile(file);
-      } else {
-        setPendingFaviconFile(file);
-      }
-      setFormData(prev => ({
-        ...prev,
-        [type === 'logo' ? 'logoUrl' : 'faviconUrl']: dataUrl,
-      }));
-      toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} selected. It will be uploaded when you create the tenant.`);
+      if (type === 'logo') setPendingLogoFile(file);
+      else if (type === 'website-logo') setPendingWebsiteLogoFile(file);
+      else setPendingFaviconFile(file);
+
+      setFormData(prev => ({ ...prev, [fieldKey]: dataUrl }));
+      toast.success(`${label} selected. It will be uploaded when you create the tenant.`);
       return;
     }
 
-    type === 'logo' ? setUploadingLogo(true) : setUploadingFavicon(true);
+    if (type === 'logo') setUploadingLogo(true);
+    else if (type === 'website-logo') setUploadingWebsiteLogo(true);
+    else setUploadingFavicon(true);
 
     try {
       const data = await uploadFileToTenant(editingTenant.id, type, file);
-
-      setFormData(prev => ({
-        ...prev,
-        [type === 'logo' ? 'logoUrl' : 'faviconUrl']: data.url,
-      }));
-
-      toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`);
+      setFormData(prev => ({ ...prev, [fieldKey]: data.url }));
+      toast.success(`${label} uploaded successfully`);
       fetchTenants();
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to upload file');
     } finally {
-      type === 'logo' ? setUploadingLogo(false) : setUploadingFavicon(false);
+      if (type === 'logo') setUploadingLogo(false);
+      else if (type === 'website-logo') setUploadingWebsiteLogo(false);
+      else setUploadingFavicon(false);
     }
   };
 
@@ -257,10 +259,11 @@ export default function AdminTenants() {
 
   const handleCreate = async () => {
     try {
-      // Strip data URLs from logoUrl/faviconUrl before sending (pending files will be uploaded after)
+      // Strip data URLs from logo fields before sending (pending files will be uploaded after)
       const submitData = {
         ...formData,
         logoUrl: formData.logoUrl?.startsWith('data:') ? '' : formData.logoUrl,
+        websiteLogoUrl: formData.websiteLogoUrl?.startsWith('data:') ? '' : formData.websiteLogoUrl,
         faviconUrl: formData.faviconUrl?.startsWith('data:') ? '' : formData.faviconUrl,
         domains: formData.domains ? formData.domains.split(',').map(d => d.trim()) : [],
       };
@@ -284,6 +287,14 @@ export default function AdminTenants() {
             toast.error('Tenant created but logo upload failed');
           }
         }
+        if (pendingWebsiteLogoFile && tenant?.id) {
+          try {
+            await uploadFileToTenant(tenant.id, 'website-logo', pendingWebsiteLogoFile);
+          } catch (err) {
+            console.error('Failed to upload website logo:', err);
+            toast.error('Tenant created but website logo upload failed');
+          }
+        }
         if (pendingFaviconFile && tenant?.id) {
           try {
             await uploadFileToTenant(tenant.id, 'favicon', pendingFaviconFile);
@@ -297,6 +308,7 @@ export default function AdminTenants() {
         setIsCreateDialogOpen(false);
         resetForm();
         setPendingLogoFile(null);
+        setPendingWebsiteLogoFile(null);
         setPendingFaviconFile(null);
         toast.success('Tenant created successfully');
       }
@@ -354,6 +366,7 @@ export default function AdminTenants() {
       primaryDomain: '',
       domains: '',
       logoUrl: '',
+      websiteLogoUrl: '',
       faviconUrl: '',
       isActive: true,
     });
@@ -366,6 +379,7 @@ export default function AdminTenants() {
       primaryDomain: tenant.primaryDomain,
       domains: tenant.domains?.join(', ') || '',
       logoUrl: tenant.logoUrl || '',
+      websiteLogoUrl: tenant.websiteLogoUrl || '',
       faviconUrl: tenant.faviconUrl || '',
       isActive: tenant.isActive,
     });
@@ -707,6 +721,85 @@ export default function AdminTenants() {
                       }}
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Website Logo (larger, for public pages) */}
+            <div>
+              <Label htmlFor="websiteLogoUrl">Website Logo (Public Pages)</Label>
+              <p className="text-xs text-gray-500 mb-2">Larger logo displayed on public website header and footer. Recommended: wide format (e.g. 400x80px).</p>
+              <div className="space-y-2">
+                {formData.websiteLogoUrl && (
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                    <img
+                      src={formData.websiteLogoUrl}
+                      alt="Website logo preview"
+                      className="h-10 w-auto max-w-[200px] object-contain rounded"
+                    />
+                    <span className="text-xs text-gray-500 truncate flex-1">
+                      {formData.websiteLogoUrl.split('/').pop()}
+                    </span>
+                    <a
+                      href={formData.websiteLogoUrl}
+                      download={formData.websiteLogoUrl.split('/').pop() || 'website-logo'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-blue-500 h-6 w-6 p-0"
+                        title="Download website logo"
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </a>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFormData({ ...formData, websiteLogoUrl: '' })}
+                      className="text-red-500 h-6 w-6 p-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    id="websiteLogoUrl"
+                    placeholder="https://... or upload"
+                    value={formData.websiteLogoUrl}
+                    onChange={(e) => setFormData({ ...formData, websiteLogoUrl: e.target.value })}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingWebsiteLogo}
+                    onClick={() => document.getElementById('websiteLogoUpload')?.click()}
+                    className="shrink-0"
+                  >
+                    {uploadingWebsiteLogo ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                  </Button>
+                  <input
+                    id="websiteLogoUpload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload('website-logo', file);
+                      e.target.value = '';
+                    }}
+                  />
                 </div>
               </div>
             </div>

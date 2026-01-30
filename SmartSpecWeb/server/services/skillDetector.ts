@@ -132,11 +132,11 @@ function calculateConfidence(
   }
 
   // Higher confidence for explicit skill keywords
-  if (skill.type === "image-generation" && /\b(image|picture|photo|รูป|ภาพ)\b/i.test(matchedText)) {
+  if (skill.type === "image-generation" && /\b(image|picture|photo|illustration)\b/i.test(matchedText)) {
     confidence += 0.1;
   }
 
-  if (skill.type === "video-generation" && /\b(video|clip|วีดีโอ|วิดีโอ)\b/i.test(matchedText)) {
+  if (skill.type === "video-generation" && /\b(video|clip|animation)\b/i.test(matchedText)) {
     confidence += 0.1;
   }
 
@@ -159,7 +159,7 @@ function extractPrompt(
   // Clean up common prefixes
   prompt = prompt
     .replace(/^(of|about|for|with|showing)\s+/i, "")
-    .replace(/^(ของ|เกี่ยวกับ|แสดง)\s*/i, "")
+    .replace(/^(of|about|showing)\s*/i, "")
     .trim();
 
   // If prompt is empty, use the whole message
@@ -268,8 +268,8 @@ export function extractSkillParams(
     params.aspectRatio = ratioMap[aspectRatioMatch[1].toLowerCase()] || aspectRatioMatch[1];
   }
 
-  // Extract number of images (e.g., "2 images", "สร้าง 3 รูป")
-  const numImagesMatch = message.match(/\b(\d+)\s*(images?|รูป|ภาพ|pictures?)\b/i);
+  // Extract number of images (e.g., "2 images", "3 pictures")
+  const numImagesMatch = message.match(/\b(\d+)\s*(images?|pictures?|photos?)\b/i);
   if (numImagesMatch) {
     const num = parseInt(numImagesMatch[1], 10);
     if (num >= 1 && num <= 4) {
@@ -277,8 +277,8 @@ export function extractSkillParams(
     }
   }
 
-  // Extract video duration (e.g., "5 seconds", "10 วินาที")
-  const durationMatch = message.match(/\b(\d+)\s*(seconds?|sec|s|วินาที)\b/i);
+  // Extract video duration (e.g., "5 seconds", "10 sec")
+  const durationMatch = message.match(/\b(\d+)\s*(seconds?|sec|s)\b/i);
   if (durationMatch) {
     const duration = parseInt(durationMatch[1], 10);
     if (duration >= 1 && duration <= 60) {
@@ -288,8 +288,8 @@ export function extractSkillParams(
 
   // Clean up prompt - remove model specification phrases
   let cleanPrompt = message;
-  // Remove "ด้วย <model>", "using <model>", "with <model>"
-  cleanPrompt = cleanPrompt.replace(/\s*(ด้วย|using|with)\s+[\w\s.-]+$/i, "").trim();
+  // Remove "using <model>", "with <model>"
+  cleanPrompt = cleanPrompt.replace(/\s*(using|with)\s+[\w\s.-]+$/i, "").trim();
 
   // Remove model names from prompt using centralized registry
   const allAliases = getAllModelAliases();

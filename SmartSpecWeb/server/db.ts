@@ -69,7 +69,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
     const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
+    const textFields = ["name", "email", "loginMethod", "normalizedEmail", "registrationIp"] as const;
     type TextField = (typeof textFields)[number];
 
     const assignNullable = (field: TextField) => {
@@ -102,6 +102,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.registeredDomain !== undefined) {
       values.registeredDomain = user.registeredDomain;
       // Do NOT include in updateSet - registeredDomain should only be set once
+    }
+
+    // Set trustScore only on first insert (new user)
+    if (user.trustScore !== undefined) {
+      values.trustScore = user.trustScore;
+      // Do NOT include in updateSet - trustScore set at registration
     }
 
     if (!values.lastSignedIn) {

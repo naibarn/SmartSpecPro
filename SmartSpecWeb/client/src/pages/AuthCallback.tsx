@@ -32,16 +32,19 @@ export default function AuthCallback() {
         const provider = params?.provider;
         const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-        // Exchange code for token
-        const response = await fetch(`${API_BASE_URL}/api/auth/${provider}/callback`, {
+        // Retrieve CSRF state token
+        const savedState = sessionStorage.getItem('oauth_state');
+        const urlState = urlParams.get('state');
+        const state = urlState || savedState || '';
+        sessionStorage.removeItem('oauth_state');
+
+        // Exchange code for token via OAuth endpoint
+        const response = await fetch(`${API_BASE_URL}/api/oauth/${provider}/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            code,
-            redirect_uri: window.location.origin + `/auth/callback/${provider}`,
-          }),
+          body: JSON.stringify({ code, state }),
         });
 
         if (!response.ok) {

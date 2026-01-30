@@ -515,7 +515,7 @@ Your task is to transform the user's idea into a professional, detailed prompt f
 ## Output Format
 Always output in this format:
 1. **[English Prompt]** - Full prompt in English
-2. **[Thai Prompt / พรอมต์ภาษาไทย]** - Full prompt in Thai
+2. **[Translated Prompt]** - Full prompt translated to the user's language
 
 ## Prompt Structure Rules
 - Write semantic narratives (not keyword stacking)
@@ -846,7 +846,7 @@ function cleanPromptText(text: string): string {
   cleaned = cleaned.replace(/\n\d+\.\s*$/g, "");
 
   // Remove "English Prompt:" or "Thai Prompt:" labels
-  cleaned = cleaned.replace(/^(English|Thai)\s*(Prompt|พรอมต์)?\s*:?\s*/gi, "");
+  cleaned = cleaned.replace(/^(English|Thai|Translated)\s*(Prompt)?\s*:?\s*/gi, "");
 
   // Remove section headers like "[English Prompt]" or "[Thai]"
   cleaned = cleaned.replace(/^\[.*?\]\s*/gm, "");
@@ -893,15 +893,15 @@ export function parsePromptResponse(response: string): { promptEn: string; promp
 
   // Try various formats for Thai prompt extraction
 
-  // Format 1: **[Thai Prompt]** or **[Thai / พรอมต์ภาษาไทย]**
-  const thaiMatch1 = response.match(/\*\*\[Thai(?:\s+Prompt)?(?:\s*\/\s*พรอมต์ภาษาไทย)?\]\*\*\s*([\s\S]*?)(?=\*\*\[|---|\n\nOptions|$)/i);
+  // Format 1: **[Thai Prompt]** or **[Translated Prompt]**
+  const thaiMatch1 = response.match(/\*\*\[(?:Thai|Translated)(?:\s+Prompt)?\]\*\*\s*([\s\S]*?)(?=\*\*\[|---|\n\nOptions|$)/i);
   if (thaiMatch1) {
     promptTh = thaiMatch1[1];
   }
 
   // Format 2: 2. **Thai Prompt:** or **2. Thai Prompt**
   if (!promptTh) {
-    const thaiMatch2 = response.match(/(?:2\.\s*)?\*?\*?Thai(?:\s+Prompt)?(?:\s*\/\s*พรอมต์ภาษาไทย)?\*?\*?:?\s*([\s\S]*?)(?=---|\n\n\d|\n\nOptions|$)/i);
+    const thaiMatch2 = response.match(/(?:2\.\s*)?\*?\*?(?:Thai|Translated)(?:\s+Prompt)?\*?\*?:?\s*([\s\S]*?)(?=---|\n\n\d|\n\nOptions|$)/i);
     if (thaiMatch2) {
       promptTh = thaiMatch2[1];
     }

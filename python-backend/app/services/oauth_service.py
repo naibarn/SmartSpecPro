@@ -110,7 +110,6 @@ class OAuthService:
         redirect_uri: str,
         client_id: str,
         client_secret: str,
-        state: str
     ) -> Optional[Dict[str, Any]]:
         """Exchange authorization code for access token"""
         

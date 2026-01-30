@@ -21,8 +21,11 @@ from app.models.user import User
 from app.core.auth import get_password_hash
 
 
-async def create_admin_user(email: str = "admin@smartspec.pro", password: str = "admin123"):
+async def create_admin_user(email: str = "admin@smartspec.pro", password: str = ""):
     """Create an admin user"""
+    if not password:
+        import secrets as _s
+        password = _s.token_urlsafe(16)
 
     # Create async engine
     engine = create_async_engine(
@@ -91,7 +94,12 @@ async def main():
     """Main function"""
     # Get email and password from command line args
     email = sys.argv[1] if len(sys.argv) > 1 else "admin@smartspec.pro"
-    password = sys.argv[2] if len(sys.argv) > 2 else "admin123"
+    if len(sys.argv) > 2:
+        password = sys.argv[2]
+    else:
+        import secrets as _s
+        password = _s.token_urlsafe(16)
+        print(f"   No password provided — generated secure password: {password}")
 
     print("🚀 Creating admin user...")
     print(f"   Email: {email}")

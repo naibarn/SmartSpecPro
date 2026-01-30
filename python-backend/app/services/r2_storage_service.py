@@ -203,7 +203,7 @@ class R2StorageService:
         """Generate unique file key with path prefix"""
         path_prefix = settings.get("pathPrefix", "uploads/").rstrip("/")
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        file_hash = hashlib.md5(f"{filename}{timestamp}".encode()).hexdigest()[:8]
+        file_hash = hashlib.sha256(f"{filename}{timestamp}".encode()).hexdigest()[:8]
 
         # Get file extension
         ext = filename.rsplit(".", 1)[-1] if "." in filename else "png"

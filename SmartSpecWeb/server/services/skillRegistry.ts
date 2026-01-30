@@ -23,7 +23,10 @@ export type SkillType =
   | "code-assistant"
   | "document-analysis"
   | "web-search"
-  | "prompt-enhancement";
+  | "prompt-enhancement"
+  | "automation"
+  | "chat-assistant"
+  | "translation";
 
 export interface SkillDefinition {
   id: string;
@@ -82,11 +85,16 @@ interface SkillMetadata {
   category?: string;
   icon?: string;
   tags?: string[];
+  // Support both snake_case and camelCase from YAML frontmatter
   auto_trigger?: boolean;
+  isAutoTrigger?: boolean;
   trigger_patterns?: string[];
+  triggerPatterns?: string[];
   credit_multiplier?: number;
+  creditMultiplier?: number;
   priority?: number;
   enabled_by_default?: boolean;
+  enabledByDefault?: boolean;
   config?: Record<string, any>;
 }
 
@@ -130,6 +138,14 @@ function mapCategoryToEnum(category?: string): string {
     "document-analysis": "document_analysis",
     "web_search": "web_search",
     "web-search": "web_search",
+    "automation": "automation",
+    "chat_assistant": "chat_assistant",
+    "chat-assistant": "chat_assistant",
+    "translation": "translation",
+    "summarization": "summarization",
+    "data_analysis": "data_analysis",
+    "data-analysis": "data_analysis",
+    "other": "other",
   };
   return categoryMap[category || ""] || "prompt_enhancement";
 }
@@ -147,6 +163,9 @@ function categoryToType(category: string): SkillType {
     "document_analysis": "document-analysis",
     "web_search": "web-search",
     "prompt_enhancement": "prompt-enhancement",
+    "automation": "automation",
+    "chat_assistant": "chat-assistant",
+    "translation": "translation",
   };
   return categoryMap[category] || "prompt-enhancement";
 }
@@ -325,20 +344,13 @@ export async function autoSyncSkillsFromFolder(): Promise<{
   console.log(`[SkillRegistry] Found ${folderSkills.length} skill folder(s): ${folderSkills.map(f => f.slug).join(", ")}`);
 
   for (const folder of folderSkills) {
-    if (existingSlugs.has(folder.slug)) {
-      result.skipped.push(folder.slug);
-      continue;
-    }
-
     try {
       // Read and parse skill.md
       const content = fs.readFileSync(folder.skillMdPath, "utf-8");
       const parsed = parseSkillFile(content);
       const metadata: SkillMetadata = { name: folder.slug, ...parsed.metadata };
 
-      // Insert into database
-      await db.insert(skillsTable).values({
-        slug: folder.slug,
+      const skillData = {
         name: metadata.name || folder.slug,
         description: metadata.description || `Auto-imported from skills/${folder.slug}`,
         category: mapCategoryToEnum(metadata.category) as any,
@@ -347,19 +359,28 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         icon: metadata.icon || "sparkles",
         tags: metadata.tags || [],
         folderPath: `skills/${folder.slug}`,
-        isAutoTrigger: metadata.auto_trigger ?? false,
-        triggerPatterns: metadata.trigger_patterns || [],
+        isAutoTrigger: metadata.isAutoTrigger ?? metadata.auto_trigger ?? false,
+        triggerPatterns: metadata.triggerPatterns ?? metadata.trigger_patterns ?? [],
         isEnabled: true,
-        enabledByDefault: metadata.enabled_by_default ?? true,
-        creditMultiplier: String(metadata.credit_multiplier ?? 1.0),
+        enabledByDefault: metadata.enabledByDefault ?? metadata.enabled_by_default ?? true,
+        creditMultiplier: String(metadata.creditMultiplier ?? metadata.credit_multiplier ?? 1.0),
         priority: metadata.priority ?? 50,
         skillContent: parsed.content,
         configJson: metadata.config,
-        importSource: "folder",
-      });
+        importSource: "folder" as const,
+      };
 
-      result.synced.push(folder.slug);
-      console.log(`[SkillRegistry] Auto-synced skill: ${folder.slug}`);
+      if (existingSlugs.has(folder.slug)) {
+        // Update existing skill with latest content from folder
+        await db.update(skillsTable).set(skillData).where(eq(skillsTable.slug, folder.slug));
+        result.synced.push(folder.slug);
+        console.log(`[SkillRegistry] Updated skill from folder: ${folder.slug}`);
+      } else {
+        // Insert new skill
+        await db.insert(skillsTable).values({ slug: folder.slug, ...skillData });
+        result.synced.push(folder.slug);
+        console.log(`[SkillRegistry] Auto-synced new skill: ${folder.slug}`);
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       result.errors.push(`${folder.slug}: ${errorMsg}`);

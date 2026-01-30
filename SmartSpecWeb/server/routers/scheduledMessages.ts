@@ -1,0 +1,412 @@
+/**
+ * Scheduled Messages Router
+ *
+ * CRUD operations for chat alerts / scheduled messages.
+ */
+
+import { z } from "zod";
+import { protectedProcedure, router } from "../_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { getDb } from "../db";
+import { scheduledMessages, scheduledMessageLogs, userNotifications } from "../../drizzle/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { createScheduledJob, cancelScheduledJob } from "../services/scheduler";
+
+export const scheduledMessagesRouter = router({
+  /**
+   * Create a new scheduled message
+   */
+  create: protectedProcedure
+    .input(z.object({
+      prompt: z.string().min(1).max(5000),
+      cronExpression: z.string().max(100).optional().nullable(),
+      timezone: z.string().max(64).default("Asia/Bangkok"),
+      scheduledAt: z.string().optional().nullable(), // ISO 8601
+      isRecurring: z.boolean().default(false),
+      modelId: z.string().max(128).optional().nullable(),
+      emailNotify: z.boolean().default(true),
+      description: z.string().max(500).optional().nullable(),
+      conversationId: z.number().optional().nullable(),
+      targetUserId: z.number().optional().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const scheduledAtDate = input.scheduledAt ? new Date(input.scheduledAt) : null;
+
+      if (!input.cronExpression && !scheduledAtDate) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Either cronExpression or scheduledAt is required" });
+      }
+
+      // Insert into DB
+      const [schedule] = await db.insert(scheduledMessages).values({
+        userId: ctx.user.id,
+        prompt: input.prompt,
+        cronExpression: input.cronExpression || undefined,
+        timezone: input.timezone,
+        scheduledAt: scheduledAtDate,
+        isRecurring: input.isRecurring,
+        modelId: input.modelId || undefined,
+        emailNotify: input.emailNotify,
+        description: input.description || undefined,
+        conversationId: input.conversationId || undefined,
+        targetUserId: input.targetUserId || undefined,
+        status: "active",
+      }).returning();
+
+      // Create BullMQ job
+      try {
+        const jobId = await createScheduledJob(
+          schedule.id,
+          input.cronExpression,
+          scheduledAtDate
+        );
+
+        // Store BullMQ job ID
+        await db.update(scheduledMessages)
+          .set({ bullmqJobId: jobId })
+          .where(eq(scheduledMessages.id, schedule.id));
+      } catch (err: any) {
+        // Clean up DB record if job creation fails
+        await db.delete(scheduledMessages).where(eq(scheduledMessages.id, schedule.id));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to create schedule: ${err.message}` });
+      }
+
+      return {
+        id: schedule.id,
+        status: schedule.status,
+        cronExpression: schedule.cronExpression,
+        scheduledAt: schedule.scheduledAt?.toISOString(),
+        description: schedule.description,
+      };
+    }),
+
+  /**
+   * List user's scheduled messages
+   */
+  list: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(50).default(20),
+      offset: z.number().min(0).default(0),
+      status: z.enum(["active", "paused", "completed", "failed"]).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const conditions = [eq(scheduledMessages.userId, ctx.user.id)];
+      if (input.status) {
+        conditions.push(eq(scheduledMessages.status, input.status));
+      }
+
+      const items = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(...conditions))
+        .orderBy(desc(scheduledMessages.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(scheduledMessages)
+        .where(and(...conditions));
+
+      return { items, total: count };
+    }),
+
+  /**
+   * Get single schedule detail
+   */
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [schedule] = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.id), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!schedule) throw new TRPCError({ code: "NOT_FOUND" });
+      return schedule;
+    }),
+
+  /**
+   * Update schedule
+   */
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      prompt: z.string().min(1).max(5000).optional(),
+      cronExpression: z.string().max(100).optional().nullable(),
+      scheduledAt: z.string().optional().nullable(),
+      description: z.string().max(500).optional().nullable(),
+      emailNotify: z.boolean().optional(),
+      modelId: z.string().max(128).optional().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [existing] = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.id), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const { id, ...updates } = input;
+      const updateData: any = { ...updates, updatedAt: new Date() };
+      if (updates.scheduledAt) updateData.scheduledAt = new Date(updates.scheduledAt);
+
+      await db.update(scheduledMessages).set(updateData).where(eq(scheduledMessages.id, id));
+
+      // Reschedule if cron or time changed
+      if (updates.cronExpression !== undefined || updates.scheduledAt !== undefined) {
+        await cancelScheduledJob(id, existing.bullmqJobId);
+        const newCron = updates.cronExpression ?? existing.cronExpression;
+        const newAt = updates.scheduledAt ? new Date(updates.scheduledAt) : existing.scheduledAt;
+        const jobId = await createScheduledJob(id, newCron, newAt);
+        await db.update(scheduledMessages).set({ bullmqJobId: jobId }).where(eq(scheduledMessages.id, id));
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Delete schedule
+   */
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [existing] = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.id), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await cancelScheduledJob(input.id, existing.bullmqJobId);
+      await db.delete(scheduledMessages).where(eq(scheduledMessages.id, input.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Pause / Resume schedule
+   */
+  togglePause: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [existing] = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.id), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const newStatus = existing.status === "active" ? "paused" : "active";
+
+      if (newStatus === "paused") {
+        await cancelScheduledJob(input.id, existing.bullmqJobId);
+      } else {
+        const jobId = await createScheduledJob(input.id, existing.cronExpression, existing.scheduledAt);
+        await db.update(scheduledMessages).set({ bullmqJobId: jobId }).where(eq(scheduledMessages.id, input.id));
+      }
+
+      await db.update(scheduledMessages)
+        .set({ status: newStatus, updatedAt: new Date() })
+        .where(eq(scheduledMessages.id, input.id));
+
+      return { status: newStatus };
+    }),
+
+  /**
+   * Get execution logs for a schedule
+   */
+  getLogs: protectedProcedure
+    .input(z.object({
+      scheduledMessageId: z.number(),
+      limit: z.number().min(1).max(50).default(10),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Verify ownership
+      const [schedule] = await db
+        .select({ id: scheduledMessages.id })
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.scheduledMessageId), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!schedule) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const logs = await db
+        .select()
+        .from(scheduledMessageLogs)
+        .where(eq(scheduledMessageLogs.scheduledMessageId, input.scheduledMessageId))
+        .orderBy(desc(scheduledMessageLogs.executedAt))
+        .limit(input.limit);
+
+      return logs;
+    }),
+
+  /**
+   * Get unread notifications count
+   */
+  getNotificationCount: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { count: 0 };
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userNotifications)
+      .where(and(
+        eq(userNotifications.userId, ctx.user.id),
+        eq(userNotifications.isRead, false)
+      ));
+
+    return { count };
+  }),
+
+  /**
+   * Get recent notifications
+   */
+  getNotifications: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(50).default(20),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      return db
+        .select()
+        .from(userNotifications)
+        .where(eq(userNotifications.userId, ctx.user.id))
+        .orderBy(desc(userNotifications.createdAt))
+        .limit(input.limit);
+    }),
+
+  /**
+   * Mark notification as read
+   */
+  markRead: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      await db.update(userNotifications)
+        .set({ isRead: true })
+        .where(and(eq(userNotifications.id, input.id), eq(userNotifications.userId, ctx.user.id)));
+
+      return { success: true };
+    }),
+
+  /**
+   * Mark all notifications as read
+   */
+  markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+    await db.update(userNotifications)
+      .set({ isRead: true })
+      .where(and(eq(userNotifications.userId, ctx.user.id), eq(userNotifications.isRead, false)));
+
+    return { success: true };
+  }),
+
+  /**
+   * Parse schedule intent from natural language using LLM
+   */
+  parseIntent: protectedProcedure
+    .input(z.object({
+      message: z.string().min(1).max(5000),
+      model: z.string().max(128).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Use the LLM to parse scheduling intent
+      const { llmProviders: llmProvidersTable } = await import("../../drizzle/schema");
+      const { decrypt } = await import("../services/crypto");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const providers = await db
+        .select()
+        .from(llmProvidersTable)
+        .where(eq(llmProvidersTable.isEnabled, true))
+        .limit(1);
+
+      if (!providers.length || !providers[0].apiKeyEncrypted) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No LLM provider configured" });
+      }
+
+      const provider = providers[0];
+      const apiKey = decrypt(provider.apiKeyEncrypted);
+      const model = input.model || provider.defaultModel || "gpt-4o-mini";
+
+      const systemPrompt = `You are a scheduling assistant. Parse the user's scheduling intent and return ONLY a valid JSON object:
+{
+  "prompt": "The actual question/task to execute at the scheduled time",
+  "cronExpression": "cron expression (5 fields: min hour dom mon dow) or null",
+  "scheduledAt": "ISO 8601 datetime for one-time or null",
+  "isRecurring": true/false,
+  "emailNotify": true,
+  "description": "Short human-readable description",
+  "timezone": "Asia/Bangkok"
+}
+
+Cron: 0 8 * * * = daily 8AM, 0 8 * * 1-5 = weekdays 8AM, 0 */2 * * * = every 2h
+For reminders, set scheduledAt 30 min before the event.
+Return ONLY the JSON, no markdown, no explanation.`;
+
+      const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: input.message },
+          ],
+          temperature: 0.1,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM request failed" });
+      }
+
+      const data = await response.json() as any;
+      const content = data?.choices?.[0]?.message?.content || "";
+
+      try {
+        // Extract JSON from response (handle markdown code blocks)
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON found");
+        const parsed = JSON.parse(jsonMatch[0]);
+        return parsed;
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse LLM response as schedule" });
+      }
+    }),
+});

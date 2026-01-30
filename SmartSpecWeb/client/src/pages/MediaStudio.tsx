@@ -67,11 +67,14 @@ import {
   Copy,
   CheckCircle,
   Search,
+  Languages,
+  Mic,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import ModelSelectorDialog from "@/components/media/ModelSelectorDialog";
+import { usePushToTalk } from "@/hooks/usePushToTalk";
 import SkillSelectorDialog from "@/components/media/SkillSelectorDialog";
 import DynamicSkillForm, { type SkillInputSchema } from "@/components/media/DynamicSkillForm";
 
@@ -140,6 +143,35 @@ export default function MediaStudio() {
   const [selectedSkillId, setSelectedSkillId] = useState<string>("");
   const [showSkillDialog, setShowSkillDialog] = useState(false);
   const [skillInitialized, setSkillInitialized] = useState(false);
+
+  // Translation state
+  const [translatedText, setTranslatedText] = useState('');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translationCopied, setTranslationCopied] = useState(false);
+  const translateMutation = trpc.translation.translate.useMutation({
+    onSuccess: (data) => {
+      setTranslatedText(data.translatedText);
+      setShowTranslation(true);
+      setIsTranslating(false);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Translation failed');
+      setIsTranslating(false);
+    },
+  });
+
+  // Push-to-talk
+  const { isRecording: isPttRecording, isTranscribing: isPttTranscribing, startRecording: pttStart, stopRecording: pttStop } = usePushToTalk({
+    onTranscription: (text) => {
+      if (enhancedPrompt) {
+        setEnhancedPrompt((prev) => prev ? `${prev} ${text}` : text);
+      } else {
+        setPrompt((prev) => prev ? `${prev} ${text}` : text);
+      }
+    },
+    onError: (err) => toast.error(err),
+  });
 
   // Advanced options state
   const [realisticSkin, setRealisticSkin] = useState(false);
@@ -614,8 +646,8 @@ export default function MediaStudio() {
       // Show user-friendly error message
       const errorMessage = error?.message || error?.data?.message || "Failed to generate prompt";
       if (errorMessage.includes("Unable to generate") || errorMessage.includes("different text")) {
-        toast.error("Auto Prompt ไม่สามารถสร้าง prompt ได้", {
-          description: "กรุณาลองเปลี่ยนข้อความหรือรูปภาพแล้วลองใหม่",
+        toast.error("Auto Prompt could not generate a prompt", {
+          description: "Please try changing the text or image and try again",
         });
       } else {
         toast.error("Auto Prompt failed", {
@@ -922,6 +954,58 @@ export default function MediaStudio() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
+                          variant={isPttRecording ? "destructive" : "outline"}
+                          size="sm"
+                          onPointerDown={pttStart}
+                          onPointerUp={pttStop}
+                          onPointerLeave={isPttRecording ? pttStop : undefined}
+                          disabled={isPttTranscribing}
+                        >
+                          {isPttTranscribing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Mic className={cn("h-4 w-4", isPttRecording && "animate-pulse")} />
+                          )}
+                          <span className="ml-1">{isPttRecording ? "Recording..." : "Mic"}</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Hold to record voice (Speech-to-Text)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const text = enhancedPrompt || prompt;
+                            if (!text.trim()) return;
+                            setIsTranslating(true);
+                            setShowTranslation(false);
+                            translateMutation.mutate({ text });
+                          }}
+                          disabled={!(enhancedPrompt || prompt).trim() || isTranslating}
+                        >
+                          {isTranslating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Languages className="h-4 w-4" />
+                          )}
+                          <span className="ml-1">Translate</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Translate prompt (EN ↔ your language)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
                           variant="outline"
                           size="sm"
                           onClick={handleAutoPrompt}
@@ -970,6 +1054,39 @@ export default function MediaStudio() {
                   >
                     Clear
                   </Button>
+                </div>
+              )}
+
+              {/* Translation Popup */}
+              {showTranslation && translatedText && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-blue-700">Translation</span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => {
+                          navigator.clipboard.writeText(translatedText);
+                          setTranslationCopied(true);
+                          setTimeout(() => setTranslationCopied(false), 2000);
+                        }}
+                      >
+                        {translationCopied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                        <span className="ml-1">{translationCopied ? 'Copied' : 'Copy'}</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setShowTranslation(false)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-blue-900 whitespace-pre-wrap">{translatedText}</p>
                 </div>
               )}
 

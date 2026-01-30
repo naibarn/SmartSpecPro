@@ -68,7 +68,7 @@ export default function Factory() {
         </button>
         <div style={{ marginTop: 8 }}>
           <textarea value={applyToken} readOnly rows={2} style={{ width: "100%" }} />
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Token นี้ใช้ครั้งเดียว และหมดอายุได้</div>
+          <div style={{ fontSize: 12, opacity: 0.8 }}>This token is single-use and may expire</div>
         </div>
       </section>
 

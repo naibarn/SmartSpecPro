@@ -88,8 +88,8 @@ async def main():
     )
     parser.add_argument(
         "--password",
-        default="Admin123!@#",
-        help="Admin password (default: Admin123!@#)"
+        default=None,
+        help="Admin password (auto-generated if not provided)"
     )
     parser.add_argument(
         "--name",
@@ -98,6 +98,12 @@ async def main():
     )
 
     args = parser.parse_args()
+
+    # Generate secure password if not provided
+    if not args.password:
+        import secrets as _s
+        args.password = _s.token_urlsafe(16)
+        print(f"[Security] No --password provided. Generated: {args.password}")
 
     print("🚀 SmartSpec Pro - Admin User Creator")
     print("=" * 50)

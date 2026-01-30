@@ -88,6 +88,18 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days
     ENCRYPTION_MASTER_KEY: str = "change-this-in-production-32-chars-min"  # For encrypting provider API keys
 
+    # OAuth (Google & GitHub)
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:3000/auth/callback/google"
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
+    GITHUB_REDIRECT_URI: str = "http://localhost:3000/auth/callback/github"
+
+    # RS256 key paths (optional, defaults to app/core/keys/)
+    JWT_PRIVATE_KEY_PATH: str = ""
+    JWT_PUBLIC_KEY_PATH: str = ""
+
     # ============================================================
     # SmartSpecWeb Gateway Integration (OpenAI-compatible)
     # ============================================================

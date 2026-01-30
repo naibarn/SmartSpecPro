@@ -3,9 +3,10 @@
  * User authentication with multiple providers
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
+import { generateFingerprint } from '@/lib/fingerprint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -27,6 +28,9 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Generate device fingerprint on mount (stored as __fp cookie)
+  useEffect(() => { generateFingerprint().catch(() => {}); }, []);
 
   // Get returnUrl from query params
   const getReturnUrl = () => {
@@ -87,8 +91,23 @@ export default function Login() {
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    toast.info(`${provider} login coming soon!`);
+  const handleSocialLogin = async (provider: string) => {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE_URL}/api/oauth/${provider.toLowerCase()}/authorize`);
+      if (!response.ok) {
+        const err = await response.json();
+        toast.error(err.detail || `${provider} login not available`);
+        return;
+      }
+      const data = await response.json();
+      // Store state for CSRF validation on callback
+      sessionStorage.setItem('oauth_state', data.state);
+      // Redirect to provider's auth page
+      window.location.href = data.authorization_url;
+    } catch (error) {
+      toast.error(`Failed to initiate ${provider} login`);
+    }
   };
 
   return (

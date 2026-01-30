@@ -127,6 +127,13 @@ class IndexManager:
         Returns:
             Index information
         """
+        # Validate table/column names to prevent SQL injection
+        import re as _re
+        if not _re.match(r'^[a-z_][a-z0-9_]{0,62}$', table_name):
+            raise ValueError(f"Invalid table name: {table_name}")
+        if not _re.match(r'^[a-z_][a-z0-9_]{0,62}$', column_name):
+            raise ValueError(f"Invalid column name: {column_name}")
+
         config = config or IndexConfig()
         index_name = f"idx_{table_name}_{column_name}_{config.index_type.value}"
         

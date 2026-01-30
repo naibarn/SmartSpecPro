@@ -298,8 +298,16 @@ Focus on the specific task requested and avoid unnecessary changes."""
         context_parts = ["Files to focus on:"]
         
         for file_path in request.files:
-            full_path = os.path.join(workspace, file_path) if not os.path.isabs(file_path) else file_path
-            
+            # Path traversal protection: resolve and verify within workspace
+            if os.path.isabs(file_path):
+                full_path = os.path.realpath(file_path)
+            else:
+                full_path = os.path.realpath(os.path.join(workspace, file_path))
+            ws_real = os.path.realpath(workspace)
+            if not full_path.startswith(ws_real + os.sep) and full_path != ws_real:
+                context_parts.append(f"\n- {file_path} (access denied — outside workspace)")
+                continue
+
             if os.path.exists(full_path):
                 try:
                     with open(full_path, 'r', encoding='utf-8') as f:
@@ -531,17 +539,27 @@ Focus on the specific task requested and avoid unnecessary changes."""
         """
         workspace = workspace_path or self.workspace_path
         
-        # Resolve full path
+        # Resolve full path with path-traversal protection
         if os.path.isabs(file_path):
-            full_path = file_path
+            full_path = os.path.realpath(file_path)
         elif workspace:
-            full_path = os.path.join(workspace, file_path)
+            full_path = os.path.realpath(os.path.join(workspace, file_path))
         else:
             return {
                 "status": "error",
                 "error": "No workspace path specified",
                 "path": file_path,
             }
+
+        # Verify resolved path is within workspace
+        if workspace:
+            ws_real = os.path.realpath(workspace)
+            if not full_path.startswith(ws_real + os.sep) and full_path != ws_real:
+                return {
+                    "status": "error",
+                    "error": "Path traversal detected — file outside workspace",
+                    "path": file_path,
+                }
         
         logger.info(
             "opencode_file_edit_started",

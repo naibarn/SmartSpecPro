@@ -50,10 +50,24 @@ class PtySession:
     subscribers: Set[Callable[[int, str], None]] = field(default_factory=set)
 
 
+# Disallowed shell metacharacters to prevent command injection
+DISALLOWED_TOKENS = [";", "|", "&", "`", "$(", "${", ">>", "<<"]
+
+
 class PtyManager:
     def __init__(self):
         self._sessions: Dict[str, PtySession] = {}
         self._lock = asyncio.Lock()
+
+    @staticmethod
+    def _validate_command(command: str) -> str:
+        """Validate command for shell injection. Raises ValueError if dangerous."""
+        if not command or not command.strip():
+            return command
+        for bad in DISALLOWED_TOKENS:
+            if bad in command:
+                raise ValueError(f"Disallowed token in command: {bad}")
+        return command
 
     def _get_shell(self) -> str:
         """Get the default shell for the system"""
@@ -76,15 +90,18 @@ class PtyManager:
         """Build command arguments based on the command type."""
         shell = self._get_shell()
         logger.info(f"Using shell: {shell}")
-        
+
         # Empty command - open interactive shell
         if not command or command.strip() == "":
             if IS_WINDOWS:
                 return [shell]
             # Use login shell for better environment
             return [shell, "-l"]
-        
+
         command = command.strip()
+
+        # Validate command for injection
+        self._validate_command(command)
         
         # Check if it's a workflow file (for ss_autopilot)
         if command.endswith(".md"):
@@ -98,7 +115,8 @@ class PtyManager:
                     return ["python", "-m", "ss_autopilot.cli_enhanced", command]
             except Exception:
                 pass
-            return [shell, "-c", f"cat {command}"]
+            import shlex
+            return [shell, "-c", f"cat {shlex.quote(command)}"]
         
         # Regular shell command
         if IS_WINDOWS:

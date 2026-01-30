@@ -2,6 +2,9 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { giveSignupBonus } from "../services/creditService";
+import { analyzeEmail } from "../services/emailAnalysis";
+import { registrationLimiter } from "../services/rateLimiter";
+import { evaluateRegistration, logRegistrationEvent, recordDeviceFingerprint } from "../services/trustScoring";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -49,6 +52,34 @@ export function registerOAuthRoutes(app: Express) {
 
       // Get hostname for registeredDomain
       const hostname = req.hostname || req.get("host")?.split(":")[0] || "localhost";
+      const ipAddress = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+      const fingerprintHash = req.cookies?.["__fp"] || undefined;
+
+      // Email analysis for normalized email
+      const emailAnalysis = userInfo.email ? analyzeEmail(userInfo.email) : null;
+
+      // Trust evaluation for new users
+      let trustScore = 100;
+      let trustOutcome: "allowed" | "flagged" | "blocked" = "allowed";
+
+      if (isNewUser && userInfo.email) {
+        // Rate limit check
+        const rateLimited = !registrationLimiter.checkLimit(ipAddress);
+        if (rateLimited) {
+          console.warn(`[OAuth] Registration rate limited for IP: ${ipAddress}`);
+          res.redirect(302, "/?error=rate_limited");
+          return;
+        }
+
+        const trustResult = await evaluateRegistration({
+          email: userInfo.email,
+          ipAddress,
+          fingerprintHash,
+        });
+        trustScore = trustResult.score;
+        trustOutcome = trustResult.outcome;
+        console.log(`[OAuth] Trust score for ${userInfo.email}: ${trustScore} (${trustOutcome})`);
+      }
 
       await db.upsertUser({
         openId: userInfo.openId,
@@ -56,23 +87,48 @@ export function registerOAuthRoutes(app: Express) {
         email: userInfo.email ?? null,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
-        // Only set registeredDomain for new users (will be ignored on update)
         registeredDomain: isNewUser ? hostname : undefined,
-        // Grant admin role to first user
         role: isFirstUser ? 'admin' : undefined,
+        normalizedEmail: isNewUser && emailAnalysis ? emailAnalysis.normalized : undefined,
+        registrationIp: isNewUser ? ipAddress : undefined,
+        trustScore: isNewUser ? trustScore : undefined,
       });
 
-      // Give signup bonus to new users
+      // Give signup bonus to new users (only if trust score allows)
       if (isNewUser) {
         const newUser = await db.getUserByOpenId(userInfo.openId);
         if (newUser) {
+          // Log the registration event
           try {
-            // First user (admin) gets more credits
-            const bonusCredits = isFirstUser ? FIRST_USER_BONUS_CREDITS : NORMAL_USER_BONUS_CREDITS;
-            await giveSignupBonus(newUser.id, bonusCredits);
-            console.log(`[OAuth] Gave signup bonus (${bonusCredits} credits) to new user: ${newUser.id}${isFirstUser ? ' (ADMIN)' : ''}`);
+            await logRegistrationEvent({
+              userId: newUser.id,
+              email: userInfo.email || "",
+              normalizedEmail: emailAnalysis?.normalized || "",
+              ipAddress,
+              fingerprintHash,
+              userAgent: req.headers["user-agent"],
+              loginMethod: userInfo.loginMethod ?? userInfo.platform ?? undefined,
+              trustScore,
+              outcome: trustOutcome,
+            });
+            if (fingerprintHash) {
+              await recordDeviceFingerprint(newUser.id, fingerprintHash);
+            }
           } catch (err) {
-            console.error(`[OAuth] Failed to give signup bonus:`, err);
+            console.error(`[OAuth] Failed to log registration event:`, err);
+          }
+
+          // Only give bonus if trust score >= 70
+          if (trustScore >= 70) {
+            try {
+              const bonusCredits = isFirstUser ? FIRST_USER_BONUS_CREDITS : NORMAL_USER_BONUS_CREDITS;
+              await giveSignupBonus(newUser.id, bonusCredits);
+              console.log(`[OAuth] Gave signup bonus (${bonusCredits} credits) to new user: ${newUser.id}${isFirstUser ? ' (ADMIN)' : ''}`);
+            } catch (err) {
+              console.error(`[OAuth] Failed to give signup bonus:`, err);
+            }
+          } else {
+            console.log(`[OAuth] Withheld signup bonus for user ${newUser.id} (trust score: ${trustScore})`);
           }
         }
       }

@@ -363,11 +363,69 @@ async def test_provider_config(
             "message": "No API key configured"
         }
 
-    # TODO: Implement actual provider testing logic
-    # For now, just return a placeholder
-    return {
-        "success": True,
-        "message": f"Provider '{provider_name}' test not implemented yet",
-        "provider": config.provider_name,
-        "has_api_key": True
+    # Test provider connectivity by making a lightweight API call
+    import httpx
+    from app.core.encryption import encryption_service
+
+    try:
+        api_key = encryption_service.decrypt(config.api_key_encrypted)
+    except Exception:
+        return {"success": False, "message": "Failed to decrypt API key"}
+
+    test_urls = {
+        "openai": "https://api.openai.com/v1/models",
+        "anthropic": "https://api.anthropic.com/v1/models",
+        "openrouter": "https://openrouter.ai/api/v1/models",
+        "google": "https://generativelanguage.googleapis.com/v1/models",
     }
+
+    # Determine provider type from name
+    pname = provider_name.lower()
+    test_url = None
+    headers = {}
+    for key, url in test_urls.items():
+        if key in pname:
+            test_url = url
+            if key == "anthropic":
+                headers = {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
+            elif key == "google":
+                test_url = f"{url}?key={api_key}"
+            else:
+                headers = {"Authorization": f"Bearer {api_key}"}
+            break
+
+    if not test_url:
+        # Generic test: try OpenAI-compatible /v1/models
+        base_url = getattr(config, 'base_url', None) or ""
+        if base_url:
+            test_url = f"{base_url.rstrip('/')}/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+        else:
+            return {
+                "success": True,
+                "message": f"Provider '{provider_name}' has API key configured (no test endpoint available)",
+                "provider": config.provider_name,
+                "has_api_key": True
+            }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(test_url, headers=headers)
+            if resp.status_code in (200, 201):
+                return {
+                    "success": True,
+                    "message": f"Provider '{provider_name}' is reachable and authenticated",
+                    "provider": config.provider_name,
+                    "status_code": resp.status_code
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Provider returned status {resp.status_code}",
+                    "provider": config.provider_name,
+                    "status_code": resp.status_code
+                }
+    except httpx.TimeoutException:
+        return {"success": False, "message": f"Provider '{provider_name}' request timed out"}
+    except Exception as e:
+        return {"success": False, "message": f"Connection failed: {str(e)}"}

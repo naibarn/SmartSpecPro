@@ -266,16 +266,23 @@ class NotificationService:
         message: str
     ):
         """Send email notification"""
-        # TODO: Get user email from database
-        # For now, skip if SMTP not configured
         if not settings.SMTP_HOST:
             return
-        
+
+        # Get user email from database
+        from app.models.user import User
+        result = await self.db.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        if not user or not user.email:
+            return
+
         # Create email
         msg = MIMEMultipart("alternative")
         msg["Subject"] = f"[SmartSpec Pro] {title}"
         msg["From"] = settings.SMTP_FROM_EMAIL
-        msg["To"] = "user@example.com"  # TODO: Get from user
+        msg["To"] = user.email
         
         # HTML body
         html = f"""
@@ -312,8 +319,9 @@ class NotificationService:
         data: Optional[Dict[str, Any]] = None
     ):
         """Send webhook notification"""
-        # TODO: Get user webhook URL from preferences
-        webhook_url = None  # Get from user preferences
+        # Get user webhook URL from registered webhooks
+        from app.services.webhook_service import get_user_webhook
+        webhook_url = get_user_webhook(user_id)
         
         if not webhook_url:
             return

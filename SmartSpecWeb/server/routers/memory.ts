@@ -36,10 +36,11 @@ export const memoryRouter = router({
       z.object({
         entityType: entityTypeSchema.optional(),
         limit: z.number().min(1).max(50).default(20),
+        projectId: z.string().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const memories = await getEntityMemoriesForContext(ctx.user.id, input.limit);
+      const memories = await getEntityMemoriesForContext(ctx.user.id, input.limit, input.projectId || null);
 
       // Filter by type if specified
       const filtered = input.entityType
@@ -72,6 +73,7 @@ export const memoryRouter = router({
         sourceConversationId: z.number().optional(),
         importance: z.number().min(1).max(10).optional(),
         source: z.enum(["auto", "manual", "suggested"]).optional(),
+        projectId: z.string().nullish(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -82,7 +84,8 @@ export const memoryRouter = router({
         input.facts,
         input.sourceConversationId,
         input.importance,
-        input.source
+        input.source,
+        input.projectId
       );
 
       return {

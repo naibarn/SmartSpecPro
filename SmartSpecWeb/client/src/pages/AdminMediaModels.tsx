@@ -859,7 +859,7 @@ function ModelForm({
               <ul className="list-disc list-inside space-y-1">
                 <li>"Generate image of a cat with <strong>nano banana pro</strong>"</li>
                 <li>"Create a video using <strong>veo 3</strong>"</li>
-                <li>"สร้างภาพด้วย <strong>flux 2.0</strong>"</li>
+                <li>"Create an image with <strong>flux 2.0</strong>"</li>
               </ul>
             </CardContent>
           </Card>

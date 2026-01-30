@@ -414,7 +414,7 @@ class MemoryStore:
     
     def _content_hash(self, content: str) -> str:
         """Generate hash for content deduplication"""
-        return hashlib.md5(content.encode()).hexdigest()
+        return hashlib.sha256(content.encode()).hexdigest()
     
     # ==================== Project Operations ====================
     

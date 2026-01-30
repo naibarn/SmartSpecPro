@@ -3,6 +3,8 @@
     "context7@claude-plugins-official": true,
     "coderabbit@claude-plugins-official": true,
     "ultrathink@cc-marketplace": true,
-    "ralph-loop@claude-plugins-official": true
+    "ralph-loop@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true
   }
 }

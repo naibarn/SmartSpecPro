@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
+import { router, adminProcedure, domainAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { systemSettings, invoiceConfig, tenants } from "../../drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -14,7 +14,7 @@ import { encrypt, decrypt } from "../services/crypto";
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general"]);
+const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth"]);
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),
@@ -208,7 +208,7 @@ export const systemSettingsRouter = router({
   /**
    * Get global invoice configuration
    */
-  getGlobalInvoiceConfig: adminProcedure.query(async () => {
+  getGlobalInvoiceConfig: domainAdminProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -224,7 +224,7 @@ export const systemSettingsRouter = router({
   /**
    * Get invoice configuration for a specific tenant
    */
-  getTenantInvoiceConfig: adminProcedure
+  getTenantInvoiceConfig: domainAdminProcedure
     .input(z.object({ tenantId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -267,7 +267,7 @@ export const systemSettingsRouter = router({
   /**
    * Create or update invoice configuration
    */
-  upsertInvoiceConfig: adminProcedure
+  upsertInvoiceConfig: domainAdminProcedure
     .input(invoiceConfigSchema)
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -311,6 +311,16 @@ export const systemSettingsRouter = router({
       await db.delete(invoiceConfig).where(eq(invoiceConfig.id, input.id));
       return { success: true };
     }),
+
+  /**
+   * List all tenants (for admin tenant selector)
+   */
+  listTenants: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    return db.select({ id: tenants.id, name: tenants.name, domain: tenants.domain }).from(tenants);
+  }),
 
   // ============================================================
   // General Settings
@@ -534,4 +544,147 @@ export const systemSettingsRouter = router({
 
       return { success: true };
     }),
+
+  // ============================================================
+  // OAuth Settings
+  // ============================================================
+
+  /**
+   * Get OAuth settings (masked sensitive values)
+   */
+  getOAuthSettings: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "oauth"));
+
+    const result: Record<string, string | boolean | undefined> = {
+      googleClientId: undefined,
+      googleClientSecret: undefined,
+      googleClientSecretConfigured: false,
+      googleRedirectUri: undefined,
+      githubClientId: undefined,
+      githubClientSecret: undefined,
+      githubClientSecretConfigured: false,
+      githubRedirectUri: undefined,
+    };
+
+    for (const setting of settings) {
+      if (setting.key === "googleClientId") {
+        result.googleClientId = setting.value || undefined;
+      } else if (setting.key === "googleClientSecret" && setting.value) {
+        result.googleClientSecret = "****" + "*".repeat(20);
+        result.googleClientSecretConfigured = true;
+      } else if (setting.key === "googleRedirectUri") {
+        result.googleRedirectUri = setting.value || undefined;
+      } else if (setting.key === "githubClientId") {
+        result.githubClientId = setting.value || undefined;
+      } else if (setting.key === "githubClientSecret" && setting.value) {
+        result.githubClientSecret = "****" + "*".repeat(20);
+        result.githubClientSecretConfigured = true;
+      } else if (setting.key === "githubRedirectUri") {
+        result.githubRedirectUri = setting.value || undefined;
+      }
+    }
+
+    return result;
+  }),
+
+  /**
+   * Update OAuth settings
+   */
+  updateOAuthSettings: adminProcedure
+    .input(z.object({
+      googleClientId: z.string().optional(),
+      googleClientSecret: z.string().optional(),
+      googleRedirectUri: z.string().optional(),
+      githubClientId: z.string().optional(),
+      githubClientSecret: z.string().optional(),
+      githubRedirectUri: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const updates = [
+        { key: "googleClientId", value: input.googleClientId, sensitive: false },
+        { key: "googleClientSecret", value: input.googleClientSecret, sensitive: true },
+        { key: "googleRedirectUri", value: input.googleRedirectUri, sensitive: false },
+        { key: "githubClientId", value: input.githubClientId, sensitive: false },
+        { key: "githubClientSecret", value: input.githubClientSecret, sensitive: true },
+        { key: "githubRedirectUri", value: input.githubRedirectUri, sensitive: false },
+      ];
+
+      for (const update of updates) {
+        if (update.value !== undefined) {
+          const storedValue = update.sensitive ? encrypt(update.value) : update.value;
+
+          const existing = await db
+            .select()
+            .from(systemSettings)
+            .where(and(
+              eq(systemSettings.category, "oauth"),
+              eq(systemSettings.key, update.key)
+            ))
+            .limit(1);
+
+          if (existing.length > 0) {
+            await db
+              .update(systemSettings)
+              .set({
+                value: storedValue,
+                isSensitive: update.sensitive,
+                updatedBy: ctx.user?.id,
+                updatedAt: new Date(),
+              })
+              .where(eq(systemSettings.id, existing[0].id));
+          } else {
+            await db.insert(systemSettings).values({
+              category: "oauth",
+              key: update.key,
+              value: storedValue,
+              isSensitive: update.sensitive,
+              description: `OAuth ${update.key}`,
+              updatedBy: ctx.user?.id,
+            });
+          }
+        }
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Get decrypted OAuth config (internal API for python-backend)
+   * Protected by admin procedure
+   */
+  getOAuthConfigDecrypted: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "oauth"));
+
+    const result: Record<string, string> = {};
+
+    for (const setting of settings) {
+      if (setting.value) {
+        if (setting.isSensitive) {
+          const decrypted = decrypt(setting.value);
+          if (decrypted) {
+            result[setting.key] = decrypted;
+          }
+        } else {
+          result[setting.key] = setting.value;
+        }
+      }
+    }
+
+    return result;
+  }),
 });

@@ -1,8 +1,7 @@
 ---
 name: Code Docs Assistant
 description: |
-  [EN] Fetches up-to-date library documentation using Context7 and answers coding questions with current API references. Use when users ask about specific libraries, frameworks, or APIs.
-  [TH] ค้นหาเอกสาร library ล่าสุดจาก Context7 และตอบคำถามเกี่ยวกับ coding ด้วยข้อมูล API ที่เป็นปัจจุบัน ใช้เมื่อผู้ใช้ถามเกี่ยวกับ library, framework หรือ API
+  Fetches up-to-date library documentation using Context7 and answers coding questions with current API references. Use when users ask about specific libraries, frameworks, or APIs.
 category: code_assistant
 version: 1.0.0
 author: SmartSpec Team
@@ -12,13 +11,13 @@ auto_trigger: true
 trigger_patterns:
   - "use context7"
   - "context7"
-  - "ค้นหา docs"
+  - "find docs"
   - "search docs"
   - "latest docs for"
   - "how to use .+ library"
   - "documentation for"
   - "docs for"
-  - "ค้นหาเอกสาร"
+  - "search documentation"
 enabled_by_default: true
 priority: 40
 credit_multiplier: 1.0

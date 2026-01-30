@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 import time
 import uuid
 from decimal import Decimal
@@ -81,7 +82,7 @@ def _require_proxy_token(req: Request):
         token = req.headers.get("x-proxy-token", "").strip()
 
     # Check 1: Is it a valid proxy token?
-    if token == settings.SMARTSPEC_PROXY_TOKEN:
+    if secrets.compare_digest(token, settings.SMARTSPEC_PROXY_TOKEN):
         return
 
     # Check 2: Is it a valid auth token (JWT)?

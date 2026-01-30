@@ -22,21 +22,24 @@ async def create_admin():
                 print("✅ Updated to admin")
             return
         
-        # Create new admin
+        # Create new admin with generated password
+        import secrets as _s
+        generated_pw = _s.token_urlsafe(16)
         admin = User(
             email="admin@smartspec.local",
-            password_hash=get_password_hash("Admin123!@#"),
+            password_hash=get_password_hash(generated_pw),
             full_name="System Administrator",
             credits_balance=100000,
             is_admin=True,
             is_active=True,
             email_verified=True
         )
-        
+
         db.add(admin)
         await db.commit()
         print("✅ Admin user created!")
         print(f"   Email: admin@smartspec.local")
-        print(f"   Password: Admin123!@#")
+        print(f"   Password: {generated_pw}")
+        print(f"   ⚠️  CHANGE PASSWORD AFTER FIRST LOGIN!")
 
 asyncio.run(create_admin())

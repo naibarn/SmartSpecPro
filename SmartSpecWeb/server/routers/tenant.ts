@@ -29,6 +29,7 @@ export function registerTenantRoutes(app: Express) {
           name: req.tenant.name,
           primaryDomain: req.tenant.primaryDomain,
           logoUrl: req.tenant.logoUrl,
+          websiteLogoUrl: req.tenant.websiteLogoUrl,
           faviconUrl: req.tenant.faviconUrl,
           theme,
           seo,

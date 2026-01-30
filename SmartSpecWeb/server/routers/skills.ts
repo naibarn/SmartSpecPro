@@ -419,7 +419,6 @@ interface SkillInputSchema {
 interface SchemaSection {
   id: string;
   title: string;
-  titleTh?: string;
   collapsed?: boolean;
   fields: SchemaField[];
 }
@@ -482,7 +481,6 @@ function convertJsonSchemaToSkillSchema(jsonSchema: any, skillId: string): Skill
     sections.push({
       id: "basic",
       title: "Basic Input",
-      titleTh: "ข้อมูลพื้นฐาน",
       collapsed: false,
       fields: basicFields,
     });
@@ -492,7 +490,6 @@ function convertJsonSchemaToSkillSchema(jsonSchema: any, skillId: string): Skill
     sections.push({
       id: "options",
       title: "Options",
-      titleTh: "ตัวเลือก",
       collapsed: true,
       fields: configFields,
     });

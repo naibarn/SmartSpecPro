@@ -11,6 +11,10 @@ import {
   getConversationById,
   updateConversation,
   deleteConversation,
+  restoreConversation,
+  permanentlyDeleteConversation,
+  emptyTrash,
+  deleteEmptyConversations,
   getConversationCount,
   createMessage,
   getMessages,
@@ -236,6 +240,85 @@ export const chatRouter = router({
     .mutation(async ({ ctx, input }) => {
       await deleteConversation(input.id, ctx.user.id);
       return { success: true };
+    }),
+
+  /**
+   * Delete all empty conversations (0 messages)
+   */
+  deleteEmptyConversations: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      const count = await deleteEmptyConversations(ctx.user.id);
+      return { deletedCount: count };
+    }),
+
+  /**
+   * Delete multiple conversations by IDs
+   */
+  deleteMultipleConversations: protectedProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      let deleted = 0;
+      for (const id of input.ids) {
+        await deleteConversation(id, ctx.user.id);
+        deleted++;
+      }
+      return { deletedCount: deleted };
+    }),
+
+  // ==================== Trash ====================
+
+  /**
+   * List trashed conversations
+   */
+  listTrashedConversations: protectedProcedure
+    .query(async ({ ctx }) => {
+      const trashedConversations = await getConversations({
+        userId: ctx.user.id,
+        trashedOnly: true,
+        limit: 100,
+      } as any);
+      return { conversations: trashedConversations };
+    }),
+
+  /**
+   * Restore a trashed conversation
+   */
+  restoreConversation: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await restoreConversation(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  /**
+   * Restore multiple trashed conversations
+   */
+  restoreMultipleConversations: protectedProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      for (const id of input.ids) {
+        await restoreConversation(id, ctx.user.id);
+      }
+      return { restoredCount: input.ids.length };
+    }),
+
+  /**
+   * Permanently delete a trashed conversation
+   */
+  permanentlyDeleteConversation: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await permanentlyDeleteConversation(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  /**
+   * Empty trash — permanently delete all trashed conversations
+   */
+  emptyTrash: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      const count = await emptyTrash(ctx.user.id);
+      return { deletedCount: count };
     }),
 
   // ==================== Messages ====================

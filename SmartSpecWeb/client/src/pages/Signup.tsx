@@ -3,9 +3,10 @@
  * User registration with plan selection
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
+import { generateFingerprint } from '@/lib/fingerprint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -65,6 +66,9 @@ const plans: Plan[] = [
 export default function Signup() {
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('free');
+
+  // Generate device fingerprint on mount (stored as __fp cookie)
+  useEffect(() => { generateFingerprint().catch(() => {}); }, []);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -99,8 +103,21 @@ export default function Signup() {
     setIsLoading(false);
   };
 
-  const handleSocialSignup = (provider: string) => {
-    toast.info(`${provider} signup coming soon!`);
+  const handleSocialSignup = async (provider: string) => {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE_URL}/api/oauth/${provider.toLowerCase()}/authorize`);
+      if (!response.ok) {
+        const err = await response.json();
+        toast.error(err.detail || `${provider} signup not available`);
+        return;
+      }
+      const data = await response.json();
+      sessionStorage.setItem('oauth_state', data.state);
+      window.location.href = data.authorization_url;
+    } catch (error) {
+      toast.error(`Failed to initiate ${provider} signup`);
+    }
   };
 
   const isPasswordStrong = (password: string) => {

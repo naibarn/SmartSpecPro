@@ -114,7 +114,7 @@ Identity consistency is strict.
 Identity must be preserved using morphological consistency, not stylistic similarity. The generated face must keep the exact landmark geometry of the reference.
 
 ### **TH:**
-ใบหน้าที่สร้างต้องคง "รูปแบบโครงสร้างจริง" ของคนในภาพอ้างอิง — ไม่ใช่แค่ความรู้สึกหรือสไตล์เหมือน ต้องรักษา landmark ทุกจุด เช่น ดวงตา จมูก ปาก คาง และอัตราส่วนทั้งหมดให้ตรงกับต้นฉบับ
+The generated face must preserve the "actual structural form" of the person in the reference image — not merely a similar feeling or style. All landmarks must be maintained, such as eyes, nose, mouth, chin, and all proportions must match the original.
 
 ---
 

@@ -59,6 +59,21 @@ export const users = pgTable("users", {
   /** Whether user account is disabled (can be managed by domain admin) */
   isDisabled: boolean("isDisabled").default(false).notNull(),
 
+  /** Normalized email for duplicate detection (Gmail dots stripped, + aliases removed) */
+  normalizedEmail: varchar("normalizedEmail", { length: 320 }),
+
+  /** Trust score 0-100, calculated at registration (100 = fully trusted) */
+  trustScore: integer("trustScore").default(100),
+
+  /** IP address used during registration */
+  registrationIp: varchar("registrationIp", { length: 45 }),
+
+  /** User preferences (translation language, translation model, etc.) */
+  userPreferences: json("userPreferences").$type<{
+    translationLanguage?: string;
+    translationModel?: string;
+  }>().default({}),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
@@ -330,6 +345,9 @@ export const tenants = pgTable("tenants", {
 
   /** Tenant logo URL */
   logoUrl: varchar("logoUrl", { length: 512 }),
+
+  /** Website logo URL (larger logo for public pages header/footer) */
+  websiteLogoUrl: varchar("websiteLogoUrl", { length: 512 }),
 
   /** Favicon URL */
   faviconUrl: varchar("faviconUrl", { length: 512 }),
@@ -710,6 +728,9 @@ export const conversations = pgTable("conversations", {
   /** Whether conversation is pinned */
   isPinned: boolean("isPinned").default(false).notNull(),
 
+  /** Soft-delete: when moved to trash (auto-purged after 30 days) */
+  trashedAt: timestamp("trashedAt"),
+
   /** Total credits used in this conversation */
   totalCreditsUsed: numeric("totalCreditsUsed", { precision: 12, scale: 4 }).default("0"),
 
@@ -721,6 +742,12 @@ export const conversations = pgTable("conversations", {
 
   /** Memory mode: full | no_long | off */
   memoryMode: varchar("memory_mode", { length: 20 }).default("full"),
+
+  /** Brainstorm partner model (Model B) */
+  brainstormPartnerModel: varchar("brainstormPartnerModel", { length: 100 }),
+
+  /** Brainstorm max rounds per session */
+  brainstormMaxRounds: integer("brainstormMaxRounds").default(3),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -854,6 +881,9 @@ export const entityMemories = pgTable("entity_memories", {
 
   /** Source conversation ID (where fact was learned) */
   sourceConversationId: integer("sourceConversationId").references(() => conversations.id, { onDelete: "set null" }),
+
+  /** Project scope — null means global (user-level) memory */
+  projectId: varchar("projectId", { length: 100 }),
 
   /** Confidence score (0-1) */
   confidence: numeric("confidence", { precision: 3, scale: 2 }).default("0.8"),
@@ -1445,3 +1475,206 @@ export const blogPosts = pgTable("blog_posts", {
 
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type InsertBlogPost = typeof blogPosts.$inferInsert;
+
+// ============================================================
+// Chat Alert — Scheduled Messages System
+// ============================================================
+
+export const scheduleStatusEnum = pgEnum("schedule_status", ["active", "paused", "completed", "failed"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["scheduled_message", "follow_request", "alert", "system"]);
+export const followStatusEnum = pgEnum("follow_status", ["active", "blocked"]);
+
+/**
+ * Scheduled Messages — recurring or one-time scheduled chat prompts
+ */
+export const scheduledMessages = pgTable("scheduled_messages", {
+  id: serial("id").primaryKey(),
+
+  /** Owner who created the schedule */
+  userId: integer("userId").references(() => users.id, { onDelete: "cascade" }).notNull(),
+
+  /** Conversation to post into (null = create new) */
+  conversationId: integer("conversationId").references(() => conversations.id, { onDelete: "set null" }),
+
+  /** Target user to send to (null = self) */
+  targetUserId: integer("targetUserId").references(() => users.id, { onDelete: "cascade" }),
+
+  /** The prompt to send to the LLM */
+  prompt: text("prompt").notNull(),
+
+  /** Cron expression for recurring (e.g. "0 8 * * *") */
+  cronExpression: varchar("cronExpression", { length: 100 }),
+
+  /** User's timezone (e.g. "Asia/Bangkok") */
+  timezone: varchar("timezone", { length: 64 }).default("Asia/Bangkok").notNull(),
+
+  /** For one-time schedules */
+  scheduledAt: timestamp("scheduledAt", { withTimezone: true }),
+
+  /** Recurring or one-time */
+  isRecurring: boolean("isRecurring").default(false).notNull(),
+
+  /** Current status */
+  status: scheduleStatusEnum("status").default("active").notNull(),
+
+  /** LLM model to use */
+  modelId: varchar("modelId", { length: 128 }),
+
+  /** Associated skill */
+  skillId: varchar("skillId", { length: 100 }).default("chat-alert"),
+
+  /** Send email notification on execution */
+  emailNotify: boolean("emailNotify").default(true).notNull(),
+
+  /** Human-readable description of the schedule */
+  description: text("description"),
+
+  /** Last execution time */
+  lastRunAt: timestamp("lastRunAt", { withTimezone: true }),
+
+  /** Next planned execution */
+  nextRunAt: timestamp("nextRunAt", { withTimezone: true }),
+
+  /** BullMQ job ID for cancellation */
+  bullmqJobId: varchar("bullmqJobId", { length: 255 }),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ScheduledMessage = typeof scheduledMessages.$inferSelect;
+export type InsertScheduledMessage = typeof scheduledMessages.$inferInsert;
+
+/**
+ * Scheduled Message Logs — execution history
+ */
+export const scheduledMessageLogs = pgTable("scheduled_message_logs", {
+  id: serial("id").primaryKey(),
+
+  scheduledMessageId: integer("scheduledMessageId")
+    .references(() => scheduledMessages.id, { onDelete: "cascade" })
+    .notNull(),
+
+  executedAt: timestamp("executedAt", { withTimezone: true }).defaultNow().notNull(),
+
+  /** LLM response content */
+  responseContent: text("responseContent"),
+
+  /** Credits consumed */
+  creditsUsed: numeric("creditsUsed", { precision: 10, scale: 4 }).default("0"),
+
+  /** Success or failure */
+  status: varchar("status", { length: 20 }).default("success").notNull(),
+
+  /** Error message if failed */
+  error: text("error"),
+});
+
+export type ScheduledMessageLog = typeof scheduledMessageLogs.$inferSelect;
+export type InsertScheduledMessageLog = typeof scheduledMessageLogs.$inferInsert;
+
+/**
+ * User Follows — follow relationships between users
+ */
+export const userFollows = pgTable("user_follows", {
+  id: serial("id").primaryKey(),
+
+  followerId: integer("followerId").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  followingId: integer("followingId").references(() => users.id, { onDelete: "cascade" }).notNull(),
+
+  status: followStatusEnum("status").default("active").notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type UserFollow = typeof userFollows.$inferSelect;
+export type InsertUserFollow = typeof userFollows.$inferInsert;
+
+/**
+ * User Notifications — in-app notification center
+ */
+export const userNotifications = pgTable("user_notifications", {
+  id: serial("id").primaryKey(),
+
+  userId: integer("userId").references(() => users.id, { onDelete: "cascade" }).notNull(),
+
+  type: notificationTypeEnum("type").notNull(),
+
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content"),
+
+  /** Link to related conversation */
+  conversationId: integer("conversationId").references(() => conversations.id, { onDelete: "set null" }),
+
+  /** Link to related schedule */
+  scheduledMessageId: integer("scheduledMessageId").references(() => scheduledMessages.id, { onDelete: "set null" }),
+
+  isRead: boolean("isRead").default(false).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type UserNotification = typeof userNotifications.$inferSelect;
+export type InsertUserNotification = typeof userNotifications.$inferInsert;
+
+/**
+ * Direct Messages — user-to-user messaging
+ * Follow: max 10 messages, Friend (mutual follow): unlimited
+ */
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+
+  senderId: integer("senderId").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  receiverId: integer("receiverId").references(() => users.id, { onDelete: "cascade" }).notNull(),
+
+  content: text("content").notNull(),
+
+  /** Urgent messages show as pop-up alerts */
+  isUrgent: boolean("isUrgent").default(false).notNull(),
+
+  isRead: boolean("isRead").default(false).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type InsertDirectMessage = typeof directMessages.$inferInsert;
+
+// ==================== Account Security ====================
+
+/** Logs every registration attempt for duplicate detection */
+export const registrationEvents = pgTable("registration_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").references(() => users.id),
+  email: varchar("email", { length: 320 }).notNull(),
+  normalizedEmail: varchar("normalizedEmail", { length: 320 }).notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }).notNull(),
+  fingerprintHash: varchar("fingerprintHash", { length: 64 }),
+  userAgent: text("userAgent"),
+  loginMethod: varchar("loginMethod", { length: 64 }),
+  trustScore: integer("trustScore"),
+  outcome: varchar("outcome", { length: 20 }).notNull(), // allowed, flagged, blocked
+  metadata: json("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Links browser fingerprint hashes to users */
+export const deviceFingerprints = pgTable("device_fingerprints", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fingerprintHash: varchar("fingerprintHash", { length: 64 }).notNull(),
+  firstSeenAt: timestamp("firstSeenAt", { withTimezone: true }).defaultNow().notNull(),
+  lastSeenAt: timestamp("lastSeenAt", { withTimezone: true }).defaultNow().notNull(),
+  seenCount: integer("seenCount").default(1).notNull(),
+});
+
+/** Admin-managed blocklist for emails, IPs, fingerprints */
+export const blockedPatterns = pgTable("blocked_patterns", {
+  id: serial("id").primaryKey(),
+  patternType: varchar("patternType", { length: 20 }).notNull(), // email_domain, email, ip, fingerprint
+  pattern: varchar("pattern", { length: 320 }).notNull(),
+  reason: text("reason"),
+  createdBy: integer("createdBy").references(() => users.id),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});

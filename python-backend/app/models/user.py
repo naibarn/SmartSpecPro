@@ -60,8 +60,18 @@ class User(Base):
     registeredDomain = Column(String(255), nullable=True)
     currentTenantId = Column(String(36), ForeignKey("tenants.id"), nullable=True)
 
+    # Trust scoring / anti-abuse
+    normalizedEmail = Column(String(320), nullable=True)
+    trustScore = Column(Integer, default=100, nullable=True)
+    registrationIp = Column(String(45), nullable=True)
+
     # Status (SmartSpecWeb uses 'isDisabled' not 'is_active')
     isDisabled = Column(Boolean, default=False, nullable=False)
+
+    # Ban fields
+    is_banned = Column(Boolean, default=False, nullable=False)
+    banned_until = Column(DateTime(timezone=True), nullable=True)
+    ban_reason = Column(Text, nullable=True)
 
     # Relationships that exist in SmartSpecWeb
     # (Commenting out Python-specific relationships that don't exist in SmartSpecWeb)

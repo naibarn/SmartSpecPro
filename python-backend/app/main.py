@@ -55,6 +55,7 @@ from app.api import (
     rbac,  # Phase 3: RBAC
     approvals,  # Phase 3: Approval Gates
     csrf,  # CSRF Protection
+    oauth,  # OAuth Social Login
 )
 from app.api.v1 import (
     skills,
@@ -219,6 +220,7 @@ app.include_router(tenants.router, tags=["Tenants"])
 app.include_router(tenant_current.router, tags=["Tenant Current"])
 app.include_router(rbac.router, tags=["RBAC"])
 app.include_router(approvals.router, tags=["Approvals"])
+app.include_router(oauth.router, tags=["OAuth"])
 
 @app.get("/")
 async def root():

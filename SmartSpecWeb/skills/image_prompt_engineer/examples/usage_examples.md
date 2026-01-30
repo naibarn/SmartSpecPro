@@ -12,17 +12,17 @@
 ## Text-to-Image Examples
 
 ### Example 1: Basic Text-to-Image
-**Use Case**: สร้างภาพพื้นฐานจากคำอธิบาย
+**Use Case**: Create a basic image from a description
 
 ```json
 {
-  "request": "สาวสวยยืนในสวนดอกไม้ยามเช้า แสงแดดอ่อนๆ กรองผ่านกิ่งไม้"
+  "request": "Beautiful woman standing in a flower garden in the morning, soft sunlight filtering through branches"
 }
 ```
 
 **Output Prompt**:
 ```
-TEXT-TO-IMAGE: สาวสวยยืนในสวนดอกไม้ยามเช้า แสงแดดอ่อนๆ กรองผ่านกิ่งไม้
+TEXT-TO-IMAGE: Beautiful woman standing in a flower garden in the morning, soft sunlight filtering through branches
 
 Style: photorealistic
 
@@ -38,11 +38,11 @@ Aspect ratio: 9:16
 ---
 
 ### Example 2: Text-to-Image with Style & VFX
-**Use Case**: สร้างภาพแบบมีสไตล์และเอฟเฟกต์พิเศษ
+**Use Case**: Create an image with style and special effects
 
 ```json
 {
-  "request": "นักรบในยุคกลาง ถือดาบเปลวไฟ",
+  "request": "Medieval warrior holding a flaming sword",
   "generation_mode": "text_to_image",
   "style": "dark_cinematic",
   "vfx": {
@@ -59,11 +59,11 @@ Aspect ratio: 9:16
 ---
 
 ### Example 3: Text-to-Image with Typography
-**Use Case**: สร้างโปสเตอร์ที่มีข้อความ
+**Use Case**: Create a poster with text
 
 ```json
 {
-  "request": "ภูเขาสูงตระหง่านในยามพระอาทิตย์ตก",
+  "request": "Towering mountain at sunset",
   "generation_mode": "text_to_image",
   "style": "epic_cinematic",
   "text_on_image": true,
@@ -84,16 +84,16 @@ Aspect ratio: 9:16
 ## Image-to-Image Examples
 
 ### Example 4: Style Transfer
-**Use Case**: เปลี่ยนภาพถ่ายให้เป็นภาพวาด
+**Use Case**: Transform a photograph into a painting
 
 ```json
 {
-  "request": "เปลี่ยนให้เป็นภาพวาดสีน้ำมันแบบ Van Gogh",
+  "request": "Transform into a Van Gogh-style oil painting",
   "generation_mode": "image_to_image",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "ภาพถ่ายต้นฉบับที่ต้องการแปลง"
+      "notes": "Original photograph to transform"
     }
   ],
   "style": "oil_painting",
@@ -106,10 +106,10 @@ Aspect ratio: 9:16
 
 **Output Prompt**:
 ```
-IMAGE-TO-IMAGE TRANSFORMATION: เปลี่ยนให้เป็นภาพวาดสีน้ำมันแบบ Van Gogh
+IMAGE-TO-IMAGE TRANSFORMATION: Transform into a Van Gogh-style oil painting
 
 Using 1 reference image(s):
-  Image 1: primary_subject - ภาพถ่ายต้นฉบับที่ต้องการแปลง
+  Image 1: primary_subject - Original photograph to transform
 
 Transformation strength: 0.85 (0=minimal change, 1=maximum change)
 
@@ -120,16 +120,16 @@ Target platform: generic
 ---
 
 ### Example 5: Outfit Change with Identity Lock
-**Use Case**: เปลี่ยนเสื้อผ้าแต่คงใบหน้าเดิม
+**Use Case**: Change clothing while keeping the original face
 
 ```json
 {
-  "request": "เปลี่ยนเสื้อผ้าให้เป็นชุดธุรกิจสีกรมท่า",
+  "request": "Change clothing to a navy blue business suit",
   "generation_mode": "image_to_image",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "คงใบหน้าและท่าทางเดิม"
+      "notes": "Keep original face and pose"
     }
   ],
   "identity_lock": "soft_lock_person",
@@ -143,16 +143,16 @@ Target platform: generic
 ---
 
 ### Example 6: Product Recolor (Strict Lock)
-**Use Case**: เปลี่ยนสีสินค้าแต่คงรูปร่างเดิม 100%
+**Use Case**: Recolor a product while keeping 100% original shape
 
 ```json
 {
-  "request": "เปลี่ยนสีรองเท้าเป็นสีแดง",
+  "request": "Change shoe color to red",
   "generation_mode": "image_to_image",
   "reference_images": [
     {
       "role": "product",
-      "notes": "รองเท้าที่ต้องการเปลี่ยนสี"
+      "notes": "Shoe to recolor"
     }
   ],
   "identity_lock": "strict_lock_product",
@@ -167,16 +167,16 @@ Target platform: generic
 ## Inpainting Examples
 
 ### Example 7: Replace Background
-**Use Case**: เปลี่ยนพื้นหลังเท่านั้น คนในภาพคงเดิม
+**Use Case**: Change background only, keep person unchanged
 
 ```json
 {
-  "request": "เปลี่ยนพื้นหลังเป็นชายหาดตอนพระอาทิตย์ตก",
+  "request": "Change background to a beach at sunset",
   "generation_mode": "inpaint",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "บุคคลในภาพต้นฉบับ"
+      "notes": "Person in the original image"
     }
   ],
   "edit_mask": {
@@ -192,7 +192,7 @@ Target platform: generic
 
 **Output Prompt**:
 ```
-INPAINTING TASK: เปลี่ยนพื้นหลังเป็นชายหาดตอนพระอาทิตย์ตก
+INPAINTING TASK: Change background to a beach at sunset
 
 🎯 TARGET AREA: BACKGROUND
 
@@ -218,16 +218,16 @@ IDENTITY PRESERVATION (Soft Lock - Person):
 ---
 
 ### Example 8: Change Specific Object
-**Use Case**: แก้ไขเฉพาะวัตถุที่ระบุ
+**Use Case**: Edit only the specified object
 
 ```json
 {
-  "request": "เปลี่ยนโซฟาเป็นสีน้ำเงินเข้ม",
+  "request": "Change the sofa to dark blue",
   "generation_mode": "inpaint",
   "reference_images": [
     {
       "role": "location_background",
-      "notes": "ห้องนั่งเล่นที่มีโซฟา"
+      "notes": "Living room with sofa"
     }
   ],
   "edit_mask": {
@@ -242,22 +242,22 @@ IDENTITY PRESERVATION (Soft Lock - Person):
 ---
 
 ### Example 9: Fix Specific Area (Thai)
-**Use Case**: แก้ไขส่วนที่ระบุด้วยภาษาไทย
+**Use Case**: Edit a specified area using Thai language
 
 ```json
 {
-  "request": "เพิ่มหน้าต่างที่ผนังด้านซ้าย",
+  "request": "Add a window on the left wall",
   "generation_mode": "inpaint",
   "reference_images": [
     {
       "role": "location_background",
-      "notes": "ห้องที่ต้องการเพิ่มหน้าต่าง"
+      "notes": "Room where window should be added"
     }
   ],
   "edit_mask": {
     "type": "prompt_based",
-    "segment_prompt": "ผนังด้านซ้าย ตรงกลาง",
-    "preserve_areas": ["พื้น", "เฟอร์นิเจอร์", "เพดาน"],
+    "segment_prompt": "left wall, center",
+    "preserve_areas": ["floor", "furniture", "ceiling"],
     "feather": 25
   },
   "languages": "th"
@@ -267,11 +267,11 @@ IDENTITY PRESERVATION (Soft Lock - Person):
 ---
 
 ### Example 10: Remove Object
-**Use Case**: ลบวัตถุออกจากภาพ
+**Use Case**: Remove an object from the image
 
 ```json
 {
-  "request": "ลบคนที่อยู่ด้านหลังออก ทำให้เป็นพื้นหลังธรรมชาติ",
+  "request": "Remove the person in the background, make it a natural background",
   "generation_mode": "inpaint",
   "reference_images": [
     {
@@ -292,16 +292,16 @@ IDENTITY PRESERVATION (Soft Lock - Person):
 ## Outpainting Examples
 
 ### Example 11: Expand All Sides
-**Use Case**: ขยายภาพออกทุกทิศทาง
+**Use Case**: Expand image in all directions
 
 ```json
 {
-  "request": "ขยายภาพออกไปทุกด้าน แสดงฉากรอบๆ เพิ่มเติม",
+  "request": "Expand the image in all directions, show more of the surrounding scene",
   "generation_mode": "outpaint",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "ภาพต้นฉบับที่ต้องการขยาย"
+      "notes": "Original image to expand"
     }
   ],
   "outpaint_config": {
@@ -317,7 +317,7 @@ IDENTITY PRESERVATION (Soft Lock - Person):
 
 **Output Prompt**:
 ```
-OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แสดงฉากรอบๆ เพิ่มเติม
+OUTPAINTING TASK: Expand the image in all directions, show more of the surrounding scene
 
 📐 EXPANSION CONFIGURATION:
   - Expand LEFT: 256px
@@ -338,16 +338,16 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ---
 
 ### Example 12: Expand Horizontally Only
-**Use Case**: ขยายภาพแนวนอนเพื่อให้เป็น panorama
+**Use Case**: Expand image horizontally to create a panorama
 
 ```json
 {
-  "request": "ขยายภาพแนวนอนเพื่อสร้าง panorama view",
+  "request": "Expand image horizontally to create a panorama view",
   "generation_mode": "outpaint",
   "reference_images": [
     {
       "role": "location_background",
-      "notes": "ภาพทิวทัศน์ที่ต้องการขยาย"
+      "notes": "Landscape image to expand"
     }
   ],
   "outpaint_config": {
@@ -364,11 +364,11 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ---
 
 ### Example 13: Extend Top (Vertical)
-**Use Case**: ขยายภาพขึ้นด้านบนเพื่อแสดงท้องฟ้า
+**Use Case**: Expand image upward to show the sky
 
 ```json
 {
-  "request": "ขยายภาพขึ้นด้านบนเพื่อแสดงท้องฟ้าและเมฆ",
+  "request": "Expand image upward to show sky and clouds",
   "generation_mode": "outpaint",
   "reference_images": [
     {
@@ -391,20 +391,20 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ## Advanced Examples
 
 ### Example 14: ControlNet + IP-Adapter
-**Use Case**: ควบคุมท่าทางและสไตล์พร้อมกัน
+**Use Case**: Control pose and style simultaneously
 
 ```json
 {
-  "request": "สร้างภาพในท่าทางเดียวกันแต่เป็นสไตล์การ์ตูนญี่ปุ่น",
+  "request": "Create an image in the same pose but in Japanese cartoon style",
   "generation_mode": "image_to_image",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "อ้างอิงท่าทางและโพสต์"
+      "notes": "Pose and position reference"
     },
     {
       "role": "style_reference",
-      "notes": "ภาพการ์ตูนญี่ปุ่นที่ต้องการลอกสไตล์"
+      "notes": "Japanese cartoon image to copy style from"
     }
   ],
   "style": "anime_style",
@@ -433,7 +433,7 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ---
 
 ### Example 15: Platform-Specific (Midjourney)
-**Use Case**: สร้าง prompt สำหรับ Midjourney
+**Use Case**: Create a prompt for Midjourney
 
 ```json
 {
@@ -454,11 +454,11 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ---
 
 ### Example 16: Variation with Seed
-**Use Case**: สร้าง variation จากภาพเดิมด้วย seed ต่างกัน
+**Use Case**: Create variations from an existing image with different seeds
 
 ```json
 {
-  "request": "สร้าง variation ที่ดูใกล้เคียงกันแต่แตกต่างเล็กน้อย",
+  "request": "Create a variation that looks similar but slightly different",
   "generation_mode": "variation",
   "reference_images": [
     {
@@ -475,7 +475,7 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ---
 
 ### Example 17: Full Detail Mode
-**Use Case**: ขอ output แบบละเอียดครบถ้วน
+**Use Case**: Request full detailed output
 
 ```json
 {
@@ -496,24 +496,24 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ---
 
 ### Example 18: Multi-Reference Complex Scene
-**Use Case**: ใช้หลายภาพอ้างอิงประกอบกัน
+**Use Case**: Use multiple reference images together
 
 ```json
 {
-  "request": "สร้างภาพนายแบบใส่เสื้อแบรนด์ ยืนในร้านกาแฟ",
+  "request": "Create an image of a male model wearing branded clothing, standing in a coffee shop",
   "generation_mode": "image_to_image",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "ใบหน้าและท่าทางของนายแบบ"
+      "notes": "Face and pose of the male model"
     },
     {
       "role": "outfit",
-      "notes": "เสื้อแบรนด์ที่ต้องการให้ใส่"
+      "notes": "Branded clothing to wear"
     },
     {
       "role": "location_background",
-      "notes": "บรรยากาศร้านกาแฟ"
+      "notes": "Coffee shop atmosphere"
     }
   ],
   "identity_lock": "soft_lock_person",
@@ -528,11 +528,11 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ---
 
 ### Example 19: Typography + Inpaint
-**Use Case**: แก้ไขภาพและเพิ่มข้อความ
+**Use Case**: Edit image and add text
 
 ```json
 {
-  "request": "เปลี่ยนท้องฟ้าให้เป็นสีชมพูยามเย็น และใส่ข้อความ",
+  "request": "Change the sky to pink evening colors and add text",
   "generation_mode": "inpaint",
   "reference_images": [
     {
@@ -558,20 +558,20 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ---
 
 ### Example 20: All Features Combined
-**Use Case**: ใช้ทุกฟีเจอร์ร่วมกัน
+**Use Case**: Use all features together
 
 ```json
 {
-  "request": "แปลงภาพให้เป็นแบนเนอร์โฆษณา มีข้อความ และปรับพื้นหลัง",
+  "request": "Transform image into an advertising banner with text and adjusted background",
   "generation_mode": "inpaint",
   "reference_images": [
     {
       "role": "primary_subject",
-      "notes": "สินค้าหลัก"
+      "notes": "Main product"
     },
     {
       "role": "style_reference",
-      "notes": "โทนสีที่ต้องการ"
+      "notes": "Desired color tone"
     }
   ],
   "edit_mask": {
@@ -620,10 +620,10 @@ OUTPAINTING TASK: ขยายภาพออกไปทุกด้าน แ�
 ### Python
 ```bash
 # Basic test
-echo '{"request": "สาวสวยในสวนดอกไม้"}' | python3 skill.py
+echo '{"request": "Beautiful woman in a flower garden"}' | python3 skill.py
 
 # Inpaint test
-python3 skill.py --json '{"request":"เปลี่ยนพื้นหลัง","generation_mode":"inpaint","reference_images":[{"role":"primary_subject"}],"edit_mask":{"type":"prompt_based","segment_prompt":"background"}}'
+python3 skill.py --json '{"request":"Change background","generation_mode":"inpaint","reference_images":[{"role":"primary_subject"}],"edit_mask":{"type":"prompt_based","segment_prompt":"background"}}'
 
 # Full detail test
 python3 skill.py --json '{"request":"portrait","detail_level":"full"}'
@@ -632,17 +632,17 @@ python3 skill.py --json '{"request":"portrait","detail_level":"full"}'
 ### JavaScript (Node.js)
 ```bash
 # Basic test
-node -e 'const skill = require("./index.js"); console.log(JSON.stringify(skill.run({request: "สาวสวยในสวนดอกไม้"}), null, 2))'
+node -e 'const skill = require("./index.js"); console.log(JSON.stringify(skill.run({request: "Beautiful woman in a flower garden"}), null, 2))'
 ```
 
 ---
 
 ## Notes
 
-- ทุก example สามารถปรับแต่งได้ตามต้องการ
-- การเลือก `denoising_strength` ส่งผลมาก: 0.3-0.5 = เปลี่ยนเล็กน้อย, 0.6-0.8 = เปลี่ยนปานกลาง, 0.9+ = เปลี่ยนมาก
-- สำหรับ inpainting ควรใช้ `feather` อย่างน้อย 10px เพื่อการผสานที่นุ่มนวล
-- `target_platform` จะปรับ format ของ prompt ให้เหมาะสมโดยอัตโนมัติ
+- All examples can be customized as needed
+- The `denoising_strength` choice has a big impact: 0.3-0.5 = minor change, 0.6-0.8 = moderate change, 0.9+ = major change
+- For inpainting, use `feather` of at least 10px for smooth blending
+- `target_platform` automatically adjusts the prompt format to be appropriate
 
 ---
 

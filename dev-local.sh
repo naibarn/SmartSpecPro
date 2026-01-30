@@ -203,11 +203,26 @@ cmd_infra() {
     esac
 }
 
+kill_port() {
+    local port=$1
+    local pid=$(lsof -t -i:"$port" 2>/dev/null)
+    if [ -n "$pid" ]; then
+        log_warn "Port $port in use (PID: $pid). Killing..."
+        kill $pid 2>/dev/null || true
+        sleep 1
+        if kill -0 $pid 2>/dev/null; then
+            kill -9 $pid 2>/dev/null || true
+        fi
+        log_info "Port $port freed."
+    fi
+}
+
 cmd_web() {
     check_node
     check_pnpm
 
     log_step "Starting SmartSpec Web (Host)..."
+    kill_port "${WEB_PORT:-3000}"
     cd "$WEB_DIR"
 
     # Install dependencies if needed
@@ -270,6 +285,7 @@ cmd_backend() {
     export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:5173}"
 
     log_info "Environment: DATABASE_URL=$DATABASE_URL"
+    kill_port "${BACKEND_PORT:-8000}"
     log_info "Starting uvicorn with hot reload on port ${BACKEND_PORT:-8000}..."
     uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000} --reload
 }

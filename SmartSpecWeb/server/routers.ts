@@ -35,6 +35,10 @@ import { mediaModelsRouter } from "./routers/mediaModels";
 import { skillsRouter } from "./routers/skills";
 import { storageSettingsRouter } from "./routers/storageSettings";
 import { systemSettingsRouter } from "./routers/systemSettings";
+import { scheduledMessagesRouter } from "./routers/scheduledMessages";
+import { followsRouter } from "./routers/follows";
+import { accountSecurityRouter } from "./routers/accountSecurity";
+import { translationRouter } from "./routers/translation";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -256,6 +260,16 @@ export const appRouter = router({
 
   // System settings management (admin) - Stripe, Invoice configuration
   systemSettings: systemSettingsRouter,
+
+  // Scheduled Messages / Chat Alerts
+  scheduledMessages: scheduledMessagesRouter,
+
+  // User Follows
+  follows: followsRouter,
+
+  // Account Security (admin)
+  accountSecurity: accountSecurityRouter,
+  translation: translationRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

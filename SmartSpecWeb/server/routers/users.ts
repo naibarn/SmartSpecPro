@@ -693,4 +693,36 @@ export const usersRouter = router({
         recipientNewBalance: addResult.newBalance,
       };
     }),
+
+  // ============================================================
+  // User Preferences
+  // ============================================================
+
+  getPreferences: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return {};
+    const [user] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+    return user?.userPreferences || {};
+  }),
+
+  updatePreferences: protectedProcedure
+    .input(z.object({
+      translationLanguage: z.string().max(10).optional(),
+      translationModel: z.string().max(100).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Merge with existing preferences
+      const [existing] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const current = (existing?.userPreferences as Record<string, any>) || {};
+      const updated = { ...current };
+
+      if (input.translationLanguage !== undefined) updated.translationLanguage = input.translationLanguage;
+      if (input.translationModel !== undefined) updated.translationModel = input.translationModel;
+
+      await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
+      return updated;
+    }),
 });

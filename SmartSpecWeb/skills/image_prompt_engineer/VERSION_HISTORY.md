@@ -3,7 +3,7 @@
 ## v2.2 (January 24, 2026) - Reality Check 🎯
 
 ### 🆕 New Features
-- ✅ **Reality Check** — ตรวจสอบความสอดคล้องกับความเป็นจริง
+- ✅ **Reality Check** — Validates consistency with real-world constraints
   - Location-based validation
   - Time-based validation  
   - Physics validation (underwater, gravity)
@@ -30,8 +30,8 @@ Realism Score: 85/100
 ## v2.1 (January 24, 2026) - Hallucination Control
 
 ### 🆕 New Features
-- ✅ **Hallucination Control** — ป้องกันการเพิ่มสัญชาติ/เชื้อชาติที่ไม่ได้ระบุ
-- ✅ รองรับภาษาไทย (แฟชั่นเกาหลี, สไตล์เกาหลี, etc.)
+- ✅ **Hallucination Control** — Prevents adding unspecified nationality/ethnicity
+- ✅ Thai language support (Korean fashion, Korean style, etc.)
 - ✅ Auto-correction when hallucination detected
 - ✅ Warnings in output
 

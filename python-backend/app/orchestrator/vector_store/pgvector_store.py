@@ -130,6 +130,10 @@ class PgVectorStore:
             distance_metric: Distance metric for similarity
         """
         self.connection_string = connection_string
+        # Validate table name to prevent SQL injection (only alphanumeric + underscore)
+        import re as _re
+        if not _re.match(r'^[a-z_][a-z0-9_]{0,62}$', table_name):
+            raise ValueError(f"Invalid table name: {table_name}")
         self.table_name = table_name
         self.embedding_dimension = embedding_dimension
         self.distance_metric = distance_metric

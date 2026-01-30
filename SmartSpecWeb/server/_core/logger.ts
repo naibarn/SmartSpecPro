@@ -33,8 +33,12 @@ export function debugError(category: string, message: string, error?: any) {
   const errorInfo = error ? (error.stack || error.message || String(error)) : "";
   const line = `[${timestamp}] [${category}] ERROR: ${message}\n${errorInfo}\n`;
 
-  // Also log to console
-  console.error(`[${category}] ERROR: ${message}`, error || "");
+  // Also log to console (wrapped to prevent EPIPE crash loops)
+  try {
+    console.error(`[${category}] ERROR: ${message}`, error || "");
+  } catch (_) {
+    // Ignore — broken pipe on stderr
+  }
 
   // Append to file
   try {

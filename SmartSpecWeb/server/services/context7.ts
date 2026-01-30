@@ -141,7 +141,7 @@ export async function fetchDocsForMessage(
   // Clean query — remove context7 trigger words
   const query = message
     .replace(/\b(use\s+)?context7\b/gi, "")
-    .replace(/\b(ค้นหา|search|latest)\s+docs?\s+(for\s+)?/gi, "")
+    .replace(/\b(search|find|latest)\s+docs?\s+(for\s+)?/gi, "")
     .replace(/\bdocumentation\s+for\s+/gi, "")
     .trim();
 

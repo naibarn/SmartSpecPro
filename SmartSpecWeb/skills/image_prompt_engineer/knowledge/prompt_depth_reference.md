@@ -2,7 +2,7 @@
 ## Complete Technical Reference & Logic Documentation
 
 **🔗 Companion to**: PromptDepth_Pro_v8.9.md (System Prompt)  
-**📦 Purpose**: รายละเอียดเทคนิค logic และ best practices ครบถ้วน  
+**📦 Purpose**: Complete technical details, logic, and best practices  
 **🔄 Version**: 8.9 | **Date**: 2025-11-24
 
 ---
@@ -207,24 +207,24 @@ Crucially, ensure [Sacred Mods: minimalist white background, subject smiling, bl
 **[English]**
 [Full prompt in English]
 
-**[ภาษาไทย]**
+**[Thai]**
 [Full prompt in Thai]
 
 Menu:
 ```
 📋 MENU
-1 โมเดล | 2 แก้ไข | 3 ยืนยัน | 4 ไอเดีย×10 | 5 มุม×10
-6 สไตล์×20 | 7 ข้อความ | 8 Infographic | 9 แสดงทั้งหมด | 0 บันทึก
-S Storyboard | T Typography | V VFX | R ผิวสมจริง | F เปิดล็อก
+1 Model | 2 Edit | 3 Confirm | 4 Ideas×10 | 5 Angles×10
+6 Styles×20 | 7 Text | 8 Infographic | 9 Show All | 0 Save
+S Storyboard | T Typography | V VFX | R Realistic Skin | F Face Lock
 ```
 
 **CRITICAL**: Menu MUST include T (Typography) in line 3. Never omit T.
 
-Correct format: 
-✅ "S Storyboard | T Typography | V VFX | R ผิวสมจริง | F เปิดล็อก"
+Correct format:
+✅ "S Storyboard | T Typography | V VFX | R Realistic Skin | F Face Lock"
 
 Wrong format:
-❌ "S สตอรีบอร์ด | V VFX | R Realistic Skin | F Face Lock" (missing T)
+❌ "S Storyboard | V VFX | R Realistic Skin | F Face Lock" (missing T)
 
 **Why default**: 
 - Faster for users
@@ -290,7 +290,7 @@ User provides → Update Sacred Memory + regenerate
 
 **Output**:
 ```
-✅ พร้อม — คัดลอกพรอมต์ด้านบนไปใช้ได้เลย
+✅ Ready — Copy the prompt above and use it
 ```
 
 ### Option 4: 10 Ideas
@@ -458,14 +458,14 @@ STEP 1: Generate Scene Breakdown
 → System creates N scenes with Start/End/Transition
 
 STEP 2: Show Menu
-→ "พิมพ์เลขซีน (1-N) เพื่อสร้างพรอมต์ซีนนั้น | 
-   พิมพ์ 'ทั้งหมด' สร้างทุกซีน | 
-   พิมพ์ '3' ยืนยัน"
+→ "Type scene number (1-N) to generate that scene's prompt |
+   Type 'all' to generate all scenes |
+   Type '3' to confirm"
 
 STEP 3: User Selects
 → User: "1" → Generate prompt for Scene 1
 → User: "3" → Generate prompt for Scene 3
-→ User: "ทั้งหมด" → Generate all scenes sequentially
+→ User: "all" → Generate all scenes sequentially
 → User: "3" (confirm) → Done, back to main menu
 ```
 
@@ -480,14 +480,14 @@ TH: [Thai scene description]
 
 ### Scene Selection Menu (Must Show):
 ```
-📋 Storyboard พร้อม (N ซีน)
+📋 Storyboard Ready (N scenes)
 
-เลือกการดำเนินการ:
-• พิมพ์ตัวเลข 1-N → สร้างพรอมต์ซีนนั้น
-• พิมพ์ "ทั้งหมด" → สร้างพรอมต์ทุกซีน
-• พิมพ์ "3" → ยืนยันเสร็จสิ้น กลับเมนูหลัก
+Select action:
+• Type number 1-N → Generate that scene's prompt
+• Type "all" → Generate prompts for all scenes
+• Type "3" → Confirm finished, return to main menu
 
-ต้องการอะไร?
+What would you like?
 ```
 
 ### Rules:
@@ -499,34 +499,32 @@ TH: [Thai scene description]
 
 ### Example Storyboard Output:
 ```
-🎬 Storyboard: Woman in Flower Garden (6 ซีน)
+🎬 Storyboard: Woman in Flower Garden (6 scenes)
 
-Scene 1 — Morning Walk / เดินเช้าในสวน
-EN: Woman enters a flower garden at dawn, soft morning light, 
+Scene 1 — Morning Walk
+EN: Woman enters a flower garden at dawn, soft morning light,
 peaceful beginning.
-TH: ผู้หญิงเดินเข้าสวนดอกไม้ตอนเช้า แสงอรุณอ่อน ๆ เริ่มต้นอย่างสงบ
 
-Scene 2 — Flower Discovery / ค้นพบดอกไม้
-EN: She spots colorful blooms, bends down to look closer, 
+Scene 2 — Flower Discovery
+EN: She spots colorful blooms, bends down to look closer,
 curious expression.
-TH: เธอเห็นดอกไม้หลากสี ก้มลงดูใกล้ ๆ สีหน้าสนใจ
 
 [... continues through Scene 6...]
 
-📋 Storyboard พร้อม (6 ซีน)
+📋 Storyboard Ready (6 scenes)
 
-เลือกการดำเนินการ:
-• พิมพ์ตัวเลข 1-6 → สร้างพรอมต์ซีนนั้น
-• พิมพ์ "ทั้งหมด" → สร้างพรอมต์ทุกซีน
-• พิมพ์ "3" → ยืนยันเสร็จสิ้น กลับเมนูหลัก
+Select action:
+• Type number 1-6 → Generate that scene's prompt
+• Type "all" → Generate prompts for all scenes
+• Type "3" → Confirm finished, return to main menu
 
-ต้องการอะไร?
+What would you like?
 ```
 
 ### When User Selects Scene:
 ```
 User: "1"
-System: สร้างพรอมต์สำหรับ Scene 1
+System: Generate prompt for Scene 1
 
 Output:
 Using image(s) as reference, generate [Scene 1 description].
@@ -545,12 +543,12 @@ Vibe: [Scene mood]
 9:16 vertical.
 
 ---
-📋 ต้องการสร้างซีนอื่นหรือไม่? (พิมพ์ 1-6, "ทั้งหมด", หรือ "3")
+📋 Want to generate another scene? (Type 1-6, "all", or "3")
 ```
 
-### When User Selects "ทั้งหมด":
+### When User Selects "all":
 ```
-System: สร้างพรอมต์ทั้งหมด (N ซีน)
+System: Generate all prompts (N scenes)
 
 Output:
 🎬 Scene 1 — [Title]
@@ -565,7 +563,7 @@ Output:
 
 [... continues through all scenes...]
 
-✅ พรอมต์ N ซีนพร้อมใช้งาน
+✅ Prompts for N scenes ready to use
 ```
 
 ---
@@ -581,19 +579,19 @@ Typography-focused design with modular selection system — mix & match multiple
 ```
 STEP 1: Show Main Menu
 User: "T"
-System: แสดงเมนู 8 หมวด
+System: Show 8-category menu
 
 STEP 2: Category Selection
-User เลือกหมวด (1-8)
-System: แสดง options ในหมวดนั้น
+User selects category (1-8)
+System: Show options in that category
 
 STEP 3: Option Selection
-User เลือก option
-System: บันทึก + ถาม "เพิ่มหมวดอื่นไหม? (1-8 หรือ 'เสร็จ')"
+User selects option
+System: Save + ask "Add another category? (1-8 or 'done')"
 
 STEP 4: Continue or Generate
-- User เลือกหมวดเพิ่ม → loop STEP 2-3
-- User: "เสร็จ" → สร้างพรอมต์พร้อม Typography specs
+- User selects another category → loop STEP 2-3
+- User: "done" → Generate prompt with Typography specs
 
 STEP 5: Final Output
 Generate prompt with all selected Typography elements
@@ -603,25 +601,25 @@ Generate prompt with all selected Typography elements
 
 ### Main Menu (8 Categories):
 ```
-🎨 Typography Edition — เลือกหมวดที่ต้องการ
+🎨 Typography Edition — Select the category you want
 
-1️⃣ Font Personality (บุคลิกฟอนต์)
-2️⃣ Composition Style (รูปแบบการจัดวาง)
-3️⃣ Mood & Tone (อารมณ์ของงาน)
-4️⃣ Color Direction (แนวสี)
-5️⃣ Text Effects (เอฟเฟกต์ตัวอักษร)
-6️⃣ Use-case Templates (ใช้ทำงานอะไร)
-7️⃣ Modern Trend Packs (เทรนด์ที่กำลังนิยม)
-8️⃣ Layout Add-ons (ตัวเลือกเสริม)
+1️⃣ Font Personality
+2️⃣ Composition Style
+3️⃣ Mood & Tone
+4️⃣ Color Direction
+5️⃣ Text Effects
+6️⃣ Use-case Templates
+7️⃣ Modern Trend Packs
+8️⃣ Layout Add-ons
 
-พิมพ์เลข 1-8 เพื่อเลือกหมวด
+Type 1-8 to select a category
 ```
 
 ---
 
-### 1️⃣ Font Personality (บุคลิกฟอนต์)
+### 1️⃣ Font Personality
 
-**Purpose**: เลือก mood ของฟอนต์ได้เร็ว
+**Purpose**: Quickly select the font mood
 
 **Options**:
 1. **Modern Clean** — Typography: Clean sans-serif font, modern minimalist style, sharp and clear letterforms
@@ -636,9 +634,9 @@ Generate prompt with all selected Typography elements
 
 ---
 
-### 2️⃣ Composition Style (รูปแบบการจัดวาง)
+### 2️⃣ Composition Style
 
-**Purpose**: การวางตัวอักษรเป็นหัวใจของ Typography
+**Purpose**: Text placement is the heart of Typography
 
 **Options**:
 1. **Centered Layout** — Composition: Centered text alignment, balanced symmetrical layout, classic formal arrangement
@@ -651,9 +649,9 @@ Generate prompt with all selected Typography elements
 
 ---
 
-### 3️⃣ Mood & Tone (อารมณ์ของงาน)
+### 3️⃣ Mood & Tone
 
-**Purpose**: เลือก vibe อย่างรวดเร็ว
+**Purpose**: Quickly select the vibe
 
 **Options**:
 1. **Minimal & Calm** — Mood: Serene minimalist atmosphere, calm peaceful vibe, zen-like tranquility
@@ -666,9 +664,9 @@ Generate prompt with all selected Typography elements
 
 ---
 
-### 4️⃣ Color Direction (แนวสี)
+### 4️⃣ Color Direction
 
-**Purpose**: โทนสีส่งผลต่อความรู้สึก
+**Purpose**: Color tone affects the feeling
 
 **Options**:
 1. **Monochrome** — Colors: Pure monochrome palette, black and white contrast, timeless classic scheme
@@ -681,9 +679,9 @@ Generate prompt with all selected Typography elements
 
 ---
 
-### 5️⃣ Text Effects (เอฟเฟกต์ตัวอักษร)
+### 5️⃣ Text Effects
 
-**Purpose**: Digital Art effects นิยมมาก
+**Purpose**: Very popular Digital Art effects
 
 **Options**:
 1. **Drop shadow** — Text Effect: Subtle drop shadow, depth and dimension, classic shadow technique
@@ -697,9 +695,9 @@ Generate prompt with all selected Typography elements
 
 ---
 
-### 6️⃣ Use-case Templates (ใช้ทำงานอะไร)
+### 6️⃣ Use-case Templates
 
-**Purpose**: เลือกแบบฟอร์มงานได้ทันที
+**Purpose**: Instantly select a work format
 
 **Options**:
 1. **Poster Typography** — Format: Bold poster design, impactful headline typography, visual statement piece
@@ -712,9 +710,9 @@ Generate prompt with all selected Typography elements
 
 ---
 
-### 7️⃣ Modern Trend Packs (เทรนด์ที่กำลังนิยม)
+### 7️⃣ Modern Trend Packs
 
-**Purpose**: หมวดยุคใหม่ที่สายออกแบบใช้บ่อย
+**Purpose**: Modern categories frequently used by designers
 
 **Options**:
 1. **Korean Clean Typography** — Trend: Korean minimal aesthetic, clean organized layout, Hangul-inspired precision
@@ -727,9 +725,9 @@ Generate prompt with all selected Typography elements
 
 ---
 
-### 8️⃣ Layout Add-ons (ตัวเลือกเสริม)
+### 8️⃣ Layout Add-ons
 
-**Purpose**: เพิ่มความเป็นระบบ
+**Purpose**: Add systematic structure
 
 **Options**:
 1. **With Icons** — Add-on: Complementary icon elements, visual supporting graphics, symbolic illustrations
@@ -776,7 +774,7 @@ User: "1" → Font Personality
 System: [Shows 9 options]
 User: "1" (Modern Clean)
 
-System: "เพิ่มหมวดอื่นไหม? (1-8 หรือ 'เสร็จ')"
+System: "Add another category? (1-8 or 'done')"
 User: "2" → Composition Style
 User: "1" (Centered Layout)
 
@@ -786,7 +784,7 @@ User: "1" (Minimal & Calm)
 User: "4" → Color Direction
 User: "1" (Monochrome)
 
-User: "เสร็จ"
+User: "done"
 
 Output:
 Typography Design: "Less is More"
@@ -834,7 +832,7 @@ Output: [Full prompt with all 7 elements]
 2. **Modular**: User can select 1-8 categories (any combination)
 3. **Flexible**: No mandatory categories — user decides
 4. **Additive**: Each selection adds to final prompt
-5. **Clear Exit**: "เสร็จ" generates final prompt
+5. **Clear Exit**: "done" generates final prompt
 6. **No Limit**: User can select multiple options per category if desired
 
 ---
@@ -853,102 +851,102 @@ Output: [Full prompt with all 7 elements]
 ### Purpose:
 Add special effects (overrides RDP)
 
-### **CRITICAL**: 2-Level Menu (เหมือน Option 6)
+### **CRITICAL**: 2-Level Menu (Same as Option 6)
 
-#### Level 1: เลือกหมวด (P/L/W/M/A/T)
+#### Level 1: Select Category (P/L/W/M/A/T)
 ```
 User: "V"
-System: แสดง 6 หมวด VFX:
-  P — Particles (อนุภาค)
-  L — Lighting (แสง)
-  W — Weather (สภาพอากาศ)
-  M — Magic (เวทมนตร์)
-  A — Atmospheric (บรรยากาศ)
-  T — Motion (การเคลื่อนไหว)
+System: Show 6 VFX categories:
+  P — Particles
+  L — Lighting
+  W — Weather
+  M — Magic
+  A — Atmospheric
+  T — Motion
 
-User: เลือกหมวด (เช่น "P")
+User: Select category (e.g. "P")
 ```
 
-#### Level 2: เลือก Effect เฉพาะ
+#### Level 2: Select Specific Effect
 ```
-System: แสดง effects ในหมวดนั้น
-User: เลือก effect (เช่น "2" = Smoke)
-System: สร้างพรอมต์ + เพิ่ม VFX description
+System: Show effects in that category
+User: Select effect (e.g. "2" = Smoke)
+System: Generate prompt + add VFX description
 ```
 
 ### Categories with Effects:
 
-#### P. Particles (อนุภาค) ✨
+#### P. Particles ✨
 **Usage**: Ambient atmosphere
-1. Dust particles — ฝุ่นฟุ้ง (บรรยากาศฝุ่นรอบ ๆ)
+1. Dust particles — Floating dust (dusty atmosphere)
    → **Prompt**: "with floating dust particles catching the light, creating an atmospheric and dreamy quality"
-2. Smoke — ควัน (สีคล้ำ)
+2. Smoke — Smoke (dark tones)
    → **Prompt**: "with gentle smoke wisps drifting through the scene, adding depth and mystery"
-3. Fire particles — ประกายไฟ (อนุภค ร้อนแรง)
+3. Fire particles — Fire sparks (hot, intense particles)
    → **Prompt**: "with glowing fire particles and embers floating in the air, creating warmth"
-4. Water droplets — หยดน้ำ (สดชื่น)
+4. Water droplets — Water drops (refreshing)
    → **Prompt**: "with fine water droplets suspended in air, creating freshness and clarity"
-5. Sparks — ประกายไฟฟ้า (พลัง)
+5. Sparks — Electric sparks (energy)
    → **Prompt**: "with bright sparks and electrical particles creating energy and dynamism"
-6. Embers — ถ่านเพลิง (ความอุ่น)
+6. Embers — Glowing embers (warmth)
    → **Prompt**: "with warm glowing embers floating gently, creating intimate atmosphere"
-7. Snow flakes — เกล็ดหิมะ (หนาว ลอยฟุ้ง)
+7. Snow flakes — Snowflakes (cold, drifting)
    → **Prompt**: "with delicate snowflakes drifting down, creating winter serenity"
-8. Pollen — ละอองเกสร (ธรรมชาติ)
+8. Pollen — Pollen (natural)
    → **Prompt**: "with pollen particles visible in sunbeams, creating natural organic feel"
 
-#### L. Lighting (แสง) 💡
+#### L. Lighting 💡
 **Usage**: Dramatic lighting effects
-1. Glow effect — เรืองแสง
-2. Lens flare — แสงจ้าจากเลนส์
-3. God rays — แสงละ (dramatic ทะลุผ่าน)
-4. Neon glow — นีออนเรือง (cyberpunk)
-5. Light streaks — ลำแสง (speed)
-6. Bioluminescence — แสงชีวภาพ (fantasy)
-7. Volumetric light — แสง 3D มีมิติ
+1. Glow effect — Luminous glow
+2. Lens flare — Bright light from lens
+3. God rays — Dramatic light rays (streaming through)
+4. Neon glow — Neon luminescence (cyberpunk)
+5. Light streaks — Light beams (speed)
+6. Bioluminescence — Biological light (fantasy)
+7. Volumetric light — 3D dimensional light
 
-#### W. Weather (สภาพอากาศ) 🌧️
+#### W. Weather 🌧️
 **Usage**: Environmental drama
-1. Rain — ฝน (เคร่า โรแมนติก)
-2. Heavy rain — ฝนหนัก (ดราม่า)
-3. Snow — หิมะ (หนาว ลงมา)
-4. Lightning — ฟ้าผ่า (ระทึก)
-5. Storm — พายุ (โกรธ)
-6. Tornado — พายุทอร์นาโด (ความเข้มข้น)
-7. Wind effects — ลมพัด (พลัว)
+1. Rain — Rain (melancholic, romantic)
+2. Heavy rain — Heavy rain (dramatic)
+3. Snow — Snow (cold, falling)
+4. Lightning — Lightning bolt (thrilling)
+5. Storm — Storm (furious)
+6. Tornado — Tornado (intense)
+7. Wind effects — Wind blowing (flowing)
 
-#### M. Magic (เวทมนตร์) 🔮
+#### M. Magic 🔮
 **Usage**: Fantasy/magical scenes
-1. Energy aura — ออร่าพลังงาน
-2. Magic circle — วงเวทย์
-3. Spell effects — เอฟเฟกต์คาถา
-4. Portal — ประตูมิติ
-5. Glowing runes — อักษรรูนเรืองแสง
-6. Magical particles — อนุภาคเวทมนตร์
-7. Force field — สนามพลัง
+1. Energy aura — Energy aura
+2. Magic circle — Magic circle
+3. Spell effects — Spell effects
+4. Portal — Dimensional portal
+5. Glowing runes — Glowing rune characters
+6. Magical particles — Magical particles
+7. Force field — Force field
 
-#### A. Atmospheric (บรรยากาศ) 🌫️
+#### A. Atmospheric 🌫️
 **Usage**: Depth and mystery
-1. Mist — หมอกบาง
-2. Fog — หมอกหนา
-3. Haze — ม่านหมอก
-4. Steam — ไอน้ำ
-5. Volumetric fog — หมอกทึบ 3D
-6. Smoke atmosphere — บรรยากาศควัน
+1. Mist — Light mist
+2. Fog — Heavy fog
+3. Haze — Haze curtain
+4. Steam — Steam
+5. Volumetric fog — 3D dense fog
+6. Smoke atmosphere — Smoky atmosphere
 
-#### T. Motion (การเคลื่อนไหว) 💨
+#### T. Motion 💨
 **Usage**: Action and movement
-1. Motion blur — เบลอเคลื่อนไหว
+1. Motion blur — Motion blur
    → **Prompt**: "with gentle motion blur creating sense of movement while keeping subject sharp and static"
-2. Speed lines — เส้นความเร็ว
+2. Speed lines — Speed lines
    → **Prompt**: "with dynamic speed lines radiating from motion, creating energy and velocity"
-3. Trailing effects — เอฟเฟกต์ตาม
+3. Trailing effects — Trailing effects
    → **Prompt**: "with soft motion trails following movement, creating fluid dynamic atmosphere"
-4. Impact waves — คลื่นกระแทก
+4. Impact waves — Impact waves
    → **Prompt**: "with impact waves radiating outward, showing force and energy"
-5. Shockwave — คลื่นช็อก
+5. Shockwave — Shockwave
    → **Prompt**: "with visible shockwave distortion spreading through air, dramatic power"
-6. Dynamic trail — ร่องรอยพลวัต
+6. Dynamic trail — Dynamic trail
    → **Prompt**: "with dynamic light trails and motion streaks suggesting ambient city energy"
 
 ### VFX Application Logic:
@@ -1022,7 +1020,7 @@ movement, creating urban energy while keeping subject sharp."
 
 #### Example 1: Portrait + Particles
 ```
-User: อัปโหลดภาพบุคคล
+User: Upload a person's photo
 User: "V" → "P" (Particles) → "1" (Dust)
 System adds: "Include dust particles floating in the air, catching the light..."
 Result: Portrait with atmospheric dust
@@ -1030,7 +1028,7 @@ Result: Portrait with atmospheric dust
 
 #### Example 2: Cinematic + Lighting
 ```
-User: สร้างภาพ cinematic
+User: Create a cinematic image
 User: "V" → "L" (Lighting) → "3" (God rays)
 System adds: "Include dramatic god rays streaming through atmosphere..."
 Result: Cinematic scene with light rays
@@ -1038,7 +1036,7 @@ Result: Cinematic scene with light rays
 
 #### Example 3: Action + Motion
 ```
-User: สร้างภาพแอคชั่น
+User: Create an action image
 User: "V" → "T" (Motion) → "2" (Speed lines)
 System adds: "Include speed lines indicating rapid movement..."
 Result: Dynamic action shot
@@ -1046,7 +1044,7 @@ Result: Dynamic action shot
 ```
 
 ### Critical Rules:
-- **2-Level Required**: MUST show Level 2 menu (ห้ามออกพรอมต์ทันทีหลัง Level 1)
+- **2-Level Required**: MUST show Level 2 menu (do not output prompt immediately after Level 1)
 - **Override RDP**: VFX aesthetic replaces Realism Default
 - **Combine with Styles**: Can use with Option 6 (Style + VFX)
 - **Natural Integration**: VFX must fit scene logically
@@ -1076,7 +1074,7 @@ Lighting & Realism:
 Natural light, accurate shadows, smooth polished skin, no artifacts.
 ```
 
-**Result**: ภาพสวย ๆ แบบแต่งรูป เหมือนใช้ Beauty Filter ในโทรศัพท์ ✨
+**Result**: Beautiful, retouched look, like using a Beauty Filter on a phone ✨
 
 ---
 
@@ -1103,7 +1101,7 @@ Slightly soften minor shadows or tiny blemishes while
 keeping natural skin texture clearly visible.
 ```
 
-**Result**: ผิวสมจริง มี texture แต่ปรับแต่งเล็กน้อย ดูธรรมชาติ 🔬
+**Result**: Realistic skin with texture, slightly retouched, looks natural 🔬
 
 ---
 
@@ -1174,7 +1172,7 @@ ELSE (Default — R NOT selected):
 | **Look** | Beauty filter | Authentic human |
 | **Use Case** | Social posts | Professional editorial |
 | **Enhancement** | ❌ Not needed | ✅ Required |
-| **Result** | สวยเนียน | สมจริง |
+| **Result** | Smooth beauty | Realistic |
 
 ---
 

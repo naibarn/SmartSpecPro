@@ -4,11 +4,12 @@ Authentication API Endpoints
 
 from datetime import timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import re
+import time
 
 from app.core.database import get_db
 from app.core.auth import (
@@ -19,8 +20,31 @@ from app.core.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.models.user import User
+from app.services.email_analysis import analyze_email
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
+
+
+# ---------- Per-endpoint rate limiter for auth ----------
+_AUTH_RATE: dict[str, list[float]] = {}
+_AUTH_RATE_LIMIT = 10   # max requests
+_AUTH_RATE_WINDOW = 60  # per 60 seconds
+
+
+def _check_auth_rate(request: Request):
+    """Strict rate limit for authentication endpoints (10 req/min per IP)."""
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    key = f"auth:{ip}"
+    hits = _AUTH_RATE.setdefault(key, [])
+    hits[:] = [t for t in hits if now - t < _AUTH_RATE_WINDOW]
+    if len(hits) >= _AUTH_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many authentication attempts. Try again later.",
+            headers={"Retry-After": str(_AUTH_RATE_WINDOW)},
+        )
+    hits.append(now)
 
 
 # Request/Response Models
@@ -97,7 +121,9 @@ class UserResponse(BaseModel):
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     request: RegisterRequest,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(_check_auth_rate),
 ):
     """
     Register new user
@@ -105,7 +131,12 @@ async def register(
     - Creates new user account with 10,000 credits ($10 USD trial)
     - Returns JWT access token
     """
-    # Check if user already exists
+    # Email analysis and trust scoring
+    email_info = analyze_email(request.email)
+    ip_address = http_request.client.host if http_request.client else "unknown"
+    fingerprint_hash = http_request.headers.get("x-device-fingerprint")
+
+    # Check if user already exists (by email or normalized email)
     result = await db.execute(select(User).where(User.email == request.email))
     existing_user = result.scalar_one_or_none()
 
@@ -115,31 +146,60 @@ async def register(
             detail="Email already registered"
         )
 
+    # Calculate trust score
+    trust_score = 100
+    if email_info.is_disposable:
+        trust_score -= 50
+    if email_info.is_plus_alias:
+        trust_score -= 10
+    if email_info.is_dot_variant:
+        trust_score -= 5
+
+    # Check for accounts with same normalized email
+    norm_result = await db.execute(
+        select(User).where(User.normalizedEmail == email_info.normalized)
+    )
+    same_norm_count = len(norm_result.scalars().all())
+    trust_score -= same_norm_count * 30
+    trust_score = max(0, min(100, trust_score))
+
+    trust_outcome = "allowed" if trust_score >= 70 else ("flagged" if trust_score >= 40 else "blocked")
+
+    # Determine signup credits based on trust score
+    signup_credits = 10000 if trust_score >= 70 else 0
+
     # Create new user
     user = User(
         email=request.email,
-        password_hash=get_password_hash(request.password),
-        full_name=request.full_name,
-        credits_balance=10000,  # Start with 10,000 credits ($10 USD) for trial
-        is_active=True,
-        is_admin=False,
-        email_verified=False
+        password=get_password_hash(request.password),
+        name=request.full_name,
+        credits=signup_credits,
+        isDisabled=False,
+        normalizedEmail=email_info.normalized,
+        trustScore=trust_score,
+        registrationIp=ip_address,
     )
-    
+
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    
+
+    if trust_score < 70:
+        import logging
+        logging.getLogger(__name__).warning(
+            f"Registration flagged: email={request.email} trust_score={trust_score} outcome={trust_outcome}"
+        )
+
     # Send welcome email (async, don't wait)
     from app.services.email_service import get_email_service
     import asyncio
-    
+
     email_service = get_email_service()
     asyncio.create_task(email_service.send_welcome_email(
         to_email=user.email,
         user_name=user.full_name
     ))
-    
+
     # Create access token
     access_token = create_access_token(
         data={"user_id": str(user.id), "email": user.email},
@@ -164,7 +224,9 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request: LoginRequest,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(_check_auth_rate),
 ):
     """
     User login
@@ -195,6 +257,23 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+
+    # Check if user is banned
+    if getattr(user, 'is_banned', False):
+        from datetime import datetime as _dt
+        banned_until = getattr(user, 'banned_until', None)
+        if banned_until and banned_until < _dt.utcnow():
+            # Ban expired — unban
+            user.is_banned = False
+            user.ban_reason = None
+            user.banned_until = None
+            await db.commit()
+        else:
+            reason = getattr(user, 'ban_reason', '') or 'Policy violation'
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Account is banned: {reason}"
+            )
     
     # Create access token
     access_token = create_access_token(
@@ -291,7 +370,9 @@ class ForgotPasswordRequest(BaseModel):
 @router.post("/forgot-password")
 async def forgot_password(
     request: ForgotPasswordRequest,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(_check_auth_rate),
 ):
     """
     Request password reset
@@ -354,7 +435,9 @@ class ResetPasswordRequest(BaseModel):
 @router.post("/reset-password")
 async def reset_password(
     request: ResetPasswordRequest,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(_check_auth_rate),
 ):
     """
     Reset password using reset token

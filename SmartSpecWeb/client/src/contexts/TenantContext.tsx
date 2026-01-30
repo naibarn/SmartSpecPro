@@ -42,6 +42,7 @@ export interface Tenant {
   name: string;
   primaryDomain: string;
   logoUrl?: string;
+  websiteLogoUrl?: string;
   faviconUrl?: string;
   theme: TenantTheme;
   seo: TenantSeo;

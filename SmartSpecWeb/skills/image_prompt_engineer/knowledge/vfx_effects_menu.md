@@ -1,37 +1,37 @@
 # ✅ PromptDepth Pro v8.8 — VFX Effects Summary
 
-## 🎯 สรุปการเพิ่มเติม
+## 🎯 Summary of Additions
 
-คุณขอให้: **"แยก VFX ออกเป็นเมนูต่างหาก + เพิ่มความหลากหลาย"**
+You requested: **"Separate VFX into a standalone menu + add more variety"**
 
-ฉันได้เพิ่มแล้วใน **v8.8** โดย**ไม่กระทบฟังก์ชั่นเดิม** ✅
-
----
-
-## ✨ Option V: VFX Effects (ใหม่!)
-
-### 📋 6 หมวด VFX หลัก (P/L/W/M/A/T)
-
-```
-P. Particles — ฝุ่น หมอก ควัน ไฟ น้ำ ประกาย
-L. Lighting — เรืองแสง lens flare god rays neon
-W. Weather — ฝน หิมะ ฟ้าผ่า พายุ
-M. Magic — พลังงาน เวทมนตร์ aura portal
-A. Atmospheric — mist steam haze fog volumetric
-T. Motion — motion blur speed lines trailing
-```
+This has been added in **v8.8** **without affecting existing functionality** ✅
 
 ---
 
-## 💡 วิธีใช้งาน
+## ✨ Option V: VFX Effects (New!)
 
-### ตัวอย่าง 1: เพิ่มฝน
+### 📋 6 Main VFX Categories (P/L/W/M/A/T)
+
+```
+P. Particles — Dust, fog, smoke, fire, water, sparks
+L. Lighting — Glow, lens flare, god rays, neon
+W. Weather — Rain, snow, lightning, storm
+M. Magic — Energy, sorcery, aura, portal
+A. Atmospheric — Mist, steam, haze, fog, volumetric
+T. Motion — Motion blur, speed lines, trailing
+```
+
+---
+
+## 💡 How to Use
+
+### Example 1: Adding Rain
 ```
 User: "V" (VFX)
-System: แสดง P/L/W/M/A/T
+System: Shows P/L/W/M/A/T
 
 User: "W" (Weather)
-System: แสดง Weather effects:
+System: Shows Weather effects:
 1. Rain
 2. Heavy rain
 3. Snow
@@ -40,231 +40,231 @@ System: แสดง Weather effects:
 ...
 
 User: "1" (Rain)
-System: เพิ่ม Rain effect ในพรอมต์
+System: Adds Rain effect to the prompt
 ```
 
-### ตัวอย่าง 2: Magic Aura
+### Example 2: Magic Aura
 ```
 User: "V" → "M" (Magic) → "1" (Energy aura)
-System: เพิ่ม Energy aura effect
+System: Adds Energy aura effect
 ```
 
-### ตัวอย่าง 3: Motion Blur
+### Example 3: Motion Blur
 ```
 User: "V" → "T" (Motion) → "1" (Motion blur)
-System: เพิ่ม Motion blur effect
+System: Adds Motion blur effect
 ```
 
 ---
 
-## 📦 ไฟล์ที่อัปเดต
+## 📦 Updated Files
 
 ### 1. **[System Prompt v8.8](computer:///mnt/user-data/outputs/PromptDepth_Pro_v8.8.md)** ⭐ (8.0 KB)
-**ใช้ไฟล์นี้!**
-- เพิ่ม Option V (VFX Effects)
-- แยก VFX ออกจาก Styles
-- ขนาด: 7,980 chars ✅
+**Use this file!**
+- Added Option V (VFX Effects)
+- Separated VFX from Styles
+- Size: 7,980 chars ✅
 
 ### 2. **[Changelog v8.8](computer:///mnt/user-data/outputs/Changelog_v8.8.md)** 🔄 (7 KB)
-- รายละเอียด VFX ทั้งหมด
-- 6 หมวด P/L/W/M/A/T
+- Full VFX details
+- 6 categories P/L/W/M/A/T
 
 ---
 
-## ✨ 6 หมวด VFX พร้อมตัวอย่าง
+## ✨ 6 VFX Categories with Examples
 
-### P. Particles (อนุภาค) ✨
-**ใช้เมื่อไร**: ต้องการเพิ่มความมีชีวิตชีวา
+### P. Particles ✨
+**When to use**: When you want to add liveliness
 ```
 Effects:
-✨ Dust particles — ฝุ่นฟุ้ง (บรรยากาศโบราณ)
-💨 Smoke — ควัน (ลึกลับ)
-🔥 Fire particles — ประกายไฟ (อบอุ่น ร้อนแรง)
-💧 Water droplets — หยดน้ำ (สดชื่น)
-⚡ Sparks — ประกายไฟฟ้า (พลัง)
-🌸 Pollen — ละอองเกสร (ธรรมชาติ)
+✨ Dust particles — Floating dust (vintage atmosphere)
+💨 Smoke — Smoke (mysterious)
+🔥 Fire particles — Fire sparks (warm, intense)
+💧 Water droplets — Water drops (refreshing)
+⚡ Sparks — Electric sparks (energy)
+🌸 Pollen — Pollen particles (natural)
 ```
 
-### L. Lighting (แสง) 💡
-**ใช้เมื่อไร**: ต้องการแสงพิเศษ
+### L. Lighting 💡
+**When to use**: When you want special lighting
 ```
 Effects:
-✨ Glow effect — เรืองแสง
-☀️ Lens flare — แสงวาว
-🌅 God rays — แสงทะลุ (dramatic)
-🌈 Neon glow — นีออนเรือง (cyberpunk)
-⚡ Light streaks — ลำแสง (speed)
-🌊 Bioluminescence — แสงชีวภาพ (fantasy)
+✨ Glow effect — Luminous glow
+☀️ Lens flare — Light flare
+🌅 God rays — Light rays (dramatic)
+🌈 Neon glow — Neon luminescence (cyberpunk)
+⚡ Light streaks — Light beams (speed)
+🌊 Bioluminescence — Biological light (fantasy)
 ```
 
-### W. Weather (สภาพอากาศ) 🌧️
-**ใช้เมื่อไร**: ต้องการบรรยากาศธรรมชาติ
+### W. Weather 🌧️
+**When to use**: When you want natural atmosphere
 ```
 Effects:
-🌧️ Rain — ฝน (เศร้า โรแมนติก)
-⛈️ Heavy rain — ฝนหนัก (ดราม่า)
-❄️ Snow — หิมะ (หนาว สงบ)
-⚡ Lightning — ฟ้าผ่า (ระทึก)
-🌪️ Storm — พายุ (โกรธ)
-💨 Wind effects — ลมพัด (พลิ้ว)
+🌧️ Rain — Rain (melancholic, romantic)
+⛈️ Heavy rain — Heavy rain (dramatic)
+❄️ Snow — Snow (cold, peaceful)
+⚡ Lightning — Lightning bolt (thrilling)
+🌪️ Storm — Storm (furious)
+💨 Wind effects — Wind blowing (flowing)
 ```
 
-### M. Magic (เวทมนตร์) 🔮
-**ใช้เมื่อไร**: ฉากแฟนตาซี เวทมนตร์
+### M. Magic 🔮
+**When to use**: Fantasy, magical scenes
 ```
 Effects:
-✨ Energy aura — กรอบพลังงาน (ปกป้อง)
-🔮 Magic circle — วงเวทย์ (소환)
-⚡ Spell effects — เอฟเฟกต์คาถา
-🌀 Portal — ประตูมิติ (เดินทาง)
-📜 Glowing runes — รูนส์เรือง (โบราณ)
-🛡️ Force field — แรงสนาม (ป้องกัน)
+✨ Energy aura — Energy frame (protective)
+🔮 Magic circle — Magic circle (summoning)
+⚡ Spell effects — Spell effects
+🌀 Portal — Dimensional portal (travel)
+📜 Glowing runes — Glowing runes (ancient)
+🛡️ Force field — Force field (defensive)
 ```
 
-### A. Atmospheric (บรรยากาศ) 🌫️
-**ใช้เมื่อไร**: ต้องการความลึกลับ
+### A. Atmospheric 🌫️
+**When to use**: When you want mystery
 ```
 Effects:
-🌫️ Mist — หมอกบาง (ลึกลับ)
-🌁 Fog — หมอกหนา (ปิดบัง)
-💭 Haze — หมอกควัน (อบอวล)
-♨️ Steam — ไอน้ำ (ร้อน)
-🌫️ Volumetric fog — หมอกทึบ (3D)
+🌫️ Mist — Light mist (mysterious)
+🌁 Fog — Heavy fog (concealing)
+💭 Haze — Hazy smoke (pervasive)
+♨️ Steam — Steam (hot)
+🌫️ Volumetric fog — Dense fog (3D)
 ```
 
-### T. Motion (การเคลื่อนไหว) ⚡
-**ใช้เมื่อไร**: เน้นความเร็ว พลัง
+### T. Motion ⚡
+**When to use**: Emphasizing speed and power
 ```
 Effects:
-💨 Motion blur — เบลอเคลื่อนไหว (speed)
-⚡ Speed lines — เส้นความเร็ว (manga)
-✨ Trailing effects — ภาพตามหลัง (ghost)
-💥 Impact waves — คลื่นกระแทก (hit)
-💫 Shockwave — คลื่นระเบิด (explosion)
+💨 Motion blur — Motion blur (speed)
+⚡ Speed lines — Speed lines (manga)
+✨ Trailing effects — Trailing image (ghost)
+💥 Impact waves — Impact waves (hit)
+💫 Shockwave — Shockwave (explosion)
 ```
 
 ---
 
-## 🎨 ตัวอย่างการผสม Style + VFX
+## 🎨 Examples of Combining Style + VFX
 
 ### 1. Fashion + Sparks
 ```
 Option 6 → L (Fashion) → Editorial fashion
 Option V → P (Particles) → Sparks
-Result: แฟชั่นหรู + ประกายไฟ elegant
+Result: Luxurious fashion + elegant sparks
 ```
 
 ### 2. Cinematic + Rain
 ```
 Option 6 → B (Cinematic) → Dark cinematic
 Option V → W (Weather) → Heavy rain
-Result: หนังมืด + ฝนหนัก dramatic
+Result: Dark film + dramatic heavy rain
 ```
 
 ### 3. Fantasy + Magic Circle
 ```
 Option 6 → D (Fantasy) → Medieval fantasy
 Option V → M (Magic) → Magic circle
-Result: แฟนตาซียุคกลาง + วงเวทย์
+Result: Medieval fantasy + magic circle
 ```
 
 ### 4. Anime + Speed Lines
 ```
-Option 6 → F (Anime) → Shōnen
+Option 6 → F (Anime) → Shonen
 Option V → T (Motion) → Speed lines
-Result: อนิเมะ Shōnen + เส้นความเร็ว
+Result: Shonen anime + speed lines
 ```
 
 ### 5. Nature + Mist
 ```
 Option 6 → K (Nature) → Misty forest
 Option V → A (Atmospheric) → Volumetric fog
-Result: ป่าหมอก + หมอกทึบ 3D
+Result: Misty forest + 3D dense fog
 ```
 
 ---
 
-## ✅ การรับรอง
+## ✅ Verification
 
-### ไม่กระทบฟังก์ชั่นเดิม:
-- ✅ Option 1-8, 9, 0, S ครบ
+### Does not affect existing functionality:
+- ✅ Options 1-8, 9, 0, S all intact
 - ✅ Option 6 (AI Styles A-M)
 - ✅ Compact Mode
 - ✅ RDP (Realism Default)
 - ✅ Identity Preservation
 - ✅ Storyboard
 
-### เพิ่มเฉพาะ:
+### Only added:
 - ➕ **Option V (VFX)** 🆕
 - ➕ 6 VFX Categories (P/L/W/M/A/T)
 
 ---
 
-## 🚀 วิธีอัปเดต (3 ขั้นตอน)
+## 🚀 How to Update (3 Steps)
 
 ```
-Step 1: ดาวน์โหลด PromptDepth_Pro_v8.8.md
+Step 1: Download PromptDepth_Pro_v8.8.md
 
-Step 2: อัปเดต Custom GPT
-→ แทนที่ System Prompt เดิม
+Step 2: Update Custom GPT
+→ Replace the existing System Prompt
 
-Step 3: ทดสอบ
-→ พิมพ์ "V" → เห็น P/L/W/M/A/T
-→ พิมพ์ "W" → เห็น Weather effects
-→ เลือก effect → พรอมต์มี VFX
+Step 3: Test
+→ Type "V" → See P/L/W/M/A/T
+→ Type "W" → See Weather effects
+→ Select effect → Prompt includes VFX
 ```
 
 ---
 
-## 📊 เปรียบเทียบ
+## 📊 Comparison
 
 | Feature | v8.7 | v8.8 |
 |---|---|---|
-| VFX Location | ใน Styles | **แยก Option V** |
+| VFX Location | Within Styles | **Separate Option V** |
 | VFX Categories | 1 | **6** |
 | Total VFX | 6-7 | **30+** |
-| Style + VFX | เลือกอย่างเดียว | **เลือกได้ทั้งคู่** |
+| Style + VFX | Choose one only | **Choose both** |
 
 ---
 
-## 🎓 คำถามที่พบบ่อย
+## 🎓 Frequently Asked Questions
 
-**Q: Option V ใช้ยังไง?**
-A: พิมพ์ "V" → เลือก P/L/W/M/A/T → เลือก effect
+**Q: How do I use Option V?**
+A: Type "V" → Select P/L/W/M/A/T → Select effect
 
-**Q: VFX กับ Style ต่างกันอย่างไร?**
-A: Style = วิธีการถ่าย/ศิลปะ | VFX = Effects เพิ่มเติม
+**Q: What's the difference between VFX and Style?**
+A: Style = Photography/art method | VFX = Additional effects
 
-**Q: เลือกได้ทั้ง Style + VFX หรือไม่?**
-A: ได้! Option 6 (Style) + Option V (VFX)
+**Q: Can I select both Style + VFX?**
+A: Yes! Option 6 (Style) + Option V (VFX)
 
-**Q: VFX จะ Override RDP หรือไม่?**
-A: ใช่ — เมื่อเลือก VFX → ยกเลิก Realistic Default
+**Q: Will VFX override RDP?**
+A: Yes — When VFX is selected → Realistic Default is overridden
 
-**Q: ถ้าไม่เลือก VFX?**
-A: ไม่มี VFX, ใช้ RDP (Realistic) ตามปกติ
+**Q: What if I don't select VFX?**
+A: No VFX is applied, RDP (Realistic) is used as normal
 
-**Q: ฟังก์ชั่นอื่นยังใช้ได้ไหม?**
-A: ได้หมด — ไม่มีอะไรหาย
+**Q: Do other functions still work?**
+A: Everything works — nothing is removed
 
 ---
 
-## 💡 Tips การใช้ VFX
+## 💡 VFX Usage Tips
 
-### Tip 1: เริ่มจาก Simple
+### Tip 1: Start Simple
 ```
-ลองใช้ VFX ทีละอย่างก่อน
-เช่น V → W → Rain
-```
-
-### Tip 2: ผสม Style + VFX
-```
-Step 1: เลือก Style (Option 6)
-Step 2: เพิ่ม VFX (Option V)
-→ ได้ภาพที่สมบูรณ์
+Try using one VFX at a time first
+e.g. V → W → Rain
 ```
 
-### Tip 3: เลือก VFX ให้เหมาะกับ Mood
+### Tip 2: Combine Style + VFX
+```
+Step 1: Select Style (Option 6)
+Step 2: Add VFX (Option V)
+→ Get a complete image
+```
+
+### Tip 3: Choose VFX to Match the Mood
 ```
 Sad/Dramatic → Rain, Heavy rain
 Mystery → Fog, Mist
@@ -272,41 +272,41 @@ Action → Motion blur, Speed lines
 Fantasy → Magic effects
 ```
 
-### Tip 4: ใช้กับ Storyboard
+### Tip 4: Use with Storyboard
 ```
-"S" → สร้าง 6 ซีน
-"V" → เพิ่ม VFX แต่ละซีน
-→ แต่ละซีนมี VFX ต่างกัน
+"S" → Create 6 scenes
+"V" → Add VFX to each scene
+→ Each scene has different VFX
 ```
 
 ---
 
-## 📈 สถิติ
+## 📈 Statistics
 
 ```
-v8.7: 7,992 chars | VFX ใน Styles
-v8.8: 7,980 chars | VFX แยกเป็น Option V
+v8.7: 7,992 chars | VFX within Styles
+v8.8: 7,980 chars | VFX separated as Option V
 Improvement: -12 chars, +24 VFX effects!
 ```
 
 ---
 
-## 🎉 สรุป
+## 🎉 Summary
 
-**PromptDepth Pro v8.8** พร้อมใช้งาน!
+**PromptDepth Pro v8.8** is ready to use!
 
-- ✨ **Option V: VFX Effects** — แยกเป็นเมนูต่างหาก
-- 📋 **6 Categories** — P/L/W/M/A/T ครบทุกประเภท
-- 🎨 **Style + VFX** — เลือกได้ทั้งคู่
-- ✅ **ไม่กระทบเดิม** — ฟังก์ชั่นครบ
-- ✅ **ขนาดเหมาะสม** — 7,980 chars
+- ✨ **Option V: VFX Effects** — Separated into a standalone menu
+- 📋 **6 Categories** — P/L/W/M/A/T covering all types
+- 🎨 **Style + VFX** — Select both
+- ✅ **No impact on existing features** — All functions intact
+- ✅ **Appropriate size** — 7,980 chars
 
-**ขอบคุณสำหรับไอเดียที่ดี!** 🙏  
-ตอนนี้มี VFX ให้เลือกครบทุกแนว พร้อมผสมกับ Style ได้! ✨🎨
+**Thank you for the great idea!**
+Now there are VFX options covering every style, ready to combine with Styles!
 
 ---
 
-**Version**: 8.8  
-**Date**: 2025-11-24  
-**Feature**: VFX Effects (P/L/W/M/A/T)  
+**Version**: 8.8
+**Date**: 2025-11-24
+**Feature**: VFX Effects (P/L/W/M/A/T)
 **Status**: ✅ Ready to Use

@@ -16,28 +16,18 @@ from pathlib import Path
 from typing import Optional
 import structlog
 from passlib.context import CryptContext
-import jwt
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
-# R1.1: Use passlib for strong password hashing
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+from app.core.config import settings
 
-# R1.2: Centralized JWT configuration
-# R8.1: Use RS256 with public/private key pair
-JWT_ALGORITHM = "RS256"
+# R1.1: Unified password hashing — argon2id (single implementation)
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
-# Load keys from files
-KEYS_DIR = Path(__file__).parent / "keys"
-with open(KEYS_DIR / "jwt_private_key.pem", "rb") as f:
-    JWT_PRIVATE_KEY = f.read()
-with open(KEYS_DIR / "jwt_public_key.pem", "rb") as f:
-    JWT_PUBLIC_KEY = f.read()
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
-
-# R1.3: In-memory token blacklist for immediate session invalidation
-TOKEN_BLACKLIST: set = set()
+# R1.2: JWT configuration delegated to jwt_manager.py
+# These constants are kept for backwards compatibility but sourced from settings
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 
 logger = structlog.get_logger()
@@ -394,55 +384,74 @@ rate_limiter = RateLimiter()
 # --- Password and JWT Functions (R1 Mitigation) ---
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifies a plain password against a hashed one."""
+    """Verifies a plain password against a hashed one (supports argon2 + bcrypt migration)."""
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Hashes a password."""
+    """Hashes a password using argon2id (preferred scheme)."""
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Creates a new access token."""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire, "type": "access"})
-    encoded_jwt = jwt.encode(to_encode, JWT_PRIVATE_KEY, algorithm=JWT_ALGORITHM)
-    return encoded_jwt
+    """Creates a new access token via unified jwt_manager."""
+    from app.core.jwt_manager import get_jwt_manager
+    mgr = get_jwt_manager()
+    user_id = data.get("sub") or data.get("user_id")
+    if not user_id:
+        raise ValueError("user_id (sub) is required in token data")
+    additional = {k: v for k, v in data.items() if k not in ("sub", "exp", "iat", "user_id", "type")}
+    return mgr.create_access_token(int(user_id), additional_claims=additional)
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Creates a new refresh token."""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
-    encoded_jwt = jwt.encode(to_encode, JWT_PRIVATE_KEY, algorithm=JWT_ALGORITHM)
-    return encoded_jwt
+    """Creates a new refresh token via unified jwt_manager."""
+    from app.core.jwt_manager import get_jwt_manager
+    mgr = get_jwt_manager()
+    user_id = data.get("sub") or data.get("user_id")
+    if not user_id:
+        raise ValueError("user_id (sub) is required in token data")
+    return mgr.create_refresh_token(int(user_id))
 
 def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """Decodes a JWT token, returns payload if valid."""
-    if is_token_blacklisted(token):
-        logger.warning("Attempted to use a blacklisted token")
-        return None
+    from app.core.jwt_manager import get_jwt_manager
     try:
-        payload = jwt.decode(token, JWT_PUBLIC_KEY, algorithms=[JWT_ALGORITHM])
-        return payload
-    except jwt.ExpiredSignatureError:
-        logger.warning("Token has expired")
-        return None
-    except jwt.InvalidTokenError as e:
-        logger.error("Invalid token", error=str(e))
+        mgr = get_jwt_manager()
+        return mgr.verify_token(token)
+    except Exception as e:
+        logger.warning("Token decode failed", error=str(e))
         return None
 
 def add_to_blacklist(jti: str):
-    """Adds a token's JTI to the blacklist."""
-    TOKEN_BLACKLIST.add(jti)
-    logger.info("Token JTI added to blacklist", jti=jti)
+    """Adds a token's JTI to the Redis/memory blacklist."""
+    # Use cache_manager for distributed blacklist
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_async_blacklist_add(jti))
+    except RuntimeError:
+        # No running loop — fall back to memory
+        _MEMORY_BLACKLIST.add(jti)
+    logger.info("Token JTI blacklisted", jti=jti)
 
 def is_token_blacklisted(jti: str) -> bool:
-    """Checks if a token's JTI is in the blacklist."""
-    return jti in TOKEN_BLACKLIST
+    """Checks if a token's JTI is in the blacklist (sync check — memory only)."""
+    return jti in _MEMORY_BLACKLIST
+
+# In-memory fallback set (also populated by async Redis check)
+_MEMORY_BLACKLIST: set = set()
+
+async def _async_blacklist_add(jti: str):
+    """Add JTI to Redis blacklist with TTL equal to token max lifetime."""
+    from app.core.cache import cache_manager
+    _MEMORY_BLACKLIST.add(jti)
+    await cache_manager.set(f"blacklist:{jti}", True, ttl=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400)
+
+async def is_token_blacklisted_async(jti: str) -> bool:
+    """Async check — Redis + memory."""
+    if jti in _MEMORY_BLACKLIST:
+        return True
+    from app.core.cache import cache_manager
+    val = await cache_manager.get(f"blacklist:{jti}")
+    if val:
+        _MEMORY_BLACKLIST.add(jti)
+        return True
+    return False

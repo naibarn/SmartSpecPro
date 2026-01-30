@@ -120,8 +120,8 @@ export function createRateLimiter(name: string, config: RateLimiterConfig) {
 // Pre-configured rate limiters
 export const skillDetectionLimiter = createRateLimiter("skill-detection", {
   windowMs: 60000, // 1 minute
-  maxRequests: 30, // 30 detections per minute
-  blockDurationMs: 30000, // Block for 30 seconds if exceeded
+  maxRequests: 60, // 60 detections per minute
+  blockDurationMs: 10000, // Block for 10 seconds if exceeded
 });
 
 export const skillExecutionLimiter = createRateLimiter("skill-execution", {
@@ -134,6 +134,12 @@ export const mediaGenerationLimiter = createRateLimiter("media-generation", {
   windowMs: 300000, // 5 minutes
   maxRequests: 20, // 20 generations per 5 minutes
   blockDurationMs: 120000, // Block for 2 minutes if exceeded
+});
+
+export const registrationLimiter = createRateLimiter("registration", {
+  windowMs: 3600000, // 1 hour
+  maxRequests: 3, // 3 registrations per IP per hour
+  blockDurationMs: 7200000, // Block for 2 hours if exceeded
 });
 
 // Cleanup old entries periodically (run every 5 minutes)
