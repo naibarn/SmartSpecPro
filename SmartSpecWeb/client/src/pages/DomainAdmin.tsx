@@ -98,8 +98,8 @@ export default function DomainAdmin() {
   const totalPages = Math.ceil((usersData?.total || 0) / limit);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-6">
+      <div className="px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <Button
@@ -145,10 +145,10 @@ export default function DomainAdmin() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setLocation('/domain-admin/invoice')}
+                onClick={() => setLocation('/domain-admin/settings')}
               >
                 <FileText className="w-4 h-4 mr-2" />
-                Invoice Settings
+                Tenant Settings
               </Button>
               <Button
                 variant="outline"

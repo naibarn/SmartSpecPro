@@ -40,6 +40,15 @@ import {
   PenLine,
   Menu,
   X,
+  GitBranch,
+  ArrowUpRight,
+  ArrowDownRight,
+  Coins,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  BarChart3,
+  MessagesSquare,
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -50,9 +59,28 @@ export default function Dashboard() {
 
   // Fetch real media tasks for recent activity
   const { data: mediaTasksData } = trpc.media.listTasks.useQuery(
+    { limit: 10 },
+    { enabled: isAuthenticated }
+  );
+
+  // Credit stats (30 days)
+  const { data: creditStats } = trpc.credits.stats.useQuery(
+    { days: 30 },
+    { enabled: isAuthenticated }
+  );
+
+  // Recent credit transactions
+  const { data: recentTransactions } = trpc.credits.history.useQuery(
+    { limit: 8 },
+    { enabled: isAuthenticated }
+  );
+
+  // Recent chat conversations
+  const { data: chatData } = trpc.chat.listConversations.useQuery(
     { limit: 5 },
     { enabled: isAuthenticated }
   );
+
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -81,11 +109,13 @@ export default function Dashboard() {
     return taskDate.toDateString() === today.toDateString();
   }).length;
 
+  const totalConversations = chatData?.total || 0;
+
   const stats = [
-    { label: 'Credits Available', value: (user.credits ?? 0).toLocaleString(), icon: Zap, color: 'text-yellow-500' },
-    { label: 'Generations Today', value: todayTasks.toString(), icon: TrendingUp, color: 'text-green-500' },
-    { label: 'Total Generations', value: totalTasks.toString(), icon: Image, color: 'text-purple-500' },
-    { label: 'Account Status', value: user.plan || 'Free', icon: Clock, color: 'text-blue-500' },
+    { label: 'Credits Available', value: (user.credits ?? 0).toLocaleString(), icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+    { label: '30-Day Usage', value: creditStats ? Math.abs(creditStats.totalUsage).toLocaleString() : '—', icon: BarChart3, color: 'text-red-500', bg: 'bg-red-50' },
+    { label: 'Media Generations', value: totalTasks.toLocaleString(), icon: Image, color: 'text-purple-500', bg: 'bg-purple-50', sub: todayTasks > 0 ? `${todayTasks} today` : undefined },
+    { label: 'Chat Sessions', value: totalConversations.toLocaleString(), icon: MessagesSquare, color: 'text-teal-500', bg: 'bg-teal-50' },
   ];
 
   const quickActions = [
@@ -112,13 +142,24 @@ export default function Dashboard() {
     return date.toLocaleDateString();
   };
 
-  // Convert media tasks to activity format
-  const recentActivity = tasks.map((task) => ({
-    type: task.mediaType as 'image' | 'video' | 'audio',
-    title: task.prompt?.slice(0, 40) + (task.prompt?.length > 40 ? '...' : '') || `${task.mediaType} generation`,
-    time: formatRelativeTime(task.createdAt),
-    status: task.status,
-  }));
+  // Status badge config
+  const statusConfig: Record<string, { label: string; bg: string; text: string; icon: typeof CheckCircle2 }> = {
+    completed: { label: 'Completed', bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle2 },
+    processing: { label: 'Processing', bg: 'bg-blue-100', text: 'text-blue-700', icon: Loader2 },
+    pending: { label: 'Pending', bg: 'bg-yellow-100', text: 'text-yellow-700', icon: Clock },
+    failed: { label: 'Failed', bg: 'bg-red-100', text: 'text-red-700', icon: AlertCircle },
+    cancelled: { label: 'Cancelled', bg: 'bg-gray-100', text: 'text-gray-600', icon: X },
+  };
+
+  // Transaction type config
+  const txTypeConfig: Record<string, { label: string; icon: typeof Coins; color: string }> = {
+    usage: { label: 'Usage', icon: ArrowDownRight, color: 'text-red-500' },
+    purchase: { label: 'Purchase', icon: ArrowUpRight, color: 'text-green-500' },
+    bonus: { label: 'Bonus', icon: Zap, color: 'text-yellow-500' },
+    refund: { label: 'Refund', icon: ArrowUpRight, color: 'text-blue-500' },
+    adjustment: { label: 'Adjustment', icon: Coins, color: 'text-gray-500' },
+    subscription: { label: 'Subscription', icon: CreditCard, color: 'text-purple-500' },
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
@@ -165,6 +206,7 @@ export default function Dashboard() {
                     { label: 'LLM Providers', icon: Brain, path: '/admin/llm-providers' },
                     { label: 'Media Providers', icon: Layers, path: '/admin/media-providers' },
                     { label: 'Skills', icon: Wand2, path: '/admin/skills' },
+                    { label: 'Skill Repos', icon: GitBranch, path: '/admin/skill-repositories' },
                   ].map((item) => (
                     <button
                       key={item.label}
@@ -188,6 +230,7 @@ export default function Dashboard() {
                     { href: '/domain-admin/content', icon: FileText, label: 'Edit Content' },
                     { href: '/domain-admin/theme', icon: Palette, label: 'Edit Theme' },
                     { href: '/domain-admin/blog', icon: PenLine, label: 'Manage Blog' },
+                    { href: '/domain-admin/settings', icon: FileText, label: 'Tenant Settings' },
                   ].map((item) => (
                     <button
                       key={item.href}
@@ -272,6 +315,7 @@ export default function Dashboard() {
                   { label: 'Media Providers', icon: Layers, path: '/admin/media-providers' },
                   { label: 'AI Models', icon: Sparkles, path: '/admin/media-models' },
                   { label: 'Skills', icon: Wand2, path: '/admin/skills' },
+                  { label: 'Skill Repos', icon: GitBranch, path: '/admin/skill-repositories' },
                   { label: 'Storage (R2/S3)', icon: Cloud, path: '/admin/storage-settings' },
                   { label: 'Admin Settings', icon: Settings, path: '/admin/settings' },
                 ].map((item) => (
@@ -330,11 +374,11 @@ export default function Dashboard() {
                   <span className="font-medium truncate">Manage Blog</span>
                 </button>
                 <button
-                  onClick={() => setLocation('/admin/settings')}
+                  onClick={() => setLocation('/domain-admin/settings')}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all text-gray-600 hover:bg-gray-100 text-sm"
                 >
                   <FileText className="w-4 h-4 flex-shrink-0" />
-                  <span className="font-medium truncate">Invoice Settings</span>
+                  <span className="font-medium truncate">Tenant Settings</span>
                 </button>
               </div>
             </>
@@ -382,13 +426,22 @@ export default function Dashboard() {
               className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-6 shadow-lg shadow-purple-500/5"
             >
               <div className="flex items-center justify-between mb-4">
-                <stat.icon className={`w-8 h-8 ${stat.color}`} />
+                <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                </div>
                 <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                   {user.plan.toUpperCase()}
                 </span>
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
-              <div className="text-sm text-gray-500">{stat.label}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">{stat.label}</span>
+                {'sub' in stat && stat.sub && (
+                  <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                    {stat.sub}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </motion.div>
@@ -419,45 +472,183 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Recent Activity */}
+        {/* Two-column layout: Recent Activity + Sidebar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.35 }}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8"
+        >
+          {/* Recent Media Generations */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Recent Media Generations</h2>
+              <Button variant="ghost" size="sm" onClick={() => setLocation('/media-history')} className="text-purple-600">
+                View All <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 overflow-hidden">
+              {tasks.length === 0 ? (
+                <div className="p-8 text-center text-gray-400">
+                  <Image className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No media generations yet</p>
+                  <Button variant="ghost" size="sm" className="mt-2 text-purple-600" onClick={() => setLocation('/media-studio')}>
+                    Go to Media Studio
+                  </Button>
+                </div>
+              ) : (
+                tasks.slice(0, 6).map((task, index) => {
+                  const sc = statusConfig[task.status] || statusConfig.pending;
+                  const StatusIcon = sc.icon;
+                  const typeIcon = task.mediaType === 'image' ? Image : task.mediaType === 'video' ? Video : Music;
+                  const TypeIcon = typeIcon;
+                  const typeBg = task.mediaType === 'image' ? 'bg-purple-100 text-purple-600' :
+                                 task.mediaType === 'video' ? 'bg-blue-100 text-blue-600' :
+                                 'bg-orange-100 text-orange-600';
+
+                  return (
+                    <div
+                      key={task.id || index}
+                      className={`flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/50 transition-colors ${
+                        index !== Math.min(tasks.length, 6) - 1 ? 'border-b border-gray-100' : ''
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${typeBg}`}>
+                        <TypeIcon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 truncate text-sm">
+                          {task.prompt?.slice(0, 60) || `${task.mediaType} generation`}
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                          <span className="capitalize">{task.mediaType}</span>
+                          <span className="text-gray-300">|</span>
+                          <span className="font-mono text-gray-600">{task.model || 'unknown'}</span>
+                          {task.creditsUsed > 0 && (
+                            <>
+                              <span className="text-gray-300">|</span>
+                              <span className="flex items-center gap-0.5 text-amber-600">
+                                <Zap className="w-3 h-3" /> {task.creditsUsed}
+                              </span>
+                            </>
+                          )}
+                          <span className="text-gray-300">|</span>
+                          <span>{formatRelativeTime(task.createdAt)}</span>
+                        </div>
+                      </div>
+                      <span className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full flex-shrink-0 ${sc.bg} ${sc.text}`}>
+                        <StatusIcon className={`w-3 h-3 ${task.status === 'processing' ? 'animate-spin' : ''}`} />
+                        {sc.label}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar: Recent Conversations */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Recent Chats</h2>
+              <Button variant="ghost" size="sm" onClick={() => setLocation('/chat')} className="text-purple-600 text-xs px-2">
+                Open <ChevronRight className="w-3 h-3 ml-0.5" />
+              </Button>
+            </div>
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 overflow-hidden">
+              {(!chatData?.conversations || chatData.conversations.length === 0) ? (
+                <div className="p-6 text-center text-gray-400">
+                  <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No conversations yet</p>
+                </div>
+              ) : (
+                chatData.conversations.slice(0, 5).map((conv, index) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => setLocation('/chat')}
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-50/50 transition-colors ${
+                      index !== Math.min(chatData.conversations.length, 5) - 1 ? 'border-b border-gray-100' : ''
+                    }`}
+                  >
+                    <div className="font-medium text-gray-900 text-sm truncate">
+                      {conv.title || 'Untitled'}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                      <span>{conv.messageCount} msgs</span>
+                      {Number(conv.totalCreditsUsed) > 0 && (
+                        <>
+                          <span className="text-gray-300">|</span>
+                          <span className="flex items-center gap-0.5 text-amber-600">
+                            <Zap className="w-3 h-3" /> {Math.round(Number(conv.totalCreditsUsed))}
+                          </span>
+                        </>
+                      )}
+                      <span className="text-gray-300">|</span>
+                      <span>{formatRelativeTime(conv.updatedAt)}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Credit Transactions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mb-8"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
-            <Button variant="ghost" size="sm" onClick={() => setLocation('/activity')} className="text-purple-600">
-              View All
-              <ChevronRight className="w-4 h-4 ml-1" />
+            <h2 className="text-xl font-bold text-gray-900">Credit Transactions</h2>
+            <Button variant="ghost" size="sm" onClick={() => setLocation('/credits')} className="text-purple-600">
+              View All <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
           <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 overflow-hidden">
-            {recentActivity.map((activity, index) => (
-              <div
-                key={index}
-                className={`flex items-center gap-4 p-4 ${
-                  index !== recentActivity.length - 1 ? 'border-b border-gray-100' : ''
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  activity.type === 'image' ? 'bg-purple-100 text-purple-600' :
-                  activity.type === 'video' ? 'bg-blue-100 text-blue-600' :
-                  'bg-orange-100 text-orange-600'
-                }`}>
-                  {activity.type === 'image' ? <Image className="w-5 h-5" /> :
-                   activity.type === 'video' ? <Video className="w-5 h-5" /> :
-                   <Music className="w-5 h-5" />}
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">{activity.title}</div>
-                  <div className="text-sm text-gray-500">{activity.time}</div>
-                </div>
-                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                  {activity.status}
-                </span>
+            {(!recentTransactions || recentTransactions.length === 0) ? (
+              <div className="p-8 text-center text-gray-400">
+                <Coins className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No transactions yet</p>
               </div>
-            ))}
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {recentTransactions.slice(0, 6).map((tx: any) => {
+                  const tc = txTypeConfig[tx.type] || txTypeConfig.adjustment;
+                  const TxIcon = tc.icon;
+                  const isPositive = tx.amount > 0;
+                  return (
+                    <div key={tx.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/50 transition-colors">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isPositive ? 'bg-green-100' : 'bg-red-50'
+                      }`}>
+                        <TxIcon className={`w-4 h-4 ${tc.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {tx.description || tc.label}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                          <span className="capitalize">{tc.label}</span>
+                          {tx.metadata?.model && (
+                            <>
+                              <span className="text-gray-300">|</span>
+                              <span className="font-mono text-gray-600">{tx.metadata.model}</span>
+                            </>
+                          )}
+                          <span className="text-gray-300">|</span>
+                          <span>{formatRelativeTime(tx.createdAt)}</span>
+                        </div>
+                      </div>
+                      <div className={`text-sm font-semibold flex-shrink-0 ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
+                        {isPositive ? '+' : ''}{tx.amount.toLocaleString()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </motion.div>
 

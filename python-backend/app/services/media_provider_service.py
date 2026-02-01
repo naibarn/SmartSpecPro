@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy import text
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
+import hashlib
 import os
 
 logger = structlog.get_logger()
@@ -19,36 +20,54 @@ _provider_cache: Dict[str, Dict[str, Any]] = {}
 _cache_ttl = 60  # seconds
 _last_fetch: Dict[str, float] = {}
 
-# Encryption key (must match SmartSpecWeb's MEDIA_ENCRYPTION_KEY)
-ENCRYPTION_KEY = os.environ.get("MEDIA_ENCRYPTION_KEY") or os.environ.get("LLM_ENCRYPTION_KEY") or "smartspec-media-key-32chars!"
+# Encryption key (must match SmartSpecWeb's LLM_ENCRYPTION_KEY)
+_RAW_KEY = os.environ.get("LLM_ENCRYPTION_KEY") or os.environ.get("MEDIA_ENCRYPTION_KEY") or "smartspec-media-key-32chars!"
+
+
+def _derive_key(raw_key: str) -> bytes:
+    """Derive 32-byte key using SHA-256 (matches SmartSpecWeb crypto.ts)."""
+    return hashlib.sha256(raw_key.encode()).digest()
 
 
 def decrypt_api_key(encrypted_text: str) -> Optional[str]:
     """
-    Decrypt API key using the same algorithm as SmartSpecWeb.
-    Format: iv_hex:encrypted_hex
+    Decrypt API key using AES-256-GCM (matches SmartSpecWeb server/services/crypto.ts).
+    Format: iv_hex:authTag_hex:ciphertext_hex
+    Also supports legacy CBC format: iv_hex:ciphertext_hex
     """
     if not encrypted_text:
         return None
 
     try:
         parts = encrypted_text.split(":")
-        if len(parts) != 2:
+        key = _derive_key(_RAW_KEY)
+
+        if len(parts) == 3:
+            # AES-256-GCM format: iv:authTag:ciphertext
+            iv = bytes.fromhex(parts[0])
+            auth_tag = bytes.fromhex(parts[1])
+            encrypted_data = bytes.fromhex(parts[2])
+
+            cipher = Cipher(algorithms.AES(key), modes.GCM(iv, auth_tag), backend=default_backend())
+            decryptor = cipher.decryptor()
+            decrypted = decryptor.update(encrypted_data) + decryptor.finalize()
+            return decrypted.decode('utf-8')
+
+        elif len(parts) == 2:
+            # Legacy AES-256-CBC format: iv:ciphertext
+            logger.warning("decrypt_legacy_cbc", message="Legacy CBC format detected, please re-save the key")
+            iv = bytes.fromhex(parts[0])
+            encrypted_data = bytes.fromhex(parts[1])
+            legacy_key = _RAW_KEY.ljust(32)[:32].encode()
+            cipher = Cipher(algorithms.AES(legacy_key), modes.CBC(iv), backend=default_backend())
+            decryptor = cipher.decryptor()
+            decrypted = decryptor.update(encrypted_data) + decryptor.finalize()
+            padding_len = decrypted[-1]
+            return decrypted[:-padding_len].decode('utf-8')
+
+        else:
+            logger.error("decrypt_api_key_invalid_format", parts_count=len(parts))
             return None
-
-        iv = bytes.fromhex(parts[0])
-        encrypted_data = bytes.fromhex(parts[1])
-
-        # Pad key to 32 bytes (same as SmartSpecWeb)
-        key = ENCRYPTION_KEY.ljust(32)[:32].encode()
-
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-        decryptor = cipher.decryptor()
-        decrypted = decryptor.update(encrypted_data) + decryptor.finalize()
-
-        # Remove PKCS7 padding
-        padding_len = decrypted[-1]
-        return decrypted[:-padding_len].decode('utf-8')
 
     except Exception as e:
         logger.error("decrypt_api_key_failed", error=str(e))

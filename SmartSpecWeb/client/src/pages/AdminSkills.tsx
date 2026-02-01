@@ -74,6 +74,7 @@ interface Skill {
   triggerPatterns: string[];
   isEnabled: boolean;
   enabledByDefault: boolean;
+  visibleByDefault: boolean;
   creditMultiplier: number;
   priority: number;
   availableModels: string[] | null;
@@ -171,10 +172,12 @@ export default function AdminSkills() {
     triggerPatterns: [] as string[],
     isEnabled: true,
     enabledByDefault: true,
+    visibleByDefault: true,
     creditMultiplier: 1.0,
     priority: 50,
     systemPrompt: "",
     skillContent: "",
+    marketplaceContent: "",
   });
 
   // Check auth
@@ -259,6 +262,26 @@ export default function AdminSkills() {
     },
   });
 
+  // Regenerate marketplace content mutation
+  const regenerateMarketplaceMutation = trpc.skills.regenerateMarketplaceContent.useMutation({
+    onSuccess: (data) => {
+      if (editingSkill && data.marketplaceContent) {
+        setEditingSkill({ ...editingSkill, marketplaceContent: data.marketplaceContent });
+      }
+      toast({
+        title: "Marketplace Content Regenerated",
+        description: "Content has been generated from skill file.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to regenerate",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Import folder mutation
   const importFolderMutation = trpc.skills.importFolder.useMutation({
     onSuccess: (data) => {
@@ -319,10 +342,12 @@ export default function AdminSkills() {
       triggerPatterns: [],
       isEnabled: true,
       enabledByDefault: true,
+      visibleByDefault: true,
       creditMultiplier: 1.0,
       priority: 50,
       systemPrompt: "",
       skillContent: "",
+      marketplaceContent: "",
     });
   };
 
@@ -333,6 +358,7 @@ export default function AdminSkills() {
       author: newSkillData.author || undefined,
       systemPrompt: newSkillData.systemPrompt || undefined,
       skillContent: newSkillData.skillContent || undefined,
+      marketplaceContent: newSkillData.marketplaceContent || undefined,
     });
   };
 
@@ -351,11 +377,13 @@ export default function AdminSkills() {
       triggerPatterns: editingSkill.triggerPatterns,
       isEnabled: editingSkill.isEnabled,
       enabledByDefault: editingSkill.enabledByDefault,
+      visibleByDefault: editingSkill.visibleByDefault,
       creditMultiplier: editingSkill.creditMultiplier,
       priority: editingSkill.priority,
       defaultModel: editingSkill.defaultModel, // Add default LLM model
       systemPrompt: editingSkill.systemPrompt,
       skillContent: editingSkill.skillContent,
+      marketplaceContent: editingSkill.marketplaceContent,
       knowledgebase: editingSkill.knowledgebase,
     });
   };
@@ -391,7 +419,7 @@ export default function AdminSkills() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <Button
         variant="ghost"
         size="sm"
@@ -830,24 +858,48 @@ export default function AdminSkills() {
                 <Label>Auto-Trigger</Label>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={newSkillData.isEnabled}
-                  onCheckedChange={(checked) =>
-                    setNewSkillData({ ...newSkillData, isEnabled: checked })
-                  }
-                />
-                <Label>Enabled</Label>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={newSkillData.isEnabled}
+                    onCheckedChange={(checked) =>
+                      setNewSkillData({ ...newSkillData, isEnabled: checked })
+                    }
+                  />
+                  <Label>Enabled</Label>
+                </div>
+                <p className="text-xs text-muted-foreground ml-11">Enable or disable this skill globally. When off, no user can see or use it.</p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={newSkillData.enabledByDefault}
-                  onCheckedChange={(checked) =>
-                    setNewSkillData({ ...newSkillData, enabledByDefault: checked })
-                  }
-                />
-                <Label>Enabled by Default</Label>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={newSkillData.visibleByDefault}
+                    onCheckedChange={(checked) =>
+                      setNewSkillData({
+                        ...newSkillData,
+                        visibleByDefault: checked,
+                        ...(!checked && { enabledByDefault: false }),
+                      })
+                    }
+                  />
+                  <Label>Visible by Default</Label>
+                </div>
+                <p className="text-xs text-muted-foreground ml-11">New users will see this skill in their list automatically.</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={newSkillData.enabledByDefault}
+                    onCheckedChange={(checked) =>
+                      setNewSkillData({ ...newSkillData, enabledByDefault: checked })
+                    }
+                    disabled={!newSkillData.visibleByDefault}
+                  />
+                  <Label className={!newSkillData.visibleByDefault ? "text-muted-foreground" : ""}>Enabled by Default</Label>
+                </div>
+                <p className="text-xs text-muted-foreground ml-11">Auto-trigger in new conversations. Requires Visible by Default.</p>
               </div>
             </div>
 
@@ -875,6 +927,21 @@ export default function AdminSkills() {
                   setNewSkillData({ ...newSkillData, skillContent: e.target.value })
                 }
                 rows={6}
+                className="font-mono text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="marketplaceContent">Marketplace Content (Public)</Label>
+              <p className="text-xs text-muted-foreground mb-1">Curated documentation shown on the Marketplace page. Does not expose internal skill details.</p>
+              <Textarea
+                id="marketplaceContent"
+                placeholder={"## Overview\nBrief description of what this skill does.\n\n### Key Features\n- Feature 1\n- Feature 2\n\n## Quick Start\nHow to use this skill.\n\n## Input\nWhat the skill expects.\n\n## Output\nWhat the skill produces."}
+                value={newSkillData.marketplaceContent}
+                onChange={(e) =>
+                  setNewSkillData({ ...newSkillData, marketplaceContent: e.target.value })
+                }
+                rows={8}
                 className="font-mono text-sm"
               />
             </div>
@@ -1036,24 +1103,48 @@ export default function AdminSkills() {
                   <Label>Auto-Trigger</Label>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={editingSkill.isEnabled}
-                    onCheckedChange={(checked) =>
-                      setEditingSkill({ ...editingSkill, isEnabled: checked })
-                    }
-                  />
-                  <Label>Enabled</Label>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={editingSkill.isEnabled}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, isEnabled: checked })
+                      }
+                    />
+                    <Label>Enabled</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-11">Enable or disable this skill globally.</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={editingSkill.enabledByDefault}
-                    onCheckedChange={(checked) =>
-                      setEditingSkill({ ...editingSkill, enabledByDefault: checked })
-                    }
-                  />
-                  <Label>Enabled by Default</Label>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={editingSkill.visibleByDefault}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          visibleByDefault: checked,
+                          ...(!checked && { enabledByDefault: false }),
+                        })
+                      }
+                    />
+                    <Label>Visible by Default</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-11">New users will see this skill in their list automatically.</p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={editingSkill.enabledByDefault}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, enabledByDefault: checked })
+                      }
+                      disabled={!editingSkill.visibleByDefault}
+                    />
+                    <Label className={!editingSkill.visibleByDefault ? "text-muted-foreground" : ""}>Enabled by Default</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-11">Auto-trigger in new conversations. Requires Visible by Default.</p>
                 </div>
               </div>
 
@@ -1079,6 +1170,32 @@ export default function AdminSkills() {
                     setEditingSkill({ ...editingSkill, skillContent: e.target.value })
                   }
                   rows={6}
+                  className="font-mono text-sm"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="edit-marketplaceContent">Marketplace Content (Public)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => editingSkill && regenerateMarketplaceMutation.mutate({ id: editingSkill.id })}
+                    disabled={regenerateMarketplaceMutation.isPending}
+                  >
+                    {regenerateMarketplaceMutation.isPending ? "Generating..." : "Regenerate from Skill Content"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-1">Curated documentation shown on the Marketplace page. Does not expose internal skill details.</p>
+                <Textarea
+                  id="edit-marketplaceContent"
+                  placeholder={"## Overview\nBrief description of what this skill does.\n\n### Key Features\n- Feature 1\n- Feature 2\n\n## Quick Start\nHow to use this skill.\n\n## Input\nWhat the skill expects.\n\n## Output\nWhat the skill produces."}
+                  value={editingSkill.marketplaceContent || ""}
+                  onChange={(e) =>
+                    setEditingSkill({ ...editingSkill, marketplaceContent: e.target.value })
+                  }
+                  rows={8}
                   className="font-mono text-sm"
                 />
               </div>

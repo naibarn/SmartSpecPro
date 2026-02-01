@@ -3,7 +3,7 @@
  * Full-featured media generation interface with reference images, Auto Prompt, and history
  */
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -221,7 +221,24 @@ export default function MediaStudio() {
   const { data: credits } = trpc.credits.balance.useQuery();
   const { data: styleCategories } = trpc.skills.getStyleCategories.useQuery();
   const { data: vfxCategories } = trpc.skills.getVFXCategories.useQuery();
-  const { data: skillsList } = trpc.skills.list.useQuery({ enabledOnly: true });
+  // Fetch user-visible skills (respects per-user visibility settings)
+  const { data: userVisibleSkillsRaw } = trpc.skills.getUserVisibleSkills.useQuery({});
+  // Map to the shape expected by SkillSelectorDialog and skill selection logic
+  const skillsList = useMemo(() => {
+    if (!userVisibleSkillsRaw?.skills) return undefined;
+    return userVisibleSkillsRaw.skills.map((s) => ({
+      id: s.slug,
+      name: s.name,
+      description: s.description || "",
+      icon: s.icon || "sparkles",
+      // Map DB category (underscored) to type (hyphenated) for compatibility
+      type: (s.category || "other").replace(/_/g, "-"),
+      creditMultiplier: Number(s.creditMultiplier) || 1,
+      enabledByDefault: s.enabledByDefault ?? true,
+      priority: s.priority ?? 50,
+      hasSkillFile: false,
+    }));
+  }, [userVisibleSkillsRaw]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
   const { data: mediaHistory } = trpc.media.listTasks.useQuery({
     limit: 20,
@@ -631,7 +648,7 @@ export default function MediaStudio() {
           ...(isFaceLockEnabled && faceLock ? { faceLock: true } : {}),
           // Other options (only if enabled)
           ...(isAspectRatioEnabled ? { aspectRatio } : {}),
-          language: "both" as const,
+          language: "en" as const,
         };
       }
 
@@ -685,12 +702,15 @@ export default function MediaStudio() {
     setIsGenerating(true);
     console.log("[handleGenerate] Starting generation...");
     try {
-      // Use selected skill ID, or fall back to media type for skill lookup
-      const skillId = selectedSkillId || (activeTab === "image"
+      // Use selected skill ID for generation, but prompt-enhancement skills can't generate media
+      // so fall back to the media type identifier for skill lookup
+      const mediaTypeFallback = activeTab === "image"
         ? "image-generation"
         : activeTab === "video"
         ? "video-generation"
-        : "audio-generation");
+        : "audio-generation";
+      const isPromptSkill = currentSkill?.type === "prompt-enhancement" || currentSkill?.type === "prompt_enhancement";
+      const skillId = (!selectedSkillId || isPromptSkill) ? mediaTypeFallback : selectedSkillId;
       console.log("[handleGenerate] Using skillId:", skillId, "selectedSkillId:", selectedSkillId);
 
       // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
@@ -709,7 +729,8 @@ export default function MediaStudio() {
 
       // Build extra params from dynamic model input fields
       const selectedModelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
-      const modelConfig = selectedModelData?.configJson as any;
+      const rawConfig = selectedModelData?.configJson;
+      const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
       const extraParams: Record<string, any> = {};
       const apiConfig: Record<string, string> = {};
 
@@ -887,7 +908,7 @@ export default function MediaStudio() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Button
@@ -922,7 +943,7 @@ export default function MediaStudio() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - Controls */}
           <div className="lg:col-span-2 space-y-4">
@@ -1660,7 +1681,14 @@ export default function MediaStudio() {
                 <SkillSelectorDialog
                   open={showSkillDialog}
                   onOpenChange={setShowSkillDialog}
-                  skills={skillsList || []}
+                  skills={(skillsList || []).filter((s) => {
+                    const tabTypes: Record<string, string[]> = {
+                      image: ["image-generation", "prompt-enhancement"],
+                      video: ["video-generation", "prompt-enhancement"],
+                      audio: ["audio-generation", "sound-effects"],
+                    };
+                    return (tabTypes[activeTab] || []).includes(s.type);
+                  })}
                   selectedSkillId={selectedSkillId}
                   onSelect={setSelectedSkillId}
                   mediaType={activeTab}

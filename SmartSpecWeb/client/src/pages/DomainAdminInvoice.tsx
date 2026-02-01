@@ -144,8 +144,8 @@ export default function DomainAdminInvoice() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-6">
+      <div className="">
         {/* Header */}
         <Button
           variant="ghost"

@@ -20,72 +20,106 @@ import {
   Loader2,
   KeyRound,
   Shield,
+  Phone,
+  MailPlus,
 } from 'lucide-react';
 
-type Step = 'email' | 'sent' | 'reset' | 'success';
+type Channel = 'email' | 'backup_email' | 'sms';
+type Step = 'choose' | 'input' | 'sent' | 'reset' | 'success';
 
 export default function ForgotPassword() {
-  const [step, setStep] = useState<Step>('email');
+  const [step, setStep] = useState<Step>('choose');
+  const [channel, setChannel] = useState<Channel>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const destination = channel === 'sms' ? phone : email;
+  const destinationLabel = channel === 'sms' ? phone : email;
+
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      toast.error('Please enter your email address');
-      return;
-    }
+    if (channel === 'sms' && !phone) { toast.error('Please enter your phone number'); return; }
+    if (channel !== 'sms' && !email) { toast.error('Please enter your email address'); return; }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsLoading(false);
-    setStep('sent');
-    toast.success('Reset code sent to your email');
+    try {
+      const body: any = { channel };
+      if (channel === 'sms') { body.phone = phone; } else { body.email = email; }
+
+      const response = await fetch('/trpc/auth.forgotPassword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: body }),
+        credentials: 'include',
+      });
+      const data = await response.json();
+      const errorMsg = data.error?.json?.message;
+      if (errorMsg) {
+        toast.error(errorMsg);
+      } else {
+        setStep('sent');
+        toast.success(channel === 'sms' ? 'Reset code sent via SMS!' : 'Reset code sent! Check your email inbox.');
+      }
+    } catch {
+      toast.error('Failed to send reset code');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.length !== 6) {
-      toast.error('Please enter a valid 6-digit code');
-      return;
-    }
+    if (code.length !== 6) { toast.error('Please enter a valid 6-digit code'); return; }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsLoading(false);
-    setStep('reset');
+    try {
+      const body: any = { code, channel };
+      if (channel === 'sms') { body.phone = phone; } else { body.email = email; }
+
+      const response = await fetch('/trpc/auth.verifyResetCode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: body }),
+        credentials: 'include',
+      });
+      const data = await response.json();
+      const errorMsg = data.error?.json?.message;
+      if (errorMsg) { toast.error(errorMsg); } else { setStep('reset'); }
+    } catch {
+      toast.error('Verification failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    
-    if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
+    if (newPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsLoading(false);
-    setStep('success');
-    toast.success('Password reset successfully!');
+    try {
+      const body: any = { code, newPassword, channel };
+      if (channel === 'sms') { body.phone = phone; } else { body.email = email; }
+
+      const response = await fetch('/trpc/auth.resetPassword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: body }),
+        credentials: 'include',
+      });
+      const data = await response.json();
+      const errorMsg = data.error?.json?.message;
+      if (errorMsg) { toast.error(errorMsg); } else { setStep('success'); toast.success('Password reset successfully!'); }
+    } catch {
+      toast.error('Failed to reset password');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -162,24 +196,24 @@ export default function ForgotPassword() {
 
           {/* Progress Steps */}
           <div className="flex items-center justify-center gap-2 mb-8">
-            {['email', 'sent', 'reset', 'success'].map((s, index) => (
+            {['choose', 'input', 'sent', 'reset', 'success'].map((s, index) => (
               <div key={s} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                  step === s 
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' 
-                    : ['email', 'sent', 'reset', 'success'].indexOf(step) > index
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+                  step === s
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                    : ['choose', 'input', 'sent', 'reset', 'success'].indexOf(step) > index
                     ? 'bg-green-500 text-white'
                     : 'bg-gray-200 text-gray-500'
                 }`}>
-                  {['email', 'sent', 'reset', 'success'].indexOf(step) > index ? (
-                    <CheckCircle className="w-4 h-4" />
+                  {['choose', 'input', 'sent', 'reset', 'success'].indexOf(step) > index ? (
+                    <CheckCircle className="w-3.5 h-3.5" />
                   ) : (
                     index + 1
                   )}
                 </div>
-                {index < 3 && (
-                  <div className={`w-8 h-0.5 ${
-                    ['email', 'sent', 'reset', 'success'].indexOf(step) > index
+                {index < 4 && (
+                  <div className={`w-6 h-0.5 ${
+                    ['choose', 'input', 'sent', 'reset', 'success'].indexOf(step) > index
                       ? 'bg-green-500'
                       : 'bg-gray-200'
                   }`} />
@@ -191,10 +225,10 @@ export default function ForgotPassword() {
           {/* Form Card */}
           <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
             <AnimatePresence mode="wait">
-              {/* Step 1: Enter Email */}
-              {step === 'email' && (
+              {/* Step 0: Choose recovery channel */}
+              {step === 'choose' && (
                 <motion.div
-                  key="email"
+                  key="choose"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -203,23 +237,88 @@ export default function ForgotPassword() {
                     Forgot your password?
                   </h2>
                   <p className="text-gray-600 mb-6">
-                    No worries! Enter your email and we'll send you a reset code.
+                    Choose how you'd like to receive your reset code.
+                  </p>
+
+                  <div className="space-y-3">
+                    {[
+                      { ch: 'email' as Channel, icon: Mail, label: 'Primary Email', desc: 'Send code to your registered email' },
+                      { ch: 'backup_email' as Channel, icon: MailPlus, label: 'Backup Email', desc: 'Send code to your recovery email' },
+                      { ch: 'sms' as Channel, icon: Phone, label: 'SMS', desc: 'Send code to your verified phone number' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.ch}
+                        onClick={() => { setChannel(opt.ch); setStep('input'); }}
+                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 hover:border-purple-400 hover:bg-purple-50/50 transition-all text-left"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                          <opt.icon className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{opt.label}</div>
+                          <div className="text-sm text-gray-500">{opt.desc}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 text-center">
+                    <Link href="/login" className="text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1">
+                      <ArrowLeft className="w-4 h-4" />
+                      Back to Sign In
+                    </Link>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Step 1: Enter email/phone */}
+              {step === 'input' && (
+                <motion.div
+                  key="input"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    {channel === 'sms' ? 'Enter your phone number' : channel === 'backup_email' ? 'Enter your backup email' : 'Enter your email'}
+                  </h2>
+                  <p className="text-gray-600 mb-6">
+                    {channel === 'sms' ? 'We\'ll send a code to your verified phone number.' : 'We\'ll send a reset code to this address.'}
                   </p>
 
                   <form onSubmit={handleSendCode} className="space-y-4">
                     <div>
-                      <Label htmlFor="email" className="text-gray-700">Email Address</Label>
-                      <div className="relative mt-1">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </div>
+                      {channel === 'sms' ? (
+                        <>
+                          <Label htmlFor="phone" className="text-gray-700">Phone Number (E.164)</Label>
+                          <div className="relative mt-1">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Input
+                              id="phone"
+                              type="tel"
+                              placeholder="+66812345678"
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                              className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <Label htmlFor="email" className="text-gray-700">{channel === 'backup_email' ? 'Backup Email' : 'Email Address'}</Label>
+                          <div className="relative mt-1">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="you@example.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <Button
@@ -228,10 +327,7 @@ export default function ForgotPassword() {
                       className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium"
                     >
                       {isLoading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Sending...
-                        </>
+                        <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Sending...</>
                       ) : (
                         'Send Reset Code'
                       )}
@@ -239,10 +335,9 @@ export default function ForgotPassword() {
                   </form>
 
                   <div className="mt-6 text-center">
-                    <Link href="/login" className="text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1">
-                      <ArrowLeft className="w-4 h-4" />
-                      Back to Sign In
-                    </Link>
+                    <button onClick={() => setStep('choose')} className="text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1">
+                      <ArrowLeft className="w-4 h-4" /> Choose another method
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -260,11 +355,11 @@ export default function ForgotPassword() {
                   </div>
 
                   <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-                    Check your email
+                    {channel === 'sms' ? 'Check your phone' : 'Check your email'}
                   </h2>
                   <p className="text-gray-600 mb-6 text-center">
                     We sent a 6-digit code to<br />
-                    <span className="font-medium text-gray-900">{email}</span>
+                    <span className="font-medium text-gray-900">{destinationLabel}</span>
                   </p>
 
                   <form onSubmit={handleVerifyCode} className="space-y-4">
@@ -299,7 +394,7 @@ export default function ForgotPassword() {
 
                   <div className="mt-6 text-center">
                     <button
-                      onClick={() => setStep('email')}
+                      onClick={() => setStep('input')}
                       className="text-gray-500 hover:text-gray-700 text-sm"
                     >
                       Didn't receive the code? <span className="text-purple-600 font-medium">Resend</span>

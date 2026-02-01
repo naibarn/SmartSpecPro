@@ -32,9 +32,15 @@ import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 import AdmZip from "adm-zip";
-
-// Encryption key for API keys
-const ENCRYPTION_KEY = process.env.LLM_ENCRYPTION_KEY || "smartspec-llm-key-32chars!!";
+import {
+  getUserVisibleSkills as _getUserVisibleSkills,
+  getAllSkillsForUser,
+  setSkillVisibility,
+  batchSetVisibility,
+  setAutoTrigger,
+} from "../services/userSkillService";
+import { generateMarketplaceContent } from "../services/marketplaceContentGenerator";
+import { decrypt } from "../services/crypto";
 
 // Skills directory path
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
@@ -104,25 +110,25 @@ function mapCategoryToEnum(category?: string): string {
     "automation": "automation",
     "other": "other",
   };
-  return categoryMap[category?.toLowerCase() || ""] || "other";
+  const cat = category?.toLowerCase() || "";
+  if (categoryMap[cat]) return categoryMap[cat];
+  // Fuzzy mapping for external skills with free-text categories
+  if (cat.includes("code") || cat.includes("dev") || cat.includes("engineer") || cat.includes("programming")) return "code_assistant";
+  if (cat.includes("write") || cat.includes("content") || cat.includes("blog") || cat.includes("copy")) return "chat_assistant";
+  if (cat.includes("data") || cat.includes("analy")) return "data_analysis";
+  if (cat.includes("image") || cat.includes("photo") || cat.includes("visual")) return "image_generation";
+  if (cat.includes("video") || cat.includes("film") || cat.includes("movie")) return "video_generation";
+  if (cat.includes("audio") || cat.includes("music") || cat.includes("sound")) return "audio_generation";
+  if (cat.includes("translat")) return "translation";
+  if (cat.includes("summar")) return "summarization";
+  if (cat.includes("search")) return "web_search";
+  if (cat.includes("doc") || cat.includes("document")) return "document_analysis";
+  if (cat.includes("automat") || cat.includes("workflow")) return "automation";
+  return "chat_assistant"; // default for external skills (most are chat-based)
 }
 
 function decryptApiKey(text: string): string {
-  try {
-    const parts = text.split(":");
-    const iv = Buffer.from(parts[0], "hex");
-    const encryptedText = Buffer.from(parts[1], "hex");
-    const decipher = crypto.createDecipheriv(
-      "aes-256-cbc",
-      Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32)),
-      iv
-    );
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
-  } catch {
-    return "";
-  }
+  return decrypt(text);
 }
 
 /**
@@ -1445,10 +1451,12 @@ export const skillsRouter = router({
         triggerPatterns: z.array(z.string()).optional(),
         isEnabled: z.boolean().optional(),
         enabledByDefault: z.boolean().optional(),
+        visibleByDefault: z.boolean().optional(),
         creditMultiplier: z.number().min(0).max(100).optional(),
         priority: z.number().min(0).max(100).optional(),
         systemPrompt: z.string().optional(),
         skillContent: z.string().optional(),
+        marketplaceContent: z.string().optional(),
         knowledgebase: z.string().optional(),
         configJson: z.record(z.any()).optional(),
       })
@@ -1486,10 +1494,12 @@ export const skillsRouter = router({
           triggerPatterns: input.triggerPatterns || [],
           isEnabled: input.isEnabled ?? true,
           enabledByDefault: input.enabledByDefault ?? true,
+          visibleByDefault: input.visibleByDefault ?? true,
           creditMultiplier: String(input.creditMultiplier ?? 1.0),
           priority: input.priority ?? 50,
           systemPrompt: input.systemPrompt,
           skillContent: input.skillContent,
+          marketplaceContent: input.marketplaceContent || generateMarketplaceContent(input.skillContent || "", { name: input.name, description: input.description }),
           knowledgebase: input.knowledgebase,
           configJson: input.configJson,
           importSource: "manual",
@@ -1521,11 +1531,13 @@ export const skillsRouter = router({
         triggerPatterns: z.array(z.string()).optional(),
         isEnabled: z.boolean().optional(),
         enabledByDefault: z.boolean().optional(),
+        visibleByDefault: z.boolean().optional(),
         creditMultiplier: z.number().min(0).max(100).optional(),
         priority: z.number().min(0).max(100).optional(),
         defaultModel: z.string().nullable().optional(), // Default LLM model for skill execution
         systemPrompt: z.string().nullable().optional(),
         skillContent: z.string().nullable().optional(),
+        marketplaceContent: z.string().nullable().optional(),
         knowledgebase: z.string().nullable().optional(),
         configJson: z.record(z.any()).nullable().optional(),
       })
@@ -1550,11 +1562,13 @@ export const skillsRouter = router({
       if (updateData.triggerPatterns !== undefined) updateObj.triggerPatterns = updateData.triggerPatterns;
       if (updateData.isEnabled !== undefined) updateObj.isEnabled = updateData.isEnabled;
       if (updateData.enabledByDefault !== undefined) updateObj.enabledByDefault = updateData.enabledByDefault;
+      if (updateData.visibleByDefault !== undefined) updateObj.visibleByDefault = updateData.visibleByDefault;
       if (updateData.creditMultiplier !== undefined) updateObj.creditMultiplier = String(updateData.creditMultiplier);
       if (updateData.priority !== undefined) updateObj.priority = updateData.priority;
       if (updateData.defaultModel !== undefined) updateObj.defaultModel = updateData.defaultModel;
       if (updateData.systemPrompt !== undefined) updateObj.systemPrompt = updateData.systemPrompt;
       if (updateData.skillContent !== undefined) updateObj.skillContent = updateData.skillContent;
+      if (updateData.marketplaceContent !== undefined) updateObj.marketplaceContent = updateData.marketplaceContent;
       if (updateData.knowledgebase !== undefined) updateObj.knowledgebase = updateData.knowledgebase;
       if (updateData.configJson !== undefined) updateObj.configJson = updateData.configJson;
 
@@ -1586,12 +1600,61 @@ export const skillsRouter = router({
       const dbInstance = await getDb();
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      // Get skill slug before deleting (to clean up folder)
+      const [skill] = await dbInstance
+        .select({ slug: skills.slug })
+        .from(skills)
+        .where(eq(skills.id, input.id))
+        .limit(1);
+
       await dbInstance.delete(skills).where(eq(skills.id, input.id));
+
+      // Delete skill folder to prevent auto-sync re-import
+      if (skill?.slug) {
+        const fs = await import("fs");
+        const path = await import("path");
+        const skillDir = path.resolve(process.cwd(), "skills", skill.slug);
+        if (fs.existsSync(skillDir)) {
+          fs.rmSync(skillDir, { recursive: true, force: true });
+        }
+      }
 
       // Refresh skill cache
       await refreshSkillCache();
 
       return { success: true };
+    }),
+
+  /**
+   * Regenerate marketplace content from skillContent (admin only)
+   */
+  regenerateMarketplaceContent: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [skill] = await dbInstance
+        .select({ id: skills.id, name: skills.name, description: skills.description, skillContent: skills.skillContent })
+        .from(skills)
+        .where(eq(skills.id, input.id))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill with id ${input.id} not found` });
+      }
+
+      const marketplaceContent = generateMarketplaceContent(
+        skill.skillContent || "",
+        { name: skill.name, description: skill.description || undefined }
+      );
+
+      await dbInstance
+        .update(skills)
+        .set({ marketplaceContent, updatedAt: new Date() })
+        .where(eq(skills.id, input.id));
+
+      return { success: true, marketplaceContent };
     }),
 
   /**
@@ -1661,7 +1724,10 @@ export const skillsRouter = router({
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
       const skillDir = path.join(SKILLS_DIR, input.slug);
-      const skillMdPath = path.join(skillDir, "skill.md");
+      const skillMdPath = [
+        path.join(skillDir, "skill.md"),
+        path.join(skillDir, "SKILL.md"),
+      ].find(p => fs.existsSync(p)) || path.join(skillDir, "skill.md");
 
       if (!fs.existsSync(skillDir)) {
         throw new TRPCError({
@@ -1711,11 +1777,14 @@ export const skillsRouter = router({
           isAutoTrigger: metadata.auto_trigger ?? false,
           triggerPatterns: metadata.trigger_patterns || [],
           isEnabled: true,
-          enabledByDefault: metadata.enabled_by_default ?? true,
+          enabledByDefault: metadata.enabled_by_default ?? false,
           creditMultiplier: String(metadata.credit_multiplier ?? 1.0),
           priority: metadata.priority ?? 50,
+          systemPrompt: skillContent || undefined,
           skillContent,
+          marketplaceContent: generateMarketplaceContent(skillContent, { name: metadata.name || input.slug, description: metadata.description }),
           configJson: metadata.config,
+          visibleByDefault: false,
           importSource: "folder",
           createdBy: ctx.user?.id,
         })
@@ -1799,6 +1868,10 @@ export const skillsRouter = router({
         const parsed = parseSkillFile(skillMdContent);
         metadata = { ...metadata, ...parsed.metadata };
         skillContent = skillMdContent;
+        // Body of skill.md IS the system prompt for Claude-format skills
+        if (parsed.content) {
+          systemPrompt = parsed.content;
+        }
 
         // Extract knowledgebase from other text files
         for (const entry of entries) {
@@ -1902,13 +1975,15 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
           isAutoTrigger: metadata.auto_trigger ?? false,
           triggerPatterns: metadata.trigger_patterns || [],
           isEnabled: true,
-          enabledByDefault: metadata.enabled_by_default ?? true,
+          enabledByDefault: metadata.enabled_by_default ?? false,
           creditMultiplier: String(metadata.credit_multiplier ?? 1.0),
           priority: metadata.priority ?? 50,
           systemPrompt: systemPrompt || undefined,
           skillContent,
+          marketplaceContent: generateMarketplaceContent(skillContent, { name: skillName, description: skillDescription }),
           knowledgebase: knowledgebase || undefined,
           configJson: metadata.config,
+          visibleByDefault: false,
           importSource: "zip",
           importedFromZip: input.fileName,
           createdBy: ctx.user?.id,
@@ -1950,4 +2025,75 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       count: Number(r.count),
     }));
   }),
+
+  // ── User Skill Visibility ──────────────────────────────────────
+
+  /**
+   * Get user's visible skills (paginated, for chat panel)
+   */
+  getUserVisibleSkills: protectedProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      category: z.string().optional(),
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      return _getUserVisibleSkills(ctx.user.id, input ?? {});
+    }),
+
+  /**
+   * Browse ALL skills with visibility flag (for settings page)
+   */
+  browseAllSkills: protectedProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      category: z.string().optional(),
+      limit: z.number().min(1).max(100).default(20),
+      offset: z.number().min(0).default(0),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      return getAllSkillsForUser(ctx.user.id, input ?? {});
+    }),
+
+  /**
+   * Toggle skill visibility for current user
+   */
+  toggleSkillVisibility: protectedProcedure
+    .input(z.object({
+      skillId: z.number(),
+      visible: z.boolean(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await setSkillVisibility(ctx.user.id, input.skillId, input.visible);
+      return { success: true };
+    }),
+
+  /**
+   * Batch toggle visibility
+   */
+  batchToggleVisibility: protectedProcedure
+    .input(z.object({
+      updates: z.array(z.object({
+        skillId: z.number(),
+        visible: z.boolean(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await batchSetVisibility(ctx.user.id, input.updates);
+      return { success: true };
+    }),
+
+  /**
+   * Toggle auto-trigger for a specific skill
+   */
+  toggleAutoTrigger: protectedProcedure
+    .input(z.object({
+      skillId: z.number(),
+      enabled: z.boolean(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await setAutoTrigger(ctx.user.id, input.skillId, input.enabled);
+      return { success: true };
+    }),
 });

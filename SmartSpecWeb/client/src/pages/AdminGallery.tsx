@@ -501,10 +501,10 @@ export default function AdminGallery() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -541,7 +541,7 @@ export default function AdminGallery() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="px-4 sm:px-6 lg:px-8 py-6">
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">

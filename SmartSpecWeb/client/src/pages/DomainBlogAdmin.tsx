@@ -398,7 +398,7 @@ export default function DomainBlogAdmin() {
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="px-4 sm:px-6 lg:px-8 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Button variant="ghost" size="sm" onClick={() => setEditingPost(null)}>
@@ -437,7 +437,7 @@ export default function DomainBlogAdmin() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-12 gap-6">
             {/* Main editor */}
             <div className="col-span-8 space-y-4">
@@ -596,7 +596,7 @@ export default function DomainBlogAdmin() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" onClick={() => setLocation("/dashboard")}>
@@ -621,7 +621,7 @@ export default function DomainBlogAdmin() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />

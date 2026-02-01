@@ -20,6 +20,9 @@ import {
   Sparkles,
   Github,
   Chrome,
+  RefreshCw,
+  AlertTriangle,
+  Shield,
 } from 'lucide-react';
 
 export default function Login() {
@@ -28,9 +31,29 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  // 2FA state
+  const [needs2FA, setNeeds2FA] = useState(false);
+  const [twoFACode, setTwoFACode] = useState('');
+  const [twoFAEmail, setTwoFAEmail] = useState('');
+  const [has2FABackup, setHas2FABackup] = useState({ email: false, phone: false });
+  const [show2FAReset, setShow2FAReset] = useState(false);
+  const [resetChannel, setResetChannel] = useState<'backup_email' | 'sms'>('backup_email');
+  const [resetCode, setResetCode] = useState('');
+  const [resetStep, setResetStep] = useState<'choose' | 'sent' | 'done'>('choose');
 
   // Generate device fingerprint on mount (stored as __fp cookie)
   useEffect(() => { generateFingerprint().catch(() => {}); }, []);
+
+  // Resend countdown timer
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCountdown]);
 
   // Get returnUrl from query params
   const getReturnUrl = () => {
@@ -73,14 +96,23 @@ export default function Login() {
       // Extract the response from tRPC structure: { result: { data: { json: {...} } } }
       const result = data.result?.data?.json;
 
+      if (result?.requires2FA) {
+        setNeeds2FA(true);
+        setTwoFAEmail(result.email);
+        setHas2FABackup({ email: result.hasBackupEmail, phone: result.hasPhone });
+        return;
+      }
+
       if (result?.success) {
         toast.success('Login successful! Redirecting...');
-        // Redirect to returnUrl or dashboard
+        setNeedsVerification(false);
         const redirectUrl = getReturnUrl();
         window.location.href = redirectUrl;
       } else {
-        // Error message can be in either result.message or data.error.json.message
         const errorMessage = result?.message || data.error?.json?.message || 'Invalid email or password';
+        if (errorMessage.toLowerCase().includes('verify your email')) {
+          setNeedsVerification(true);
+        }
         toast.error(errorMessage);
       }
     } catch (error) {
@@ -89,6 +121,97 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      toast.error('Please enter your email address first');
+      return;
+    }
+    setIsResending(true);
+    try {
+      const response = await fetch('/trpc/auth.resendVerification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { email } }),
+        credentials: 'include',
+      });
+      const data = await response.json();
+      const errorMsg = data.error?.json?.message;
+      if (errorMsg) {
+        toast.error(errorMsg);
+      } else {
+        toast.success('Verification code sent! Check your email inbox.');
+        setResendCountdown(60);
+      }
+    } catch {
+      toast.error('Failed to resend verification code');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const handle2FAVerify = async () => {
+    if (!twoFACode) { toast.error('Please enter your code'); return; }
+    setIsLoading(true);
+    try {
+      const response = await fetch('/trpc/auth.verify2FA', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { email: twoFAEmail, code: twoFACode } }),
+        credentials: 'include',
+      });
+      const data = await response.json();
+      const result = data.result?.data?.json;
+      const err = data.error?.json?.message;
+      if (err) { toast.error(err); return; }
+      if (result?.success) {
+        if (result.usedRecoveryCode) {
+          toast.success(`Signed in. ${result.recoveryCodesRemaining} recovery codes remaining.`);
+        } else {
+          toast.success('Login successful! Redirecting...');
+        }
+        window.location.href = getReturnUrl();
+      }
+    } catch { toast.error('Verification failed'); } finally { setIsLoading(false); }
+  };
+
+  const handle2FAResetRequest = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/trpc/auth.request2FAReset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { email: twoFAEmail, channel: resetChannel } }),
+        credentials: 'include',
+      });
+      const data = await response.json();
+      const err = data.error?.json?.message;
+      if (err) { toast.error(err); return; }
+      toast.success('Reset code sent!');
+      setResetStep('sent');
+    } catch { toast.error('Failed to send reset code'); } finally { setIsLoading(false); }
+  };
+
+  const handle2FAResetConfirm = async () => {
+    if (resetCode.length !== 6) { toast.error('Enter the 6-digit code'); return; }
+    setIsLoading(true);
+    try {
+      const response = await fetch('/trpc/auth.confirm2FAReset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { email: twoFAEmail, code: resetCode, channel: resetChannel } }),
+        credentials: 'include',
+      });
+      const data = await response.json();
+      const result = data.result?.data?.json;
+      const err = data.error?.json?.message;
+      if (err) { toast.error(err); return; }
+      if (result?.success) {
+        toast.success('2FA disabled. You are now signed in.');
+        window.location.href = getReturnUrl();
+      }
+    } catch { toast.error('Reset failed'); } finally { setIsLoading(false); }
   };
 
   const handleSocialLogin = async (provider: string) => {
@@ -195,6 +318,113 @@ export default function Login() {
           </Link>
 
           <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">
+            {needs2FA ? (
+              /* ── 2FA Challenge ── */
+              show2FAReset ? (
+                <div className="space-y-4">
+                  <div className="text-center mb-4">
+                    <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+                      <Shield className="w-7 h-7 text-amber-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">Reset Two-Factor Authentication</h2>
+                    <p className="text-sm text-gray-500 mt-1">Verify your identity to disable 2FA</p>
+                  </div>
+
+                  {resetStep === 'choose' && (
+                    <div className="space-y-3">
+                      {has2FABackup.email && (
+                        <button
+                          onClick={() => { setResetChannel('backup_email'); handle2FAResetRequest(); }}
+                          disabled={isLoading}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-purple-400 hover:bg-purple-50/50 text-left"
+                        >
+                          <Mail className="w-5 h-5 text-purple-600" />
+                          <div>
+                            <div className="text-sm font-medium">Send code to backup email</div>
+                          </div>
+                        </button>
+                      )}
+                      {has2FABackup.phone && (
+                        <button
+                          onClick={() => { setResetChannel('sms'); handle2FAResetRequest(); }}
+                          disabled={isLoading}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-purple-400 hover:bg-purple-50/50 text-left"
+                        >
+                          <Lock className="w-5 h-5 text-purple-600" />
+                          <div>
+                            <div className="text-sm font-medium">Send code via SMS</div>
+                          </div>
+                        </button>
+                      )}
+                      {!has2FABackup.email && !has2FABackup.phone && (
+                        <p className="text-sm text-gray-500 text-center">No backup methods available. Please contact support.</p>
+                      )}
+                      <button onClick={() => setShow2FAReset(false)} className="w-full text-sm text-purple-600 hover:text-purple-700 mt-2">
+                        Back to 2FA verification
+                      </button>
+                    </div>
+                  )}
+
+                  {resetStep === 'sent' && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600 text-center">Enter the 6-digit code we sent to your {resetChannel === 'sms' ? 'phone' : 'backup email'}.</p>
+                      <Input
+                        value={resetCode}
+                        onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        maxLength={6}
+                        className="text-center text-lg font-mono tracking-widest"
+                      />
+                      <Button onClick={handle2FAResetConfirm} disabled={isLoading || resetCode.length !== 6} className="w-full bg-gradient-to-r from-purple-600 to-pink-500">
+                        {isLoading ? 'Verifying...' : 'Verify & Disable 2FA'}
+                      </Button>
+                      <button onClick={() => { setResetStep('choose'); setResetCode(''); }} className="w-full text-sm text-gray-500">
+                        Try another method
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center mb-4">
+                    <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                      <Shield className="w-7 h-7 text-purple-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">Two-Factor Authentication</h2>
+                    <p className="text-sm text-gray-500 mt-1">Enter the code from your authenticator app, or use a recovery code</p>
+                  </div>
+
+                  <Input
+                    value={twoFACode}
+                    onChange={(e) => setTwoFACode(e.target.value)}
+                    placeholder="6-digit code or recovery code"
+                    className="text-center text-lg font-mono tracking-widest"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handle2FAVerify(); }}
+                    autoFocus
+                  />
+
+                  <Button
+                    onClick={handle2FAVerify}
+                    disabled={isLoading || !twoFACode}
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                  >
+                    {isLoading ? 'Verifying...' : 'Verify'}
+                  </Button>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <button onClick={() => { setNeeds2FA(false); setTwoFACode(''); }} className="text-gray-500 hover:text-gray-700">
+                      Back to login
+                    </button>
+                    {(has2FABackup.email || has2FABackup.phone) && (
+                      <button onClick={() => setShow2FAReset(true)} className="text-purple-600 hover:text-purple-700 font-medium">
+                        Can't access your 2FA?
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            ) : (
+            <>
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign in to your account</h2>
               <p className="text-gray-600">
@@ -313,6 +543,50 @@ export default function Login() {
               </Button>
             </form>
 
+            {/* Email not verified banner */}
+            {needsVerification && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800">Email not verified</p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      Please verify your email before logging in. Check your inbox or request a new code.
+                    </p>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleResendVerification}
+                        disabled={isResending || resendCountdown > 0}
+                        className="text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                      >
+                        {isResending ? (
+                          <><RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Sending...</>
+                        ) : resendCountdown > 0 ? (
+                          `Resend in ${resendCountdown}s`
+                        ) : (
+                          <><Mail className="w-3 h-3 mr-1" /> Resend Code</>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { window.location.href = `/verify-email?email=${encodeURIComponent(email)}`; }}
+                        className="text-xs border-purple-300 text-purple-700 hover:bg-purple-100"
+                      >
+                        Go to Verify Page
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Terms */}
             <p className="text-xs text-gray-500 text-center mt-6">
               By signing in, you agree to our{' '}
@@ -324,6 +598,8 @@ export default function Login() {
                 Privacy Policy
               </Link>
             </p>
+            </>
+            )}
           </div>
         </motion.div>
       </div>

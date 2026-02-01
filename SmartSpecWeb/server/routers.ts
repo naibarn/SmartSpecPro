@@ -40,6 +40,8 @@ import { followsRouter } from "./routers/follows";
 import { accountSecurityRouter } from "./routers/accountSecurity";
 import { translationRouter } from "./routers/translation";
 import { marketplaceRouter } from "./routers/marketplace";
+import { skillRepositoriesRouter } from "./routers/skillRepositories";
+import { sttProvidersRouter } from "./routers/sttProviders";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -175,54 +177,971 @@ export const appRouter = router({
         password: z.string().min(1),
       }))
       .mutation(async ({ input, ctx }) => {
-        // For demo: Look up user by email and create session
-        // In production, add proper password verification
-        const { getUserByEmail, upsertUser, updateUserRole } = await import("./db");
+        const { getUserByEmail, updateUserRole } = await import("./db");
         const { sdk } = await import("./_core/sdk");
         const { ENV } = await import("./_core/env");
-        
-        let user = await getUserByEmail(input.email);
-        
+        const bcrypt = await import("bcrypt");
+
+        const user = await getUserByEmail(input.email);
+
+        if (!user) {
+          throw new Error('Invalid email or password');
+        }
+
+        // If user registered with password, verify it
+        if (user.password) {
+          const valid = await bcrypt.compare(input.password, user.password);
+          if (!valid) {
+            throw new Error('Invalid email or password');
+          }
+        }
+
+        // Check if email is verified
+        if (user.isDisabled && user.loginMethod === 'email') {
+          throw new Error('Please verify your email before logging in');
+        }
+
         // Check if this email should be granted admin role
         const isAdminEmail = input.email.toLowerCase() === ENV.adminEmail.toLowerCase();
-        
-        // If user doesn't exist, create a demo account
-        if (!user) {
-          const openId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-          await upsertUser({
-            openId,
-            email: input.email,
-            name: input.email.split('@')[0],
-            loginMethod: 'email',
-            lastSignedIn: new Date(),
-          });
-          user = await getUserByEmail(input.email);
-          
-          // Grant admin role if this is the admin email
-          if (user && isAdminEmail) {
-            await updateUserRole(user.id, 'admin');
-            user = await getUserByEmail(input.email);
-          }
-        } else if (isAdminEmail && user.role !== 'admin') {
-          // Ensure admin email always has admin role
+        if (isAdminEmail && user.role !== 'admin') {
           await updateUserRole(user.id, 'admin');
-          user = await getUserByEmail(input.email);
         }
-        
-        if (!user) {
-          return { success: false, message: 'Failed to create user' };
+
+        // If 2FA is enabled, don't create session yet — return challenge
+        if (user.twoFactorEnabled) {
+          return {
+            success: false,
+            requires2FA: true,
+            email: user.email,
+            hasBackupEmail: !!user.backupEmailVerified && !!user.backupEmail,
+            hasPhone: !!user.phoneVerified && !!user.phone,
+          };
         }
-        
+
         // Create session token
         const token = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || '',
         });
-        
-        // Set cookie with maxAge (critical for cookie persistence across page loads)
+
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-        
+
         return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+      }),
+
+    register: publicProcedure
+      .input(z.object({
+        name: z.string().min(1).max(255),
+        email: z.string().email(),
+        password: z.string().min(8),
+        company: z.string().max(255).optional(),
+        plan: z.enum(['free', 'pro']).default('free'),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { getUserByEmail } = await import("./db");
+        const { getDb } = await import("./db");
+        const bcrypt = await import("bcrypt");
+        const { users, emailVerificationTokens, systemSettings, tenants } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+
+        // Check if email already registered with a password
+        const existing = await getUserByEmail(input.email);
+        if (existing?.password) {
+          throw new Error('An account with this email already exists');
+        }
+
+        // Hash password
+        const passwordHash = await bcrypt.hash(input.password, 12);
+        const openId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+        // Create user (disabled until email verified)
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+
+        // Read configurable signup bonus from system settings
+        let signupBonus = 100;
+        try {
+          const [bonusSetting] = await db.select().from(systemSettings)
+            .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "signup_bonus_credits")))
+            .limit(1);
+          if (bonusSetting?.value) signupBonus = parseInt(bonusSetting.value, 10) || 100;
+        } catch { /* use default */ }
+
+        // Get hostname for registeredDomain
+        const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
+
+        // Auto-assign tenant by domain
+        let tenantId: number | null = null;
+        try {
+          const [autoSetting] = await db.select().from(systemSettings)
+            .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "auto_assign_tenant")))
+            .limit(1);
+          const autoAssign = autoSetting?.value !== "false";
+          if (autoAssign) {
+            const [tenant] = await db.select().from(tenants)
+              .where(eq(tenants.primaryDomain, hostname))
+              .limit(1);
+            if (tenant) tenantId = parseInt(tenant.id, 10) || null;
+          }
+        } catch { /* skip tenant assignment */ }
+
+        if (existing) {
+          // User exists from OAuth but no password — add password
+          await db.update(users).set({
+            password: passwordHash,
+            name: input.name,
+            plan: input.plan,
+            loginMethod: 'email',
+          }).where(eq(users.id, existing.id));
+        } else {
+          await db.insert(users).values({
+            openId,
+            email: input.email,
+            name: input.name,
+            password: passwordHash,
+            loginMethod: 'email',
+            role: 'user',
+            plan: input.plan,
+            credits: signupBonus,
+            isDisabled: true,
+            registeredDomain: hostname,
+            ...(tenantId ? { currentTenantId: tenantId } : {}),
+            lastSignedIn: new Date(),
+          });
+        }
+
+        const user = await getUserByEmail(input.email);
+        if (!user) throw new Error('Failed to create account');
+
+        // Generate 6-digit verification code
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+        await db.insert(emailVerificationTokens).values({
+          userId: user.id,
+          email: input.email,
+          code,
+          expiresAt,
+        });
+
+        // Send verification email (falls back to console if SMTP not configured)
+        const { sendVerificationEmail } = await import("./services/emailService");
+        await sendVerificationEmail(input.email, code, input.name);
+
+        return { success: true, email: input.email };
+      }),
+
+    verifyEmail: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        code: z.string().length(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { getUserByEmail } = await import("./db");
+        const { getDb } = await import("./db");
+        const { sdk } = await import("./_core/sdk");
+        const { users, emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+
+        // Find valid token
+        const [token] = await db.select()
+          .from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.email, input.email),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date()),
+          ))
+          .limit(1);
+
+        if (!token) {
+          throw new Error('Invalid or expired verification code');
+        }
+
+        // Mark token as used
+        await db.update(emailVerificationTokens)
+          .set({ usedAt: new Date() })
+          .where(eq(emailVerificationTokens.id, token.id));
+
+        // Enable user
+        await db.update(users)
+          .set({ isDisabled: false })
+          .where(eq(users.id, token.userId));
+
+        const user = await getUserByEmail(input.email);
+        if (!user) throw new Error('User not found');
+
+        // Create session
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || user.email || '',
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+        return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+      }),
+
+    resendVerification: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getUserByEmail } = await import("./db");
+        const { getDb } = await import("./db");
+        const { emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+
+        const user = await getUserByEmail(input.email);
+        if (!user) {
+          // Don't reveal whether email exists
+          return { success: true };
+        }
+
+        // Rate limit: check if a code was sent in the last 60 seconds
+        const [recent] = await db.select()
+          .from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.email, input.email),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60 * 1000)),
+          ))
+          .limit(1);
+
+        if (recent) {
+          throw new Error('Please wait 60 seconds before requesting a new code');
+        }
+
+        // Generate new code
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        await db.insert(emailVerificationTokens).values({
+          userId: user.id,
+          email: input.email,
+          code,
+          expiresAt,
+        });
+
+        const { sendVerificationEmail } = await import("./services/emailService");
+        await sendVerificationEmail(input.email, code, user.name ?? undefined);
+
+        return { success: true };
+      }),
+
+    forgotPassword: publicProcedure
+      .input(z.object({
+        email: z.string().optional(),
+        phone: z.string().optional(),
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+      }))
+      .mutation(async ({ input }) => {
+        const { getUserByEmail } = await import("./db");
+        const { getDb } = await import("./db");
+        const { users, emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+
+        let user: any = null;
+        let destination = "";
+        const channelMap: Record<string, string> = { email: "reset_email", backup_email: "reset_backup", sms: "reset_sms" };
+        const tokenChannel = channelMap[input.channel];
+
+        if (input.channel === "sms") {
+          if (!input.phone) return { success: true };
+          const [found] = await db.select().from(users)
+            .where(and(eq(users.phone, input.phone), eq(users.phoneVerified, true)))
+            .limit(1);
+          user = found;
+          destination = input.phone;
+        } else if (input.channel === "backup_email") {
+          if (!input.email) return { success: true };
+          const [found] = await db.select().from(users)
+            .where(and(eq(users.backupEmail, input.email), eq(users.backupEmailVerified, true)))
+            .limit(1);
+          user = found;
+          destination = input.email;
+        } else {
+          if (!input.email) return { success: true };
+          user = await getUserByEmail(input.email);
+          destination = input.email;
+        }
+
+        if (!user || !user.password) return { success: true };
+
+        // Rate limit
+        const [recent] = await db.select().from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, tokenChannel),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000)),
+          )).limit(1);
+
+        if (recent) throw new Error('Please wait 60 seconds before requesting a new code');
+
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        await db.insert(emailVerificationTokens).values({
+          userId: user.id,
+          email: destination,
+          code,
+          channel: tokenChannel,
+          expiresAt,
+        });
+
+        if (input.channel === "sms") {
+          const { sendPasswordResetSms } = await import("./services/smsService");
+          await sendPasswordResetSms(destination, code);
+        } else {
+          const { sendPasswordResetEmail } = await import("./services/emailService");
+          await sendPasswordResetEmail(destination, code, user.name ?? undefined);
+        }
+
+        return { success: true };
+      }),
+
+    verifyResetCode: publicProcedure
+      .input(z.object({
+        email: z.string().optional(),
+        phone: z.string().optional(),
+        code: z.string().length(6),
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+
+        const channelMap: Record<string, string> = { email: "reset_email", backup_email: "reset_backup", sms: "reset_sms" };
+        const destination = input.channel === "sms" ? (input.phone || "") : (input.email || "");
+
+        const [token] = await db.select().from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, channelMap[input.channel]),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date()),
+          )).limit(1);
+
+        if (!token) throw new Error('Invalid or expired reset code');
+
+        return { success: true };
+      }),
+
+    // ── Recovery contacts (backup email + phone) ──
+
+    getRecoveryInfo: protectedProcedure.query(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { users } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [user] = await db.select({
+        backupEmail: users.backupEmail,
+        backupEmailVerified: users.backupEmailVerified,
+        phone: users.phone,
+        phoneVerified: users.phoneVerified,
+      }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+
+      if (!user) throw new Error("User not found");
+
+      // Mask for display
+      const maskEmail = (e: string | null) => {
+        if (!e) return null;
+        const [local, domain] = e.split("@");
+        return `${local.slice(0, 2)}***@${domain}`;
+      };
+      const maskPhone = (p: string | null) => {
+        if (!p) return null;
+        return `${p.slice(0, 4)}****${p.slice(-2)}`;
+      };
+
+      return {
+        backupEmail: maskEmail(user.backupEmail),
+        backupEmailVerified: user.backupEmailVerified,
+        phone: maskPhone(user.phone),
+        phoneVerified: user.phoneVerified,
+      };
+    }),
+
+    sendBackupEmailCode: protectedProcedure
+      .input(z.object({ backupEmail: z.string().email() }))
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import("./db");
+        const { users, emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Ensure backup != primary
+        const [user] = await db.select({ email: users.email }).from(users)
+          .where(eq(users.id, ctx.user.id)).limit(1);
+        if (user?.email === input.backupEmail) {
+          throw new Error("Backup email cannot be the same as primary email");
+        }
+
+        // Rate limit
+        const [recent] = await db.select().from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "backup_email"),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000)),
+          )).limit(1);
+        if (recent) throw new Error("Please wait 60 seconds before requesting a new code");
+
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        await db.insert(emailVerificationTokens).values({
+          userId: ctx.user.id,
+          email: input.backupEmail,
+          code,
+          channel: "backup_email",
+          expiresAt,
+        });
+
+        const { sendVerificationEmail } = await import("./services/emailService");
+        await sendVerificationEmail(input.backupEmail, code);
+
+        return { success: true };
+      }),
+
+    verifyBackupEmail: protectedProcedure
+      .input(z.object({ code: z.string().length(6) }))
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import("./db");
+        const { users, emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const [token] = await db.select().from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "backup_email"),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date()),
+          )).limit(1);
+
+        if (!token) throw new Error("Invalid or expired verification code");
+
+        await db.update(emailVerificationTokens)
+          .set({ usedAt: new Date() })
+          .where(eq(emailVerificationTokens.id, token.id));
+
+        await db.update(users)
+          .set({ backupEmail: token.email, backupEmailVerified: true })
+          .where(eq(users.id, ctx.user.id));
+
+        return { success: true };
+      }),
+
+    removeBackupEmail: protectedProcedure.mutation(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { users } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await db.update(users)
+        .set({ backupEmail: null, backupEmailVerified: false })
+        .where(eq(users.id, ctx.user.id));
+
+      return { success: true };
+    }),
+
+    sendPhoneCode: protectedProcedure
+      .input(z.object({ phone: z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number (E.164 format required)") }))
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import("./db");
+        const { emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Rate limit
+        const [recent] = await db.select().from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "sms"),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000)),
+          )).limit(1);
+        if (recent) throw new Error("Please wait 60 seconds before requesting a new code");
+
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        await db.insert(emailVerificationTokens).values({
+          userId: ctx.user.id,
+          email: input.phone, // store phone in email field for SMS channel
+          code,
+          channel: "sms",
+          expiresAt,
+        });
+
+        const { sendVerificationSms } = await import("./services/smsService");
+        await sendVerificationSms(input.phone, code);
+
+        return { success: true };
+      }),
+
+    verifyPhone: protectedProcedure
+      .input(z.object({ code: z.string().length(6) }))
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import("./db");
+        const { users, emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const [token] = await db.select().from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "sms"),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date()),
+          )).limit(1);
+
+        if (!token) throw new Error("Invalid or expired verification code");
+
+        await db.update(emailVerificationTokens)
+          .set({ usedAt: new Date() })
+          .where(eq(emailVerificationTokens.id, token.id));
+
+        await db.update(users)
+          .set({ phone: token.email, phoneVerified: true })
+          .where(eq(users.id, ctx.user.id));
+
+        return { success: true };
+      }),
+
+    removePhone: protectedProcedure.mutation(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { users } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await db.update(users)
+        .set({ phone: null, phoneVerified: false })
+        .where(eq(users.id, ctx.user.id));
+
+      return { success: true };
+    }),
+
+    // ── Two-Factor Authentication ──────────────────────────────────
+
+    /** Start 2FA setup: generate secret + QR URI + recovery codes */
+    setup2FA: protectedProcedure.mutation(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { users, systemSettings } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { generateTotpSecret, generateTotpUri, generateRecoveryCodes, encryptSecret } = await import("./services/totpService");
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Read admin 2FA config
+      const twoFaSettings = await db.select().from(systemSettings).where(eq(systemSettings.category, "2fa"));
+      const cfg: Record<string, string> = {};
+      for (const s of twoFaSettings) { if (s.value) cfg[s.key] = s.value; }
+      if (cfg.enabled === "false") throw new Error("2FA is disabled by administrator");
+      const issuer = cfg.issuer || "SmartSpec Pro";
+      const codesCount = parseInt(cfg.backup_codes_count || "10", 10);
+
+      const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id));
+      if (!user) throw new Error("User not found");
+      if (user.twoFactorEnabled) throw new Error("2FA is already enabled");
+
+      const secret = generateTotpSecret();
+      const uri = generateTotpUri(secret, user.email || "", issuer);
+      const codes = generateRecoveryCodes(codesCount);
+
+      // Store encrypted secret + hashed recovery codes temporarily (not yet enabled)
+      const bcrypt = await import("bcrypt");
+      const hashedCodes = await Promise.all(codes.map(c => bcrypt.hash(c, 10)));
+
+      await db.update(users)
+        .set({ twoFactorSecret: encryptSecret(secret), recoveryCodes: hashedCodes })
+        .where(eq(users.id, ctx.user.id));
+
+      return { secret, uri, recoveryCodes: codes };
+    }),
+
+    /** Confirm 2FA setup by verifying a TOTP code from the authenticator app */
+    confirm2FA: protectedProcedure
+      .input(z.object({ code: z.string().length(6) }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const { users } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const { decryptSecret, verifyTotp } = await import("./services/totpService");
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id));
+        if (!user || !user.twoFactorSecret) throw new Error("2FA setup not started");
+        if (user.twoFactorEnabled) throw new Error("2FA is already enabled");
+
+        const secret = decryptSecret(user.twoFactorSecret);
+        if (!verifyTotp(secret, input.code)) throw new Error("Invalid code. Please try again.");
+
+        await db.update(users)
+          .set({ twoFactorEnabled: true })
+          .where(eq(users.id, ctx.user.id));
+
+        return { success: true };
+      }),
+
+    /** Disable 2FA (requires current TOTP code or recovery code) */
+    disable2FA: protectedProcedure
+      .input(z.object({ code: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const { users } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const { decryptSecret, verifyTotp } = await import("./services/totpService");
+        const bcrypt = await import("bcrypt");
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id));
+        if (!user || !user.twoFactorEnabled) throw new Error("2FA is not enabled");
+
+        const secret = decryptSecret(user.twoFactorSecret!);
+        let valid = verifyTotp(secret, input.code);
+
+        // Try recovery code if TOTP didn't match
+        if (!valid && input.code.includes("-")) {
+          const codes = (user.recoveryCodes as string[]) || [];
+          for (let i = 0; i < codes.length; i++) {
+            if (await bcrypt.compare(input.code, codes[i])) {
+              valid = true;
+              codes.splice(i, 1);
+              await db.update(users).set({ recoveryCodes: codes }).where(eq(users.id, ctx.user.id));
+              break;
+            }
+          }
+        }
+
+        if (!valid) throw new Error("Invalid code");
+
+        await db.update(users)
+          .set({ twoFactorEnabled: false, twoFactorSecret: null, recoveryCodes: [] })
+          .where(eq(users.id, ctx.user.id));
+
+        return { success: true };
+      }),
+
+    /** Regenerate recovery codes (requires TOTP code) */
+    regenerateRecoveryCodes: protectedProcedure
+      .input(z.object({ code: z.string().length(6) }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const { users, systemSettings } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const { decryptSecret, verifyTotp, generateRecoveryCodes } = await import("./services/totpService");
+        const bcrypt = await import("bcrypt");
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Read admin config for codes count
+        const twoFaSettings = await db.select().from(systemSettings).where(eq(systemSettings.category, "2fa"));
+        const cfg: Record<string, string> = {};
+        for (const s of twoFaSettings) { if (s.value) cfg[s.key] = s.value; }
+        const codesCount = parseInt(cfg.backup_codes_count || "10", 10);
+
+        const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id));
+        if (!user || !user.twoFactorEnabled) throw new Error("2FA is not enabled");
+
+        const secret = decryptSecret(user.twoFactorSecret!);
+        if (!verifyTotp(secret, input.code)) throw new Error("Invalid TOTP code");
+
+        const codes = generateRecoveryCodes(codesCount);
+        const hashedCodes = await Promise.all(codes.map(c => bcrypt.hash(c, 10)));
+
+        await db.update(users).set({ recoveryCodes: hashedCodes }).where(eq(users.id, ctx.user.id));
+
+        return { recoveryCodes: codes };
+      }),
+
+    /** Get 2FA status for current user */
+    get2FAStatus: protectedProcedure.query(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { users, systemSettings } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Check admin config
+      const twoFaSettings = await db.select().from(systemSettings).where(eq(systemSettings.category, "2fa"));
+      const cfg: Record<string, string> = {};
+      for (const s of twoFaSettings) { if (s.value) cfg[s.key] = s.value; }
+      const adminEnabled = cfg.enabled !== "false";
+      const enforced = cfg.enforced === "true";
+
+      const [user] = await db.select({
+        twoFactorEnabled: users.twoFactorEnabled,
+        recoveryCodesCount: users.recoveryCodes,
+      }).from(users).where(eq(users.id, ctx.user.id));
+
+      return {
+        enabled: user?.twoFactorEnabled || false,
+        recoveryCodesRemaining: Array.isArray(user?.recoveryCodesCount) ? (user.recoveryCodesCount as string[]).length : 0,
+        adminEnabled,
+        enforced,
+      };
+    }),
+
+    /** Verify 2FA code during login (public — uses pending session token) */
+    verify2FA: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        code: z.string().min(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { getUserByEmail } = await import("./db");
+        const { getDb } = await import("./db");
+        const { users } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const { sdk } = await import("./_core/sdk");
+        const { decryptSecret, verifyTotp } = await import("./services/totpService");
+        const bcrypt = await import("bcrypt");
+
+        const user = await getUserByEmail(input.email);
+        if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+          throw new Error("Invalid request");
+        }
+
+        const secret = decryptSecret(user.twoFactorSecret);
+        let valid = verifyTotp(secret, input.code);
+        let usedRecoveryCode = false;
+
+        // Try recovery code
+        if (!valid && input.code.includes("-")) {
+          const codes = (user.recoveryCodes as string[]) || [];
+          for (let i = 0; i < codes.length; i++) {
+            if (await bcrypt.compare(input.code, codes[i])) {
+              valid = true;
+              usedRecoveryCode = true;
+              codes.splice(i, 1);
+              const db = await getDb();
+              if (db) {
+                await db.update(users).set({ recoveryCodes: codes }).where(eq(users.id, user.id));
+              }
+              break;
+            }
+          }
+        }
+
+        if (!valid) throw new Error("Invalid verification code");
+
+        // Create session
+        const token = await sdk.createSessionToken(user.openId, {
+          name: user.name || user.email || "",
+        });
+
+        const { getSessionCookieOptions } = await import("./_core/cookies");
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+        return {
+          success: true,
+          user: { id: user.id, email: user.email, name: user.name },
+          usedRecoveryCode,
+          recoveryCodesRemaining: usedRecoveryCode ? ((user.recoveryCodes as string[]).length - 1) : undefined,
+        };
+      }),
+
+    /** Request 2FA reset via backup email or SMS (when locked out) */
+    request2FAReset: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        channel: z.enum(["backup_email", "sms"]),
+        backupEmail: z.string().optional(),
+        phone: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getUserByEmail } = await import("./db");
+        const { getDb } = await import("./db");
+        const { emailVerificationTokens } = await import("../drizzle/schema");
+        const crypto = await import("crypto");
+
+        const user = await getUserByEmail(input.email);
+        if (!user || !user.twoFactorEnabled) {
+          // Don't reveal whether user exists
+          return { success: true };
+        }
+
+        const db = await getDb();
+        if (!db) return { success: true };
+
+        const code = crypto.randomInt(100000, 999999).toString();
+        const channelKey = input.channel === "backup_email" ? "disable_2fa_email" : "disable_2fa_sms";
+
+        // Validate the recovery channel
+        if (input.channel === "backup_email") {
+          if (!user.backupEmailVerified || !user.backupEmail) {
+            throw new Error("Backup email is not configured or verified");
+          }
+          if (input.backupEmail && input.backupEmail.toLowerCase() !== user.backupEmail.toLowerCase()) {
+            throw new Error("Backup email does not match");
+          }
+        } else {
+          if (!user.phoneVerified || !user.phone) {
+            throw new Error("Phone is not configured or verified");
+          }
+          if (input.phone && input.phone !== user.phone) {
+            throw new Error("Phone number does not match");
+          }
+        }
+
+        // Store verification code
+        await db.insert(emailVerificationTokens).values({
+          email: input.channel === "sms" ? user.phone! : user.backupEmail!,
+          token: code,
+          expiresAt: new Date(Date.now() + 15 * 60_000),
+          channel: channelKey,
+          userId: user.id,
+        });
+
+        // Send code
+        if (input.channel === "backup_email") {
+          const { sendPasswordResetEmail } = await import("./services/emailService");
+          await sendPasswordResetEmail(user.backupEmail!, code, user.name || undefined);
+        } else {
+          const { sendVerificationSms } = await import("./services/smsService");
+          await sendVerificationSms(user.phone!, code);
+        }
+
+        return { success: true };
+      }),
+
+    /** Confirm 2FA reset with verification code (disables 2FA) */
+    confirm2FAReset: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        code: z.string().length(6),
+        channel: z.enum(["backup_email", "sms"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { getUserByEmail } = await import("./db");
+        const { getDb } = await import("./db");
+        const { users, emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, gt } = await import("drizzle-orm");
+        const { sdk } = await import("./_core/sdk");
+
+        const user = await getUserByEmail(input.email);
+        if (!user || !user.twoFactorEnabled) throw new Error("Invalid request");
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const channelKey = input.channel === "backup_email" ? "disable_2fa_email" : "disable_2fa_sms";
+        const contactField = input.channel === "backup_email" ? user.backupEmail! : user.phone!;
+
+        const [token] = await db.select().from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.email, contactField),
+            eq(emailVerificationTokens.token, input.code),
+            eq(emailVerificationTokens.channel, channelKey),
+            gt(emailVerificationTokens.expiresAt, new Date()),
+          ))
+          .limit(1);
+
+        if (!token) throw new Error("Invalid or expired code");
+
+        // Delete used token
+        await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.id, token.id));
+
+        // Disable 2FA
+        await db.update(users)
+          .set({ twoFactorEnabled: false, twoFactorSecret: null, recoveryCodes: [] })
+          .where(eq(users.id, user.id));
+
+        // Create session
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || user.email || "",
+        });
+        const { getSessionCookieOptions } = await import("./_core/cookies");
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+        return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+      }),
+
+    resetPassword: publicProcedure
+      .input(z.object({
+        email: z.string().optional(),
+        phone: z.string().optional(),
+        code: z.string().length(6),
+        newPassword: z.string().min(8),
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const bcrypt = await import("bcrypt");
+        const { users, emailVerificationTokens } = await import("../drizzle/schema");
+        const { eq, and, isNull, gt } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+
+        const channelMap: Record<string, string> = { email: "reset_email", backup_email: "reset_backup", sms: "reset_sms" };
+        const destination = input.channel === "sms" ? (input.phone || "") : (input.email || "");
+
+        const [token] = await db.select().from(emailVerificationTokens)
+          .where(and(
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, channelMap[input.channel]),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
+            gt(emailVerificationTokens.expiresAt, new Date()),
+          )).limit(1);
+
+        if (!token) throw new Error('Invalid or expired reset code');
+
+        // Hash new password and update
+        const passwordHash = await bcrypt.hash(input.newPassword, 12);
+        await db.update(users)
+          .set({ password: passwordHash })
+          .where(eq(users.id, token.userId));
+
+        await db.update(emailVerificationTokens)
+          .set({ usedAt: new Date() })
+          .where(eq(emailVerificationTokens.id, token.id));
+
+        return { success: true };
       }),
   }),
 
@@ -272,6 +1191,10 @@ export const appRouter = router({
   accountSecurity: accountSecurityRouter,
   translation: translationRouter,
   marketplace: marketplaceRouter,
+  skillRepositories: skillRepositoriesRouter,
+
+  // Speech-to-Text provider management (admin)
+  sttProviders: sttProvidersRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

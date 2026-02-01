@@ -8,9 +8,26 @@ import { evaluateRegistration, logRegistrationEvent, recordDeviceFingerprint } f
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
-// Credits for first user (admin) vs normal users
-const FIRST_USER_BONUS_CREDITS = 10000; // 10,000 credits for first user (admin)
-const NORMAL_USER_BONUS_CREDITS = 100;  // 100 credits for normal users
+// Default credits (overridden by system settings if configured)
+const DEFAULT_FIRST_USER_BONUS = 10000;
+const DEFAULT_NORMAL_USER_BONUS = 100;
+
+async function getRegistrationBonusCredits(isFirstUser: boolean): Promise<number> {
+  try {
+    const { getDb } = await import("../db");
+    const { systemSettings } = await import("../../drizzle/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const dbInst = await getDb();
+    if (!dbInst) return isFirstUser ? DEFAULT_FIRST_USER_BONUS : DEFAULT_NORMAL_USER_BONUS;
+
+    const key = isFirstUser ? "first_user_bonus_credits" : "signup_bonus_credits";
+    const [setting] = await dbInst.select().from(systemSettings)
+      .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, key)))
+      .limit(1);
+    if (setting?.value) return parseInt(setting.value, 10) || (isFirstUser ? DEFAULT_FIRST_USER_BONUS : DEFAULT_NORMAL_USER_BONUS);
+  } catch { /* fallback */ }
+  return isFirstUser ? DEFAULT_FIRST_USER_BONUS : DEFAULT_NORMAL_USER_BONUS;
+}
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -121,7 +138,7 @@ export function registerOAuthRoutes(app: Express) {
           // Only give bonus if trust score >= 70
           if (trustScore >= 70) {
             try {
-              const bonusCredits = isFirstUser ? FIRST_USER_BONUS_CREDITS : NORMAL_USER_BONUS_CREDITS;
+              const bonusCredits = await getRegistrationBonusCredits(isFirstUser);
               await giveSignupBonus(newUser.id, bonusCredits);
               console.log(`[OAuth] Gave signup bonus (${bonusCredits} credits) to new user: ${newUser.id}${isFirstUser ? ' (ADMIN)' : ''}`);
             } catch (err) {

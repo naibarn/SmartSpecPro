@@ -53,21 +53,9 @@ export default function VerifyEmail() {
     }
   }, [countdown]);
 
-  const verifyWithToken = async (token: string) => {
-    setStatus('verifying');
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    // For demo, randomly succeed or fail
-    if (Math.random() > 0.2) {
-      setStatus('success');
-      toast.success('Email verified successfully!');
-      setTimeout(() => setLocation('/dashboard'), 2000);
-    } else {
-      setStatus('expired');
-      toast.error('Verification link has expired');
-    }
+  const verifyWithToken = async (_token: string) => {
+    // Token-based verification not implemented; use code-based flow
+    setStatus('pending');
   };
 
   const handleCodeChange = (index: number, value: string) => {
@@ -109,18 +97,37 @@ export default function VerifyEmail() {
     }
 
     setStatus('verifying');
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // For demo, check if code is "123456"
-    if (fullCode === '123456') {
-      setStatus('success');
-      toast.success('Email verified successfully!');
-      setTimeout(() => setLocation('/dashboard'), 2000);
-    } else {
+
+    try {
+      const response = await fetch('/trpc/auth.verifyEmail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { email, code: fullCode } }),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+      const result = data.result?.data?.json;
+      const errorMsg = data.error?.json?.message;
+
+      if (result?.success) {
+        setStatus('success');
+        toast.success('Email verified successfully!');
+        setTimeout(() => setLocation('/dashboard'), 2000);
+      } else {
+        const msg = errorMsg || 'Invalid verification code';
+        if (msg.toLowerCase().includes('expired')) {
+          setStatus('expired');
+        } else {
+          setStatus('error');
+        }
+        toast.error(msg);
+        setCode(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
+    } catch {
       setStatus('error');
-      toast.error('Invalid verification code');
+      toast.error('Verification failed. Please try again.');
       setCode(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     }
@@ -128,15 +135,31 @@ export default function VerifyEmail() {
 
   const handleResendCode = async () => {
     setIsResending(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    setIsResending(false);
-    setCountdown(60);
-    setStatus('pending');
-    setCode(['', '', '', '', '', '']);
-    toast.success('Verification code sent! Check your inbox.');
+
+    try {
+      const response = await fetch('/trpc/auth.resendVerification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { email } }),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+      const errorMsg = data.error?.json?.message;
+
+      if (errorMsg) {
+        toast.error(errorMsg);
+      } else {
+        toast.success('New verification code sent! Check your email inbox.');
+        setCountdown(60);
+        setStatus('pending');
+        setCode(['', '', '', '', '', '']);
+      }
+    } catch {
+      toast.error('Failed to resend code. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const renderContent = () => {
@@ -281,11 +304,11 @@ export default function VerifyEmail() {
               </button>
             </div>
 
-            {/* Demo Hint */}
+            {/* Info */}
             <div className="mt-6 p-3 bg-purple-50 rounded-lg text-center">
               <p className="text-xs text-purple-600">
-                <Sparkles className="w-3 h-3 inline mr-1" />
-                Demo: Use code <span className="font-mono font-bold">123456</span> to verify
+                <Shield className="w-3 h-3 inline mr-1" />
+                Check your email inbox (or spam folder) for the code
               </p>
             </div>
           </>

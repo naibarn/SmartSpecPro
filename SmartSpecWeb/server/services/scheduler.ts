@@ -15,7 +15,7 @@ import {
   conversations,
   messages,
 } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { decrypt } from "./crypto";
 import { llmProviders } from "../../drizzle/schema";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
@@ -62,7 +62,8 @@ async function getActiveLlmProvider() {
   const providers = await db
     .select()
     .from(llmProviders)
-    .where(and(eq(llmProviders.isEnabled, true)))
+    .where(eq(llmProviders.isEnabled, true))
+    .orderBy(asc(llmProviders.sortOrder))
     .limit(1);
 
   if (providers.length === 0) return null;
@@ -120,7 +121,8 @@ async function executeScheduledJob(job: Job) {
     }
 
     // Call LLM (non-streaming)
-    const chatUrl = `${provider.baseUrl}/chat/completions`;
+    const base = (provider.baseUrl || "").replace(/\/+$/, "");
+    const chatUrl = base.includes("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
     const response = await fetch(chatUrl, {
       method: "POST",
       headers: {
@@ -150,7 +152,18 @@ async function executeScheduledJob(job: Job) {
     const creditsUsed = calculateCreditsForLLM(promptTokens, completionTokens, model);
 
     // Deduct credits
-    await deductCredits(schedule.userId, creditsUsed, "usage", `Chat Alert: ${schedule.description || schedule.prompt.slice(0, 50)}`);
+    await deductCredits({
+      userId: schedule.userId,
+      amount: creditsUsed,
+      description: `Chat Alert: ${schedule.description || schedule.prompt.slice(0, 50)}`,
+      metadata: {
+        type: "chat-alert",
+        scheduleId,
+        model,
+        inputTokens: promptTokens,
+        outputTokens: completionTokens,
+      },
+    });
 
     // Find or create conversation
     let convId = schedule.conversationId;

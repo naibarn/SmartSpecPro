@@ -590,6 +590,47 @@ export function registerLLMRoutes(app: Express) {
 
       debugLog("LLM", "Stream request", { conversationId, skillUsed, userId: check.userId });
 
+      // Generic skill context injection: inject systemPrompt for any active skill
+      if (skillUsed && Array.isArray(req.body?.messages)) {
+        try {
+          const { getDb } = await import("../db");
+          const { skills: skillsTable } = await import("../../drizzle/schema");
+          const { eq: eqOp } = await import("drizzle-orm");
+          const dbInst = await getDb();
+
+          if (dbInst) {
+            const [skillRow] = await dbInst
+              .select({
+                systemPrompt: skillsTable.systemPrompt,
+                knowledgebase: skillsTable.knowledgebase,
+              })
+              .from(skillsTable)
+              .where(eqOp(skillsTable.slug, skillUsed))
+              .limit(1);
+
+            if (skillRow?.systemPrompt) {
+              const parts: string[] = [skillRow.systemPrompt.substring(0, 12000)];
+              if (skillRow.knowledgebase) {
+                parts.push(`\n\n[DOMAIN KNOWLEDGE]\n${skillRow.knowledgebase.substring(0, 4000)}`);
+              }
+              const skillMsg = {
+                role: "system",
+                content: parts.join(""),
+              };
+              const firstNonSystem = req.body.messages.findIndex((m: any) => m.role !== "system");
+              if (firstNonSystem > 0) {
+                req.body.messages.splice(firstNonSystem, 0, skillMsg);
+              } else {
+                req.body.messages.unshift(skillMsg);
+              }
+              debugLog("LLM", `Skill context injected for '${skillUsed}' (${parts.join("").length} chars)`);
+            }
+          }
+        } catch (err: any) {
+          debugLog("LLM", "Skill context injection failed (non-fatal)", err?.message);
+        }
+      }
+
       // Context7 integration: inject library docs when code-docs-assistant skill is active
       if (skillUsed === "code-docs-assistant" && Array.isArray(req.body?.messages)) {
         try {
@@ -682,10 +723,97 @@ export function registerLLMRoutes(app: Express) {
           return;
         }
 
-        // Forward to Whisper API directly
+        // Forward to Whisper API — try env vars first, then fall back to DB provider
         const { ENV } = await import("./env");
-        if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-          res.status(500).json({ error: "STT service not configured" });
+        let sttApiUrl = ENV.forgeApiUrl;
+        let sttApiKey = ENV.forgeApiKey;
+        let sttModel = "whisper-1";
+
+        // Credit cost per minute (default 6 for OpenAI Whisper)
+        let sttCreditCostPerMinute = 6;
+
+        if (!sttApiUrl || !sttApiKey) {
+          // Look for dedicated STT providers first (stt-*), then fall back to LLM providers
+          try {
+            const { db } = await import("../db");
+            const { llmProviders } = await import("../../drizzle/schema");
+            const { eq, asc, like } = await import("drizzle-orm");
+            const { decrypt } = await import("../services/crypto");
+
+            // 1) Try dedicated STT providers (stt-groq, stt-openai, etc.)
+            const sttProviders = await db
+              .select({
+                providerName: llmProviders.providerName,
+                baseUrl: llmProviders.baseUrl,
+                apiKeyEncrypted: llmProviders.apiKeyEncrypted,
+                defaultModel: llmProviders.defaultModel,
+                configJson: llmProviders.configJson,
+              })
+              .from(llmProviders)
+              .where(like(llmProviders.providerName, "stt-%"))
+              .orderBy(asc(llmProviders.sortOrder));
+
+            const enabledStt = sttProviders.filter((p) => p.apiKeyEncrypted);
+            let chosen: (typeof enabledStt)[0] | null = null;
+
+            // Prefer stt-groq (free), then stt-openai, then any
+            for (const pref of ["stt-groq", "stt-openai"]) {
+              chosen = enabledStt.find((p) => p.providerName === pref) || null;
+              if (chosen) break;
+            }
+            if (!chosen && enabledStt.length > 0) chosen = enabledStt[0];
+
+            // 2) Fall back to LLM providers (groq, openai)
+            if (!chosen) {
+              const llmProv = await db
+                .select({
+                  providerName: llmProviders.providerName,
+                  baseUrl: llmProviders.baseUrl,
+                  apiKeyEncrypted: llmProviders.apiKeyEncrypted,
+                  defaultModel: llmProviders.defaultModel,
+                  configJson: llmProviders.configJson,
+                })
+                .from(llmProviders)
+                .where(eq(llmProviders.isEnabled, true));
+
+              for (const name of ["groq", "openai"]) {
+                chosen = llmProv.find((p) => p.providerName === name && p.apiKeyEncrypted) || null;
+                if (chosen) break;
+              }
+              if (!chosen) {
+                chosen = llmProv.find((p) => p.providerName !== "openrouter" && p.apiKeyEncrypted) || null;
+              }
+            }
+
+            if (chosen) {
+              sttApiUrl = chosen.baseUrl || "https://api.openai.com/v1";
+              sttApiKey = decrypt(chosen.apiKeyEncrypted);
+              if (chosen.defaultModel) sttModel = chosen.defaultModel;
+
+              // Provider-specific defaults
+              const pName = chosen.providerName;
+              if (pName === "stt-groq" || pName === "groq") {
+                if (!chosen.defaultModel) sttModel = "whisper-large-v3-turbo";
+                if (!chosen.baseUrl) sttApiUrl = "https://api.groq.com/openai/v1";
+              }
+
+              // Read creditCostPerMinute from configJson
+              const cfg = chosen.configJson as Record<string, any> | null;
+              if (cfg?.creditCostPerMinute !== undefined) {
+                sttCreditCostPerMinute = Number(cfg.creditCostPerMinute);
+              } else if (pName === "stt-groq" || pName === "groq") {
+                sttCreditCostPerMinute = 0;
+              }
+
+              console.log(`[STT] Using provider: ${pName}, url: ${sttApiUrl}, model: ${sttModel}, cost: ${sttCreditCostPerMinute}/min`);
+            }
+          } catch (dbErr) {
+            console.error("[STT] Failed to load provider from DB:", dbErr);
+          }
+        }
+
+        if (!sttApiUrl || !sttApiKey) {
+          res.status(500).json({ error: "STT service not configured. Add a Groq or OpenAI provider with API key in Settings." });
           return;
         }
 
@@ -693,17 +821,17 @@ export function registerLLMRoutes(app: Express) {
         const formData = new FormData();
         const audioBlob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
         formData.append("file", audioBlob, `audio.${ext}`);
-        formData.append("model", "whisper-1");
+        formData.append("model", sttModel);
         formData.append("response_format", "verbose_json");
         if (language) formData.append("language", language);
 
-        const baseUrl = ENV.forgeApiUrl.endsWith("/") ? ENV.forgeApiUrl : `${ENV.forgeApiUrl}/`;
+        const baseUrl = sttApiUrl.endsWith("/") ? sttApiUrl : `${sttApiUrl}/`;
         const fullUrl = new URL("v1/audio/transcriptions", baseUrl).toString();
 
         const whisperRes = await fetch(fullUrl, {
           method: "POST",
           headers: {
-            authorization: `Bearer ${ENV.forgeApiKey}`,
+            authorization: `Bearer ${sttApiKey}`,
             "Accept-Encoding": "identity",
           },
           body: formData,
@@ -717,13 +845,17 @@ export function registerLLMRoutes(app: Express) {
 
         const result = await whisperRes.json() as { text: string; language: string; duration: number };
 
-        // Calculate credits: Whisper costs ~$0.006/min → credits = ceil(durationMin * 6)
+        // Calculate credits based on provider's creditCostPerMinute
         const durationMin = (result.duration || 0) / 60;
-        const creditsUsed = Math.max(1, Math.ceil(durationMin * 6));
+        const creditsUsed = sttCreditCostPerMinute === 0
+          ? 0
+          : Math.max(1, Math.ceil(durationMin * sttCreditCostPerMinute));
 
-        // Deduct credits
-        const { deductCredits } = await import("../services/creditService");
-        await deductCredits(check.userId, creditsUsed, `STT transcription (${Math.round(result.duration || 0)}s)`);
+        // Deduct credits (skip if free provider)
+        if (creditsUsed > 0) {
+          const { deductCredits } = await import("../services/creditService");
+          await deductCredits(check.userId, creditsUsed, `STT transcription (${Math.round(result.duration || 0)}s)`);
+        }
 
         res.json({
           text: result.text,

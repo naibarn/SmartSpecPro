@@ -44,9 +44,303 @@ import {
   Languages,
   Search,
   Bot,
+  Phone,
+  RefreshCw,
+  Smartphone,
+  Copy,
+  ShieldCheck,
+  ShieldOff,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing';
+
+type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
+
+function TwoFactorSection() {
+  const [step, setStep] = useState<TwoFAStep>('idle');
+  const [setupData, setSetupData] = useState<{ secret: string; uri: string; recoveryCodes: string[] } | null>(null);
+  const [code, setCode] = useState('');
+  const [disableCode, setDisableCode] = useState('');
+  const [regenCode, setRegenCode] = useState('');
+  const [newCodes, setNewCodes] = useState<string[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCodes, setShowCodes] = useState(false);
+
+  const statusQuery = trpc.auth.get2FAStatus.useQuery();
+  const enabled = statusQuery.data?.enabled || false;
+  const codesRemaining = statusQuery.data?.recoveryCodesRemaining || 0;
+  const adminEnabled = statusQuery.data?.adminEnabled !== false;
+  const enforced = statusQuery.data?.enforced || false;
+
+  const handleSetup = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/trpc/auth.setup2FA', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: {} }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      const result = data.result?.data?.json;
+      const err = data.error?.json?.message;
+      if (err) { toast.error(err); return; }
+      setSetupData(result);
+      setStep('setup');
+    } catch { toast.error('Failed to start 2FA setup'); } finally { setIsLoading(false); }
+  };
+
+  const handleConfirm = async () => {
+    if (code.length !== 6) { toast.error('Enter a 6-digit code'); return; }
+    setIsLoading(true);
+    try {
+      const res = await fetch('/trpc/auth.confirm2FA', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { code } }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      const err = data.error?.json?.message;
+      if (err) { toast.error(err); return; }
+      toast.success('2FA enabled successfully!');
+      setStep('done');
+      setShowCodes(true);
+      statusQuery.refetch();
+    } catch { toast.error('Verification failed'); } finally { setIsLoading(false); }
+  };
+
+  const handleDisable = async () => {
+    if (!disableCode) { toast.error('Enter your TOTP or recovery code'); return; }
+    setIsLoading(true);
+    try {
+      const res = await fetch('/trpc/auth.disable2FA', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { code: disableCode } }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      const err = data.error?.json?.message;
+      if (err) { toast.error(err); return; }
+      toast.success('2FA disabled');
+      setStep('idle');
+      setDisableCode('');
+      setSetupData(null);
+      statusQuery.refetch();
+    } catch { toast.error('Failed to disable 2FA'); } finally { setIsLoading(false); }
+  };
+
+  const handleRegen = async () => {
+    if (regenCode.length !== 6) { toast.error('Enter your current TOTP code'); return; }
+    setIsLoading(true);
+    try {
+      const res = await fetch('/trpc/auth.regenerateRecoveryCodes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { code: regenCode } }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      const err = data.error?.json?.message;
+      if (err) { toast.error(err); return; }
+      setNewCodes(data.result?.data?.json?.recoveryCodes || []);
+      setStep('done');
+      setShowCodes(true);
+      setRegenCode('');
+      statusQuery.refetch();
+      toast.success('New recovery codes generated');
+    } catch { toast.error('Failed to regenerate codes'); } finally { setIsLoading(false); }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard'));
+  };
+
+  const codesToShow = newCodes || setupData?.recoveryCodes || [];
+
+  return (
+    <div className="pt-6 border-t border-gray-200">
+      <h3 className="font-semibold text-gray-900 mb-4">Two-Factor Authentication</h3>
+
+      {/* Admin disabled */}
+      {!adminEnabled && !enabled && (
+        <div className="p-4 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-3">
+            <ShieldOff className="w-5 h-5 text-gray-400" />
+            <div>
+              <div className="font-medium text-gray-900">2FA is not available</div>
+              <div className="text-sm text-gray-500">Two-factor authentication has been disabled by your administrator.</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enforced notice */}
+      {enforced && !enabled && adminEnabled && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 mb-3">
+          Your administrator requires two-factor authentication. Please enable 2FA to continue using the platform.
+        </div>
+      )}
+
+      {/* Status display */}
+      {step === 'idle' && !enabled && adminEnabled && (
+        <div className="p-4 bg-gray-50 rounded-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Smartphone className="w-5 h-5 text-gray-400" />
+              <div>
+                <div className="font-medium text-gray-900">2FA is disabled</div>
+                <div className="text-sm text-gray-500">Protect your account with an authenticator app</div>
+              </div>
+            </div>
+            <Button onClick={handleSetup} disabled={isLoading} size="sm">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ShieldCheck className="w-4 h-4 mr-1" />}
+              Enable 2FA
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {step === 'idle' && enabled && (
+        <div className="space-y-3">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-green-600" />
+                <div>
+                  <div className="font-medium text-green-900">2FA is enabled</div>
+                  <div className="text-sm text-green-700">{codesRemaining} recovery codes remaining</div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setStep('regen')}>
+                  <RefreshCw className="w-3 h-3 mr-1" /> New Codes
+                </Button>
+                <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setStep('disable')}>
+                  <ShieldOff className="w-3 h-3 mr-1" /> Disable
+                </Button>
+              </div>
+            </div>
+          </div>
+          {codesRemaining <= 2 && codesRemaining > 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+              You have only {codesRemaining} recovery code{codesRemaining === 1 ? '' : 's'} left. Consider regenerating them.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Setup step: show QR code */}
+      {step === 'setup' && setupData && (
+        <div className="space-y-4">
+          <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+            <p className="text-sm font-medium text-purple-900 mb-3">1. Scan this QR code with your authenticator app</p>
+            <div className="flex justify-center mb-3">
+              <div className="bg-white p-3 rounded-xl">
+                <QRCodeSVG value={setupData.uri} size={200} />
+              </div>
+            </div>
+            <p className="text-xs text-purple-700 mb-2">Or enter this secret manually:</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 p-2 bg-white rounded text-xs font-mono break-all">{setupData.secret}</code>
+              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(setupData.secret)}>
+                <Copy className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-900 mb-2">2. Enter the 6-digit code from your app</p>
+            <div className="flex gap-2">
+              <Input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                className="font-mono text-center text-lg tracking-widest w-40"
+              />
+              <Button onClick={handleConfirm} disabled={isLoading || code.length !== 6}>
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                Verify & Enable
+              </Button>
+              <Button variant="ghost" onClick={() => { setStep('idle'); setCode(''); setSetupData(null); }}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show recovery codes after setup or regen */}
+      {step === 'done' && showCodes && codesToShow.length > 0 && (
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-sm font-semibold text-amber-900 mb-2">Save your recovery codes</p>
+            <p className="text-xs text-amber-700 mb-3">
+              Store these codes in a safe place. Each code can only be used once to sign in if you lose access to your authenticator app.
+            </p>
+            <div className="grid grid-cols-2 gap-1 mb-3">
+              {codesToShow.map((c, i) => (
+                <code key={i} className="p-1.5 bg-white rounded text-sm font-mono text-center">{c}</code>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => copyToClipboard(codesToShow.join('\n'))}>
+                <Copy className="w-3 h-3 mr-1" /> Copy All
+              </Button>
+              <Button size="sm" onClick={() => { setShowCodes(false); setStep('idle'); setNewCodes(null); }}>
+                I've saved my codes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disable 2FA */}
+      {step === 'disable' && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl space-y-3">
+          <p className="text-sm font-medium text-red-900">Disable Two-Factor Authentication</p>
+          <p className="text-xs text-red-700">Enter your current TOTP code or a recovery code to disable 2FA.</p>
+          <div className="flex gap-2">
+            <Input
+              value={disableCode}
+              onChange={(e) => setDisableCode(e.target.value)}
+              placeholder="TOTP code or recovery code"
+              className="w-56"
+            />
+            <Button variant="destructive" size="sm" onClick={handleDisable} disabled={isLoading}>
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Disable 2FA
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setStep('idle'); setDisableCode(''); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Regenerate recovery codes */}
+      {step === 'regen' && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
+          <p className="text-sm font-medium text-blue-900">Regenerate Recovery Codes</p>
+          <p className="text-xs text-blue-700">Enter your current TOTP code to generate new recovery codes. Old codes will be invalidated.</p>
+          <div className="flex gap-2">
+            <Input
+              value={regenCode}
+              onChange={(e) => setRegenCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              maxLength={6}
+              className="font-mono w-40"
+            />
+            <Button size="sm" onClick={handleRegen} disabled={isLoading || regenCode.length !== 6}>
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Generate New Codes
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setStep('idle'); setRegenCode(''); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Settings() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
@@ -70,6 +364,43 @@ export default function Settings() {
     onError: (error) => {
       setDeleteError(error.message);
     },
+  });
+
+  // Recovery contact states
+  const [backupEmailInput, setBackupEmailInput] = useState('');
+  const [backupEmailCode, setBackupEmailCode] = useState('');
+  const [backupEmailStep, setBackupEmailStep] = useState<'idle' | 'code_sent' | 'verified'>('idle');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneCode, setPhoneCode] = useState('');
+  const [phoneStep, setPhoneStep] = useState<'idle' | 'code_sent' | 'verified'>('idle');
+  const [recoveryLoading, setRecoveryLoading] = useState('');
+
+  const { data: recoveryInfo, refetch: refetchRecovery } =
+    trpc.auth.getRecoveryInfo.useQuery(undefined, { enabled: isAuthenticated });
+
+  const sendBackupEmailCodeMut = trpc.auth.sendBackupEmailCode.useMutation({
+    onSuccess: () => { toast.success('Code sent to backup email'); setBackupEmailStep('code_sent'); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const verifyBackupEmailMut = trpc.auth.verifyBackupEmail.useMutation({
+    onSuccess: () => { toast.success('Backup email verified!'); setBackupEmailStep('verified'); refetchRecovery(); setBackupEmailCode(''); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const removeBackupEmailMut = trpc.auth.removeBackupEmail.useMutation({
+    onSuccess: () => { toast.success('Backup email removed'); setBackupEmailStep('idle'); setBackupEmailInput(''); refetchRecovery(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const sendPhoneCodeMut = trpc.auth.sendPhoneCode.useMutation({
+    onSuccess: () => { toast.success('Code sent via SMS'); setPhoneStep('code_sent'); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const verifyPhoneMut = trpc.auth.verifyPhone.useMutation({
+    onSuccess: () => { toast.success('Phone verified!'); setPhoneStep('verified'); refetchRecovery(); setPhoneCode(''); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const removePhoneMut = trpc.auth.removePhone.useMutation({
+    onSuccess: () => { toast.success('Phone removed'); setPhoneStep('idle'); setPhoneInput(''); refetchRecovery(); },
+    onError: (e: any) => toast.error(e.message),
   });
 
   // Context7 states
@@ -175,7 +506,7 @@ export default function Settings() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
@@ -212,7 +543,7 @@ export default function Settings() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Settings Navigation */}
           <motion.div
@@ -236,6 +567,14 @@ export default function Settings() {
                     <span className="font-medium">{tab.label}</span>
                   </button>
                 ))}
+                <div className="border-t border-gray-200/50 my-2" />
+                <button
+                  onClick={() => setLocation('/settings/skills')}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all text-gray-600 hover:bg-gray-50"
+                >
+                  <Bot className="w-5 h-5" />
+                  <span className="font-medium">Skills</span>
+                </button>
               </nav>
             </div>
           </motion.div>
@@ -449,16 +788,147 @@ export default function Settings() {
                     Update Password
                   </Button>
 
+                  {/* Recovery Email */}
                   <div className="pt-6 border-t border-gray-200">
-                    <h3 className="font-semibold text-gray-900 mb-4">Two-Factor Authentication</h3>
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                      <div>
-                        <div className="font-medium text-gray-900">2FA Status</div>
-                        <div className="text-sm text-gray-500">Add an extra layer of security</div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Recovery Email</h3>
+                    <p className="text-sm text-gray-500 mb-4">Add a backup email for password recovery</p>
+
+                    {recoveryInfo?.backupEmailVerified ? (
+                      <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-green-600" />
+                          <span className="text-sm text-green-800 font-medium">{recoveryInfo.backupEmail}</span>
+                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 text-xs">Verified</Badge>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeBackupEmailMut.mutate()}
+                          disabled={removeBackupEmailMut.isPending}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" /> Remove
+                        </Button>
                       </div>
-                      <Button variant="outline" size="sm">Enable 2FA</Button>
-                    </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input
+                            type="email"
+                            placeholder="backup@example.com"
+                            value={backupEmailInput}
+                            onChange={(e) => setBackupEmailInput(e.target.value)}
+                            className="flex-1"
+                            disabled={backupEmailStep === 'code_sent'}
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={() => sendBackupEmailCodeMut.mutate({ backupEmail: backupEmailInput })}
+                            disabled={!backupEmailInput || sendBackupEmailCodeMut.isPending || backupEmailStep === 'code_sent'}
+                          >
+                            {sendBackupEmailCodeMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Code'}
+                          </Button>
+                        </div>
+                        {backupEmailStep === 'code_sent' && (
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="6-digit code"
+                              maxLength={6}
+                              value={backupEmailCode}
+                              onChange={(e) => setBackupEmailCode(e.target.value.replace(/\D/g, ''))}
+                              className="w-40"
+                            />
+                            <Button
+                              onClick={() => verifyBackupEmailMut.mutate({ code: backupEmailCode })}
+                              disabled={backupEmailCode.length !== 6 || verifyBackupEmailMut.isPending}
+                              className="bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                              {verifyBackupEmailMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setBackupEmailStep('idle'); setBackupEmailCode(''); }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Recovery Phone */}
+                  <div className="pt-6 border-t border-gray-200">
+                    <h3 className="font-semibold text-gray-900 mb-1">Recovery Phone</h3>
+                    <p className="text-sm text-gray-500 mb-4">Add a phone number for SMS-based password recovery (E.164 format: +66812345678)</p>
+
+                    {recoveryInfo?.phoneVerified ? (
+                      <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-green-600" />
+                          <span className="text-sm text-green-800 font-medium">{recoveryInfo.phone}</span>
+                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 text-xs">Verified</Badge>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removePhoneMut.mutate()}
+                          disabled={removePhoneMut.isPending}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" /> Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input
+                            type="tel"
+                            placeholder="+66812345678"
+                            value={phoneInput}
+                            onChange={(e) => setPhoneInput(e.target.value)}
+                            className="flex-1"
+                            disabled={phoneStep === 'code_sent'}
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={() => sendPhoneCodeMut.mutate({ phone: phoneInput })}
+                            disabled={!phoneInput || sendPhoneCodeMut.isPending || phoneStep === 'code_sent'}
+                          >
+                            {sendPhoneCodeMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Code'}
+                          </Button>
+                        </div>
+                        {phoneStep === 'code_sent' && (
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="6-digit code"
+                              maxLength={6}
+                              value={phoneCode}
+                              onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, ''))}
+                              className="w-40"
+                            />
+                            <Button
+                              onClick={() => verifyPhoneMut.mutate({ code: phoneCode })}
+                              disabled={phoneCode.length !== 6 || verifyPhoneMut.isPending}
+                              className="bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                              {verifyPhoneMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setPhoneStep('idle'); setPhoneCode(''); }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <TwoFactorSection />
                 </div>
               )}
 

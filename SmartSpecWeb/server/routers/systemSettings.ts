@@ -26,7 +26,7 @@ const stripeSettingsSchema = z.object({
 });
 
 const invoiceConfigSchema = z.object({
-  tenantId: z.number().optional().nullable(),
+  tenantId: z.union([z.number(), z.string()]).optional().nullable(),
   companyName: z.string().optional(),
   addressLine1: z.string().optional(),
   addressLine2: z.string().optional(),
@@ -225,7 +225,7 @@ export const systemSettingsRouter = router({
    * Get invoice configuration for a specific tenant
    */
   getTenantInvoiceConfig: domainAdminProcedure
-    .input(z.object({ tenantId: z.number() }))
+    .input(z.object({ tenantId: z.union([z.number(), z.string()]) }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -687,4 +687,345 @@ export const systemSettingsRouter = router({
 
     return result;
   }),
+
+  // ============================================================
+  // Registration Settings
+  // ============================================================
+
+  getRegistrationSettings: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { signupBonusCredits: 100, firstUserBonusCredits: 10000, autoAssignTenant: true };
+
+    const settings = await db.select().from(systemSettings)
+      .where(eq(systemSettings.category, "registration"));
+
+    const result: Record<string, string | null> = {};
+    for (const s of settings) {
+      result[s.key] = s.value;
+    }
+
+    return {
+      signupBonusCredits: parseInt(result.signup_bonus_credits || "100", 10),
+      firstUserBonusCredits: parseInt(result.first_user_bonus_credits || "10000", 10),
+      autoAssignTenant: result.auto_assign_tenant !== "false",
+    };
+  }),
+
+  updateRegistrationSettings: adminProcedure
+    .input(z.object({
+      signupBonusCredits: z.number().min(0).max(1000000),
+      firstUserBonusCredits: z.number().min(0).max(1000000),
+      autoAssignTenant: z.boolean(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const pairs: Array<{ key: string; value: string }> = [
+        { key: "signup_bonus_credits", value: String(input.signupBonusCredits) },
+        { key: "first_user_bonus_credits", value: String(input.firstUserBonusCredits) },
+        { key: "auto_assign_tenant", value: String(input.autoAssignTenant) },
+      ];
+
+      for (const { key, value } of pairs) {
+        const [existing] = await db.select().from(systemSettings)
+          .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, key)))
+          .limit(1);
+
+        if (existing) {
+          await db.update(systemSettings)
+            .set({ value, updatedBy: ctx.user.id, updatedAt: new Date() })
+            .where(eq(systemSettings.id, existing.id));
+        } else {
+          await db.insert(systemSettings).values({
+            category: "registration",
+            key,
+            value,
+            updatedBy: ctx.user.id,
+          });
+        }
+      }
+
+      return { success: true };
+    }),
+
+  // ============================================================
+  // SMTP / Email Settings
+  // ============================================================
+
+  getSmtpSettings: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { host: "", port: 587, secure: false, user: "", fromName: "SmartSpec Pro", fromEmail: "", configured: false };
+
+    const settings = await db.select().from(systemSettings)
+      .where(eq(systemSettings.category, "smtp"));
+
+    const map: Record<string, string | null> = {};
+    for (const s of settings) {
+      map[s.key] = s.isSensitive ? (s.value ? "••••••••" : null) : s.value;
+    }
+
+    return {
+      host: map.host || "",
+      port: parseInt(map.port || "587", 10),
+      secure: map.secure === "true",
+      user: map.user || "",
+      fromName: map.from_name || "SmartSpec Pro",
+      fromEmail: map.from_email || "",
+      configured: !!(map.host && map.user),
+    };
+  }),
+
+  updateSmtpSettings: adminProcedure
+    .input(z.object({
+      host: z.string().max(255),
+      port: z.number().min(1).max(65535),
+      secure: z.boolean(),
+      user: z.string().max(320),
+      pass: z.string().max(512).optional(),
+      fromName: z.string().max(255),
+      fromEmail: z.string().email().or(z.string().length(0)),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const pairs: Array<{ key: string; value: string; sensitive: boolean }> = [
+        { key: "host", value: input.host, sensitive: false },
+        { key: "port", value: String(input.port), sensitive: false },
+        { key: "secure", value: String(input.secure), sensitive: false },
+        { key: "user", value: input.user, sensitive: false },
+        { key: "from_name", value: input.fromName, sensitive: false },
+        { key: "from_email", value: input.fromEmail || input.user, sensitive: false },
+      ];
+
+      // Only update password if provided (not empty)
+      if (input.pass) {
+        pairs.push({ key: "pass", value: encrypt(input.pass), sensitive: true });
+      }
+
+      for (const { key, value, sensitive } of pairs) {
+        const [existing] = await db.select().from(systemSettings)
+          .where(and(eq(systemSettings.category, "smtp"), eq(systemSettings.key, key)))
+          .limit(1);
+
+        if (existing) {
+          await db.update(systemSettings)
+            .set({ value, isSensitive: sensitive, updatedBy: ctx.user.id, updatedAt: new Date() })
+            .where(eq(systemSettings.id, existing.id));
+        } else {
+          await db.insert(systemSettings).values({
+            category: "smtp",
+            key,
+            value,
+            isSensitive: sensitive,
+            updatedBy: ctx.user.id,
+          });
+        }
+      }
+
+      // Clear SMTP cache
+      const { clearSmtpCache } = await import("../services/emailService");
+      clearSmtpCache();
+
+      return { success: true };
+    }),
+
+  testSmtpConnection: adminProcedure.mutation(async () => {
+    const { testSmtpConnection } = await import("../services/emailService");
+    const db = await getDb();
+    if (!db) return { success: false, message: "Database not available" };
+
+    // Read actual SMTP config (with decrypted password)
+    const settings = await db.select().from(systemSettings)
+      .where(eq(systemSettings.category, "smtp"));
+
+    const map: Record<string, string | null> = {};
+    for (const s of settings) {
+      if (s.isSensitive && s.value) {
+        try { map[s.key] = decrypt(s.value); } catch { map[s.key] = s.value; }
+      } else {
+        map[s.key] = s.value;
+      }
+    }
+
+    if (!map.host || !map.user || !map.pass) {
+      return { success: false, message: "SMTP not fully configured (host, user, pass required)" };
+    }
+
+    return testSmtpConnection({
+      host: map.host,
+      port: parseInt(map.port || "587", 10),
+      secure: map.secure === "true",
+      user: map.user,
+      pass: map.pass,
+    });
+  }),
+
+  // ============================================================
+  // SMS Provider Settings
+  // ============================================================
+
+  getSmsSettings: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { provider: "twilio", accountSid: "", fromNumber: "", configured: false };
+
+    const settings = await db.select().from(systemSettings)
+      .where(eq(systemSettings.category, "sms"));
+
+    const map: Record<string, string | null> = {};
+    for (const s of settings) {
+      map[s.key] = s.isSensitive ? (s.value ? "••••••••" : null) : s.value;
+    }
+
+    return {
+      provider: map.provider || "twilio",
+      accountSid: map.account_sid || "",
+      fromNumber: map.from_number || "",
+      configured: !!(map.provider && map.account_sid && map.auth_token && map.from_number),
+    };
+  }),
+
+  updateSmsSettings: adminProcedure
+    .input(z.object({
+      provider: z.enum(["twilio", "vonage"]),
+      accountSid: z.string().max(255),
+      authToken: z.string().max(512).optional(),
+      fromNumber: z.string().max(20),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const pairs: Array<{ key: string; value: string; sensitive: boolean }> = [
+        { key: "provider", value: input.provider, sensitive: false },
+        { key: "account_sid", value: input.accountSid, sensitive: false },
+        { key: "from_number", value: input.fromNumber, sensitive: false },
+      ];
+
+      if (input.authToken) {
+        pairs.push({ key: "auth_token", value: encrypt(input.authToken), sensitive: true });
+      }
+
+      for (const { key, value, sensitive } of pairs) {
+        const [existing] = await db.select().from(systemSettings)
+          .where(and(eq(systemSettings.category, "sms"), eq(systemSettings.key, key)))
+          .limit(1);
+
+        if (existing) {
+          await db.update(systemSettings)
+            .set({ value, isSensitive: sensitive, updatedBy: ctx.user.id, updatedAt: new Date() })
+            .where(eq(systemSettings.id, existing.id));
+        } else {
+          await db.insert(systemSettings).values({
+            category: "sms",
+            key,
+            value,
+            isSensitive: sensitive,
+            updatedBy: ctx.user.id,
+          });
+        }
+      }
+
+      const { clearSmsCache } = await import("../services/smsService");
+      clearSmsCache();
+
+      return { success: true };
+    }),
+
+  testSms: adminProcedure
+    .input(z.object({ testNumber: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const { testSmsConnection } = await import("../services/smsService");
+      const db = await getDb();
+      if (!db) return { success: false, message: "Database not available" };
+
+      const settings = await db.select().from(systemSettings)
+        .where(eq(systemSettings.category, "sms"));
+
+      const map: Record<string, string | null> = {};
+      for (const s of settings) {
+        if (s.isSensitive && s.value) {
+          try { map[s.key] = decrypt(s.value); } catch { map[s.key] = s.value; }
+        } else {
+          map[s.key] = s.value;
+        }
+      }
+
+      if (!map.provider || !map.account_sid || !map.auth_token || !map.from_number) {
+        return { success: false, message: "SMS not fully configured" };
+      }
+
+      return testSmsConnection({
+        provider: map.provider,
+        accountSid: map.account_sid,
+        authToken: map.auth_token,
+        fromNumber: map.from_number,
+      }, input.testNumber);
+    }),
+
+  // ============================================================
+  // Two-Factor Authentication Settings
+  // ============================================================
+
+  getTwoFaSettings: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { enabled: true, enforced: false, issuer: "SmartSpec Pro", backupCodesCount: 10 };
+
+    const settings = await db.select().from(systemSettings)
+      .where(eq(systemSettings.category, "2fa"));
+
+    const map: Record<string, string | null> = {};
+    for (const s of settings) {
+      map[s.key] = s.value;
+    }
+
+    return {
+      enabled: map.enabled !== "false", // default true
+      enforced: map.enforced === "true", // default false
+      issuer: map.issuer || "SmartSpec Pro",
+      backupCodesCount: parseInt(map.backup_codes_count || "10", 10),
+    };
+  }),
+
+  updateTwoFaSettings: adminProcedure
+    .input(z.object({
+      enabled: z.boolean(),
+      enforced: z.boolean(),
+      issuer: z.string().min(1).max(255),
+      backupCodesCount: z.number().min(5).max(50),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const pairs: Array<{ key: string; value: string; sensitive: boolean }> = [
+        { key: "enabled", value: String(input.enabled), sensitive: false },
+        { key: "enforced", value: String(input.enforced), sensitive: false },
+        { key: "issuer", value: input.issuer, sensitive: false },
+        { key: "backup_codes_count", value: String(input.backupCodesCount), sensitive: false },
+      ];
+
+      for (const { key, value } of pairs) {
+        const [existing] = await db.select().from(systemSettings)
+          .where(and(eq(systemSettings.category, "2fa"), eq(systemSettings.key, key)))
+          .limit(1);
+
+        if (existing) {
+          await db.update(systemSettings)
+            .set({ value, updatedBy: ctx.user.id, updatedAt: new Date() })
+            .where(eq(systemSettings.id, existing.id));
+        } else {
+          await db.insert(systemSettings).values({
+            category: "2fa",
+            key,
+            value,
+            isSensitive: false,
+            updatedBy: ctx.user.id,
+          });
+        }
+      }
+
+      return { success: true };
+    }),
 });

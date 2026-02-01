@@ -43,6 +43,9 @@ export interface ModelDefinition {
 
   /** Priority for selection (lower = higher priority) */
   priority?: number;
+
+  /** Provider-specific config (e.g., kieModelId, apiEndpoint) */
+  configJson?: Record<string, any>;
 }
 
 /**
@@ -211,6 +214,9 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
     voices: dbModel.voices || undefined,
     isEnabled: dbModel.isEnabled,
     priority: dbModel.priority,
+    configJson: typeof dbModel.configJson === "string"
+      ? (() => { try { return JSON.parse(dbModel.configJson); } catch { return undefined; } })()
+      : dbModel.configJson || undefined,
   };
 }
 

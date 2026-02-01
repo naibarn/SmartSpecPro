@@ -11,7 +11,7 @@ name: Image Prompt Engineer
 version: 2.1
 type: agent-skill
 languages: en, th
-category: creative
+category: image_generation
 ---
 
 # Image Prompt Engineer (v2.1)

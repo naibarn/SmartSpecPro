@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { generateFingerprint } from '@/lib/fingerprint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +64,7 @@ const plans: Plan[] = [
 ];
 
 export default function Signup() {
+  const [, navigate] = useLocation();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('free');
 
@@ -86,21 +87,52 @@ export default function Signup() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
 
     if (!agreeTerms) {
       toast.error('Please agree to the terms and conditions');
       return;
     }
 
+    if (!isPasswordStrong(formData.password)) {
+      toast.error('Password must be 8+ characters with uppercase and number');
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch('/trpc/auth.register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          json: {
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            company: formData.company || undefined,
+            plan: selectedPlan,
+          },
+        }),
+        credentials: 'include',
+      });
 
-    toast.success('Account created successfully! Please check your email to verify.');
-    setIsLoading(false);
+      const data = await response.json();
+      const result = data.result?.data?.json;
+      const errorMsg = data.error?.json?.message;
+
+      if (result?.success) {
+        toast.success('Account created! Please verify your email.');
+        navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+      } else {
+        toast.error(errorMsg || 'Registration failed');
+      }
+    } catch (error) {
+      toast.error('Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSocialSignup = async (provider: string) => {

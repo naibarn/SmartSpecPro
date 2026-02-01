@@ -200,9 +200,12 @@ class KieAIProvider:
 
             # Kie.ai uses 'state' field with values: success, fail, processing
             # Also check nested data.state for wrapped responses
+            nested = status_response.get("data") or {}
+            if not isinstance(nested, dict):
+                nested = {}
             task_state = (
                 status_response.get("state", "").lower() or
-                status_response.get("data", {}).get("state", "").lower() or
+                nested.get("state", "").lower() or
                 status_response.get("status", "").lower()  # fallback
             )
 
@@ -214,7 +217,7 @@ class KieAIProvider:
             elif task_state == "fail":
                 fail_msg = (
                     status_response.get("failMsg") or
-                    status_response.get("data", {}).get("failMsg") or
+                    nested.get("failMsg") or
                     status_response.get("error") or
                     "Unknown error"
                 )
@@ -253,8 +256,16 @@ class KieAIProvider:
 
         data = []
 
-        # Log full response for debugging
-        logger.debug("kie_ai_raw_response", task_id=task_id, response=kie_response)
+        # Log full response for debugging credit extraction — write to file for easy access
+        logger.info("kie_ai_raw_response_keys", task_id=task_id,
+                     top_keys=list(kie_response.keys()) if isinstance(kie_response, dict) else "not_dict",
+                     data_keys=list((kie_response.get("data") or {}).keys()) if isinstance(kie_response.get("data"), dict) else str(type(kie_response.get("data"))))
+        try:
+            import json as _json
+            with open("/tmp/kie_ai_last_response.json", "w") as f:
+                _json.dump(kie_response, f, indent=2, default=str)
+        except Exception:
+            pass
 
         # Try to get data from various locations in the response
         # 1. Check nested data.resultJson.resultUrls (Kie.ai recordInfo format)
@@ -369,10 +380,28 @@ class KieAIProvider:
                           data_keys=list(nested_data.keys()) if isinstance(nested_data, dict) else "not_dict",
                           response_preview=str(kie_response)[:500])
 
+        # Extract creditsConsumed from Kie.ai response for actual cost reconciliation
+        # Check both top-level response and nested data dict
+        kie_credits_consumed = None
+        search_dicts = [d for d in [kie_response, nested_data] if isinstance(d, dict)]
+        for search_dict in search_dicts:
+            if kie_credits_consumed is not None:
+                break
+            for key in ("creditsConsumed", "credits_consumed", "credits", "cost", "creditCost"):
+                val = search_dict.get(key)
+                if val is not None:
+                    try:
+                        kie_credits_consumed = float(val)
+                        logger.info("kie_ai_credits_consumed", task_id=task_id, field=key, source="top" if search_dict is kie_response else "data", value=kie_credits_consumed)
+                    except (ValueError, TypeError):
+                        pass
+                    break
+
         return {
             "id": task_id,
             "created": int(time.time()),
             "data": data,
+            "kie_credits_consumed": kie_credits_consumed,
             "raw_response": kie_response  # Keep original for debugging
         }
 
@@ -467,8 +496,8 @@ class KieAIProvider:
         task_id = (
             result.get("taskId") or
             result.get("task_id") or
-            result.get("data", {}).get("taskId") or
-            result.get("data", {}).get("task_id")
+            (result.get("data") or {}).get("taskId") or
+            (result.get("data") or {}).get("task_id")
         )
 
         logger.info("kie_ai_task_created", task_id=task_id, has_callback=bool(callback_url), raw_result=result)
@@ -564,8 +593,8 @@ class KieAIProvider:
         task_id = (
             result.get("taskId") or
             result.get("task_id") or
-            result.get("data", {}).get("taskId") or
-            result.get("data", {}).get("task_id")
+            (result.get("data") or {}).get("taskId") or
+            (result.get("data") or {}).get("task_id")
         )
 
         if not callback_url and task_id:
@@ -622,8 +651,8 @@ class KieAIProvider:
         task_id = (
             result.get("taskId") or
             result.get("task_id") or
-            result.get("data", {}).get("taskId") or
-            result.get("data", {}).get("task_id")
+            (result.get("data") or {}).get("taskId") or
+            (result.get("data") or {}).get("task_id")
         )
 
         if not callback_url and task_id:

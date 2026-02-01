@@ -212,7 +212,7 @@ export function ChatSidebar({
   // ==================== TRASH VIEW ====================
   if (showTrash) {
     return (
-      <div className="flex h-full flex-col border-r bg-muted/30">
+      <div className="flex h-full flex-col border-r bg-background">
         <div className="flex items-center justify-between border-b p-3">
           <div className="flex items-center gap-2">
             <Button
@@ -323,7 +323,7 @@ export function ChatSidebar({
 
   // ==================== NORMAL VIEW ====================
   return (
-    <div className="flex h-full flex-col border-r bg-muted/30">
+    <div className="flex h-full flex-col border-r bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b p-3">
         {selectMode ? (

@@ -13,6 +13,7 @@ import { skills as skillsTable } from "../../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { getModelIdsByType, getDefaultModel } from "./modelRegistry";
 import fs from "fs";
+import crypto from "crypto";
 import path from "path";
 import yaml from "js-yaml";
 
@@ -335,9 +336,9 @@ export async function autoSyncSkillsFromFolder(): Promise<{
     return result;
   }
 
-  // Get existing skills from database
-  const existingSkills = await db.select({ slug: skillsTable.slug }).from(skillsTable);
-  const existingSlugs = new Set(existingSkills.map(s => s.slug));
+  // Get existing skills from database (with contentHash for change detection)
+  const existingSkills = await db.select({ slug: skillsTable.slug, contentHash: skillsTable.contentHash }).from(skillsTable);
+  const existingSlugs = new Map(existingSkills.map(s => [s.slug, s.contentHash]));
 
   // Scan folder for skills
   const folderSkills = scanSkillsFolder();
@@ -371,13 +372,29 @@ export async function autoSyncSkillsFromFolder(): Promise<{
       };
 
       if (existingSlugs.has(folder.slug)) {
-        // Update existing skill with latest content from folder
-        await db.update(skillsTable).set(skillData).where(eq(skillsTable.slug, folder.slug));
-        result.synced.push(folder.slug);
-        console.log(`[SkillRegistry] Updated skill from folder: ${folder.slug}`);
+        // Existing skill — only update content-related fields if content actually changed
+        // Never overwrite admin-customized fields (name, description, category, icon, tags, etc.)
+        const rawContent = fs.readFileSync(folder.skillMdPath, "utf-8");
+        const newHash = crypto.createHash("md5").update(rawContent).digest("hex");
+        const oldHash = existingSlugs.get(folder.slug);
+
+        if (oldHash !== newHash) {
+          await db.update(skillsTable).set({
+            skillContent: parsed.content,
+            systemPrompt: parsed.content,
+            contentHash: newHash,
+            version: metadata.version || undefined,
+          }).where(eq(skillsTable.slug, folder.slug));
+          result.synced.push(folder.slug);
+          console.log(`[SkillRegistry] Updated skill content (hash changed): ${folder.slug}`);
+        } else {
+          result.skipped.push(folder.slug);
+        }
       } else {
         // Insert new skill
-        await db.insert(skillsTable).values({ slug: folder.slug, ...skillData });
+        const rawContent = fs.readFileSync(folder.skillMdPath, "utf-8");
+        const newHash = crypto.createHash("md5").update(rawContent).digest("hex");
+        await db.insert(skillsTable).values({ slug: folder.slug, ...skillData, systemPrompt: parsed.content, contentHash: newHash });
         result.synced.push(folder.slug);
         console.log(`[SkillRegistry] Auto-synced new skill: ${folder.slug}`);
       }

@@ -11,7 +11,7 @@ import {
   AudioModel,
   MediaGenerationResponse,
 } from "./mediaGenerationService";
-import { deductCredits, hasEnoughCredits } from "./creditService";
+import { hasEnoughCredits } from "./creditService";
 import {
   getModelById,
   getDefaultModel,
@@ -53,10 +53,15 @@ export interface SkillExecutionParams {
   numImages?: number;
   duration?: number;
   voice?: string;
+  resolution?: string;
   /** Reference images for image/video generation (1-5 URLs) */
   referenceImageUrls?: string[];
   /** Reference style URL for style transfer */
   referenceStyleUrl?: string;
+  /** Per-model API config from configJson (endpoint, kieModelId, etc.) */
+  apiConfig?: Record<string, string>;
+  /** Dynamic input field values from configJson.inputFields */
+  extraParams?: Record<string, any>;
 }
 
 export interface SkillExecutionResult {
@@ -152,30 +157,33 @@ async function executeImageGeneration(
   }
 
   try {
-    // Generate image
+    // Build apiConfig from params (client already built from configJson) or from model's configJson
+    const apiConfig: Record<string, string> = params.apiConfig ? { ...params.apiConfig } : {};
+    const configJson = modelMeta.configJson;
+    if (configJson && !apiConfig.kie_model_id) {
+      if (configJson.apiEndpoint) apiConfig.endpoint = configJson.apiEndpoint;
+      if (configJson.apiPayloadFormat) apiConfig.payload_format = configJson.apiPayloadFormat;
+      if (configJson.kieModelId) apiConfig.kie_model_id = configJson.kieModelId;
+    }
+
+    // Generate image — forward all params including extraParams from configJson.inputFields
     const result = await mediaGenerationService.generateImage(
       {
         prompt: params.prompt,
         model,
         aspectRatio: params.aspectRatio,
         numImages: params.numImages,
+        resolution: params.resolution,
         referenceImageUrls: params.referenceImageUrls,
         referenceStyleUrl: params.referenceStyleUrl,
-      },
+        ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+        ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+      } as any,
       userToken
     );
 
-    // Deduct credits
-    await deductCredits({
-      userId,
-      amount: result.creditsUsed || creditCost,
-      description: `Image generation: ${model}`,
-      metadata: {
-        model,
-        skillId: skill.id,
-        prompt: params.prompt.slice(0, 100),
-      },
-    });
+    // Credits already deducted by Python backend via gateway_unified._deduct_credits()
+    // Do NOT deduct again here to avoid double-charging
 
     // Extract URLs
     const urls = result.data?.map((d) => d.url).filter((u): u is string => !!u) || [];
@@ -244,15 +252,27 @@ async function executeVideoGeneration(
   }
 
   try {
-    // Generate video asynchronously
+    // Build apiConfig from params or model's configJson
+    const apiConfig: Record<string, string> = params.apiConfig ? { ...params.apiConfig } : {};
+    const configJson = modelMeta.configJson;
+    if (configJson && !apiConfig.kie_model_id) {
+      if (configJson.apiEndpoint) apiConfig.endpoint = configJson.apiEndpoint;
+      if (configJson.apiPayloadFormat) apiConfig.payload_format = configJson.apiPayloadFormat;
+      if (configJson.kieModelId) apiConfig.kie_model_id = configJson.kieModelId;
+    }
+
+    // Generate video asynchronously — forward all params including extraParams
     const task = await mediaGenerationService.generateVideoAsync(
       {
         prompt: params.prompt,
         model,
         duration,
         aspectRatio: params.aspectRatio,
+        resolution: params.resolution,
         referenceImageUrls: params.referenceImageUrls,
-      },
+        ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+        ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+      } as any,
       userToken
     );
 
@@ -318,20 +338,13 @@ export async function executeAudioGeneration(
         text: params.prompt,
         model,
         voice: params.voice,
-      },
+        ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+      } as any,
       userToken
     );
 
-    // Deduct credits
-    await deductCredits({
-      userId,
-      amount: result.creditsUsed || audioCreditCost,
-      description: `Audio generation: ${model}`,
-      metadata: {
-        model,
-        textLength: params.prompt.length,
-      },
-    });
+    // Credits already deducted by Python backend via gateway_unified._deduct_credits()
+    // Do NOT deduct again here to avoid double-charging
 
     // Extract URL
     const url = result.data?.[0]?.url;

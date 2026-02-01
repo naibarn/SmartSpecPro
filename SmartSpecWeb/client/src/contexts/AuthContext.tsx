@@ -143,34 +143,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (signupData: SignupData) => {
     setIsLoading(true);
     try {
-      // For signup, use tRPC login (which auto-creates users)
-      // The login procedure creates users if they don't exist
-      const response = await fetch('/trpc/auth.login', {
+      const response = await fetch('/trpc/auth.register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          json: { email: signupData.email, password: signupData.password }
+          json: {
+            name: signupData.name,
+            email: signupData.email,
+            password: signupData.password,
+            company: signupData.company || undefined,
+            plan: signupData.plan,
+          },
         }),
         credentials: 'include',
       });
 
       const data = await response.json();
       const result = data.result?.data?.json;
+      const errorMsg = data.error?.json?.message;
 
-      if (result?.success && result.user) {
-        setUser({
-          id: String(result.user.id),
-          email: result.user.email || signupData.email,
-          name: signupData.name || result.user.name || signupData.email.split('@')[0],
-          company: signupData.company,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${signupData.email}`,
-          plan: signupData.plan,
-          credits: signupData.plan === 'pro' ? 500 : 100,
-        });
+      if (result?.success) {
+        // Don't set user — must verify email first
+        // Caller should redirect to /verify-email
+        return;
       } else {
-        throw new Error(result?.message || 'Signup failed');
+        throw new Error(errorMsg || 'Registration failed');
       }
     } catch (error) {
       throw error;

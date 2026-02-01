@@ -74,6 +74,17 @@ export const users = pgTable("users", {
     translationModel?: string;
   }>().default({}),
 
+  // Recovery contacts
+  backupEmail: varchar("backupEmail", { length: 320 }),
+  backupEmailVerified: boolean("backupEmailVerified").default(false).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  phoneVerified: boolean("phoneVerified").default(false).notNull(),
+
+  // Two-Factor Authentication
+  twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
+  twoFactorSecret: text("twoFactorSecret"), // encrypted TOTP secret (base32)
+  recoveryCodes: json("recoveryCodes").$type<string[]>().default([]), // bcrypt-hashed one-time codes
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
@@ -1123,6 +1134,29 @@ export const skillCategoryEnum = pgEnum("skill_category", [
 ]);
 
 /**
+ * Skill Repositories - External Git repos containing skill collections
+ * Admin can add repos, fetch/upgrade skills from them
+ */
+export const skillRepositories = pgTable("skill_repositories", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  gitUrl: varchar("git_url", { length: 500 }).notNull(),
+  branch: varchar("branch", { length: 100 }).default("main"),
+  formatType: varchar("format_type", { length: 50 }).default("auto"),
+  skillsSubdir: varchar("skills_subdir", { length: 200 }).default("skills"),
+  lastFetchedAt: timestamp("last_fetched_at", { withTimezone: true }),
+  lastCommitHash: varchar("last_commit_hash", { length: 64 }),
+  skillCount: integer("skill_count").default(0),
+  status: varchar("status", { length: 50 }).default("pending").notNull(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
+export type SkillRepository = typeof skillRepositories.$inferSelect;
+export type InsertSkillRepository = typeof skillRepositories.$inferInsert;
+
+/**
  * Skills - Centralized skill registry for Claude/OpenCode compatibility
  * Each skill maps to a folder structure: skills/<skill_slug>/
  * Contains skill.md, python/, js/, tests/ directories
@@ -1169,6 +1203,9 @@ export const skills = pgTable("skills", {
   /** Whether skill is enabled by default for new conversations */
   enabledByDefault: boolean("enabledByDefault").default(true).notNull(),
 
+  /** Whether skill is visible by default for new users (admin-controlled) */
+  visibleByDefault: boolean("visibleByDefault").default(true).notNull(),
+
   /** Credit cost multiplier (1.0 = standard rate) */
   creditMultiplier: numeric("creditMultiplier", { precision: 5, scale: 2 }).default("1.0"),
 
@@ -1186,6 +1223,9 @@ export const skills = pgTable("skills", {
 
   /** Skill content/instructions from skill.md (cached) */
   skillContent: text("skillContent"),
+
+  /** Public-facing marketplace documentation (curated, safe to display) */
+  marketplaceContent: text("marketplaceContent"),
 
   /** Knowledgebase content (for imported Custom GPTs) */
   knowledgebase: text("knowledgebase"),
@@ -1206,6 +1246,15 @@ export const skills = pgTable("skills", {
 
   /** Original ZIP file path (if imported from ZIP) */
   importedFromZip: varchar("importedFromZip", { length: 512 }),
+
+  /** Repository that this skill was fetched from */
+  repositoryId: integer("repositoryId").references(() => skillRepositories.id),
+
+  /** Original folder name in the repository (e.g. "react-developer") */
+  repositorySlug: varchar("repositorySlug", { length: 200 }),
+
+  /** MD5 hash of skill.md content for sync/upgrade detection */
+  contentHash: varchar("contentHash", { length: 64 }),
 
   /** User who created/imported this skill */
   createdBy: integer("createdBy").references(() => users.id),
@@ -1243,6 +1292,25 @@ export const skillComments = pgTable("skill_comments", {
 });
 
 export type SkillComment = typeof skillComments.$inferSelect;
+
+/**
+ * User Skill Visibility — per-user skill visibility preferences
+ * Controls which skills appear in a user's chat panel and slash commands
+ */
+export const userSkillVisibility = pgTable("user_skill_visibility", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  skillId: integer("skillId").notNull().references(() => skills.id, { onDelete: "cascade" }),
+  visible: boolean("visible").default(true).notNull(),
+  autoTriggerEnabled: boolean("autoTriggerEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_skill_visibility_unique").on(t.userId, t.skillId),
+]);
+
+export type UserSkillVisibility = typeof userSkillVisibility.$inferSelect;
+export type InsertUserSkillVisibility = typeof userSkillVisibility.$inferInsert;
 
 /**
  * Storage Provider Type Enum
@@ -1383,7 +1451,7 @@ export const invoiceConfig = pgTable("invoice_config", {
   id: serial("id").primaryKey(),
 
   /** Tenant ID (null for global default) */
-  tenantId: integer("tenantId").references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
 
   /** Company name on invoice */
   companyName: varchar("companyName", { length: 256 }),
@@ -1703,5 +1771,17 @@ export const blockedPatterns = pgTable("blocked_patterns", {
   reason: text("reason"),
   createdBy: integer("createdBy").references(() => users.id),
   isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Email verification tokens for signup flow
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 320 }).notNull(),
+  code: varchar("code", { length: 6 }).notNull(),
+  channel: varchar("channel", { length: 20 }).default("email").notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+  usedAt: timestamp("usedAt", { withTimezone: true }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });

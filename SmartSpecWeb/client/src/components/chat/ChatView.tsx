@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { SlashCommandMenu } from "./SlashCommandMenu";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -124,6 +125,8 @@ interface ChatViewProps {
 export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [slashFilter, setSlashFilter] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
@@ -1649,19 +1652,40 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             className="hidden"
             onChange={(e) => onFiles(e.target.files)}
           />
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="min-h-[44px] flex-1 resize-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                onSend();
-              }
-            }}
-            disabled={isStreaming}
-          />
+          <div className="relative flex-1">
+            <SlashCommandMenu
+              filter={slashFilter}
+              visible={showSlashMenu}
+              onSelect={(slug) => {
+                setInput(`/${slug} `);
+                setShowSlashMenu(false);
+              }}
+              onClose={() => setShowSlashMenu(false)}
+            />
+            <Textarea
+              value={input}
+              onChange={(e) => {
+                const val = e.target.value;
+                setInput(val);
+                if (val.startsWith("/") && !val.includes(" ")) {
+                  setShowSlashMenu(true);
+                  setSlashFilter(val.slice(1));
+                } else {
+                  setShowSlashMenu(false);
+                }
+              }}
+              placeholder="Type a message or / for skills..."
+              className="min-h-[44px] resize-none"
+              onKeyDown={(e) => {
+                if (showSlashMenu) return; // Let SlashCommandMenu handle keys
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  onSend();
+                }
+              }}
+              disabled={isStreaming}
+            />
+          </div>
           <Button
             variant={isRecording ? "destructive" : "outline"}
             size="icon"

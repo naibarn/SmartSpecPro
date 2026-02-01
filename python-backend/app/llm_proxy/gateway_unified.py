@@ -324,7 +324,13 @@ class LLMGateway:
                 data=result_data,
             )
 
-            actual_cost = estimated_cost # For now, assume estimated is actual
+            # Use actual Kie.ai credits if available (Kie 1 credit = $0.005)
+            kie_credits = image_data.get("kie_credits_consumed")
+            if kie_credits is not None and kie_credits > 0:
+                actual_cost = Decimal(str(kie_credits)) * Decimal("0.005")
+                logger.info("image_actual_cost_from_kie", kie_credits=kie_credits, actual_cost_usd=float(actual_cost), estimated_cost_usd=float(estimated_cost))
+            else:
+                actual_cost = estimated_cost
             transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
             response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
@@ -376,7 +382,13 @@ class LLMGateway:
                 data=video_data.get("data", []),
             )
 
-            actual_cost = estimated_cost
+            # Use actual Kie.ai credits if available (Kie 1 credit = $0.005)
+            kie_credits = video_data.get("kie_credits_consumed")
+            if kie_credits is not None and kie_credits > 0:
+                actual_cost = Decimal(str(kie_credits)) * Decimal("0.005")
+                logger.info("video_actual_cost_from_kie", kie_credits=kie_credits, actual_cost_usd=float(actual_cost), estimated_cost_usd=float(estimated_cost))
+            else:
+                actual_cost = estimated_cost
             transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
             response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
@@ -428,7 +440,13 @@ class LLMGateway:
                 data=audio_data.get("data", []),
             )
 
-            actual_cost = estimated_cost
+            # Use actual Kie.ai credits if available (Kie 1 credit = $0.005)
+            kie_credits = audio_data.get("kie_credits_consumed")
+            if kie_credits is not None and kie_credits > 0:
+                actual_cost = Decimal(str(kie_credits)) * Decimal("0.005")
+                logger.info("audio_actual_cost_from_kie", kie_credits=kie_credits, actual_cost_usd=float(actual_cost), estimated_cost_usd=float(estimated_cost))
+            else:
+                actual_cost = estimated_cost
             transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
             response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
@@ -453,7 +471,65 @@ class LLMGateway:
             local_cost = Decimal("0.005")
         else:
             raise ValueError("Unknown request type for cost estimation")
-        
+
+        # For media requests, look up creditCost from media_models table
+        # Uses pricingTiers from configJson when available (resolution/duration-based pricing)
+        if not isinstance(request, LLMRequest):
+            try:
+                from sqlalchemy import text
+                import json as _json
+                result = await self.db.execute(
+                    text('SELECT "creditCost", "configJson" FROM media_models WHERE "modelId" = :model_id LIMIT 1'),
+                    {"model_id": request.model}
+                )
+                row = result.fetchone()
+                if row and row[0]:
+                    credit_cost = row[0]  # default flat cost
+                    config_json = row[1]
+
+                    # Try to use pricingTiers for more accurate cost
+                    if config_json:
+                        try:
+                            config = _json.loads(config_json) if isinstance(config_json, str) else config_json
+                            pricing_tiers = config.get("pricingTiers") if isinstance(config, dict) else None
+                            if pricing_tiers and isinstance(pricing_tiers, dict):
+                                # Build tier key from request parameters
+                                resolution = getattr(request, "resolution", None)
+                                duration = getattr(request, "duration", None)
+                                formula = config.get("pricingFormula", "flat")
+
+                                tier_key = None
+                                if formula == "flat" and resolution and resolution in pricing_tiers:
+                                    tier_key = resolution
+                                elif formula == "per_duration" and duration:
+                                    tier_key = f"{duration}s"
+                                elif formula == "matrix":
+                                    # Build composite key from pricing-affecting fields
+                                    parts = []
+                                    for field in sorted(config.get("inputFields", []), key=lambda f: {"resolution": 0, "quality": 1, "duration": 2}.get(f.get("key", ""), 99)):
+                                        if field.get("affectsPricing"):
+                                            val = getattr(request, field["key"], None) or field.get("default")
+                                            if val is not None:
+                                                s = str(val)
+                                                if field["key"] == "duration" and not s.endswith("s"):
+                                                    s += "s"
+                                                parts.append(s)
+                                    if parts:
+                                        tier_key = "-".join(parts)
+
+                                if tier_key and tier_key in pricing_tiers:
+                                    credit_cost = pricing_tiers[tier_key]
+                                    logger.info("estimate_cost_from_pricing_tier", model=request.model, tier_key=tier_key, credit_cost=credit_cost)
+                        except Exception as e:
+                            logger.debug(f"Could not parse pricingTiers: {e}")
+
+                    # Convert platform credits to USD (1000 credits = $1)
+                    db_cost = Decimal(str(credit_cost)) / Decimal("1000")
+                    logger.info("estimate_cost_from_db", model=request.model, credit_cost=credit_cost, usd_cost=float(db_cost))
+                    return db_cost
+            except Exception as e:
+                logger.debug(f"Could not look up model cost from DB: {e}")
+
         try:
             gateway_cost = await self.web_gateway.estimate_cost(
                 request_type=request_type,
@@ -463,7 +539,7 @@ class LLMGateway:
                 return Decimal(str(gateway_cost))
         except Exception as e:
             logger.warning(f"Failed to get cost from gateway: {e}, using local estimate")
-        
+
         return local_cost
 
     async def _deduct_credits(

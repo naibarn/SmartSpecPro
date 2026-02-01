@@ -4,21 +4,32 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, httpLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
+import { toast } from "sonner";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
 const queryClient = new QueryClient();
 
+let isRedirectingToLogin = false;
+
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
+  if (isRedirectingToLogin) return;
 
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  isRedirectingToLogin = true;
+  toast.error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่", {
+    description: "Session expired. Redirecting to login...",
+    duration: 3000,
+  });
+
+  setTimeout(() => {
+    window.location.href = getLoginUrl();
+  }, 1500);
 };
 
 queryClient.getQueryCache().subscribe(event => {

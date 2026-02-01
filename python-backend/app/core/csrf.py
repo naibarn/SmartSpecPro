@@ -221,6 +221,12 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/webhooks",  # Webhooks typically use HMAC signatures instead
     }
 
+    # Path prefixes exempt from CSRF (Bearer token auth, server-to-server)
+    EXEMPT_PREFIXES = (
+        "/api/v1/",        # All v1 API endpoints use Bearer token auth
+        "/api/webhooks/",
+    )
+
     async def dispatch(self, request: Request, call_next):
         """
         Process request and check CSRF token for protected methods.
@@ -233,7 +239,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             Response object
         """
         # Check if path is exempt
-        if request.url.path in self.EXEMPT_PATHS or request.url.path.startswith("/api/webhooks/"):
+        if request.url.path in self.EXEMPT_PATHS or request.url.path.startswith(self.EXEMPT_PREFIXES):
             return await call_next(request)
 
         # Safe methods don't require CSRF protection

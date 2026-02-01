@@ -35,6 +35,7 @@ import { hasEnoughCredits, calculateCreditsForLLM } from "../services/creditServ
 import { TRPCError } from "@trpc/server";
 import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills } from "../services/skillRegistry";
 import { detectSkill, extractSkillParams, getSkillDetectionSummary } from "../services/skillDetector";
+import { getSlashCommands as _getSlashCommands } from "../services/userSkillService";
 import { executeSkill, estimateSkillCost, canAutoExecute } from "../services/skillExecutor";
 import { signBearerToken } from "../_core/tokens";
 import { skillDetectionLimiter, skillExecutionLimiter } from "../services/rateLimiter";
@@ -705,6 +706,13 @@ export const chatRouter = router({
   }),
 
   /**
+   * Get slash commands for current user (lightweight list of visible skills)
+   */
+  getSlashCommands: protectedProcedure.query(async ({ ctx }) => {
+    return _getSlashCommands(ctx.user.id);
+  }),
+
+  /**
    * Get a single skill by ID
    */
   getSkill: protectedProcedure
@@ -894,6 +902,10 @@ export const chatRouter = router({
         // Reference images support (1-5 images) - accept relative URLs like /uploads/...
         referenceImageUrls: z.array(z.string().min(1)).max(5).optional(),
         referenceStyleUrl: z.string().min(1).optional(),
+        // Dynamic fields from configJson.inputFields
+        resolution: z.string().max(10).optional(),
+        apiConfig: z.record(z.string()).optional(),
+        extraParams: z.record(z.any()).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -944,6 +956,9 @@ export const chatRouter = router({
           style: input.style,
           referenceImageUrls: input.referenceImageUrls,
           referenceStyleUrl: input.referenceStyleUrl,
+          resolution: input.resolution,
+          apiConfig: input.apiConfig,
+          extraParams: input.extraParams,
         },
         ctx.user.id,
         userToken

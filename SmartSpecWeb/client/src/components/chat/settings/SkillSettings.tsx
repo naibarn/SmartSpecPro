@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -34,8 +34,10 @@ import {
   Settings2,
   Zap,
   Info,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 const iconMap: Record<string, React.ElementType> = {
   image: Wand2,
@@ -53,15 +55,29 @@ interface SkillSettingsProps {
 }
 
 export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
+  const [, navigate] = useLocation();
   const [detectionMode, setDetectionMode] = useState<DetectionMode>("auto");
   const [autoDetect, setAutoDetect] = useState(true);
   const [skillStates, setSkillStates] = useState<Record<string, boolean>>({});
-  const [hasChanges, setHasChanges] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const utils = trpc.useUtils();
 
-  // Fetch available skills
-  const { data: skills, isLoading: loadingSkills } = trpc.chat.getAvailableSkills.useQuery();
+  // Fetch user's visible skills only
+  const { data: visibleData, isLoading: loadingSkills } = trpc.skills.getUserVisibleSkills.useQuery({ limit: 100 });
+  const skills = visibleData?.skills?.map((s) => ({
+    id: String(s.id),
+    name: s.name,
+    description: s.description ?? "",
+    icon: s.icon ?? "sparkles",
+    type: s.category,
+    models: s.availableModels ?? [],
+    defaultModel: s.defaultModel,
+    enabledByDefault: s.enabledByDefault,
+    creditMultiplier: Number(s.creditMultiplier ?? 1),
+    priority: s.priority,
+  }));
 
   // Fetch conversation skill preferences
   const { data: preferences, isLoading: loadingPreferences } = trpc.chat.getSkillPreferences.useQuery({
@@ -82,7 +98,6 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
   const batchUpdateMutation = trpc.chat.batchUpdateSkillPreferences.useMutation({
     onSuccess: () => {
       utils.chat.getSkillPreferences.invalidate({ conversationId });
-      setHasChanges(false);
     },
   });
 
@@ -115,46 +130,59 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
 
       setSkillStates(states);
     }
-  }, [skills, preferences]);
+  }, [visibleData, preferences]);
+
+  // Auto-save function
+  const autoSave = useCallback(async (
+    newAutoDetect: boolean,
+    newDetectionMode: DetectionMode,
+    newSkillStates: Record<string, boolean>,
+  ) => {
+    setSaveStatus("saving");
+    try {
+      await updateConversationMutation.mutateAsync({
+        id: conversationId,
+        skillSettings: {
+          autoDetect: newAutoDetect,
+          detectionMode: newDetectionMode,
+          enabledSkills: Object.entries(newSkillStates)
+            .filter(([_, enabled]) => enabled)
+            .map(([id]) => id),
+        },
+      });
+
+      const prefsToUpdate = Object.entries(newSkillStates).map(([skillId, enabled]) => ({
+        skillId,
+        enabled,
+      }));
+
+      await batchUpdateMutation.mutateAsync({
+        conversationId,
+        preferences: prefsToUpdate,
+      });
+
+      setSaveStatus("saved");
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => setSaveStatus("idle"), 1500);
+    } catch {
+      setSaveStatus("idle");
+    }
+  }, [conversationId, updateConversationMutation, batchUpdateMutation]);
 
   const handleSkillToggle = (skillId: string, enabled: boolean) => {
-    setSkillStates((prev) => ({ ...prev, [skillId]: enabled }));
-    setHasChanges(true);
+    const newStates = { ...skillStates, [skillId]: enabled };
+    setSkillStates(newStates);
+    autoSave(autoDetect, detectionMode, newStates);
   };
 
   const handleAutoDetectToggle = (enabled: boolean) => {
     setAutoDetect(enabled);
-    setHasChanges(true);
+    autoSave(enabled, detectionMode, skillStates);
   };
 
   const handleDetectionModeChange = (mode: DetectionMode) => {
     setDetectionMode(mode);
-    setHasChanges(true);
-  };
-
-  const handleSave = async () => {
-    // Update conversation skill settings
-    await updateConversationMutation.mutateAsync({
-      id: conversationId,
-      skillSettings: {
-        autoDetect,
-        detectionMode,
-        enabledSkills: Object.entries(skillStates)
-          .filter(([_, enabled]) => enabled)
-          .map(([id]) => id),
-      },
-    });
-
-    // Update individual skill preferences
-    const prefsToUpdate = Object.entries(skillStates).map(([skillId, enabled]) => ({
-      skillId,
-      enabled,
-    }));
-
-    await batchUpdateMutation.mutateAsync({
-      conversationId,
-      preferences: prefsToUpdate,
-    });
+    autoSave(autoDetect, mode, skillStates);
   };
 
   const handleResetDefaults = () => {
@@ -167,11 +195,11 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
     setSkillStates(defaultStates);
     setAutoDetect(true);
     setDetectionMode("auto");
-    setHasChanges(true);
+    autoSave(true, "auto", defaultStates);
   };
 
   const isLoading = loadingSkills || loadingPreferences;
-  const isSaving = updateConversationMutation.isPending || batchUpdateMutation.isPending;
+  const isSaving = saveStatus === "saving";
 
   return (
     <Card className="h-full flex flex-col">
@@ -253,14 +281,23 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
               {/* Skills list */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Available Skills</label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleResetDefaults}
-                  >
-                    Reset to defaults
-                  </Button>
+                  <label className="text-sm font-medium">Visible Skills</label>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate("/settings/skills")}
+                    >
+                      Browse all
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResetDefaults}
+                    >
+                      Reset
+                    </Button>
+                  </div>
                 </div>
 
                 {skills?.map((skill) => {
@@ -341,17 +378,21 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
         </ScrollArea>
       </CardContent>
 
-      {/* Save button */}
-      {hasChanges && (
-        <div className="border-t p-4">
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full"
-          >
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
+      {/* Auto-save status */}
+      {saveStatus !== "idle" && (
+        <div className="border-t px-4 py-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          {saveStatus === "saving" && (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Saving...</span>
+            </>
+          )}
+          {saveStatus === "saved" && (
+            <>
+              <Check className="h-3 w-3 text-green-500" />
+              <span className="text-green-600">Saved</span>
+            </>
+          )}
         </div>
       )}
     </Card>

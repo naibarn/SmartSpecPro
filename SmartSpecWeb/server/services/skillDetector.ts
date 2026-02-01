@@ -9,6 +9,7 @@ import {
   SkillDefinition,
 } from "./skillRegistry";
 import { getSkillPreferences } from "./chatService";
+import { getUserVisibleSkillsWithAutoTrigger } from "./userSkillService";
 import {
   detectModelFromMessage,
   getDefaultModel,
@@ -44,7 +45,8 @@ interface SkillPreference {
 export async function detectSkill(
   message: string,
   conversationId?: number,
-  skillSettings?: SkillSettings | null
+  skillSettings?: SkillSettings | null,
+  userId?: number
 ): Promise<SkillDetectionResult> {
   const noMatch: SkillDetectionResult = {
     detected: false,
@@ -64,6 +66,19 @@ export async function detectSkill(
 
   // Get conversation-specific preferences if available
   let enabledSkillIds: Set<string>;
+
+  // If userId provided, filter by user's visible skills with auto-trigger enabled
+  let userVisibleDbIds: Set<number> | null = null;
+  if (userId) {
+    try {
+      const visibleSkills = await getUserVisibleSkillsWithAutoTrigger(userId);
+      userVisibleDbIds = new Set(
+        visibleSkills.filter((s) => s.autoTriggerEnabled).map((s) => s.skillId)
+      );
+    } catch {
+      // Fall back to default behavior if service fails
+    }
+  }
 
   if (skillSettings?.enabledSkills && skillSettings.enabledSkills.length > 0) {
     enabledSkillIds = new Set(skillSettings.enabledSkills);
@@ -88,8 +103,13 @@ export async function detectSkill(
 
   // Check each skill's triggers
   for (const skill of skills) {
-    // Skip if skill is not enabled
+    // Skip if skill is not enabled in conversation
     if (!enabledSkillIds.has(skill.id)) {
+      continue;
+    }
+
+    // Skip if user has this skill not visible or auto-trigger disabled
+    if (userVisibleDbIds && skill.dbId != null && !userVisibleDbIds.has(skill.dbId)) {
       continue;
     }
 
@@ -178,6 +198,11 @@ export function isExplicitSkillRequest(message: string): {
   isExplicit: boolean;
   skillId: string | null;
 } {
+  if (!message.startsWith("/")) {
+    return { isExplicit: false, skillId: null };
+  }
+
+  // Legacy hardcoded patterns for backward compatibility
   const explicitPatterns = [
     { pattern: /^\/image\s+/i, skillId: "image-generation" },
     { pattern: /^\/video\s+/i, skillId: "video-generation" },
@@ -189,6 +214,18 @@ export function isExplicitSkillRequest(message: string): {
   for (const { pattern, skillId } of explicitPatterns) {
     if (pattern.test(message)) {
       return { isExplicit: true, skillId };
+    }
+  }
+
+  // Dynamic: match /<slug> against all available skills
+  const command = message.split(/\s+/)[0].slice(1).toLowerCase();
+  if (command) {
+    const skills = getAvailableSkills();
+    const matched = skills.find(
+      (s) => s.id === command || s.id.replace(/-/g, "") === command
+    );
+    if (matched) {
+      return { isExplicit: true, skillId: matched.id };
     }
   }
 
@@ -325,12 +362,25 @@ export function formatSkillDetection(result: SkillDetectionResult): string {
  * Get skill detection summary for a conversation
  */
 export async function getSkillDetectionSummary(
-  conversationId: number
+  conversationId: number,
+  userId?: number
 ): Promise<{
   enabledSkills: SkillDefinition[];
   disabledSkills: SkillDefinition[];
 }> {
-  const allSkills = getAvailableSkills();
+  let allSkills = getAvailableSkills();
+
+  // Filter by user visibility if userId provided
+  if (userId) {
+    try {
+      const { getUserVisibleSkillIds } = await import("./userSkillService");
+      const visibleIds = await getUserVisibleSkillIds(userId);
+      const visibleSet = new Set(visibleIds);
+      allSkills = allSkills.filter((s) => s.dbId != null && visibleSet.has(s.dbId));
+    } catch {
+      // Fall back to all skills
+    }
+  }
   const preferences = await getSkillPreferences(conversationId);
 
   const preferenceMap = new Map(

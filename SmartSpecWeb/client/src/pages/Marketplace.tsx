@@ -115,7 +115,7 @@ export default function Marketplace() {
   const skills = data?.skills || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
       <Navbar />
 
       {/* Hero */}
@@ -124,7 +124,7 @@ export default function Marketplace() {
           <div className="absolute top-20 left-1/4 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl" />
           <div className="absolute top-40 right-1/4 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl" />
         </div>
-        <div className="container mx-auto px-4 relative z-10">
+        <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div {...fadeInUp} className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 text-sm font-medium mb-6">
               <Lightbulb className="h-4 w-4" />
@@ -170,7 +170,7 @@ export default function Marketplace() {
       </section>
 
       {/* Skills Grid */}
-      <section className="container mx-auto px-4 pb-24">
+      <section className="px-4 sm:px-6 lg:px-8 pb-24">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
@@ -440,13 +440,18 @@ function SkillDetailDialog({
                   </p>
                 </div>
 
-                {/* Skill content (markdown-like) */}
-                {skill.skillContent && (
+                {/* Marketplace content (curated public documentation) */}
+                {skill.marketplaceContent ? (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-2">Documentation</h3>
-                    <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed max-h-64 overflow-y-auto">
-                      {skill.skillContent}
+                    <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                      {skill.marketplaceContent}
                     </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Documentation</h3>
+                    <p className="text-sm text-muted-foreground italic">Documentation coming soon.</p>
                   </div>
                 )}
 

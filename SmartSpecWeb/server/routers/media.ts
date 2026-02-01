@@ -17,8 +17,12 @@ import {
   type TaskStatus,
 } from "../services/mediaGenerationService";
 import { deductCredits, hasEnoughCredits, refundCredits } from "../services/creditService";
+import { calculateCreditCost, type UserSelections } from "../services/pricingCalculator";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
+import { getDb } from "../db";
+import { mediaModels } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
@@ -33,6 +37,33 @@ function createMediaToken(userId: number): string {
 // Get user token - prefer session token from context, fallback to creating new one
 function getUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
   return ctx.userToken || createMediaToken(ctx.user.id);
+}
+
+/**
+ * Look up a media model from the DB to get its configJson (pricingTiers).
+ * Falls back to the hardcoded MEDIA_MODELS if DB lookup fails.
+ */
+async function getModelWithPricing(modelId: string): Promise<{
+  creditCost: number;
+  configJson: Record<string, any> | null;
+}> {
+  try {
+    const db = await getDb();
+    if (db) {
+      const [dbModel] = await db
+        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, modelId))
+        .limit(1);
+      if (dbModel) {
+        return { creditCost: dbModel.creditCost, configJson: dbModel.configJson as Record<string, any> | null };
+      }
+    }
+  } catch {
+    // Fall through to hardcoded
+  }
+  const hardcoded = MEDIA_MODELS[modelId];
+  return { creditCost: hardcoded?.creditCost ?? 10, configJson: null };
 }
 
 // ==================== Zod Schemas ====================
@@ -152,18 +183,23 @@ export const mediaRouter = router({
         });
       }
 
+      // Calculate credit cost from DB pricingTiers
+      const dbModel = await getModelWithPricing(model);
+      const creditCost = calculateCreditCost(dbModel, {
+        numImages: input.numImages,
+        resolution: input.resolution,
+      });
+
       // Check credits
-      const hasCredits = await hasEnoughCredits(ctx.user.id, modelMeta.creditCost);
+      const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
       if (!hasCredits) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: `Insufficient credits. Required: ${modelMeta.creditCost}`,
+          message: `Insufficient credits. Required: ${creditCost}`,
         });
       }
 
       try {
-        // For now, we'll use a placeholder token - in production,
-        // you'd pass the actual user token to the Python backend
         const userToken = getUserToken(ctx);
 
         const result = await mediaGenerationService.generateImage(
@@ -182,16 +218,17 @@ export const mediaRouter = router({
           userToken
         );
 
-        // Deduct credits on success
+        // Deduct credits on success — use backend-reported cost if available
         await deductCredits({
           userId: ctx.user.id,
-          amount: result.creditsUsed || modelMeta.creditCost,
+          amount: result.creditsUsed || creditCost,
           description: `Image generation: ${model}`,
           metadata: {
             model,
             provider: modelMeta.provider,
             prompt: input.prompt.slice(0, 100),
             endpoint: "generateImage",
+            creditCost,
           },
         });
 
@@ -238,12 +275,19 @@ export const mediaRouter = router({
         });
       }
 
+      // Calculate credit cost from DB pricingTiers
+      const dbModel = await getModelWithPricing(model);
+      const creditCost = calculateCreditCost(dbModel, {
+        duration: input.duration,
+        resolution: input.resolution,
+      });
+
       // Check credits
-      const hasCredits = await hasEnoughCredits(ctx.user.id, modelMeta.creditCost);
+      const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
       if (!hasCredits) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: `Insufficient credits. Required: ${modelMeta.creditCost}`,
+          message: `Insufficient credits. Required: ${creditCost}`,
         });
       }
 
@@ -264,7 +308,7 @@ export const mediaRouter = router({
         // Deduct credits on success
         await deductCredits({
           userId: ctx.user.id,
-          amount: result.creditsUsed || modelMeta.creditCost,
+          amount: result.creditsUsed || creditCost,
           description: `Video generation: ${model}`,
           metadata: {
             model,
@@ -272,6 +316,7 @@ export const mediaRouter = router({
             prompt: input.prompt.slice(0, 100),
             duration: input.duration,
             endpoint: "generateVideo",
+            creditCost,
           },
         });
 
@@ -314,12 +359,16 @@ export const mediaRouter = router({
         });
       }
 
+      // Calculate credit cost from DB pricingTiers
+      const dbModel = await getModelWithPricing(model);
+      const creditCost = calculateCreditCost(dbModel, {});
+
       // Check credits
-      const hasCredits = await hasEnoughCredits(ctx.user.id, modelMeta.creditCost);
+      const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
       if (!hasCredits) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: `Insufficient credits. Required: ${modelMeta.creditCost}`,
+          message: `Insufficient credits. Required: ${creditCost}`,
         });
       }
 
@@ -339,13 +388,14 @@ export const mediaRouter = router({
         // Deduct credits on success
         await deductCredits({
           userId: ctx.user.id,
-          amount: result.creditsUsed || modelMeta.creditCost,
+          amount: result.creditsUsed || creditCost,
           description: `Audio generation: ${model}`,
           metadata: {
             model,
             provider: modelMeta.provider,
             textLength: input.text.length,
             endpoint: "generateAudio",
+            creditCost,
           },
         });
 
@@ -394,8 +444,12 @@ export const mediaRouter = router({
         });
       }
 
-      // Calculate credit cost (multiply by num images)
-      const creditCost = modelMeta.creditCost * (input.numImages || 1);
+      // Calculate credit cost from DB pricingTiers
+      const dbModel = await getModelWithPricing(model);
+      const creditCost = calculateCreditCost(dbModel, {
+        numImages: input.numImages,
+        resolution: input.resolution,
+      });
 
       // Check and deduct credits upfront to prevent race condition
       const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
@@ -417,6 +471,7 @@ export const mediaRouter = router({
           prompt: input.prompt.slice(0, 100),
           endpoint: "generateImageAsync",
           type: "reservation",
+          creditCost,
         },
       });
 
@@ -495,10 +550,13 @@ export const mediaRouter = router({
         });
       }
 
-      // Calculate credit cost based on duration
+      // Calculate credit cost from DB pricingTiers
+      const dbModel = await getModelWithPricing(model);
       const duration = input.duration || 5;
-      const durationMultiplier = Math.ceil(duration / 5);
-      const creditCost = modelMeta.creditCost * durationMultiplier;
+      const creditCost = calculateCreditCost(dbModel, {
+        duration,
+        resolution: input.resolution,
+      });
 
       // Check and deduct credits upfront to prevent race condition
       const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
@@ -521,6 +579,7 @@ export const mediaRouter = router({
           duration,
           endpoint: "generateVideoAsync",
           type: "reservation",
+          creditCost,
         },
       });
 
@@ -701,16 +760,11 @@ export const mediaRouter = router({
         model: z.string().optional(),
         numImages: z.number().optional(),
         duration: z.number().optional(),
+        resolution: z.string().optional(),
       })
     )
-    .query(({ input }) => {
-      let modelId: string;
-
-      if (input.model) {
-        modelId = input.model;
-      } else {
-        modelId = DEFAULT_MODELS[input.type];
-      }
+    .query(async ({ input }) => {
+      const modelId = input.model || DEFAULT_MODELS[input.type];
 
       const modelMeta = MEDIA_MODELS[modelId];
       if (!modelMeta) {
@@ -720,25 +774,20 @@ export const mediaRouter = router({
         });
       }
 
-      let estimatedCredits = modelMeta.creditCost;
-
-      // Multiply by number of images
-      if (input.type === "image" && input.numImages) {
-        estimatedCredits *= input.numImages;
-      }
-
-      // Multiply by duration for video
-      if (input.type === "video" && input.duration) {
-        // Base cost is for 5 seconds, multiply for longer videos
-        estimatedCredits = Math.ceil(estimatedCredits * (input.duration / 5));
-      }
+      // Calculate from DB pricingTiers
+      const dbModel = await getModelWithPricing(modelId);
+      const estimatedCredits = calculateCreditCost(dbModel, {
+        numImages: input.numImages,
+        duration: input.duration,
+        resolution: input.resolution,
+      });
 
       return {
         model: modelId,
         modelName: modelMeta.name,
-        baseCredits: modelMeta.creditCost,
+        baseCredits: dbModel.creditCost,
         estimatedCredits,
-        multiplier: input.numImages || Math.ceil((input.duration || 5) / 5),
+        multiplier: input.numImages || 1,
       };
     }),
 });

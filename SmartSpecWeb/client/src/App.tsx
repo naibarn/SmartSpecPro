@@ -32,6 +32,7 @@ import AdminLLMProviders from "./pages/AdminLLMProviders";
 import AdminMediaProviders from "./pages/AdminMediaProviders";
 import AdminMediaModels from "./pages/AdminMediaModels";
 import AdminSkills from "./pages/AdminSkills";
+import AdminSkillRepositories from "./pages/AdminSkillRepositories";
 import AdminStorageSettings from "./pages/AdminStorageSettings";
 import AdminTenants from "./pages/AdminTenants";
 import AdminServices from "./pages/AdminServices";
@@ -40,13 +41,14 @@ import DomainAdmin from "./pages/DomainAdmin";
 import DomainThemeEditor from "./pages/DomainThemeEditor";
 import DomainAdminContent from "./pages/DomainAdminContent";
 import DomainUsers from "./pages/DomainUsers";
-import DomainAdminInvoice from "./pages/DomainAdminInvoice";
+import TenantSettings from "./pages/TenantSettings";
 import Chat from "./pages/Chat";
 import Generate from "./pages/Generate";
 import MediaStudio from "./pages/MediaStudio";
 import Credits from "./pages/Credits";
 import MediaHistory from "./pages/MediaHistory";
 import Settings from "./pages/Settings";
+import SkillBrowser from "./pages/SkillBrowser";
 import DockerRedirect from "./pages/DockerRedirect";
 import DocPage from "./pages/DocPage";
 import About from "./pages/About";
@@ -88,6 +90,7 @@ function Router() {
       <Route path="/admin/media-providers" component={AdminMediaProviders} />
       <Route path="/admin/media-models" component={AdminMediaModels} />
       <Route path="/admin/skills" component={AdminSkills} />
+      <Route path="/admin/skill-repositories" component={AdminSkillRepositories} />
       <Route path="/admin/storage-settings" component={AdminStorageSettings} />
       <Route path="/admin/services" component={AdminServices} />
       <Route path="/admin/settings" component={AdminSettings} />
@@ -96,7 +99,7 @@ function Router() {
       <Route path="/domain-admin/theme" component={DomainThemeEditor} />
       <Route path="/domain-admin/content" component={DomainAdminContent} />
       <Route path="/domain-admin/users" component={DomainUsers} />
-      <Route path="/domain-admin/invoice" component={DomainAdminInvoice} />
+      <Route path="/domain-admin/settings" component={TenantSettings} />
       <Route path="/domain-admin/blog" component={DomainBlogAdmin} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
@@ -108,6 +111,7 @@ function Router() {
       <Route path="/credits" component={Credits} />
       <Route path="/media-history" component={MediaHistory} />
       <Route path="/settings" component={Settings} />
+      <Route path="/settings/skills" component={SkillBrowser} />
       <Route path="/profile" component={Profile} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />

@@ -425,7 +425,7 @@ export default function AdminLLMProviders() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-6xl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-8">
       <Button
         variant="ghost"
         size="sm"

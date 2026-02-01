@@ -155,7 +155,7 @@ export default function Profile() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
@@ -175,7 +175,7 @@ export default function Profile() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Profile Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

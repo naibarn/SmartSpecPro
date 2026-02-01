@@ -508,15 +508,36 @@ export function buildSystemPrompt(request: PromptEnhancementRequest): string {
   const knowledgebase = loadSkillKnowledgebase(skillId) || loadSkillKnowledgebase("create-image-prompt");
 
   // Build system prompt with actual skill content or enhanced default
+  const language = request.language || "en";
+
   let systemPrompt = `You are PromptDepth Pro v2.1, an expert AI image prompt generator.
 
 Your task is to transform the user's idea into a professional, detailed prompt for AI image generation.
+IMPORTANT: The user may write their idea in any language (e.g., Thai, Japanese, Chinese). You MUST always generate the prompt in English, regardless of the input language. Translate and expand the user's idea into a rich English prompt.
 
 ## Output Format
-Always output in this format:
+`;
+
+  if (language === "en") {
+    systemPrompt += `Output ONLY the English prompt. Do NOT include any Thai or other non-English text.
+Format:
+**[English Prompt]**
+<your detailed English prompt here>
+`;
+  } else if (language === "both") {
+    systemPrompt += `Output in this format:
 1. **[English Prompt]** - Full prompt in English
 2. **[Translated Prompt]** - Full prompt translated to the user's language
+`;
+  } else {
+    systemPrompt += `Output the prompt in Thai.
+Format:
+**[Thai Prompt]**
+<your detailed Thai prompt here>
+`;
+  }
 
+  systemPrompt += `
 ## Prompt Structure Rules
 - Write semantic narratives (not keyword stacking)
 - Include 3-5 realistic imperfections for photorealism

@@ -15,7 +15,7 @@ export default function Chat() {
   const [, setLocation] = useLocation();
 
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [rightPanel, setRightPanel] = useState<RightPanel>("none");
 
   const utils = trpc.useUtils();
@@ -220,17 +220,30 @@ export default function Chat() {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
+        {/* Sidebar - mobile: overlay drawer, desktop: inline */}
+        {/* Mobile backdrop */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         <div
           className={cn(
             "w-80 flex-shrink-0 overflow-hidden transition-all duration-200",
+            // Mobile: fixed overlay drawer sliding from left
+            "fixed inset-y-0 left-0 z-40 lg:relative lg:z-auto",
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0"
           )}
         >
           {sidebarOpen && (
             <ChatSidebar
               selectedConversationId={selectedConversationId}
-              onSelectConversation={setSelectedConversationId}
+              onSelectConversation={(id) => {
+                setSelectedConversationId(id);
+                // Auto-close sidebar on mobile after selecting a conversation
+                if (window.innerWidth < 1024) setSidebarOpen(false);
+              }}
               onNewChat={handleNewChat}
             />
           )}
