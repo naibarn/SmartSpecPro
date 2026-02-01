@@ -5,12 +5,12 @@ version: '3.8'
 # 
 # Services:
 # - PostgreSQL: For python-backend
-# - MySQL: For SmartSpecWeb (Next.js)
+# - MySQL: For web app
 # - Redis: Shared cache
 # - ChromaDB: Vector store for RAG
 
 services:
-  # MySQL Database (for SmartSpecWeb)
+  # MySQL Database (for web app)
   mysql:
     image: mysql:8.0
     container_name: smartspec-mysql

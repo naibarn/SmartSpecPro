@@ -1,0 +1,19 @@
+{
+  "name": "smartspec-pro",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "turbo run dev --filter=@smartspec/web",
+    "dev:desktop": "turbo run dev --filter=@smartspec/desktop",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck"
+  },
+  "packageManager": "npm@10.8.2",
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.5.4"
+  }
+}

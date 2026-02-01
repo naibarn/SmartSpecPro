@@ -137,8 +137,8 @@ services:
   # SmartSpec Web Application
   smartspec-web:
     build:
-      context: ./SmartSpecWeb
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
     container_name: smartspec-web
     environment:
       - NODE_ENV=production

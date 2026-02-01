@@ -57,7 +57,7 @@ echo "1. Checking Rust dependencies..."
 echo "--------------------------------"
 
 if command_exists cargo-audit; then
-    cd desktop-app/src-tauri
+    cd apps/desktop/src-tauri
     if cargo audit 2>/dev/null; then
         print_status 0 "Rust dependencies: No vulnerabilities found"
     else
@@ -67,7 +67,7 @@ if command_exists cargo-audit; then
             cargo update
         fi
     fi
-    cd ../..
+    cd ../../..
 else
     echo -e "${YELLOW}⚠ cargo-audit not installed. Install with: cargo install cargo-audit${NC}"
     if [ "$CI_MODE" = true ]; then
@@ -81,7 +81,7 @@ echo ""
 echo "2. Checking NPM dependencies..."
 echo "-------------------------------"
 
-cd desktop-app
+cd apps/desktop
 if npm audit --audit-level=moderate 2>/dev/null; then
     print_status 0 "NPM dependencies: No vulnerabilities found"
 else
@@ -91,7 +91,7 @@ else
         npm audit fix || true
     fi
 fi
-cd ..
+cd ../..
 
 echo ""
 
@@ -114,7 +114,7 @@ SECRET_PATTERNS=(
 for pattern in "${SECRET_PATTERNS[@]}"; do
     if grep -rniE "$pattern" --include="*.ts" --include="*.tsx" --include="*.rs" --include="*.json" \
         --exclude-dir=node_modules --exclude-dir=target --exclude="*.lock" \
-        desktop-app/ 2>/dev/null | grep -v "test" | grep -v "example" | grep -v "placeholder"; then
+        apps/desktop/ 2>/dev/null | grep -v "test" | grep -v "example" | grep -v "placeholder"; then
         SECRETS_FOUND=1
     fi
 done
@@ -131,8 +131,8 @@ echo ""
 echo "4. Checking CSP configuration..."
 echo "--------------------------------"
 
-if grep -q '"csp":' desktop-app/src-tauri/tauri.conf.json; then
-    CSP_VALUE=$(grep '"csp":' desktop-app/src-tauri/tauri.conf.json)
+if grep -q '"csp":' apps/desktop/src-tauri/tauri.conf.json; then
+    CSP_VALUE=$(grep '"csp":' apps/desktop/src-tauri/tauri.conf.json)
     if echo "$CSP_VALUE" | grep -q "null"; then
         print_status 1 "CSP is disabled (null)"
     elif echo "$CSP_VALUE" | grep -q "unsafe-eval"; then
@@ -150,8 +150,8 @@ echo ""
 echo "5. Checking for unsafe Rust patterns..."
 echo "---------------------------------------"
 
-UNSAFE_COUNT=$(grep -r "unsafe" --include="*.rs" desktop-app/src-tauri/src/ 2>/dev/null | wc -l)
-UNWRAP_COUNT=$(grep -r "\.unwrap()" --include="*.rs" desktop-app/src-tauri/src/ 2>/dev/null | wc -l)
+UNSAFE_COUNT=$(grep -r "unsafe" --include="*.rs" apps/desktop/src-tauri/src/ 2>/dev/null | wc -l)
+UNWRAP_COUNT=$(grep -r "\.unwrap()" --include="*.rs" apps/desktop/src-tauri/src/ 2>/dev/null | wc -l)
 
 echo "   Unsafe blocks: $UNSAFE_COUNT"
 echo "   .unwrap() calls: $UNWRAP_COUNT"
@@ -189,26 +189,26 @@ echo "7. Checking for outdated dependencies..."
 echo "----------------------------------------"
 
 if command_exists cargo-outdated; then
-    cd desktop-app/src-tauri
+    cd apps/desktop/src-tauri
     OUTDATED=$(cargo outdated -R 2>/dev/null | grep -c "^[a-z]" || echo "0")
     if [ "$OUTDATED" -gt 10 ]; then
         echo -e "${YELLOW}⚠ $OUTDATED outdated Rust dependencies${NC}"
     else
         print_status 0 "Rust dependencies are reasonably up to date"
     fi
-    cd ../..
+    cd ../../..
 else
     echo -e "${YELLOW}⚠ cargo-outdated not installed${NC}"
 fi
 
-cd desktop-app
+cd apps/desktop
 OUTDATED_NPM=$(npm outdated 2>/dev/null | wc -l)
 if [ "$OUTDATED_NPM" -gt 20 ]; then
     echo -e "${YELLOW}⚠ $OUTDATED_NPM outdated NPM dependencies${NC}"
 else
     print_status 0 "NPM dependencies are reasonably up to date"
 fi
-cd ..
+cd ../..
 
 echo ""
 

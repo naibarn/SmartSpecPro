@@ -64,6 +64,10 @@ server {
         proxy_set_header Connection "upgrade";
     }
 
+    # Desktop auth & device flow use /auth/* paths (not /api/auth/*)
+    # so they naturally fall through to the Express "/" location below,
+    # bypassing the /api/ → Python rewrite.
+
     # Python Backend API
     location /api/ {
         limit_req zone=api_limit burst=10 nodelay;

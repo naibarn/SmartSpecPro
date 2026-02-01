@@ -4,7 +4,7 @@ version: '3.8'
 # 
 # Infrastructure Services:
 # - PostgreSQL: For python-backend
-# - MySQL: For SmartSpecWeb and docker-status
+# - MySQL: For apps/web and docker-status
 # - Redis: Shared cache
 # - ChromaDB: Vector store for RAG
 #
@@ -24,7 +24,7 @@ services:
   # INFRASTRUCTURE SERVICES
   # ============================================
   
-  # MySQL Database (for SmartSpecWeb and docker-status)
+  # MySQL Database (for web app and docker-status)
   mysql:
     image: mysql:8.0
     container_name: smartspec-mysql
@@ -140,8 +140,8 @@ services:
   # SmartSpec Web Application
   smartspec-web:
     build:
-      context: ./SmartSpecWeb
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
     container_name: smartspec-web
     environment:
       - NODE_ENV=production

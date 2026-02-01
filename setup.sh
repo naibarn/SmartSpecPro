@@ -167,7 +167,7 @@ log_step "Creating necessary directories..."
 
 mkdir -p scripts
 mkdir -p logs
-mkdir -p desktop-app/sandbox-images/workspace
+mkdir -p apps/desktop/sandbox-images/workspace
 
 log_info "Directories created."
 
@@ -205,9 +205,9 @@ log_step "Making scripts executable..."
 
 chmod +x dev.sh 2>/dev/null || true
 chmod +x setup.sh 2>/dev/null || true
-chmod +x desktop-app/build.sh 2>/dev/null || true
-chmod +x desktop-app/sandbox-images/build.sh 2>/dev/null || true
-chmod +x desktop-app/sandbox-images/*.sh 2>/dev/null || true
+chmod +x apps/desktop/build.sh 2>/dev/null || true
+chmod +x apps/desktop/sandbox-images/build.sh 2>/dev/null || true
+chmod +x apps/desktop/sandbox-images/*.sh 2>/dev/null || true
 
 log_info "Scripts are now executable."
 
@@ -251,9 +251,9 @@ if command -v node &> /dev/null && command -v pnpm &> /dev/null; then
     if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
         log_step "Installing desktop app dependencies..."
         
-        cd desktop-app
+        cd apps/desktop
         pnpm install
-        cd ..
+        cd ../..
         
         log_info "Desktop app dependencies installed."
     fi

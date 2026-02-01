@@ -12,7 +12,7 @@ set -e
 
 COMPOSE_FILE="docker-compose.infra.yml"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WEB_DIR="$PROJECT_ROOT/SmartSpecWeb"
+WEB_DIR="$PROJECT_ROOT/apps/web"
 BACKEND_DIR="$PROJECT_ROOT/python-backend"
 
 # Load .env.local file (separate from Docker .env to avoid conflicts)
@@ -287,7 +287,7 @@ cmd_backend() {
     log_info "Environment: DATABASE_URL=$DATABASE_URL"
     kill_port "${BACKEND_PORT:-8000}"
     log_info "Starting uvicorn with hot reload on port ${BACKEND_PORT:-8000}..."
-    uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000} --reload
+    uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000} --reload --reload-exclude '.venv' --reload-exclude 'node_modules'
 }
 
 cmd_celery() {

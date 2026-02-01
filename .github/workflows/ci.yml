@@ -63,12 +63,12 @@ jobs:
         with:
           node-version: "20"
       - name: Test desktop-app (coverage)
-        run: bash scripts/ci/node_tests.sh desktop-app
+        run: bash scripts/ci/node_tests.sh apps/desktop
       - name: Upload desktop-app coverage summary
         uses: actions/upload-artifact@v4
         with:
           name: coverage-desktop-app
-          path: desktop-app/coverage/coverage-summary.json
+          path: apps/desktop/coverage/coverage-summary.json
 
   smartspecweb:
     runs-on: ubuntu-latest
@@ -78,12 +78,24 @@ jobs:
         with:
           node-version: "20"
       - name: Test SmartSpecWeb (coverage)
-        run: bash scripts/ci/node_tests.sh SmartSpecWeb
+        run: bash scripts/ci/node_tests.sh apps/web
       - name: Upload SmartSpecWeb coverage summary
         uses: actions/upload-artifact@v4
         with:
           name: coverage-smartspecweb
-          path: SmartSpecWeb/coverage/coverage-summary.json
+          path: apps/web/coverage/coverage-summary.json
+
+  turbo_build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install
+      - name: Turbo build + typecheck
+        run: npx turbo run build typecheck
 
   coverage_summary:
     runs-on: ubuntu-latest
@@ -108,11 +120,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: coverage-desktop-app
-          path: _cov/desktop-app/coverage
+          path: _cov/apps/desktop/coverage
       - uses: actions/download-artifact@v4
         with:
           name: coverage-smartspecweb
-          path: _cov/SmartSpecWeb/coverage
+          path: _cov/apps/web/coverage
       - uses: actions/download-artifact@v4
         with:
           name: control-plane-policy-snapshot
@@ -120,7 +132,7 @@ jobs:
 
       - name: Generate repo coverage summary + badge JSONs
         run: |
-          python3 scripts/ci/coverage_summary.py             --python-xml _cov/python/coverage.xml             --api-generator _cov/api-generator/coverage/coverage-summary.json             --control-plane _cov/control-plane/coverage/coverage-summary.json             --desktop-app _cov/desktop-app/coverage/coverage-summary.json             --smartspecweb _cov/SmartSpecWeb/coverage/coverage-summary.json             --out-json _cov/coverage_summary.json             --out-md _cov/coverage_summary.md             --fail-on-missing
+          python3 scripts/ci/coverage_summary.py             --python-xml _cov/python/coverage.xml             --api-generator _cov/api-generator/coverage/coverage-summary.json             --control-plane _cov/control-plane/coverage/coverage-summary.json             --desktop-app _cov/apps/desktop/coverage/coverage-summary.json             --smartspecweb _cov/apps/web/coverage/coverage-summary.json             --out-json _cov/coverage_summary.json             --out-md _cov/coverage_summary.md             --fail-on-missing
           python3 scripts/ci/coverage_badge.py --in _cov/coverage_summary.json --out _cov/badges/coverage.json --mode min
           python3 scripts/ci/security_badge.py --source python-backend/app/api/llm_openai_compat.py --out _cov/badges/security.json
           PYTHONPATH=python-backend python3 scripts/ci/policy_snapshot.py --out _cov/policy_snapshot.json

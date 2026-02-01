@@ -12,7 +12,7 @@ bash "$ROOT/scripts/ci/node_tests.sh" api-generator
 echo "[CI] Node: control-plane ..."
 bash "$ROOT/scripts/ci/node_tests.sh" control-plane
 
-echo "[CI] Node: desktop-app ..."
-bash "$ROOT/scripts/ci/node_tests.sh" desktop-app
+echo "[CI] Node: apps/desktop ..."
+bash "$ROOT/scripts/ci/node_tests.sh" apps/desktop
 
 echo "[CI] Done."

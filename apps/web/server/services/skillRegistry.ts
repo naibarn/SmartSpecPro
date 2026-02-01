@@ -1,0 +1,449 @@
+/**
+ * Skill Registry - Manages skill loading from database and folder
+ *
+ * Skills are loaded from:
+ * 1. Database (primary source) - skills table
+ * 2. Folder auto-sync - skills/ directory is scanned and imported to DB on startup
+ *
+ * NO hardcoded fallback skills - all skills must come from database or folder.
+ */
+
+import { getDb } from "../db";
+import { skills as skillsTable } from "../../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
+import { getModelIdsByType, getDefaultModel } from "./modelRegistry";
+import fs from "fs";
+import crypto from "crypto";
+import path from "path";
+import {
+  type SkillType,
+  type SkillDefinition,
+  type SkillMetadata,
+  parseSkillFile,
+  mapCategoryToEnum,
+  categoryToSkillType,
+  parseTriggerPatterns,
+  normalizeMetadata,
+} from "@smartspec/skills";
+
+export type { SkillType, SkillDefinition } from "@smartspec/skills";
+
+/**
+ * Skills directory path
+ */
+const SKILLS_DIR = path.resolve(process.cwd(), "skills");
+
+/**
+ * Map skill type to media type for model lookup
+ */
+const SKILL_TO_MEDIA_TYPE: Record<string, "image" | "video" | "audio"> = {
+  "image-generation": "image",
+  "video-generation": "video",
+  "audio-generation": "audio",
+};
+
+/**
+ * Convert database skill to SkillDefinition
+ */
+function dbSkillToDefinition(dbSkill: {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  category: string;
+  icon: string | null;
+  isAutoTrigger: boolean;
+  triggerPatterns: string[] | null;
+  isEnabled: boolean;
+  enabledByDefault: boolean;
+  creditMultiplier: string | null;
+  priority: number;
+  availableModels: string[] | null;
+  defaultModel: string | null;
+  systemPrompt: string | null;
+  skillContent: string | null;
+  folderPath: string | null;
+}): SkillDefinition {
+  const skillType = categoryToSkillType(dbSkill.category) as SkillType;
+  const mediaType = SKILL_TO_MEDIA_TYPE[skillType];
+
+  // Get models for media skills if not explicitly set
+  let models = dbSkill.availableModels || undefined;
+  let defaultModel = dbSkill.defaultModel || undefined;
+
+  if (mediaType && (!models || models.length === 0)) {
+    const modelIds = getModelIdsByType(mediaType);
+    const defaultModelDef = getDefaultModel(mediaType);
+    models = modelIds;
+    defaultModel = defaultModelDef?.id;
+  }
+
+  return {
+    id: dbSkill.slug,
+    dbId: dbSkill.id,
+    name: dbSkill.name,
+    description: dbSkill.description || "",
+    icon: dbSkill.icon || "sparkles",
+    type: skillType,
+    triggers: dbSkill.isAutoTrigger ? parseTriggerPatterns(dbSkill.triggerPatterns) : [],
+    requiresExplicit: !dbSkill.isAutoTrigger,
+    creditMultiplier: Number(dbSkill.creditMultiplier) || 1.0,
+    enabledByDefault: dbSkill.enabledByDefault,
+    priority: dbSkill.priority,
+    models,
+    defaultModel,
+    systemPrompt: dbSkill.systemPrompt || undefined,
+    skillContent: dbSkill.skillContent || undefined,
+    skillFilePath: dbSkill.folderPath ? `${dbSkill.folderPath}/skill.md` : undefined,
+  };
+}
+
+/**
+ * Cached skill registry
+ */
+let _skillRegistryCache: SkillDefinition[] | null = null;
+let _skillRegistryCacheTime: number = 0;
+const CACHE_TTL_MS = 60000; // 1 minute cache
+
+/**
+ * Auto-sync flag to prevent multiple syncs
+ */
+let _autoSyncCompleted = false;
+
+/**
+ * Scan skills folder and return folder info
+ */
+function scanSkillsFolder(): Array<{
+  slug: string;
+  skillMdPath: string;
+  hasSkillMd: boolean;
+}> {
+  const folders: Array<{
+    slug: string;
+    skillMdPath: string;
+    hasSkillMd: boolean;
+  }> = [];
+
+  // Check multiple possible paths
+  const possibleDirs = [
+    SKILLS_DIR,
+    path.resolve(process.cwd(), "..", "skills"),
+    path.resolve(process.cwd(), "apps", "web", "skills"),
+  ];
+
+  for (const dir of possibleDirs) {
+    if (fs.existsSync(dir)) {
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+
+          const slug = entry.name;
+          const skillMdPath = path.join(dir, slug, "skill.md");
+          const hasSkillMd = fs.existsSync(skillMdPath);
+
+          // Only add if not already found
+          if (hasSkillMd && !folders.find(f => f.slug === slug)) {
+            folders.push({ slug, skillMdPath, hasSkillMd });
+          }
+        }
+      } catch (error) {
+        console.error(`[SkillRegistry] Error scanning ${dir}:`, error);
+      }
+    }
+  }
+
+  return folders;
+}
+
+/**
+ * Auto-sync skills from folder to database
+ * Called on startup to ensure all folder skills are in database
+ */
+export async function autoSyncSkillsFromFolder(): Promise<{
+  synced: string[];
+  skipped: string[];
+  errors: string[];
+}> {
+  const result = {
+    synced: [] as string[],
+    skipped: [] as string[],
+    errors: [] as string[],
+  };
+
+  if (_autoSyncCompleted) {
+    console.log("[SkillRegistry] Auto-sync already completed, skipping");
+    return result;
+  }
+
+  const db = await getDb();
+  if (!db) {
+    console.warn("[SkillRegistry] Database not available, cannot auto-sync skills");
+    return result;
+  }
+
+  // Get existing skills from database (with contentHash for change detection)
+  const existingSkills = await db.select({ slug: skillsTable.slug, contentHash: skillsTable.contentHash }).from(skillsTable);
+  const existingSlugs = new Map(existingSkills.map(s => [s.slug, s.contentHash]));
+
+  // Scan folder for skills
+  const folderSkills = scanSkillsFolder();
+  console.log(`[SkillRegistry] Found ${folderSkills.length} skill folder(s): ${folderSkills.map(f => f.slug).join(", ")}`);
+
+  for (const folder of folderSkills) {
+    try {
+      // Read and parse skill.md
+      const content = fs.readFileSync(folder.skillMdPath, "utf-8");
+      const parsed = parseSkillFile(content);
+      const metadata: SkillMetadata = { name: folder.slug, ...parsed.metadata };
+
+      const skillData = {
+        name: metadata.name || folder.slug,
+        description: metadata.description || `Auto-imported from skills/${folder.slug}`,
+        category: mapCategoryToEnum(metadata.category) as any,
+        version: metadata.version || "1.0.0",
+        author: metadata.author,
+        icon: metadata.icon || "sparkles",
+        tags: metadata.tags || [],
+        folderPath: `skills/${folder.slug}`,
+        isAutoTrigger: metadata.isAutoTrigger ?? metadata.auto_trigger ?? false,
+        triggerPatterns: metadata.triggerPatterns ?? metadata.trigger_patterns ?? [],
+        isEnabled: true,
+        enabledByDefault: metadata.enabledByDefault ?? metadata.enabled_by_default ?? true,
+        creditMultiplier: String(metadata.creditMultiplier ?? metadata.credit_multiplier ?? 1.0),
+        priority: metadata.priority ?? 50,
+        skillContent: parsed.content,
+        configJson: metadata.config,
+        importSource: "folder" as const,
+      };
+
+      if (existingSlugs.has(folder.slug)) {
+        // Existing skill — only update content-related fields if content actually changed
+        // Never overwrite admin-customized fields (name, description, category, icon, tags, etc.)
+        const rawContent = fs.readFileSync(folder.skillMdPath, "utf-8");
+        const newHash = crypto.createHash("md5").update(rawContent).digest("hex");
+        const oldHash = existingSlugs.get(folder.slug);
+
+        if (oldHash !== newHash) {
+          await db.update(skillsTable).set({
+            skillContent: parsed.content,
+            systemPrompt: parsed.content,
+            contentHash: newHash,
+            version: metadata.version || undefined,
+          }).where(eq(skillsTable.slug, folder.slug));
+          result.synced.push(folder.slug);
+          console.log(`[SkillRegistry] Updated skill content (hash changed): ${folder.slug}`);
+        } else {
+          result.skipped.push(folder.slug);
+        }
+      } else {
+        // Insert new skill
+        const rawContent = fs.readFileSync(folder.skillMdPath, "utf-8");
+        const newHash = crypto.createHash("md5").update(rawContent).digest("hex");
+        await db.insert(skillsTable).values({ slug: folder.slug, ...skillData, systemPrompt: parsed.content, contentHash: newHash });
+        result.synced.push(folder.slug);
+        console.log(`[SkillRegistry] Auto-synced new skill: ${folder.slug}`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      result.errors.push(`${folder.slug}: ${errorMsg}`);
+      console.error(`[SkillRegistry] Error syncing skill ${folder.slug}:`, error);
+    }
+  }
+
+  _autoSyncCompleted = true;
+
+  // Clear cache to reload with new skills
+  if (result.synced.length > 0) {
+    clearSkillRegistryCache();
+  }
+
+  console.log(`[SkillRegistry] Auto-sync complete: ${result.synced.length} synced, ${result.skipped.length} skipped, ${result.errors.length} errors`);
+  return result;
+}
+
+/**
+ * Load skills from database
+ */
+async function loadSkillsFromDatabase(): Promise<SkillDefinition[]> {
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.warn("[SkillRegistry] Database not available");
+      return [];
+    }
+
+    // Run auto-sync first if not done
+    if (!_autoSyncCompleted) {
+      await autoSyncSkillsFromFolder();
+    }
+
+    const dbSkills = await db
+      .select()
+      .from(skillsTable)
+      .where(eq(skillsTable.isEnabled, true))
+      .orderBy(desc(skillsTable.priority));
+
+    if (dbSkills.length === 0) {
+      console.log("[SkillRegistry] No skills in database");
+      return [];
+    }
+
+    console.log(`[SkillRegistry] Loaded ${dbSkills.length} skills from database`);
+    return dbSkills.map((s) => dbSkillToDefinition(s as any));
+  } catch (error) {
+    console.error("[SkillRegistry] Error loading skills from database:", error);
+    return [];
+  }
+}
+
+/**
+ * Get the complete skill registry (with caching)
+ * Note: This is now async to support database loading
+ */
+export async function getSkillRegistryAsync(): Promise<SkillDefinition[]> {
+  const now = Date.now();
+
+  if (_skillRegistryCache && now - _skillRegistryCacheTime < CACHE_TTL_MS) {
+    return _skillRegistryCache;
+  }
+
+  _skillRegistryCache = await loadSkillsFromDatabase();
+  _skillRegistryCacheTime = now;
+  return _skillRegistryCache;
+}
+
+/**
+ * Get the skill registry (synchronous, uses cache only)
+ * For backward compatibility with existing synchronous code
+ * NOTE: Returns empty array if cache not populated - use async version when possible
+ */
+export function getSkillRegistry(): SkillDefinition[] {
+  if (_skillRegistryCache) {
+    return _skillRegistryCache;
+  }
+
+  // Load from database in background
+  loadSkillsFromDatabase().then((skills) => {
+    _skillRegistryCache = skills;
+    _skillRegistryCacheTime = Date.now();
+  }).catch((error) => {
+    console.error("[SkillRegistry] Background load failed:", error);
+  });
+
+  // Return empty array - no fallback
+  return [];
+}
+
+/**
+ * Clear skill registry cache (call when skills are updated)
+ */
+export function clearSkillRegistryCache(): void {
+  _skillRegistryCache = null;
+  _skillRegistryCacheTime = 0;
+}
+
+/**
+ * Reset auto-sync flag (for testing)
+ */
+export function resetAutoSyncFlag(): void {
+  _autoSyncCompleted = false;
+}
+
+/**
+ * Get all available skills (async version)
+ */
+export async function getAvailableSkillsAsync(): Promise<SkillDefinition[]> {
+  const skills = await getSkillRegistryAsync();
+  return [...skills].sort((a, b) => b.priority - a.priority);
+}
+
+/**
+ * Get all available skills (sync version for backward compatibility)
+ */
+export function getAvailableSkills(): SkillDefinition[] {
+  return [...getSkillRegistry()].sort((a, b) => b.priority - a.priority);
+}
+
+/**
+ * Get skill by ID (async version)
+ */
+export async function getSkillByIdAsync(id: string): Promise<SkillDefinition | undefined> {
+  const skills = await getSkillRegistryAsync();
+  return skills.find((s) => s.id === id);
+}
+
+/**
+ * Get skill by ID (sync version for backward compatibility)
+ */
+export function getSkillById(id: string): SkillDefinition | undefined {
+  return getSkillRegistry().find((s) => s.id === id);
+}
+
+/**
+ * Get skill by ID or by type (returns first matching skill of that type)
+ * This allows looking up skills by either their slug ID or their type
+ */
+export function getSkillByIdOrType(idOrType: string): SkillDefinition | undefined {
+  const skills = getSkillRegistry();
+
+  // First try exact ID match
+  const byId = skills.find((s) => s.id === idOrType);
+  if (byId) return byId;
+
+  // Then try type match (return first skill of that type)
+  const byType = skills.find((s) => s.type === idOrType);
+  if (byType) return byType;
+
+  // Try normalized variations (underscore <-> hyphen)
+  const normalized = idOrType.replace(/-/g, "_");
+  const normalizedHyphen = idOrType.replace(/_/g, "-");
+
+  return skills.find((s) =>
+    s.id === normalized ||
+    s.id === normalizedHyphen ||
+    s.type === normalized ||
+    s.type === normalizedHyphen
+  );
+}
+
+/**
+ * Get skills by type
+ */
+export function getSkillsByType(type: SkillType): SkillDefinition[] {
+  return getSkillRegistry().filter((s) => s.type === type);
+}
+
+/**
+ * Get default enabled skills
+ */
+export function getDefaultEnabledSkills(): string[] {
+  return getSkillRegistry()
+    .filter((s) => s.enabledByDefault)
+    .map((s) => s.id);
+}
+
+/**
+ * Refresh the skill cache from database
+ * Call this when skills are updated via admin panel
+ */
+export async function refreshSkillCache(): Promise<void> {
+  clearSkillRegistryCache();
+  await getSkillRegistryAsync();
+}
+
+/**
+ * Initialize skill registry on server startup
+ * Should be called once when server starts
+ */
+export async function initializeSkillRegistry(): Promise<void> {
+  console.log("[SkillRegistry] Initializing...");
+
+  // Run auto-sync
+  const syncResult = await autoSyncSkillsFromFolder();
+
+  // Load skills into cache
+  await getSkillRegistryAsync();
+
+  console.log("[SkillRegistry] Initialization complete");
+}

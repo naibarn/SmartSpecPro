@@ -229,8 +229,8 @@ services:
   
   smartspec-web:
     build:
-      context: ./SmartSpecWeb
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
       target: development
     container_name: smartspec-web
     environment:
@@ -244,9 +244,9 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./SmartSpecWeb:/app
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
       - web_node_modules:/app/node_modules
-      - /app/.next
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:

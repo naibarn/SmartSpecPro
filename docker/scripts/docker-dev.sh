@@ -191,7 +191,7 @@ cmd_install_deps() {
     docker exec smartspec-dev bash -lc "cd /workspace/python-backend && pip install -r requirements.txt"
     
     log_info "Installing Node.js dependencies (if any)..."
-    docker exec smartspec-dev bash -lc "cd /workspace/desktop-app && npm install 2>/dev/null || true"
+    docker exec smartspec-dev bash -lc "cd /workspace/apps/desktop && npm install 2>/dev/null || true"
     
     log_info "Dependencies installed!"
 }

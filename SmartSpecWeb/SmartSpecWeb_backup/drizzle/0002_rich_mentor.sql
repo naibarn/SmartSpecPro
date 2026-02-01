@@ -1,1 +1,0 @@
-ALTER TABLE `gallery_items` MODIFY COLUMN `tags` json;

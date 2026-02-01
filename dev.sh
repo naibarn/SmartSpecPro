@@ -441,7 +441,7 @@ cmd_desktop() {
         exit 1
     fi
     
-    cd desktop-app
+    cd apps/desktop
     
     # Install dependencies if needed
     if [ ! -d "node_modules" ]; then
@@ -461,7 +461,7 @@ cmd_sandbox() {
     case "$action" in
         build)
             log_step "Building sandbox images..."
-            cd desktop-app/sandbox-images
+            cd apps/desktop/sandbox-images
             ./build.sh all
             ;;
         list)
