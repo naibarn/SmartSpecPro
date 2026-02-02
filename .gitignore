@@ -125,6 +125,7 @@ data/
 uploads/
 downloads/
 media/
+!**/client/src/components/**/media/
 *.csv
 *.xlsx
 *.xls
