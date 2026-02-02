@@ -74,9 +74,12 @@ function dbSkillToDefinition(dbSkill: {
 
   if (mediaType && (!models || models.length === 0)) {
     const modelIds = getModelIdsByType(mediaType);
-    const defaultModelDef = getDefaultModel(mediaType);
     models = modelIds;
-    defaultModel = defaultModelDef?.id;
+    // Only override defaultModel if not explicitly set in DB
+    if (!defaultModel) {
+      const defaultModelDef = getDefaultModel(mediaType);
+      defaultModel = defaultModelDef?.id;
+    }
   }
 
   return {
