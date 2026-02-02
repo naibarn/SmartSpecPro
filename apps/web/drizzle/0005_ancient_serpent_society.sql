@@ -1,0 +1,1 @@
+ALTER TABLE "skills" ADD COLUMN "executionMode" varchar(50) DEFAULT 'llm-only' NOT NULL;

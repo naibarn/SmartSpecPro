@@ -136,6 +136,7 @@ export function normalizeMetadata(raw: SkillMetadata, slug: string): {
   creditMultiplier: number;
   enabledByDefault: boolean;
   priority: number;
+  executionMode: string;
 } {
   return {
     name: raw.name || slug,
@@ -145,5 +146,6 @@ export function normalizeMetadata(raw: SkillMetadata, slug: string): {
     creditMultiplier: raw.creditMultiplier ?? raw.credit_multiplier ?? 1.0,
     enabledByDefault: raw.enabledByDefault ?? raw.enabled_by_default ?? true,
     priority: raw.priority ?? 50,
+    executionMode: (raw.executionMode ?? raw.execution_mode ?? "llm-only") as string,
   };
 }

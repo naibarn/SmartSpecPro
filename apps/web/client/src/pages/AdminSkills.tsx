@@ -83,6 +83,7 @@ interface Skill {
   skillContent: string | null;
   knowledgebase: string | null;
   configJson: Record<string, unknown> | null;
+  executionMode: string | null;
   importSource: string | null;
   importedFromZip: string | null;
   createdBy: number | null;
@@ -199,6 +200,10 @@ export default function AdminSkills() {
 
   // Fetch vision-capable LLM models for default model selection
   const { data: visionModels } = trpc.skills.getVisionModels.useQuery();
+
+  // Fetch media models (image/video/audio) for media-generate skills
+  const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
+  const { data: videoModels } = trpc.mediaModels.list.useQuery({ type: "video" });
 
   // Scan folders
   const { data: folders, refetch: refetchFolders } = trpc.skills.scanFolders.useQuery(undefined, {
@@ -380,7 +385,8 @@ export default function AdminSkills() {
       visibleByDefault: editingSkill.visibleByDefault,
       creditMultiplier: editingSkill.creditMultiplier,
       priority: editingSkill.priority,
-      defaultModel: editingSkill.defaultModel, // Add default LLM model
+      defaultModel: editingSkill.defaultModel,
+      executionMode: editingSkill.executionMode || "llm-only",
       systemPrompt: editingSkill.systemPrompt,
       skillContent: editingSkill.skillContent,
       marketplaceContent: editingSkill.marketplaceContent,
@@ -1051,100 +1057,222 @@ export default function AdminSkills() {
                 </div>
               </div>
 
-              {/* Default LLM Model for Skill Execution */}
-              <div className="space-y-2 pt-2 border-t">
-                <Label className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-500" />
-                  Default LLM Model (Auto Prompt)
-                </Label>
+              {/* Execution Mode */}
+              <div className="space-y-2">
+                <Label>Execution Mode</Label>
                 <Select
-                  value={editingSkill.defaultModel || "__system_default__"}
+                  value={editingSkill.executionMode || "llm-only"}
                   onValueChange={(value) =>
-                    setEditingSkill({ ...editingSkill, defaultModel: value === "__system_default__" ? null : value })
+                    setEditingSkill({ ...editingSkill, executionMode: value, defaultModel: null })
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select default model..." />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__system_default__">
-                      <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>
-                    </SelectItem>
-                    {visionModels?.models?.map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        <div className="flex items-center gap-2">
-                          <span>{model.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({model.providerDisplayName})
-                          </span>
-                          {model.isDefault && (
-                            <Badge variant="secondary" className="text-[10px] h-4">
-                              provider default
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="llm-only">LLM Only (text response)</SelectItem>
+                    <SelectItem value="media-generate">Media Generate (LLM prompt + media API)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  The LLM model used for Auto Prompt in Media Studio. Users can override in Advanced Mode.
+                  {editingSkill.executionMode === "media-generate"
+                    ? "LLM generates optimized prompt JSON, then auto-calls media generation API."
+                    : "LLM generates text response only (default)."}
                 </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="flex items-center gap-2">
+              {/* Default Model — show media models for media-generate, LLM models for llm-only */}
+              <div className="space-y-2 pt-2 border-t">
+                {editingSkill.executionMode === "media-generate" ? (
+                  <>
+                    <Label className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-orange-500" />
+                      Default Media Model
+                    </Label>
+                    <Select
+                      value={editingSkill.defaultModel || "__auto__"}
+                      onValueChange={(value) =>
+                        setEditingSkill({ ...editingSkill, defaultModel: value === "__auto__" ? null : value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select default media model..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__auto__">
+                          <span className="text-muted-foreground">Auto (highest priority model)</span>
+                        </SelectItem>
+                        {(editingSkill.category === "image_generation" ? imageModels?.models : videoModels?.models)?.map((model: any) => (
+                          <SelectItem key={model.modelId} value={model.modelId}>
+                            <div className="flex items-center gap-2">
+                              <span>{model.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({model.provider})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      The media generation model used when this skill creates images/videos.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Label className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-500" />
+                      Default LLM Model (Auto Prompt)
+                    </Label>
+                    <Select
+                      value={editingSkill.defaultModel || "__system_default__"}
+                      onValueChange={(value) =>
+                        setEditingSkill({ ...editingSkill, defaultModel: value === "__system_default__" ? null : value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select default model..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__system_default__">
+                          <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>
+                        </SelectItem>
+                        {visionModels?.models?.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{model.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({model.providerDisplayName})
+                              </span>
+                              {model.isDefault && (
+                                <Badge variant="secondary" className="text-[10px] h-4">
+                                  provider default
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      The LLM model used for Auto Prompt in Media Studio. Users can override in Advanced Mode.
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 rounded-lg border border-border/80 dark:border-border bg-muted/30 dark:bg-muted/20 p-4">
+                <div className="flex items-center gap-3">
                   <Switch
                     checked={editingSkill.isAutoTrigger}
                     onCheckedChange={(checked) =>
                       setEditingSkill({ ...editingSkill, isAutoTrigger: checked })
                     }
                   />
-                  <Label>Auto-Trigger</Label>
+                  <div>
+                    <Label className="text-sm font-medium">Auto-Trigger</Label>
+                    <p className="text-xs text-muted-foreground">Automatically activate on matching messages.</p>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={editingSkill.isEnabled}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, isEnabled: checked })
-                      }
-                    />
-                    <Label>Enabled</Label>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={editingSkill.isEnabled}
+                    onCheckedChange={(checked) =>
+                      setEditingSkill({ ...editingSkill, isEnabled: checked })
+                    }
+                  />
+                  <div>
+                    <Label className="text-sm font-medium">Enabled</Label>
+                    <p className="text-xs text-muted-foreground">Enable or disable this skill globally.</p>
                   </div>
-                  <p className="text-xs text-muted-foreground ml-11">Enable or disable this skill globally.</p>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={editingSkill.visibleByDefault}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({
-                          ...editingSkill,
-                          visibleByDefault: checked,
-                          ...(!checked && { enabledByDefault: false }),
-                        })
-                      }
-                    />
-                    <Label>Visible by Default</Label>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={editingSkill.visibleByDefault}
+                    onCheckedChange={(checked) =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        visibleByDefault: checked,
+                        ...(!checked && { enabledByDefault: false }),
+                      })
+                    }
+                  />
+                  <div>
+                    <Label className="text-sm font-medium">Visible by Default</Label>
+                    <p className="text-xs text-muted-foreground">New users see this skill automatically.</p>
                   </div>
-                  <p className="text-xs text-muted-foreground ml-11">New users will see this skill in their list automatically.</p>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={editingSkill.enabledByDefault}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, enabledByDefault: checked })
-                      }
-                      disabled={!editingSkill.visibleByDefault}
-                    />
-                    <Label className={!editingSkill.visibleByDefault ? "text-muted-foreground" : ""}>Enabled by Default</Label>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={editingSkill.enabledByDefault}
+                    onCheckedChange={(checked) =>
+                      setEditingSkill({ ...editingSkill, enabledByDefault: checked })
+                    }
+                    disabled={!editingSkill.visibleByDefault}
+                  />
+                  <div>
+                    <Label className={`text-sm font-medium ${!editingSkill.visibleByDefault ? "text-muted-foreground" : ""}`}>Enabled by Default</Label>
+                    <p className="text-xs text-muted-foreground">Auto-trigger in new conversations. Requires Visible.</p>
                   </div>
-                  <p className="text-xs text-muted-foreground ml-11">Auto-trigger in new conversations. Requires Visible by Default.</p>
+                </div>
+              </div>
+
+              {/* Trigger Patterns */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Trigger Patterns (Regex)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs dark:border-muted-foreground/40 dark:text-foreground"
+                    onClick={() =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        triggerPatterns: [...editingSkill.triggerPatterns, ""],
+                      })
+                    }
+                  >
+                    + Add Pattern
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Each pattern is a case-insensitive regex. Use <code className="bg-muted px-1 rounded">|</code> for alternatives.
+                  e.g. <code className="bg-muted px-1 rounded">สร้างพรอมต์|enhance prompt|image prompt</code>
+                </p>
+                {editingSkill.triggerPatterns.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic py-2">No trigger patterns defined. Add patterns for auto-trigger to work.</p>
+                )}
+                <div className="space-y-2">
+                  {editingSkill.triggerPatterns.map((pattern, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input
+                        value={pattern}
+                        onChange={(e) => {
+                          const updated = [...editingSkill.triggerPatterns];
+                          updated[idx] = e.target.value;
+                          setEditingSkill({ ...editingSkill, triggerPatterns: updated });
+                        }}
+                        placeholder="regex pattern, e.g. สร้างพรอมต์|enhance prompt"
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="shrink-0 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          const updated = editingSkill.triggerPatterns.filter((_, i) => i !== idx);
+                          setEditingSkill({ ...editingSkill, triggerPatterns: updated });
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1181,6 +1309,7 @@ export default function AdminSkills() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="dark:border-muted-foreground/40 dark:text-foreground"
                     onClick={() => editingSkill && regenerateMarketplaceMutation.mutate({ id: editingSkill.id })}
                     disabled={regenerateMarketplaceMutation.isPending}
                   >
@@ -1221,8 +1350,8 @@ export default function AdminSkills() {
                 </div>
               )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingSkill(null)}>
+            <DialogFooter className="border-t pt-4">
+              <Button variant="outline" onClick={() => setEditingSkill(null)} className="dark:border-muted-foreground/40 dark:text-foreground dark:hover:bg-muted">
                 Cancel
               </Button>
               <Button

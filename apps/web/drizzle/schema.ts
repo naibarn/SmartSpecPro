@@ -1218,6 +1218,9 @@ export const skills = pgTable("skills", {
   /** Default model for this skill */
   defaultModel: varchar("defaultModel", { length: 128 }),
 
+  /** Execution mode: llm-only (text response), media-generate (LLM→prompt→media API) */
+  executionMode: varchar("executionMode", { length: 50 }).default("llm-only").notNull(),
+
   /** System prompt override (optional) */
   systemPrompt: text("systemPrompt"),
 

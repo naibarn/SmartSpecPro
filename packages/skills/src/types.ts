@@ -56,6 +56,9 @@ export interface SkillDefinition {
   /** Reference to external skill file path */
   skillFilePath?: string;
 
+  /** Execution mode: llm-only (text), media-generate (LLM→prompt→media API) */
+  executionMode?: "llm-only" | "media-generate";
+
   /** Database ID if from database */
   dbId?: number;
 }
@@ -81,6 +84,10 @@ export interface SkillMetadata {
   priority?: number;
   enabled_by_default?: boolean;
   enabledByDefault?: boolean;
+  execution_mode?: string;
+  executionMode?: string;
+  default_model?: string;
+  defaultModel?: string;
   config?: Record<string, unknown>;
 }
 

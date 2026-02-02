@@ -1534,7 +1534,8 @@ export const skillsRouter = router({
         visibleByDefault: z.boolean().optional(),
         creditMultiplier: z.number().min(0).max(100).optional(),
         priority: z.number().min(0).max(100).optional(),
-        defaultModel: z.string().nullable().optional(), // Default LLM model for skill execution
+        defaultModel: z.string().nullable().optional(),
+        executionMode: z.enum(["llm-only", "media-generate"]).optional(),
         systemPrompt: z.string().nullable().optional(),
         skillContent: z.string().nullable().optional(),
         marketplaceContent: z.string().nullable().optional(),
@@ -1566,6 +1567,7 @@ export const skillsRouter = router({
       if (updateData.creditMultiplier !== undefined) updateObj.creditMultiplier = String(updateData.creditMultiplier);
       if (updateData.priority !== undefined) updateObj.priority = updateData.priority;
       if (updateData.defaultModel !== undefined) updateObj.defaultModel = updateData.defaultModel;
+      if (updateData.executionMode !== undefined) updateObj.executionMode = updateData.executionMode;
       if (updateData.systemPrompt !== undefined) updateObj.systemPrompt = updateData.systemPrompt;
       if (updateData.skillContent !== undefined) updateObj.skillContent = updateData.skillContent;
       if (updateData.marketplaceContent !== undefined) updateObj.marketplaceContent = updateData.marketplaceContent;

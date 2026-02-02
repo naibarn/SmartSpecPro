@@ -136,7 +136,7 @@ export default function Chat() {
       <UrgentMessageAlert onOpenAlerts={() => setRightPanel("schedule")} />
 
       {/* Top Bar */}
-      <div className="flex h-14 items-center justify-between border-b bg-background px-4">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 z-50 relative">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -148,18 +148,18 @@ export default function Chat() {
             Back
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="lg:hidden"
           >
             {sidebarOpen ? (
-              <PanelLeftClose className="h-4 w-4" />
+              <PanelLeftClose className="h-5 w-5" />
             ) : (
-              <PanelLeft className="h-4 w-4" />
+              <MessageCircle className="h-5 w-5" />
             )}
           </Button>
-          <h1 className="text-lg font-semibold">AI Chat</h1>
+          <h1 className="text-lg font-semibold hidden sm:block">AI Chat</h1>
           <NotificationBell onOpenSchedule={() => setRightPanel("schedule")} />
         </div>
         <div className="flex items-center gap-1">
@@ -224,26 +224,37 @@ export default function Chat() {
         {/* Mobile backdrop */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+            className="fixed inset-0 top-14 z-30 bg-black/40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
+        {/* Mobile sidebar drawer */}
+        {sidebarOpen && (
+          <div
+            className="fixed left-0 z-40 w-80 bg-background lg:hidden"
+            style={{ top: "3.5rem", height: "calc(100dvh - 3.5rem)" }}
+          >
+            <ChatSidebar
+              selectedConversationId={selectedConversationId}
+              onSelectConversation={(id) => {
+                setSelectedConversationId(id);
+                setSidebarOpen(false);
+              }}
+              onNewChat={handleNewChat}
+            />
+          </div>
+        )}
+        {/* Desktop sidebar inline */}
         <div
           className={cn(
-            "w-80 flex-shrink-0 overflow-hidden transition-all duration-200",
-            // Mobile: fixed overlay drawer sliding from left
-            "fixed inset-y-0 left-0 z-40 lg:relative lg:z-auto",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0"
+            "hidden lg:block w-80 flex-shrink-0 overflow-hidden transition-all duration-200",
+            !sidebarOpen && "w-0"
           )}
         >
           {sidebarOpen && (
             <ChatSidebar
               selectedConversationId={selectedConversationId}
-              onSelectConversation={(id) => {
-                setSelectedConversationId(id);
-                // Auto-close sidebar on mobile after selecting a conversation
-                if (window.innerWidth < 1024) setSidebarOpen(false);
-              }}
+              onSelectConversation={(id) => setSelectedConversationId(id)}
               onNewChat={handleNewChat}
             />
           )}
@@ -252,10 +263,10 @@ export default function Chat() {
         {/* Sidebar Toggle for Desktop */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="hidden lg:flex h-full w-1 items-center justify-center hover:bg-primary/10 transition-colors"
+          className="hidden lg:flex h-full w-5 items-center justify-center hover:bg-primary/10 transition-colors group border-r"
           title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
         >
-          <div className="h-8 w-1 rounded-full bg-border" />
+          <div className="h-8 w-1.5 rounded-full bg-border group-hover:bg-primary/40 transition-colors" />
         </button>
 
         {/* Chat View */}
@@ -283,7 +294,7 @@ export default function Chat() {
         {/* Right Panel (Memory or Skills) */}
         <div
           className={cn(
-            "w-80 flex-shrink-0 border-l transition-all duration-200 overflow-hidden",
+            "w-full sm:w-96 lg:w-[28rem] flex-shrink-0 border-l transition-all duration-200 overflow-hidden",
             rightPanel !== "none" ? "translate-x-0" : "translate-x-full w-0 border-l-0"
           )}
         >
@@ -313,7 +324,12 @@ export default function Chat() {
             />
           )}
           {rightPanel === "schedule" && (
-            <SchedulePanel />
+            <SchedulePanel
+              onNavigateToChat={(id) => {
+                setSelectedConversationId(id);
+                setRightPanel("none");
+              }}
+            />
           )}
         </div>
       </div>
@@ -355,17 +371,26 @@ function UrgentMessageAlert({ onOpenAlerts }: { onOpenAlerts: () => void }) {
 }
 
 function NotificationBell({ onOpenSchedule }: { onOpenSchedule: () => void }) {
+  const utils = trpc.useUtils();
   const { data } = trpc.scheduledMessages.getNotificationCount.useQuery(undefined, {
-    refetchInterval: 30000, // Poll every 30s
+    refetchInterval: 30000,
+  });
+  const markAllRead = trpc.scheduledMessages.markAllRead.useMutation({
+    onSuccess: () => utils.scheduledMessages.getNotificationCount.invalidate(),
   });
 
   const count = data?.count || 0;
+
+  const handleClick = () => {
+    if (count > 0) markAllRead.mutate();
+    onOpenSchedule();
+  };
 
   if (count === 0) return null;
 
   return (
     <button
-      onClick={onOpenSchedule}
+      onClick={handleClick}
       className="relative ml-2 text-muted-foreground hover:text-foreground"
     >
       <Bell className="h-4 w-4" />

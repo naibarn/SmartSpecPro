@@ -101,6 +101,25 @@ interface MemoryPanelProps {
   onNewChatFromProject?: (projectId: string, summary: string) => void;
 }
 
+function SummaryItem({ summary: s }: { summary: { id: number; summary: string; messageCount: number; createdAt: string } }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = s.summary.length > 150;
+  return (
+    <div
+      className="text-xs text-muted-foreground bg-muted/50 rounded p-1.5 cursor-pointer hover:bg-muted/80 transition-colors"
+      onClick={() => isLong && setExpanded(!expanded)}
+    >
+      <span className="text-foreground/70 whitespace-pre-wrap">
+        {expanded ? s.summary : `${s.summary.slice(0, 150)}${isLong ? "..." : ""}`}
+      </span>
+      <div className="mt-1 text-[10px] opacity-60 flex items-center gap-2">
+        <span>{s.messageCount} messages</span>
+        {isLong && <span className="text-primary/70">{expanded ? "▲ collapse" : "▼ expand"}</span>}
+      </div>
+    </div>
+  );
+}
+
 export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: MemoryPanelProps) {
   const [selectedType, setSelectedType] = useState<EntityType | "all">("all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -537,14 +556,9 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
               <FileText className="h-3.5 w-3.5" />
               Summaries ({summaries.length})
             </div>
-            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {summaries.map((s) => (
-                <div key={s.id} className="text-xs text-muted-foreground bg-muted/50 rounded p-1.5">
-                  <span className="text-foreground/70">{s.summary.slice(0, 150)}{s.summary.length > 150 ? "..." : ""}</span>
-                  <div className="mt-1 text-[10px] opacity-60">
-                    {s.messageCount} messages
-                  </div>
-                </div>
+                <SummaryItem key={s.id} summary={s} />
               ))}
             </div>
           </div>

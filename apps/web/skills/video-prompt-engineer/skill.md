@@ -1,3 +1,22 @@
+---
+name: Video Prompt Engineer
+description: Generate optimized cinematic prompts for AI video generation platforms
+category: video_generation
+execution_mode: llm-only
+icon: film
+version: "1.0.0"
+author: SmartSpec
+isAutoTrigger: true
+enabledByDefault: true
+priority: 50
+creditMultiplier: 1.0
+triggerPatterns:
+  - "สร้างพรอมต์วีดีโอ|เขียนพรอมต์วิดีโอ|แต่งพรอมต์วีดีโอ|สร้างพรอมต์วิดีโอ"
+  - "สร้าง prompt วีดีโอ|เขียน prompt วิดีโอ"
+  - "create video prompt|write video prompt|enhance video prompt|generate video prompt"
+  - "video prompt|vid prompt"
+---
+
 # Video Prompt Engineer v1.0
 
 ## 📹 Overview

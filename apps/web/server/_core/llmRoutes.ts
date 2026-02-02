@@ -99,6 +99,7 @@ interface LLMUsageInfo {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  providerCostUsd?: number; // Actual cost from provider (e.g. OpenRouter usage.cost)
 }
 
 function resolveChatUrl(baseUrl: string): string {
@@ -183,11 +184,19 @@ async function deductCreditsForUsage(
   if (userId === 0) return; // Skip for static tokens
 
   // Import the cost-based calculation
-  const { calculateCreditsForLLM, calculateLLMCostUsd } = await import("../services/creditService");
+  const { calculateCreditsForLLM, calculateLLMCostUsd, calculateCreditsFromCost } = await import("../services/creditService");
 
-  // Calculate based on actual LLM cost
-  const costUsd = calculateLLMCostUsd(usage.promptTokens, usage.completionTokens, usage.model);
-  const creditsToDeduct = calculateCreditsForLLM(usage.promptTokens, usage.completionTokens, usage.model);
+  // Prefer actual provider cost (e.g. OpenRouter returns usage.cost in USD)
+  let costUsd: number;
+  let creditsToDeduct: number;
+  if (usage.providerCostUsd && usage.providerCostUsd > 0) {
+    costUsd = usage.providerCostUsd;
+    creditsToDeduct = calculateCreditsFromCost(costUsd);
+    debugLog("LLM", "Using provider-reported cost", { costUsd, creditsToDeduct, model: usage.model });
+  } else {
+    costUsd = calculateLLMCostUsd(usage.promptTokens, usage.completionTokens, usage.model);
+    creditsToDeduct = calculateCreditsForLLM(usage.promptTokens, usage.completionTokens, usage.model);
+  }
 
   try {
     await deductCredits({
@@ -221,6 +230,7 @@ function parseUsageFromResponse(data: any, model: string): LLMUsageInfo {
     promptTokens: usage.prompt_tokens || 0,
     completionTokens: usage.completion_tokens || 0,
     totalTokens: usage.total_tokens || 0,
+    providerCostUsd: typeof usage.cost === "number" && usage.cost > 0 ? usage.cost : undefined,
   };
 }
 
@@ -361,17 +371,30 @@ async function proxyChatWithCredits(
     } catch {}
 
     // Try to extract usage from the last SSE message
-    // OpenAI sends usage in the final message with [DONE]
+    // OpenAI/OpenRouter sends usage in the final chunk before [DONE]
     let inputTokens = 0;
     let outputTokens = 0;
+    let providerCostUsd = 0;
     try {
-      // Look for usage in accumulated data
-      const usageMatch = accumulatedData.match(/"usage"\s*:\s*(\{[^}]+\})/);
-      if (usageMatch) {
-        const usage = JSON.parse(usageMatch[1]);
-        inputTokens = usage.prompt_tokens || 0;
-        outputTokens = usage.completion_tokens || usage.total_tokens || 0;
-      } else {
+      // Parse each SSE data line — last occurrence with usage wins
+      const dataLines = accumulatedData.split("\n").filter(l => l.startsWith("data:"));
+      for (const line of dataLines) {
+        const raw = line.slice("data:".length).trim();
+        if (raw && raw !== "[DONE]") {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed?.usage) {
+              inputTokens = parsed.usage.prompt_tokens || 0;
+              outputTokens = parsed.usage.completion_tokens || parsed.usage.total_tokens || 0;
+              // OpenRouter returns actual cost in usage.cost (USD cents or USD depending on version)
+              if (typeof parsed.usage.cost === "number" && parsed.usage.cost > 0) {
+                providerCostUsd = parsed.usage.cost;
+              }
+            }
+          } catch {}
+        }
+      }
+      if (outputTokens === 0) {
         // Estimate based on chunks (rough approximation)
         outputTokens = Math.max(100, totalChunks * 10);
       }
@@ -387,19 +410,22 @@ async function proxyChatWithCredits(
       promptTokens: inputTokens,
       completionTokens: outputTokens,
       totalTokens: inputTokens + outputTokens,
+      providerCostUsd,
     });
 
     // If conversationId provided, save the assistant message and send final event
     if (conversationId && fullContent) {
       try {
         const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
-        const { calculateCreditsForLLM } = await import("../services/creditService");
+        const { calculateCreditsForLLM, calculateCreditsFromCost } = await import("../services/creditService");
 
         // Verify conversation ownership
         const conversation = await getConversationById(conversationId, userId);
         if (conversation) {
-          // Calculate credits based on actual LLM cost (pass model for accurate pricing)
-          const creditsUsed = calculateCreditsForLLM(inputTokens, outputTokens, model);
+          // Use provider-reported cost if available, otherwise estimate from token counts
+          const creditsUsed = (providerCostUsd > 0)
+            ? calculateCreditsFromCost(providerCostUsd)
+            : calculateCreditsForLLM(inputTokens, outputTokens, model);
           if (creditsUsed > 0) {
             await updateConversationCredits(conversationId, creditsUsed);
           }

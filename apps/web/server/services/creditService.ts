@@ -284,6 +284,8 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "gpt-4o-mini": { input: 0.15, output: 0.60 },
   "gpt-4-turbo": { input: 10.00, output: 30.00 },
   "gpt-4": { input: 30.00, output: 60.00 },
+  "gpt-5.2-chat": { input: 2.00, output: 8.00 },
+  "gpt-5": { input: 2.00, output: 8.00 },
   "gpt-3.5-turbo": { input: 0.50, output: 1.50 },
   // Anthropic
   "claude-3-5-sonnet-20241022": { input: 3.00, output: 15.00 },
@@ -301,13 +303,20 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
  * Get pricing for a model (with fallback to default)
  */
 function getModelPricing(model: string): { input: number; output: number } {
+  // Strip provider prefix (e.g., "openai/gpt-4o" -> "gpt-4o")
+  const stripped = model.includes("/") ? model.split("/").pop()! : model;
+
   // Try exact match first
+  if (MODEL_PRICING[stripped]) {
+    return MODEL_PRICING[stripped];
+  }
   if (MODEL_PRICING[model]) {
     return MODEL_PRICING[model];
   }
   // Try partial match (e.g., "gpt-4o-mini-2024-07-18" -> "gpt-4o-mini")
   for (const [key, pricing] of Object.entries(MODEL_PRICING)) {
-    if (model.startsWith(key) || model.includes(key)) {
+    if (key === "default") continue;
+    if (stripped.startsWith(key) || stripped.includes(key)) {
       return pricing;
     }
   }

@@ -29,6 +29,10 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Remove injected preview banners (e.g. Manus)
+      new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType===1){if(n.id==='manus-previewer-content-root')n.remove();else if(n.querySelector&&n.querySelector('[data-loc*="PreviewerMode"]'))n.remove();else if(n.getAttribute&&n.getAttribute('data-loc')&&n.getAttribute('data-loc').indexOf('PreviewerMode')!==-1)n.remove();}});});}).observe(document.body,{childList:true,subtree:true});
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Analytics disabled: Uncomment and set VITE_ANALYTICS_ENDPOINT and VITE_ANALYTICS_WEBSITE_ID in .env to enable
     <script

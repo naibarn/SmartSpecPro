@@ -229,8 +229,6 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const [brainstormStreamingRole, setBrainstormStreamingRole] = useState<string | null>(null);
   const [brainstormStreamingRound, setBrainstormStreamingRound] = useState(0);
 
-  // Media generation skills that should be executed automatically
-  const mediaSkills = ["image-generation", "video-generation", "audio-generation"];
 
   // Handle model change
   const handleModelChange = async (modelId: string) => {
@@ -277,6 +275,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     type: string;
     confidence: number;
     suggestedPrompt: string | null;
+    executionMode: string;
   } | null>(null);
 
   // Schedule confirm card state
@@ -323,6 +322,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             type: result.skill.type,
             confidence: result.confidence,
             suggestedPrompt: result.suggestedPrompt,
+            executionMode: result.skill.executionMode || "llm-only",
           });
         } else {
           setDetectedSkill(null);
@@ -501,6 +501,57 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     setAttachments((prev) => prev.filter((a) => a.key !== key));
   };
 
+  // Extract text from content that may be JSON multipart array
+  const extractTextContent = (content: string): string => {
+    if (!content.startsWith("[")) return content;
+    try {
+      const parts = JSON.parse(content);
+      if (Array.isArray(parts)) {
+        return parts
+          .filter((p: any) => p.type === "text")
+          .map((p: any) => p.text)
+          .join("\n");
+      }
+    } catch {}
+    return content;
+  };
+
+  // Parse content for API (history) — strip images, keep only text for old messages
+  const parseContentForHistory = (content: string): string => {
+    if (!content.startsWith("[")) return content;
+    try {
+      const parts = JSON.parse(content);
+      if (Array.isArray(parts)) {
+        const text = parts
+          .filter((p: any) => p.type === "text")
+          .map((p: any) => p.text)
+          .join("\n");
+        return text || content;
+      }
+    } catch {}
+    return content;
+  };
+
+  // Parse content for API — returns proper multipart array with absolute image URLs (current message only)
+  const parseContentForApi = (content: string): string | any[] => {
+    if (!content.startsWith("[")) return content;
+    try {
+      const parts = JSON.parse(content);
+      if (Array.isArray(parts)) {
+        return parts.map((p: any) => {
+          if (p.type === "image_url" && p.image_url?.url?.startsWith("/")) {
+            return {
+              ...p,
+              image_url: { ...p.image_url, url: `${window.location.origin}${p.image_url.url}` },
+            };
+          }
+          return p;
+        });
+      }
+    } catch {}
+    return content;
+  };
+
   // Build user content for multi-modal
   const buildUserContent = (text: string, atts: Attachment[]) => {
     const parts: any[] = [];
@@ -520,26 +571,30 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
   // Stream response from LLM with memory-aware context
   // Server saves the assistant message at the end of streaming and sends message_saved event
-  const streamResponse = async (userMessage: Message, skillUsed?: string) => {
-    if (!conversationId) return;
+  const streamResponse = async (userMessage: Message, skillUsed?: string): Promise<string> => {
+    if (!conversationId) return "";
 
     setIsStreaming(true);
     setStreamingContent("");
 
     // Get memory-aware context from server
-    let apiMessages: Array<{ role: string; content: string }>;
+    let apiMessages: Array<{ role: string; content: string | any[] }>;
+    const userContent = parseContentForApi(userMessage.content);
     try {
       const selectedModelData = modelsData?.models?.find(m => m.id === selectedModel);
       const memoryMode = (conversation as any)?.memoryMode || "full";
       const contextData = await utils.memory.getChatContext.fetch({
         conversationId,
         modelContextLength: selectedModelData?.contextLength,
-        currentMessage: userMessage.content,
+        currentMessage: typeof userContent === "string" ? userContent : extractTextContent(userMessage.content),
         memoryMode,
       });
       apiMessages = [
-        ...contextData.messages,
-        { role: "user", content: userMessage.content },
+        ...contextData.messages.map((m: { role: string; content: string }) => ({
+          role: m.role,
+          content: parseContentForHistory(m.content),
+        })),
+        { role: "user", content: userContent },
       ];
     } catch (error) {
       // Fallback to simple context if memory fetch fails
@@ -547,8 +602,8 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         ...(conversation?.systemPrompt
           ? [{ role: "system" as const, content: conversation.systemPrompt }]
           : []),
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user" as const, content: userMessage.content },
+        ...messages.map((m) => ({ role: m.role, content: parseContentForHistory(m.content) })),
+        { role: "user" as const, content: userContent },
       ];
     }
 
@@ -573,7 +628,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         const txt = await resp.text().catch(() => "Stream failed");
         setStreamingContent(`[Error] ${txt}`);
         setIsStreaming(false);
-        return;
+        return "";
       }
 
       const reader = resp.body.getReader();
@@ -683,8 +738,10 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
         // Process memory in background (entity extraction, summarization check)
         processMemoryMutation.mutateAsync({ conversationId }).then((result) => {
-          // Show auto-compact notification
-          if (result.compacted && result.compactedMessageCount > 0) {
+          // Show auto-compact / consolidation notification
+          if (result.consolidated) {
+            toast.info("Context consolidated: old summaries merged to optimize memory");
+          } else if (result.compacted && result.compactedMessageCount > 0) {
             toast.info(`Auto-compacted: ${result.compactedMessageCount} messages summarized to save context`);
           }
 
@@ -709,14 +766,17 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         if (!savedMessageId) {
           console.warn("[ChatView] Message displayed but may not be saved - no message_saved event received");
         }
+        return fullContent;
       } else {
         setStreamingContent("");
         setIsStreaming(false);
+        return "";
       }
     } catch (error) {
       console.error("Stream error:", error);
       setStreamingContent(`[Error] Failed to stream response`);
       setIsStreaming(false);
+      return "";
     }
   };
 
@@ -936,108 +996,109 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       return;
     }
 
-    // Check if this is a media generation skill (check by type, not ID)
-    if (currentSkillId && currentSkillType && mediaSkills.includes(currentSkillType)) {
-      // Execute media generation skill
-      setIsStreaming(true);
-      setStreamingContent("Generating media...");
+    // Execution mode determines skill behavior (from DB, no hardcoded patterns)
+    const executionMode = detectedSkill?.executionMode || "llm-only";
 
-      // Extract image URLs from attachments for reference images (1-5 images)
-      const referenceImageUrls = attachments
-        .filter(a => a.fileType.startsWith("image/"))
-        .map(a => a.url)
-        .slice(0, 5);
+    if (executionMode === "media-generate" && currentSkillId) {
+      // media-generate: LLM generates structured prompt+params, then auto-call media API
+      const generatedContent = await streamResponse({
+        id: userMessage.id,
+        role: "user",
+        content: typeof content === "string" ? content : text,
+        createdAt: new Date(userMessage.createdAt),
+      }, currentSkillId);
 
-      try {
-        const result = await executeSkillMutation.mutateAsync({
-          skillId: currentSkillId,
-          prompt: skillPrompt,
-          conversationId,
-          referenceImageUrls: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
-        });
+      if (generatedContent) {
+        // Parse structured JSON from LLM response
+        let mediaPrompt = generatedContent;
+        let mediaParams: Record<string, any> = {};
 
-        let responseContent = "";
+        try {
+          // Try direct JSON parse
+          let jsonContent = generatedContent.trim();
+          // Strip markdown code fences if present
+          const jsonMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+          if (jsonMatch) jsonContent = jsonMatch[1].trim();
 
-        // Collect image URLs for attachments
-        let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
-
-        if (result.success) {
-          if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
-            responseContent = `Generated image${result.resultUrls.length > 1 ? 's' : ''}:\n\n${result.resultUrls.map(url => `![Generated Image](${url})`).join('\n\n')}`;
-            // Store URLs as attachments for persistence
-            imageAttachments = result.resultUrls.map((url, i) => ({
-              type: "image" as const,
-              url,
-              name: `generated-image-${i + 1}.png`,
-            }));
-          } else if (result.type === "video" && result.isAsync) {
-            responseContent = `Video generation started. ${result.message}\n\nYou can check the progress in the Media History page.`;
-          } else if (result.resultUrl) {
-            responseContent = `Generated ${result.type}:\n\n${result.type === "image" ? `![Generated Image](${result.resultUrl})` : `[View ${result.type}](${result.resultUrl})`}`;
-            if (result.type === "image") {
-              imageAttachments = [{
-                type: "image" as const,
-                url: result.resultUrl,
-                name: "generated-image.png",
-              }];
-            }
-          } else {
-            responseContent = result.message || "Media generated successfully!";
+          const parsed = JSON.parse(jsonContent);
+          if (parsed.prompt) {
+            mediaPrompt = parsed.prompt;
+            if (parsed.aspectRatio) mediaParams.aspectRatio = parsed.aspectRatio;
+            if (parsed.style) mediaParams.style = parsed.style;
+            if (parsed.numImages) mediaParams.numImages = parsed.numImages;
+            if (parsed.quality) mediaParams.quality = parsed.quality;
+            if (parsed.model) mediaParams.model = parsed.model;
+            if (parsed.duration) mediaParams.duration = parsed.duration;
           }
-
-          if (result.creditsUsed) {
-            responseContent += `\n\n*Credits used: ${result.creditsUsed}*`;
-          }
-
-          // Update conversation credits for skill usage
-          if (result.creditsUsed && result.creditsUsed > 0) {
-            addSkillCreditsMutation.mutate({
-              conversationId,
-              creditsUsed: result.creditsUsed,
-              skillUsed: currentSkillId,
-            });
-          }
-        } else {
-          responseContent = `Failed to generate media: ${result.error || "Unknown error"}`;
+        } catch {
+          // LLM didn't return valid JSON — use raw text as prompt
         }
 
-        // Add assistant message with the result and attachments
-        const newMessage = {
-          id: Date.now(),
-          role: "assistant" as const,
-          content: responseContent,
-          attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
-          creditsUsed: result.creditsUsed?.toString(),
-          skillUsed: currentSkillId,
-          createdAt: new Date(),
-        };
+        // Small delay so user can see the prompt/response first
+        await new Promise(r => setTimeout(r, 500));
 
-        lastLocalAddTime.current = Date.now();
-        setMessages((prev) => [...prev, newMessage]);
-        setStreamingContent("");
-        setIsStreaming(false);
+        setIsStreaming(true);
+        setStreamingContent("Generating media from prompt...");
 
-        // Invalidate to sync with server and refresh conversation credits
-        utils.chat.getMessages.invalidate({ conversationId });
-        utils.chat.getConversation.invalidate({ id: conversationId });
-        utils.credits.balance.invalidate();
+        try {
+          const result = await executeSkillMutation.mutateAsync({
+            skillId: currentSkillId,
+            prompt: mediaPrompt,
+            conversationId,
+            ...mediaParams,
+          });
 
-      } catch (error) {
-        console.error("Skill execution error:", error);
-        const errorMessage = error instanceof Error ? error.message : "Failed to execute skill";
+          let responseContent = "";
+          let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
 
-        const errorResponse = {
-          id: Date.now(),
-          role: "assistant" as const,
-          content: `Error: ${errorMessage}`,
-          skillUsed: currentSkillId,
-          createdAt: new Date(),
-        };
+          if (result.success) {
+            if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
+              responseContent = `Generated image${result.resultUrls.length > 1 ? 's' : ''}:\n\n${result.resultUrls.map(url => `![Generated Image](${url})`).join('\n\n')}`;
+              imageAttachments = result.resultUrls.map((url, i) => ({
+                type: "image" as const, url, name: `generated-image-${i + 1}.png`,
+              }));
+            } else if (result.type === "video" && result.isAsync) {
+              responseContent = `Video generation started. ${result.message}\n\nYou can check the progress in the Media History page.`;
+            } else if (result.resultUrl) {
+              responseContent = `Generated ${result.type}:\n\n${result.type === "image" ? `![Generated Image](${result.resultUrl})` : `[View ${result.type}](${result.resultUrl})`}`;
+              if (result.type === "image") {
+                imageAttachments = [{ type: "image" as const, url: result.resultUrl, name: "generated-image.png" }];
+              }
+            } else {
+              responseContent = result.message || "Media generated successfully!";
+            }
+            if (result.creditsUsed) {
+              responseContent += `\n\n*Credits used: ${result.creditsUsed}*`;
+            }
+            if (result.creditsUsed && result.creditsUsed > 0) {
+              addSkillCreditsMutation.mutate({ conversationId, creditsUsed: result.creditsUsed, skillUsed: currentSkillId });
+            }
+          } else {
+            responseContent = `Failed to generate media: ${result.error || "Unknown error"}`;
+          }
 
-        lastLocalAddTime.current = Date.now();
-        setMessages((prev) => [...prev, errorResponse]);
-        setStreamingContent("");
-        setIsStreaming(false);
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [...prev, {
+            id: Date.now(), role: "assistant" as const, content: responseContent,
+            attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
+            creditsUsed: result.creditsUsed?.toString(), skillUsed: currentSkillId, createdAt: new Date(),
+          }]);
+          setStreamingContent("");
+          setIsStreaming(false);
+          utils.chat.getMessages.invalidate({ conversationId });
+          utils.chat.getConversation.invalidate({ id: conversationId });
+          utils.credits.balance.invalidate();
+        } catch (error) {
+          console.error("Media generation error:", error);
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [...prev, {
+            id: Date.now(), role: "assistant" as const,
+            content: `Prompt generated above. Media generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            skillUsed: currentSkillId, createdAt: new Date(),
+          }]);
+          setStreamingContent("");
+          setIsStreaming(false);
+        }
       }
     } else if (brainstormMode && brainstormPartnerModel) {
       // Brainstorm mode: multi-model debate
@@ -1066,7 +1127,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
     return (
       <div className="space-y-2">
-        <div className="whitespace-pre-wrap">{message.content}</div>
+        <div className="whitespace-pre-wrap">{extractTextContent(message.content)}</div>
         {imageAttachments.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {imageAttachments.map((a, i) => (
@@ -1131,16 +1192,16 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-center gap-3">
-          <h2 className="font-semibold">{conversation?.title || "Chat"}</h2>
+      <div className="flex items-center justify-between border-b px-3 py-1.5 gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+          <h2 className="font-semibold truncate text-sm shrink min-w-0">{conversation?.title || "Chat"}</h2>
           {/* Model Selector */}
           {modelsData?.models && modelsData.models.length > 0 ? (
             <>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 max-w-[280px] justify-start gap-2 text-xs font-normal"
+                className="h-7 max-w-[180px] sm:max-w-[280px] justify-start gap-1.5 text-xs font-normal shrink-0"
                 onClick={() => setModelDialogOpen(true)}
                 disabled={isStreaming || updateConversationMutation.isPending}
               >
@@ -1263,17 +1324,17 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             </>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Session credits (total used in this conversation) */}
           {conversation?.totalCreditsUsed && Number(conversation.totalCreditsUsed) > 0 && (
-            <Badge variant="outline" className="gap-1 text-xs text-muted-foreground">
+            <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground hidden sm:flex">
               <Sparkles className="h-3 w-3" />
-              {Number(conversation.totalCreditsUsed)} session
+              {Number(conversation.totalCreditsUsed)}
             </Badge>
           )}
-          <Badge variant="secondary" className="gap-1">
+          <Badge variant="secondary" className="gap-1 text-[10px]">
             <CreditCard className="h-3 w-3" />
-            {credits?.credits || 0} credits
+            {credits?.credits || 0}
           </Badge>
           {isStreaming && (
             <Badge variant="secondary" className="gap-1">
@@ -1285,7 +1346,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0 relative">
+      <div className="flex-1 min-h-0 overflow-y-auto relative">
         {/* Floating scroll buttons */}
         {messages.length > 3 && (
           <div className="sticky top-2 right-2 z-10 flex flex-col gap-1 float-right mr-2">
@@ -1540,10 +1601,10 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           )}
           <div ref={bottomRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Input Area */}
-      <div className="border-t p-4">
+      <div className="shrink-0 border-t px-4 py-2 pb-[env(safe-area-inset-bottom,0.5rem)]">
         {/* Quick Actions for Generation */}
         {!isStreaming && messages.length === 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -1551,7 +1612,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               variant="outline"
               size="sm"
               className="gap-2 text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300"
-              onClick={() => setInput("Generate an image of ")}
+              onClick={() => setInput("create image: ")}
             >
               <Wand2 className="h-4 w-4" />
               Generate Image
@@ -1560,7 +1621,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               variant="outline"
               size="sm"
               className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
-              onClick={() => setInput("Create a video of ")}
+              onClick={() => setInput("create video: ")}
             >
               <Video className="h-4 w-4" />
               Generate Video
@@ -1569,7 +1630,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               variant="outline"
               size="sm"
               className="gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300"
-              onClick={() => setInput("Generate audio/speech for ")}
+              onClick={() => setInput("generate audio: ")}
             >
               <Music className="h-4 w-4" />
               Generate Audio
@@ -1581,13 +1642,13 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         {detectedSkill && (
           <div className={cn(
             "mb-3 flex items-center gap-2 rounded-lg border px-3 py-2",
-            mediaSkills.includes(detectedSkill.type)
+            detectedSkill.executionMode === "media-generate"
               ? "border-purple-300 bg-purple-50 dark:bg-purple-900/20"
               : "border-primary/30 bg-primary/5"
           )}>
             <Sparkles className={cn(
               "h-4 w-4",
-              mediaSkills.includes(detectedSkill.type) ? "text-purple-600" : "text-primary"
+              detectedSkill.executionMode === "media-generate" ? "text-purple-600" : "text-primary"
             )} />
             <Badge variant="secondary" className="gap-1">
               {(() => {
@@ -1599,7 +1660,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             <span className="text-xs text-muted-foreground">
               ({Math.round(detectedSkill.confidence * 100)}%)
             </span>
-            {mediaSkills.includes(detectedSkill.type) && (
+            {detectedSkill.executionMode === "media-generate" && (
               <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 font-medium">
                 <Zap className="h-3 w-3" />
                 Press Enter to generate
@@ -1645,7 +1706,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <TooltipProvider>
             {/* Attach File Button */}
             <Tooltip>
@@ -1665,15 +1726,15 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               </TooltipContent>
             </Tooltip>
 
-            {/* Generate Image Button */}
+            {/* Generate Image Button - hidden on mobile */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setInput(input ? input + "\n\nGenerate an image: " : "Generate an image of ")}
+                  onClick={() => setInput(input ? input + "\n\ncreate image: " : "create image: ")}
                   disabled={isStreaming}
-                  className="shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                  className="shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700 hidden sm:inline-flex"
                 >
                   <Wand2 className="h-4 w-4" />
                 </Button>
@@ -1683,15 +1744,15 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               </TooltipContent>
             </Tooltip>
 
-            {/* Generate Video Button */}
+            {/* Generate Video Button - hidden on mobile */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setInput(input ? input + "\n\nCreate a video: " : "Create a video of ")}
+                  onClick={() => setInput(input ? input + "\n\ncreate video: " : "create video: ")}
                   disabled={isStreaming}
-                  className="shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                  className="shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hidden sm:inline-flex"
                 >
                   <Video className="h-4 w-4" />
                 </Button>
@@ -1701,7 +1762,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               </TooltipContent>
             </Tooltip>
 
-            {/* Auto Prompt Button */}
+            {/* Auto Prompt Button - hidden on mobile */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -1709,7 +1770,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   size="icon"
                   onClick={handleAutoPrompt}
                   disabled={isStreaming || isEnhancingPrompt || !input.trim()}
-                  className="shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                  className="shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700 hidden sm:inline-flex"
                 >
                   {isEnhancingPrompt ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1753,7 +1814,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 }
               }}
               placeholder="Type a message or / for skills..."
-              className="min-h-[44px] resize-none"
+              className="!min-h-0 h-9 max-h-[120px] resize-none !py-2 text-sm"
               onKeyDown={(e) => {
                 if (showSlashMenu) return; // Let SlashCommandMenu handle keys
                 if (e.key === "Enter" && !e.shiftKey) {

@@ -393,7 +393,7 @@ export function ChatSidebar({
       </div>
 
       {/* Conversation List */}
-      <ScrollArea className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-2">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -520,7 +520,7 @@ export function ChatSidebar({
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Footer */}
       <div className="border-t p-2 space-y-1">

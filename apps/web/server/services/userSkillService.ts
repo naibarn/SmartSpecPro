@@ -53,6 +53,18 @@ async function ensureUserInitialized(userId: number): Promise<void> {
 
   if (!row) {
     await initializeUserVisibility(userId);
+  } else {
+    // Sync any newly added skills that are visibleByDefault but not yet in user's visibility
+    await db.execute(sql`
+      INSERT INTO user_skill_visibility ("userId", "skillId", visible, "autoTriggerEnabled", "createdAt", "updatedAt")
+      SELECT ${userId}, s.id, true, true, NOW(), NOW()
+      FROM skills s
+      WHERE s."visibleByDefault" = true AND s."isEnabled" = true
+        AND s.id NOT IN (
+          SELECT "skillId" FROM user_skill_visibility WHERE "userId" = ${userId}
+        )
+      ON CONFLICT DO NOTHING
+    `);
   }
 }
 

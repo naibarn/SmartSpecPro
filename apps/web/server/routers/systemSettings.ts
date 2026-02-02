@@ -14,7 +14,7 @@ import { encrypt, decrypt } from "../services/crypto";
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth"]);
+const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai"]);
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),

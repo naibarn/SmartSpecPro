@@ -48,7 +48,11 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-export function SchedulePanel() {
+interface SchedulePanelProps {
+  onNavigateToChat?: (conversationId: number) => void;
+}
+
+export function SchedulePanel({ onNavigateToChat }: SchedulePanelProps = {}) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -248,6 +252,16 @@ export function SchedulePanel() {
                         >
                           <Trash2 className="h-3 w-3" /> Delete
                         </Button>
+                        {item.conversationId && onNavigateToChat && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1 ml-auto"
+                            onClick={(e) => { e.stopPropagation(); onNavigateToChat(item.conversationId!); }}
+                          >
+                            <MessageCircle className="h-3 w-3" /> View Chat
+                          </Button>
+                        )}
                       </div>
 
                       {/* Edit form */}

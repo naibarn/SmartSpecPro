@@ -63,6 +63,7 @@ function dbSkillToDefinition(dbSkill: {
   systemPrompt: string | null;
   skillContent: string | null;
   folderPath: string | null;
+  executionMode: string | null;
 }): SkillDefinition {
   const skillType = categoryToSkillType(dbSkill.category) as SkillType;
   const mediaType = SKILL_TO_MEDIA_TYPE[skillType];
@@ -95,6 +96,7 @@ function dbSkillToDefinition(dbSkill: {
     systemPrompt: dbSkill.systemPrompt || undefined,
     skillContent: dbSkill.skillContent || undefined,
     skillFilePath: dbSkill.folderPath ? `${dbSkill.folderPath}/skill.md` : undefined,
+    executionMode: (dbSkill.executionMode as any) || "llm-only",
   };
 }
 
@@ -214,6 +216,8 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         priority: metadata.priority ?? 50,
         skillContent: parsed.content,
         configJson: metadata.config,
+        executionMode: metadata.executionMode ?? metadata.execution_mode ?? "llm-only",
+        defaultModel: metadata.defaultModel ?? metadata.default_model ?? null,
         importSource: "folder" as const,
       };
 
@@ -225,11 +229,14 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         const oldHash = existingSlugs.get(folder.slug);
 
         if (oldHash !== newHash) {
+          const fileDefaultModel = metadata.defaultModel ?? metadata.default_model ?? null;
           await db.update(skillsTable).set({
             skillContent: parsed.content,
             systemPrompt: parsed.content,
             contentHash: newHash,
             version: metadata.version || undefined,
+            executionMode: metadata.executionMode ?? metadata.execution_mode ?? undefined,
+            ...(fileDefaultModel ? { defaultModel: fileDefaultModel } : {}),
           }).where(eq(skillsTable.slug, folder.slug));
           result.synced.push(folder.slug);
           console.log(`[SkillRegistry] Updated skill content (hash changed): ${folder.slug}`);

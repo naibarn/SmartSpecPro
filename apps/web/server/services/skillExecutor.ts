@@ -16,6 +16,7 @@ import {
   getModelById,
   getDefaultModel,
   mapToApiModelId,
+  getModelsByTypeAsync,
 } from "./modelRegistry";
 import { calculateCreditCost } from "./pricingCalculator";
 
@@ -123,9 +124,21 @@ async function executeImageGeneration(
   userId: number,
   userToken: string
 ): Promise<SkillExecutionResult> {
-  // Get model from params or defaults (already API format from modelRegistry)
+  // Ensure model cache is loaded from DB before any lookups
+  await getModelsByTypeAsync("image");
+
+  // Get model from params or defaults
   const modelInput = params.model || skill.defaultModel;
-  const model = (modelInput ? mapToApiModelId(modelInput) : getDefaultModel("image")?.id || "google-nano-banana-pro") as ImageModel;
+  let model: ImageModel;
+  if (modelInput) {
+    model = mapToApiModelId(modelInput) as ImageModel;
+  } else {
+    const defaultModel = getDefaultModel("image");
+    if (!defaultModel) {
+      return { success: false, skillId: skill.id, type: "image", error: "No image models available" };
+    }
+    model = defaultModel.id as ImageModel;
+  }
 
   // Get model metadata from registry
   const modelMeta = getModelById(model);
@@ -217,9 +230,21 @@ async function executeVideoGeneration(
   userId: number,
   userToken: string
 ): Promise<SkillExecutionResult> {
-  // Get model from params or defaults (already API format from modelRegistry)
+  // Ensure model cache is loaded from DB before any lookups
+  await getModelsByTypeAsync("video");
+
+  // Get model from params or defaults
   const modelInput = params.model || skill.defaultModel;
-  const model = (modelInput ? mapToApiModelId(modelInput) : getDefaultModel("video")?.id || "veo-3-1") as VideoModel;
+  let model: VideoModel;
+  if (modelInput) {
+    model = mapToApiModelId(modelInput) as VideoModel;
+  } else {
+    const defaultModel = getDefaultModel("video");
+    if (!defaultModel) {
+      return { success: false, skillId: skill.id, type: "video", error: "No video models available" };
+    }
+    model = defaultModel.id as VideoModel;
+  }
 
   // Get model metadata from registry
   const modelMeta = getModelById(model);
@@ -303,9 +328,21 @@ export async function executeAudioGeneration(
   userId: number,
   userToken: string
 ): Promise<SkillExecutionResult> {
-  // Get model from params or defaults (already API format from modelRegistry)
+  // Ensure model cache is loaded from DB before any lookups
+  await getModelsByTypeAsync("audio");
+
+  // Get model from params or defaults
   const modelInput = params.model;
-  const model = (modelInput ? mapToApiModelId(modelInput) : getDefaultModel("audio")?.id || "elevenlabs-tts") as AudioModel;
+  let model: AudioModel;
+  if (modelInput) {
+    model = mapToApiModelId(modelInput) as AudioModel;
+  } else {
+    const defaultModel = getDefaultModel("audio");
+    if (!defaultModel) {
+      return { success: false, skillId: skill.id, type: "audio", error: "No audio models available" };
+    }
+    model = defaultModel.id as AudioModel;
+  }
 
   // Get model metadata from registry
   const modelMeta = getModelById(model);

@@ -806,6 +806,7 @@ export const chatRouter = router({
           models: result.skill.models || [],
           defaultModel: result.skill.defaultModel,
           creditMultiplier: result.skill.creditMultiplier,
+          executionMode: result.skill.executionMode || "llm-only",
         },
         confidence: result.confidence,
         matchedTrigger: result.matchedTrigger,
@@ -963,6 +964,47 @@ export const chatRouter = router({
         ctx.user.id,
         userToken
       );
+
+      // Persist the media result as an assistant message in the conversation
+      if (input.conversationId && result.success) {
+        try {
+          let content = "";
+          let attachments: Array<{ type: string; url: string; name: string }> = [];
+
+          if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
+            content = `Generated image${result.resultUrls.length > 1 ? "s" : ""}:\n\n${result.resultUrls.map((url: string) => `![Generated Image](${url})`).join("\n\n")}`;
+            attachments = result.resultUrls.map((url: string, i: number) => ({
+              type: "image", url, name: `generated-image-${i + 1}.png`,
+            }));
+          } else if (result.type === "video" && result.isAsync) {
+            content = `Video generation started. ${result.message || ""}\n\nYou can check the progress in the Media History page.`;
+          } else if (result.resultUrl) {
+            content = result.type === "image"
+              ? `Generated image:\n\n![Generated Image](${result.resultUrl})`
+              : `Generated ${result.type}:\n\n[View ${result.type}](${result.resultUrl})`;
+            if (result.type === "image") {
+              attachments = [{ type: "image", url: result.resultUrl, name: "generated-image.png" }];
+            }
+          } else {
+            content = result.message || "Media generated successfully!";
+          }
+
+          if (result.creditsUsed) {
+            content += `\n\n*Credits used: ${result.creditsUsed}*`;
+          }
+
+          await createMessage({
+            conversationId: input.conversationId,
+            role: "assistant",
+            content,
+            attachments: attachments.length > 0 ? attachments : undefined,
+            skillUsed: input.skillId,
+            creditsUsed: result.creditsUsed ? String(result.creditsUsed) : undefined,
+          });
+        } catch (err) {
+          console.error("[executeSkill] Failed to save media message:", err);
+        }
+      }
 
       return result;
     }),

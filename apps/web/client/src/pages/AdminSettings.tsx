@@ -46,6 +46,7 @@ import {
   ExternalLink,
   TestTube2,
   Menu,
+  Brain,
 } from "lucide-react";
 import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
 
@@ -275,6 +276,27 @@ export default function AdminSettings() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  // AI / Memory settings
+  const [aiSummaryModel, setAiSummaryModel] = useState("");
+  const { data: aiSettings, refetch: refetchAi } = trpc.systemSettings.getSettingsByCategory.useQuery(
+    { category: "ai" as any },
+    { enabled: !!user && user.role === "admin" }
+  );
+  const updateAiSettingMutation = trpc.systemSettings.updateSetting.useMutation({
+    onSuccess: () => { toast.success("AI setting saved"); refetchAi(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const { data: modelsData } = trpc.llmProviders.availableModels.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+  });
+
+  useEffect(() => {
+    if (aiSettings) {
+      const summaryModelSetting = aiSettings.find((s: any) => s.key === "summaryModel");
+      if (summaryModelSetting?.value) setAiSummaryModel(summaryModelSetting.value);
+    }
+  }, [aiSettings]);
+
   // Load settings into form
   useEffect(() => {
     if (stripeSettings) {
@@ -345,6 +367,7 @@ export default function AdminSettings() {
     { key: "sms", label: "SMS", sublabel: "Provider Config", icon: MessageSquare },
     { key: "2fa", label: "2FA", sublabel: "Authenticator", icon: Shield },
     { key: "stt", label: "STT", sublabel: "Speech-to-Text", icon: Mic },
+    { key: "ai", label: "AI / Memory", sublabel: "Summary Model", icon: Brain },
     { key: "menu", label: "Main Menu", sublabel: "Visibility Control", icon: Menu },
   ];
 
@@ -1379,6 +1402,63 @@ export default function AdminSettings() {
                     <li>Groq offers free Whisper transcription — recommended to start</li>
                   </ul>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* AI / Memory Settings Tab */}
+          <TabsContent value="ai">
+            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Brain className="w-5 h-5 text-purple-600" />
+                  AI / Memory Settings
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure LLM models used for background tasks like memory consolidation and summarization.
+                </p>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Summary / Consolidation Model</label>
+                  <p className="text-xs text-muted-foreground">
+                    Model used for auto-summarizing conversation history and consolidating memory. Use a cheaper model to save credits.
+                  </p>
+                  <Select value={aiSummaryModel || ""} onValueChange={setAiSummaryModel}>
+                    <SelectTrigger className="w-full max-w-md">
+                      <SelectValue placeholder="Select model (default: gpt-4o-mini)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {modelsData?.models?.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.id}
+                        </SelectItem>
+                      ))}
+                      {(!modelsData?.models || modelsData.models.length === 0) && (
+                        <SelectItem value="gpt-4o-mini">gpt-4o-mini (default)</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    updateAiSettingMutation.mutate({
+                      category: "ai" as any,
+                      key: "summaryModel",
+                      value: aiSummaryModel || "gpt-4o-mini",
+                    });
+                  }}
+                  disabled={updateAiSettingMutation.isPending}
+                  className="gap-2"
+                >
+                  {updateAiSettingMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  Save AI Settings
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
