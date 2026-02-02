@@ -7,6 +7,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { formatRelativeTime } from '@smartspec/shared';
 import type { UserRole } from '@smartspec/shared';
+import { detectPlatform } from '@smartspec/shared';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
@@ -84,6 +85,12 @@ export default function Dashboard() {
     { enabled: isAuthenticated }
   );
 
+  // Menu visibility (must be before any early return to satisfy Rules of Hooks)
+  const platform = detectPlatform();
+  const { data: menuOverrides } = trpc.systemSettings.getMenuVisibility.useQuery(
+    { platform: platform as 'web' | 'desktop' },
+    { staleTime: 60_000 }
+  );
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -104,9 +111,9 @@ export default function Dashboard() {
   }
 
   const userRole = (user.role || 'user') as UserRole;
-  const mainMenuItems = getResolvedMenuItems(userRole, 'main');
-  const adminMenuItems = getResolvedMenuItems(userRole, 'admin');
-  const domainMenuItems = getResolvedMenuItems(userRole, 'domain-admin');
+  const mainMenuItems = getResolvedMenuItems(userRole, 'main', menuOverrides);
+  const adminMenuItems = getResolvedMenuItems(userRole, 'admin', menuOverrides);
+  const domainMenuItems = getResolvedMenuItems(userRole, 'domain-admin', menuOverrides);
 
   // Calculate real stats from media tasks
   const tasks = mediaTasksData?.tasks || [];

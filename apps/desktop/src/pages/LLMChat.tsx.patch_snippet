@@ -1,3 +1,0 @@
-- Call `await loadProxyToken()` in useEffect on mount.
-- Replace `useMemo(() => getProxyTokenHint(), [])` with state `tokenHint`.
-- After saving token, refresh hint.

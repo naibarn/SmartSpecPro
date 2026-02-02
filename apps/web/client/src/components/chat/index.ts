@@ -17,3 +17,5 @@ export { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 export { CodeArtifact, InlineCode } from "./artifacts/CodeArtifact";
 export { ArtifactPanel } from "./artifacts/ArtifactPanel";
 export type { Artifact, ArtifactType } from "./artifacts/ArtifactPanel";
+export { LLMArtifactViewer, parseArtifacts, stripArtifactTags } from "./artifacts/LLMArtifactViewer";
+export type { LLMArtifact } from "./artifacts/LLMArtifactViewer";

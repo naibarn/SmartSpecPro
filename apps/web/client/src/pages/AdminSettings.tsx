@@ -3,7 +3,7 @@
  * Manage platform configuration: Stripe, Invoice, etc.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "../lib/trpc";
@@ -45,7 +45,9 @@ import {
   Mic,
   ExternalLink,
   TestTube2,
+  Menu,
 } from "lucide-react";
+import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
 
 interface StripeSettings {
   secretKey?: string;
@@ -343,6 +345,7 @@ export default function AdminSettings() {
     { key: "sms", label: "SMS", sublabel: "Provider Config", icon: MessageSquare },
     { key: "2fa", label: "2FA", sublabel: "Authenticator", icon: Shield },
     { key: "stt", label: "STT", sublabel: "Speech-to-Text", icon: Mic },
+    { key: "menu", label: "Main Menu", sublabel: "Visibility Control", icon: Menu },
   ];
 
   return (
@@ -1379,10 +1382,189 @@ export default function AdminSettings() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Main Menu Settings Tab */}
+          <TabsContent value="menu">
+            <MenuOverridesPanel />
+          </TabsContent>
         </Tabs>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// Menu Overrides Panel
+// ============================================================
+
+interface MenuOverrideEntry {
+  menuItemId: string;
+  web_admin: boolean;
+  web_domain_admin: boolean;
+  web_user: boolean;
+  desktop_admin: boolean;
+  desktop_domain_admin: boolean;
+  desktop_user: boolean;
+}
+
+const PLATFORMS = ["web", "desktop"] as const;
+const ROLES: { key: string; label: string }[] = [
+  { key: "admin", label: "Admin" },
+  { key: "domain_admin", label: "DomAdm" },
+  { key: "user", label: "User" },
+];
+
+function buildDefaultOverrides(): MenuOverrideEntry[] {
+  return defaultMenuItems.map((item) => {
+    const entry: MenuOverrideEntry = {
+      menuItemId: item.id,
+      web_admin: item.platforms.includes("web") && (!item.roles || item.roles.includes("admin")),
+      web_domain_admin: item.platforms.includes("web") && (!item.roles || item.roles.includes("domain_admin")),
+      web_user: item.platforms.includes("web") && (!item.roles || item.roles.includes("user")),
+      desktop_admin: item.platforms.includes("desktop") && (!item.roles || item.roles.includes("admin")),
+      desktop_domain_admin: item.platforms.includes("desktop") && (!item.roles || item.roles.includes("domain_admin")),
+      desktop_user: item.platforms.includes("desktop") && (!item.roles || item.roles.includes("user")),
+    };
+    return entry;
+  });
+}
+
+function MenuOverridesPanel() {
+  const { data: savedOverrides, isLoading } = trpc.systemSettings.getMenuOverrides.useQuery();
+  const updateMutation = trpc.systemSettings.updateMenuOverrides.useMutation({
+    onSuccess: () => toast.success("Menu settings saved"),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const [overrides, setOverrides] = useState<MenuOverrideEntry[]>([]);
+
+  useEffect(() => {
+    const defaults = buildDefaultOverrides();
+    if (savedOverrides && savedOverrides.length > 0) {
+      const map = new Map(savedOverrides.map((o: MenuOverrideEntry) => [o.menuItemId, o]));
+      setOverrides(defaults.map((d) => map.get(d.menuItemId) ?? d));
+    } else {
+      setOverrides(defaults);
+    }
+  }, [savedOverrides]);
+
+  const toggle = (menuItemId: string, col: keyof MenuOverrideEntry) => {
+    setOverrides((prev) =>
+      prev.map((o) =>
+        o.menuItemId === menuItemId ? { ...o, [col]: !o[col] } : o
+      )
+    );
+  };
+
+  const isAvailable = (item: SharedMenuItem, platform: string, role: string): boolean => {
+    if (!item.platforms.includes(platform as any)) return false;
+    if (item.roles && !item.roles.includes(role as UserRole)) return false;
+    return true;
+  };
+
+  const groups = [
+    { key: "main", label: "Main Menu" },
+    { key: "admin", label: "Admin Menu" },
+    { key: "domain-admin", label: "Domain Admin Menu" },
+  ];
+
+  if (isLoading) {
+    return (
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardContent className="py-12 flex justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+      <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Menu className="w-5 h-5 text-purple-500" />
+          Main Menu Settings
+        </CardTitle>
+        <CardDescription>
+          Control which menu items are visible per platform and role. Unchecked items will be hidden.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50/50">
+                <th className="text-left px-4 py-3 font-medium text-gray-500 w-48">Menu Item</th>
+                {PLATFORMS.map((p) =>
+                  ROLES.map((r) => (
+                    <th key={`${p}_${r.key}`} className="text-center px-2 py-3 font-medium text-gray-500 text-xs">
+                      <div>{p === "web" ? "Web" : "Desktop"}</div>
+                      <div className="text-gray-400 font-normal">{r.label}</div>
+                    </th>
+                  ))
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map((group) => {
+                const items = defaultMenuItems.filter((m) => m.group === group.key);
+                if (items.length === 0) return null;
+                return (
+                  <Fragment key={group.key}>
+                    <tr>
+                      <td colSpan={7} className="px-4 py-2 bg-gray-100/60 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        {group.label}
+                      </td>
+                    </tr>
+                    {items.map((item) => {
+                      const override = overrides.find((o) => o.menuItemId === item.id);
+                      if (!override) return null;
+                      return (
+                        <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                          <td className="px-4 py-2.5 font-medium text-gray-700">{item.label}</td>
+                          {PLATFORMS.map((p) =>
+                            ROLES.map((r) => {
+                              const col = `${p}_${r.key}` as keyof MenuOverrideEntry;
+                              const available = isAvailable(item, p, r.key);
+                              const checked = override[col] as boolean;
+                              return (
+                                <td key={`${item.id}_${col}`} className="text-center px-2 py-2.5">
+                                  {available ? (
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => toggle(item.id, col)}
+                                      className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                    />
+                                  ) : (
+                                    <span className="text-gray-300">—</span>
+                                  )}
+                                </td>
+                              );
+                            })
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="p-4 border-t flex justify-end">
+          <Button
+            onClick={() => updateMutation.mutate(overrides)}
+            disabled={updateMutation.isPending}
+            className="gap-2"
+          >
+            {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save Menu Settings
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

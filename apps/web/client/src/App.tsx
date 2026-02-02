@@ -1,7 +1,11 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import DesktopPlaceholder from "@/pages/DesktopPlaceholder";
+import DockerPage from "@/pages/DockerPage";
+import TerminalPage from "@/pages/TerminalPage";
+import CLIPage from "@/pages/CLIPage";
+import Factory from "@/pages/Factory";
+import VideoEditorPage from "@/pages/VideoEditorPage";
 import { Route, Switch } from "wouter";
 import { HelmetProvider } from "react-helmet-async";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -119,10 +123,11 @@ function Router() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/auth/callback/:provider" component={AuthCallback} />
       <Route path="/auth/device" component={DeviceAuth} />
-      <Route path="/factory" component={DesktopPlaceholder} />
-      <Route path="/terminal" component={DesktopPlaceholder} />
-      <Route path="/kilo" component={DesktopPlaceholder} />
-      <Route path="/docker" component={DesktopPlaceholder} />
+      <Route path="/factory" component={Factory} />
+      <Route path="/terminal" component={TerminalPage} />
+      <Route path="/kilo" component={CLIPage} />
+      <Route path="/docker" component={DockerPage} />
+      <Route path="/video-editor" component={VideoEditorPage} />
       <Route path="/docker-redirect" component={DockerRedirect} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

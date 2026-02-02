@@ -1028,4 +1028,108 @@ export const systemSettingsRouter = router({
 
       return { success: true };
     }),
+
+  // ============================================================
+  // Menu Overrides — per menu item × platform × role visibility
+  // ============================================================
+
+  getMenuOverrides: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const [row] = await db.select().from(systemSettings)
+      .where(and(eq(systemSettings.category, "menu_overrides"), eq(systemSettings.key, "config")))
+      .limit(1);
+
+    if (!row?.value) return [];
+    try {
+      return JSON.parse(row.value) as Array<{
+        menuItemId: string;
+        web_admin: boolean;
+        web_domain_admin: boolean;
+        web_user: boolean;
+        desktop_admin: boolean;
+        desktop_domain_admin: boolean;
+        desktop_user: boolean;
+      }>;
+    } catch {
+      return [];
+    }
+  }),
+
+  updateMenuOverrides: adminProcedure
+    .input(z.array(z.object({
+      menuItemId: z.string(),
+      web_admin: z.boolean(),
+      web_domain_admin: z.boolean(),
+      web_user: z.boolean(),
+      desktop_admin: z.boolean(),
+      desktop_domain_admin: z.boolean(),
+      desktop_user: z.boolean(),
+    })))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const value = JSON.stringify(input);
+
+      const [existing] = await db.select().from(systemSettings)
+        .where(and(eq(systemSettings.category, "menu_overrides"), eq(systemSettings.key, "config")))
+        .limit(1);
+
+      if (existing) {
+        await db.update(systemSettings)
+          .set({ value, updatedBy: ctx.user.id, updatedAt: new Date() })
+          .where(eq(systemSettings.id, existing.id));
+      } else {
+        await db.insert(systemSettings).values({
+          category: "menu_overrides",
+          key: "config",
+          value,
+          isSensitive: false,
+          updatedBy: ctx.user.id,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  getMenuVisibility: protectedProcedure
+    .input(z.object({ platform: z.enum(["web", "desktop"]) }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const [row] = await db.select().from(systemSettings)
+        .where(and(eq(systemSettings.category, "menu_overrides"), eq(systemSettings.key, "config")))
+        .limit(1);
+
+      if (!row?.value) return [];
+
+      let overrides: Array<{
+        menuItemId: string;
+        web_admin: boolean;
+        web_domain_admin: boolean;
+        web_user: boolean;
+        desktop_admin: boolean;
+        desktop_domain_admin: boolean;
+        desktop_user: boolean;
+      }>;
+      try {
+        overrides = JSON.parse(row.value);
+      } catch {
+        return [];
+      }
+
+      const role = ctx.user.role as string;
+      const platform = input.platform;
+
+      // Map role to column key
+      const roleKey = role === "admin" ? "admin" : role === "domain_admin" ? "domain_admin" : "user";
+      const colKey = `${platform}_${roleKey}` as keyof typeof overrides[0];
+
+      return overrides
+        .filter(o => o[colKey] === false)
+        .map(o => ({ menuItemId: o.menuItemId, visible: false }));
+    }),
 });

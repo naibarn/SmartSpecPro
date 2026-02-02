@@ -46,7 +46,11 @@
     "@smartspec/db": "*",
     "@smartspec/shared": "*",
     "@smartspec/skills": "*",
+    "@smartspec/ui": "*",
     "@tanstack/react-query": "^5.90.2",
+    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
     "@trpc/client": "^11.6.0",
     "@trpc/react-query": "^11.6.0",
     "@trpc/server": "^11.6.0",
@@ -55,6 +59,8 @@
     "@types/dompurify": "^3.2.0",
     "@types/nodemailer": "^7.0.9",
     "@types/sanitize-html": "^2.16.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "adm-zip": "^0.5.16",
     "argon2": "^0.44.0",
     "axios": "^1.12.0",
@@ -101,8 +107,7 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
-    "zod": "^3.24.1",
-    "@smartspec/ui": "*"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@builder.io/vite-plugin-jsx-loc": "^0.1.1",

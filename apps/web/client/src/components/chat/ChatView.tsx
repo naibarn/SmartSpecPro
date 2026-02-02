@@ -44,6 +44,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ImageLightbox } from "./media/ImageLightbox";
 import { SafeMarkdown } from "./SafeMarkdown";
+import { LLMArtifactViewer, parseArtifacts, stripArtifactTags, type LLMArtifact } from "./artifacts/LLMArtifactViewer";
 import { SaveMemoryDialog, type SaveMemoryInitialData } from "./SaveMemoryDialog";
 import {
   ContextMenu,
@@ -295,6 +296,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     setLightboxOpen(true);
   };
 
+  // LLM Artifact viewer state
+  const [selectedLLMArtifact, setSelectedLLMArtifact] = useState<LLMArtifact | null>(null);
+
   // Debounce input for skill detection
   const debouncedInput = useDebounce(input, 800);
 
@@ -416,8 +420,10 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   // File upload constants
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images
+  const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB for videos
   const ALLOWED_FILE_TYPES = [
     "image/jpeg", "image/png", "image/gif", "image/webp",
+    "video/mp4", "video/webm", "video/quicktime",
     "application/pdf",
     "text/plain", "text/csv", "text/markdown",
     "application/json",
@@ -431,11 +437,13 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
     // File size validation
     const isImage = file.type.startsWith("image/");
-    const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
+    const isVideo = file.type.startsWith("video/");
+    const maxSize = isImage ? MAX_IMAGE_SIZE : isVideo ? MAX_VIDEO_SIZE : MAX_FILE_SIZE;
 
     if (file.size > maxSize) {
       const sizeMB = (maxSize / (1024 * 1024)).toFixed(0);
-      alert(`File too large. Maximum size is ${sizeMB}MB for ${isImage ? "images" : "files"}.`);
+      const typeLabel = isImage ? "images" : isVideo ? "videos" : "files";
+      alert(`File too large. Maximum size is ${sizeMB}MB for ${typeLabel}.`);
       return;
     }
 
@@ -452,6 +460,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       "image/png": ["png"],
       "image/gif": ["gif"],
       "image/webp": ["webp"],
+      "video/mp4": ["mp4"],
+      "video/webm": ["webm"],
+      "video/quicktime": ["mov"],
       "application/pdf": ["pdf"],
       "text/plain": ["txt"],
       "text/csv": ["csv"],
@@ -498,11 +509,13 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     for (const a of atts) {
       if (a.fileType.startsWith("image/")) {
         parts.push({ type: "image_url", image_url: { url: a.url } });
+      } else if (a.fileType.startsWith("video/")) {
+        parts.push({ type: "file_url", file_url: { url: a.url, name: a.fileName, mime_type: a.fileType } });
       } else {
-        parts.push({ type: "text", text: `File: ${a.url}` });
+        parts.push({ type: "file_url", file_url: { url: a.url, name: a.fileName, mime_type: a.fileType } });
       }
     }
-    return parts.length === 1 ? parts[0].text : parts;
+    return parts.length === 1 && parts[0].type === "text" ? parts[0].text : parts;
   };
 
   // Stream response from LLM with memory-aware context
@@ -634,6 +647,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         lastLocalAddTime.current = Date.now();
         console.log("[ChatView] Adding message to local state, timestamp:", lastLocalAddTime.current);
 
+        // Parse inline artifacts from LLM response
+        const inlineArtifacts = parseArtifacts(fullContent);
+
         // Add assistant message to local state
         const newMessage = {
           id: savedMessageId || Date.now(), // Use server ID if available
@@ -642,6 +658,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           creditsUsed: creditsUsed.toString(),
           modelUsed: selectedModel || conversation?.model || "gpt-4o-mini",
           skillUsed: skillUsed,
+          artifacts: inlineArtifacts.length > 0
+            ? inlineArtifacts.map((a) => ({ id: a.identifier, type: a.type as any, title: a.title, content: a.content }))
+            : undefined,
           createdAt: new Date(),
         };
         console.log("[ChatView] New message object:", newMessage);
@@ -1042,12 +1061,13 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   // Render user content (including images)
   const renderUserContent = (message: Message) => {
     const imageAttachments = message.attachments?.filter((a) => a.type?.startsWith("image")) || [];
-    const hasImages = imageAttachments.length > 0;
+    const videoAttachments = message.attachments?.filter((a) => a.type?.startsWith("video")) || [];
+    const fileAttachments = message.attachments?.filter((a) => !a.type?.startsWith("image") && !a.type?.startsWith("video")) || [];
 
     return (
       <div className="space-y-2">
         <div className="whitespace-pre-wrap">{message.content}</div>
-        {hasImages && (
+        {imageAttachments.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {imageAttachments.map((a, i) => (
               <img
@@ -1060,6 +1080,34 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   i
                 )}
               />
+            ))}
+          </div>
+        )}
+        {videoAttachments.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {videoAttachments.map((a, i) => (
+              <video
+                key={i}
+                src={a.url}
+                controls
+                className="max-h-48 rounded-md border"
+              />
+            ))}
+          </div>
+        )}
+        {fileAttachments.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {fileAttachments.map((a, i) => (
+              <a
+                key={i}
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs bg-background/50 border rounded-md px-2.5 py-1.5 hover:bg-background transition-colors"
+              >
+                <Paperclip className="h-3 w-3" />
+                {a.name || "File"}
+              </a>
             ))}
           </div>
         )}
@@ -1308,11 +1356,37 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                       </div>
                     )}
                     {m.role === "assistant" ? (
-                      <SafeMarkdown
-                        onImageClick={(images, index) => openImageLightbox(images, index)}
-                      >
-                        {m.content}
-                      </SafeMarkdown>
+                      <>
+                        <SafeMarkdown
+                          onImageClick={(images, index) => openImageLightbox(images, index)}
+                        >
+                          {stripArtifactTags(m.content)}
+                        </SafeMarkdown>
+                        {/* Inline artifact cards */}
+                        {(() => {
+                          const inlineArtifacts = parseArtifacts(m.content);
+                          if (inlineArtifacts.length === 0) return null;
+                          return (
+                            <div className="mt-3 grid gap-2">
+                              {inlineArtifacts.map((artifact, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => setSelectedLLMArtifact(artifact)}
+                                  className="flex items-center gap-3 rounded-lg border bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 px-4 py-3 text-left transition-all hover:shadow-md hover:-translate-y-0.5"
+                                >
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-800">
+                                    <Code2 className="h-4 w-4 text-purple-600 dark:text-purple-300" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium text-sm truncate">{artifact.title}</div>
+                                    <div className="text-xs text-muted-foreground">{artifact.type} — Click to preview</div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </>
                     ) : (
                       renderUserContent(m)
                     )}
@@ -1458,7 +1532,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   <SafeMarkdown
                     onImageClick={(images, index) => openImageLightbox(images, index)}
                   >
-                    {streamingContent}
+                    {stripArtifactTags(streamingContent)}
                   </SafeMarkdown>
                 </div>
               )}
@@ -1551,6 +1625,10 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                     alt={a.fileName}
                     className="h-16 w-16 rounded-md border object-cover"
                   />
+                ) : a.fileType.startsWith("video/") ? (
+                  <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center">
+                    <Video className="h-6 w-6 text-muted-foreground" />
+                  </div>
                 ) : (
                   <Badge variant="secondary" className="gap-2 pr-6">
                     {a.fileName}
@@ -1648,7 +1726,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           <input
             ref={fileRef}
             type="file"
-            accept="image/*,.pdf,.txt,.csv,.md,.json,.doc,.docx"
+            accept="image/*,video/mp4,video/webm,video/quicktime,.pdf,.txt,.csv,.md,.json,.doc,.docx"
             className="hidden"
             onChange={(e) => onFiles(e.target.files)}
           />
@@ -1725,6 +1803,14 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
       />
+
+      {/* LLM Artifact Viewer */}
+      {selectedLLMArtifact && (
+        <LLMArtifactViewer
+          artifact={selectedLLMArtifact}
+          onClose={() => setSelectedLLMArtifact(null)}
+        />
+      )}
 
       {/* Save Memory Dialog (auto-save suggestions + manual right-click) */}
       <SaveMemoryDialog

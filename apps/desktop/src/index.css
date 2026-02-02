@@ -1,4 +1,0 @@
-@import "@smartspec/ui/src/styles/globals.css";
-
-/* Ensure Tailwind v4 scans shared UI package for class usage */
-@source "../../../packages/ui/src";

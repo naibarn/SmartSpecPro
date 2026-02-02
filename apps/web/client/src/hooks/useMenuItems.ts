@@ -29,6 +29,7 @@ import {
   GalleryHorizontal,
   Coins,
   ExternalLink,
+  Film,
 } from 'lucide-react';
 import {
   getMenuItemsByGroup,
@@ -68,6 +69,7 @@ const iconMap: Record<string, LucideIcon> = {
   GalleryHorizontal,
   Coins,
   ExternalLink,
+  Film,
 };
 
 export interface ResolvedMenuItem extends MenuItem {
@@ -77,9 +79,10 @@ export interface ResolvedMenuItem extends MenuItem {
 export function getResolvedMenuItems(
   role: UserRole,
   group: MenuGroup,
+  overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>,
 ): ResolvedMenuItem[] {
   const platform = detectPlatform();
-  const items = getMenuItemsByGroup(platform, role, group);
+  const items = getMenuItemsByGroup(platform, role, group, overrides);
   return items.map(item => ({
     ...item,
     IconComponent: iconMap[item.icon] || Sparkles,
