@@ -17,10 +17,10 @@ isAutoTrigger: true
 enabledByDefault: true
 priority: 50
 triggerPatterns:
-  - "สร้างพรอมต์ภาพ|เขียนพรอมต์ภาพ|แต่งพรอมต์ภาพ|สร้างพรอมต์รูป"
-  - "สร้าง prompt ภาพ|เขียน prompt ภาพ"
-  - "create image prompt|write image prompt|enhance image prompt|generate image prompt"
-  - "image prompt|img prompt"
+  - "สร้างพรอมต์|เขียนพรอมต์|แต่งพรอมต์|enhance prompt|image prompt|prompt สำหรับภาพ"
+  - "generate.*image.*prompt|พรอมต์.*ภาพ|prompt.*รูป|create.*prompt.*image"
+  - "create image prompt|write image prompt|enhance image prompt|generate image prompt|create prompt|write prompt"
+  - "img prompt|สร้าง prompt|เขียน prompt"
 ---
 
 # Image Prompt Engineer (v2.1)

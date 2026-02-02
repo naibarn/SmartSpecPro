@@ -319,3 +319,42 @@
     scroll-behavior: smooth;
   }
 }
+
+/* Clickable images in SafeMarkdown (chat messages with generated images) */
+.safe-md-clickable-imgs img {
+  cursor: pointer;
+  max-width: 300px;
+  max-height: 200px;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  object-fit: contain;
+  transition: opacity 0.2s;
+}
+.safe-md-clickable-imgs img:hover {
+  opacity: 0.85;
+}
+
+/* Download button overlay on chat images */
+.safe-md-dl-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+.safe-md-img-wrapper:hover .safe-md-dl-btn {
+  opacity: 1;
+}
+.safe-md-dl-btn:hover {
+  background: rgba(0, 0, 0, 0.85);
+}

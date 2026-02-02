@@ -1,12 +1,13 @@
 /**
  * SafeMarkdown - XSS-safe markdown rendering component
  * Sanitizes content before rendering to prevent script injection
- * Supports clickable images with lightbox integration
+ * Supports clickable images with lightbox integration and download
  */
 
 import { useMemo, useCallback } from "react";
 import { Streamdown } from "streamdown";
 import DOMPurify from "dompurify";
+import { Download } from "lucide-react";
 
 interface ImageInfo {
   src: string;
@@ -41,20 +42,13 @@ const ALLOWED_ATTR = [
 
 // Sanitize content to prevent XSS
 function sanitizeContent(content: string): string {
-  // First pass: remove obvious script patterns
   let sanitized = content
-    // Remove script tags
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    // Remove event handlers
     .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "")
-    // Remove javascript: URLs
     .replace(/javascript:/gi, "")
-    // Remove data: URLs (except images)
     .replace(/data:(?!image\/)/gi, "data-blocked:")
-    // Remove vbscript: URLs
     .replace(/vbscript:/gi, "");
 
-  // Second pass: use DOMPurify for comprehensive sanitization
   sanitized = DOMPurify.sanitize(sanitized, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
@@ -69,13 +63,10 @@ function sanitizeContent(content: string): string {
 
 // Validate URLs in markdown
 function sanitizeUrls(content: string): string {
-  // Replace potentially dangerous URLs in markdown links
   return content.replace(
     /\[([^\]]*)\]\(([^)]*)\)/g,
     (match, text, url) => {
       const trimmedUrl = url.trim().toLowerCase();
-
-      // Block dangerous protocols
       if (
         trimmedUrl.startsWith("javascript:") ||
         trimmedUrl.startsWith("vbscript:") ||
@@ -84,8 +75,6 @@ function sanitizeUrls(content: string): string {
       ) {
         return `[${text}](#blocked)`;
       }
-
-      // Allow safe protocols
       if (
         trimmedUrl.startsWith("http://") ||
         trimmedUrl.startsWith("https://") ||
@@ -96,12 +85,9 @@ function sanitizeUrls(content: string): string {
       ) {
         return match;
       }
-
-      // Block unknown protocols
       if (trimmedUrl.includes(":")) {
         return `[${text}](#blocked)`;
       }
-
       return match;
     }
   );
@@ -112,27 +98,91 @@ function extractImages(content: string): ImageInfo[] {
   const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
   const images: ImageInfo[] = [];
   let match;
+  while ((match = imageRegex.exec(content)) !== null) {
+    images.push({ alt: match[1] || undefined, src: match[2] });
+  }
+  return images;
+}
+
+// Download helper
+async function downloadImage(src: string, name?: string) {
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name || "image.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch {
+    window.open(src, "_blank");
+  }
+}
+
+// Image thumbnail component with download button
+function ImageThumbnail({
+  src,
+  alt,
+  onClick,
+}: {
+  src: string;
+  alt: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className="safe-md-img-wrapper" style={{ position: "relative", display: "inline-block" }}>
+      <img
+        src={src}
+        alt={alt}
+        className="cursor-pointer max-w-[300px] max-h-[200px] rounded-lg border hover:opacity-90 transition-opacity object-contain"
+        onClick={onClick}
+      />
+      <button
+        className="safe-md-dl-btn"
+        title="Download"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          downloadImage(src, alt || "image.png");
+        }}
+      >
+        <Download className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+// Split content into text segments and image segments
+function splitContentAndImages(content: string): Array<{ type: "text"; value: string } | { type: "image"; src: string; alt: string }> {
+  const parts: Array<{ type: "text"; value: string } | { type: "image"; src: string; alt: string }> = [];
+  const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  let lastIndex = 0;
+  let match;
 
   while ((match = imageRegex.exec(content)) !== null) {
-    images.push({
-      alt: match[1] || undefined,
-      src: match[2],
-    });
+    // Text before this image
+    if (match.index > lastIndex) {
+      parts.push({ type: "text", value: content.slice(lastIndex, match.index) });
+    }
+    parts.push({ type: "image", src: match[2], alt: match[1] || "Generated image" });
+    lastIndex = match.index + match[0].length;
   }
 
-  return images;
+  // Remaining text after last image
+  if (lastIndex < content.length) {
+    parts.push({ type: "text", value: content.slice(lastIndex) });
+  }
+
+  return parts;
 }
 
 export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdownProps) {
   const sanitizedContent = useMemo(() => {
-    if (!children || typeof children !== "string") {
-      return "";
-    }
-
-    // Sanitize URLs first (before markdown parsing)
+    if (!children || typeof children !== "string") return "";
     const urlSanitized = sanitizeUrls(children);
-
-    // Then sanitize HTML content
     return sanitizeContent(urlSanitized);
   }, [children]);
 
@@ -146,36 +196,40 @@ export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdown
     onImageClick(allImages, index >= 0 ? index : 0);
   }, [allImages, onImageClick]);
 
-  // If we have onImageClick, we need to intercept image rendering
-  // Replace markdown images with custom clickable thumbnails
-  const processedContent = useMemo(() => {
-    if (!onImageClick || !sanitizedContent) return sanitizedContent;
+  // If images exist and onImageClick is set, split content and render images as React components
+  const hasImages = allImages.length > 0 && onImageClick;
 
-    // Replace image markdown with a placeholder that we'll render as clickable
-    // We add a data attribute to identify the image
-    return sanitizedContent.replace(
-      /!\[([^\]]*)\]\(([^)]+)\)/g,
-      (match, alt, src) => {
-        // Create a custom HTML that will be rendered as a clickable thumbnail
-        return `<img src="${src}" alt="${alt || 'Generated image'}" class="markdown-image cursor-pointer max-w-[300px] max-h-[200px] rounded-lg border hover:opacity-90 transition-opacity object-contain" data-clickable="true" />`;
-      }
+  const contentParts = useMemo(() => {
+    if (!hasImages) return null;
+    return splitContentAndImages(sanitizedContent);
+  }, [sanitizedContent, hasImages]);
+
+  if (hasImages && contentParts) {
+    return (
+      <div className={className}>
+        {contentParts.map((part, i) => {
+          if (part.type === "text") {
+            return part.value.trim() ? (
+              <Streamdown key={i}>{part.value}</Streamdown>
+            ) : null;
+          }
+          return (
+            <ImageThumbnail
+              key={`img-${i}`}
+              src={part.src}
+              alt={part.alt}
+              onClick={() => handleImageClick(part.src)}
+            />
+          );
+        })}
+      </div>
     );
-  }, [sanitizedContent, onImageClick]);
+  }
 
-  // Add click handler for images after render
-  const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName === "IMG" && target.getAttribute("data-clickable") === "true") {
-      const src = target.getAttribute("src");
-      if (src) {
-        handleImageClick(src);
-      }
-    }
-  }, [handleImageClick]);
-
+  // No images or no onImageClick — render normally
   return (
-    <div className={className} onClick={onImageClick ? handleContainerClick : undefined}>
-      <Streamdown>{processedContent}</Streamdown>
+    <div className={className}>
+      <Streamdown>{sanitizedContent}</Streamdown>
     </div>
   );
 }
@@ -183,9 +237,7 @@ export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdown
 // Export a hook for manual sanitization
 export function useSanitizedContent(content: string): string {
   return useMemo(() => {
-    if (!content || typeof content !== "string") {
-      return "";
-    }
+    if (!content || typeof content !== "string") return "";
     return sanitizeContent(sanitizeUrls(content));
   }, [content]);
 }

@@ -55,7 +55,11 @@ import {
   Bot,
   Zap,
   FolderSync,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 
 // Skill interface matching database schema
@@ -1089,31 +1093,48 @@ export default function AdminSkills() {
                       <Sparkles className="h-4 w-4 text-orange-500" />
                       Default Media Model
                     </Label>
-                    <Select
-                      value={editingSkill.defaultModel || "__auto__"}
-                      onValueChange={(value) =>
-                        setEditingSkill({ ...editingSkill, defaultModel: value === "__auto__" ? null : value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select default media model..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__auto__">
-                          <span className="text-muted-foreground">Auto (highest priority model)</span>
-                        </SelectItem>
-                        {(editingSkill.category === "image_generation" ? imageModels?.models : videoModels?.models)?.map((model: any) => (
-                          <SelectItem key={model.modelId} value={model.modelId}>
-                            <div className="flex items-center gap-2">
-                              <span>{model.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({model.provider})
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                          {editingSkill.defaultModel
+                            ? (() => {
+                                const models = editingSkill.category === "image_generation" ? imageModels?.models : videoModels?.models;
+                                const found = models?.find((m: any) => m.modelId === editingSkill.defaultModel);
+                                return found ? `${found.name} (${found.provider})` : editingSkill.defaultModel;
+                              })()
+                            : <span className="text-muted-foreground">Auto (highest priority model)</span>}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search models..." />
+                          <CommandList className="max-h-[200px] overflow-y-auto">
+                            <CommandEmpty>No model found.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                value="__auto__"
+                                onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: null })}
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${!editingSkill.defaultModel ? "opacity-100" : "opacity-0"}`} />
+                                <span className="text-muted-foreground">Auto (highest priority model)</span>
+                              </CommandItem>
+                              {(editingSkill.category === "image_generation" ? imageModels?.models : videoModels?.models)?.map((model: any) => (
+                                <CommandItem
+                                  key={model.modelId}
+                                  value={`${model.name} ${model.modelId} ${model.provider}`}
+                                  onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: model.modelId })}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${editingSkill.defaultModel === model.modelId ? "opacity-100" : "opacity-0"}`} />
+                                  <span>{model.name}</span>
+                                  <span className="ml-1 text-xs text-muted-foreground">({model.provider})</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <p className="text-xs text-muted-foreground">
                       The media generation model used when this skill creates images/videos.
                     </p>

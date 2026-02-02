@@ -233,6 +233,10 @@ export async function autoSyncSkillsFromFolder(): Promise<{
 
         if (oldHash !== newHash) {
           const fileDefaultModel = metadata.defaultModel ?? metadata.default_model ?? null;
+          const fileTriggerPatterns = metadata.triggerPatterns ?? metadata.trigger_patterns ?? undefined;
+          const filePriority = metadata.priority ?? undefined;
+          const fileIsAutoTrigger = metadata.isAutoTrigger ?? metadata.auto_trigger ?? undefined;
+          const fileCreditMultiplier = metadata.creditMultiplier ?? metadata.credit_multiplier ?? undefined;
           await db.update(skillsTable).set({
             skillContent: parsed.content,
             systemPrompt: parsed.content,
@@ -240,6 +244,10 @@ export async function autoSyncSkillsFromFolder(): Promise<{
             version: metadata.version || undefined,
             executionMode: metadata.executionMode ?? metadata.execution_mode ?? undefined,
             ...(fileDefaultModel ? { defaultModel: fileDefaultModel } : {}),
+            ...(fileTriggerPatterns ? { triggerPatterns: fileTriggerPatterns } : {}),
+            ...(filePriority !== undefined ? { priority: filePriority } : {}),
+            ...(fileIsAutoTrigger !== undefined ? { isAutoTrigger: fileIsAutoTrigger } : {}),
+            ...(fileCreditMultiplier !== undefined ? { creditMultiplier: String(fileCreditMultiplier) } : {}),
           }).where(eq(skillsTable.slug, folder.slug));
           result.synced.push(folder.slug);
           console.log(`[SkillRegistry] Updated skill content (hash changed): ${folder.slug}`);
