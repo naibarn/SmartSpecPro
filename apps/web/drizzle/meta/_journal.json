@@ -43,6 +43,13 @@
       "when": 1770019506519,
       "tag": "0005_ancient_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770088941765,
+      "tag": "0006_round_sunset_bain",
+      "breakpoints": true
     }
   ]
 }
