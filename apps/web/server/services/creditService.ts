@@ -4,7 +4,7 @@
  */
 
 import { db } from "../db";
-import { users, creditTransactions, creditPackages } from "../../drizzle/schema";
+import { users, creditTransactions, creditPackages, modelProviderMap } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 
 export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription";
@@ -275,8 +275,95 @@ export async function getCreditPackageById(id: number) {
 }
 
 /**
+ * Check if a model is free via model_provider_map
+ */
+export async function isModelFree(modelId: string): Promise<boolean> {
+  const rows = await db
+    .select({ isFree: modelProviderMap.isFree })
+    .from(modelProviderMap)
+    .where(and(eq(modelProviderMap.modelId, modelId), eq(modelProviderMap.isEnabled, true)))
+    .limit(1);
+  return rows.length > 0 && rows[0].isFree;
+}
+
+/**
+ * Get dynamic pricing from model_provider_map, returns null if not found
+ */
+async function getModelPricingFromDb(modelId: string): Promise<{ input: number; output: number } | null> {
+  const rows = await db
+    .select({
+      pricingInput: modelProviderMap.pricingInput,
+      pricingOutput: modelProviderMap.pricingOutput,
+      isFree: modelProviderMap.isFree,
+    })
+    .from(modelProviderMap)
+    .where(and(eq(modelProviderMap.modelId, modelId), eq(modelProviderMap.isEnabled, true)))
+    .limit(1);
+
+  if (rows.length === 0) return null;
+  if (rows[0].isFree) return { input: 0, output: 0 };
+  return { input: Number(rows[0].pricingInput), output: Number(rows[0].pricingOutput) };
+}
+
+/**
+ * Deduct credits for a model, handling free models (0-credit with audit trail)
+ */
+export async function deductCreditsForModel(params: {
+  userId: number;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd?: number;
+  description?: string;
+}): Promise<{ creditsUsed: number; wasFree: boolean }> {
+  const free = await isModelFree(params.model);
+
+  if (free) {
+    // Log a 0-credit transaction for audit trail
+    await db.insert(creditTransactions).values({
+      userId: params.userId,
+      amount: 0,
+      type: "usage",
+      description: params.description ?? `Free model usage: ${params.model}`,
+      metadata: { freeModel: true, modelId: params.model, inputTokens: params.inputTokens, outputTokens: params.outputTokens },
+      balanceAfter: (await getCreditBalance(params.userId))?.credits ?? 0,
+    });
+    return { creditsUsed: 0, wasFree: true };
+  }
+
+  // Paid model: use dynamic pricing if available
+  const credits = params.costUsd != null && params.costUsd > 0
+    ? calculateCreditsFromCost(params.costUsd)
+    : await calculateCreditsForLLMDynamic(params.inputTokens, params.outputTokens, params.model);
+
+  const result = await deductCredits({
+    userId: params.userId,
+    amount: credits,
+    description: params.description ?? `LLM usage: ${params.model}`,
+    metadata: { model: params.model, tokensUsed: params.inputTokens + params.outputTokens, costUsd: params.costUsd },
+  });
+
+  return { creditsUsed: result.creditsUsed, wasFree: false };
+}
+
+/**
+ * Calculate credits using dynamic DB pricing first, then hardcoded fallback
+ */
+export async function calculateCreditsForLLMDynamic(inputTokens: number, outputTokens: number, model: string): Promise<number> {
+  const dbPricing = await getModelPricingFromDb(model);
+  if (dbPricing) {
+    if (dbPricing.input === 0 && dbPricing.output === 0) return 0;
+    const costUsd = (inputTokens / 1_000_000) * dbPricing.input + (outputTokens / 1_000_000) * dbPricing.output;
+    return Math.max(1, Math.ceil(costUsd * 1000));
+  }
+  // Fallback to hardcoded pricing
+  return calculateCreditsForLLM(inputTokens, outputTokens, model);
+}
+
+/**
  * LLM Model Pricing (per 1M tokens in USD)
  * Based on actual provider costs - update as needed
+ * @deprecated Use dynamic pricing from model_provider_map when available
  */
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   // OpenAI
