@@ -1,14 +1,19 @@
 /**
  * Media Library Panel Component
- * Displays generated videos and audio that can be added to timeline
+ * Displays generated videos and audio that can be added to timeline.
+ * Supports file upload on web platform.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   videoEditorMediaLibrary,
   type MediaLibraryAsset
 } from '../../services/videoEditorService';
 import { showToast } from './Toast';
+import { WebAssetResolver } from '../../services/webAssetResolver';
+
+const isDesktopPlatform = typeof window !== 'undefined' && !!(window as any).__TAURI__;
+const webAssetResolver = new WebAssetResolver();
 
 interface MediaLibraryPanelProps {
   onAddToTimeline?: (asset: MediaLibraryAsset, localPath: string) => void;
@@ -36,6 +41,8 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   const [selectedTab, setSelectedTab] = useState<'videos' | 'audio'>('videos');
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadMediaLibrary();
@@ -56,6 +63,45 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
       setError(err instanceof Error ? err.message : 'Failed to load media library');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle file upload (web only)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const { assetId, uri } = await webAssetResolver.uploadAsset(file);
+        const isVideo = file.type.startsWith('video/');
+
+        const newAsset: MediaLibraryAsset = {
+          id: assetId,
+          type: isVideo ? 'video' : 'audio',
+          title: file.name,
+          thumbnailUrl: '',
+          duration: 0,
+          url: uri,
+          model: 'uploaded',
+          createdAt: new Date(),
+          format: file.name.split('.').pop() || 'mp4',
+        };
+
+        if (isVideo) {
+          setVideos(prev => [newAsset, ...prev]);
+        } else {
+          setAudio(prev => [newAsset, ...prev]);
+        }
+      }
+      showToast('Upload complete', 'success', 2000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      showToast(msg, 'error', 4000);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -81,20 +127,22 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
     setDownloadingIds(prev => new Set(prev).add(asset.id));
 
     try {
-      // Download to workspace if not cached
+      // Platform-aware: desktop downloads to workspace, web uses URL directly
       const localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
 
       // Probe file to get actual metadata
-      const fileInfo = await videoEditorMediaLibrary.probeMediaFile(localPath);
-
-      // Update asset with probed info
-      asset.duration = fileInfo.duration;
-      if (fileInfo.width && fileInfo.height) {
-        asset.resolution = `${fileInfo.width}x${fileInfo.height}`;
+      try {
+        const fileInfo = await videoEditorMediaLibrary.probeMediaFile(localPath);
+        asset.duration = fileInfo.duration;
+        if (fileInfo.width && fileInfo.height) {
+          asset.resolution = `${fileInfo.width}x${fileInfo.height}`;
+        }
+      } catch (probeErr) {
+        console.warn('Failed to probe file (non-fatal):', probeErr);
       }
 
-      // Generate thumbnail if video and not exists
-      if (asset.type === 'video' && !asset.thumbnailUrl) {
+      // Generate thumbnail if video and not exists (desktop only)
+      if (isDesktopPlatform && asset.type === 'video' && !asset.thumbnailUrl) {
         try {
           asset.thumbnailUrl = await videoEditorMediaLibrary.generateThumbnail(localPath);
         } catch (thumbError) {
@@ -104,9 +152,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
 
       // Add to timeline
       onAddToTimeline(asset, localPath);
-
-      // Show success toast
-      showToast(`✓ Added "${asset.title}" to timeline`, 'success', 2000);
+      showToast(`Added "${asset.title}" to timeline`, 'success', 2000);
     } catch (err) {
       console.error('Failed to add to timeline:', err);
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -407,8 +453,32 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         }
       `}</style>
 
+      {/* Hidden file input for web upload */}
+      {!isDesktopPlatform && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*,audio/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleFileUpload}
+        />
+      )}
+
       <div className="media-library-header">
-        <div className="media-library-title">📚 Media Library</div>
+        <div className="media-library-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>📚 Media Library</span>
+          {!isDesktopPlatform && (
+            <button
+              className="add-button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              style={{ fontSize: '11px', padding: '3px 8px' }}
+            >
+              {uploading ? '⏳ Uploading...' : '📤 Upload'}
+            </button>
+          )}
+        </div>
         <div className="media-library-tabs">
           <button
             className={`tab-button ${selectedTab === 'videos' ? 'active' : ''}`}

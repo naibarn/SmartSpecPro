@@ -30,8 +30,9 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'terminal',      label: 'Terminal',        labelTh: 'เทอร์มินัล',    icon: 'Terminal',        path: '/terminal',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 6 },
   { id: 'kilo',          label: 'CLI',             labelTh: 'CLI',           icon: 'Terminal',        path: '/kilo',           platforms: ['web', 'desktop'], group: 'main', sortOrder: 7 },
   { id: 'docker',        label: 'Docker Sandbox',  labelTh: 'แซนด์บ็อกซ์',   icon: 'Container',       path: '/docker',         platforms: ['web', 'desktop'], group: 'main', sortOrder: 8 },
-  { id: 'video-editor',  label: 'Video Editor',    labelTh: 'ตัดต่อวีดีโอ',   icon: 'Film',            path: '/video-editor',   platforms: ['desktop'],         group: 'main', sortOrder: 8.5 },
+  { id: 'video-editor',  label: 'Video Editor',    labelTh: 'ตัดต่อวีดีโอ',   icon: 'Film',            path: '/video-editor',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 8.5 },
   { id: 'credits',       label: 'Credits',         labelTh: 'เครดิต',        icon: 'CreditCard',      path: '/credits',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 9 },
+  { id: 'usage-analytics', label: 'Usage Analytics', labelTh: 'สถิติการใช้งาน', icon: 'BarChart3',       path: '/usage',          platforms: ['web', 'desktop'], group: 'main', sortOrder: 9.5 },
   { id: 'settings',      label: 'Settings',        labelTh: 'ตั้งค่า',       icon: 'Settings',        path: '/settings',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 99 },
 
   // === Admin group ===
