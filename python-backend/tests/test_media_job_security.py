@@ -228,3 +228,51 @@ class TestValidateJobSpecSecurity:
         )
         with pytest.raises(ValueError, match="metacharacter"):
             validate_job_spec_security(spec)
+
+
+# ========================================
+# Worker-level SSRF guards
+# ========================================
+
+class TestWorkerAssetResolution:
+    """Tests for _resolve_asset_path and _safe_uri_for_ffmpeg in the worker."""
+
+    def test_resolve_asset_path_rejects_file_scheme(self):
+        from app.tasks.media_job_worker import _resolve_asset_path
+        with pytest.raises(ValueError, match="file://"):
+            _resolve_asset_path("file:///etc/passwd", "/tmp")
+
+    def test_resolve_asset_path_rejects_private_ip(self):
+        from app.tasks.media_job_worker import _resolve_asset_path
+        with pytest.raises(ValueError, match="private"):
+            _resolve_asset_path("http://10.0.0.5/secret", "/tmp")
+
+    def test_resolve_asset_path_rejects_localhost(self):
+        from app.tasks.media_job_worker import _resolve_asset_path
+        with pytest.raises(ValueError, match="internal"):
+            _resolve_asset_path("http://localhost:8080/api", "/tmp")
+
+    def test_resolve_asset_path_rejects_metadata_endpoint(self):
+        from app.tasks.media_job_worker import _resolve_asset_path
+        with pytest.raises(ValueError, match="private"):
+            _resolve_asset_path("http://169.254.169.254/latest/meta-data/", "/tmp")
+
+    def test_safe_uri_for_ffmpeg_rejects_file_scheme(self):
+        from app.tasks.media_job_worker import _safe_uri_for_ffmpeg
+        with pytest.raises(ValueError, match="file://"):
+            _safe_uri_for_ffmpeg("file:///etc/shadow")
+
+    def test_safe_uri_for_ffmpeg_rejects_internal(self):
+        from app.tasks.media_job_worker import _safe_uri_for_ffmpeg
+        with pytest.raises(ValueError, match="internal"):
+            _safe_uri_for_ffmpeg("http://localhost/secret")
+
+    def test_safe_uri_for_ffmpeg_allows_public_https(self):
+        from app.tasks.media_job_worker import _safe_uri_for_ffmpeg
+        result = _safe_uri_for_ffmpeg("https://cdn.example.com/video.mp4")
+        assert result == "https://cdn.example.com/video.mp4"
+
+    def test_safe_uri_for_ffmpeg_rejects_shell_metacharacters(self):
+        from app.tasks.media_job_worker import _safe_uri_for_ffmpeg
+        with pytest.raises(ValueError, match="metacharacter"):
+            _safe_uri_for_ffmpeg("https://example.com/file; rm -rf /")

@@ -17,6 +17,7 @@ from typing import Any
 import redis
 
 from app.core.celery_app import celery_app
+from app.core.media_job_validators import validate_job_spec_security, validate_uri_no_ssrf
 
 # ========================================
 # Redis client for progress reporting
@@ -127,11 +128,12 @@ def report_error(job_id: str, code: str, message: str, details: dict | None = No
 # ========================================
 
 def _resolve_asset_path(uri: str, tmp_dir: str) -> str:
-    """Resolve a URI to a local file path. Downloads remote files."""
-    if uri.startswith("file:///"):
-        return uri[7:]
-    if uri.startswith("file://"):
-        return uri[7:]
+    """Resolve a URI to a local file path. Downloads remote files.
+
+    Validates URI against SSRF before any network access.
+    file:// scheme is blocked by validate_uri_no_ssrf.
+    """
+    validate_uri_no_ssrf(uri)
     if uri.startswith("http://") or uri.startswith("https://"):
         import urllib.request
         filename = os.path.basename(uri.split("?")[0]) or "download"
@@ -141,13 +143,23 @@ def _resolve_asset_path(uri: str, tmp_dir: str) -> str:
     return uri
 
 
+def _safe_uri_for_ffmpeg(uri: str) -> str:
+    """Validate URI and return it for direct use by FFmpeg.
+
+    Defense-in-depth: validates even though validate_job_spec_security()
+    runs at task entry. FFmpeg handles http(s):// URIs natively.
+    """
+    validate_uri_no_ssrf(uri)
+    return uri
+
+
 def build_ffmpeg_command_for_probe(spec: dict) -> list[str]:
     """Build ffprobe command for probing."""
     assets = spec.get("inputs", {}).get("assets", [])
     if not assets:
         raise ValueError("No assets for probe")
     uri = assets[0]["uri"]
-    path = uri.replace("file:///", "/").replace("file://", "/") if uri.startswith("file://") else uri
+    path = _safe_uri_for_ffmpeg(uri)
     return ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path]
 
 
@@ -170,7 +182,7 @@ def build_ffmpeg_command_for_render(spec: dict) -> list[str]:
     for track in tracks:
         for clip in track.get("clips", []):
             uri = asset_map.get(clip["assetId"], "")
-            path = uri.replace("file:///", "/").replace("file://", "/") if uri.startswith("file://") else uri
+            path = _safe_uri_for_ffmpeg(uri)
             if path not in input_index:
                 input_index[path] = len(input_files)
                 input_files.append(path)
@@ -193,7 +205,7 @@ def build_ffmpeg_command_for_render(spec: dict) -> list[str]:
         filters = []
         for i, clip in enumerate(video_clips):
             uri = asset_map.get(clip["assetId"], "")
-            path = uri.replace("file:///", "/").replace("file://", "/") if uri.startswith("file://") else uri
+            path = _safe_uri_for_ffmpeg(uri)
             idx = input_index.get(path, 0)
             in_ms = clip.get("inMs", 0)
             out_ms = clip.get("outMs", 0)
@@ -220,7 +232,7 @@ def build_ffmpeg_command_for_waveform(spec: dict) -> list[str]:
     if not assets:
         raise ValueError("No assets for waveform")
     uri = assets[0]["uri"]
-    path = uri.replace("file:///", "/").replace("file://", "/") if uri.startswith("file://") else uri
+    path = _safe_uri_for_ffmpeg(uri)
     return [
         "ffmpeg", "-i", path,
         "-af", "aformat=sample_fmts=s16:channel_layouts=mono",
@@ -234,7 +246,7 @@ def build_ffmpeg_command_for_silence(spec: dict) -> list[str]:
     if not assets:
         raise ValueError("No assets for silence detection")
     uri = assets[0]["uri"]
-    path = uri.replace("file:///", "/").replace("file://", "/") if uri.startswith("file://") else uri
+    path = _safe_uri_for_ffmpeg(uri)
 
     params = spec.get("params", {})
     threshold_db = params.get("thresholdDb", -40)
@@ -405,7 +417,7 @@ def handle_thumbnails(spec: dict, tmp_dir: str) -> dict:
         raise ValueError("No assets for thumbnails")
 
     uri = assets[0]["uri"]
-    path = uri.replace("file:///", "/").replace("file://", "/") if uri.startswith("file://") else uri
+    path = _safe_uri_for_ffmpeg(uri)
     interval_ms = spec.get("params", {}).get("intervalMs", 5000)
     interval_s = interval_ms / 1000.0
 
@@ -444,7 +456,7 @@ def handle_subtitles_extract(spec: dict, tmp_dir: str) -> dict:
         raise ValueError("No assets for subtitle extraction")
 
     uri = assets[0]["uri"]
-    path = uri.replace("file:///", "/").replace("file://", "/") if uri.startswith("file://") else uri
+    path = _safe_uri_for_ffmpeg(uri)
     fmt = spec.get("params", {}).get("format", "srt")
     out_path = os.path.join(tmp_dir, f"subtitles.{fmt}")
 
@@ -479,6 +491,7 @@ def execute_media_job(self, spec_json: str, user_id: str, job_id: str) -> dict:
 
     try:
         spec = parse_job_spec(spec_json)
+        validate_job_spec_security(spec)  # SSRF, path traversal, codec, limits
         job_type = spec["jobType"]
 
         report_progress(job_id, 0.0, "starting", f"Dispatching {job_type}")
