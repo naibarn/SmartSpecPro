@@ -3,6 +3,7 @@ import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateJobSpec, VALID_JOB_TYPES } from "../../shared/types/mediaJob";
 import type { MediaJobSpec, MediaJobProgress } from "../../shared/types/mediaJob";
+import { validateWebJobSpec } from "../../shared/types/mediaJobValidation";
 import { nanoid } from "nanoid";
 import type { Express, Request, Response } from "express";
 
@@ -149,8 +150,8 @@ export const mediaJobsRouter = router({
       const jobId = input.jobId || nanoid(21);
       const spec: MediaJobSpec = { ...input, jobId } as MediaJobSpec;
 
-      // Validate
-      const validation = validateJobSpec(spec);
+      // Validate (includes SSRF, codec allowlist, resolution/bitrate limits)
+      const validation = validateWebJobSpec(spec, "web_backend");
       if (!validation.valid) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -434,7 +435,7 @@ export function registerMediaJobRoutes(app: Express) {
       const jobId = spec.jobId || nanoid(21);
       const fullSpec = { ...spec, jobId };
 
-      const validation = validateJobSpec(fullSpec);
+      const validation = validateWebJobSpec(fullSpec, "web_backend");
       if (!validation.valid) {
         res.status(400).json({ error: validation.errors.join("; ") });
         return;
