@@ -1,18 +1,11 @@
 ---
-
-## 🆕 v2.1 Update: Hallucination Control
-
-- ✅ **Prevents nationality/ethnicity hallucination** — Prevents adding unspecified nationality data
-- ✅ **Auto-correction** — Automatic correction (e.g. "Korean fashion" → "modern fashion")
-- ✅ **Warnings in output** — Alerts when hallucination is detected
-
 id: image_prompt_engineer
 name: Image Prompt Engineer
-version: 2.1
+version: "2.1"
 type: agent-skill
 languages: en, th
 category: image_generation
-execution_mode: llm-only
+execution_mode: enhance-prompt
 isAutoTrigger: true
 enabledByDefault: true
 priority: 50
@@ -24,6 +17,12 @@ triggerPatterns:
 ---
 
 # Image Prompt Engineer (v2.1)
+
+## 🆕 v2.1 Update: Hallucination Control
+
+- ✅ **Prevents nationality/ethnicity hallucination** — Prevents adding unspecified nationality data
+- ✅ **Auto-correction** — Automatic correction (e.g. "Korean fashion" → "modern fashion")
+- ✅ **Warnings in output** — Alerts when hallucination is detected
 
 ## 🎯 Purpose
 Create comprehensive, clear "prompts for AI image generation systems" that support all image generation modes:
@@ -137,6 +136,7 @@ Adjust prompts to suit the target platform:
 ```json
 {
   "generation_mode": "text_to_image",  // default
+  "background_type": "normal",         // normal | green_screen | blue_screen | transparent
   "task": "final_prompt",              // default
   "detail_level": "standard",          // compact | standard | full
   "languages": "en",                   // en | th
@@ -453,8 +453,10 @@ This skill comes with knowledge files serving as catalogs and best practices:
 ## ⚙️ Task Types
 
 - `final_prompt` — Generate the final ready-to-use prompt
-- `ideas_10` — Generate 10 ideas
+- `background_10` — Generate 10 random background/scene ideas
+- `ideas_10` — Generate 10 concept ideas
 - `angles_10` — Generate 10 camera angles/compositions
+- `storyboard_continue` — Continue from existing storyboard frames (adds next frames)
 - `storyboard_6` — Create a 6-scene storyboard
 - `infographic_layout` — Infographic layout structure
 - `style_catalog` — Show style menu
@@ -472,6 +474,7 @@ All inputs have the following default values:
 {
   "request": "",                    // required field
   "generation_mode": "text_to_image",
+  "background_type": "normal",      // normal | green_screen | blue_screen | transparent
   "task": "final_prompt",
   "detail_level": "standard",
   "languages": "en",
@@ -538,10 +541,77 @@ All inputs have the following default values:
 
 ---
 
+## 🎨 Style Value to Description Mapping
+
+**CRITICAL**: When generating prompts, NEVER use the style ID/value directly in the prompt. Instead, always use the descriptive text.
+
+### How to Handle Style Input
+
+When the user selects a style like `pixar_3d_animated`, you MUST convert it to a descriptive phrase:
+
+| Style Value | Use This Description in Prompt |
+|-------------|-------------------------------|
+| `pixar_3d_animated` | "Pixar-style 3D animation, vibrant colors, expressive characters, smooth rendering" |
+| `disney_3d_animated` | "Disney-style 3D animation, magical atmosphere, beautiful and charming characters" |
+| `dreamworks_3d` | "DreamWorks-style 3D animation, fun and humorous, dynamic expressions" |
+| `claymation` | "Claymation stop-motion style, clay-like texture, handcrafted appearance" |
+| `low_poly_3d` | "Low poly 3D style, geometric shapes, minimalist polygonal aesthetic" |
+| `photorealistic` | "Photorealistic, ultra-detailed, lifelike textures, natural lighting" |
+| `ultra_realistic` | "Ultra-realistic, hyper-detailed, 8K resolution, cinematic quality" |
+| `ghibli_style_mood` | "Studio Ghibli-style, warm and nostalgic, hand-painted aesthetic, whimsical atmosphere" |
+| `cyberpunk` | "Cyberpunk aesthetic, neon lights, dark urban environment, futuristic technology" |
+| `watercolor` | "Watercolor painting style, soft color bleeding, translucent washes, artistic texture" |
+| `oil_painting` | "Oil painting style, rich colors, visible brushstrokes, classical artistic technique" |
+| `modern_anime` | "Modern anime style, clean lines, vibrant colors, expressive eyes" |
+
+### General Rule
+
+For any style value:
+1. Extract the readable parts from the value (replace underscores with spaces)
+2. Add descriptive modifiers that enhance the style
+3. NEVER output the raw value like "style: pixar_3d_animated" in the prompt
+
+**❌ WRONG**: "A cat, style pixar_3d_animated"
+**✅ CORRECT**: "A cat in Pixar-style 3D animation, vibrant colors, expressive features, smooth CGI rendering"
+
+---
+
+## 📊 Prompt Count and Layout Formats
+
+When `prompt_count` is specified with a layout format, generate prompts accordingly:
+
+| Value | Count | Layout Type | Description |
+|-------|-------|-------------|-------------|
+| `1` | 1 | Single | Single standalone image |
+| `2_distinct` | 2 | Distinct | 2 separate, unique shots |
+| `2_1x2` | 2 | Grid | Vertical arrangement (1 column, 2 rows) |
+| `2_2x1` | 2 | Grid | Horizontal arrangement (2 columns, 1 row) |
+| `3_distinct` | 3 | Distinct | 3 separate, unique shots |
+| `3_1x3` | 3 | Grid | Vertical strip |
+| `3_3x1` | 3 | Grid | Horizontal strip |
+| `4_distinct` | 4 | Distinct | 4 separate, unique shots |
+| `4_2x2` | 4 | Grid | 2×2 square grid |
+| `6_distinct` | 6 | Distinct | 6 separate, unique shots |
+| `6_3x2` | 6 | Grid | 3 columns × 2 rows |
+| `6_2x3` | 6 | Grid | 2 columns × 3 rows |
+| `6_storyboard` | 6 | Storyboard | Sequential story frames with narrative flow |
+| `9_3x3` | 9 | Grid | 3×3 square grid |
+| `12_4x3` | 12 | Grid | 4 columns × 3 rows |
+| `12_3x4` | 12 | Grid | 3 columns × 4 rows |
+| `16_4x4` | 16 | Grid | 4×4 square grid |
+
+### Layout Type Behavior
+
+- **Distinct**: Each prompt is independent, focusing on variety and unique compositions
+- **Grid**: Prompts should work together as a cohesive set, similar styling and color palette
+- **Storyboard**: Sequential narrative flow, each frame follows the previous logically
+
+---
+
 ## 📞 Support
 
 For questions or additional suggestions, please contact the development team
 
-**Version**: 2.0  
-**Last Updated**: January 24, 2026  
+**Version**: 2.1
+**Last Updated**: February 4, 2026
 **License**: Proprietary

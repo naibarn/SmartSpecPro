@@ -42,6 +42,9 @@ import AdminStorageSettings from "./pages/AdminStorageSettings";
 import AdminTenants from "./pages/AdminTenants";
 import AdminServices from "./pages/AdminServices";
 import AdminSettings from "./pages/AdminSettings";
+import AdminQueueDashboard from "./pages/AdminQueueDashboard";
+import AdminQueueLLM from "./pages/AdminQueueLLM";
+import AdminQueueMedia from "./pages/AdminQueueMedia";
 import DomainAdmin from "./pages/DomainAdmin";
 import DomainThemeEditor from "./pages/DomainThemeEditor";
 import DomainAdminContent from "./pages/DomainAdminContent";
@@ -99,6 +102,9 @@ function Router() {
       <Route path="/admin/storage-settings" component={AdminStorageSettings} />
       <Route path="/admin/services" component={AdminServices} />
       <Route path="/admin/settings" component={AdminSettings} />
+      <Route path="/admin/queues" component={AdminQueueDashboard} />
+      <Route path="/admin/queues/llm" component={AdminQueueLLM} />
+      <Route path="/admin/queues/media" component={AdminQueueMedia} />
       <Route path="/admin/tenants" component={AdminTenants} />
       <Route path="/domain-admin" component={DomainAdmin} />
       <Route path="/domain-admin/theme" component={DomainThemeEditor} />

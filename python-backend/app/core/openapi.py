@@ -89,7 +89,6 @@ POST /api/payments/checkout
 ## Support
 
 - **Documentation:** https://docs.smartspec.pro
-- **Support:** https://help.manus.im
 - **GitHub:** https://github.com/naibarn/SmartSpec
         """,
         routes=app.routes,
@@ -165,7 +164,7 @@ POST /api/payments/checkout
     # Add contact info
     openapi_schema["info"]["contact"] = {
         "name": "SmartSpec Pro Support",
-        "url": "https://help.manus.im",
+        "url": "https://github.com/naibarn/SmartSpec",
         "email": "support@smartspec.pro"
     }
     

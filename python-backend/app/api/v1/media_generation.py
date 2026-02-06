@@ -321,12 +321,13 @@ async def list_tasks(
     status_filter: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
+    days_ago: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     List all media generation tasks for the current user.
-    Supports filtering by media type and status.
+    Supports filtering by media type, status, and days ago.
     """
     # Convert string filters to enums
     media_type_enum = MediaType(media_type) if media_type else None
@@ -338,14 +339,16 @@ async def list_tasks(
         media_type=media_type_enum,
         status=status_enum,
         limit=limit,
-        offset=offset
+        offset=offset,
+        days_ago=days_ago
     )
 
     total = await MediaTaskService.get_task_count(
         db,
         current_user.id,
         media_type=media_type_enum,
-        status=status_enum
+        status=status_enum,
+        days_ago=days_ago
     )
 
     return TaskListResponse(

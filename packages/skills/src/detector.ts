@@ -22,11 +22,12 @@ export function detectSkillFromList(
     confidence: 0,
     matchedTrigger: null,
     suggestedPrompt: null,
+    patternChainTo: null,
   };
 
   for (const skill of skills) {
     for (const trigger of skill.triggers) {
-      const match = message.match(trigger);
+      const match = message.match(trigger.regex);
       if (match) {
         const confidence = calculateConfidence(message, match[0], skill);
         const suggestedPrompt = extractPrompt(message, match[0]);
@@ -37,6 +38,8 @@ export function detectSkillFromList(
           confidence,
           matchedTrigger: match[0],
           suggestedPrompt,
+          // Include per-pattern chainTo if configured
+          patternChainTo: trigger.chainTo ?? null,
         };
       }
     }

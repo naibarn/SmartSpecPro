@@ -169,6 +169,7 @@ export async function getUserVisibleSkills(
         availableModels: skillsTable.availableModels,
         defaultModel: skillsTable.defaultModel,
         enabledByDefault: skillsTable.enabledByDefault,
+        executionMode: skillsTable.executionMode, // Added for endpoint routing
         autoTriggerEnabled: userSkillVisibility.autoTriggerEnabled,
       })
       .from(userSkillVisibility)
@@ -227,6 +228,7 @@ export async function getAllSkillsForUser(
         priority: skillsTable.priority,
         availableModels: skillsTable.availableModels,
         defaultModel: skillsTable.defaultModel,
+        executionMode: skillsTable.executionMode, // Added for endpoint routing
         visible: userSkillVisibility.visible,
         autoTriggerEnabled: userSkillVisibility.autoTriggerEnabled,
       })

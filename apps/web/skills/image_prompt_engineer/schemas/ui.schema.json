@@ -1,6 +1,6 @@
 {
   "$schema": "https://smartspec.pro/skill-ui-schema/v1",
-  "version": "2.1",
+  "version": "3.1",
   "skillId": "image_prompt_engineer",
   "title": "Image Prompt Engineer",
   "titleTh": "ตัวช่วยสร้าง Prompt รูปภาพ",
@@ -10,39 +10,76 @@
       "id": "basic",
       "title": "Basic Input",
       "titleTh": "ข้อมูลพื้นฐาน",
+      "icon": "sparkles",
       "collapsed": false,
       "fields": [
         {
-          "id": "userIdea",
+          "id": "request",
           "type": "textarea",
-          "label": "Your Idea",
-          "labelTh": "ไอเดียของคุณ",
-          "placeholder": "Describe what you want to create...",
-          "placeholderTh": "อธิบายสิ่งที่คุณต้องการสร้าง...",
-          "helpText": "Enter your idea or leave empty to analyze reference images",
-          "helpTextTh": "ใส่ไอเดียของคุณ หรือเว้นว่างเพื่อวิเคราะห์ภาพอ้างอิง",
+          "label": "Additional Details (Optional)",
+          "labelTh": "รายละเอียดเพิ่มเติม (ไม่บังคับ)",
+          "placeholder": "Add extra context to expand on your prompt above...",
+          "placeholderTh": "เพิ่มรายละเอียดเพื่อขยายความจาก Prompt ด้านบน...",
+          "helpText": "Expand on the Prompt above with additional details, context, or specific requirements. Optional if Prompt is already filled.",
+          "helpTextTh": "ขยายความจาก Prompt ด้านบนด้วยรายละเอียดเพิ่มเติม บริบท หรือความต้องการเฉพาะ ไม่จำเป็นต้องใส่หาก Prompt ด้านบนมีข้อมูลแล้ว",
           "rows": 3,
           "required": false
         },
         {
-          "id": "referenceImages",
-          "type": "imageUpload",
-          "label": "Reference Images",
-          "labelTh": "ภาพอ้างอิง",
-          "helpText": "Upload 1-5 reference images for style transfer or analysis",
-          "helpTextTh": "อัปโหลดภาพอ้างอิง 1-5 ภาพ",
-          "multiple": true,
-          "maxCount": 5,
-          "accept": "image/*"
-        }
-      ]
-    },
-    {
-      "id": "generation",
-      "title": "Generation Mode",
-      "titleTh": "โหมดการสร้าง",
-      "collapsed": false,
-      "fields": [
+          "id": "prompt_count",
+          "type": "select",
+          "label": "Number of Prompts",
+          "labelTh": "จำนวนพรอมต์",
+          "helpText": "Generate multiple prompts with specific layout arrangement",
+          "helpTextTh": "สร้างหลายพรอมต์พร้อมรูปแบบการจัดเรียงที่เฉพาะเจาะจง",
+          "default": "1",
+          "options": [
+            { "value": "1", "label": "1 prompt (Single image)", "labelTh": "1 พรอมต์ (ภาพเดี่ยว)" },
+            { "value": "2_distinct", "label": "2 distinct shots", "labelTh": "2 ช็อตแยกกัน" },
+            { "value": "2_1x2", "label": "2 images (1×2 vertical)", "labelTh": "2 ภาพ (1×2 แนวตั้ง)" },
+            { "value": "2_2x1", "label": "2 images (2×1 horizontal)", "labelTh": "2 ภาพ (2×1 แนวนอน)" },
+            { "value": "3_distinct", "label": "3 distinct shots", "labelTh": "3 ช็อตแยกกัน" },
+            { "value": "3_1x3", "label": "3 images (1×3 vertical)", "labelTh": "3 ภาพ (1×3 แนวตั้ง)" },
+            { "value": "3_3x1", "label": "3 images (3×1 horizontal)", "labelTh": "3 ภาพ (3×1 แนวนอน)" },
+            { "value": "4_distinct", "label": "4 distinct shots", "labelTh": "4 ช็อตแยกกัน" },
+            { "value": "4_2x2", "label": "4 images (2×2 grid)", "labelTh": "4 ภาพ (ตาราง 2×2)" },
+            { "value": "4_1x4", "label": "4 images (1×4 vertical)", "labelTh": "4 ภาพ (1×4 แนวตั้ง)" },
+            { "value": "4_4x1", "label": "4 images (4×1 horizontal)", "labelTh": "4 ภาพ (4×1 แนวนอน)" },
+            { "value": "6_distinct", "label": "6 distinct shots", "labelTh": "6 ช็อตแยกกัน" },
+            { "value": "6_3x2", "label": "6 images (3×2 grid)", "labelTh": "6 ภาพ (ตาราง 3×2)" },
+            { "value": "6_2x3", "label": "6 images (2×3 grid)", "labelTh": "6 ภาพ (ตาราง 2×3)" },
+            { "value": "6_storyboard", "label": "6 frames storyboard", "labelTh": "6 เฟรม สตอรี่บอร์ด" },
+            { "value": "8_distinct", "label": "8 distinct shots", "labelTh": "8 ช็อตแยกกัน" },
+            { "value": "8_4x2", "label": "8 images (4×2 grid)", "labelTh": "8 ภาพ (ตาราง 4×2)" },
+            { "value": "8_2x4", "label": "8 images (2×4 grid)", "labelTh": "8 ภาพ (ตาราง 2×4)" },
+            { "value": "9_distinct", "label": "9 distinct shots", "labelTh": "9 ช็อตแยกกัน" },
+            { "value": "9_3x3", "label": "9 images (3×3 grid)", "labelTh": "9 ภาพ (ตาราง 3×3)" },
+            { "value": "10_distinct", "label": "10 distinct shots", "labelTh": "10 ช็อตแยกกัน" },
+            { "value": "10_5x2", "label": "10 images (5×2 grid)", "labelTh": "10 ภาพ (ตาราง 5×2)" },
+            { "value": "10_2x5", "label": "10 images (2×5 grid)", "labelTh": "10 ภาพ (ตาราง 2×5)" },
+            { "value": "12_distinct", "label": "12 distinct shots", "labelTh": "12 ช็อตแยกกัน" },
+            { "value": "12_4x3", "label": "12 images (4×3 grid)", "labelTh": "12 ภาพ (ตาราง 4×3)" },
+            { "value": "12_3x4", "label": "12 images (3×4 grid)", "labelTh": "12 ภาพ (ตาราง 3×4)" },
+            { "value": "16_distinct", "label": "16 distinct shots", "labelTh": "16 ช็อตแยกกัน" },
+            { "value": "16_4x4", "label": "16 images (4×4 grid)", "labelTh": "16 ภาพ (ตาราง 4×4)" }
+          ]
+        },
+        {
+          "id": "task",
+          "type": "select",
+          "label": "Task Type",
+          "labelTh": "ประเภทงาน",
+          "helpText": "What should the skill generate?",
+          "helpTextTh": "ต้องการให้สกิลสร้างอะไร?",
+          "default": "final_prompt",
+          "options": [
+            { "value": "final_prompt", "label": "Generate Prompt", "labelTh": "สร้าง Prompt" },
+            { "value": "background_10", "label": "Random Background Ideas", "labelTh": "ไอเดียพื้นหลังแบบสุ่ม" },
+            { "value": "ideas_10", "label": "Concept Ideas", "labelTh": "ไอเดียคอนเซ็ปต์" },
+            { "value": "angles_10", "label": "Camera Angles", "labelTh": "มุมกล้อง" },
+            { "value": "storyboard_continue", "label": "Continue Frame Storyboard", "labelTh": "ต่อเฟรมสตอรี่บอร์ด" }
+          ]
+        },
         {
           "id": "generationMode",
           "type": "select",
@@ -60,92 +97,40 @@
           ]
         },
         {
-          "id": "task",
+          "id": "backgroundType",
           "type": "select",
-          "label": "Task Type",
-          "labelTh": "ประเภทงาน",
-          "helpText": "What should the skill generate?",
-          "helpTextTh": "ต้องการให้สกิลสร้างอะไร?",
-          "default": "final_prompt",
+          "label": "Background Type",
+          "labelTh": "ประเภทพื้นหลัง",
+          "helpText": "Normal background or green screen for compositing",
+          "helpTextTh": "พื้นหลังปกติ หรือกรีนสกรีนสำหรับการตัดต่อ",
+          "default": "normal",
           "options": [
-            { "value": "final_prompt", "label": "Generate Final Prompt", "labelTh": "สร้าง Prompt สุดท้าย" },
-            { "value": "ideas_10", "label": "10 Concept Ideas", "labelTh": "10 ไอเดียคอนเซ็ปต์" },
-            { "value": "angles_10", "label": "10 Camera Angles", "labelTh": "10 มุมกล้อง" },
-            { "value": "storyboard_6", "label": "6-Frame Storyboard", "labelTh": "สตอรี่บอร์ด 6 เฟรม" }
+            { "value": "normal", "label": "Normal Background", "labelTh": "พื้นหลังปกติ" },
+            { "value": "green_screen", "label": "Green Screen", "labelTh": "กรีนสกรีน" },
+            { "value": "blue_screen", "label": "Blue Screen", "labelTh": "บลูสกรีน" },
+            { "value": "transparent", "label": "Transparent/Cutout", "labelTh": "โปร่งใส/ตัดพื้นหลัง" }
           ]
         },
         {
-          "id": "detailLevel",
+          "id": "language",
           "type": "select",
-          "label": "Output Detail",
-          "labelTh": "ระดับรายละเอียด",
-          "helpText": "How detailed should the output be?",
-          "helpTextTh": "ต้องการผลลัพธ์ละเอียดแค่ไหน?",
-          "default": "standard",
+          "label": "Output Language",
+          "labelTh": "ภาษาผลลัพธ์",
+          "default": "en",
           "options": [
-            { "value": "compact", "label": "Compact (Prompt only)", "labelTh": "กระชับ (แค่ Prompt)" },
-            { "value": "standard", "label": "Standard (+ Parameters)", "labelTh": "มาตรฐาน (+ พารามิเตอร์)" },
-            { "value": "full", "label": "Full (+ Breakdown)", "labelTh": "เต็ม (+ รายละเอียด)" }
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai", "labelTh": "ไทย" },
+            { "value": "both", "label": "Both (EN + TH)", "labelTh": "ทั้งสองภาษา" }
           ]
         }
       ]
     },
     {
       "id": "style",
-      "title": "Style & VFX",
-      "titleTh": "สไตล์และเอฟเฟกต์",
+      "title": "Style & Aspect",
+      "titleTh": "สไตล์และอัตราส่วน",
+      "icon": "palette",
       "collapsed": false,
-      "fields": [
-        {
-          "id": "styleCategory",
-          "type": "select",
-          "label": "Style Category",
-          "labelTh": "หมวดสไตล์",
-          "helpText": "Select a style category",
-          "helpTextTh": "เลือกหมวดหมู่สไตล์",
-          "options": [
-            { "value": "", "label": "Auto (AI chooses)", "labelTh": "อัตโนมัติ" },
-            { "value": "A", "label": "A. Photo-Realistic", "labelTh": "A. ภาพสมจริง" },
-            { "value": "B", "label": "B. Documentary & Candid", "labelTh": "B. สารคดีและภาพธรรมชาติ" },
-            { "value": "C", "label": "C. Commercial & Fashion", "labelTh": "C. โฆษณาและแฟชั่น" },
-            { "value": "D", "label": "D. Editorial & Conceptual", "labelTh": "D. บรรณาธิการและคอนเซ็ปต์" },
-            { "value": "E", "label": "E. Cinematic", "labelTh": "E. ภาพยนตร์" },
-            { "value": "F", "label": "F. Art & Illustration", "labelTh": "F. ศิลปะและภาพวาด" },
-            { "value": "G", "label": "G. 3D & CGI", "labelTh": "G. 3D และ CGI" },
-            { "value": "H", "label": "H. Retro & Vintage", "labelTh": "H. เรโทรและวินเทจ" },
-            { "value": "I", "label": "I. Experimental", "labelTh": "I. ทดลอง" },
-            { "value": "J", "label": "J. Genre Specific", "labelTh": "J. เฉพาะแนว" },
-            { "value": "K", "label": "K. Abstract & Surreal", "labelTh": "K. นามธรรมและเหนือจริง" },
-            { "value": "L", "label": "L. Product & Technical", "labelTh": "L. ผลิตภัณฑ์และเทคนิค" },
-            { "value": "M", "label": "M. Lifestyle", "labelTh": "M. ไลฟ์สไตล์" }
-          ]
-        },
-        {
-          "id": "styleName",
-          "type": "text",
-          "label": "Style Name",
-          "labelTh": "ชื่อสไตล์",
-          "placeholder": "e.g., photorealistic, anime, oil_painting",
-          "placeholderTh": "เช่น photorealistic, anime, oil_painting",
-          "helpText": "Enter specific style name or leave empty",
-          "helpTextTh": "ใส่ชื่อสไตล์เฉพาะหรือเว้นว่าง"
-        },
-        {
-          "id": "styleCustom",
-          "type": "textarea",
-          "label": "Custom Style Description",
-          "labelTh": "คำอธิบายสไตล์เพิ่มเติม",
-          "placeholder": "Describe your custom style...",
-          "placeholderTh": "อธิบายสไตล์ที่คุณต้องการ...",
-          "rows": 2
-        }
-      ]
-    },
-    {
-      "id": "options",
-      "title": "Advanced Options",
-      "titleTh": "ตัวเลือกขั้นสูง",
-      "collapsed": true,
       "fields": [
         {
           "id": "aspectRatio",
@@ -154,78 +139,228 @@
           "labelTh": "อัตราส่วนภาพ",
           "default": "9:16",
           "options": [
-            { "value": "9:16", "label": "9:16 (Portrait)", "labelTh": "9:16 (แนวตั้ง)" },
+            { "value": "9:16", "label": "9:16 (Portrait/TikTok)", "labelTh": "9:16 (แนวตั้ง/TikTok)" },
             { "value": "16:9", "label": "16:9 (Landscape)", "labelTh": "16:9 (แนวนอน)" },
             { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" },
             { "value": "4:5", "label": "4:5 (Instagram)", "labelTh": "4:5 (อินสตาแกรม)" },
             { "value": "3:2", "label": "3:2 (Photo)", "labelTh": "3:2 (ภาพถ่าย)" },
-            { "value": "21:9", "label": "21:9 (Ultrawide)", "labelTh": "21:9 (จอกว้างพิเศษ)" }
+            { "value": "2:3", "label": "2:3 (Portrait Photo)", "labelTh": "2:3 (ภาพตั้ง)" },
+            { "value": "21:9", "label": "21:9 (Cinematic)", "labelTh": "21:9 (ภาพยนตร์)" }
           ]
         },
         {
-          "id": "realisticSkin",
-          "type": "boolean",
-          "label": "Realistic Skin",
-          "labelTh": "ผิวสมจริง",
-          "helpText": "Add realistic skin texture with pores and imperfections",
-          "helpTextTh": "เพิ่มเนื้อผิวสมจริงพร้อมรูขุมขนและความไม่สมบูรณ์แบบ",
-          "default": false
+          "id": "aspectRatioCustom",
+          "type": "text",
+          "label": "Custom Aspect Ratio",
+          "labelTh": "อัตราส่วนกำหนดเอง",
+          "placeholder": "e.g., 5:4, 10:16",
+          "placeholderTh": "เช่น 5:4, 10:16",
+          "helpText": "Override with custom ratio (optional)",
+          "helpTextTh": "ระบุอัตราส่วนกำหนดเอง (ไม่บังคับ)"
         },
         {
-          "id": "identityLock",
+          "id": "style",
           "type": "select",
-          "label": "Identity Lock",
-          "labelTh": "ล็อคตัวตน",
-          "helpText": "Preserve face or product identity",
-          "helpTextTh": "รักษาตัวตนใบหน้าหรือผลิตภัณฑ์",
-          "default": "none",
+          "label": "Image Style",
+          "labelTh": "สไตล์ภาพ",
+          "helpText": "Select a visual style preset",
+          "helpTextTh": "เลือกสไตล์ภาพสำเร็จรูป",
+          "default": "na",
+          "searchable": true,
           "options": [
-            { "value": "none", "label": "None", "labelTh": "ไม่ใช้" },
-            { "value": "soft_lock_person", "label": "Soft Lock (Person)", "labelTh": "ล็อคอ่อน (คน)" },
-            { "value": "strict_lock_product", "label": "Strict Lock (Product)", "labelTh": "ล็อคเข้ม (ผลิตภัณฑ์)" }
+            { "value": "na", "label": "Auto (AI chooses)", "labelTh": "อัตโนมัติ" },
+            { "value": "photorealistic", "label": "Photorealistic", "labelTh": "ภาพสมจริง" },
+            { "value": "ultra_realistic", "label": "Ultra Realistic", "labelTh": "สมจริงสูงสุด" },
+            { "value": "raw_realism", "label": "Raw Realism", "labelTh": "สมจริงดิบ" },
+            { "value": "dslr_look", "label": "DSLR Look", "labelTh": "สไตล์กล้อง DSLR" },
+            { "value": "natural_light_realism", "label": "Natural Light Realism", "labelTh": "แสงธรรมชาติสมจริง" },
+            { "value": "street_photography", "label": "Street Photography", "labelTh": "ภาพถ่ายบนถนน" },
+            { "value": "documentary", "label": "Documentary", "labelTh": "สารคดี" },
+            { "value": "candid_realism", "label": "Candid Realism", "labelTh": "ภาพธรรมชาติสมจริง" },
+            { "value": "soft_commercial", "label": "Soft Commercial", "labelTh": "โฆษณานุ่มนวล" },
+            { "value": "lifestyle_photography", "label": "Lifestyle Photography", "labelTh": "ไลฟ์สไตล์" },
+            { "value": "beauty_commercial", "label": "Beauty Commercial", "labelTh": "โฆษณาบิวตี้" },
+            { "value": "product_commercial", "label": "Product Commercial", "labelTh": "โฆษณาผลิตภัณฑ์" },
+            { "value": "e_commerce_clean_style", "label": "E-commerce Clean", "labelTh": "อีคอมเมิร์ซสะอาด" },
+            { "value": "kodak_portra", "label": "Kodak Portra", "labelTh": "Kodak Portra" },
+            { "value": "fujifilm_superia", "label": "Fujifilm Superia", "labelTh": "Fujifilm Superia" },
+            { "value": "cinestill_800t", "label": "Cinestill 800T", "labelTh": "Cinestill 800T" },
+            { "value": "black_and_white_film", "label": "Black & White Film", "labelTh": "ฟิล์มขาวดำ" },
+            { "value": "grainy_film", "label": "Grainy Film", "labelTh": "ฟิล์มเกรน" },
+            { "value": "polaroid", "label": "Polaroid", "labelTh": "โพลารอยด์" },
+            { "value": "hollywood_cinematic", "label": "Hollywood Cinematic", "labelTh": "ฮอลลีวูดซีเนมาติก" },
+            { "value": "teal_and_orange", "label": "Teal & Orange", "labelTh": "ฟ้าเขียวและส้ม" },
+            { "value": "dark_cinematic", "label": "Dark Cinematic", "labelTh": "ซีเนมาติกมืด" },
+            { "value": "film_noir", "label": "Film Noir", "labelTh": "ฟิล์มนัวร์" },
+            { "value": "moody_cinematic", "label": "Moody Cinematic", "labelTh": "ซีเนมาติกอารมณ์" },
+            { "value": "golden_hour_cinematic", "label": "Golden Hour", "labelTh": "ชั่วโมงทอง" },
+            { "value": "watercolor", "label": "Watercolor", "labelTh": "สีน้ำ" },
+            { "value": "oil_painting", "label": "Oil Painting", "labelTh": "สีน้ำมัน" },
+            { "value": "gouache", "label": "Gouache", "labelTh": "กัวช" },
+            { "value": "charcoal", "label": "Charcoal", "labelTh": "ถ่าน" },
+            { "value": "sketch_pencil", "label": "Pencil Sketch", "labelTh": "ร่างดินสอ" },
+            { "value": "ink_drawing", "label": "Ink Drawing", "labelTh": "ภาพหมึก" },
+            { "value": "pastel", "label": "Pastel", "labelTh": "สีพาสเทล" },
+            { "value": "clean_vector", "label": "Clean Vector", "labelTh": "เวกเตอร์สะอาด" },
+            { "value": "flat_illustration", "label": "Flat Illustration", "labelTh": "ภาพประกอบแบน" },
+            { "value": "isometric", "label": "Isometric", "labelTh": "ไอโซเมตริก" },
+            { "value": "semi_realistic_illustration", "label": "Semi-realistic", "labelTh": "กึ่งสมจริง" },
+            { "value": "children_book_style", "label": "Children's Book", "labelTh": "หนังสือเด็ก" },
+            { "value": "storybook_art", "label": "Storybook Art", "labelTh": "ศิลปะนิทาน" },
+            { "value": "modern_anime", "label": "Modern Anime", "labelTh": "อนิเมะสมัยใหม่" },
+            { "value": "old_school_anime", "label": "Old School Anime", "labelTh": "อนิเมะยุคเก่า" },
+            { "value": "chibi", "label": "Chibi", "labelTh": "จิบิ" },
+            { "value": "ghibli_style_mood", "label": "Ghibli Style", "labelTh": "สไตล์จิบลิ" },
+            { "value": "cyberpunk", "label": "Cyberpunk", "labelTh": "ไซเบอร์พังก์" },
+            { "value": "neon_city", "label": "Neon City", "labelTh": "เมืองนีออน" },
+            { "value": "post_apocalyptic", "label": "Post-apocalyptic", "labelTh": "หลังหายนะ" },
+            { "value": "deep_space_realism", "label": "Deep Space", "labelTh": "อวกาศลึก" },
+            { "value": "alien_worlds", "label": "Alien Worlds", "labelTh": "โลกต่างดาว" },
+            { "value": "dreamlike", "label": "Dreamlike", "labelTh": "ฝันเฟื่อง" },
+            { "value": "surreal", "label": "Surreal", "labelTh": "เหนือจริง" },
+            { "value": "vaporwave", "label": "Vaporwave", "labelTh": "เวเปอร์เวฟ" },
+            { "value": "synthwave", "label": "Synthwave", "labelTh": "ซินธ์เวฟ" },
+            { "value": "psychedelic_art", "label": "Psychedelic", "labelTh": "ไซเคเดลิก" },
+            { "value": "glitch_art", "label": "Glitch Art", "labelTh": "ศิลปะกลิตช์" },
+            { "value": "pixar_3d_animated", "label": "Pixar 3D Animated", "labelTh": "Pixar 3D แอนิเมชัน", "description": "Pixar-style 3D animation, vibrant colors, expressive characters" },
+            { "value": "disney_3d_animated", "label": "Disney 3D Animated", "labelTh": "Disney 3D แอนิเมชัน", "description": "Disney-style 3D animation, magical atmosphere, charming characters" },
+            { "value": "dreamworks_3d", "label": "DreamWorks 3D", "labelTh": "DreamWorks 3D", "description": "DreamWorks-style 3D animation, fun and humorous" },
+            { "value": "claymation", "label": "Claymation", "labelTh": "ดินน้ำมันปั้น", "description": "Claymation stop-motion style, clay-like texture" },
+            { "value": "low_poly_3d", "label": "Low Poly 3D", "labelTh": "Low Poly 3D", "description": "Low poly 3D style, geometric shapes, minimalist" },
+            { "value": "unreal_engine", "label": "Unreal Engine", "labelTh": "Unreal Engine" },
+            { "value": "blender_cycles", "label": "Blender Cycles", "labelTh": "Blender Cycles" },
+            { "value": "octane_render", "label": "Octane Render", "labelTh": "Octane Render" },
+            { "value": "pbr_realistic", "label": "PBR Realistic", "labelTh": "PBR สมจริง" },
+            { "value": "rpg_concept_art", "label": "RPG Concept Art", "labelTh": "คอนเซ็ปต์ RPG" },
+            { "value": "clean_minimal", "label": "Clean Minimal", "labelTh": "มินิมอลสะอาด" },
+            { "value": "geometric_minimal", "label": "Geometric Minimal", "labelTh": "มินิมอลเรขาคณิต" },
+            { "value": "scandinavian_style", "label": "Scandinavian", "labelTh": "สแกนดิเนเวียน" },
+            { "value": "bauhaus", "label": "Bauhaus", "labelTh": "เบาเฮาส์" },
+            { "value": "art_nouveau", "label": "Art Nouveau", "labelTh": "อาร์ตนูโว" },
+            { "value": "art_deco", "label": "Art Deco", "labelTh": "อาร์ตเดโค" },
+            { "value": "victorian", "label": "Victorian", "labelTh": "วิกตอเรียน" },
+            { "value": "baroque", "label": "Baroque", "labelTh": "บาร็อค" },
+            { "value": "renaissance_painting", "label": "Renaissance", "labelTh": "เรอเนซองส์" },
+            { "value": "80s_neon", "label": "80s Neon", "labelTh": "นีออนยุค 80" },
+            { "value": "90s_grunge", "label": "90s Grunge", "labelTh": "กรันจ์ยุค 90" },
+            { "value": "y2k_aesthetic", "label": "Y2K Aesthetic", "labelTh": "สไตล์ Y2K" },
+            { "value": "editorial_fashion", "label": "Editorial Fashion", "labelTh": "แฟชั่นบรรณาธิการ" },
+            { "value": "runway_style", "label": "Runway Style", "labelTh": "สไตล์รันเวย์" },
+            { "value": "street_fashion", "label": "Street Fashion", "labelTh": "แฟชั่นสตรีท" },
+            { "value": "korean_soft_fashion", "label": "Korean Soft", "labelTh": "เกาหลีนุ่มนวล" },
+            { "value": "japanese_casual", "label": "Japanese Casual", "labelTh": "ญี่ปุ่นแคชชวล" },
+            { "value": "portraiture", "label": "Portraiture", "labelTh": "ภาพบุคคล" },
+            { "value": "glamour", "label": "Glamour", "labelTh": "แกลมเมอร์" },
+            { "value": "beauty_portrait", "label": "Beauty Portrait", "labelTh": "ภาพบิวตี้" },
+            { "value": "mixed_media", "label": "Mixed Media", "labelTh": "มิกซ์มีเดีย" },
+            { "value": "collage", "label": "Collage", "labelTh": "คอลลาจ" },
+            { "value": "double_exposure", "label": "Double Exposure", "labelTh": "ดับเบิลเอ็กซ์โพเชอร์" },
+            { "value": "upscale", "label": "🔍 Upscale / Enhance", "labelTh": "🔍 อัปสเกล / เพิ่มคุณภาพ", "description": "Enhance image resolution and quality - auto-fills prompt" }
           ]
         },
         {
-          "id": "targetPlatform",
-          "type": "select",
-          "label": "Target Platform",
-          "labelTh": "แพลตฟอร์มเป้าหมาย",
-          "helpText": "Optimize prompt for specific AI platform",
-          "helpTextTh": "ปรับ Prompt ให้เหมาะกับแพลตฟอร์ม AI",
-          "default": "generic",
+          "id": "styleCustom",
+          "type": "textarea",
+          "label": "Custom Style",
+          "labelTh": "สไตล์กำหนดเอง",
+          "placeholder": "Describe your own style...",
+          "placeholderTh": "อธิบายสไตล์ของคุณเอง...",
+          "helpText": "Override or supplement the preset style",
+          "helpTextTh": "แทนที่หรือเสริมสไตล์สำเร็จรูป",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "id": "vfx",
+      "title": "VFX Effects",
+      "titleTh": "เอฟเฟกต์ VFX",
+      "icon": "wand-2",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "vfxEffects",
+          "type": "multiselect",
+          "label": "VFX Effects",
+          "labelTh": "เอฟเฟกต์ VFX",
+          "helpText": "Select visual effects to apply",
+          "helpTextTh": "เลือกเอฟเฟกต์ภาพที่ต้องการใช้",
           "options": [
-            { "value": "generic", "label": "Generic (All)", "labelTh": "ทั่วไป (ใช้ได้ทุกที่)" },
-            { "value": "stable_diffusion", "label": "Stable Diffusion", "labelTh": "Stable Diffusion" },
-            { "value": "midjourney", "label": "Midjourney", "labelTh": "Midjourney" },
-            { "value": "dall_e_3", "label": "DALL-E 3", "labelTh": "DALL-E 3" },
-            { "value": "flux", "label": "Flux", "labelTh": "Flux" },
-            { "value": "firefly", "label": "Adobe Firefly", "labelTh": "Adobe Firefly" }
+            { "value": "dust_particles", "label": "Dust Particles", "labelTh": "อนุภาคฝุ่น" },
+            { "value": "smoke", "label": "Smoke", "labelTh": "ควัน" },
+            { "value": "fire_particles", "label": "Fire Particles", "labelTh": "อนุภาคไฟ" },
+            { "value": "water_droplets", "label": "Water Droplets", "labelTh": "หยดน้ำ" },
+            { "value": "sparks", "label": "Sparks", "labelTh": "ประกาย" },
+            { "value": "embers", "label": "Embers", "labelTh": "ถ่านลุก" },
+            { "value": "snow_flakes", "label": "Snow Flakes", "labelTh": "เกล็ดหิมะ" },
+            { "value": "pollen", "label": "Pollen", "labelTh": "ละอองเกสร" },
+            { "value": "glow_effect", "label": "Glow Effect", "labelTh": "เอฟเฟกต์เรืองแสง" },
+            { "value": "lens_flare", "label": "Lens Flare", "labelTh": "แสงสะท้อนเลนส์" },
+            { "value": "god_rays", "label": "God Rays", "labelTh": "แสงตะวัน" },
+            { "value": "neon_glow", "label": "Neon Glow", "labelTh": "นีออนเรืองแสง" },
+            { "value": "light_streaks", "label": "Light Streaks", "labelTh": "ลำแสง" },
+            { "value": "bioluminescence", "label": "Bioluminescence", "labelTh": "การเรืองแสงชีวภาพ" },
+            { "value": "volumetric_light", "label": "Volumetric Light", "labelTh": "แสงเชิงปริมาตร" },
+            { "value": "rain", "label": "Rain", "labelTh": "ฝน" },
+            { "value": "heavy_rain", "label": "Heavy Rain", "labelTh": "ฝนตกหนัก" },
+            { "value": "snow", "label": "Snow", "labelTh": "หิมะ" },
+            { "value": "lightning", "label": "Lightning", "labelTh": "ฟ้าแลบ" },
+            { "value": "storm", "label": "Storm", "labelTh": "พายุ" },
+            { "value": "wind_effects", "label": "Wind Effects", "labelTh": "เอฟเฟกต์ลม" },
+            { "value": "energy_aura", "label": "Energy Aura", "labelTh": "ออร่าพลังงาน" },
+            { "value": "magic_circle", "label": "Magic Circle", "labelTh": "วงเวทมนตร์" },
+            { "value": "spell_effects", "label": "Spell Effects", "labelTh": "เอฟเฟกต์คาถา" },
+            { "value": "portal", "label": "Portal", "labelTh": "พอร์ทัล" },
+            { "value": "glowing_runes", "label": "Glowing Runes", "labelTh": "รูนเรืองแสง" },
+            { "value": "magical_particles", "label": "Magical Particles", "labelTh": "อนุภาคเวทมนตร์" },
+            { "value": "force_field", "label": "Force Field", "labelTh": "สนามพลัง" },
+            { "value": "mist", "label": "Mist", "labelTh": "หมอก" },
+            { "value": "fog", "label": "Fog", "labelTh": "หมอกหนา" },
+            { "value": "haze", "label": "Haze", "labelTh": "ฝ้าหมอก" },
+            { "value": "steam", "label": "Steam", "labelTh": "ไอน้ำ" },
+            { "value": "volumetric_fog", "label": "Volumetric Fog", "labelTh": "หมอกเชิงปริมาตร" },
+            { "value": "motion_blur", "label": "Motion Blur", "labelTh": "เบลอการเคลื่อนไหว" },
+            { "value": "speed_lines", "label": "Speed Lines", "labelTh": "เส้นความเร็ว" },
+            { "value": "trailing_effects", "label": "Trailing Effects", "labelTh": "เอฟเฟกต์ตาม" },
+            { "value": "impact_waves", "label": "Impact Waves", "labelTh": "คลื่นกระแทก" },
+            { "value": "shockwave", "label": "Shockwave", "labelTh": "คลื่นช็อก" }
           ]
+        },
+        {
+          "id": "vfxCustom",
+          "type": "text",
+          "label": "Custom VFX",
+          "labelTh": "VFX กำหนดเอง",
+          "placeholder": "Describe custom effects...",
+          "placeholderTh": "อธิบายเอฟเฟกต์ที่ต้องการ...",
+          "helpText": "Add your own VFX descriptions",
+          "helpTextTh": "เพิ่มคำอธิบาย VFX ของคุณเอง"
         }
       ]
     },
     {
       "id": "typography",
-      "title": "Text on Image",
-      "titleTh": "ข้อความบนภาพ",
+      "title": "Typography",
+      "titleTh": "ตัวอักษรบนภาพ",
+      "icon": "type",
       "collapsed": true,
       "fields": [
         {
           "id": "textOnImage",
           "type": "boolean",
-          "label": "Include Text",
-          "labelTh": "ใส่ข้อความ",
-          "helpText": "Enable to add text overlay on the image",
+          "label": "Add Text on Image",
+          "labelTh": "ใส่ข้อความบนภาพ",
+          "helpText": "Enable to add text overlay",
           "helpTextTh": "เปิดเพื่อเพิ่มข้อความบนภาพ",
           "default": false
         },
         {
           "id": "headline",
           "type": "text",
-          "label": "Headline",
-          "labelTh": "หัวข้อ",
-          "placeholder": "Enter headline text...",
-          "placeholderTh": "ใส่ข้อความหัวข้อ...",
+          "label": "Headline Text",
+          "labelTh": "ข้อความหัวเรื่อง",
+          "placeholder": "Enter headline...",
+          "placeholderTh": "ใส่หัวเรื่อง...",
           "dependsOn": {
             "field": "textOnImage",
             "value": true
@@ -237,31 +372,347 @@
           "label": "Body Text",
           "labelTh": "ข้อความเนื้อหา",
           "placeholder": "Enter body text...",
-          "placeholderTh": "ใส่ข้อความเนื้อหา...",
+          "placeholderTh": "ใส่เนื้อหา...",
           "rows": 2,
+          "dependsOn": {
+            "field": "textOnImage",
+            "value": true
+          }
+        },
+        {
+          "id": "typoFontPersonality",
+          "type": "multiselect",
+          "label": "Font Personality",
+          "labelTh": "บุคลิกตัวอักษร",
+          "helpText": "Select font style characteristics",
+          "helpTextTh": "เลือกลักษณะสไตล์ตัวอักษร",
+          "options": [
+            { "value": "modern_clean", "label": "Modern & Clean", "labelTh": "โมเดิร์นสะอาด" },
+            { "value": "minimal_light", "label": "Minimal & Light", "labelTh": "มินิมอลและเบา" },
+            { "value": "bold_strong", "label": "Bold & Strong", "labelTh": "ตัวหนาและแข็งแกร่ง" },
+            { "value": "elegant_serif", "label": "Elegant Serif", "labelTh": "เซริฟหรูหรา" },
+            { "value": "soft_rounded", "label": "Soft & Rounded", "labelTh": "นุ่มนวลและโค้งมน" },
+            { "value": "handwriting_script", "label": "Handwriting / Script", "labelTh": "ลายมือ / สคริปต์" },
+            { "value": "retro_vintage", "label": "Retro / Vintage", "labelTh": "เรโทร / วินเทจ" },
+            { "value": "tech_futuristic", "label": "Tech / Futuristic", "labelTh": "เทคโนโลยี / อนาคต" },
+            { "value": "playful_fun", "label": "Playful & Fun", "labelTh": "สนุกสนาน" }
+          ],
+          "dependsOn": {
+            "field": "textOnImage",
+            "value": true
+          }
+        },
+        {
+          "id": "typoComposition",
+          "type": "multiselect",
+          "label": "Text Composition",
+          "labelTh": "การจัดวางข้อความ",
+          "helpText": "How text should be arranged",
+          "helpTextTh": "วิธีการจัดวางข้อความ",
+          "options": [
+            { "value": "centered_layout", "label": "Centered Layout", "labelTh": "จัดกลาง" },
+            { "value": "left_aligned_clean", "label": "Left Aligned Clean", "labelTh": "ชิดซ้ายสะอาด" },
+            { "value": "grid_based", "label": "Grid Based", "labelTh": "ตามกริด" },
+            { "value": "big_title_small_subtext", "label": "Big Title, Small Subtext", "labelTh": "หัวใหญ่ซับเล็ก" },
+            { "value": "overlap_layered_text", "label": "Overlap / Layered", "labelTh": "ซ้อนทับ" },
+            { "value": "asymmetrical_layout", "label": "Asymmetrical", "labelTh": "ไม่สมมาตร" },
+            { "value": "full_bleed_typography", "label": "Full Bleed", "labelTh": "เต็มพื้นที่" }
+          ],
+          "dependsOn": {
+            "field": "textOnImage",
+            "value": true
+          }
+        },
+        {
+          "id": "typoMood",
+          "type": "multiselect",
+          "label": "Typography Mood",
+          "labelTh": "อารมณ์ตัวอักษร",
+          "helpText": "Overall mood and tone of the typography",
+          "helpTextTh": "อารมณ์และโทนโดยรวมของตัวอักษร",
+          "options": [
+            { "value": "minimal_and_calm", "label": "Minimal & Calm", "labelTh": "มินิมอลและสงบ" },
+            { "value": "energetic_and_bold", "label": "Energetic & Bold", "labelTh": "พลังงานและโดดเด่น" },
+            { "value": "elegant_and_luxury", "label": "Elegant & Luxury", "labelTh": "หรูหราและสง่างาม" },
+            { "value": "youthful_and_cute", "label": "Youthful & Cute", "labelTh": "วัยรุ่นและน่ารัก" },
+            { "value": "futuristic_neon", "label": "Futuristic Neon", "labelTh": "อนาคตนีออน" },
+            { "value": "vintage_warm", "label": "Vintage & Warm", "labelTh": "วินเทจและอบอุ่น" },
+            { "value": "high_contrast_dramatic", "label": "High Contrast Dramatic", "labelTh": "คอนทราสต์สูงดราม่า" }
+          ],
+          "dependsOn": {
+            "field": "textOnImage",
+            "value": true
+          }
+        },
+        {
+          "id": "typoEffects",
+          "type": "multiselect",
+          "label": "Text Effects",
+          "labelTh": "เอฟเฟกต์ตัวอักษร",
+          "options": [
+            { "value": "drop_shadow", "label": "Drop Shadow", "labelTh": "เงาตก" },
+            { "value": "outline_stroke", "label": "Outline / Stroke", "labelTh": "ขอบ / สโตรก" },
+            { "value": "glow_neon", "label": "Glow / Neon", "labelTh": "เรืองแสง / นีออน" },
+            { "value": "3d_extrude", "label": "3D Extrude", "labelTh": "3D ยื่นออก" },
+            { "value": "metallic_text", "label": "Metallic", "labelTh": "โลหะ" },
+            { "value": "paper_cut_text", "label": "Paper Cut", "labelTh": "กระดาษตัด" },
+            { "value": "liquid_gel_text", "label": "Liquid / Gel", "labelTh": "ของเหลว / เจล" },
+            { "value": "glitch_distortion", "label": "Glitch / Distortion", "labelTh": "กลิตช์ / บิดเบือน" }
+          ],
           "dependsOn": {
             "field": "textOnImage",
             "value": true
           }
         }
       ]
+    },
+    {
+      "id": "reference",
+      "title": "Reference & Identity",
+      "titleTh": "อ้างอิงและตัวตน",
+      "icon": "image",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "referenceImages",
+          "type": "imageUpload",
+          "label": "Reference Images",
+          "labelTh": "ภาพอ้างอิง",
+          "helpText": "Upload 1-5 reference images for style transfer or analysis",
+          "helpTextTh": "อัปโหลดภาพอ้างอิง 1-5 ภาพ",
+          "multiple": true,
+          "maxCount": 5,
+          "accept": "image/*"
+        },
+        {
+          "id": "identityLock",
+          "type": "select",
+          "label": "Identity Lock",
+          "labelTh": "ล็อคตัวตน",
+          "helpText": "Preserve face or product identity from reference",
+          "helpTextTh": "รักษาตัวตนใบหน้าหรือผลิตภัณฑ์จากภาพอ้างอิง",
+          "default": "none",
+          "options": [
+            { "value": "none", "label": "None", "labelTh": "ไม่ใช้" },
+            { "value": "soft_lock_person", "label": "Soft Lock (Person)", "labelTh": "ล็อคอ่อน (คน)" },
+            { "value": "strict_lock_product", "label": "Strict Lock (Product)", "labelTh": "ล็อคเข้ม (ผลิตภัณฑ์)" }
+          ]
+        },
+        {
+          "id": "realisticSkin",
+          "type": "boolean",
+          "label": "Realistic Skin Texture",
+          "labelTh": "เนื้อผิวสมจริง",
+          "helpText": "Add realistic skin texture with pores and natural imperfections",
+          "helpTextTh": "เพิ่มเนื้อผิวสมจริงพร้อมรูขุมขนและความไม่สมบูรณ์แบบตามธรรมชาติ",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced Parameters",
+      "titleTh": "พารามิเตอร์ขั้นสูง",
+      "icon": "settings",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "targetPlatform",
+          "type": "select",
+          "label": "Target Platform",
+          "labelTh": "แพลตฟอร์มเป้าหมาย",
+          "helpText": "Optimize prompt for specific AI platform",
+          "helpTextTh": "ปรับ Prompt ให้เหมาะกับแพลตฟอร์ม AI",
+          "default": "generic",
+          "options": [
+            { "value": "generic", "label": "Generic (Universal)", "labelTh": "ทั่วไป (ใช้ได้ทุกที่)" },
+            { "value": "stable_diffusion", "label": "Stable Diffusion", "labelTh": "Stable Diffusion" },
+            { "value": "midjourney", "label": "Midjourney", "labelTh": "Midjourney" },
+            { "value": "dall_e_3", "label": "DALL-E 3", "labelTh": "DALL-E 3" },
+            { "value": "gemini_imagen", "label": "Google Gemini/Imagen", "labelTh": "Google Gemini/Imagen" },
+            { "value": "flux", "label": "Flux", "labelTh": "Flux" },
+            { "value": "firefly", "label": "Adobe Firefly", "labelTh": "Adobe Firefly" }
+          ]
+        },
+        {
+          "id": "controlnetEnabled",
+          "type": "boolean",
+          "label": "Enable ControlNet",
+          "labelTh": "เปิดใช้ ControlNet",
+          "helpText": "Enable ControlNet guidance (Stable Diffusion)",
+          "helpTextTh": "เปิดการนำทาง ControlNet (Stable Diffusion)",
+          "default": false
+        },
+        {
+          "id": "controlnetType",
+          "type": "select",
+          "label": "ControlNet Type",
+          "labelTh": "ประเภท ControlNet",
+          "default": "canny",
+          "options": [
+            { "value": "canny", "label": "Canny (Edge Detection)", "labelTh": "Canny (ตรวจขอบ)" },
+            { "value": "depth", "label": "Depth (3D Depth)", "labelTh": "Depth (ความลึก 3D)" },
+            { "value": "pose", "label": "Pose (Body Pose)", "labelTh": "Pose (ท่าทาง)" },
+            { "value": "normal", "label": "Normal Map", "labelTh": "Normal Map" },
+            { "value": "scribble", "label": "Scribble", "labelTh": "Scribble" },
+            { "value": "mlsd", "label": "MLSD (Lines)", "labelTh": "MLSD (เส้น)" },
+            { "value": "lineart", "label": "Line Art", "labelTh": "ลายเส้น" },
+            { "value": "softedge", "label": "Soft Edge", "labelTh": "ขอบนุ่ม" }
+          ],
+          "dependsOn": {
+            "field": "controlnetEnabled",
+            "value": true
+          }
+        },
+        {
+          "id": "controlnetWeight",
+          "type": "slider",
+          "label": "ControlNet Weight",
+          "labelTh": "น้ำหนัก ControlNet",
+          "helpText": "How strongly ControlNet influences the output",
+          "helpTextTh": "ControlNet มีอิทธิพลต่อผลลัพธ์มากแค่ไหน",
+          "default": 1.0,
+          "min": 0,
+          "max": 2,
+          "step": 0.1,
+          "dependsOn": {
+            "field": "controlnetEnabled",
+            "value": true
+          }
+        },
+        {
+          "id": "guidanceScale",
+          "type": "slider",
+          "label": "Guidance Scale (CFG)",
+          "labelTh": "ค่าแนะนำ (CFG)",
+          "helpText": "How closely to follow the prompt (higher = stricter)",
+          "helpTextTh": "ทำตามพรอมต์ใกล้ชิดแค่ไหน (สูง = เข้มงวด)",
+          "default": 7.5,
+          "min": 1,
+          "max": 30,
+          "step": 0.5
+        },
+        {
+          "id": "steps",
+          "type": "slider",
+          "label": "Sampling Steps",
+          "labelTh": "จำนวนขั้นตอน",
+          "helpText": "More steps = higher quality but slower",
+          "helpTextTh": "ขั้นตอนมากขึ้น = คุณภาพสูงแต่ช้าลง",
+          "default": 50,
+          "min": 1,
+          "max": 150,
+          "step": 1
+        },
+        {
+          "id": "denoisingStrength",
+          "type": "slider",
+          "label": "Denoising Strength",
+          "labelTh": "ความแรงการลด Noise",
+          "helpText": "How much to modify the input image (img2img)",
+          "helpTextTh": "แก้ไขภาพต้นฉบับมากแค่ไหน (img2img)",
+          "default": 0.75,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "dependsOn": {
+            "field": "generationMode",
+            "value": "image_to_image"
+          }
+        },
+        {
+          "id": "seed",
+          "type": "number",
+          "label": "Random Seed",
+          "labelTh": "ค่า Seed",
+          "helpText": "-1 for random, or specify for reproducibility",
+          "helpTextTh": "-1 สุ่ม หรือระบุค่าเพื่อทำซ้ำ",
+          "default": -1
+        },
+        {
+          "id": "maskSegmentPrompt",
+          "type": "text",
+          "label": "Mask Segment Prompt",
+          "labelTh": "พรอมต์ Segment Mask",
+          "placeholder": "e.g., sky, background, face",
+          "placeholderTh": "เช่น ท้องฟ้า, พื้นหลัง, ใบหน้า",
+          "helpText": "Describe area to edit for inpainting",
+          "helpTextTh": "อธิบายพื้นที่ที่ต้องการแก้ไขสำหรับ inpaint",
+          "dependsOn": {
+            "field": "generationMode",
+            "value": "inpaint"
+          }
+        },
+        {
+          "id": "outpaintDirection",
+          "type": "multiselect",
+          "label": "Outpaint Direction",
+          "labelTh": "ทิศทางขยายภาพ",
+          "helpText": "Select directions to expand",
+          "helpTextTh": "เลือกทิศทางที่จะขยาย",
+          "options": [
+            { "value": "left", "label": "Left", "labelTh": "ซ้าย" },
+            { "value": "right", "label": "Right", "labelTh": "ขวา" },
+            { "value": "top", "label": "Top", "labelTh": "บน" },
+            { "value": "bottom", "label": "Bottom", "labelTh": "ล่าง" }
+          ],
+          "dependsOn": {
+            "field": "generationMode",
+            "value": "outpaint"
+          }
+        },
+        {
+          "id": "outpaintPixels",
+          "type": "slider",
+          "label": "Outpaint Pixels",
+          "labelTh": "พิกเซลขยาย",
+          "helpText": "How many pixels to expand",
+          "helpTextTh": "ขยายกี่พิกเซล",
+          "default": 256,
+          "min": 64,
+          "max": 1024,
+          "step": 64,
+          "dependsOn": {
+            "field": "generationMode",
+            "value": "outpaint"
+          }
+        }
+      ]
     }
   ],
   "outputMapping": {
-    "userIdea": "userInput",
-    "referenceImages": "referenceImages",
-    "generationMode": "generationMode",
+    "request": "userInput",
+    "prompt_count": "prompt_count",
     "task": "task",
-    "detailLevel": "detailLevel",
-    "styleCategory": "styleCategory",
-    "styleName": "styleName",
-    "styleCustom": "styleCustom",
+    "generationMode": "generationMode",
+    "backgroundType": "backgroundType",
+    "language": "language",
     "aspectRatio": "aspectRatio",
-    "realisticSkin": "realisticSkin",
-    "identityLock": "identityLock",
-    "targetPlatform": "targetPlatform",
+    "aspectRatioCustom": "aspectRatioCustom",
+    "style": "styleName",
+    "styleCustom": "styleCustom",
+    "vfxEffects": "vfxEffects",
+    "vfxCustom": "vfxCustom",
     "textOnImage": "textOnImage",
     "headline": "headline",
-    "bodyText": "bodyText"
+    "bodyText": "bodyText",
+    "typoFontPersonality": "typography.fontPersonality",
+    "typoComposition": "typography.compositionStyle",
+    "typoMood": "typography.moodTone",
+    "typoEffects": "typography.textEffects",
+    "referenceImages": "referenceImages",
+    "identityLock": "identityLock",
+    "realisticSkin": "realisticSkin",
+    "targetPlatform": "targetPlatform",
+    "controlnetEnabled": "controlnet.enabled",
+    "controlnetType": "controlnet.type",
+    "controlnetWeight": "controlnet.weight",
+    "guidanceScale": "advancedParams.guidanceScale",
+    "steps": "advancedParams.steps",
+    "denoisingStrength": "advancedParams.denoisingStrength",
+    "seed": "advancedParams.seed",
+    "maskSegmentPrompt": "editMask.segmentPrompt",
+    "outpaintDirection": "outpaintConfig.directions",
+    "outpaintPixels": "outpaintConfig.pixels"
   }
 }

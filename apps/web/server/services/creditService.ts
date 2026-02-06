@@ -311,6 +311,7 @@ async function getModelPricingFromDb(modelId: string): Promise<{ input: number; 
 export async function deductCreditsForModel(params: {
   userId: number;
   model: string;
+  provider?: string;
   inputTokens: number;
   outputTokens: number;
   costUsd?: number;
@@ -325,7 +326,13 @@ export async function deductCreditsForModel(params: {
       amount: 0,
       type: "usage",
       description: params.description ?? `Free model usage: ${params.model}`,
-      metadata: { freeModel: true, modelId: params.model, inputTokens: params.inputTokens, outputTokens: params.outputTokens },
+      metadata: {
+        freeModel: true,
+        modelId: params.model,
+        provider: params.provider,
+        inputTokens: params.inputTokens,
+        outputTokens: params.outputTokens
+      },
       balanceAfter: (await getCreditBalance(params.userId))?.credits ?? 0,
     });
     return { creditsUsed: 0, wasFree: true };
@@ -340,7 +347,12 @@ export async function deductCreditsForModel(params: {
     userId: params.userId,
     amount: credits,
     description: params.description ?? `LLM usage: ${params.model}`,
-    metadata: { model: params.model, tokensUsed: params.inputTokens + params.outputTokens, costUsd: params.costUsd },
+    metadata: {
+      model: params.model,
+      provider: params.provider,
+      tokensUsed: params.inputTokens + params.outputTokens,
+      costUsd: params.costUsd
+    },
   });
 
   return { creditsUsed: result.creditsUsed, wasFree: false };

@@ -30,8 +30,119 @@
   <body>
     <div id="root"></div>
     <script>
-      // Remove injected preview banners (e.g. Manus)
-      new MutationObserver(function(m){m.forEach(function(r){r.addedNodes.forEach(function(n){if(n.nodeType===1){if(n.id==='manus-previewer-content-root')n.remove();else if(n.querySelector&&n.querySelector('[data-loc*="PreviewerMode"]'))n.remove();else if(n.getAttribute&&n.getAttribute('data-loc')&&n.getAttribute('data-loc').indexOf('PreviewerMode')!==-1)n.remove();}});});}).observe(document.body,{childList:true,subtree:true});
+      // Enhanced script to remove all preview/staging mode banners
+      function removePreviewBanners() {
+        // Remove by ID patterns
+        const idPatterns = ['manus', 'previewer', 'preview', 'staging', 'banner'];
+        document.querySelectorAll('[id]').forEach(function(el) {
+          const id = el.id.toLowerCase();
+          if (idPatterns.some(p => id.includes(p))) {
+            el.remove();
+          }
+        });
+
+        // Remove by text content - search all elements
+        const bannerTexts = [
+          'Preview mode',
+          'This page is not live',
+          'cannot be shared directly',
+          'Please publish to get a public link',
+          'publish to get',
+          'not live'
+        ];
+
+        document.querySelectorAll('*').forEach(function(el) {
+          // Skip script/style/meta elements
+          if (['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE'].includes(el.tagName)) return;
+
+          const text = el.textContent || '';
+          const directText = el.childNodes.length === 1 && el.childNodes[0].nodeType === 3
+            ? el.childNodes[0].textContent : '';
+
+          // Check if element contains banner text
+          if (bannerTexts.some(t => text.includes(t) || directText.includes(t))) {
+            const style = window.getComputedStyle(el);
+            // Remove if it's positioned (fixed, absolute, sticky) or has high z-index
+            if (style.position === 'fixed' ||
+                style.position === 'absolute' ||
+                style.position === 'sticky' ||
+                parseInt(style.zIndex) > 1000) {
+              el.remove();
+              return;
+            }
+            // Also remove if it's a direct child of body and small
+            if (el.parentElement === document.body && el.offsetHeight < 100) {
+              el.remove();
+              return;
+            }
+            // Remove parent if this is inside a small container
+            let parent = el.parentElement;
+            while (parent && parent !== document.body) {
+              const ps = window.getComputedStyle(parent);
+              if (ps.position === 'fixed' || ps.position === 'absolute' || parseInt(ps.zIndex) > 1000) {
+                parent.remove();
+                return;
+              }
+              parent = parent.parentElement;
+            }
+          }
+        });
+
+        // Remove by data attributes
+        document.querySelectorAll('[data-loc*="Previewer"], [data-loc*="preview"], [data-preview-mode], [data-testid*="preview"], [data-testid*="banner"]').forEach(function(el) {
+          el.remove();
+        });
+
+        // Remove by class patterns
+        document.querySelectorAll('[class*="preview"], [class*="Preview"], [class*="banner"], [class*="Banner"], [class*="manus"], [class*="Manus"]').forEach(function(el) {
+          // Don't remove legitimate app elements (check if inside #root)
+          if (el.closest('#root')) return;
+          el.remove();
+        });
+
+        // Remove fixed elements at bottom of screen (common for preview banners)
+        document.querySelectorAll('body > div, body > aside, body > section').forEach(function(el) {
+          if (el.id === 'root') return;
+          const style = window.getComputedStyle(el);
+          if (style.position === 'fixed' &&
+              (style.bottom === '0px' || parseInt(style.bottom) < 50) &&
+              el.offsetHeight < 100) {
+            el.remove();
+          }
+        });
+      }
+
+      // Run immediately
+      removePreviewBanners();
+
+      // Run after DOM loads
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', removePreviewBanners);
+      } else {
+        removePreviewBanners();
+      }
+
+      // Watch for new injected banners with MutationObserver
+      const observer = new MutationObserver(function(mutations) {
+        removePreviewBanners();
+      });
+
+      // Start observing when body is available
+      if (document.body) {
+        observer.observe(document.body, {childList: true, subtree: true});
+      } else {
+        document.addEventListener('DOMContentLoaded', function() {
+          observer.observe(document.body, {childList: true, subtree: true});
+        });
+      }
+
+      // Run periodically for first 10 seconds (more aggressive)
+      let runCount = 0;
+      const intervalId = setInterval(function() {
+        removePreviewBanners();
+        runCount++;
+        if (runCount >= 20) clearInterval(intervalId);
+      }, 500);
     </script>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Analytics disabled: Uncomment and set VITE_ANALYTICS_ENDPOINT and VITE_ANALYTICS_WEBSITE_ID in .env to enable

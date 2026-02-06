@@ -1,0 +1,233 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Viral Talking Objects Input Schema",
+  "description": "Complete input specification for creating viral TikTok 'Talking Objects' content packages",
+  "type": "object",
+  "required": [
+    "character",
+    "topic",
+    "promptLanguage",
+    "dialogueLanguage",
+    "personality",
+    "characterStyle",
+    "aspectRatio",
+    "outputType",
+    "totalDuration",
+    "sceneDuration"
+  ],
+  "properties": {
+    "character": {
+      "type": "string",
+      "title": "1. Character",
+      "description": "The object to anthropomorphize as the main character (e.g., lemon, cutting board, water bottle, pencil, sunscreen)",
+      "minLength": 1,
+      "examples": [
+        "lemon",
+        "cutting board",
+        "water bottle",
+        "pencil",
+        "sunscreen bottle",
+        "coffee mug",
+        "smartphone",
+        "pillow",
+        "toothbrush",
+        "refrigerator"
+      ]
+    },
+    "topic": {
+      "type": "string",
+      "title": "3. Story Topic",
+      "description": "The main topic or message for the script content. This will be used to create the storyboard dialogue.",
+      "minLength": 5,
+      "examples": [
+        "Common mistakes when using sunscreen",
+        "Why you should drink more water daily",
+        "Kitchen hygiene tips people always ignore",
+        "How to properly store food in the fridge",
+        "The right way to sharpen a pencil",
+        "Why your phone battery drains so fast"
+      ]
+    },
+    "promptLanguage": {
+      "type": "string",
+      "title": "4. Prompt Language",
+      "description": "Language for generating image and video prompts",
+      "enum": ["en", "th"],
+      "enumNames": ["English", "Thai"],
+      "default": "en"
+    },
+    "dialogueLanguage": {
+      "type": "string",
+      "title": "5. Dialogue Language",
+      "description": "Language for spoken dialogue in the storyboard scripts",
+      "enum": ["en", "th"],
+      "enumNames": ["English", "Thai"],
+      "default": "en"
+    },
+    "personality": {
+      "type": "string",
+      "title": "6. Character Personality",
+      "description": "The personality style that defines how the character speaks and behaves",
+      "enum": [
+        "engaging-narrator",
+        "cute-complaining",
+        "pretty-sharp-tongued",
+        "fun-conversationalist",
+        "friendly-peer",
+        "professional-expert"
+      ],
+      "enumDescriptions": {
+        "engaging-narrator": "Captivating storyteller that draws the audience in with interesting narrative",
+        "cute-complaining": "Adorable appearance with a whiny, complaining personality (น่ารักแต่ขี้บ่น)",
+        "pretty-sharp-tongued": "Beautiful but sarcastic, brutally honest (สวยปากร้าย)",
+        "fun-conversationalist": "Upbeat, entertaining, lighthearted and fun to listen to (คุยสนุกสนาน)",
+        "friendly-peer": "Casual and relatable, like talking to a close friend (เพื่อนคุยกับเพื่อน)",
+        "professional-expert": "Knowledgeable, authoritative, and trustworthy expert (พูดดูเป็นมืออาชีพ)"
+      },
+      "default": "engaging-narrator"
+    },
+    "characterStyle": {
+      "type": "string",
+      "title": "7. Character Visual Style",
+      "description": "Visual art style for the character design in images",
+      "enum": ["3D-Pixar", "Chibi", "Realistic"],
+      "enumDescriptions": {
+        "3D-Pixar": "Bright colors, expressive features, Pixar/Disney 3D animation quality",
+        "Chibi": "Cute anime style with big head, small body, large expressive eyes",
+        "Realistic": "Photorealistic rendering with subtle anthropomorphic features"
+      },
+      "default": "3D-Pixar"
+    },
+    "closingMessage": {
+      "type": "string",
+      "title": "8. Closing Message (Optional)",
+      "description": "Custom message to include at the end of the video. Leave empty for default CTA.",
+      "maxLength": 200,
+      "examples": [
+        "Follow for more tips!",
+        "Check out our product link in bio!",
+        "Share this with someone who needs it!",
+        "Subscribe for daily content!"
+      ]
+    },
+    "aspectRatio": {
+      "type": "string",
+      "title": "9. Aspect Ratio",
+      "description": "Video aspect ratio for the final output",
+      "enum": ["9:16", "16:9"],
+      "enumDescriptions": {
+        "9:16": "Vertical format - Best for TikTok, Instagram Reels, YouTube Shorts",
+        "16:9": "Horizontal format - Best for YouTube, Facebook, LinkedIn"
+      },
+      "default": "9:16"
+    },
+    "outputType": {
+      "type": "string",
+      "title": "10. Output Type",
+      "description": "Type of prompts to generate",
+      "enum": ["image", "video", "both"],
+      "enumDescriptions": {
+        "image": "Generate image prompts only",
+        "video": "Generate video prompts only",
+        "both": "Generate both image and video prompts"
+      },
+      "default": "both"
+    },
+    "totalDuration": {
+      "type": "integer",
+      "title": "10. Total Video Duration (seconds)",
+      "description": "Total duration of the video. Scene count = totalDuration ÷ sceneDuration",
+      "enum": [8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 120, 152, 176],
+      "enumDescriptions": {
+        "8": "8 seconds - Very short video",
+        "16": "16 seconds - Short video",
+        "24": "24 seconds",
+        "32": "32 seconds",
+        "40": "40 seconds - Recommended for TikTok",
+        "48": "48 seconds",
+        "56": "56 seconds",
+        "64": "64 seconds (~1 minute)",
+        "72": "72 seconds",
+        "80": "80 seconds",
+        "120": "120 seconds (2 minutes)",
+        "152": "152 seconds (~2.5 minutes)",
+        "176": "176 seconds (~3 minutes)"
+      },
+      "default": 40
+    },
+    "sceneDuration": {
+      "type": "integer",
+      "title": "11. Scene Duration (seconds)",
+      "description": "Duration per scene in seconds. Scene count = totalDuration ÷ sceneDuration",
+      "enum": [5, 8, 10, 12, 15],
+      "enumDescriptions": {
+        "5": "5 seconds per scene",
+        "8": "8 seconds per scene (Recommended)",
+        "10": "10 seconds per scene",
+        "12": "12 seconds per scene",
+        "15": "15 seconds per scene"
+      },
+      "default": 8
+    },
+    "includeTextInImage": {
+      "type": "string",
+      "title": "12. Text Overlay in Images",
+      "description": "Whether to include text/captions overlaid on the generated images",
+      "enum": ["yes", "no"],
+      "enumDescriptions": {
+        "yes": "Include text overlay in images (e.g., captions, titles)",
+        "no": "Generate images without text overlay (Recommended for cleaner AI generation)"
+      },
+      "default": "no"
+    },
+    "maxPromptLength": {
+      "type": "integer",
+      "title": "12. Max Prompt Length",
+      "description": "Maximum character length for each prompt (set by media model limits)",
+      "minimum": 100,
+      "maximum": 5000,
+      "default": 1500
+    }
+  },
+  "examples": [
+    {
+      "character": "sunscreen bottle",
+      "topic": "3 common mistakes people make when applying sunscreen",
+      "promptLanguage": "en",
+      "dialogueLanguage": "en",
+      "personality": "cute-complaining",
+      "characterStyle": "3D-Pixar",
+      "aspectRatio": "9:16",
+      "outputType": "both",
+      "totalDuration": 40,
+      "sceneDuration": 8
+    },
+    {
+      "character": "cutting board",
+      "topic": "Why you need to replace your cutting board regularly",
+      "promptLanguage": "en",
+      "dialogueLanguage": "th",
+      "personality": "professional-expert",
+      "characterStyle": "Realistic",
+      "closingMessage": "Stay safe in the kitchen!",
+      "aspectRatio": "9:16",
+      "outputType": "video",
+      "totalDuration": 80,
+      "sceneDuration": 10
+    },
+    {
+      "character": "water bottle",
+      "topic": "Signs you're not drinking enough water",
+      "promptLanguage": "th",
+      "dialogueLanguage": "th",
+      "personality": "friendly-peer",
+      "characterStyle": "Chibi",
+      "closingMessage": "ดื่มน้ำเยอะๆ นะ!",
+      "aspectRatio": "9:16",
+      "outputType": "image",
+      "totalDuration": 40,
+      "sceneDuration": 5
+    }
+  ],
+  "additionalProperties": false
+}

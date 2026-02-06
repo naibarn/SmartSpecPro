@@ -134,14 +134,14 @@ export async function getAdminUsageStats(filters: {
   const byProvider = await db
     .select({
       providerId: providerUsageLog.providerId,
-      providerName: sql<string>`coalesce(${llmProviders.name}, 'Unknown')`,
+      providerName: sql<string>`coalesce(${llmProviders.providerName}, 'Unknown')`,
       totalCost: sql<number>`coalesce(sum(${providerUsageLog.costUsd}::numeric), 0)::float`,
       requestCount: sql<number>`count(*)::int`,
     })
     .from(providerUsageLog)
     .leftJoin(llmProviders, eq(providerUsageLog.providerId, llmProviders.id))
     .where(and(...conditions))
-    .groupBy(providerUsageLog.providerId, llmProviders.name);
+    .groupBy(providerUsageLog.providerId, llmProviders.providerName);
 
   // By model
   const byModel = await db

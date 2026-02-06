@@ -13,6 +13,7 @@ import {
   messages,
   conversationSummaries,
   entityMemories,
+  modelProviderMap,
   Message,
   ConversationSummary,
   EntityMemory,
@@ -21,10 +22,33 @@ import { sanitizeEntityForStorage, filterEntityFacts } from "./piiFilter";
 
 // Configuration
 const BUFFER_SIZE = 20; // Number of recent messages to keep in buffer
-const SUMMARIZE_THRESHOLD = 30; // Summarize when buffer exceeds this
-const SUMMARIZE_BATCH_SIZE = 10; // Number of messages to summarize at once
+const SUMMARIZE_THRESHOLD_PERCENT = 0.70; // Summarize when unsummarized chars exceed 70% of context
+const DEFAULT_CONTEXT_LENGTH = 8000; // Default context length in tokens if not found
+const CHARS_PER_TOKEN = 4; // Approximate chars per token
 const MAX_SUMMARIES_IN_CONTEXT = 5; // Maximum summaries to include in context
 const MAX_ENTITIES_IN_CONTEXT = 10; // Maximum entity memories to include
+
+/**
+ * Get the context length for a model from the database
+ * Returns context length in tokens, falls back to default if not found
+ */
+async function getModelContextLength(modelId: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return DEFAULT_CONTEXT_LENGTH;
+
+  try {
+    // Look up context length from model_provider_map
+    const [model] = await db
+      .select({ contextLength: modelProviderMap.contextLength })
+      .from(modelProviderMap)
+      .where(eq(modelProviderMap.modelId, modelId))
+      .limit(1);
+
+    return model?.contextLength || DEFAULT_CONTEXT_LENGTH;
+  } catch {
+    return DEFAULT_CONTEXT_LENGTH;
+  }
+}
 
 // Entity type union (all 11 types)
 export type EntityType =
@@ -81,11 +105,26 @@ export async function getMessageCount(conversationId: number): Promise<number> {
 // ==================== Summary Memory ====================
 
 /**
- * Check if conversation needs summarization
+ * Check if conversation needs summarization based on character count vs model context
+ * Triggers when unsummarized message characters exceed 70% of model's context window
  */
 export async function needsSummarization(conversationId: number): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
+
+  // Get conversation's model
+  const [conv] = await db
+    .select({ model: conversations.model })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
+  if (!conv?.model) return false;
+
+  // Get model's context length
+  const contextLengthTokens = await getModelContextLength(conv.model);
+  const contextLengthChars = contextLengthTokens * CHARS_PER_TOKEN;
+  const thresholdChars = contextLengthChars * SUMMARIZE_THRESHOLD_PERCENT;
 
   // Get the last summarized message ID
   const [latestSummary] = await db
@@ -97,9 +136,9 @@ export async function needsSummarization(conversationId: number): Promise<boolea
 
   const lastSummarizedId = latestSummary?.messageRangeEnd || 0;
 
-  // Count unsummarized messages
+  // Calculate total character count of unsummarized messages
   const [result] = await db
-    .select({ count: sql<number>`COUNT(*)` })
+    .select({ totalChars: sql<number>`COALESCE(SUM(LENGTH(content)), 0)` })
     .from(messages)
     .where(
       and(
@@ -108,7 +147,16 @@ export async function needsSummarization(conversationId: number): Promise<boolea
       )
     );
 
-  return Number(result?.count) >= SUMMARIZE_THRESHOLD;
+  const unsummarizedChars = Number(result?.totalChars) || 0;
+
+  // Trigger summarization when unsummarized chars exceed threshold
+  const shouldSummarize = unsummarizedChars >= thresholdChars;
+
+  if (shouldSummarize) {
+    console.log(`[Memory] Summarization needed: ${unsummarizedChars} chars / ${Math.round(thresholdChars)} threshold (${contextLengthTokens} tokens context)`);
+  }
+
+  return shouldSummarize;
 }
 
 /**
@@ -817,9 +865,113 @@ export async function processConversationMemory(
     const messagesToSummarize = await getMessagesToSummarize(conversationId);
 
     if (messagesToSummarize.length > 0) {
-      summarized = true;
-      compacted = true;
-      compactedMessageCount = messagesToSummarize.length;
+      try {
+        // Generate summary using LLM
+        const summaryPrompt = generateSummaryPrompt(messagesToSummarize);
+
+        const db = await getDb();
+        if (db) {
+          const { llmProviders } = await import("../../drizzle/schema");
+          const { decrypt } = await import("./crypto");
+
+          // Get provider config
+          const [provider] = await db
+            .select({
+              providerName: llmProviders.providerName,
+              baseUrl: llmProviders.baseUrl,
+              apiKeyEncrypted: llmProviders.apiKeyEncrypted,
+            })
+            .from(llmProviders)
+            .where(eq(llmProviders.isEnabled, true))
+            .orderBy(asc(llmProviders.sortOrder))
+            .limit(1);
+
+          if (provider?.apiKeyEncrypted && provider?.baseUrl) {
+            const apiKey = decrypt(provider.apiKeyEncrypted);
+            if (apiKey) {
+              const summaryModel = await getSummaryModel();
+              const base = provider.baseUrl.replace(/\/+$/, "");
+              const chatUrl = base.includes("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
+
+              const llmResponse = await fetch(chatUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                  model: summaryModel,
+                  messages: [
+                    { role: "system", content: "You are a precise summarization assistant. Create concise summaries of conversation history." },
+                    { role: "user", content: summaryPrompt },
+                  ],
+                  max_tokens: 800,
+                  temperature: 0.3,
+                }),
+              });
+
+              if (llmResponse.ok) {
+                const llmData = await llmResponse.json() as {
+                  choices?: Array<{ message?: { content?: string } }>;
+                  usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
+                };
+                const summaryText = llmData?.choices?.[0]?.message?.content?.trim();
+
+                if (summaryText && summaryText.length >= 20) {
+                  // Get message range
+                  const messageRangeStart = messagesToSummarize[0].id;
+                  const messageRangeEnd = messagesToSummarize[messagesToSummarize.length - 1].id;
+                  const tokensUsed = llmData?.usage?.total_tokens || 0;
+
+                  // Save the summary
+                  await saveSummary(
+                    conversationId,
+                    summaryText,
+                    messageRangeStart,
+                    messageRangeEnd,
+                    messagesToSummarize.length,
+                    tokensUsed
+                  );
+
+                  summarized = true;
+                  compacted = true;
+                  compactedMessageCount = messagesToSummarize.length;
+
+                  console.log(`[Memory] Generated and saved summary for ${messagesToSummarize.length} messages in conversation ${conversationId}`);
+
+                  // Deduct credits for the summarization call
+                  try {
+                    const usage = llmData?.usage;
+                    if (usage && userId > 0) {
+                      const { calculateCreditsFromCost, calculateCreditsForLLM } = await import("./creditService");
+                      const credits = calculateCreditsForLLM(usage.prompt_tokens || 0, usage.completion_tokens || 0, summaryModel);
+                      if (credits > 0) {
+                        const { deductCredits } = await import("./creditService");
+                        await deductCredits({
+                          userId,
+                          amount: credits,
+                          description: `Memory summarization: ${summaryModel}`,
+                          metadata: { model: summaryModel, type: "summarization" },
+                        });
+                      }
+                    }
+                  } catch (creditErr) {
+                    console.error("[Memory] Failed to deduct summarization credits:", creditErr);
+                  }
+                } else {
+                  console.warn("[Memory] Summary generation returned empty or too short result");
+                }
+              } else {
+                console.error("[Memory] Summary LLM call failed:", llmResponse.status);
+              }
+            }
+          } else {
+            console.warn("[Memory] No LLM provider available for summarization");
+          }
+        }
+      } catch (err) {
+        console.error("[Memory] Summary generation failed:", err);
+      }
     }
   }
 
@@ -913,8 +1065,8 @@ export async function getSummaryModel(): Promise<string> {
 }
 
 /**
- * Estimate total character count of all summaries + buffer messages
- * since the last consolidation (or since chat start).
+ * Estimate total character count of all summaries + ALL unsummarized messages
+ * This ensures old context is preserved when deciding whether to consolidate
  */
 async function estimateContextChars(conversationId: number): Promise<{
   totalChars: number;
@@ -922,16 +1074,40 @@ async function estimateContextChars(conversationId: number): Promise<{
   bufferChars: number;
   summaryChars: number;
 }> {
-  const summaries = await getSummaries(conversationId, 100); // Get all
-  const buffer = await getBufferMessages(conversationId, 50);
+  const db = await getDb();
+  if (!db) return { totalChars: 0, summaryCount: 0, bufferChars: 0, summaryChars: 0 };
 
+  // Get all summaries
+  const summaries = await getSummaries(conversationId, 100);
   const summaryChars = summaries.reduce((sum, s) => sum + s.summary.length, 0);
-  const bufferChars = buffer.reduce((sum, m) => sum + m.content.length, 0);
+
+  // Get the last summarized message ID
+  const [latestSummary] = await db
+    .select({ messageRangeEnd: conversationSummaries.messageRangeEnd })
+    .from(conversationSummaries)
+    .where(eq(conversationSummaries.conversationId, conversationId))
+    .orderBy(desc(conversationSummaries.messageRangeEnd))
+    .limit(1);
+
+  const lastSummarizedId = latestSummary?.messageRangeEnd || 0;
+
+  // Calculate total character count of ALL unsummarized messages (not just buffer)
+  const [result] = await db
+    .select({ totalChars: sql<number>`COALESCE(SUM(LENGTH(content)), 0)` })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.conversationId, conversationId),
+        sql`${messages.id} > ${lastSummarizedId}`
+      )
+    );
+
+  const unsummarizedChars = Number(result?.totalChars) || 0;
 
   return {
-    totalChars: summaryChars + bufferChars,
+    totalChars: summaryChars + unsummarizedChars,
     summaryCount: summaries.length,
-    bufferChars,
+    bufferChars: unsummarizedChars,
     summaryChars,
   };
 }
@@ -959,15 +1135,14 @@ export async function checkAndConsolidate(
 
   if (!conv) return { consolidated: false };
 
-  // Estimate model context in chars (contextLength tokens × 4 chars/token)
-  // Default to 8K tokens if unknown
-  const defaultContextChars = 8000 * 4; // 32K chars
-  const contextLimitChars = defaultContextChars; // Conservative default
+  // Get actual model context length from database
+  const contextLengthTokens = conv.model ? await getModelContextLength(conv.model) : DEFAULT_CONTEXT_LENGTH;
+  const contextLimitChars = contextLengthTokens * CHARS_PER_TOKEN;
 
   const { totalChars, summaryCount } = await estimateContextChars(conversationId);
 
   // Trigger at 70% of context limit
-  const threshold = contextLimitChars * 0.7;
+  const threshold = contextLimitChars * SUMMARIZE_THRESHOLD_PERCENT;
 
   if (totalChars < threshold || summaryCount < 2) {
     return { consolidated: false };

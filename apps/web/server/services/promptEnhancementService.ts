@@ -45,8 +45,12 @@ export interface PromptEnhancementRequest {
   // === NEW: Full Schema Support ===
   /** Generation mode */
   generationMode?: "text_to_image" | "image_to_image" | "inpaint" | "outpaint" | "variation";
+  /** Background type */
+  backgroundType?: "normal" | "green_screen" | "blue_screen" | "transparent";
   /** Task type */
-  task?: "final_prompt" | "ideas_10" | "angles_10" | "storyboard_6" | "infographic_layout" | "style_catalog" | "vfx_catalog" | "typography_catalog";
+  task?: "final_prompt" | "background_10" | "ideas_10" | "angles_10" | "storyboard_continue" | "storyboard_6" | "infographic_layout" | "style_catalog" | "vfx_catalog" | "typography_catalog";
+  /** Number of prompts to generate */
+  prompt_count?: number;
   /** Detail level */
   detailLevel?: "compact" | "standard" | "full";
   /** Text on image */
@@ -111,6 +115,8 @@ export interface PromptEnhancementRequest {
   targetPlatform?: "generic" | "stable_diffusion" | "midjourney" | "dall_e_3" | "gemini_imagen" | "flux" | "firefly";
   /** Persistent preferences */
   preferences?: string[];
+  /** Max prompt length from selected media model - skill will respect this limit */
+  maxPromptLength?: number;
 }
 
 export interface PromptEnhancementResult {
@@ -164,7 +170,7 @@ export interface VFXEffect {
   promptText: string;
 }
 
-// Style Categories (A-M)
+// Style Categories (A-N)
 const STYLE_CATEGORIES: StyleCategory[] = [
   {
     id: "A",
@@ -320,6 +326,26 @@ const STYLE_CATEGORIES: StyleCategory[] = [
       { id: "M3", name: "Double exposure", nameEn: "Double exposure", description: "Two scenes overlaid as one image" },
       { id: "M4", name: "Photo-bashing", nameEn: "Photo-bashing", description: "Multiple photo sources combined" },
       { id: "M5", name: "Texture overload", nameEn: "Texture overload", description: "Emphasis on multiple dense textures" },
+    ],
+  },
+  {
+    id: "N",
+    name: "Pixar 3D",
+    nameEn: "Pixar 3D",
+    styles: [
+      { id: "N1", name: "Pixar animated 3D", nameEn: "Pixar animated 3D", description: "3D animated film look, stylized 3D" },
+      { id: "N2", name: "3D animated character", nameEn: "3D animated character", description: "Cartoon-style 3D character design" },
+      { id: "N3", name: "Feature animation look", nameEn: "Feature animation look", description: "Modern animated movie style" },
+      { id: "N4", name: "Clean geometric forms", nameEn: "Clean geometric forms", description: "Smooth stylized skin, clean shapes" },
+      { id: "N5", name: "Expressive features", nameEn: "Expressive features", description: "Big expressive eyes, friendly smile, exaggerated features" },
+    ],
+  },
+  {
+    id: "O",
+    name: "Image Enhancement",
+    nameEn: "Image Enhancement",
+    styles: [
+      { id: "O1", name: "Upscale", nameEn: "Upscale", description: "Enhance image resolution and quality" },
     ],
   },
 ];
@@ -547,6 +573,40 @@ Format:
 
 `;
 
+  // Add character limit constraint - ALWAYS apply if limit is below default 5000
+  // Each model has different limits, so we must respect whatever limit is provided
+  const maxPromptChars = request.maxPromptLength || 5000;
+  if (maxPromptChars < 5000) {
+    // Add warning for any non-default limit - stronger warning for very low limits
+    const isVeryLow = maxPromptChars <= 1500;
+    const isLow = maxPromptChars <= 2500;
+
+    if (isVeryLow) {
+      systemPrompt += `
+⚠️⚠️⚠️ CRITICAL CHARACTER LIMIT WARNING ⚠️⚠️⚠️
+The target AI model has an EXTREMELY STRICT maximum prompt length of ${maxPromptChars} characters.
+Your generated prompt MUST be under ${maxPromptChars} characters total.
+Be VERY CONCISE - include only essential visual elements.
+Every word counts! Remove unnecessary adjectives and descriptions.
+
+`;
+    } else if (isLow) {
+      systemPrompt += `
+⚠️ CHARACTER LIMIT WARNING ⚠️
+The target AI model has a STRICT maximum prompt length of ${maxPromptChars} characters.
+Your generated prompt MUST be under ${maxPromptChars} characters total.
+Be CONCISE - prioritize the most important visual elements.
+
+`;
+    } else {
+      systemPrompt += `
+## Character Limit: ${maxPromptChars} characters
+Keep the total prompt under ${maxPromptChars} characters.
+
+`;
+    }
+  }
+
   // Add generation mode context
   const genMode = request.generationMode || "text_to_image";
   systemPrompt += `\n## Generation Mode: ${genMode.toUpperCase().replace(/_/g, " ")}\n`;
@@ -573,18 +633,81 @@ Format:
     systemPrompt += `Create variations of the reference image while maintaining its essence.\n`;
   }
 
-  // Add task type context
+  // Add background type context
+  const bgType = request.backgroundType || "normal";
+  if (bgType !== "normal") {
+    systemPrompt += `\n## Background Type: ${bgType.toUpperCase().replace(/_/g, " ")}\n`;
+    if (bgType === "green_screen") {
+      systemPrompt += `The image MUST have a solid, uniform GREEN (#00FF00) background for chroma key compositing.
+The subject should be cleanly separated from the background with no green spill.
+Ensure lighting is even on the green screen to facilitate easy keying.\n`;
+    } else if (bgType === "blue_screen") {
+      systemPrompt += `The image MUST have a solid, uniform BLUE (#0000FF) background for chroma key compositing.
+The subject should be cleanly separated from the background with no blue spill.
+Ensure lighting is even on the blue screen to facilitate easy keying.\n`;
+    } else if (bgType === "transparent") {
+      systemPrompt += `The image should be designed for a transparent/cutout background.
+The subject should have clean, well-defined edges suitable for background removal.
+Avoid complex hair/fur details that would be difficult to mask.\n`;
+    }
+  }
+
+  // Add task type and prompt count context
   const taskType = request.task || "final_prompt";
-  if (taskType !== "final_prompt") {
-    systemPrompt += `\n## Task Type: ${taskType.toUpperCase().replace(/_/g, " ")}\n`;
-    if (taskType === "ideas_10") {
-      systemPrompt += `Generate 10 creative concept ideas based on the request.\n`;
-    } else if (taskType === "angles_10") {
-      systemPrompt += `Generate 10 different camera angles/compositions for the scene.\n`;
-    } else if (taskType === "storyboard_6") {
-      systemPrompt += `Create a 6-frame storyboard showing sequential scenes.\n`;
-    } else if (taskType === "infographic_layout") {
-      systemPrompt += `Design an infographic-style layout structure.\n`;
+  const promptCount = request.prompt_count || 1;
+
+  // Map task type to friendly name and description
+  const taskTypeConfig: Record<string, { label: string; description: string; whatToRandom: string }> = {
+    "final_prompt": {
+      label: "Final Prompt",
+      description: "Generate a single complete prompt",
+      whatToRandom: ""
+    },
+    "background_10": {
+      label: "Random Background Ideas",
+      description: "Generate prompts with DIFFERENT BACKGROUNDS/SCENES in each prompt",
+      whatToRandom: "RANDOMIZE THE BACKGROUND/SCENE/LOCATION in each prompt. Keep the same subject but place them in completely different environments (e.g., beach, forest, city, studio, cafe, mountains, underwater, space, etc.)"
+    },
+    "ideas_10": {
+      label: "Concept Ideas",
+      description: "Generate prompts with DIFFERENT CREATIVE CONCEPTS in each prompt",
+      whatToRandom: "RANDOMIZE THE CONCEPT/THEME in each prompt. Explore different creative directions, styles, moods, and interpretations of the same subject."
+    },
+    "angles_10": {
+      label: "Camera Angles",
+      description: "Generate prompts with DIFFERENT CAMERA ANGLES/SHOTS in each prompt",
+      whatToRandom: "RANDOMIZE THE CAMERA ANGLE/SHOT TYPE in each prompt (e.g., close-up, wide shot, bird's eye view, low angle, Dutch angle, over-the-shoulder, extreme close-up, medium shot, aerial view, etc.)"
+    },
+    "storyboard_continue": {
+      label: "Continue Storyboard Frames",
+      description: "Continue the story from existing frames",
+      whatToRandom: "Create sequential frames that continue the narrative logically"
+    },
+    "storyboard_6": {
+      label: "6-Frame Storyboard",
+      description: "Create a 6-frame sequential storyboard",
+      whatToRandom: "Create 6 sequential frames that tell a complete story"
+    },
+    "infographic_layout": {
+      label: "Infographic Layout",
+      description: "Design an infographic-style layout",
+      whatToRandom: ""
+    }
+  };
+
+  const config = taskTypeConfig[taskType] || taskTypeConfig["final_prompt"];
+
+  // Determine the actual count needed
+  const actualCount = promptCount > 1 ? promptCount : (taskType === "background_10" || taskType === "ideas_10" || taskType === "angles_10" ? 10 : taskType === "storyboard_6" ? 6 : 1);
+
+  if (taskType !== "final_prompt" || actualCount > 1) {
+    systemPrompt += `\n## Output Type: ${config.label}
+${config.description}
+Number of prompts to generate: ${actualCount}\n`;
+
+    if (config.whatToRandom) {
+      systemPrompt += `\n**IMPORTANT - What to randomize:**
+${config.whatToRandom}\n`;
     }
   }
 
@@ -743,6 +866,82 @@ Include: "Realistic Skin: Keep pores, micro-texture, natural tone variation, and
     }
   }
 
+  // CRITICAL: Add multi-prompt output format at the END (most visible to LLM)
+  const finalPromptCount = request.prompt_count || 1;
+  const finalTaskType = request.task || "final_prompt";
+  const finalCount = finalPromptCount > 1 ? finalPromptCount : (finalTaskType === "background_10" || finalTaskType === "ideas_10" || finalTaskType === "angles_10" ? 10 : finalTaskType === "storyboard_6" ? 6 : 1);
+
+  // Calculate max characters - use model's maxPromptLength if provided, default to 5000
+  const maxTotalChars = request.maxPromptLength || 5000;
+
+  if (finalCount > 1) {
+    // Determine variation type label based on task
+    let variationTypeLabel = "Variation set";
+    let variationDescription = "different scenarios";
+    if (finalTaskType === "background_10") {
+      variationTypeLabel = "Background/Location set";
+      variationDescription = "different backgrounds/locations";
+    } else if (finalTaskType === "angles_10") {
+      variationTypeLabel = "Angle/Composition set";
+      variationDescription = "different camera angles and compositions";
+    } else if (finalTaskType === "ideas_10") {
+      variationTypeLabel = "Concept set";
+      variationDescription = "different creative concepts";
+    } else if (finalTaskType === "storyboard_6" || finalTaskType === "storyboard_continue") {
+      variationTypeLabel = "Storyboard sequence";
+      variationDescription = "sequential story frames";
+    }
+
+    systemPrompt += `
+
+═══════════════════════════════════════════════════════════════
+🚨 CRITICAL OUTPUT FORMAT FOR MULTI-IMAGE GENERATION 🚨
+═══════════════════════════════════════════════════════════════
+
+Generate a SINGLE continuous prompt that produces ${finalCount} distinct images.
+
+⚠️ CHARACTER LIMIT: Total output MUST NOT exceed ${maxTotalChars} characters!
+
+OUTPUT FORMAT (MANDATORY - SINGLE CONTINUOUS PROMPT):
+
+[Write complete scene description with all details: subject, style, lighting, camera settings, quality markers, realism imperfections, etc. Then end with:]
+
+${variationTypeLabel} (generate ${finalCount} distinct shots of the same scenario):
+1) [Complete shot description with angle, framing, specific details]
+2) [Complete shot description with angle, framing, specific details]
+3) [Complete shot description with angle, framing, specific details]
+... continue until ${finalCount}).
+
+RULES:
+- Output is ONE CONTINUOUS PROMPT (no separate sections)
+- First part: Full detailed description of the scene/subject
+- End with: "${variationTypeLabel} (generate ${finalCount} distinct shots):" followed by numbered items
+- Each numbered item: COMPLETE shot description (angle + framing + specific details)
+- Use ) after numbers (1), 2), 3)...) not periods
+- Total length: Under ${maxTotalChars} characters!
+
+EXAMPLE FORMAT:
+Create a photorealistic 16:9 cinematic scene in a modern cafe: a young woman with shoulder-length brown hair, wearing a cream sweater and jeans, sitting at a wooden table near large windows. Natural daylight streams in, creating soft shadows. Shallow depth of field, shot on Sony A7IV, warm color grading, subtle film grain. Add realism: slight fabric wrinkles, a few dust particles in light beams, condensation on her coffee cup. ${variationTypeLabel} (generate ${finalCount} distinct shots of the same scenario): 1) Wide establishing shot from entrance, woman small in frame, full cafe interior visible, leading lines from tables. 2) Medium shot from her side profile, warm window light on face, bokeh background of other patrons. 3) Close-up on hands holding coffee cup, steam rising, shallow DOF on cup details. ... [continue numbering]
+
+═══════════════════════════════════════════════════════════════
+`;
+  } else {
+    // Single prompt - ALWAYS add character limit reminder at the end (most important position for LLM attention)
+    // Every model has different limits, so always enforce whatever limit is provided
+    if (maxTotalChars < 5000) {
+      systemPrompt += `
+
+═══════════════════════════════════════════════════════════════
+🚨 CRITICAL: CHARACTER LIMIT ${maxTotalChars} CHARACTERS 🚨
+═══════════════════════════════════════════════════════════════
+Your output prompt MUST be under ${maxTotalChars} characters total.
+This is a HARD LIMIT - do NOT exceed it.
+Be concise while maintaining quality. Prioritize essential visual elements.
+═══════════════════════════════════════════════════════════════
+`;
+    }
+  }
+
   return systemPrompt;
 }
 
@@ -846,34 +1045,41 @@ export function buildUserPrompt(request: PromptEnhancementRequest): string {
 }
 
 /**
- * Clean up prompt text by removing markdown formatting, bullets, and numbered lists
+ * Check if text contains multiple numbered prompts (e.g., "1) ... 2) ..." or "1. ... 2. ...")
  */
-function cleanPromptText(text: string): string {
+function isMultiPromptFormat(text: string): boolean {
+  // Check if text has at least 2 numbered items (supports both 1) and 1. formats)
+  const numberedMatches = text.match(/\d+[.)]\s+/g);
+  return (numberedMatches?.length || 0) >= 2;
+}
+
+/**
+ * Clean up prompt text by removing markdown formatting
+ * @param preserveNumbering - If true, keep the numbered list format as continuous prompt
+ */
+function cleanPromptText(text: string, preserveNumbering: boolean = false): string {
   if (!text) return "";
 
   let cleaned = text.trim();
 
-  // Remove markdown bold/italic
+  // Remove markdown bold/italic markers but keep content
   cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, "$1");
   cleaned = cleaned.replace(/\*([^*]+)\*/g, "$1");
 
-  // Remove leading numbered list (1., 2., etc.)
-  cleaned = cleaned.replace(/^\d+\.\s*/gm, "");
-
-  // Remove leading bullets/dashes (-, *, •)
-  cleaned = cleaned.replace(/^[-*•]\s*/gm, "");
-
-  // Remove trailing numbered list items that are incomplete
-  cleaned = cleaned.replace(/\n\d+\.\s*$/g, "");
-
-  // Remove "English Prompt:" or "Thai Prompt:" labels
-  cleaned = cleaned.replace(/^(English|Thai|Translated)\s*(Prompt)?\s*:?\s*/gi, "");
-
   // Remove section headers like "[English Prompt]" or "[Thai]"
-  cleaned = cleaned.replace(/^\[.*?\]\s*/gm, "");
+  cleaned = cleaned.replace(/^\[(English|Thai|Translated).*?\]\s*/gim, "");
 
-  // Collapse multiple newlines into single space (for continuous prompt)
-  cleaned = cleaned.replace(/\n+/g, " ");
+  if (preserveNumbering) {
+    // For multi-image prompt format: keep as continuous text
+    // Only collapse excessive newlines, keep the flow
+    cleaned = cleaned.replace(/\n{2,}/g, " ");
+    cleaned = cleaned.replace(/\n/g, " ");
+  } else {
+    // For single prompt: remove numbered lists and collapse
+    cleaned = cleaned.replace(/^\d+[.)]\s*/gm, "");
+    cleaned = cleaned.replace(/^[-*•]\s*/gm, "");
+    cleaned = cleaned.replace(/\n+/g, " ");
+  }
 
   // Collapse multiple spaces
   cleaned = cleaned.replace(/\s+/g, " ");
@@ -883,10 +1089,21 @@ function cleanPromptText(text: string): string {
 
 /**
  * Parse LLM response to extract English and Thai prompts
+ * Auto-detects multi-prompt format (numbered lists) and preserves them
  */
 export function parsePromptResponse(response: string): { promptEn: string; promptTh: string } {
   let promptEn = "";
   let promptTh = "";
+
+  // First, check if this is a multi-prompt format (numbered lists like 1. 2. 3.)
+  const isMultiPrompt = isMultiPromptFormat(response);
+
+  // If multi-prompt format, preserve the entire response with numbering
+  if (isMultiPrompt) {
+    // For multi-prompt, the whole response is the English prompt (numbered list)
+    promptEn = cleanPromptText(response, true); // preserveNumbering = true
+    return { promptEn, promptTh: "" };
+  }
 
   // Try various formats for English prompt extraction
 
@@ -933,9 +1150,9 @@ export function parsePromptResponse(response: string): { promptEn: string; promp
     promptEn = response;
   }
 
-  // Clean up both prompts
-  promptEn = cleanPromptText(promptEn);
-  promptTh = cleanPromptText(promptTh);
+  // Clean up both prompts (single prompt mode - no numbering preservation)
+  promptEn = cleanPromptText(promptEn, false);
+  promptTh = cleanPromptText(promptTh, false);
 
   return { promptEn, promptTh };
 }

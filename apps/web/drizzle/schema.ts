@@ -24,6 +24,9 @@ export const aspectRatioEnum = pgEnum("aspect_ratio", ["1:1", "9:16", "16:9"]);
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system"]);
 export const entityTypeEnum = pgEnum("entity_type", ["user", "project", "preference", "technical", "decision", "plan", "architecture", "component", "task", "code_knowledge", "rule"]);
 
+// API style for different LLM provider endpoints (OpenCode Zen uses different endpoints per model family)
+export const apiStyleEnum = pgEnum("api_style", ["chat-completions", "responses", "messages", "gemini"]);
+
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
@@ -385,6 +388,9 @@ export const modelProviderMap = pgTable("model_provider_map", {
 
   /** Lower = higher priority within this provider */
   priority: integer("priority").default(0).notNull(),
+
+  /** API style for endpoint routing (only used for providers like OpenCode Zen with multiple endpoints) */
+  apiStyle: apiStyleEnum("apiStyle").default("chat-completions").notNull(),
 }, (t) => [
   uniqueIndex("model_provider_map_unique").on(t.modelId, t.providerId),
 ]);
@@ -1240,6 +1246,7 @@ export type InsertMediaModel = typeof mediaModels.$inferInsert;
 export const skillCategoryEnum = pgEnum("skill_category", [
   "image_generation",      // Generate Images
   "video_generation",      // Generate Video
+  "image_video_generation", // Generate both Image and Video
   "audio_generation",      // Generate Text To Speech
   "sound_effects",         // Generate Sound Effects
   "prompt_enhancement",    // Enhance prompts
@@ -1315,8 +1322,17 @@ export const skills = pgTable("skills", {
   /** Whether skill can auto-trigger on intent detection */
   isAutoTrigger: boolean("isAutoTrigger").default(false).notNull(),
 
-  /** Regex patterns for auto-detection (JSON array of pattern strings) */
-  triggerPatterns: json("triggerPatterns").$type<string[]>().default([]),
+  /** Regex patterns for auto-detection
+   * Supports two formats:
+   * 1. Legacy: string[] - array of pattern strings
+   * 2. New: PatternRule[] - array of objects with pattern, chainTo, label
+   * Both can be mixed in the same array for backward compatibility
+   */
+  triggerPatterns: json("triggerPatterns").$type<Array<string | {
+    pattern: string;
+    chainTo?: string | null;
+    label?: string;
+  }>>().default([]),
 
   /** Whether skill is enabled globally */
   isEnabled: boolean("isEnabled").default(true).notNull(),
@@ -1341,6 +1357,9 @@ export const skills = pgTable("skills", {
 
   /** Execution mode: llm-only (text response), media-generate (LLM→prompt→media API) */
   executionMode: varchar("executionMode", { length: 50 }).default("llm-only").notNull(),
+
+  /** Chain to another skill after this skill completes (skill slug) */
+  chainTo: varchar("chainTo", { length: 100 }),
 
   /** System prompt override (optional) */
   systemPrompt: text("systemPrompt"),

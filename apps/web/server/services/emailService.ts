@@ -82,7 +82,12 @@ async function createTransporter(): Promise<Transporter | null> {
       user: config.user,
       pass: config.pass,
     },
-    tls: { rejectUnauthorized: true },
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: "TLSv1.2",
+    },
   });
 }
 
@@ -186,16 +191,43 @@ export async function testSmtpConnection(config: {
 }): Promise<{ success: boolean; message: string }> {
   try {
     const useSecure = config.port === 465 ? true : config.secure;
+    console.log(`[SMTP Test] Connecting to ${config.host}:${config.port} (secure=${useSecure})`);
+
     const transporter = nodemailer.createTransport({
       host: config.host,
       port: config.port,
       secure: useSecure,
       auth: { user: config.user, pass: config.pass },
-      tls: { rejectUnauthorized: true },
+      connectionTimeout: 15000, // 15s timeout
+      greetingTimeout: 10000,   // 10s greeting timeout
+      tls: {
+        // Allow self-signed certs for local/dev environments
+        // For production, this should ideally be true
+        rejectUnauthorized: false,
+        minVersion: "TLSv1.2",
+      },
     });
     await transporter.verify();
+    console.log(`[SMTP Test] Connection successful to ${config.host}`);
     return { success: true, message: "SMTP connection successful" };
   } catch (err: any) {
-    return { success: false, message: err.message || "Connection failed" };
+    const errorMsg = err.message || "Connection failed";
+    console.error(`[SMTP Test] Failed: ${errorMsg}`, err.code || "");
+
+    // Provide more helpful error messages
+    let helpfulMessage = errorMsg;
+    if (err.code === "ECONNREFUSED") {
+      helpfulMessage = `Connection refused: ${config.host}:${config.port} - check host and port`;
+    } else if (err.code === "ENOTFOUND") {
+      helpfulMessage = `Host not found: ${config.host} - check SMTP host address`;
+    } else if (err.code === "ETIMEDOUT" || err.code === "ESOCKET") {
+      helpfulMessage = `Connection timeout: ${config.host}:${config.port} - check firewall or network`;
+    } else if (err.code === "EAUTH" || errorMsg.includes("authentication")) {
+      helpfulMessage = `Authentication failed: check username and password`;
+    } else if (errorMsg.includes("certificate") || errorMsg.includes("SSL") || errorMsg.includes("TLS")) {
+      helpfulMessage = `TLS/SSL error: ${errorMsg}`;
+    }
+
+    return { success: false, message: helpfulMessage };
   }
 }

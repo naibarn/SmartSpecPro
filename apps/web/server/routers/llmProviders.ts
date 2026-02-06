@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { db, getDb } from "../db";
-import { llmProviders } from "../../drizzle/schema";
-import { eq, asc, desc, sql } from "drizzle-orm";
+import { llmProviders, modelProviderMap } from "../../drizzle/schema";
+import { eq, asc, desc, sql, count } from "drizzle-orm";
 import {
   syncProviderModels,
   syncAllProviderModels,
@@ -118,6 +118,27 @@ const PROVIDER_TEMPLATES = [
     baseUrl: "https://api.deepseek.com/v1",
     defaultModel: "deepseek-chat",
   },
+  {
+    providerName: "moonshot",
+    displayName: "Moonshot AI (Kimi)",
+    description: "Kimi models with extended context windows up to 128K",
+    baseUrl: "https://api.moonshot.cn/v1",
+    defaultModel: "moonshot-v1-128k",
+  },
+  {
+    providerName: "together",
+    displayName: "Together AI",
+    description: "Fast inference for open-source models including Llama, Mistral, and more",
+    baseUrl: "https://api.together.xyz/v1",
+    defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  },
+  {
+    providerName: "fireworks",
+    displayName: "Fireworks AI",
+    description: "High-performance inference for open models with function calling support",
+    baseUrl: "https://api.fireworks.ai/inference/v1",
+    defaultModel: "accounts/fireworks/models/llama-v3p3-70b-instruct",
+  },
 ];
 
 export const llmProvidersRouter = router({
@@ -201,6 +222,7 @@ export const llmProvidersRouter = router({
 
   // Get all providers (admin)
   adminList: adminProcedure.query(async () => {
+    // Get providers
     const providers = await db
       .select({
         id: llmProviders.id,
@@ -219,8 +241,24 @@ export const llmProvidersRouter = router({
       })
       .from(llmProviders)
       .orderBy(asc(llmProviders.sortOrder));
-    
-    return providers;
+
+    // Get model counts from model_provider_map for each provider
+    const modelCounts = await db
+      .select({
+        providerId: modelProviderMap.providerId,
+        count: count(),
+      })
+      .from(modelProviderMap)
+      .where(eq(modelProviderMap.isEnabled, true))
+      .groupBy(modelProviderMap.providerId);
+
+    const countMap = new Map(modelCounts.map(c => [c.providerId, Number(c.count)]));
+
+    // Merge routed model count into providers
+    return providers.map(p => ({
+      ...p,
+      routedModelCount: countMap.get(p.id) ?? 0,
+    }));
   }),
 
   // Get provider templates

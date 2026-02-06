@@ -69,6 +69,9 @@ import {
   Search,
   Languages,
   Mic,
+  Grid2X2,
+  Scissors,
+  AlertCircle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -76,7 +79,17 @@ import { cn } from "@/lib/utils";
 import ModelSelectorDialog from "@/components/media/ModelSelectorDialog";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 
-import DynamicSkillForm, { type SkillInputSchema } from "@/components/media/DynamicSkillForm";
+import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
+import {
+  COMMON_GRIDS,
+  detectGrid,
+  splitImage,
+  createSplitPreview,
+  downloadSplitImage,
+  downloadAllSplitImages,
+  type SplitResult,
+  type DetectedGrid,
+} from "@/lib/imageGridSplitter";
 
 type MediaType = "image" | "video" | "audio";
 
@@ -95,6 +108,15 @@ interface GeneratedMedia {
   creditsUsed?: number;
 }
 
+// Track individual image generation tasks for progressive preview
+interface GenerationTask {
+  id: string;
+  index: number;
+  status: 'queued' | 'generating' | 'completed' | 'error';
+  url?: string;
+  error?: string;
+}
+
 interface StyleOption {
   id: string;
   name: string;
@@ -107,44 +129,259 @@ interface StyleCategory {
   styles: StyleOption[];
 }
 
+// Per-tab state structure - each tab has independent controls
+interface TabState {
+  prompt: string;
+  enhancedPrompt: string;
+  referenceImages: ReferenceImage[];
+  selectedSkillId: string;
+  useAdvancedMode: boolean;
+  dynamicFormValues: Record<string, any>;
+  selectedStyleCategory: string;
+  selectedStyle: string;
+  selectedVfxCategory: string;
+  selectedVfxEffect: string;
+  realisticSkin: boolean;
+  faceLock: boolean;
+  modelInputValues: Record<string, any>;
+  selectedModel: string;
+  numImages: number;
+  aspectRatio: string;
+  duration: number;
+  selectedLlmModel: string;
+  skillInitialized: boolean;
+  modelInitialized: boolean;
+}
+
+// Default state for each tab
+const createDefaultTabState = (mediaType: MediaType): TabState => ({
+  prompt: "",
+  enhancedPrompt: "",
+  referenceImages: [],
+  selectedSkillId: "",
+  useAdvancedMode: false,
+  dynamicFormValues: {},
+  selectedStyleCategory: "",
+  selectedStyle: "",
+  selectedVfxCategory: "",
+  selectedVfxEffect: "",
+  realisticSkin: false,
+  faceLock: false,
+  modelInputValues: {},
+  selectedModel: "",
+  numImages: 1,
+  aspectRatio: mediaType === "video" ? (localStorage.getItem("smartspec_aspect_video") || "16:9") : (localStorage.getItem("smartspec_aspect_image") || "1:1"),
+  duration: parseInt(localStorage.getItem("smartspec_duration_video") || "5", 10),
+  selectedLlmModel: "",
+  skillInitialized: false,
+  modelInitialized: false,
+});
+
+// Default prompt for Upscale style - auto-fills when user selects "upscale"
+const UPSCALE_DEFAULT_PROMPT = "Upscale and enhance this low-resolution image to high clarity while maintaining the original identity and natural appearance. Restore fine textures, edges, and micro-details without inventing unrealistic features. Remove noise, artifacts, and compression blocks. Do not change the pose, lighting, clothing, or background. Keep the improvement subtle, natural, and faithful to the original.";
+
+/**
+ * Parse skill output for "both" mode (image_video_generation skills)
+ * Extracts header (title, character, environment) + image prompts vs video prompts
+ */
+function parseSkillOutputForBothMode(content: string): { imagePrompt: string; videoPrompt: string } | null {
+  // Detect image prompts section (English or Thai) - match **Image Prompts:** or **Prompt สร้างภาพ:**
+  const imagePromptPatterns = [
+    /\*\*Image Prompts:?\*\*/i,
+    /\*\*Prompt สร้างภาพ:?\*\*/i,
+  ];
+
+  // Detect video prompts section (English or Thai)
+  const videoPromptPatterns = [
+    /\*\*Video Prompts:?\*\*/i,
+    /\*\*Prompt สร้างวิดีโอ:?\*\*/i,
+  ];
+
+  // Find the positions of image and video sections
+  let imageStart = -1;
+  let videoStart = -1;
+
+  for (const pattern of imagePromptPatterns) {
+    const match = content.search(pattern);
+    if (match !== -1 && (imageStart === -1 || match < imageStart)) {
+      imageStart = match;
+    }
+  }
+
+  for (const pattern of videoPromptPatterns) {
+    const match = content.search(pattern);
+    if (match !== -1 && (videoStart === -1 || match < videoStart)) {
+      videoStart = match;
+    }
+  }
+
+  // If both sections not found, return null (don't split)
+  if (imageStart === -1 || videoStart === -1) {
+    return null;
+  }
+
+  // Extract header (everything before the first prompt section)
+  const firstSectionStart = Math.min(imageStart, videoStart);
+  const header = content.substring(0, firstSectionStart).trim();
+
+  // Determine section order and extract prompts
+  let imageSection: string;
+  let videoSection: string;
+
+  if (imageStart < videoStart) {
+    // Image section comes first
+    imageSection = content.substring(imageStart, videoStart).trim();
+    videoSection = content.substring(videoStart).trim();
+  } else {
+    // Video section comes first
+    videoSection = content.substring(videoStart, imageStart).trim();
+    imageSection = content.substring(imageStart).trim();
+  }
+
+  // Combine header with each section
+  const imagePrompt = `${header}\n\n${imageSection}`;
+  const videoPrompt = `${header}\n\n${videoSection}`;
+
+  return { imagePrompt, videoPrompt };
+}
+
 export default function MediaStudio() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Media type and model state
+  // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
-  const [selectedModel, setSelectedModel] = useState<string>("");
 
-  // Prompt state
-  const [prompt, setPrompt] = useState("");
-  const [enhancedPrompt, setEnhancedPrompt] = useState("");
+  // Per-tab state - each tab has independent controls
+  const [tabStates, setTabStates] = useState<Record<MediaType, TabState>>(() => ({
+    image: createDefaultTabState("image"),
+    video: createDefaultTabState("video"),
+    audio: createDefaultTabState("audio"),
+  }));
+
+  // Helper to update a specific field in the current tab's state
+  const updateTabState = useCallback(<K extends keyof TabState>(field: K, value: TabState[K]) => {
+    setTabStates(prev => ({
+      ...prev,
+      [activeTab]: { ...prev[activeTab], [field]: value }
+    }));
+  }, [activeTab]);
+
+  // Helper to update multiple fields at once
+  const updateTabStateMultiple = useCallback((updates: Partial<TabState>) => {
+    setTabStates(prev => ({
+      ...prev,
+      [activeTab]: { ...prev[activeTab], ...updates }
+    }));
+  }, [activeTab]);
+
+  // Derived state from current tab (for easier access)
+  const currentTabState = tabStates[activeTab];
+  const prompt = currentTabState.prompt;
+  const enhancedPrompt = currentTabState.enhancedPrompt;
+  const referenceImages = currentTabState.referenceImages;
+  const selectedSkillId = currentTabState.selectedSkillId;
+  const useAdvancedMode = currentTabState.useAdvancedMode;
+  const dynamicFormValues = currentTabState.dynamicFormValues;
+  const selectedStyleCategory = currentTabState.selectedStyleCategory;
+  const selectedStyle = currentTabState.selectedStyle;
+  const selectedVfxCategory = currentTabState.selectedVfxCategory;
+  const selectedVfxEffect = currentTabState.selectedVfxEffect;
+  const realisticSkin = currentTabState.realisticSkin;
+  const faceLock = currentTabState.faceLock;
+  const modelInputValues = currentTabState.modelInputValues;
+  const selectedModel = currentTabState.selectedModel;
+  const numImages = currentTabState.numImages;
+  const aspectRatio = currentTabState.aspectRatio;
+  const duration = currentTabState.duration;
+  const selectedLlmModel = currentTabState.selectedLlmModel;
+  const skillInitialized = currentTabState.skillInitialized;
+  const modelInitialized = currentTabState.modelInitialized;
+
+  // Setter functions that update the current tab's state
+  const setPrompt = useCallback((value: string | ((prev: string) => string)) => {
+    setTabStates(prev => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        prompt: typeof value === 'function' ? value(prev[activeTab].prompt) : value
+      }
+    }));
+  }, [activeTab]);
+
+  const setEnhancedPrompt = useCallback((value: string | ((prev: string) => string)) => {
+    setTabStates(prev => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        enhancedPrompt: typeof value === 'function' ? value(prev[activeTab].enhancedPrompt) : value
+      }
+    }));
+  }, [activeTab]);
+
+  const setReferenceImages = useCallback((value: ReferenceImage[] | ((prev: ReferenceImage[]) => ReferenceImage[])) => {
+    setTabStates(prev => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        referenceImages: typeof value === 'function' ? value(prev[activeTab].referenceImages) : value
+      }
+    }));
+  }, [activeTab]);
+
+  const setSelectedSkillId = useCallback((value: string) => updateTabState('selectedSkillId', value), [updateTabState]);
+  const setUseAdvancedMode = useCallback((value: boolean) => updateTabState('useAdvancedMode', value), [updateTabState]);
+  const setDynamicFormValues = useCallback((value: Record<string, any>) => updateTabState('dynamicFormValues', value), [updateTabState]);
+  const setSelectedStyleCategory = useCallback((value: string) => updateTabState('selectedStyleCategory', value), [updateTabState]);
+  const setSelectedStyle = useCallback((value: string) => updateTabState('selectedStyle', value), [updateTabState]);
+  const setSelectedVfxCategory = useCallback((value: string) => updateTabState('selectedVfxCategory', value), [updateTabState]);
+  const setSelectedVfxEffect = useCallback((value: string) => updateTabState('selectedVfxEffect', value), [updateTabState]);
+  const setRealisticSkin = useCallback((value: boolean) => updateTabState('realisticSkin', value), [updateTabState]);
+  const setFaceLock = useCallback((value: boolean) => updateTabState('faceLock', value), [updateTabState]);
+  const setModelInputValues = useCallback((value: Record<string, any> | ((prev: Record<string, any>) => Record<string, any>)) => {
+    setTabStates(prev => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        modelInputValues: typeof value === 'function' ? value(prev[activeTab].modelInputValues) : value
+      }
+    }));
+  }, [activeTab]);
+  const setSelectedModel = useCallback((value: string) => updateTabState('selectedModel', value), [updateTabState]);
+  const setNumImages = useCallback((value: number) => updateTabState('numImages', value), [updateTabState]);
+  const setAspectRatio = useCallback((value: string) => updateTabState('aspectRatio', value), [updateTabState]);
+  const setDuration = useCallback((value: number) => updateTabState('duration', value), [updateTabState]);
+  const setSelectedLlmModel = useCallback((value: string) => updateTabState('selectedLlmModel', value), [updateTabState]);
+  const setSkillInitialized = useCallback((value: boolean) => updateTabState('skillInitialized', value), [updateTabState]);
+  const setModelInitialized = useCallback((value: boolean) => updateTabState('modelInitialized', value), [updateTabState]);
+
+  // Loading state (global)
   const [isEnhancing, setIsEnhancing] = useState(false);
 
-  // Reference images state (1-5 images)
-  const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
+  // Split prompts for image_video_generation skills with outputType="both"
+  const [imageTabPrompt, setImageTabPrompt] = useState<string | null>(null);
+  const [videoTabPrompt, setVideoTabPrompt] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Generation state
+  // Ref to track current prompt textarea value (for reliable history storage)
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Generation state (global - shows results from any tab)
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMedia, setGeneratedMedia] = useState<GeneratedMedia[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Track multiple generation tasks for progressive preview (when count > 1)
+  const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([]);
+  // Track session start time to filter out old failed tasks from History Gallery
+  const [sessionStartTime] = useState<Date>(() => new Date());
 
-  // Style selection state
-  const [selectedStyleCategory, setSelectedStyleCategory] = useState<string>("");
-  const [selectedStyle, setSelectedStyle] = useState<string>("");
+  // Dialog states (global)
   const [showStyleDialog, setShowStyleDialog] = useState(false);
-
-  // VFX selection state
-  const [selectedVfxCategory, setSelectedVfxCategory] = useState<string>("");
-  const [selectedVfxEffect, setSelectedVfxEffect] = useState<string>("");
   const [showVfxDialog, setShowVfxDialog] = useState(false);
-
-  // Skill selection state - initialized empty, will be set by useEffect based on priority/localStorage
-  const [selectedSkillId, setSelectedSkillId] = useState<string>("");
   const [showSkillDialog, setShowSkillDialog] = useState(false);
-  const [skillInitialized, setSkillInitialized] = useState(false);
 
-  // Translation state
+  // Translation state (global)
   const [translatedText, setTranslatedText] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -161,7 +398,7 @@ export default function MediaStudio() {
     },
   });
 
-  // Push-to-talk
+  // Push-to-talk (uses current tab's prompt)
   const { isRecording: isPttRecording, isTranscribing: isPttTranscribing, startRecording: pttStart, stopRecording: pttStop } = usePushToTalk({
     onTranscription: (text) => {
       if (enhancedPrompt) {
@@ -173,25 +410,8 @@ export default function MediaStudio() {
     onError: (err) => toast.error(err),
   });
 
-  // Advanced options state
-  const [realisticSkin, setRealisticSkin] = useState(false);
-  const [faceLock, setFaceLock] = useState(false);
-
   // Model selection dialog state
   const [showModelDialog, setShowModelDialog] = useState(false);
-
-  // Aspect ratio state - initialized from localStorage or defaults
-  const [aspectRatio, setAspectRatio] = useState(() => {
-    return localStorage.getItem("smartspec_aspect_image") || "1:1";
-  });
-  const [numImages, setNumImages] = useState(1);
-  const [duration, setDuration] = useState(() => {
-    const saved = localStorage.getItem("smartspec_duration_video");
-    return saved ? parseInt(saved, 10) : 5;
-  });
-  const [videoAspectRatio, setVideoAspectRatio] = useState(() => {
-    return localStorage.getItem("smartspec_aspect_video") || "16:9";
-  });
 
   // Drag & drop state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -206,16 +426,19 @@ export default function MediaStudio() {
   } | null>(null);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
 
-  // Dynamic skill form state
-  const [useAdvancedMode, setUseAdvancedMode] = useState(false);
-  const [dynamicFormValues, setDynamicFormValues] = useState<Record<string, any>>({});
+  // Grid split state
+  const [showSplitDialog, setShowSplitDialog] = useState(false);
+  const [splitImageUrl, setSplitImageUrl] = useState<string | null>(null);
+  const [splitGridRows, setSplitGridRows] = useState(2);
+  const [splitGridCols, setSplitGridCols] = useState(2);
+  const [splitPreviewUrl, setSplitPreviewUrl] = useState<string | null>(null);
+  const [splitResults, setSplitResults] = useState<SplitResult[]>([]);
+  const [isSplitting, setIsSplitting] = useState(false);
+  const [detectedGrid, setDetectedGrid] = useState<DetectedGrid | null>(null);
+  const [isDetectingGrid, setIsDetectingGrid] = useState(false);
 
-  // LLM model selection for Auto Prompt (Advanced Mode)
-  const [selectedLlmModel, setSelectedLlmModel] = useState<string>("");
+  // LLM model search (UI state, not per-tab)
   const [llmModelSearch, setLlmModelSearch] = useState("");
-
-  // Dynamic model input field values (from configJson.inputFields)
-  const [modelInputValues, setModelInputValues] = useState<Record<string, any>>({});
 
   // API queries
   const { data: credits } = trpc.credits.balance.useQuery();
@@ -237,12 +460,17 @@ export default function MediaStudio() {
       enabledByDefault: s.enabledByDefault ?? true,
       priority: s.priority ?? 50,
       hasSkillFile: false,
+      // executionMode determines which endpoint to use:
+      // "enhance-prompt" -> enhancePrompt endpoint
+      // "llm-only" or undefined -> executeCustomSkill endpoint
+      executionMode: s.executionMode || "llm-only",
     }));
   }, [userVisibleSkillsRaw]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
   const { data: mediaHistory } = trpc.media.listTasks.useQuery({
-    limit: 20,
-    mediaType: activeTab
+    limit: 50,
+    mediaType: activeTab,
+    daysAgo: 7
   });
 
   // Query for skill input schema (for dynamic form)
@@ -265,6 +493,7 @@ export default function MediaStudio() {
   const uploadMutation = trpc.ai.upload.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
+  const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
 
   // Auth redirect
   useEffect(() => {
@@ -272,15 +501,6 @@ export default function MediaStudio() {
       setLocation("/login");
     }
   }, [isLoading, isAuthenticated, setLocation]);
-
-  // Track if model has been initialized for current tab
-  const [modelInitialized, setModelInitialized] = useState(false);
-
-  // Reset model initialization when media type changes
-  useEffect(() => {
-    setModelInitialized(false);
-    setSelectedModel("");
-  }, [activeTab]);
 
   // Set model from localStorage or default when models load
   useEffect(() => {
@@ -340,32 +560,23 @@ export default function MediaStudio() {
     const modelAr = model?.aspectRatios as string[] | null;
     const supportedAr = arOptions || (modelAr?.length ? modelAr : null);
     if (supportedAr) {
-      const currentAr = activeTab === "video" ? videoAspectRatio : aspectRatio;
-      if (!supportedAr.includes(currentAr)) {
+      if (!supportedAr.includes(aspectRatio)) {
         const defaultAr = arField?.default || supportedAr[0] || "1:1";
-        if (activeTab === "video") {
-          setVideoAspectRatio(defaultAr);
-        } else {
-          setAspectRatio(defaultAr);
-        }
+        setAspectRatio(defaultAr);
       }
     }
-  }, [selectedModel, mediaModels]);
+  }, [selectedModel, mediaModels, activeTab, aspectRatio, setAspectRatio]);
 
-  // Save aspect ratio to localStorage when changed
+  // Save aspect ratio to localStorage when changed (per-tab)
   useEffect(() => {
-    localStorage.setItem("smartspec_aspect_image", aspectRatio);
-  }, [aspectRatio]);
-
-  // Save video aspect ratio to localStorage when changed
-  useEffect(() => {
-    localStorage.setItem("smartspec_aspect_video", videoAspectRatio);
-  }, [videoAspectRatio]);
+    const storageKey = activeTab === "video" ? "smartspec_aspect_video" : "smartspec_aspect_image";
+    localStorage.setItem(storageKey, aspectRatio);
+  }, [aspectRatio, activeTab]);
 
   // Save duration to localStorage when changed
   useEffect(() => {
-    localStorage.setItem("smartspec_duration_video", duration.toString());
-  }, [duration]);
+    localStorage.setItem("smartspec_duration_video", tabStates.video.duration.toString());
+  }, [tabStates.video.duration]);
 
   // Smart skill selection: localStorage > priority > type match > first enabled
   useEffect(() => {
@@ -379,10 +590,6 @@ export default function MediaStudio() {
     };
     const matchingTypes = typeMap[activeTab] || [];
 
-    // Debug: log available skills and their types
-    console.log('[MediaStudio] Tab:', activeTab, 'Matching types:', matchingTypes);
-    console.log('[MediaStudio] Available skills:', skillsList.map(s => ({ id: s.id, name: s.name, type: s.type, priority: s.priority })));
-
     // 1. Check localStorage for last selected skill for this media type
     const storageKey = `smartspec_last_skill_${activeTab}`;
     const savedSkillId = localStorage.getItem(storageKey);
@@ -392,7 +599,6 @@ export default function MediaStudio() {
       const savedSkill = skillsList.find(s => s.id === savedSkillId);
       // Only use saved skill if it matches the current tab's type
       if (savedSkill && matchingTypes.includes(savedSkill.type)) {
-        console.log('[MediaStudio] Using localStorage skill:', savedSkillId);
         setSelectedSkillId(savedSkillId);
         setSkillInitialized(true);
         return;
@@ -405,10 +611,7 @@ export default function MediaStudio() {
       .filter(s => matchingTypes.includes(s.type))
       .sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-    console.log('[MediaStudio] Matching skills by type:', matchingSkills.map(s => ({ id: s.id, name: s.name, priority: s.priority })));
-
     if (matchingSkills.length > 0) {
-      console.log('[MediaStudio] Selected by type+priority:', matchingSkills[0].id);
       setSelectedSkillId(matchingSkills[0].id);
       setSkillInitialized(true);
       return;
@@ -418,7 +621,6 @@ export default function MediaStudio() {
     const sortedSkills = [...skillsList].sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     if (sortedSkills.length > 0) {
-      console.log('[MediaStudio] Fallback to first skill:', sortedSkills[0].id);
       setSelectedSkillId(sortedSkills[0].id);
     }
     setSkillInitialized(true);
@@ -444,11 +646,22 @@ export default function MediaStudio() {
     }
   }, [selectedSkillId, activeTab, skillInitialized, skillsList]);
 
-  // Reset dynamic form values when skill changes
+  // Sync split prompts when switching tabs (for image_video_generation skills with outputType="both")
+  useEffect(() => {
+    if (activeTab === "image" && imageTabPrompt) {
+      setEnhancedPrompt(imageTabPrompt);
+    } else if (activeTab === "video" && videoTabPrompt) {
+      setEnhancedPrompt(videoTabPrompt);
+    }
+    // Don't clear enhancedPrompt when switching to a tab without split prompt
+    // User may have typed their own prompt
+  }, [activeTab, imageTabPrompt, videoTabPrompt, setEnhancedPrompt]);
+
+  // Reset dynamic form values when skill changes (per-tab)
   useEffect(() => {
     setDynamicFormValues({});
     // Advanced Mode is OFF by default - user must enable it manually
-  }, [selectedSkillId]);
+  }, [selectedSkillId, setDynamicFormValues]);
 
   // Track if user has manually selected a model (to avoid overriding their choice)
   const [llmModelManuallySet, setLlmModelManuallySet] = useState(false);
@@ -467,13 +680,16 @@ export default function MediaStudio() {
     }
   }, [skillConfig, visionModels, llmModelManuallySet]);
 
+  // Reference image limits per tab (video allows more for storyboards)
+  const maxReferenceImages = activeTab === "video" ? 25 : 5;
+
   // Handle file upload for reference images
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Limit to 5 reference images
-    const remainingSlots = 5 - referenceImages.length;
+    // Limit reference images based on tab (video: 25, others: 5)
+    const remainingSlots = maxReferenceImages - referenceImages.length;
     const filesToUpload = Array.from(files).slice(0, remainingSlots);
 
     for (const file of filesToUpload) {
@@ -544,7 +760,7 @@ export default function MediaStudio() {
     setIsDraggingOver(false);
 
     const url = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
-    if (url && referenceImages.length < 5) {
+    if (url && referenceImages.length < maxReferenceImages) {
       // Check if it's an image URL
       if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)/i) || url.includes("blob:") || url.startsWith("http")) {
         setReferenceImages(prev => [...prev, { url, name: `dropped-${Date.now()}` }]);
@@ -564,9 +780,13 @@ export default function MediaStudio() {
   const isFieldDisabledByAdvancedMode = useCallback((fieldName: string): boolean => {
     if (!useAdvancedMode || !skillSchema) return false;
 
+    // Fields that should NEVER be disabled by Advanced mode
+    // These are always controlled via Settings panel and filtered out from Advanced form
+    const alwaysEnabledFields = ["aspectRatio"];
+    if (alwaysEnabledFields.includes(fieldName)) return false;
+
     // Map Settings field names to possible schema field IDs
     const fieldMappings: Record<string, string[]> = {
-      "aspectRatio": ["aspectRatio", "aspect_ratio"],
       "style": ["styleCategory", "styleName", "style"],
       "vfx": ["vfxCategory", "vfxEffect", "vfx"],
       "realisticSkin": ["realisticSkin", "realistic_skin"],
@@ -592,71 +812,191 @@ export default function MediaStudio() {
   // When using advanced mode with dynamic form, uses form values instead
   const handleAutoPrompt = async () => {
     // Allow either text or images (or both) - check both direct and form values
-    const userIdea = useAdvancedMode && dynamicFormValues.userIdea
-      ? dynamicFormValues.userIdea
-      : prompt.trim();
+    // In Advanced Mode: combine main Prompt with "Your Idea" (request field) for expanded context
+    const mainPrompt = prompt.trim();
+    const advancedRequest = useAdvancedMode ? (dynamicFormValues.request as string || "") : "";
+
+    // Combine both fields: Prompt is primary, Your Idea expands on it
+    let userIdea = "";
+    if (mainPrompt && advancedRequest) {
+      userIdea = `${mainPrompt}\n\nAdditional details: ${advancedRequest}`;
+    } else {
+      userIdea = mainPrompt || advancedRequest;
+    }
 
     if (!userIdea && referenceImages.length === 0) return;
 
     setIsEnhancing(true);
     try {
-      // Build request based on mode
-      let requestData;
+      // Determine if we should use custom skill execution or the specialized enhancePrompt endpoint
+      // Skills with executionMode: "enhance-prompt" use the specialized enhancePrompt endpoint
+      // All other skills use executeCustomSkill which sends skill.md content as system prompt
+      const useEnhancePromptEndpoint = currentSkill?.executionMode === "enhance-prompt";
 
-      if (useAdvancedMode && skillSchema) {
-        // Use dynamic form values with output mapping
+      const isCustomSkill = selectedSkillId && !useEnhancePromptEndpoint;
+
+      if (isCustomSkill) {
+        // Use executeCustomSkill for custom skills like viral-talking-objects
+        // This sends the skill's content as system prompt to the LLM
+        // Works in both Basic Mode (userIdea only) and Advanced Mode (with form values)
         const mappedValues: Record<string, any> = {};
-        const outputMapping = skillSchema.outputMapping || {};
 
-        // Map form values to API parameters
-        Object.entries(dynamicFormValues).forEach(([key, value]) => {
-          const mappedKey = outputMapping[key] || key;
-          if (value !== undefined && value !== "" && value !== null) {
-            mappedValues[mappedKey] = value;
+        if (useAdvancedMode && skillSchema) {
+          // Advanced Mode: map form values to API parameters
+          const outputMapping = skillSchema.outputMapping || {};
+          Object.entries(dynamicFormValues).forEach(([key, value]) => {
+            const mappedKey = outputMapping[key] || key;
+            if (value !== undefined && value !== "" && value !== null) {
+              mappedValues[mappedKey] = value;
+            }
+          });
+        }
+
+        // Add the user's prompt/idea (works for both Basic and Advanced Mode)
+        if (userIdea) {
+          mappedValues.userIdea = userIdea;
+          // In Basic Mode, also pass as 'topic' since many skills expect this field
+          if (!useAdvancedMode) {
+            mappedValues.topic = userIdea;
+            // In Basic Mode, also pass default language settings
+            // This ensures skills know to use English output format by default
+            mappedValues.promptLanguage = "en";
+            mappedValues.dialogueLanguage = "en";
           }
+        }
+
+        const result = await executeCustomSkillMutation.mutateAsync({
+          skillId: selectedSkillId,
+          userInputs: mappedValues,
+          model: selectedLlmModel || undefined,
+          referenceImages: referenceImages.map(r => r.url),
         });
 
-        requestData = {
-          userInput: userIdea || "Create a prompt based on the reference images",
-          referenceImages: referenceImages.map(r => r.url),
-          // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
-          ...(selectedLlmModel ? { model: selectedLlmModel } : {}),
-          ...mappedValues,
-        };
+        if (result.success && result.content) {
+          // Check if outputType="both" - try to parse and split prompts for Image/Video tabs
+          // Note: outputType may be undefined if user didn't change from default (especially in Basic Mode)
+          const outputType = dynamicFormValues?.outputType as string | undefined;
+          // Default to "both" if not explicitly set (matches ui.schema.json default for viral-talking-objects)
+          const effectiveOutputType = outputType ?? "both";
+
+          if (effectiveOutputType === "both") {
+            // Try to parse and split the content for image and video tabs
+            const parsed = parseSkillOutputForBothMode(result.content);
+
+            if (parsed) {
+              // Store split prompts for each tab
+              setImageTabPrompt(parsed.imagePrompt);
+              setVideoTabPrompt(parsed.videoPrompt);
+
+              // Set the appropriate prompt based on current tab
+              if (activeTab === "image") {
+                setEnhancedPrompt(parsed.imagePrompt);
+              } else if (activeTab === "video") {
+                setEnhancedPrompt(parsed.videoPrompt);
+              } else {
+                setEnhancedPrompt(result.content);
+              }
+
+              toast.success(`Skill "${result.skillName}" executed successfully`, {
+                description: `Credits: ${result.creditsUsed}. Prompts split for Image and Video tabs.`,
+              });
+            } else {
+              // Parsing failed (no image/video sections found), use full content
+              setEnhancedPrompt(result.content);
+              setImageTabPrompt(null);
+              setVideoTabPrompt(null);
+              toast.success(`Skill "${result.skillName}" executed successfully`, {
+                description: `Credits used: ${result.creditsUsed}`,
+              });
+            }
+          } else {
+            // Use the skill's generated content as the prompt (normal mode)
+            setEnhancedPrompt(result.content);
+            setImageTabPrompt(null);
+            setVideoTabPrompt(null);
+            toast.success(`Skill "${result.skillName}" executed successfully`, {
+              description: `Credits used: ${result.creditsUsed}`,
+            });
+          }
+        } else {
+          toast.error("Skill execution returned empty", {
+            description: "The LLM did not generate content. Try different inputs.",
+          });
+        }
       } else {
-        // Use simple mode values - only send enabled fields with values
-        // Check if field is disabled by Advanced Mode before including
-        const isAspectRatioEnabled = !isFieldDisabledByAdvancedMode("aspectRatio");
-        const isStyleEnabled = !isFieldDisabledByAdvancedMode("style");
-        const isVfxEnabled = !isFieldDisabledByAdvancedMode("vfx");
-        const isRealisticSkinEnabled = !isFieldDisabledByAdvancedMode("realisticSkin");
-        const isFaceLockEnabled = !isFieldDisabledByAdvancedMode("faceLock");
+        // Use the default enhancePrompt for image-prompt-engineer skill
+        let requestData;
 
-        requestData = {
-          userInput: userIdea || "Create a prompt based on the reference images",
-          referenceImages: referenceImages.map(r => r.url),
-          // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
-          ...(selectedLlmModel ? { model: selectedLlmModel } : {}),
-          // Style options (only if enabled and has value)
-          ...(isStyleEnabled && selectedStyleCategory ? { styleCategory: selectedStyleCategory } : {}),
-          ...(isStyleEnabled && selectedStyle ? { styleName: selectedStyle } : {}),
-          // VFX options (only if enabled and has value)
-          ...(isVfxEnabled && selectedVfxCategory ? { vfxCategory: selectedVfxCategory } : {}),
-          ...(isVfxEnabled && selectedVfxEffect ? { vfxEffect: selectedVfxEffect } : {}),
-          // Advanced options (only if enabled and is true)
-          ...(isRealisticSkinEnabled && realisticSkin ? { realisticSkin: true } : {}),
-          ...(isFaceLockEnabled && faceLock ? { faceLock: true } : {}),
-          // Other options (only if enabled)
-          ...(isAspectRatioEnabled ? { aspectRatio } : {}),
-          language: "en" as const,
-        };
-      }
+        // Get maxPromptLength from selected media model's configJson
+        // Default to 2000 if not set in model config
+        const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+        const modelConfig = modelData?.configJson as any;
+        const modelMaxPromptLength = modelConfig?.maxPromptLength || 2000;
 
-      const result = await enhancePromptMutation.mutateAsync(requestData);
+        if (useAdvancedMode && skillSchema) {
+          // Use dynamic form values with output mapping
+          const mappedValues: Record<string, any> = {};
+          const outputMapping = skillSchema.outputMapping || {};
 
-      if (result.success && result.promptEn) {
-        // Use the enhanced English prompt
-        setEnhancedPrompt(result.promptEn);
+          // Map form values to API parameters
+          Object.entries(dynamicFormValues).forEach(([key, value]) => {
+            const mappedKey = outputMapping[key] || key;
+            if (value !== undefined && value !== "" && value !== null) {
+              mappedValues[mappedKey] = value;
+            }
+          });
+
+          requestData = {
+            userInput: userIdea || "Create a prompt based on the reference images",
+            referenceImages: referenceImages.map(r => r.url),
+            // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
+            ...(selectedLlmModel ? { model: selectedLlmModel } : {}),
+            // Pass maxPromptLength from selected media model so skill generates shorter prompts
+            maxPromptLength: modelMaxPromptLength,
+            ...mappedValues,
+          };
+        } else {
+          // Use simple mode values - only send enabled fields with values
+          // Check if field is disabled by Advanced Mode before including
+          const isAspectRatioEnabled = !isFieldDisabledByAdvancedMode("aspectRatio");
+          const isStyleEnabled = !isFieldDisabledByAdvancedMode("style");
+          const isVfxEnabled = !isFieldDisabledByAdvancedMode("vfx");
+          const isRealisticSkinEnabled = !isFieldDisabledByAdvancedMode("realisticSkin");
+          const isFaceLockEnabled = !isFieldDisabledByAdvancedMode("faceLock");
+
+          requestData = {
+            userInput: userIdea || "Create a prompt based on the reference images",
+            referenceImages: referenceImages.map(r => r.url),
+            // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
+            ...(selectedLlmModel ? { model: selectedLlmModel } : {}),
+            // Pass maxPromptLength from selected media model so skill generates shorter prompts
+            maxPromptLength: modelMaxPromptLength,
+            // Style options (only if enabled and has value)
+            ...(isStyleEnabled && selectedStyleCategory ? { styleCategory: selectedStyleCategory } : {}),
+            ...(isStyleEnabled && selectedStyle ? { styleName: selectedStyle } : {}),
+            // VFX options (only if enabled and has value)
+            ...(isVfxEnabled && selectedVfxCategory ? { vfxCategory: selectedVfxCategory } : {}),
+            ...(isVfxEnabled && selectedVfxEffect ? { vfxEffect: selectedVfxEffect } : {}),
+            // Advanced options (only if enabled and is true)
+            ...(isRealisticSkinEnabled && realisticSkin ? { realisticSkin: true } : {}),
+            ...(isFaceLockEnabled && faceLock ? { faceLock: true } : {}),
+            // Other options (only if enabled)
+            ...(isAspectRatioEnabled ? { aspectRatio } : {}),
+            language: "en" as const,
+          };
+        }
+
+        const result = await enhancePromptMutation.mutateAsync(requestData);
+
+        if (result.success && result.promptEn) {
+          // Use the enhanced English prompt
+          setEnhancedPrompt(result.promptEn);
+        } else {
+          // Handle case where result is returned but no prompt generated
+          toast.error("Auto Prompt returned empty", {
+            description: result.error || "The LLM did not generate a prompt. Try a different input.",
+          });
+        }
       }
     } catch (error: any) {
       console.error("Auto prompt failed:", error);
@@ -676,123 +1016,201 @@ export default function MediaStudio() {
     }
   };
 
+  // Handle special style actions from DynamicSkillForm (e.g., "upscale" auto-fills prompt)
+  const handleStyleAction = useCallback((action: StyleAction) => {
+    if (action === "upscale") {
+      // Auto-fill the prompt with upscale-specific text
+      if (useAdvancedMode) {
+        setDynamicFormValues(prev => ({
+          ...prev,
+          request: UPSCALE_DEFAULT_PROMPT,
+        }));
+      } else {
+        setPrompt(UPSCALE_DEFAULT_PROMPT);
+      }
+      toast.success("Prompt auto-filled for Upscale", {
+        description: "Optimize the prompt for image enhancement",
+      });
+    }
+  }, [useAdvancedMode]);
+
   // Get current skill info
   const currentSkill = skillsList?.find(s => s.id === selectedSkillId);
 
-  // Generate media
+  // Generate media with loop for multiple images
   const handleGenerate = async () => {
-    console.log("[handleGenerate] Called", {
-      enhancedPrompt,
-      prompt,
-      useAdvancedMode,
-      userIdea: dynamicFormValues.userIdea,
-      referenceImages: referenceImages.length,
-      selectedModel,
-    });
+    // IMPORTANT: Read current textarea value directly from ref to ensure we capture
+    // any edits made after Auto Prompt, regardless of React state timing
+    const currentTextareaValue = promptTextareaRef.current?.value ?? "";
 
-    // In Advanced Mode, use dynamicFormValues.userIdea as fallback
-    const finalPrompt = enhancedPrompt || prompt || (useAdvancedMode ? dynamicFormValues.userIdea : "");
-    console.log("[handleGenerate] finalPrompt:", finalPrompt);
+    // Use the current textarea value as the final prompt if available
+    // This ensures any user edits after Auto Prompt are captured
+    const advancedFallback = useAdvancedMode ? (dynamicFormValues.request as string || "") : "";
+    const combinedFallback = prompt || advancedFallback;
+    const stateBasedPrompt = enhancedPrompt || combinedFallback;
+
+    // Prefer textarea ref value (most current) over state (may be stale)
+    const finalPrompt = currentTextareaValue.trim() || stateBasedPrompt;
 
     if (!finalPrompt?.trim()) {
-      console.log("[handleGenerate] No prompt, returning early");
       return;
     }
 
+    // Determine how many images to generate
+    const imageCount = activeTab === "image" ? numImages : 1;
+
+    // Initialize generation tasks for progressive preview
+    const initialTasks: GenerationTask[] = Array.from({ length: imageCount }, (_, i) => ({
+      id: `task-${Date.now()}-${i}`,
+      index: i,
+      status: 'queued' as const,
+    }));
+    setGenerationTasks(initialTasks);
     setIsGenerating(true);
-    console.log("[handleGenerate] Starting generation...");
-    try {
-      // Use selected skill ID for generation, but prompt-enhancement skills can't generate media
-      // so fall back to the media type identifier for skill lookup
-      const mediaTypeFallback = activeTab === "image"
-        ? "image-generation"
-        : activeTab === "video"
-        ? "video-generation"
-        : "audio-generation";
-      const isPromptSkill = currentSkill?.type === "prompt-enhancement" || currentSkill?.type === "prompt_enhancement";
-      const skillId = (!selectedSkillId || isPromptSkill) ? mediaTypeFallback : selectedSkillId;
-      console.log("[handleGenerate] Using skillId:", skillId, "selectedSkillId:", selectedSkillId);
 
-      // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
-      // Otherwise use aspectRatio from Settings section (respecting media type)
-      const currentAspectRatio = activeTab === "video" ? videoAspectRatio : aspectRatio;
-      const finalAspectRatio = useAdvancedMode && dynamicFormValues.aspectRatio
-        ? dynamicFormValues.aspectRatio
-        : currentAspectRatio;
+    // Prepare common params
+    const mediaTypeFallback = activeTab === "image"
+      ? "image-generation"
+      : activeTab === "video"
+      ? "video-generation"
+      : "audio-generation";
+    const isPromptSkill = currentSkill?.type === "prompt-enhancement" ||
+                          currentSkill?.type === "prompt_enhancement" ||
+                          currentSkill?.type === "image-video-generation";
+    const skillId = (!selectedSkillId || isPromptSkill) ? mediaTypeFallback : selectedSkillId;
 
-      console.log("[handleGenerate] aspectRatio decision:", {
-        useAdvancedMode,
-        advancedAspectRatio: dynamicFormValues.aspectRatio,
-        settingsAspectRatio: currentAspectRatio,
-        finalAspectRatio,
-      });
+    // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
+    const currentAspectRatio = aspectRatio;
+    const finalAspectRatio = useAdvancedMode && dynamicFormValues.aspectRatio
+      ? dynamicFormValues.aspectRatio
+      : currentAspectRatio;
 
-      // Build extra params from dynamic model input fields
-      const selectedModelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
-      const rawConfig = selectedModelData?.configJson;
-      const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
-      const extraParams: Record<string, any> = {};
-      const apiConfig: Record<string, string> = {};
+    // Build extra params from dynamic model input fields
+    const selectedModelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+    const rawConfig = selectedModelData?.configJson;
+    const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
+    const extraParams: Record<string, any> = {};
+    const apiConfig: Record<string, string> = {};
+    let usedModelSpecificImageKey = false; // Track if we used model-specific key for images
 
-      if (modelConfig) {
-        // Populate apiConfig from configJson
-        if (modelConfig.apiEndpoint) apiConfig.endpoint = modelConfig.apiEndpoint;
-        if (modelConfig.apiPayloadFormat) apiConfig.payload_format = modelConfig.apiPayloadFormat;
-        if (modelConfig.kieModelId) apiConfig.kie_model_id = modelConfig.kieModelId;
+    if (modelConfig) {
+      // Populate apiConfig from configJson
+      if (modelConfig.apiEndpoint) apiConfig.endpoint = modelConfig.apiEndpoint;
+      if (modelConfig.apiPayloadFormat) apiConfig.payload_format = modelConfig.apiPayloadFormat;
+      if (modelConfig.kieModelId) apiConfig.kie_model_id = modelConfig.kieModelId;
 
-        // Populate extraParams from dynamic input field values
-        for (const field of (modelConfig.inputFields || [])) {
-          const val = modelInputValues[field.key];
-          if (val !== undefined && val !== null && val !== "") {
-            // Skip fields handled by standard params (aspect_ratio, duration)
-            if (field.key === "aspect_ratio") continue;
-            if (field.key === "duration" && activeTab === "video") continue;
-            extraParams[field.key] = val;
-          }
+      // Populate extraParams from dynamic input field values
+      for (const field of (modelConfig.inputFields || [])) {
+        const val = modelInputValues[field.key];
+        if (val !== undefined && val !== null && val !== "") {
+          // Skip fields handled by standard params (aspect_ratio, aspect.ratio, duration)
+          if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
+          if (field.key === "duration" && activeTab === "video") continue;
+          extraParams[field.key] = val;
         }
       }
 
-      const result = await executeSkillMutation.mutateAsync({
-        skillId,
-        prompt: finalPrompt,
-        model: selectedModel,
-        aspectRatio: finalAspectRatio,
-        numImages: activeTab === "image" ? numImages : undefined,
-        duration: activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined,
-        referenceImageUrls: referenceImages.length > 0 ? referenceImages.map(r => r.url) : undefined,
-        ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
-        ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-        ...(modelInputValues.resolution ? { resolution: modelInputValues.resolution } : {}),
-      } as any);
-
-      if (result.success) {
-        const urls = result.resultUrls || (result.resultUrl ? [result.resultUrl] : []);
-
-        for (const url of urls) {
-          const newMedia: GeneratedMedia = {
-            id: `${Date.now()}-${Math.random()}`,
-            type: activeTab,
-            url,
-            prompt: finalPrompt,
-            model: selectedModel,
-            createdAt: new Date().toISOString(),
-            creditsUsed: result.creditsUsed,
-          };
-          setGeneratedMedia(prev => [newMedia, ...prev]);
-          setPreviewUrl(url);
-        }
-
-        // Clear prompt after successful generation
-        setPrompt("");
-        setEnhancedPrompt("");
-      } else {
-        console.error("Generation failed:", result.error);
+      // Find inputField with type "image_urls" and add reference images with correct key
+      // This ensures KIE AI models receive images with the key they expect (e.g., "image_input")
+      const imageUrlsField = (modelConfig.inputFields || []).find((f: any) => f.type === "image_urls");
+      if (imageUrlsField && referenceImages.length > 0) {
+        extraParams[imageUrlsField.key] = referenceImages.map(r => r.url);
+        usedModelSpecificImageKey = true;
       }
-    } catch (error) {
-      console.error("Generation error:", error);
-    } finally {
-      setIsGenerating(false);
     }
+
+    // Loop through each image generation with delay
+    let successCount = 0;
+    for (let i = 0; i < imageCount; i++) {
+      // Update task status to 'generating'
+      setGenerationTasks(prev =>
+        prev.map((t, idx) => idx === i ? { ...t, status: 'generating' as const } : t)
+      );
+
+      try {
+        const result = await executeSkillMutation.mutateAsync({
+          skillId,
+          prompt: finalPrompt,
+          model: selectedModel,
+          aspectRatio: finalAspectRatio,
+          numImages: 1, // Always 1 per call for progressive loading
+          duration: activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined,
+          // Only use referenceImageUrls as fallback when model doesn't define specific image_urls field
+          referenceImageUrls: (!usedModelSpecificImageKey && referenceImages.length > 0) ? referenceImages.map(r => r.url) : undefined,
+          ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
+          ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+          ...(modelInputValues.resolution ? { resolution: modelInputValues.resolution } : {}),
+        } as any);
+
+        if (result.success) {
+          const url = result.resultUrl || result.resultUrls?.[0];
+          if (url) {
+            // Update task with completed status and URL
+            setGenerationTasks(prev =>
+              prev.map((t, idx) => idx === i ? { ...t, status: 'completed' as const, url } : t)
+            );
+
+            // Add to generated media
+            const newMedia: GeneratedMedia = {
+              id: `${Date.now()}-${Math.random()}`,
+              type: activeTab,
+              url,
+              prompt: finalPrompt,
+              model: selectedModel,
+              createdAt: new Date().toISOString(),
+              creditsUsed: result.creditsUsed,
+            };
+            setGeneratedMedia(prev => [newMedia, ...prev]);
+
+            // Set first completed image as preview
+            if (successCount === 0) {
+              setPreviewUrl(url);
+            }
+            successCount++;
+
+            // Auto-detect grid for image results (only for first image)
+            if (activeTab === "image" && i === 0) {
+              detectGrid(url).then((detected) => {
+                if (detected && detected.confidence >= 0.7) {
+                  toast.info(
+                    `Grid detected! Click the grid icon to split into ${detected.rows * detected.cols} images.`,
+                    {
+                      duration: 5000,
+                      action: {
+                        label: "Split Now",
+                        onClick: () => openSplitDialog(url),
+                      },
+                    }
+                  );
+                }
+              }).catch(() => {
+                // Silently ignore detection errors
+              });
+            }
+          }
+        } else {
+          console.error(`Generation ${i + 1} failed:`, result.error);
+          setGenerationTasks(prev =>
+            prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: result.error } : t)
+          );
+        }
+      } catch (error: any) {
+        console.error(`Generation ${i + 1} error:`, error);
+        setGenerationTasks(prev =>
+          prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: error?.message || 'Unknown error' } : t)
+        );
+      }
+
+      // Add delay between generations (except for last one)
+      if (i < imageCount - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    // Note: Prompt is intentionally NOT cleared after generation
+    // Users can manually clear using the "Clear" button if needed
+
+    setIsGenerating(false);
   };
 
   // Download media (with CORS fallback)
@@ -843,7 +1261,154 @@ export default function MediaStudio() {
     if (lightboxImage?.prompt) {
       setPrompt(lightboxImage.prompt);
       setEnhancedPrompt("");
+      setImageTabPrompt(null);
+      setVideoTabPrompt(null);
       setLightboxOpen(false);
+    }
+  };
+
+  // Open split dialog with auto-detection
+  const openSplitDialog = async (imageUrl: string) => {
+    setSplitImageUrl(imageUrl);
+    setSplitResults([]);
+    setSplitPreviewUrl(null);
+    setShowSplitDialog(true);
+
+    // Auto-detect grid
+    setIsDetectingGrid(true);
+    try {
+      const detected = await detectGrid(imageUrl);
+      if (detected) {
+        setDetectedGrid(detected);
+        setSplitGridRows(detected.rows);
+        setSplitGridCols(detected.cols);
+        // Generate preview with detected grid
+        const preview = await createSplitPreview(imageUrl, detected.rows, detected.cols);
+        setSplitPreviewUrl(preview);
+      } else {
+        setDetectedGrid(null);
+        // Default to 2x2
+        setSplitGridRows(2);
+        setSplitGridCols(2);
+        const preview = await createSplitPreview(imageUrl, 2, 2);
+        setSplitPreviewUrl(preview);
+      }
+    } catch (error) {
+      console.error("Grid detection failed:", error);
+      setDetectedGrid(null);
+    } finally {
+      setIsDetectingGrid(false);
+    }
+  };
+
+  // Update split preview when grid changes
+  const updateSplitPreview = async (rows: number, cols: number) => {
+    if (!splitImageUrl) return;
+    setSplitGridRows(rows);
+    setSplitGridCols(cols);
+    try {
+      const preview = await createSplitPreview(splitImageUrl, rows, cols);
+      setSplitPreviewUrl(preview);
+      setSplitResults([]); // Clear previous results
+    } catch (error) {
+      console.error("Failed to create preview:", error);
+    }
+  };
+
+  // Execute the split
+  const executeSplit = async () => {
+    if (!splitImageUrl) return;
+    setIsSplitting(true);
+    try {
+      const results = await splitImage(splitImageUrl, splitGridRows, splitGridCols);
+      setSplitResults(results);
+      toast.success(`Split into ${results.length} images`);
+    } catch (error) {
+      console.error("Split failed:", error);
+      toast.error("Failed to split image");
+    } finally {
+      setIsSplitting(false);
+    }
+  };
+
+  // Download a single split image
+  const handleDownloadSplit = (result: SplitResult) => {
+    downloadSplitImage(result, `split-image`);
+  };
+
+  // Download all split images
+  const handleDownloadAllSplits = async () => {
+    if (splitResults.length === 0) return;
+    toast.info(`Downloading ${splitResults.length} images...`);
+    await downloadAllSplitImages(splitResults, `split-image`);
+  };
+
+  // Add split image as reference
+  const addSplitAsReference = async (result: SplitResult) => {
+    if (referenceImages.length >= maxReferenceImages) {
+      toast.error(`Maximum ${maxReferenceImages} reference images`);
+      return;
+    }
+    try {
+      // Upload the split image
+      const uploadResult = await uploadMutation.mutateAsync({
+        fileName: `split-image-${result.index + 1}.jpg`,
+        fileType: "image/jpeg",
+        fileBase64: result.dataUrl,
+      });
+      setReferenceImages((prev) => [
+        ...prev,
+        { url: uploadResult.url, name: `Split ${result.index + 1}` },
+      ]);
+      toast.success("Added as reference image");
+    } catch (error) {
+      console.error("Failed to upload split image:", error);
+      toast.error("Failed to add as reference");
+    }
+  };
+
+  // Add all split images to video tab reference
+  const addAllSplitsToVideoReference = async () => {
+    if (splitResults.length === 0) return;
+
+    // Get video tab's current reference images count
+    const videoReferenceCount = tabStates.video.referenceImages.length;
+    const videoMaxImages = 25;
+    const availableSlots = videoMaxImages - videoReferenceCount;
+
+    if (availableSlots <= 0) {
+      toast.error("Video tab reference images is full (max 25)");
+      return;
+    }
+
+    const imagesToAdd = splitResults.slice(0, availableSlots);
+    toast.info(`Adding ${imagesToAdd.length} images to Video reference...`);
+
+    try {
+      const uploadedImages: ReferenceImage[] = [];
+
+      for (const result of imagesToAdd) {
+        const uploadResult = await uploadMutation.mutateAsync({
+          fileName: `split-image-${result.index + 1}.jpg`,
+          fileType: "image/jpeg",
+          fileBase64: result.dataUrl,
+        });
+        uploadedImages.push({ url: uploadResult.url, name: `Split ${result.index + 1}` });
+      }
+
+      // Update video tab's reference images directly
+      setTabStates(prev => ({
+        ...prev,
+        video: {
+          ...prev.video,
+          referenceImages: [...prev.video.referenceImages, ...uploadedImages]
+        }
+      }));
+
+      toast.success(`Added ${uploadedImages.length} images to Video reference`);
+    } catch (error) {
+      console.error("Failed to upload split images:", error);
+      toast.error("Failed to add images to Video reference");
     }
   };
 
@@ -1048,10 +1613,37 @@ export default function MediaStudio() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  {/* Clear Prompt Button */}
+                  {(prompt.trim() || enhancedPrompt) && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setPrompt("");
+                              setEnhancedPrompt("");
+                              setImageTabPrompt(null);
+                              setVideoTabPrompt(null);
+                            }}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                            <span className="ml-1">Clear</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Clear prompt</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
               </div>
 
               <Textarea
+                ref={promptTextareaRef}
                 value={enhancedPrompt || prompt}
                 onChange={(e) => {
                   if (enhancedPrompt) {
@@ -1061,17 +1653,54 @@ export default function MediaStudio() {
                   }
                 }}
                 placeholder={`Describe the ${activeTab} you want to create...`}
-                className="min-h-[120px] resize-none"
+                className="min-h-[120px] resize-y"
               />
+
+              {/* Character Count */}
+              {(() => {
+                const currentPromptLength = (enhancedPrompt || prompt).length;
+                const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+                const config = modelData?.configJson as any;
+                const maxLength = config?.maxPromptLength || 2000;
+                const isOverLimit = currentPromptLength > maxLength;
+                const isNearLimit = currentPromptLength > maxLength * 0.95;
+
+                return (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className={cn(
+                      isOverLimit && "text-red-600 font-medium",
+                      isNearLimit && !isOverLimit && "text-amber-600"
+                    )}>
+                      {currentPromptLength.toLocaleString()} / {maxLength.toLocaleString()} characters
+                    </span>
+                    {isOverLimit && (
+                      <span className="text-red-600 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Exceeds model limit
+                      </span>
+                    )}
+                    {isNearLimit && !isOverLimit && (
+                      <span className="text-amber-600 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Approaching limit
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {enhancedPrompt && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Check className="h-4 w-4 text-green-500" />
-                  <span>Prompt enhanced</span>
+                  <span>Prompt enhanced{(imageTabPrompt || videoTabPrompt) ? " (split for tabs)" : ""}</span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setEnhancedPrompt("")}
+                    onClick={() => {
+                      setEnhancedPrompt("");
+                      setImageTabPrompt(null);
+                      setVideoTabPrompt(null);
+                    }}
                   >
                     Clear
                   </Button>
@@ -1125,7 +1754,7 @@ export default function MediaStudio() {
               >
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium">
-                    Reference Images ({referenceImages.length}/5)
+                    Reference Images ({referenceImages.length}/{maxReferenceImages})
                   </label>
                   <input
                     ref={fileInputRef}
@@ -1189,7 +1818,7 @@ export default function MediaStudio() {
               {/* Generate Button - Primary location under Prompt */}
               <Button
                 onClick={handleGenerate}
-                disabled={!(enhancedPrompt || prompt || (useAdvancedMode ? dynamicFormValues.userIdea : ""))?.trim() || isGenerating || (credits?.credits || 0) < getModelCost()}
+                disabled={!(enhancedPrompt || prompt || (useAdvancedMode ? dynamicFormValues.request as string : ""))?.trim() || isGenerating || (credits?.credits || 0) < getModelCost()}
                 className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                 size="lg"
               >
@@ -1260,8 +1889,8 @@ export default function MediaStudio() {
                   />
                 </div>
 
-                {/* Aspect Ratio — uses model-specific options from configJson when available */}
-                {(() => {
+                {/* Aspect Ratio — uses model-specific options from configJson when available (not for audio) */}
+                {activeTab !== "audio" && (() => {
                   const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
                   const config = modelData?.configJson as any;
                   const arField = config?.inputFields?.find((f: any) => f.key === "aspect_ratio");
@@ -1287,8 +1916,8 @@ export default function MediaStudio() {
                         {isDisabled && <span className="ml-1 text-xs text-purple-500">(use Advanced)</span>}
                       </label>
                       <Select
-                        value={activeTab === "video" ? videoAspectRatio : aspectRatio}
-                        onValueChange={activeTab === "video" ? setVideoAspectRatio : setAspectRatio}
+                        value={aspectRatio}
+                        onValueChange={setAspectRatio}
                         disabled={isDisabled}
                       >
                         <SelectTrigger className={cn(isDisabled && "opacity-50")}>
@@ -1373,8 +2002,9 @@ export default function MediaStudio() {
                   const config = modelData?.configJson as any;
                   const fields = config?.inputFields || [];
                   // Filter out fields already handled by standard UI (aspect_ratio, duration for video)
+                  // Handle both aspect_ratio and aspect.ratio naming conventions
                   const dynamicFields = fields.filter((f: any) => {
-                    if (f.key === "aspect_ratio") return false;
+                    if (f.key === "aspect_ratio" || f.key === "aspect.ratio") return false;
                     if (f.key === "duration" && activeTab === "video") return false;
                     if (f.type === "image_urls" || f.type === "video_urls" || f.type === "audio_urls") return false;
                     return true;
@@ -1428,7 +2058,8 @@ export default function MediaStudio() {
                   ));
                 })()}
 
-                {/* Style Selection */}
+                {/* Style Selection (not for audio) */}
+                {activeTab !== "audio" && (
                 <div className="space-y-1">
                   <label className={cn(
                     "text-sm text-muted-foreground",
@@ -1468,6 +2099,13 @@ export default function MediaStudio() {
                                     setSelectedStyleCategory(category.id);
                                     setSelectedStyle(style.name);
                                     setShowStyleDialog(false);
+                                    // Auto-fill prompt for Upscale style
+                                    if (style.name === "Upscale") {
+                                      setPrompt(UPSCALE_DEFAULT_PROMPT);
+                                      toast.success("Prompt auto-filled for Upscale", {
+                                        description: "Optimize the prompt for image enhancement",
+                                      });
+                                    }
                                   }}
                                   className={cn(
                                     "text-left px-3 py-2 rounded-lg border text-sm transition-colors",
@@ -1489,6 +2127,7 @@ export default function MediaStudio() {
                     </DialogContent>
                   </Dialog>
                 </div>
+                )}
               </div>
 
               {/* VFX and Advanced Options (for image only) */}
@@ -1711,8 +2350,8 @@ export default function MediaStudio() {
                         {/* Skill Cards */}
                         {(() => {
                           const tabTypes: Record<string, string[]> = {
-                            image: ["image-generation", "prompt-enhancement"],
-                            video: ["video-generation", "prompt-enhancement"],
+                            image: ["image-generation", "image-video-generation", "prompt-enhancement"],
+                            video: ["video-generation", "image-video-generation", "prompt-enhancement"],
                             audio: ["audio-generation", "sound-effects"],
                           };
                           const matchTypes = tabTypes[activeTab] || [];
@@ -1897,6 +2536,7 @@ export default function MediaStudio() {
                     language="en"
                     values={dynamicFormValues}
                     onChange={setDynamicFormValues}
+                    excludeFields={["aspectRatio", "aspect_ratio"]}
                     onImageUpload={async (files) => {
                       const urls: string[] = [];
                       for (const file of Array.from(files)) {
@@ -1924,6 +2564,7 @@ export default function MediaStudio() {
                     referenceImages={referenceImages}
                     onRemoveImage={removeReferenceImage}
                     isUploading={uploadMutation.isPending}
+                    onStyleAction={handleStyleAction}
                   />
 
                   {/* Auto Prompt Button (inside Skills Parameters) */}
@@ -1935,7 +2576,7 @@ export default function MediaStudio() {
                             variant="outline"
                             className="w-full gap-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50"
                             onClick={handleAutoPrompt}
-                            disabled={(!dynamicFormValues.userIdea && referenceImages.length === 0) || isEnhancing}
+                            disabled={(!prompt.trim() && !dynamicFormValues.request && referenceImages.length === 0) || isEnhancing}
                           >
                             {isEnhancing ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1957,14 +2598,14 @@ export default function MediaStudio() {
 
             {/* Generated Media History */}
             {generatedMedia.length > 0 && (
-              <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3">
+              <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3 overflow-hidden">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">Generated Media</h3>
                   <Badge variant="outline">{generatedMedia.length} items</Badge>
                 </div>
 
-                <ScrollArea className="h-[200px]">
-                  <div className="grid grid-cols-4 gap-2">
+                <ScrollArea className="h-[200px] overflow-hidden">
+                  <div className="grid grid-cols-4 gap-2 pr-2">
                     {generatedMedia.map((media) => (
                       <div
                         key={media.id}
@@ -1989,7 +2630,7 @@ export default function MediaStudio() {
 
                         {/* Hover Actions */}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
-                          {media.type === "image" && referenceImages.length < 5 && (
+                          {media.type === "image" && referenceImages.length < maxReferenceImages && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -2038,59 +2679,144 @@ export default function MediaStudio() {
 
           {/* Right Panel - Preview */}
           <div className="space-y-4">
-            <div className="bg-white/70 backdrop-blur rounded-xl border p-4 sticky top-24">
-              <h3 className="font-semibold mb-4">Preview</h3>
+            <div className="bg-white/70 backdrop-blur rounded-xl border p-4 sticky top-24 z-10">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                Preview
+                {isGenerating && generationTasks.length > 1 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {generationTasks.filter(t => t.status === 'completed').length}/{generationTasks.length}
+                  </Badge>
+                )}
+              </h3>
 
-              <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl flex items-center justify-center overflow-hidden relative group">
-                {isGenerating ? (
-                  <div className="text-center">
-                    <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto mb-4" />
-                    <p className="text-sm text-muted-foreground">Creating your {activeTab}...</p>
-                  </div>
-                ) : previewUrl ? (
-                  activeTab === "image" ? (
-                    <>
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="w-full h-full object-contain cursor-pointer"
-                        onClick={() => {
-                          // Find the matching generated media for prompt info
-                          const media = generatedMedia.find(m => m.url === previewUrl);
-                          openLightbox(previewUrl, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
-                        }}
-                      />
-                      {/* Expand button overlay */}
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-12 w-12 text-white hover:bg-white/20"
+              {/* Progressive Grid Preview for multiple images */}
+              {generationTasks.length > 1 && (isGenerating || generationTasks.some(t => t.status !== 'queued')) ? (
+                <div className={cn(
+                  "grid gap-2 mb-4",
+                  generationTasks.length === 2 && "grid-cols-2",
+                  generationTasks.length === 3 && "grid-cols-3",
+                  generationTasks.length === 4 && "grid-cols-2",
+                )}>
+                  {generationTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-50 rounded-lg overflow-hidden group"
+                    >
+                      {task.status === 'queued' && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+                          <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center mb-1">
+                            <span className="text-xs font-medium">{task.index + 1}</span>
+                          </div>
+                          <span className="text-xs">Queued</span>
+                        </div>
+                      )}
+                      {task.status === 'generating' && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-purple-500 mb-1" />
+                          <span className="text-xs text-muted-foreground">Generating #{task.index + 1}</span>
+                        </div>
+                      )}
+                      {task.status === 'completed' && task.url && (
+                        <>
+                          <img
+                            src={task.url}
+                            alt={`Generated ${task.index + 1}`}
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => {
+                              const media = generatedMedia.find(m => m.url === task.url);
+                              openLightbox(task.url!, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
+                            }}
+                          />
+                          {/* Hover overlay */}
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-white hover:bg-white/20"
+                              onClick={() => {
+                                const media = generatedMedia.find(m => m.url === task.url);
+                                openLightbox(task.url!, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
+                              }}
+                            >
+                              <Maximize2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-white hover:bg-white/20"
+                              onClick={() => downloadMedia(task.url!, `generated-${task.index + 1}.png`)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {/* Success indicator */}
+                          <div className="absolute top-1 right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                            <Check className="h-3 w-3 text-white" />
+                          </div>
+                        </>
+                      )}
+                      {task.status === 'error' && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive">
+                          <AlertCircle className="h-8 w-8 mb-1" />
+                          <span className="text-xs">Error</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Single Image Preview (original behavior) */
+                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl flex items-center justify-center overflow-hidden relative group">
+                  {isGenerating ? (
+                    <div className="text-center">
+                      <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto mb-4" />
+                      <p className="text-sm text-muted-foreground">Creating your {activeTab}...</p>
+                    </div>
+                  ) : previewUrl ? (
+                    activeTab === "image" ? (
+                      <>
+                        <img
+                          src={previewUrl}
+                          alt="Preview"
+                          className="w-full h-full object-contain cursor-pointer"
                           onClick={() => {
+                            // Find the matching generated media for prompt info
                             const media = generatedMedia.find(m => m.url === previewUrl);
                             openLightbox(previewUrl, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
                           }}
-                        >
-                          <Maximize2 className="h-6 w-6" />
-                        </Button>
-                      </div>
-                    </>
-                  ) : activeTab === "video" ? (
-                    <video
-                      src={previewUrl}
-                      controls
-                      className="w-full h-full object-contain"
-                    />
+                        />
+                        {/* Expand button overlay */}
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-12 w-12 text-white hover:bg-white/20"
+                            onClick={() => {
+                              const media = generatedMedia.find(m => m.url === previewUrl);
+                              openLightbox(previewUrl, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
+                            }}
+                          >
+                            <Maximize2 className="h-6 w-6" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : activeTab === "video" ? (
+                      <video
+                        src={previewUrl}
+                        controls
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <audio src={previewUrl} controls className="w-full" />
+                    )
                   ) : (
-                    <audio src={previewUrl} controls className="w-full" />
-                  )
-                ) : (
-                  <div className="text-center text-muted-foreground">
-                    <Sparkles className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No content generated yet</p>
-                  </div>
-                )}
-              </div>
+                    <div className="text-center text-muted-foreground">
+                      <Sparkles className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No content generated yet</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {previewUrl && !isGenerating && (
                 <div className="flex gap-2 mt-4">
@@ -2102,6 +2828,21 @@ export default function MediaStudio() {
                     <Download className="h-4 w-4 mr-2" />
                     Download
                   </Button>
+                  {activeTab === "image" && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            onClick={() => openSplitDialog(previewUrl)}
+                          >
+                            <Grid2X2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Split Grid Image</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => window.open(previewUrl, "_blank")}
@@ -2113,7 +2854,7 @@ export default function MediaStudio() {
             </div>
 
             {/* History Gallery - Draggable Images */}
-            <div className="bg-white/70 backdrop-blur rounded-xl border p-4">
+            <div className="pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
                   <History className="h-4 w-4" />
@@ -2163,7 +2904,7 @@ export default function MediaStudio() {
                               <TooltipContent>View & Copy Prompt</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          {referenceImages.length < 5 && (
+                          {referenceImages.length < maxReferenceImages && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -2192,6 +2933,24 @@ export default function MediaStudio() {
                                   className="h-7 w-7 text-white hover:bg-white/20"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    openSplitDialog(task.resultUrl!);
+                                  }}
+                                >
+                                  <Grid2X2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Split Grid</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-white hover:bg-white/20"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     downloadMedia(task.resultUrl!, `${task.id}.png`);
                                   }}
                                 >
@@ -2206,10 +2965,19 @@ export default function MediaStudio() {
                     ))}
                 </div>
 
-                {/* Pending/Processing Tasks */}
+                {/* Pending/Processing Tasks - Only show failed tasks from current session */}
                 <div className="space-y-2">
                   {mediaHistory?.tasks
-                    ?.filter((task) => task.status !== "completed" || !task.resultUrl)
+                    ?.filter((task) => {
+                      // Always show processing/pending tasks
+                      if (task.status === "processing" || task.status === "pending") return true;
+                      // Show failed tasks only if they failed during this session
+                      if (task.status === "failed") {
+                        return task.createdAt && new Date(task.createdAt) >= sessionStartTime;
+                      }
+                      // Hide completed tasks without resultUrl and old failed tasks
+                      return false;
+                    })
                     .map((task) => (
                       <div
                         key={task.id}
@@ -2261,15 +3029,18 @@ export default function MediaStudio() {
 
       {/* Image Lightbox Dialog */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+        <DialogContent className="!max-w-[95vw] !w-[95vw] max-h-[95vh] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Image Preview</DialogTitle>
           <div className="flex flex-col h-full">
-            {/* Image */}
-            <div className="flex-1 bg-black/90 flex items-center justify-center p-4 min-h-[400px]">
+            {/* Image - Large preview almost full screen */}
+            <div className="flex-1 bg-black/95 flex items-center justify-center p-2 min-h-[60vh]">
               {lightboxImage && (
                 <img
                   src={lightboxImage.url}
                   alt="Full size preview"
-                  className="max-w-full max-h-[60vh] object-contain"
+                  className="max-w-full max-h-[80vh] object-contain cursor-zoom-in"
+                  onClick={() => window.open(lightboxImage.url, "_blank")}
+                  title="Click to open full size in new tab"
                 />
               )}
             </div>
@@ -2343,6 +3114,226 @@ export default function MediaStudio() {
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Grid Split Dialog */}
+      <Dialog open={showSplitDialog} onOpenChange={setShowSplitDialog}>
+        <DialogContent className="!max-w-[900px] !w-[90vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Scissors className="h-5 w-5" />
+              Split Grid Image
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex gap-6">
+            {/* Left: Preview - Fixed width */}
+            <div className="w-[350px] shrink-0 space-y-3">
+              <label className="text-sm font-medium">Preview</label>
+              <div className="w-[350px] h-[350px] bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                {isDetectingGrid ? (
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Detecting grid...</p>
+                  </div>
+                ) : splitPreviewUrl ? (
+                  <img
+                    src={splitPreviewUrl}
+                    alt="Split preview"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : splitImageUrl ? (
+                  <img
+                    src={splitImageUrl}
+                    alt="Original"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">No image selected</p>
+                )}
+              </div>
+
+              {detectedGrid && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <Check className="h-4 w-4" />
+                    <span>
+                      Auto-detected: {detectedGrid.rows}x{detectedGrid.cols} grid
+                      ({detectedGrid.cellWidth}x{detectedGrid.cellHeight}px cells)
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right: Controls - Fixed width */}
+            <div className="w-[450px] shrink-0 space-y-4">
+              {/* Aspect Ratio Guide */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <p className="font-medium text-blue-800 mb-2">Recommended Grid Sizes by Aspect Ratio</p>
+                <div className="grid grid-cols-4 gap-2 text-blue-700 text-xs">
+                  <div>
+                    <p className="font-medium">16:9</p>
+                    <p>2x4, 2x5</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">9:16</p>
+                    <p>4x2, 5x2</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">1:1</p>
+                    <p>2x2, 3x3</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">4:3</p>
+                    <p>2x3, 3x4</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Grid Size</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {COMMON_GRIDS.map((grid) => (
+                    <Button
+                      key={`${grid.rows}x${grid.cols}`}
+                      variant={splitGridRows === grid.rows && splitGridCols === grid.cols ? "default" : "outline"}
+                      size="sm"
+                      className="text-[11px] h-8 px-2"
+                      onClick={() => updateSplitPreview(grid.rows, grid.cols)}
+                    >
+                      {grid.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom grid input */}
+              <div className="flex items-center gap-3">
+                <div className="w-20">
+                  <label className="text-xs text-muted-foreground mb-1 block">Rows</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={splitGridRows}
+                    onChange={(e) => {
+                      const rows = Math.min(10, Math.max(1, parseInt(e.target.value) || 1));
+                      updateSplitPreview(rows, splitGridCols);
+                    }}
+                    className="h-9"
+                  />
+                </div>
+                <span className="text-muted-foreground pt-5">×</span>
+                <div className="w-20">
+                  <label className="text-xs text-muted-foreground mb-1 block">Cols</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={splitGridCols}
+                    onChange={(e) => {
+                      const cols = Math.min(10, Math.max(1, parseInt(e.target.value) || 1));
+                      updateSplitPreview(splitGridRows, cols);
+                    }}
+                    className="h-9"
+                  />
+                </div>
+                <div className="flex-1 pt-5">
+                  <Button
+                    className="w-full"
+                    onClick={executeSplit}
+                    disabled={isSplitting || !splitImageUrl}
+                  >
+                    {isSplitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Splitting...
+                      </>
+                    ) : (
+                      <>
+                        <Scissors className="h-4 w-4 mr-2" />
+                        Split ({splitGridRows * splitGridCols})
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Split Results */}
+              {splitResults.length > 0 && (
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Results ({splitResults.length} images)</label>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={addAllSplitsToVideoReference}>
+                        <Video className="h-4 w-4 mr-1" />
+                        Add to Video Reference
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleDownloadAllSplits}>
+                        <Download className="h-4 w-4 mr-1" />
+                        Download All
+                      </Button>
+                    </div>
+                  </div>
+                  <ScrollArea className="h-[180px]">
+                    <div className="grid grid-cols-5 gap-2 pr-2">
+                      {splitResults.map((result) => (
+                        <div
+                          key={result.index}
+                          className="relative group aspect-square rounded-lg overflow-hidden border hover:border-purple-400 transition-colors"
+                        >
+                          <img
+                            src={result.dataUrl}
+                            alt={`Split ${result.index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-white hover:bg-white/20"
+                                    onClick={() => handleDownloadSplit(result)}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Download</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            {referenceImages.length < maxReferenceImages && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7 text-white hover:bg-white/20"
+                                      onClick={() => addSplitAsReference(result)}
+                                    >
+                                      <ImagePlus className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Use as Reference</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                          <div className="absolute bottom-0 right-0 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded-tl">
+                            {result.index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>

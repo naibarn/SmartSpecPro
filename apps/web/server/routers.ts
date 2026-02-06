@@ -42,6 +42,8 @@ import { translationRouter } from "./routers/translation";
 import { marketplaceRouter } from "./routers/marketplace";
 import { skillRepositoriesRouter } from "./routers/skillRepositories";
 import { sttProvidersRouter } from "./routers/sttProviders";
+import { multiProviderRouter } from "./routers/multiProvider";
+import { queuesRouter } from "./routers/queues";
 
 // Zod schemas for validation
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
@@ -52,9 +54,9 @@ const createGalleryItemSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   aspectRatio: aspectRatioSchema,
-  fileUrl: z.string().url().optional(),
+  fileUrl: z.string().optional(), // Accepts both full URLs and relative paths (e.g., /uploads/...)
   fileKey: z.string().optional(),
-  thumbnailUrl: z.string().url().optional(),
+  thumbnailUrl: z.string().optional(), // Accepts both full URLs and relative paths
   thumbnailKey: z.string().optional(),
   duration: z.string().optional(),
   demoUrl: z.string().url().optional(),
@@ -1156,6 +1158,7 @@ export const appRouter = router({
 
   // LLM Provider management (admin)
   llmProviders: llmProvidersRouter,
+  multiProvider: multiProviderRouter,
 
   // Media Provider management (admin) - Kie AI, fal.ai, etc.
   mediaProviders: mediaProvidersRouter,
@@ -1195,6 +1198,9 @@ export const appRouter = router({
 
   // Speech-to-Text provider management (admin)
   sttProviders: sttProvidersRouter,
+
+  // Queue management and monitoring (admin)
+  queues: queuesRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

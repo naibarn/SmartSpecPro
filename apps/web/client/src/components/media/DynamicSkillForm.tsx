@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -13,13 +13,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
   ImagePlus,
   X,
-  Upload,
   Loader2,
   Info,
+  ChevronDown,
+  Sparkles,
+  Palette,
+  Wand2,
+  Type,
+  Image,
+  Settings,
+  Video,
+  Music,
+  Zap,
+  Globe,
+  Camera,
+  Film,
+  Layers,
+  LucideIcon,
 } from "lucide-react";
 import {
   Tooltip,
@@ -28,17 +47,37 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// Icon mapping for section icons
+const iconMap: Record<string, LucideIcon> = {
+  sparkles: Sparkles,
+  palette: Palette,
+  "wand-2": Wand2,
+  type: Type,
+  image: Image,
+  settings: Settings,
+  video: Video,
+  music: Music,
+  zap: Zap,
+  globe: Globe,
+  camera: Camera,
+  film: Film,
+  layers: Layers,
+};
+
 // Schema Types
 export interface SkillInputField {
   id: string;
-  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images";
+  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images" | "imageUpload";
   label: string;
   labelTh?: string;
   placeholder?: string;
   placeholderTh?: string;
   description?: string;
   descriptionTh?: string;
+  helpText?: string;
+  helpTextTh?: string;
   required?: boolean;
+  default?: any;
   defaultValue?: any;
   options?: Array<{
     value: string;
@@ -48,7 +87,16 @@ export interface SkillInputField {
   min?: number;
   max?: number;
   step?: number;
+  rows?: number;
   maxImages?: number;
+  maxCount?: number;
+  multiple?: boolean;
+  accept?: string;
+  searchable?: boolean;
+  dependsOn?: {
+    field: string;
+    value: any;
+  };
 }
 
 export interface SkillInputSection {
@@ -59,7 +107,9 @@ export interface SkillInputSection {
   descriptionTh?: string;
   fields: SkillInputField[];
   collapsible?: boolean;
+  collapsed?: boolean;
   defaultCollapsed?: boolean;
+  icon?: string;
 }
 
 export interface SkillInputSchema {
@@ -76,6 +126,9 @@ interface ReferenceImage {
   name: string;
 }
 
+/** Special style actions that can trigger parent behaviors */
+export type StyleAction = "upscale";
+
 interface DynamicSkillFormProps {
   schema: SkillInputSchema;
   language?: "en" | "th";
@@ -85,6 +138,10 @@ interface DynamicSkillFormProps {
   referenceImages?: ReferenceImage[];
   onRemoveImage?: (index: number) => void;
   isUploading?: boolean;
+  /** Field IDs to exclude from rendering (e.g., fields handled by parent component) */
+  excludeFields?: string[];
+  /** Callback when a special style action is triggered (e.g., "upscale") */
+  onStyleAction?: (action: StyleAction) => void;
 }
 
 export default function DynamicSkillForm({
@@ -96,8 +153,28 @@ export default function DynamicSkillForm({
   referenceImages = [],
   onRemoveImage,
   isUploading,
+  excludeFields = [],
+  onStyleAction,
 }: DynamicSkillFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Track collapsed state for each section
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    schema.sections.forEach((section) => {
+      // Use collapsed or defaultCollapsed from schema
+      initial[section.id] = section.collapsed ?? section.defaultCollapsed ?? false;
+    });
+    return initial;
+  });
+
+  // Toggle section collapse state
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
 
   // Helper to get localized text
   const getText = (en: string | undefined, th: string | undefined) => {
@@ -108,6 +185,18 @@ export default function DynamicSkillForm({
   // Update a single field value
   const updateValue = (fieldId: string, value: any) => {
     onChange({ ...values, [fieldId]: value });
+
+    // Check for special style actions
+    if (fieldId === "style" && value === "upscale" && onStyleAction) {
+      onStyleAction("upscale");
+    }
+  };
+
+  // Check if a field should be visible based on dependsOn
+  const isFieldVisible = (field: SkillInputField): boolean => {
+    if (!field.dependsOn) return true;
+    const dependentValue = values[field.dependsOn.field];
+    return dependentValue === field.dependsOn.value;
   };
 
   // Handle file selection for image fields
@@ -126,7 +215,7 @@ export default function DynamicSkillForm({
         .flatMap((s) => s.fields)
         .find((f) => f.id === fieldId);
 
-      if (field?.type === "images") {
+      if (field?.type === "images" || field?.type === "imageUpload" && field?.multiple) {
         const existing = values[fieldId] || [];
         updateValue(fieldId, [...existing, ...urls]);
       } else {
@@ -140,12 +229,23 @@ export default function DynamicSkillForm({
     }
   };
 
+  // Get icon component for section
+  const getSectionIcon = (iconName?: string) => {
+    if (!iconName) return null;
+    const IconComponent = iconMap[iconName.toLowerCase()];
+    return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
+  };
+
   // Render a single field
   const renderField = (field: SkillInputField) => {
-    const value = values[field.id] ?? field.defaultValue ?? "";
+    // Check visibility based on dependsOn
+    if (!isFieldVisible(field)) return null;
+
+    const defaultVal = field.default ?? field.defaultValue ?? "";
+    const value = values[field.id] ?? defaultVal;
     const label = getText(field.label, field.labelTh);
     const placeholder = getText(field.placeholder, field.placeholderTh);
-    const description = getText(field.description, field.descriptionTh);
+    const description = getText(field.description || field.helpText, field.descriptionTh || field.helpTextTh);
 
     switch (field.type) {
       case "text":
@@ -201,6 +301,7 @@ export default function DynamicSkillForm({
               onChange={(e) => updateValue(field.id, e.target.value)}
               placeholder={placeholder}
               className="min-h-[80px]"
+              rows={field.rows}
             />
           </div>
         );
@@ -211,6 +312,18 @@ export default function DynamicSkillForm({
             <Label htmlFor={field.id} className="flex items-center gap-1.5">
               {label}
               {field.required && <span className="text-red-500">*</span>}
+              {description && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-[200px] text-xs">{description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </Label>
             <Select
               value={value || undefined}
@@ -219,7 +332,7 @@ export default function DynamicSkillForm({
               <SelectTrigger id={field.id}>
                 <SelectValue placeholder={placeholder || "Select..."} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px]">
                 {field.options?.filter((opt) => opt.value != null && opt.value !== "").map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     {getText(opt.label, opt.labelTh)}
@@ -227,21 +340,30 @@ export default function DynamicSkillForm({
                 ))}
               </SelectContent>
             </Select>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
           </div>
         );
 
       case "multiselect":
-        const selectedValues: string[] = value || [];
+        const selectedValues: string[] = Array.isArray(value) ? value : [];
         return (
           <div key={field.id} className="space-y-1.5">
             <Label className="flex items-center gap-1.5">
               {label}
               {field.required && <span className="text-red-500">*</span>}
+              {description && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-[200px] text-xs">{description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </Label>
-            <div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[40px]">
+            <div className="flex flex-wrap gap-1.5 p-2 border rounded-md min-h-[40px] max-h-[120px] overflow-y-auto">
               {field.options?.map((opt) => {
                 const isSelected = selectedValues.includes(opt.value);
                 return (
@@ -249,10 +371,10 @@ export default function DynamicSkillForm({
                     key={opt.value}
                     variant={isSelected ? "default" : "outline"}
                     className={cn(
-                      "cursor-pointer transition-colors",
+                      "cursor-pointer transition-colors text-xs",
                       isSelected
                         ? "bg-purple-500 hover:bg-purple-600"
-                        : "hover:bg-purple-100"
+                        : "hover:bg-purple-100 dark:hover:bg-purple-900/20"
                     )}
                     onClick={() => {
                       const newValues = isSelected
@@ -266,9 +388,6 @@ export default function DynamicSkillForm({
                 );
               })}
             </div>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
           </div>
         );
 
@@ -278,6 +397,18 @@ export default function DynamicSkillForm({
             <Label htmlFor={field.id} className="flex items-center gap-1.5">
               {label}
               {field.required && <span className="text-red-500">*</span>}
+              {description && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-[200px] text-xs">{description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </Label>
             <Input
               id={field.id}
@@ -289,20 +420,30 @@ export default function DynamicSkillForm({
               max={field.max}
               step={field.step}
             />
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
           </div>
         );
 
       case "slider":
-        const sliderValue = typeof value === "number" ? value : field.min ?? 0;
+        const sliderDefault = field.default ?? field.defaultValue ?? field.min ?? 0;
+        const sliderValue = typeof value === "number" ? value : sliderDefault;
         return (
           <div key={field.id} className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1.5">
                 {label}
                 {field.required && <span className="text-red-500">*</span>}
+                {description && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-[200px] text-xs">{description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </Label>
               <span className="text-sm font-medium text-muted-foreground">
                 {sliderValue}
@@ -316,9 +457,6 @@ export default function DynamicSkillForm({
               step={field.step ?? 1}
               className="py-2"
             />
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
           </div>
         );
 
@@ -371,7 +509,7 @@ export default function DynamicSkillForm({
                   onClick={() => {
                     const input = document.createElement("input");
                     input.type = "file";
-                    input.accept = "image/*";
+                    input.accept = field.accept || "image/*";
                     input.onchange = (e) =>
                       handleFileChange(
                         e as unknown as React.ChangeEvent<HTMLInputElement>,
@@ -396,12 +534,14 @@ export default function DynamicSkillForm({
         );
 
       case "images":
-        const imageUrls: string[] = value || [];
-        const maxImages = field.maxImages || 5;
+      case "imageUpload":
+        const imageUrls: string[] = Array.isArray(value) ? value : [];
+        const maxImages = field.maxImages || field.maxCount || 5;
+        const isMultiple = field.multiple !== false;
         return (
           <div key={field.id} className="space-y-1.5">
             <Label className="flex items-center gap-1.5">
-              {label} ({imageUrls.length}/{maxImages})
+              {label} {isMultiple && `(${imageUrls.length}/${maxImages})`}
               {field.required && <span className="text-red-500">*</span>}
             </Label>
             <div className="flex flex-wrap gap-2">
@@ -430,8 +570,8 @@ export default function DynamicSkillForm({
                   onClick={() => {
                     const input = document.createElement("input");
                     input.type = "file";
-                    input.accept = "image/*";
-                    input.multiple = true;
+                    input.accept = field.accept || "image/*";
+                    input.multiple = isMultiple;
                     input.onchange = (e) =>
                       handleFileChange(
                         e as unknown as React.ChangeEvent<HTMLInputElement>,
@@ -498,30 +638,83 @@ export default function DynamicSkillForm({
     );
   };
 
+  // Render a section with optional collapsible behavior
+  const renderSection = (section: SkillInputSection) => {
+    const isCollapsed = collapsedSections[section.id];
+    const hasCollapsible = section.collapsible !== false && (section.collapsed !== undefined || section.defaultCollapsed !== undefined);
+    const sectionTitle = getText(section.title, section.titleTh);
+    const sectionDescription = getText(section.description, section.descriptionTh);
+    const sectionIcon = getSectionIcon(section.icon);
+
+    // Filter visible fields and exclude specified fields
+    const visibleFields = section.fields
+      .filter(isFieldVisible)
+      .filter((field) => !excludeFields.includes(field.id));
+    if (visibleFields.length === 0) return null;
+
+    const sectionContent = (
+      <div className="grid gap-3">
+        {visibleFields.map((field) => renderField(field))}
+      </div>
+    );
+
+    if (hasCollapsible) {
+      return (
+        <Collapsible
+          key={section.id}
+          open={!isCollapsed}
+          onOpenChange={() => toggleSection(section.id)}
+        >
+          <div className="border rounded-lg">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                {sectionIcon}
+                <span className="text-sm font-medium">{sectionTitle}</span>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform",
+                  !isCollapsed && "rotate-180"
+                )}
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-3 pt-0 space-y-3">
+                {sectionDescription && (
+                  <p className="text-xs text-muted-foreground">{sectionDescription}</p>
+                )}
+                {sectionContent}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      );
+    }
+
+    // Non-collapsible section
+    return (
+      <div key={section.id} className="space-y-3">
+        {sectionTitle && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              {sectionIcon}
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {sectionTitle}
+              </h4>
+            </div>
+            {sectionDescription && (
+              <p className="text-xs text-muted-foreground">{sectionDescription}</p>
+            )}
+          </div>
+        )}
+        {sectionContent}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
-      {schema.sections.map((section) => (
-        <div key={section.id} className="space-y-3">
-          {/* Section Header */}
-          {section.title && (
-            <div className="space-y-1">
-              <h4 className="text-sm font-medium text-gray-700">
-                {getText(section.title, section.titleTh)}
-              </h4>
-              {section.description && (
-                <p className="text-xs text-muted-foreground">
-                  {getText(section.description, section.descriptionTh)}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Section Fields */}
-          <div className="grid gap-3">
-            {section.fields.map((field) => renderField(field))}
-          </div>
-        </div>
-      ))}
+      {schema.sections.map((section) => renderSection(section))}
 
       {/* Reference Images */}
       {renderReferenceImages()}

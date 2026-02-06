@@ -35,7 +35,7 @@ celery_app.conf.update(
 celery_app.conf.beat_schedule = {
     "cleanup-expired-tasks": {
         "task": "app.tasks.media_tasks.cleanup_expired_tasks",
-        "schedule": crontab(minute="*/30"),  # Every 30 minutes
+        "schedule": crontab(hour=3, minute=0),  # Daily at 3:00 AM UTC - deletes tasks older than 12 days
     },
     "retry-failed-tasks": {
         "task": "app.tasks.media_tasks.retry_failed_tasks",

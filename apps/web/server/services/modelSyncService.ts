@@ -97,7 +97,7 @@ interface SyncResult {
   syncedAt: Date;
 }
 
-// Provider-specific model prefixes for filtering
+// Provider-specific model prefixes for filtering (used when syncing from OpenRouter)
 const PROVIDER_PREFIXES: Record<string, string[]> = {
   openai: ["openai/", "gpt-"],
   anthropic: ["anthropic/", "claude-"],
@@ -113,6 +113,10 @@ const PROVIDER_PREFIXES: Record<string, string[]> = {
   fireworks: ["fireworks/"],
   deepinfra: ["deepinfra/"],
   hyperbolic: ["hyperbolic/"],
+  moonshot: ["moonshotai/", "kimi-"],
+  minimax: ["minimax/"],
+  zhipu: ["zhipu/", "glm-"],
+  "opencode-zen": ["moonshotai/", "minimax/", "zhipu/", "kimi-", "glm-", "qwen", "big-pickle", "trinity-"],
 };
 
 // OpenRouter API configuration
@@ -125,22 +129,216 @@ async function fetchOpenRouterModels(apiKey?: string): Promise<OpenRouterModel[]
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  
+
   if (apiKey) {
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
-  
+
   const response = await fetch(`${OPENROUTER_API}/models`, {
     method: "GET",
     headers,
   });
-  
+
   if (!response.ok) {
     throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
   }
-  
+
   const data = await response.json();
   return data.data || [];
+}
+
+/**
+ * Fetch models from provider's native API
+ * Each provider has different model listing endpoints
+ */
+async function fetchProviderNativeModels(
+  providerName: string,
+  baseUrl: string,
+  apiKey: string
+): Promise<SyncedModel[]> {
+  const providerLower = providerName.toLowerCase();
+
+  // OpenCode Zen - has its own models endpoint
+  if (providerLower.includes('opencode') || providerLower.includes('zen')) {
+    return fetchOpenCodeZenModels(baseUrl, apiKey);
+  }
+
+  // OpenAI-compatible providers (OpenAI, Groq, DeepSeek, Together, Fireworks, etc.)
+  if (['openai', 'groq', 'deepseek', 'together', 'fireworks', 'moonshot', 'qwen', 'zhipu', 'minimax'].includes(providerLower)) {
+    return fetchOpenAICompatibleModels(baseUrl, apiKey, providerLower);
+  }
+
+  // Anthropic - no models API, return hardcoded list
+  if (providerLower === 'anthropic') {
+    return getAnthropicModels();
+  }
+
+  // Google AI - special models endpoint
+  if (providerLower === 'google') {
+    return fetchGoogleAIModels(baseUrl, apiKey);
+  }
+
+  // Ollama - local models
+  if (providerLower === 'ollama') {
+    return fetchOllamaModels(baseUrl);
+  }
+
+  // Default: return empty (will fall back to OpenRouter sync)
+  return [];
+}
+
+/**
+ * Fetch models from OpenCode Zen API
+ * Endpoint: GET /zen/v1/models
+ */
+async function fetchOpenCodeZenModels(baseUrl: string, apiKey: string): Promise<SyncedModel[]> {
+  // Normalize base URL
+  let modelsUrl = baseUrl.replace(/\/+$/, '');
+  if (!modelsUrl.includes('/v1')) {
+    modelsUrl = modelsUrl + '/v1';
+  }
+  modelsUrl = modelsUrl + '/models';
+
+  const response = await fetch(modelsUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenCode Zen API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const models = data.data || data.models || [];
+
+  return models.map((m: any) => ({
+    id: m.id,
+    name: m.name || m.id,
+    contextLength: m.context_length || m.contextLength,
+    pricing: m.pricing ? {
+      input: (parseFloat(m.pricing.prompt || m.pricing.input || '0') * 1000000),
+      output: (parseFloat(m.pricing.completion || m.pricing.output || '0') * 1000000),
+    } : { input: 0, output: 0 },
+    provider: 'opencode-zen',
+  }));
+}
+
+/**
+ * Fetch models from OpenAI-compatible API
+ * Endpoint: GET /v1/models
+ */
+async function fetchOpenAICompatibleModels(
+  baseUrl: string,
+  apiKey: string,
+  providerName: string
+): Promise<SyncedModel[]> {
+  let modelsUrl = baseUrl.replace(/\/+$/, '');
+  if (!modelsUrl.endsWith('/models')) {
+    modelsUrl = modelsUrl.includes('/v1') ? modelsUrl + '/models' : modelsUrl + '/v1/models';
+  }
+
+  const response = await fetch(modelsUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`${providerName} API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const models = data.data || data.models || [];
+
+  return models.map((m: any) => ({
+    id: m.id,
+    name: m.id, // OpenAI API only returns ID
+    contextLength: m.context_window || m.context_length,
+    provider: providerName,
+  }));
+}
+
+/**
+ * Get Anthropic models (hardcoded - no models API)
+ */
+function getAnthropicModels(): SyncedModel[] {
+  return [
+    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', contextLength: 200000, pricing: { input: 3, output: 15 }, provider: 'anthropic' },
+    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', contextLength: 200000, pricing: { input: 0.8, output: 4 }, provider: 'anthropic' },
+    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', contextLength: 200000, pricing: { input: 15, output: 75 }, provider: 'anthropic' },
+    { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', contextLength: 200000, pricing: { input: 3, output: 15 }, provider: 'anthropic' },
+    { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', contextLength: 200000, pricing: { input: 0.25, output: 1.25 }, provider: 'anthropic' },
+  ];
+}
+
+/**
+ * Fetch models from Google AI API
+ * Endpoint: GET /v1beta/models
+ */
+async function fetchGoogleAIModels(baseUrl: string, apiKey: string): Promise<SyncedModel[]> {
+  const modelsUrl = `${baseUrl.replace(/\/+$/, '')}/models`;
+
+  const response = await fetch(`${modelsUrl}?key=${apiKey}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google AI API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const models = data.models || [];
+
+  return models
+    .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+    .map((m: any) => ({
+      id: m.name.replace('models/', ''),
+      name: m.displayName || m.name.replace('models/', ''),
+      contextLength: m.inputTokenLimit,
+      provider: 'google',
+    }));
+}
+
+/**
+ * Fetch models from Ollama
+ * Endpoint: GET /api/tags (local Ollama)
+ */
+async function fetchOllamaModels(baseUrl: string): Promise<SyncedModel[]> {
+  // Ollama uses /api/tags for listing models
+  const modelsUrl = baseUrl.replace(/\/v1\/?$/, '').replace(/\/+$/, '') + '/api/tags';
+
+  try {
+    const response = await fetch(modelsUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(5000), // 5 second timeout for local service
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const models = data.models || [];
+
+    return models.map((m: any) => ({
+      id: m.name,
+      name: m.name,
+      provider: 'ollama',
+    }));
+  } catch (error) {
+    // Ollama might not be running - return empty
+    console.warn('[ModelSync] Ollama not reachable:', error);
+    return [];
+  }
 }
 
 /**
@@ -203,7 +401,11 @@ function filterModelsByProvider(models: SyncedModel[], providerName: string): Sy
 }
 
 /**
- * Sync models for a specific provider from OpenRouter
+ * Sync models for a specific provider
+ *
+ * Strategy:
+ * 1. Try provider's native API first (OpenCode Zen, OpenAI, Groq, etc.)
+ * 2. Fall back to OpenRouter if native API fails or returns no models
  *
  * Behavior:
  * - KEEPS all existing models (never removes old models)
@@ -228,19 +430,47 @@ export async function syncProviderModels(
       throw new Error("Provider not found");
     }
 
-    // Fetch all models from OpenRouter
-    const allModels = await fetchOpenRouterModels(openRouterApiKey);
+    // Decrypt provider API key if available
+    let providerApiKey: string | undefined;
+    if (provider.apiKeyEncrypted) {
+      const { decrypt } = await import("./crypto");
+      providerApiKey = decrypt(provider.apiKeyEncrypted) || undefined;
+    }
 
-    // Filter by date first (only recent models for adding new ones)
-    const recentModels = allModels.filter(isModelRecent);
-    const convertedRecentModels = recentModels.map(convertModel);
+    let allProviderModels: SyncedModel[] = [];
+    let useNativeApi = false;
 
-    // All models for updating existing ones (no date filter)
-    const allConvertedModels = allModels.map(convertModel);
+    // Try provider's native API first (not for OpenRouter which IS the aggregator)
+    if (provider.providerName.toLowerCase() !== 'openrouter' && providerApiKey && provider.baseUrl) {
+      try {
+        const nativeModels = await fetchProviderNativeModels(
+          provider.providerName,
+          provider.baseUrl,
+          providerApiKey
+        );
+        if (nativeModels.length > 0) {
+          allProviderModels = nativeModels;
+          useNativeApi = true;
+          console.log(`[ModelSync] ${provider.providerName}: Using native API, found ${nativeModels.length} models`);
+        }
+      } catch (nativeError) {
+        console.warn(`[ModelSync] ${provider.providerName}: Native API failed, falling back to OpenRouter`, nativeError);
+      }
+    }
 
-    // Filter models for this provider
-    const recentProviderModels = filterModelsByProvider(convertedRecentModels, provider.providerName);
-    const allProviderModels = filterModelsByProvider(allConvertedModels, provider.providerName);
+    // Fall back to OpenRouter if native API didn't work
+    if (!useNativeApi) {
+      // Fetch all models from OpenRouter
+      const allModels = await fetchOpenRouterModels(openRouterApiKey);
+      const allConvertedModels = allModels.map(convertModel);
+      allProviderModels = filterModelsByProvider(allConvertedModels, provider.providerName);
+      console.log(`[ModelSync] ${provider.providerName}: Using OpenRouter, found ${allProviderModels.length} models`);
+    }
+
+    // For native API, don't filter by date (we trust the provider's model list)
+    const recentProviderModels = useNativeApi
+      ? allProviderModels
+      : allProviderModels.filter(m => !SYNC_CONFIG.filterByDate || isModelRecent({ created: (m as any).createdAt } as OpenRouterModel));
 
     // Get existing models
     const existingModels = (provider.availableModels as SyncedModel[]) || [];

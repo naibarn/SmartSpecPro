@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MultiProviderAdmin } from "@/components/admin/MultiProviderAdmin";
 import {
   Settings,
   Key,
@@ -87,6 +88,7 @@ interface Provider {
   configJson: Record<string, any> | null;
   isEnabled: boolean;
   sortOrder: number;
+  routedModelCount?: number; // Count from model_provider_map (actual routed models)
 }
 
 interface ProviderTemplate {
@@ -189,12 +191,12 @@ export default function AdminLLMProviders() {
   });
 
   const testMutation = trpc.llmProviders.testConnection.useMutation({
-    onSuccess: (result: any, id: number) => {
-      setTestResult({ id, success: result.success, message: result.message });
+    onSuccess: (result: any, variables: { id: number }) => {
+      setTestResult({ id: variables.id, success: result.success, message: result.message });
       setTimeout(() => setTestResult(null), 5000);
     },
-    onError: (error: any, id: number) => {
-      setTestResult({ id, success: false, message: error.message });
+    onError: (error: any, variables: { id: number }) => {
+      setTestResult({ id: variables.id, success: false, message: error.message });
       setTimeout(() => setTestResult(null), 5000);
     },
   });
@@ -405,8 +407,8 @@ export default function AdminLLMProviders() {
   const configuredProviderNames = providers.map(p => p.providerName);
   const availableTemplates = templates.filter(t => !configuredProviderNames.includes(t.providerName));
 
-  // Calculate total models
-  const totalModels = providers.reduce((sum, p) => sum + (p.availableModels?.length || 0), 0);
+  // Calculate total routed models (from model_provider_map)
+  const totalModels = providers.reduce((sum, p) => sum + (p.routedModelCount || 0), 0);
 
   if (authLoading || !user || user.role !== "admin") {
     return (
@@ -596,10 +598,10 @@ export default function AdminLLMProviders() {
                               API Key Set
                             </Badge>
                           )}
-                          {provider.availableModels && provider.availableModels.length > 0 && (
+                          {(provider.routedModelCount ?? 0) > 0 && (
                             <Badge variant="outline" className="text-purple-600 border-purple-600">
                               <Cpu className="h-3 w-3 mr-1" />
-                              {provider.availableModels.length} Models
+                              {provider.routedModelCount} Routed Models
                             </Badge>
                           )}
                         </div>
@@ -610,18 +612,14 @@ export default function AdminLLMProviders() {
                           {provider.defaultModel && <span><strong>Default Model:</strong> {provider.defaultModel}</span>}
                         </div>
                         
-                        {/* Show available models preview */}
-                        {provider.availableModels && provider.availableModels.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-1">
-                            {provider.availableModels.slice(0, 5).map((model) => (
-                              <Badge key={model.id} variant="secondary" className="text-xs">
-                                {model.name}
-                              </Badge>
-                            ))}
-                            {provider.availableModels.length > 5 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{provider.availableModels.length - 5} more
-                              </Badge>
+                        {/* Show routed models info */}
+                        {(provider.routedModelCount ?? 0) > 0 && (
+                          <div className="mt-3 text-xs text-muted-foreground">
+                            <span>{provider.routedModelCount} models routed via Multi-Provider Routing.</span>
+                            {provider.availableModels && provider.availableModels.length > 0 && (
+                              <span className="ml-2">
+                                ({provider.availableModels.length} in provider config)
+                              </span>
                             )}
                           </div>
                         )}
@@ -638,17 +636,17 @@ export default function AdminLLMProviders() {
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={provider.isEnabled}
-                        onCheckedChange={() => toggleMutation.mutate(provider.id)}
+                        onCheckedChange={() => toggleMutation.mutate({ id: provider.id })}
                         disabled={toggleMutation.isPending}
                       />
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => syncProviderMutation.mutate(provider.id)}
+                        onClick={() => syncProviderMutation.mutate({ id: provider.id })}
                         disabled={syncProviderMutation.isPending}
-                        title="Sync Models from OpenRouter"
+                        title="Sync Models"
                       >
-                        {syncProviderMutation.isPending && syncProviderMutation.variables === provider.id ? (
+                        {syncProviderMutation.isPending && syncProviderMutation.variables?.id === provider.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <RefreshCw className="h-4 w-4" />
@@ -657,11 +655,11 @@ export default function AdminLLMProviders() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => testMutation.mutate(provider.id)}
+                        onClick={() => testMutation.mutate({ id: provider.id })}
                         disabled={!provider.hasApiKey || testMutation.isPending}
                         title="Test Connection"
                       >
-                        {testMutation.isPending && testMutation.variables === provider.id ? (
+                        {testMutation.isPending && testMutation.variables?.id === provider.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <TestTube className="h-4 w-4" />
@@ -723,6 +721,12 @@ export default function AdminLLMProviders() {
         </div>
       )}
 
+      {/* Multi-Provider Routing */}
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-4">Multi-Provider Routing</h2>
+        <MultiProviderAdmin />
+      </div>
+
       {/* Edit/Create Dialog */}
       <Dialog
         open={!!editingProvider || isCreateDialogOpen}
@@ -735,7 +739,7 @@ export default function AdminLLMProviders() {
           }
         }}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="!w-[70vw] !max-w-[1400px] max-h-[90vh] overflow-y-auto" style={{ width: '70vw', maxWidth: '1400px' }}>
           <DialogHeader>
             <DialogTitle>
               {editingProvider ? `Edit ${editingProvider.displayName}` : `Add ${selectedTemplate?.displayName}`}

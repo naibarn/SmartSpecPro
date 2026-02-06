@@ -648,6 +648,7 @@ export const mediaRouter = router({
         status: taskStatusSchema.optional(),
         limit: z.number().min(1).max(100).optional(),
         offset: z.number().min(0).optional(),
+        daysAgo: z.number().min(1).max(365).optional(),
       }).optional()
     )
     .query(async ({ input, ctx }) => {
@@ -658,6 +659,7 @@ export const mediaRouter = router({
           status: input?.status as TaskStatus,
           limit: input?.limit,
           offset: input?.offset,
+          daysAgo: input?.daysAgo,
         });
         return result;
       } catch (error) {
@@ -693,7 +695,6 @@ export const mediaRouter = router({
         const PYTHON_BACKEND_URL =
           process.env.PYTHON_BACKEND_URL ||
           process.env.BACKEND_URL ||
-          process.env.OAUTH_SERVER_URL ||
           "http://localhost:8000";
 
         const response = await fetch(`${PYTHON_BACKEND_URL}/api/v1/media/tasks/${input.taskId}`, {
@@ -727,7 +728,6 @@ export const mediaRouter = router({
         const PYTHON_BACKEND_URL =
           process.env.PYTHON_BACKEND_URL ||
           process.env.BACKEND_URL ||
-          process.env.OAUTH_SERVER_URL ||
           "http://localhost:8000";
 
         const response = await fetch(`${PYTHON_BACKEND_URL}/api/v1/media/tasks/${input.taskId}/fetch-result`, {

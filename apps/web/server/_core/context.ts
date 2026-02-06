@@ -12,6 +12,8 @@ export type TrpcContext = {
   userToken: string | null;
   /** The current tenant ID from the tenant middleware */
   tenantId: number | null;
+  /** The public URL for the current tenant (e.g., https://smartaihub.app) for external services */
+  publicUrl: string | null;
 };
 
 export async function createContext(
@@ -37,7 +39,28 @@ export async function createContext(
   }
 
   // Extract tenantId from tenant middleware (TenantRequest)
-  const tenantId = (opts.req as TenantRequest).tenant?.id ?? null;
+  const tenantReq = opts.req as TenantRequest;
+  const tenantId = tenantReq.tenant?.id ?? null;
+
+  // Build public URL from tenant's primary domain or request origin
+  // This is used by external services (like KIE AI) to access uploaded files
+  let publicUrl: string | null = null;
+  if (tenantReq.tenant?.primaryDomain) {
+    // Use tenant's configured primary domain with https
+    publicUrl = `https://${tenantReq.tenant.primaryDomain}`;
+  } else {
+    // Fallback: use origin header or construct from host
+    const origin = opts.req.headers.origin as string | undefined;
+    if (origin) {
+      publicUrl = origin;
+    } else {
+      const host = opts.req.headers.host;
+      const protocol = opts.req.secure || opts.req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+      if (host) {
+        publicUrl = `${protocol}://${host}`;
+      }
+    }
+  }
 
   return {
     req: opts.req,
@@ -45,5 +68,6 @@ export async function createContext(
     user,
     userToken,
     tenantId,
+    publicUrl,
   };
 }

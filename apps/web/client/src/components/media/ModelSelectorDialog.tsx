@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -133,6 +134,9 @@ export default function ModelSelectorDialog({
             {getMediaIcon()}
             Select {mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} Model
           </DialogTitle>
+          <DialogDescription>
+            Choose a model from the available {mediaType} generation models
+          </DialogDescription>
         </DialogHeader>
 
         {/* Search and Filter */}
@@ -197,9 +201,9 @@ export default function ModelSelectorDialog({
                     {providerName}
                   </h4>
                   <div className="grid gap-2">
-                    {providerModels.map((model) => (
+                    {providerModels.map((model, index) => (
                       <ModelCard
-                        key={model.modelId}
+                        key={model.id ?? `${model.modelId}-${index}`}
                         model={model}
                         isSelected={model.modelId === selectedModelId}
                         onSelect={() => handleSelect(model.modelId)}
@@ -283,9 +287,9 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
                 {model.creditCost} credits
               </Badge>
             )}
-            {model.capabilities?.slice(0, 2).map((cap) => (
+            {model.capabilities?.slice(0, 2).map((cap, idx) => (
               <Badge
-                key={cap}
+                key={`${cap}-${idx}`}
                 variant="outline"
                 className="text-[10px] px-1.5 py-0"
               >

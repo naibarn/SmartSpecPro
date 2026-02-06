@@ -21,7 +21,7 @@ export interface ProviderCandidate {
 }
 
 export type ExecuteResult =
-  | { type: "success"; response: any; providerId: number }
+  | { type: "success"; response: any; providerId: number; providerName: string }
   | { type: "fallback_required"; from: ProviderCandidate; to: ProviderCandidate; estimatedCredits: number }
   | { type: "error"; error: string; statusCode: number };
 
@@ -40,6 +40,53 @@ export interface ResolveResult {
 export async function resolveProviders(modelId: string): Promise<ProviderCandidate[]> {
   const result = await resolveProvidersWithRule(modelId);
   return result.candidates;
+}
+
+/**
+ * Get the first available provider for a model.
+ * Tries model_provider_map first, falls back to legacy first-enabled provider.
+ * This is a drop-in replacement for the old getActiveLlmProvider() pattern.
+ */
+export async function getProviderForModel(modelId: string): Promise<ProviderCandidate | null> {
+  // 1. Try multi-provider routing
+  const candidates = await resolveProviders(modelId);
+  if (candidates.length > 0) {
+    return candidates[0];
+  }
+
+  // 2. Fall back to legacy: first enabled provider
+  const db = await getDb();
+  if (!db) return null;
+
+  const [provider] = await db
+    .select({
+      id: llmProviders.id,
+      providerName: llmProviders.providerName,
+      baseUrl: llmProviders.baseUrl,
+      apiKeyEncrypted: llmProviders.apiKeyEncrypted,
+      defaultModel: llmProviders.defaultModel,
+    })
+    .from(llmProviders)
+    .where(eq(llmProviders.isEnabled, true))
+    .orderBy(llmProviders.sortOrder)
+    .limit(1);
+
+  if (!provider?.apiKeyEncrypted || !provider?.baseUrl) return null;
+
+  const apiKey = decrypt(provider.apiKeyEncrypted);
+  if (!apiKey) return null;
+
+  return {
+    providerId: provider.id,
+    providerName: provider.providerName,
+    baseUrl: provider.baseUrl,
+    apiKey,
+    providerModelId: modelId || provider.defaultModel || "gpt-4o-mini",
+    pricingInput: 0,
+    pricingOutput: 0,
+    isFree: false,
+    priority: 0,
+  };
 }
 
 async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult> {
@@ -239,7 +286,7 @@ export async function executeWithFallback(params: {
           fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
         }).catch(() => {});
 
-        return { type: "success", response: data, providerId: candidate.providerId };
+        return { type: "success", response: data, providerId: candidate.providerId, providerName: candidate.providerName };
       }
 
       // Error handling

@@ -865,36 +865,55 @@ export default function AdminSettings() {
                   <Label htmlFor="smtpSecure">Use SSL/TLS (port 465)</Label>
                 </div>
 
-                {/* Gmail SMTP guide */}
-                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-sm space-y-3">
-                  <p className="font-semibold text-blue-800">Gmail SMTP Guide (smtp.gmail.com)</p>
-                  <p className="text-blue-700">
-                    ต้องใช้ <strong>App Password</strong> (ไม่ใช่รหัส Gmail ปกติ) — สร้างได้ที่{' '}
-                    <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-medium">
-                      myaccount.google.com/apppasswords
-                    </a>{' '}
-                    (ต้องเปิด 2-Step Verification ก่อน)
+                {/* Gmail App Password Warning */}
+                <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4 text-sm space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-600 text-lg">⚠️</span>
+                    <p className="font-bold text-amber-800">Gmail: App Password Required!</p>
+                  </div>
+                  <p className="text-amber-700">
+                    Gmail does not support regular passwords. You must create an <strong>App Password</strong> instead.
                   </p>
+                  <a
+                    href="https://myaccount.google.com/apppasswords"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-medium text-sm transition-colors"
+                  >
+                    🔑 Create App Password
+                    <span className="text-amber-200">→</span>
+                  </a>
+                  <p className="text-amber-600 text-xs">
+                    * Requires 2-Step Verification:{' '}
+                    <a href="https://myaccount.google.com/signinoptions/two-step-verification" target="_blank" rel="noopener noreferrer" className="underline">
+                      Enable here
+                    </a>
+                  </p>
+                </div>
+
+                {/* Gmail SMTP Settings guide */}
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-sm space-y-3">
+                  <p className="font-semibold text-blue-800">Gmail SMTP Settings (smtp.gmail.com)</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-md border border-blue-200 bg-white p-3">
-                      <p className="font-semibold text-blue-900 mb-1">Option A — STARTTLS</p>
+                      <p className="font-semibold text-blue-900 mb-1">Option A — STARTTLS (Recommended)</p>
                       <ul className="text-blue-700 space-y-0.5 text-xs">
+                        <li>Host: <code className="bg-blue-100 px-1 rounded">smtp.gmail.com</code></li>
                         <li>Port: <code className="bg-blue-100 px-1 rounded">587</code></li>
-                        <li>SSL/TLS: <strong>ปิด</strong> (unchecked)</li>
-                        <li className="text-blue-500 italic">เข้ารหัสอัตโนมัติผ่าน STARTTLS</li>
+                        <li>SSL/TLS: <strong>Off</strong> (unchecked)</li>
                       </ul>
                     </div>
                     <div className="rounded-md border border-blue-200 bg-white p-3">
                       <p className="font-semibold text-blue-900 mb-1">Option B — Direct SSL</p>
                       <ul className="text-blue-700 space-y-0.5 text-xs">
+                        <li>Host: <code className="bg-blue-100 px-1 rounded">smtp.gmail.com</code></li>
                         <li>Port: <code className="bg-blue-100 px-1 rounded">465</code></li>
-                        <li>SSL/TLS: <strong>เปิด</strong> (checked)</li>
-                        <li className="text-blue-500 italic">เชื่อมต่อ SSL/TLS โดยตรง</li>
+                        <li>SSL/TLS: <strong>On</strong> (checked)</li>
                       </ul>
                     </div>
                   </div>
                   <p className="text-blue-600 text-xs">
-                    ขีดจำกัด: Gmail ฟรี ~500 email/วัน • Google Workspace ~2,000/วัน • From Email ต้องเป็น Gmail address เดียวกับ Username
+                    Limits: Free Gmail ~500 emails/day • Google Workspace ~2,000/day
                   </p>
                 </div>
 
