@@ -98,19 +98,15 @@ async function dispatchToCelery(
   const pythonUrl =
     ENV.pythonBackendUrl || process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
-  try {
-    const res = await fetch(`${pythonUrl}/api/v1/media-jobs/execute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ spec_json: specJson, user_id: userId, job_id: jobId }),
-    });
+  const res = await fetch(`${pythonUrl}/api/v1/media-jobs/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ spec_json: specJson, user_id: userId, job_id: jobId }),
+  });
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error(`[MediaJobs] Celery dispatch failed: ${res.status} ${body}`);
-    }
-  } catch (e) {
-    console.error("[MediaJobs] Failed to reach Python backend:", e);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Celery dispatch failed: ${res.status} ${body}`);
   }
 }
 
@@ -225,7 +221,21 @@ export const mediaJobsRouter = router({
       await addActiveJob(String(ctx.user.id), jobId);
 
       // Dispatch to Python Celery worker
-      dispatchToCelery(JSON.stringify(spec), String(ctx.user.id), jobId);
+      try {
+        await dispatchToCelery(JSON.stringify(spec), String(ctx.user.id), jobId);
+      } catch (e: any) {
+        await setJobKey(jobId, "status", {
+          status: "error",
+          progress: 0,
+          jobId,
+          message: "Failed to dispatch to worker",
+        });
+        await removeActiveJob(String(ctx.user.id), jobId);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to dispatch media job to worker",
+        });
+      }
 
       // Audit log (best-effort)
       try {
@@ -497,7 +507,19 @@ export function registerMediaJobRoutes(app: Express) {
       });
       await addActiveJob(userId, jobId);
 
-      dispatchToCelery(JSON.stringify(fullSpec), userId, jobId);
+      try {
+        await dispatchToCelery(JSON.stringify(fullSpec), userId, jobId);
+      } catch {
+        await setJobKey(jobId, "status", {
+          status: "error",
+          progress: 0,
+          jobId,
+          message: "Failed to dispatch to worker",
+        });
+        await removeActiveJob(userId, jobId);
+        res.status(502).json({ error: "Failed to dispatch media job to worker" });
+        return;
+      }
 
       res.json({ jobId });
     } catch (e: any) {

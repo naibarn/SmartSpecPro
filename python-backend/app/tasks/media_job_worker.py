@@ -474,6 +474,14 @@ def handle_subtitles_extract(spec: dict, tmp_dir: str) -> dict:
 # Main Celery Task
 # ========================================
 
+def _not_implemented_handler(spec: dict, tmp_dir: str) -> dict:
+    """Stub handler for not-yet-implemented job types."""
+    job_type = spec.get("jobType", "unknown")
+    raise NotImplementedError(
+        f"Job type '{job_type}' is defined in the spec but not yet implemented."
+    )
+
+
 HANDLER_MAP = {
     "probe": handle_probe,
     "render_mp4_h264": handle_render_mp4,
@@ -481,6 +489,11 @@ HANDLER_MAP = {
     "thumbnails": handle_thumbnails,
     "dead_air_detect": handle_dead_air_detect,
     "subtitles_extract": handle_subtitles_extract,
+    "render_hls": _not_implemented_handler,
+    "subtitles_burnin": _not_implemented_handler,
+    "concat": _not_implemented_handler,
+    "dead_air_cut": _not_implemented_handler,
+    "generate_clip_from_api": _not_implemented_handler,
 }
 
 

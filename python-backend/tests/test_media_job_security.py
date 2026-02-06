@@ -276,3 +276,17 @@ class TestWorkerAssetResolution:
         from app.tasks.media_job_worker import _safe_uri_for_ffmpeg
         with pytest.raises(ValueError, match="metacharacter"):
             _safe_uri_for_ffmpeg("https://example.com/file; rm -rf /")
+
+
+class TestStubHandlers:
+    """Tests for stub handlers of unimplemented job types."""
+
+    def test_not_implemented_handler_raises(self):
+        from app.tasks.media_job_worker import _not_implemented_handler
+        with pytest.raises(NotImplementedError, match="not yet implemented"):
+            _not_implemented_handler({"jobType": "render_hls"}, "/tmp")
+
+    def test_handler_map_covers_all_valid_job_types(self):
+        from app.tasks.media_job_worker import HANDLER_MAP, VALID_JOB_TYPES
+        for job_type in VALID_JOB_TYPES:
+            assert job_type in HANDLER_MAP, f"Missing handler for {job_type}"

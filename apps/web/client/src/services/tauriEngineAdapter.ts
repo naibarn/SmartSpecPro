@@ -28,6 +28,7 @@ export class TauriEngineAdapter implements IEngineAdapter {
     callback: (progress: MediaJobProgress) => void,
   ): () => void {
     let unlisten: (() => void) | null = null;
+    let unsubscribedEarly = false;
 
     import("@tauri-apps/api/event").then(({ listen }) => {
       listen<MediaJobProgress>("media-job-progress", (event) => {
@@ -35,12 +36,22 @@ export class TauriEngineAdapter implements IEngineAdapter {
           callback(event.payload);
         }
       }).then((fn) => {
-        unlisten = fn;
+        if (unsubscribedEarly) {
+          // Caller already unsubscribed before listen resolved; clean up now
+          fn();
+        } else {
+          unlisten = fn;
+        }
       });
     });
 
     return () => {
-      if (unlisten) unlisten();
+      if (unlisten) {
+        unlisten();
+      } else {
+        // Mark for cleanup when listen resolves
+        unsubscribedEarly = true;
+      }
     };
   }
 }
