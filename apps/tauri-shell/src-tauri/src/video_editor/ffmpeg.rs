@@ -1,6 +1,7 @@
 use std::process::{Command, Stdio};
 use std::path::PathBuf;
 use std::io::Read as IoRead;
+use std::env;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -16,56 +17,143 @@ pub struct MediaFileInfo {
     pub has_audio: bool,
 }
 
-/// Get bundled FFmpeg path based on platform
-pub fn get_ffmpeg_path() -> PathBuf {
+/// Search PATH for a binary by name. Returns the full path if found, None otherwise.
+/// This function never panics.
+pub fn find_system_binary(name: &str) -> Option<PathBuf> {
+    let path_var = env::var("PATH").ok()?;
+
     #[cfg(target_os = "windows")]
-    {
-        let exe_dir = std::env::current_exe()
-            .expect("Failed to get exe path")
-            .parent()
-            .expect("Failed to get exe dir")
-            .to_path_buf();
-        exe_dir.join("resources").join("ffmpeg").join("win").join("ffmpeg.exe")
-    }
+    let separator = ';';
+    #[cfg(not(target_os = "windows"))]
+    let separator = ':';
 
-    #[cfg(target_os = "macos")]
-    {
-        let exe_dir = std::env::current_exe()
-            .expect("Failed to get exe path")
-            .parent()
-            .expect("Failed to get exe dir")
-            .to_path_buf();
-        exe_dir.join("..").join("Resources").join("ffmpeg").join("mac").join("ffmpeg")
+    for dir in path_var.split(separator) {
+        let candidate = PathBuf::from(dir).join(name);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+        // On Windows, also check with .exe extension
+        #[cfg(target_os = "windows")]
+        {
+            let with_exe = PathBuf::from(dir).join(format!("{}.exe", name));
+            if with_exe.is_file() {
+                return Some(with_exe);
+            }
+        }
     }
-
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    {
-        // Fall back to system-installed ffmpeg on Linux
-        PathBuf::from("ffmpeg")
-    }
+    None
 }
 
-/// Get FFprobe path (same directory as FFmpeg)
-pub fn get_ffprobe_path() -> PathBuf {
-    let ffmpeg_path = get_ffmpeg_path();
+/// Find system ffmpeg on PATH (fallback for dev/Linux).
+/// Returns the full path if found, None otherwise. Never panics.
+pub fn find_system_ffmpeg() -> Option<PathBuf> {
+    find_system_binary("ffmpeg")
+}
 
+/// Find system ffprobe on PATH (fallback for dev/Linux).
+/// Returns the full path if found, None otherwise. Never panics.
+pub fn find_system_ffprobe() -> Option<PathBuf> {
+    find_system_binary("ffprobe")
+}
+
+/// Get FFmpeg path using a resolution chain:
+/// 1. Tauri sidecar binary (bundled via externalBin)
+/// 2. Legacy bundled resource path (Windows/macOS)
+/// 3. System PATH search
+/// 4. Bare "ffmpeg" name (let the OS resolve it)
+pub fn get_ffmpeg_path() -> PathBuf {
+    // 1. Try Tauri sidecar path (next to the executable)
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            let sidecar = exe_dir.join("ffmpeg");
+            #[cfg(target_os = "windows")]
+            let sidecar = exe_dir.join("ffmpeg.exe");
+            if sidecar.is_file() {
+                return sidecar;
+            }
+        }
+    }
+
+    // 2. Try legacy resource paths
     #[cfg(target_os = "windows")]
     {
-        let parent = ffmpeg_path.parent().expect("Failed to get ffmpeg parent dir");
-        return parent.join("ffprobe.exe");
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(exe_dir) = exe.parent() {
+                let legacy = exe_dir.join("resources").join("ffmpeg").join("win").join("ffmpeg.exe");
+                if legacy.is_file() {
+                    return legacy;
+                }
+            }
+        }
     }
 
     #[cfg(target_os = "macos")]
     {
-        let parent = ffmpeg_path.parent().expect("Failed to get ffmpeg parent dir");
-        return parent.join("ffprobe");
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(exe_dir) = exe.parent() {
+                let legacy = exe_dir.join("..").join("Resources").join("ffmpeg").join("mac").join("ffmpeg");
+                if legacy.is_file() {
+                    return legacy;
+                }
+            }
+        }
     }
 
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    {
-        // Fall back to system-installed ffprobe on Linux
-        return PathBuf::from("ffprobe");
+    // 3. Search system PATH
+    if let Some(system_path) = find_system_ffmpeg() {
+        return system_path;
     }
+
+    // 4. Bare name fallback — let the OS try to resolve it
+    PathBuf::from("ffmpeg")
+}
+
+/// Get FFprobe path using the same resolution chain as get_ffmpeg_path.
+pub fn get_ffprobe_path() -> PathBuf {
+    // 1. Try Tauri sidecar path
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            let sidecar = exe_dir.join("ffprobe");
+            #[cfg(target_os = "windows")]
+            let sidecar = exe_dir.join("ffprobe.exe");
+            if sidecar.is_file() {
+                return sidecar;
+            }
+        }
+    }
+
+    // 2. Try legacy resource paths
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(exe_dir) = exe.parent() {
+                let legacy = exe_dir.join("resources").join("ffmpeg").join("win").join("ffprobe.exe");
+                if legacy.is_file() {
+                    return legacy;
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(exe_dir) = exe.parent() {
+                let legacy = exe_dir.join("..").join("Resources").join("ffmpeg").join("mac").join("ffprobe");
+                if legacy.is_file() {
+                    return legacy;
+                }
+            }
+        }
+    }
+
+    // 3. Search system PATH
+    if let Some(system_path) = find_system_ffprobe() {
+        return system_path;
+    }
+
+    // 4. Bare name fallback
+    PathBuf::from("ffprobe")
 }
 
 /// Probe media file with ffprobe to extract metadata
@@ -572,5 +660,41 @@ mod tests {
         let keeps = compute_keep_segments(&[], 10000, 200);
         assert_eq!(keeps.len(), 1);
         assert_eq!(keeps[0], (0, 10000));
+    }
+
+    #[test]
+    fn test_find_system_ffmpeg_does_not_panic() {
+        // find_system_ffmpeg() should never panic regardless of whether ffmpeg is installed
+        let result = find_system_ffmpeg();
+        // We can't assert Some/None since CI may or may not have ffmpeg
+        // The key assertion is that we reached this line without panicking
+        let _ = result;
+    }
+
+    #[test]
+    fn test_find_system_ffprobe_does_not_panic() {
+        let result = find_system_ffprobe();
+        let _ = result;
+    }
+
+    #[test]
+    fn test_find_system_binary_with_nonexistent() {
+        // A binary that definitely doesn't exist should return None
+        let result = find_system_binary("__nonexistent_binary_smartspec_test__");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_ffmpeg_path_does_not_panic() {
+        // Previously could panic on Linux — now should never panic
+        let path = get_ffmpeg_path();
+        // Must return a non-empty path
+        assert!(!path.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_get_ffprobe_path_does_not_panic() {
+        let path = get_ffprobe_path();
+        assert!(!path.as_os_str().is_empty());
     }
 }
