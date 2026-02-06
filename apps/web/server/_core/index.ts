@@ -11,7 +11,8 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { serveStatic, setupVite } from "./vite";
 import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
-import { registerOAuthRoutes } from "./oauth";
+import { registerMediaJobRoutes } from "../routers/mediaJobs";
+
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
@@ -22,6 +23,8 @@ import { ENV } from "./env";
 import { debugError } from "./logger";
 import { getUploadsDir, useLocalStorage } from "../storage";
 import { initializeSkillRegistry } from "../services/skillRegistry";
+import { initAuditLogger, auditLogger } from "../services/auditLogger";
+import { auditMiddleware } from "../middleware/auditMiddleware";
 import { initializeScheduler } from "../services/scheduler";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { initializeQueues } from "../services/llmQueue";
@@ -37,23 +40,27 @@ const app = express();
 app.disable("x-powered-by");
 
 
+// Trusted origin check (shared between CORS and CSRF middleware)
+const ALLOWED_SUFFIXES = ['.smartspec.local', '.smartspec.pro', '.localhost', '.smartaihub.app'];
+const ALLOWED_EXACT = ['tauri://localhost', 'http://tauri.localhost'];
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return false;
+  let originHost = '';
+  try { originHost = new URL(origin).hostname; } catch { return false; }
+  return (
+    ALLOWED_EXACT.includes(origin) ||
+    originHost === 'localhost' ||
+    /^(\d{1,3}\.){3}\d{1,3}$/.test(originHost) ||
+    ALLOWED_SUFFIXES.some(suffix => originHost === suffix.slice(1) || originHost.endsWith(suffix))
+  );
+}
+
 // CORS for cross-domain access (Docker Status, etc.)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-
-  // Allow cross-origin access from trusted domains and desktop app
-  const allowedSuffixes = ['.smartspec.local', '.smartspec.pro', '.localhost', '.smartaihub.app'];
-  const allowedExact = ['tauri://localhost', 'http://tauri.localhost'];
-  let originHost = '';
-  try { originHost = origin ? new URL(origin).hostname : ''; } catch {}
-  const isAllowed = origin && (
-    allowedExact.includes(origin) ||
-    originHost === 'localhost' ||
-    /^(\d{1,3}\.){3}\d{1,3}$/.test(originHost) ||
-    allowedSuffixes.some(suffix => originHost === suffix.slice(1) || originHost.endsWith(suffix))
-  );
-  if (isAllowed) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
+  if (isAllowedOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin!);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -91,6 +98,10 @@ app.use((err: any, req: any, res: any, next: any) => {
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser(ENV.cookieSecret));
 
+// Audit trace context — generates traceId for every request
+initAuditLogger();
+app.use(auditMiddleware());
+
 // Multi-tenant middleware - identifies tenant from domain
 app.use(tenantMiddleware);
 
@@ -107,9 +118,7 @@ if (useLocalStorage()) {
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);
-
-// OAuth routes
-registerOAuthRoutes(app);
+registerMediaJobRoutes(app);
 
 // Device auth routes (for desktop app)
 registerDeviceAuthRoutes(app);
@@ -125,6 +134,22 @@ registerAdminTenantsRoutes(app);
 
 // Blog routes
 registerBlogRoutes(app);
+
+// CSRF protection: verify Origin header on tRPC mutation (POST) requests
+app.use("/trpc", (req, res, next) => {
+  if (req.method !== "POST") return next();
+
+  const origin = req.headers.origin;
+  // Allow requests with no Origin header (same-origin, server-to-server, curl)
+  if (!origin) return next();
+
+  if (!isAllowedOrigin(origin)) {
+    res.status(403).json({ error: { message: "Forbidden: invalid origin" } });
+    return;
+  }
+
+  next();
+});
 
 app.use(
   "/trpc",
@@ -206,6 +231,10 @@ process.on("unhandledRejection", (reason, promise) => {
   if ((reason as any)?.code === "EPIPE" || String(reason).includes("EPIPE")) return;
   debugError("Process", "Unhandled Rejection", reason);
 });
+
+// Graceful shutdown: flush audit logs
+process.on("SIGTERM", () => { auditLogger.shutdown().catch(() => {}); });
+process.on("SIGINT", () => { auditLogger.shutdown().catch(() => {}); });
 
 main().catch((err) => {
   console.error(err);

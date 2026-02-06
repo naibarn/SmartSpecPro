@@ -203,6 +203,10 @@ app.include_router(prompt_enhancement.router, prefix="/api/v1/prompt", tags=["Pr
 app.include_router(skill_customization.router, prefix="/api/v1", tags=["Skill Customization"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])
 
+# Media Job processing (FFmpeg worker bridge)
+from app.api.v1 import media_jobs as media_jobs_api
+app.include_router(media_jobs_api.router, prefix="/api/v1", tags=["Media Jobs"])
+
 # OpenAI-compatible surface for desktop/runner/proxy (forwarded to SmartSpecWeb gateway)
 app.include_router(openai_compat.router)
 app.include_router(kilo_cli.router)
