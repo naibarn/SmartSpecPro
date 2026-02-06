@@ -23,3 +23,7 @@ anyhow = "1"
 async-recursion = "1"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+uuid = { version = "1", features = ["v4"] }
+dirs = "5"
+regex = "1"

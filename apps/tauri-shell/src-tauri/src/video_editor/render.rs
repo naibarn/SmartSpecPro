@@ -23,7 +23,13 @@ fn sanitize_path(path: &str) -> Result<String, String> {
     let path_obj = Path::new(path);
     if let Some(ext) = path_obj.extension() {
         let ext_str = ext.to_string_lossy().to_lowercase();
-        if !matches!(ext_str.as_str(), "mp4" | "mov" | "avi" | "mkv" | "mp3" | "wav" | "aac") {
+        if !matches!(ext_str.as_str(),
+            "mp4" | "mov" | "avi" | "mkv" | "mp3" | "wav" | "aac" |
+            "webm" | "flv" | "ts" |
+            "srt" | "vtt" |
+            "jpg" | "jpeg" | "png" | "webp" |
+            "json"
+        ) {
             return Err(format!("Invalid file extension: .{}", ext_str));
         }
     } else {
@@ -406,10 +412,10 @@ impl RenderEngine {
         // Execute FFmpeg
         let ffmpeg_path = super::ffmpeg::get_ffmpeg_path();
 
-        let mut child = match Command::new(&ffmpeg_path)
+        let child = match Command::new(&ffmpeg_path)
             .args(&ffmpeg_cmd)
-            .stdout(Stdio::null())  // Discard stdout to prevent buffer overflow
-            .stderr(Stdio::null())  // Discard stderr to prevent deadlock (FFmpeg produces lots of output)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
         {
             Ok(child) => child,
@@ -423,10 +429,37 @@ impl RenderEngine {
             }
         };
 
-        // FIXED: Use Stdio::null() instead of piped() to prevent deadlock
-        // FFmpeg produces lots of stderr output which can fill the pipe buffer
-        // causing the process to block. We discard the output since we're tracking
-        // progress through file size instead.
+        // Insert child into processes map for cancellation support
+        {
+            let mut procs = processes.lock().unwrap();
+            procs.insert(job_id.clone(), child);
+        }
+
+        // Drain stderr in background to prevent pipe buffer deadlock
+        // (FFmpeg writes diagnostics to stderr that can block if unread)
+
+        // Retrieve child from map to wait on it
+        let mut child = {
+            let mut procs = processes.lock().unwrap();
+            match procs.remove(&job_id) {
+                Some(c) => c,
+                None => {
+                    // Job was cancelled while we were setting up
+                    return;
+                }
+            }
+        };
+
+        // Drain stderr in a separate thread
+        if let Some(stderr) = child.stderr.take() {
+            std::thread::spawn(move || {
+                use std::io::{BufRead, BufReader};
+                let reader = BufReader::new(stderr);
+                for _line in reader.lines() {
+                    // Consume stderr to prevent pipe buffer fill
+                }
+            });
+        }
 
         // Wait for completion
         let result = child.wait();
@@ -544,37 +577,120 @@ impl RenderEngine {
 
     fn build_filter_complex(
         project: &VideoEditorProject,
-        _inputs: &[Asset]
+        inputs: &[Asset],
     ) -> Result<String, String> {
-        // Simplified filter for Phase 0
-        // Full implementation will handle:
-        // - Trimming clips
-        // - Concatenating multiple clips
-        // - Audio ducking
-        // - Volume adjustments
-
-        let video_tracks: Vec<_> = project.timeline.tracks.iter()
-            .filter(|t| t.track_type == "video")
+        // Collect all clips in timeline order across video and audio tracks
+        let all_clips: Vec<(&Clip, &Track)> = project
+            .timeline
+            .tracks
+            .iter()
+            .filter(|t| t.track_type == "video" || t.track_type == "audio")
+            .flat_map(|t| t.clips.iter().map(move |c| (c, t)))
             .collect();
 
-        let audio_tracks: Vec<_> = project.timeline.tracks.iter()
-            .filter(|t| t.track_type == "audio")
-            .collect();
-
-        if video_tracks.is_empty() || audio_tracks.is_empty() {
-            return Ok(String::new());  // Will use simple mapping
+        if all_clips.is_empty() {
+            return Ok(String::new());
         }
 
-        // For now, just scale and resample
-        // Security: Sanitize numeric values to prevent filter injection
+        // Build input index map: asset_path -> input index
+        let mut input_map: HashMap<String, usize> = HashMap::new();
+        for (i, asset) in inputs.iter().enumerate() {
+            input_map.insert(asset.path.clone(), i);
+        }
+
         let width = sanitize_numeric(project.settings.width)?;
         let height = sanitize_numeric(project.settings.height)?;
         let sample_rate = sanitize_numeric(project.settings.sample_rate)?;
 
-        Ok(format!(
-            "[0:v]scale={}:{}[vout];[0:a]aresample={}[aout]",
-            width, height, sample_rate
-        ))
+        // Group clips by video tracks only for the filter graph
+        let video_clips: Vec<&Clip> = project
+            .timeline
+            .tracks
+            .iter()
+            .filter(|t| t.track_type == "video")
+            .flat_map(|t| &t.clips)
+            .collect();
+
+        if video_clips.is_empty() {
+            return Ok(String::new());
+        }
+
+        let mut filters = Vec::new();
+        let mut concat_video_labels = Vec::new();
+        let mut concat_audio_labels = Vec::new();
+
+        for (i, clip) in video_clips.iter().enumerate() {
+            let asset = project
+                .assets
+                .get(&clip.asset_id)
+                .ok_or_else(|| format!("Asset not found: {}", clip.asset_id))?;
+            let idx = input_map
+                .get(&asset.path)
+                .ok_or_else(|| format!("Input index not found for asset: {}", asset.path))?;
+
+            let trim_start = sanitize_numeric(clip.trim_in)?;
+            let trim_end = sanitize_numeric(clip.trim_out)?;
+            let speed = sanitize_numeric(clip.speed)?;
+            let volume = sanitize_numeric(clip.volume)?;
+
+            // Video chain: trim → setpts → speed → scale
+            let mut vchain = format!(
+                "[{}:v]trim=start={}:end={},setpts=PTS-STARTPTS",
+                idx, trim_start, trim_end
+            );
+            if clip.speed != 1.0 {
+                vchain.push_str(&format!(",setpts=PTS/{}", speed));
+            }
+            vchain.push_str(&format!(",scale={}:{}[v{}]", width, height, i));
+            filters.push(vchain);
+
+            // Audio chain: atrim → asetpts → atempo → volume
+            let mut achain = format!(
+                "[{}:a]atrim=start={}:end={},asetpts=PTS-STARTPTS",
+                idx, trim_start, trim_end
+            );
+            if clip.speed != 1.0 {
+                // atempo supports 0.5-2.0, chain for larger ranges
+                let mut remaining_rate = clip.speed;
+                while remaining_rate > 2.0 {
+                    achain.push_str(",atempo=2.0");
+                    remaining_rate /= 2.0;
+                }
+                while remaining_rate < 0.5 {
+                    achain.push_str(",atempo=0.5");
+                    remaining_rate /= 0.5;
+                }
+                let r = sanitize_numeric(remaining_rate)?;
+                achain.push_str(&format!(",atempo={}", r));
+            }
+            if clip.volume != 1.0 {
+                achain.push_str(&format!(",volume={}", volume));
+            }
+            achain.push_str(&format!("[a{}]", i));
+            filters.push(achain);
+
+            concat_video_labels.push(format!("[v{}]", i));
+            concat_audio_labels.push(format!("[a{}]", i));
+        }
+
+        let n = video_clips.len();
+        if n == 1 {
+            // Single clip: map directly
+            filters.push(format!("[v0]copy[vout]"));
+            filters.push(format!("[a0]acopy[aout]"));
+        } else {
+            // Multiple clips: concat
+            let mut concat_input = String::new();
+            for i in 0..n {
+                concat_input.push_str(&format!("[v{}][a{}]", i, i));
+            }
+            filters.push(format!(
+                "{}concat=n={}:v=1:a=1[vout][aout]",
+                concat_input, n
+            ));
+        }
+
+        Ok(filters.join(";"))
     }
 }
 
