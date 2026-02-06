@@ -1,30 +1,19 @@
-// @ts-nocheck — mediaService namespace import + implicit any params
 /**
  * Video Editor Service
- * Provides integration between Media Library and Video Editor
+ * Provides integration between Media Library and Video Editor.
+ * Platform-aware: uses Tauri APIs on desktop, MediaJobClient on web.
  */
 
-import { invoke } from '@tauri-apps/api/core';
 import * as mediaService from './mediaService';
+import { createMediaJobClient, type MediaJobClient } from './mediaJobClient';
+import type { MediaLibraryAsset, RenderJob } from '../types/videoEditor';
+
+// Re-export canonical types for backward compat
+export type { MediaLibraryAsset, RenderJob } from '../types/videoEditor';
 
 // ========================================
-// Type Definitions
+// Service-specific Types (not duplicated elsewhere)
 // ========================================
-
-export interface MediaLibraryAsset {
-  id: string;              // task_id from backend
-  type: 'video' | 'audio';
-  title: string;           // from prompt or custom
-  thumbnailUrl: string;    // generated thumbnail
-  duration: number;        // in seconds
-  url: string;             // download URL
-  model: string;           // veo-3-1, sora-2, etc.
-  createdAt: Date;
-  resolution?: string;     // for videos
-  format: string;          // mp4, mp3, wav
-  localPath?: string;      // cached local path
-  fileSize?: number;       // in bytes
-}
 
 export interface MediaFileInfo {
   duration: number;
@@ -42,17 +31,32 @@ export interface WorkspaceFile {
   name: string;
   path: string;
   size: number;
-  modified?: number;  // Unix timestamp
+  modified?: number;
 }
 
-export interface RenderJob {
-  id: string;
-  output_path: string;
-  status: 'pending' | 'rendering' | 'completed' | 'failed' | 'cancelled';
-  progress: number;  // 0.0 - 1.0
-  error?: string;
-  started_at?: number;
-  completed_at?: number;
+// ========================================
+// Platform detection
+// ========================================
+
+function isDesktop(): boolean {
+  return typeof window !== 'undefined' && !!(window as any).__TAURI__;
+}
+
+async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  return invoke<T>(cmd, args);
+}
+
+// ========================================
+// Lazy MediaJobClient singleton
+// ========================================
+
+let _jobClient: MediaJobClient | null = null;
+async function getJobClient(): Promise<MediaJobClient> {
+  if (!_jobClient) {
+    _jobClient = await createMediaJobClient();
+  }
+  return _jobClient;
 }
 
 // ========================================
@@ -67,25 +71,25 @@ export class VideoEditorMediaLibrary {
   async fetchGeneratedVideos(limit: number = 100): Promise<MediaLibraryAsset[]> {
     try {
       const response = await mediaService.listTasks(
-        'video',      // media_type
-        'completed',  // status
+        'video',
+        'completed',
         limit,
-        0             // offset
+        0
       );
 
       return response.tasks
-        .filter(task => task.result_url)
-        .map(task => ({
+        .filter((task: mediaService.TaskStatus) => task.result_url)
+        .map((task: mediaService.TaskStatus) => ({
           id: task.id,
           type: 'video' as const,
           title: this.extractTitle(task.prompt),
-          thumbnailUrl: '', // will be generated later
+          thumbnailUrl: '',
           duration: this.extractDuration(task.parameters),
-          url: task.result_url,
+          url: task.result_url!,
           model: task.model,
-          createdAt: new Date(task.completed_at),
+          createdAt: new Date(task.completed_at!),
           resolution: task.parameters?.resolution || '1080p',
-          format: this.extractFormat(task.result_url),
+          format: this.extractFormat(task.result_url!),
           localPath: undefined
         }));
     } catch (error) {
@@ -107,16 +111,16 @@ export class VideoEditorMediaLibrary {
       );
 
       return response.tasks
-        .filter(task => task.result_url)
-        .map(task => ({
+        .filter((task: mediaService.TaskStatus) => task.result_url)
+        .map((task: mediaService.TaskStatus) => ({
           id: task.id,
           type: 'audio' as const,
           title: this.extractTitle(task.prompt || task.parameters?.text || 'Audio'),
-          thumbnailUrl: '', // audio icon will be used
-          duration: 0, // will probe after download
-          url: task.result_url,
+          thumbnailUrl: '',
+          duration: 0,
+          url: task.result_url!,
           model: task.model,
-          createdAt: new Date(task.completed_at),
+          createdAt: new Date(task.completed_at!),
           format: task.parameters?.output_format || 'mp3',
           localPath: undefined
         }));
@@ -142,45 +146,42 @@ export class VideoEditorMediaLibrary {
   }
 
   /**
-   * Download media file to local workspace for editing
+   * Download media file to local workspace for editing.
+   * Desktop: saves to filesystem via Tauri.
+   * Web: returns the URL directly (no local file system).
    */
   async downloadToWorkspace(asset: MediaLibraryAsset): Promise<string> {
+    if (!isDesktop()) {
+      return asset.url;
+    }
+
     try {
-      // Check if already cached
       if (asset.localPath) {
-        const exists = await invoke<boolean>('file_exists', { path: asset.localPath });
+        const exists = await tauriInvoke<boolean>('file_exists', { path: asset.localPath });
         if (exists) {
           return asset.localPath;
         }
       }
 
-      // Get workspace path
-      const workspacePath = await invoke<string>('get_video_editor_workspace_path');
-
-      // Download from backend
+      const workspacePath = await tauriInvoke<string>('get_video_editor_workspace_path');
       const blob = await mediaService.downloadMedia(asset.id);
-
-      // Convert blob to array buffer
       const arrayBuffer = await blob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
-      // Save to workspace directory
       const filename = `${asset.id}.${asset.format}`;
       const localPath = `${workspacePath}/${filename}`;
 
-      await invoke('save_blob_to_file', {
+      await tauriInvoke('save_blob_to_file', {
         blob: Array.from(uint8Array),
         path: localPath
       });
 
-      // Update asset
       asset.localPath = localPath;
 
-      // Get file size
       try {
-        asset.fileSize = await invoke<number>('get_file_size', { path: localPath });
-      } catch (e) {
-        console.warn('Failed to get file size:', e);
+        asset.fileSize = await tauriInvoke<number>('get_file_size', { path: localPath });
+      } catch {
+        // Ignore file size errors
       }
 
       return localPath;
@@ -191,91 +192,118 @@ export class VideoEditorMediaLibrary {
   }
 
   /**
-   * Generate thumbnail for video (using FFmpeg)
+   * Generate thumbnail for video.
+   * Desktop: FFmpeg via Tauri. Web: MediaJobClient thumbnails job.
    */
   async generateThumbnail(videoPath: string, timeSeconds: number = 1.0): Promise<string> {
+    if (isDesktop()) {
+      try {
+        const thumbnailPath = videoPath.replace(/\.[^.]+$/, '_thumb.jpg');
+        await tauriInvoke('ffmpeg_generate_thumbnail', {
+          inputPath: videoPath,
+          outputPath: thumbnailPath,
+          timeSeconds
+        });
+        return thumbnailPath;
+      } catch (error) {
+        console.error('Failed to generate thumbnail:', error);
+        throw error;
+      }
+    }
+
     try {
-      const thumbnailPath = videoPath.replace(/\.[^.]+$/, '_thumb.jpg');
-
-      await invoke('ffmpeg_generate_thumbnail', {
-        inputPath: videoPath,
-        outputPath: thumbnailPath,
-        timeSeconds
-      });
-
-      return thumbnailPath;
+      const client = await getJobClient();
+      const result = await client.getThumbnails(videoPath, timeSeconds * 1000);
+      const thumbs = (result as any).derived?.thumbnails;
+      if (thumbs && thumbs.length > 0) {
+        return thumbs[0].uri;
+      }
+      return '';
     } catch (error) {
-      console.error('Failed to generate thumbnail:', error);
+      console.error('Failed to generate thumbnail via job:', error);
       throw error;
     }
   }
 
   /**
-   * Probe media file metadata (duration, codec, etc.)
+   * Probe media file metadata.
+   * Desktop: FFmpeg via Tauri. Web: MediaJobClient probe job.
    */
   async probeMediaFile(filePath: string): Promise<MediaFileInfo> {
+    if (isDesktop()) {
+      try {
+        return await tauriInvoke<MediaFileInfo>('ffmpeg_probe_file', { path: filePath });
+      } catch (error) {
+        console.error('Failed to probe media file:', error);
+        throw error;
+      }
+    }
+
     try {
-      return await invoke<MediaFileInfo>('ffmpeg_probe_file', { path: filePath });
+      const client = await getJobClient();
+      const result = await client.probe(filePath);
+      const derived = (result as any).derived || {};
+      return {
+        duration: derived.durationMs ? derived.durationMs / 1000 : 0,
+        width: derived.width,
+        height: derived.height,
+        fps: derived.fps,
+        sample_rate: derived.sampleRate,
+        codec_video: derived.codecVideo,
+        codec_audio: derived.codecAudio,
+        has_video: !!derived.width,
+        has_audio: !!derived.sampleRate,
+      };
     } catch (error) {
-      console.error('Failed to probe media file:', error);
+      console.error('Failed to probe media file via job:', error);
       throw error;
     }
   }
 
-  /**
-   * Get available FFmpeg encoders
-   */
   async detectEncoders(): Promise<string[]> {
+    if (!isDesktop()) return ['h264'];
     try {
-      return await invoke<string[]>('ffmpeg_detect_encoders');
+      return await tauriInvoke<string[]>('ffmpeg_detect_encoders');
     } catch (error) {
       console.error('Failed to detect encoders:', error);
       throw error;
     }
   }
 
-  /**
-   * Get FFmpeg version
-   */
   async getFFmpegVersion(): Promise<string> {
+    if (!isDesktop()) return 'web-backend';
     try {
-      return await invoke<string>('ffmpeg_version');
+      return await tauriInvoke<string>('ffmpeg_version');
     } catch (error) {
       console.error('Failed to get FFmpeg version:', error);
       throw error;
     }
   }
 
-  /**
-   * List all files in workspace
-   */
   async listWorkspaceFiles(): Promise<WorkspaceFile[]> {
+    if (!isDesktop()) return [];
     try {
-      return await invoke<WorkspaceFile[]>('list_workspace_files');
+      return await tauriInvoke<WorkspaceFile[]>('list_workspace_files');
     } catch (error) {
       console.error('Failed to list workspace files:', error);
       throw error;
     }
   }
 
-  /**
-   * Clean up old workspace files
-   */
   async cleanupWorkspace(days: number = 30): Promise<number> {
+    if (!isDesktop()) return 0;
     try {
-      return await invoke<number>('cleanup_workspace', { days });
+      return await tauriInvoke<number>('cleanup_workspace', { days });
     } catch (error) {
       console.error('Failed to cleanup workspace:', error);
       throw error;
     }
   }
 
-  /**
-   * Delete a file from workspace
-   */
   async deleteFile(path: string): Promise<void> {
+    if (!isDesktop()) return;
     try {
-      await invoke('delete_file', { path });
+      await tauriInvoke('delete_file', { path });
     } catch (error) {
       console.error('Failed to delete file:', error);
       throw error;
@@ -288,16 +316,14 @@ export class VideoEditorMediaLibrary {
 
   private extractTitle(prompt: string): string {
     if (!prompt) return 'Untitled';
-
-    // Extract meaningful title from prompt (first 50 chars)
     const cleaned = prompt.trim();
     return cleaned.length > 50
       ? cleaned.substring(0, 50) + '...'
       : cleaned;
   }
 
-  private extractDuration(parameters: any): number {
-    return parameters?.duration || 10; // default 10 seconds
+  private extractDuration(parameters: Record<string, any> | undefined): number {
+    return parameters?.duration || 10;
   }
 
   private extractFormat(url: string): string {
@@ -312,61 +338,86 @@ export class VideoEditorMediaLibrary {
 
 export class VideoEditorRenderService {
 
-  /**
-   * Start a render job
-   */
   async startRender(projectJson: string, outputPath: string): Promise<string> {
+    if (isDesktop()) {
+      try {
+        return await tauriInvoke<string>('start_render', { projectJson, outputPath });
+      } catch (error) {
+        console.error('Failed to start render:', error);
+        throw error;
+      }
+    }
+
     try {
-      const jobId = await invoke<string>('start_render', {
-        projectJson,
-        outputPath
-      });
-      return jobId;
+      const client = await getJobClient();
+      const project = JSON.parse(projectJson);
+      const result = await client.renderMp4(project, outputPath);
+      return result.jobId;
     } catch (error) {
-      console.error('Failed to start render:', error);
+      console.error('Failed to start render via job:', error);
       throw error;
     }
   }
 
-  /**
-   * Get render job status
-   */
   async getRenderStatus(jobId: string): Promise<RenderJob> {
+    if (isDesktop()) {
+      try {
+        return await tauriInvoke<RenderJob>('get_render_status', { jobId });
+      } catch (error) {
+        console.error('Failed to get render status:', error);
+        throw error;
+      }
+    }
+
     try {
-      return await invoke<RenderJob>('get_render_status', { jobId });
+      const client = await getJobClient();
+      const status = await (client as any).adapter.getStatus(jobId);
+      return {
+        id: jobId,
+        outputPath: '',
+        status: status.status === 'done' ? 'completed'
+          : status.status === 'error' ? 'failed'
+          : status.status === 'running' ? 'rendering'
+          : 'pending',
+        progress: status.progress || 0,
+        error: status.message,
+      };
     } catch (error) {
       console.error('Failed to get render status:', error);
       throw error;
     }
   }
 
-  /**
-   * Cancel render job
-   */
   async cancelRender(jobId: string): Promise<void> {
+    if (isDesktop()) {
+      try {
+        await tauriInvoke('cancel_render', { jobId });
+        return;
+      } catch (error) {
+        console.error('Failed to cancel render:', error);
+        throw error;
+      }
+    }
+
     try {
-      await invoke('cancel_render', { jobId });
+      const client = await getJobClient();
+      await client.cancelJob(jobId);
     } catch (error) {
       console.error('Failed to cancel render:', error);
       throw error;
     }
   }
 
-  /**
-   * List all render jobs
-   */
   async listRenderJobs(): Promise<RenderJob[]> {
+    if (!isDesktop()) return [];
     try {
-      return await invoke<RenderJob[]>('list_render_jobs');
+      return await tauriInvoke<RenderJob[]>('list_render_jobs');
     } catch (error) {
       console.error('Failed to list render jobs:', error);
       throw error;
     }
   }
 
-  /**
-   * Poll render job until complete
-   */
   async pollRenderJob(
     jobId: string,
     onProgress?: (job: RenderJob) => void,

@@ -1,18 +1,42 @@
 /**
  * Project Manager Service
- * Handles saving and loading video editor projects
+ * Handles saving and loading video editor projects.
+ * Platform-aware: uses Tauri APIs on desktop, web APIs on browser.
  */
 
-import { invoke } from '@tauri-apps/api/core';
-import { save, open } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { VideoEditorProject } from '../types/videoEditor';
+import { migrateProjectV1ToV2 } from '../types/videoEditor';
+
+// ========================================
+// Platform Detection
+// ========================================
+
+function isDesktop(): boolean {
+  return typeof window !== 'undefined' && !!(window as any).__TAURI__;
+}
+
+async function getTauriApis() {
+  const core = await import('@tauri-apps/api/core');
+  const dialog = await import('@tauri-apps/plugin-dialog');
+  const fs = await import('@tauri-apps/plugin-fs');
+  return {
+    invoke: core.invoke,
+    save: dialog.save,
+    open: dialog.open,
+    readTextFile: fs.readTextFile,
+    writeTextFile: fs.writeTextFile,
+  };
+}
+
+// ========================================
+// Validation
+// ========================================
 
 /**
- * Validate project structure to prevent malicious data
- * Security: Validates all fields against expected types and ranges
+ * Validate project structure to prevent malicious data.
+ * Exported for testing.
  */
-function validateProjectStructure(data: any): VideoEditorProject {
+export function validateProjectStructure(data: any): VideoEditorProject {
   // Check required top-level fields
   if (typeof data !== 'object' || data === null) {
     throw new Error('Project must be an object');
@@ -44,7 +68,8 @@ function validateProjectStructure(data: any): VideoEditorProject {
     throw new Error('Invalid FPS (must be 1-120)');
   }
 
-  if (typeof settings.sample_rate !== 'number' || settings.sample_rate < 8000 || settings.sample_rate > 192000) {
+  // BUG FIX: was checking settings.sample_rate (snake_case) but type uses sampleRate (camelCase)
+  if (typeof settings.sampleRate !== 'number' || settings.sampleRate < 8000 || settings.sampleRate > 192000) {
     throw new Error('Invalid sample rate (must be 8000-192000)');
   }
 
@@ -69,8 +94,9 @@ function validateProjectStructure(data: any): VideoEditorProject {
       throw new Error('Track name must be valid string');
     }
 
-    if (!['video', 'audio'].includes(track.type)) {
-      throw new Error('Track type must be "video" or "audio"');
+    // BUG FIX: was missing 'overlay' — Phase 3 uses overlay tracks
+    if (!['video', 'audio', 'overlay'].includes(track.type)) {
+      throw new Error('Track type must be "video", "audio", or "overlay"');
     }
 
     if (!Array.isArray(track.clips)) {
@@ -79,7 +105,8 @@ function validateProjectStructure(data: any): VideoEditorProject {
 
     totalClips += track.clips.length;
 
-    // Validate clips
+    // Validate clips (version-aware)
+    const isV2 = data.version === '2.0';
     for (const clip of track.clips) {
       if (typeof clip.id !== 'string') {
         throw new Error('Clip must have valid id');
@@ -89,12 +116,22 @@ function validateProjectStructure(data: any): VideoEditorProject {
         throw new Error('Clip must have valid assetId');
       }
 
-      if (typeof clip.startTime !== 'number' || clip.startTime < 0) {
-        throw new Error('Clip startTime must be non-negative number');
-      }
-
-      if (typeof clip.duration !== 'number' || clip.duration <= 0 || clip.duration > 7200) {
-        throw new Error('Clip duration must be 0-7200 seconds');
+      if (isV2) {
+        // V2: ms-based fields
+        if (typeof clip.startMs === 'number' && clip.startMs < 0) {
+          throw new Error('Clip startMs must be non-negative number');
+        }
+        if (typeof clip.durationMs === 'number' && (clip.durationMs <= 0 || clip.durationMs > 7200000)) {
+          throw new Error('Clip durationMs must be 0-7200000 ms');
+        }
+      } else {
+        // V1: seconds-based fields
+        if (typeof clip.startTime !== 'number' || clip.startTime < 0) {
+          throw new Error('Clip startTime must be non-negative number');
+        }
+        if (typeof clip.duration !== 'number' || clip.duration <= 0 || clip.duration > 7200) {
+          throw new Error('Clip duration must be 0-7200 seconds');
+        }
       }
 
       if (typeof clip.volume !== 'number' || clip.volume < 0 || clip.volume > 2) {
@@ -173,7 +210,12 @@ export class ProjectManager {
    * Save project to file
    */
   async saveProject(project: VideoEditorProject, path?: string): Promise<string> {
+    if (!isDesktop()) {
+      throw new Error('Web project storage not yet implemented (see Section 06)');
+    }
+
     try {
+      const { save, writeTextFile } = await getTauriApis();
       let savePath = path || this.currentProjectPath;
 
       // If no path, show save dialog
@@ -214,10 +256,16 @@ export class ProjectManager {
   }
 
   /**
-   * Load project from file
+   * Load project from file.
+   * Auto-migrates v1.0 projects to v2.0.
    */
   async loadProject(path?: string): Promise<{ project: VideoEditorProject; path: string }> {
+    if (!isDesktop()) {
+      throw new Error('Web project storage not yet implemented (see Section 06)');
+    }
+
     try {
+      const { open, readTextFile } = await getTauriApis();
       let loadPath = path;
 
       // If no path, show open dialog
@@ -241,7 +289,12 @@ export class ProjectManager {
       const json = await readTextFile(loadPath);
 
       // Parse JSON
-      const data = JSON.parse(json);
+      let data = JSON.parse(json);
+
+      // Auto-migrate v1.0 -> v2.0
+      if (data.version === '1.0') {
+        data = migrateProjectV1ToV2(data);
+      }
 
       // Security: Validate project structure thoroughly
       const project = validateProjectStructure(data);
@@ -335,7 +388,10 @@ export class ProjectManager {
    * Auto-save project (for recovery)
    */
   async autoSave(project: VideoEditorProject): Promise<void> {
+    if (!isDesktop()) return; // Skip auto-save on web for now
+
     try {
+      const { writeTextFile } = await getTauriApis();
       const autoSavePath = await this.getAutoSavePath();
       const json = JSON.stringify(project, null, 2);
       await writeTextFile(autoSavePath, json);
@@ -349,14 +405,22 @@ export class ProjectManager {
    * Load auto-saved project (for recovery)
    */
   async loadAutoSave(): Promise<VideoEditorProject | null> {
+    if (!isDesktop()) return null;
+
     try {
+      const { invoke, readTextFile } = await getTauriApis();
       const autoSavePath = await this.getAutoSavePath();
       const exists = await invoke<boolean>('file_exists', { path: autoSavePath });
 
       if (!exists) return null;
 
       const json = await readTextFile(autoSavePath);
-      const data = JSON.parse(json);
+      let data = JSON.parse(json);
+
+      // Auto-migrate
+      if (data.version === '1.0') {
+        data = migrateProjectV1ToV2(data);
+      }
 
       // Security: Validate auto-saved project too
       const project = validateProjectStructure(data);
@@ -373,7 +437,10 @@ export class ProjectManager {
    * Delete auto-save file
    */
   async deleteAutoSave(): Promise<void> {
+    if (!isDesktop()) return;
+
     try {
+      const { invoke } = await getTauriApis();
       const autoSavePath = await this.getAutoSavePath();
       await invoke('delete_file', { path: autoSavePath });
       console.log('Deleted auto-save');
@@ -386,6 +453,7 @@ export class ProjectManager {
    * Get auto-save file path
    */
   private async getAutoSavePath(): Promise<string> {
+    const { invoke } = await getTauriApis();
     const projectsPath = await invoke<string>('get_video_editor_projects_path');
     return `${projectsPath}/autosave.videoproj`;
   }

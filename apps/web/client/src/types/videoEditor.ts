@@ -443,3 +443,137 @@ export function validateProject(project: VideoEditorProject): { valid: boolean; 
     errors
   };
 }
+
+// ========================================
+// V2 Migration (Seconds -> Milliseconds)
+// ========================================
+
+/**
+ * V2 project clip fields (ms-based).
+ * Used in migrated projects.
+ */
+export interface ClipV2 extends Omit<Clip, 'startTime' | 'duration' | 'trimIn' | 'trimOut' | 'transitions'> {
+  startMs: number;
+  durationMs: number;
+  inMs: number;
+  outMs: number;
+  transitions?: {
+    fadeInMs?: number;
+    fadeOutMs?: number;
+  };
+  // Keep legacy fields as optional for backward compat
+  startTime?: number;
+  duration?: number;
+  trimIn?: number;
+  trimOut?: number;
+}
+
+/**
+ * V2 project settings with ms-based duration.
+ */
+export interface ProjectSettingsV2 extends Omit<ProjectSettings, 'duration'> {
+  durationMs: number;
+  duration?: number;
+}
+
+/**
+ * V2 silent region (ms-based).
+ */
+export interface SilentRegionV2 extends Omit<SilentRegion, 'startTime' | 'endTime' | 'duration'> {
+  startMs: number;
+  endMs: number;
+  durationMs: number;
+  // Keep legacy
+  startTime?: number;
+  endTime?: number;
+  duration?: number;
+}
+
+/**
+ * Migrate a v1.0 project (seconds-based) to v2.0 (milliseconds-based).
+ * Idempotent: calling on a v2.0+ project returns it unchanged.
+ */
+export function migrateProjectV1ToV2(project: any): any {
+  if (!project || project.version !== '1.0') {
+    return project;
+  }
+
+  const migrated = JSON.parse(JSON.stringify(project));
+  migrated.version = '2.0';
+
+  // Migrate settings.duration -> settings.durationMs
+  if (typeof migrated.settings?.duration === 'number') {
+    migrated.settings.durationMs = Math.round(migrated.settings.duration * 1000);
+  }
+
+  // Migrate clips
+  if (migrated.timeline?.tracks) {
+    for (const track of migrated.timeline.tracks) {
+      if (!Array.isArray(track.clips)) continue;
+      for (const clip of track.clips) {
+        if (typeof clip.startTime === 'number') {
+          clip.startMs = Math.round(clip.startTime * 1000);
+        }
+        if (typeof clip.duration === 'number') {
+          clip.durationMs = Math.round(clip.duration * 1000);
+        }
+        if (typeof clip.trimIn === 'number') {
+          clip.inMs = Math.round(clip.trimIn * 1000);
+        }
+        if (typeof clip.trimOut === 'number') {
+          clip.outMs = Math.round(clip.trimOut * 1000);
+        }
+        if (clip.transitions) {
+          if (typeof clip.transitions.fadeIn === 'number') {
+            clip.transitions.fadeInMs = Math.round(clip.transitions.fadeIn * 1000);
+          }
+          if (typeof clip.transitions.fadeOut === 'number') {
+            clip.transitions.fadeOutMs = Math.round(clip.transitions.fadeOut * 1000);
+          }
+        }
+      }
+    }
+  }
+
+  return migrated;
+}
+
+/**
+ * Format milliseconds as MM:SS.CC or HH:MM:SS.CC
+ */
+export function formatTimeMs(ms: number): string {
+  const totalSeconds = ms / 1000;
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = Math.floor(totalSeconds % 60);
+  const centiseconds = Math.floor((totalSeconds % 1) * 100);
+
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+  }
+
+  return `${mins}:${secs.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Calculate total project duration from timeline using ms-based clips.
+ * Falls back to seconds-based fields if ms fields not present.
+ */
+export function calculateProjectDurationMs(timeline: Timeline): number {
+  let maxEnd = 0;
+
+  for (const track of timeline.tracks) {
+    for (const clip of track.clips) {
+      const c = clip as any;
+      // Prefer ms fields, fall back to seconds * 1000
+      const startMs = typeof c.startMs === 'number' ? c.startMs : (c.startTime || 0) * 1000;
+      const durationMs = typeof c.durationMs === 'number' ? c.durationMs : (c.duration || 0) * 1000;
+      const clipEnd = startMs + durationMs;
+      if (clipEnd > maxEnd) {
+        maxEnd = clipEnd;
+      }
+    }
+  }
+
+  return maxEnd;
+}

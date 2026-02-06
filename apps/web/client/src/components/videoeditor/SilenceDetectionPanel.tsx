@@ -1,6 +1,7 @@
 /**
  * Silence Detection Panel - Dead Air Removal & Video Combine
- * Supports auto-detection and manual selection of silent regions
+ * Supports auto-detection and manual selection of silent regions.
+ * Uses MediaJobClient for cross-platform silence detection.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -12,6 +13,7 @@ import {
   formatTime,
   generateId
 } from '../../types/videoEditor';
+import { createMediaJobClient } from '../../services/mediaJobClient';
 import './SilenceDetectionPanel.css';
 
 interface SilenceDetectionPanelProps {
@@ -61,7 +63,7 @@ const SilenceDetectionPanel: React.FC<SilenceDetectionPanelProps> = ({
     });
   };
 
-  // Auto-detect silent regions
+  // Auto-detect silent regions via MediaJobClient
   const handleAutoDetect = async () => {
     if (selectedTrackIds.length === 0) {
       alert('Please select at least one track to analyze');
@@ -73,34 +75,53 @@ const SilenceDetectionPanel: React.FC<SilenceDetectionPanelProps> = ({
     setSilentRegions([]);
 
     try {
-      // Call backend API to analyze audio
-      const response = await fetch('/api/video-editor/analyze-silence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project,
-          config: {
-            threshold,
-            minDuration,
-            enabled: true,
-            trackIds: selectedTrackIds
-          }
-        })
-      });
+      // Find the first selected track's first clip asset URI
+      const selectedTracks = project.timeline.tracks.filter(
+        t => selectedTrackIds.includes(t.id) && t.clips.length > 0
+      );
 
-      if (!response.ok) {
-        throw new Error('Failed to analyze silence');
+      if (selectedTracks.length === 0) {
+        throw new Error('No clips found in selected tracks');
       }
 
-      const result = await response.json();
-      const regions: SilentRegion[] = result.regions.map((r: any) => ({
-        ...r,
-        selected: true // Select all by default
+      // Get the asset URI from the first clip of the first selected track
+      const firstClip = selectedTracks[0].clips[0];
+      const asset = project.assets[firstClip.assetId];
+      const assetUri = asset?.path || asset?.url || '';
+
+      if (!assetUri) {
+        throw new Error('No asset URI found for silence detection');
+      }
+
+      // Use MediaJobClient for cross-platform silence detection
+      const client = await createMediaJobClient();
+      const result = await client.detectDeadAir(assetUri, {
+        thresholdDb: threshold,
+        minSilenceMs: minDuration * 1000,
+      });
+
+      // Map result to SilentRegion format
+      const derived = (result as any).derived || {};
+      const silenceSegments = derived.silenceSegments || [];
+      const keepSegments = derived.keepSegments || [];
+
+      const regions: SilentRegion[] = silenceSegments.map((seg: any, i: number) => ({
+        id: generateId(),
+        startTime: (seg.startMs || 0) / 1000,
+        endTime: (seg.endMs || 0) / 1000,
+        duration: ((seg.endMs || 0) - (seg.startMs || 0)) / 1000,
+        averageDb: seg.averageDb || threshold,
+        trackId: selectedTracks[0].id,
+        selected: true,
       }));
 
+      const totalSilenceDuration = regions.reduce((sum: number, r: SilentRegion) => sum + r.duration, 0);
+      const projectDuration = project.settings.duration || 0;
+      const totalActiveDuration = Math.max(0, projectDuration - totalSilenceDuration);
+
       setSilentRegions(regions);
-      setTotalSilence(result.totalSilenceDuration);
-      setTotalActive(result.totalActiveDuration);
+      setTotalSilence(totalSilenceDuration);
+      setTotalActive(totalActiveDuration);
       setAnalysisComplete(true);
 
       if (onAnalyzeComplete) {
