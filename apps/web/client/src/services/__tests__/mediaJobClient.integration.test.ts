@@ -222,4 +222,59 @@ describe("MediaJobClient Integration", () => {
       { inMs: undefined, outMs: undefined },
     ]);
   });
+
+  it("waitForCompletion rejects on timeout", async () => {
+    const originalSubmit = adapter.submitJob.bind(adapter);
+    adapter.submitJob = async (spec) => {
+      const jobId = await originalSubmit(spec);
+      // Don't set progression — job stays queued, never completes
+      return jobId;
+    };
+
+    const spec = {
+      specVersion: "0.1" as const,
+      jobId: "timeout-test",
+      jobType: "probe" as const,
+      inputs: {
+        assets: [
+          {
+            assetId: "a1",
+            kind: "video" as const,
+            uri: "https://cdn.example.com/clip.mp4",
+          },
+        ],
+      },
+      output: { mode: "memory" as const, target: "" },
+    };
+    await client.submitJob(spec);
+
+    await expect(
+      client.waitForCompletion("timeout-test", undefined, { timeoutMs: 100 }),
+    ).rejects.toThrow(/timed out/);
+  }, 5000);
+
+  it("waitForCompletion extracts artifacts from result", async () => {
+    const originalSubmit = adapter.submitJob.bind(adapter);
+    adapter.submitJob = async (spec) => {
+      const jobId = await originalSubmit(spec);
+      adapter.setJobProgression(jobId, [
+        {
+          jobId,
+          status: "done",
+          progress: 1,
+          result: {
+            artifacts: [
+              { kind: "video", uri: "/tmp/out.mp4", mime: "video/mp4" },
+            ],
+          },
+        } as any,
+      ]);
+      return jobId;
+    };
+
+    const result = await client.probe("https://cdn.example.com/clip.mp4");
+    expect(result.status).toBe("done");
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0].uri).toBe("/tmp/out.mp4");
+  });
 });

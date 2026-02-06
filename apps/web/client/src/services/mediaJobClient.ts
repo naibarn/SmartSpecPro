@@ -101,7 +101,10 @@ export class MediaJobClient {
   async waitForCompletion(
     jobId: string,
     onProgress?: (progress: MediaJobProgress) => void,
+    options?: { timeoutMs?: number },
   ): Promise<MediaJobResult> {
+    const timeoutMs = options?.timeoutMs ?? 1_800_000; // 30 minutes
+
     return new Promise<MediaJobResult>((resolve, reject) => {
       let resolved = false;
 
@@ -109,7 +112,15 @@ export class MediaJobClient {
         resolved = true;
         unsubscribe();
         clearInterval(pollInterval);
+        clearTimeout(timeoutId);
       };
+
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          cleanup();
+          reject(new Error(`Job ${jobId} timed out after ${timeoutMs}ms`));
+        }
+      }, timeoutMs);
 
       const handleProgress = (p: MediaJobProgress) => {
         if (resolved) return;
@@ -119,8 +130,10 @@ export class MediaJobClient {
           resolve({
             jobId,
             status: "done",
-            artifacts: [],
-            derived: (p as any).derived,
+            artifacts:
+              (p as any).result?.artifacts ?? (p as any).artifacts ?? [],
+            derived:
+              (p as any).result?.derived ?? (p as any).derived,
           });
         } else if (p.status === "error") {
           cleanup();
