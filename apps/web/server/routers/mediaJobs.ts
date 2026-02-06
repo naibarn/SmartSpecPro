@@ -7,6 +7,7 @@ import { validateWebJobSpec } from "../../shared/types/mediaJobValidation";
 import { nanoid } from "nanoid";
 import type { Express, Request, Response } from "express";
 import { authorizeRequest } from "../_core/authz";
+import { rateLimit } from "../_core/limits";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -41,6 +42,47 @@ async function publishProgress(jobId: string, data: unknown) {
     `media-job-progress:${jobId}`,
     JSON.stringify(data),
   );
+}
+
+// ========================================
+// Per-user active job tracking (Redis Set)
+// ========================================
+
+const ACTIVE_JOBS_KEY = (userId: string) =>
+  `media-jobs:user:${userId}:active`;
+const MAX_CONCURRENT_JOBS = 3;
+
+async function addActiveJob(userId: string, jobId: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.sadd(ACTIVE_JOBS_KEY(userId), jobId);
+}
+
+async function removeActiveJob(userId: string, jobId: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.srem(ACTIVE_JOBS_KEY(userId), jobId);
+}
+
+async function getActiveJobIds(userId: string): Promise<string[]> {
+  const redis = await getRedis();
+  return redis.smembers(ACTIVE_JOBS_KEY(userId));
+}
+
+async function checkConcurrencyLimit(userId: string): Promise<boolean> {
+  const activeIds = await getActiveJobIds(userId);
+  // Prune stale entries (jobs that completed/failed/canceled)
+  for (const id of activeIds) {
+    const status = await getJobKey(id, "status");
+    if (
+      !status ||
+      status.status === "done" ||
+      status.status === "error" ||
+      status.status === "canceled"
+    ) {
+      await removeActiveJob(userId, id);
+    }
+  }
+  const currentCount = (await getActiveJobIds(userId)).length;
+  return currentCount < MAX_CONCURRENT_JOBS;
 }
 
 // ========================================
@@ -161,34 +203,7 @@ export const mediaJobsRouter = router({
       }
 
       // Check concurrent job limit (max 3 per user)
-      const redis = await getRedis();
-      const runningKeys = await redis.keys(`media-job:*:meta`);
-      let userRunning = 0;
-      for (const key of runningKeys) {
-        const meta = await redis.get(key);
-        if (meta) {
-          try {
-            const parsed = JSON.parse(meta);
-            if (parsed.userId === String(ctx.user.id)) {
-              const statusKey = key.replace(":meta", ":status");
-              const statusRaw = await redis.get(statusKey);
-              if (statusRaw) {
-                const status = JSON.parse(statusRaw);
-                if (
-                  status.status === "queued" ||
-                  status.status === "running"
-                ) {
-                  userRunning++;
-                }
-              }
-            }
-          } catch {
-            // Skip malformed entries
-          }
-        }
-      }
-
-      if (userRunning >= 3) {
+      if (!(await checkConcurrencyLimit(String(ctx.user.id)))) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message:
@@ -207,6 +222,7 @@ export const mediaJobsRouter = router({
         progress: 0,
         jobId,
       });
+      await addActiveJob(String(ctx.user.id), jobId);
 
       // Dispatch to Python Celery worker
       dispatchToCelery(JSON.stringify(spec), String(ctx.user.id), jobId);
@@ -275,34 +291,27 @@ export const mediaJobsRouter = router({
       };
       await setJobKey(input.jobId, "status", cancelStatus);
       await publishProgress(input.jobId, cancelStatus);
+      await removeActiveJob(meta.userId, input.jobId);
 
       return { success: true };
     }),
 
   listJobs: protectedProcedure.query(async ({ ctx }) => {
-    const redis = await getRedis();
-    const keys = await redis.keys("media-job:*:meta");
+    const userId = String(ctx.user.id);
+    const jobIds = await getActiveJobIds(userId);
     const jobs: Array<{ jobId: string; status: string; submittedAt: number }> =
       [];
 
-    for (const key of keys.slice(0, 50)) {
-      const raw = await redis.get(key);
-      if (!raw) continue;
-      try {
-        const meta = JSON.parse(raw);
-        if (
-          meta.userId !== String(ctx.user.id) &&
-          ctx.user.role !== "admin"
-        ) {
-          continue;
-        }
-        const jobId = key.split(":")[1];
-        const statusRaw = await redis.get(`media-job:${jobId}:status`);
-        const status = statusRaw ? JSON.parse(statusRaw).status : "unknown";
-        jobs.push({ jobId, status, submittedAt: meta.submittedAt });
-      } catch {
-        // Skip
+    for (const jobId of jobIds.slice(0, 50)) {
+      const meta = await getJobKey(jobId, "meta");
+      if (!meta) {
+        // Stale entry — clean up
+        await removeActiveJob(userId, jobId);
+        continue;
       }
+      const statusRaw = await getJobKey(jobId, "status");
+      const status = statusRaw?.status || "unknown";
+      jobs.push({ jobId, status, submittedAt: meta.submittedAt });
     }
 
     return jobs.sort((a, b) => b.submittedAt - a.submittedAt);
@@ -452,7 +461,9 @@ export function registerMediaJobRoutes(app: Express) {
   // REST endpoints (non-tRPC) for direct HTTP access
   // ========================================
 
-  app.post("/api/media-jobs", async (req: Request, res: Response) => {
+  const mediaJobLimiter = rateLimit("media-jobs", { rpm: 30 });
+
+  app.post("/api/media-jobs", mediaJobLimiter, async (req: Request, res: Response) => {
     try {
       const authResult = await authenticateMediaJobRequest(req, res);
       if (!authResult) return;
@@ -468,6 +479,15 @@ export function registerMediaJobRoutes(app: Express) {
         return;
       }
 
+      // Check concurrent job limit
+      if (!(await checkConcurrencyLimit(userId))) {
+        res.status(429).json({
+          error:
+            "Maximum 3 concurrent media jobs allowed. Wait for a job to complete.",
+        });
+        return;
+      }
+
       await setJobKey(jobId, "spec", fullSpec);
       await setJobKey(jobId, "meta", { userId, submittedAt: Date.now() });
       await setJobKey(jobId, "status", {
@@ -475,6 +495,7 @@ export function registerMediaJobRoutes(app: Express) {
         progress: 0,
         jobId,
       });
+      await addActiveJob(userId, jobId);
 
       dispatchToCelery(JSON.stringify(fullSpec), userId, jobId);
 
@@ -484,7 +505,7 @@ export function registerMediaJobRoutes(app: Express) {
     }
   });
 
-  app.get("/api/media-jobs/:id", async (req: Request, res: Response) => {
+  app.get("/api/media-jobs/:id", mediaJobLimiter, async (req: Request, res: Response) => {
     try {
       const authResult = await authenticateMediaJobRequest(req, res);
       if (!authResult) return;
@@ -523,7 +544,7 @@ export function registerMediaJobRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/media-jobs/:id", async (req: Request, res: Response) => {
+  app.delete("/api/media-jobs/:id", mediaJobLimiter, async (req: Request, res: Response) => {
     try {
       const authResult = await authenticateMediaJobRequest(req, res);
       if (!authResult) return;
@@ -545,6 +566,7 @@ export function registerMediaJobRoutes(app: Express) {
       };
       await setJobKey(req.params.id, "status", cancelStatus);
       await publishProgress(req.params.id, cancelStatus);
+      await removeActiveJob(authResult.userId, req.params.id);
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Internal error" });
