@@ -6,7 +6,7 @@
  */
 
 import yaml from "js-yaml";
-import type { SkillMetadata } from "./types";
+import type { SkillMetadata, TriggerRule, PatternRule } from "./types";
 
 /**
  * Parse a skill.md file — extract YAML frontmatter and markdown content
@@ -38,6 +38,8 @@ export function mapCategoryToEnum(category?: string): string {
     "image-generation": "image_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
+    "image_video_generation": "image_video_generation",
+    "image-video-generation": "image_video_generation",
     "audio_generation": "audio_generation",
     "audio-generation": "audio_generation",
     "sound_effects": "sound_effects",
@@ -67,6 +69,7 @@ export function categoryToSkillType(category: string): string {
   const categoryMap: Record<string, string> = {
     "image_generation": "image-generation",
     "video_generation": "video-generation",
+    "image_video_generation": "image-video-generation",
     "audio_generation": "audio-generation",
     "sound_effects": "audio-generation",
     "code_assistant": "code-assistant",
@@ -111,7 +114,40 @@ function isSafeRegex(pattern: string): boolean {
   return true;
 }
 
-export function parseTriggerPatterns(patterns: string[] | null | undefined): RegExp[] {
+/**
+ * Parse trigger patterns from database format to TriggerRule[]
+ * Supports both legacy string[] format and new PatternRule[] format
+ */
+export function parseTriggerPatterns(patterns: Array<string | PatternRule> | null | undefined): TriggerRule[] {
+  if (!patterns || !Array.isArray(patterns)) return [];
+  return patterns
+    .map((p): TriggerRule | null => {
+      try {
+        // Handle both string and PatternRule formats
+        const patternStr = typeof p === "string" ? p : p.pattern;
+        const chainTo = typeof p === "string" ? undefined : p.chainTo;
+        const label = typeof p === "string" ? undefined : p.label;
+
+        if (!patternStr || !isSafeRegex(patternStr)) return null;
+
+        return {
+          regex: new RegExp(patternStr, "i"),
+          pattern: patternStr,
+          chainTo: chainTo ?? undefined,
+          label: label ?? undefined,
+        };
+      } catch {
+        return null;
+      }
+    })
+    .filter((r): r is TriggerRule => r !== null);
+}
+
+/**
+ * Legacy function for backward compatibility - returns just RegExp[]
+ * @deprecated Use parseTriggerPatterns instead which returns TriggerRule[]
+ */
+export function parseTriggerPatternsLegacy(patterns: string[] | null | undefined): RegExp[] {
   if (!patterns || !Array.isArray(patterns)) return [];
   return patterns
     .map((p) => {

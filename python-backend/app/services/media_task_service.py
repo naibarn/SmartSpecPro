@@ -4,7 +4,7 @@ Handles async media generation task management
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -148,7 +148,8 @@ class MediaTaskService:
         media_type: Optional[MediaType] = None,
         status: Optional[TaskStatus] = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        days_ago: Optional[int] = None
     ) -> List[MediaTask]:
         """List tasks for a user with optional filters"""
         query = select(MediaTask).where(MediaTask.user_id == user_id)
@@ -162,6 +163,11 @@ class MediaTaskService:
             status_value = status.value if isinstance(status, TaskStatus) else str(status)
             query = query.where(MediaTask.status == status_value)
 
+        # Filter by days ago if specified
+        if days_ago is not None and days_ago > 0:
+            cutoff_date = datetime.utcnow() - timedelta(days=days_ago)
+            query = query.where(MediaTask.created_at >= cutoff_date)
+
         query = query.order_by(MediaTask.created_at.desc())
         query = query.limit(limit).offset(offset)
 
@@ -173,7 +179,8 @@ class MediaTaskService:
         db: AsyncSession,
         user_id: str,
         media_type: Optional[MediaType] = None,
-        status: Optional[TaskStatus] = None
+        status: Optional[TaskStatus] = None,
+        days_ago: Optional[int] = None
     ) -> int:
         """Get count of tasks for a user"""
         from sqlalchemy import func
@@ -188,6 +195,11 @@ class MediaTaskService:
             # Convert enum to string value for comparison
             status_value = status.value if isinstance(status, TaskStatus) else str(status)
             query = query.where(MediaTask.status == status_value)
+
+        # Filter by days ago if specified
+        if days_ago is not None and days_ago > 0:
+            cutoff_date = datetime.utcnow() - timedelta(days=days_ago)
+            query = query.where(MediaTask.created_at >= cutoff_date)
 
         result = await db.execute(query)
         return result.scalar() or 0
@@ -242,3 +254,23 @@ class MediaTaskService:
         await db.commit()
         await db.refresh(task)
         return task
+
+    @staticmethod
+    async def cleanup_old_tasks(
+        db: AsyncSession,
+        days: int = 12
+    ) -> int:
+        """
+        Delete tasks older than specified days (default: 12 days).
+        Returns the number of deleted tasks.
+        """
+        from sqlalchemy import delete
+
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+
+        # Delete old tasks
+        stmt = delete(MediaTask).where(MediaTask.created_at < cutoff_date)
+        result = await db.execute(stmt)
+        await db.commit()
+
+        return result.rowcount

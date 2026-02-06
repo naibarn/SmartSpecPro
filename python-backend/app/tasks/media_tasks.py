@@ -251,12 +251,13 @@ def generate_audio_task(self, task_id: str, user_id: str, request_data: dict):
 
 async def _cleanup_expired_tasks_async():
     """
-    Async implementation of cleanup expired tasks
+    Async implementation of cleanup expired tasks.
+    Deletes tasks older than 12 days to manage storage.
     """
     async with AsyncSessionLocal() as db:
         try:
-            # Delete tasks older than 30 days
-            cutoff_date = datetime.utcnow() - timedelta(days=30)
+            # Delete tasks older than 12 days (data retention policy)
+            cutoff_date = datetime.utcnow() - timedelta(days=12)
 
             result = await db.execute(
                 select(MediaTask).filter(
@@ -284,8 +285,9 @@ async def _cleanup_expired_tasks_async():
 @celery_app.task
 def cleanup_expired_tasks():
     """
-    Periodic task to cleanup old completed/failed tasks
-    Runs every 30 minutes
+    Periodic task to cleanup old completed/failed tasks.
+    Runs daily at 3:00 AM UTC.
+    Deletes tasks older than 12 days to manage storage.
     """
     logger.info("cleanup_expired_tasks_started")
 

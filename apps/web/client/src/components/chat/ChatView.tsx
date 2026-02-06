@@ -56,6 +56,8 @@ import { Brain, Lightbulb, Languages, Mic } from "lucide-react";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 import { toast } from "sonner";
+import { FallbackConsent } from "./FallbackConsent";
+import { formatModelCost, getCheapestProvider, type AvailableModel, type ModelProvider } from "@/lib/modelPricing";
 
 // Debounce hook for skill detection
 function useDebounce<T>(value: T, delay: number): T {
@@ -72,6 +74,45 @@ function useDebounce<T>(value: T, delay: number): T {
   }, [value, delay]);
 
   return debouncedValue;
+}
+
+/**
+ * Parse LLM error response and extract user-friendly message
+ * Backend returns: { error: { message, userMessage, errorType, suggestedAction, provider } }
+ */
+function parseErrorResponse(errorText: string): string {
+  try {
+    const parsed = JSON.parse(errorText);
+    const error = parsed?.error;
+    if (error?.userMessage) {
+      // Use the backend's user-friendly message
+      return error.userMessage;
+    }
+    if (error?.message) {
+      return error.message;
+    }
+    // Fallback: return the raw text without JSON wrapper
+    return errorText;
+  } catch {
+    // Not JSON, check for common error patterns
+    const lowerText = errorText.toLowerCase();
+
+    if (lowerText.includes('rate_limit') || lowerText.includes('too_many_requests') || lowerText.includes('1302')) {
+      return 'The service is handling many requests. Please wait a moment and try again.';
+    }
+    if (lowerText.includes('overload') || lowerText.includes('deadline')) {
+      return 'The service is currently overloaded. Try using a different model or provider.';
+    }
+    if (lowerText.includes('invalid') && lowerText.includes('model')) {
+      return 'This model may be temporarily unavailable. Please try a different model.';
+    }
+    if (lowerText.includes('unauthorized') || lowerText.includes('api key')) {
+      return 'Authentication failed. Please contact support.';
+    }
+
+    // Return original text for unknown errors
+    return errorText;
+  }
 }
 
 const skillIconMap: Record<string, React.ElementType> = {
@@ -159,10 +200,26 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   // Get available models from LLM providers
   const { data: modelsData } = trpc.llmProviders.availableModels.useQuery();
 
+  // Get multi-provider models (with provider info, pricing, FREE badges)
+  const { data: multiProviderModels } = trpc.multiProvider.getAvailableModelsWithProviders.useQuery(
+    undefined,
+    { staleTime: 60_000 }
+  );
+
   // Current selected model (use conversation model, localStorage fallback, or first available)
   const [selectedModel, setSelectedModel] = useState<string>(
     () => localStorage.getItem("smartspec_lastModel") || ""
   );
+  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
+
+  // Fallback consent state (for handling free→paid tier transitions)
+  interface FallbackRequestData {
+    from: { providerName: string; modelName: string };
+    to: { providerName: string; modelName: string; providerId: number };
+    estimatedCredits: number;
+    originalMessages: Array<{ role: string; content: string }>;
+  }
+  const [fallbackRequest, setFallbackRequest] = useState<FallbackRequestData | null>(null);
 
   // Sync selected model with conversation model
   useEffect(() => {
@@ -231,10 +288,24 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
 
   // Handle model change
-  const handleModelChange = async (modelId: string) => {
+  const handleModelChange = async (modelId: string, providerId?: number) => {
     if (!conversationId || isStreaming) return;
 
     setSelectedModel(modelId);
+
+    // Auto-select cheapest provider if not specified
+    if (providerId !== undefined) {
+      setSelectedProviderId(providerId);
+    } else {
+      // Find the model in multiProviderModels and select cheapest provider
+      const multiModel = multiProviderModels?.find((m: AvailableModel) => m.modelId === modelId);
+      if (multiModel?.providers?.length) {
+        const cheapest = getCheapestProvider(multiModel.providers);
+        setSelectedProviderId(cheapest?.providerId ?? null);
+      } else {
+        setSelectedProviderId(null);
+      }
+    }
 
     // Update conversation in database
     try {
@@ -268,6 +339,15 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     return grouped;
   }, [modelsData?.models]);
 
+  // Helper to format model display name with provider prefix for OpenCode Zen
+  // This helps distinguish OpenCode models from OpenRouter models
+  const formatModelDisplayName = (modelName: string, providerName?: string): string => {
+    if (providerName?.toLowerCase().includes('opencode') || providerName?.toLowerCase().includes('zen')) {
+      return `OpenCode/${modelName}`;
+    }
+    return modelName;
+  };
+
   // Skill detection state
   const [detectedSkill, setDetectedSkill] = useState<{
     id: string;
@@ -276,6 +356,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     confidence: number;
     suggestedPrompt: string | null;
     executionMode: string;
+    chainTo: string | null;
+    /** Per-pattern chainTo from matched trigger pattern */
+    patternChainTo: string | null;
   } | null>(null);
 
   // Schedule confirm card state
@@ -323,6 +406,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             confidence: result.confidence,
             suggestedPrompt: result.suggestedPrompt,
             executionMode: result.skill.executionMode || "llm-only",
+            chainTo: result.skill.chainTo || null,
+            // Per-pattern chainTo takes precedence over skill-level chainTo
+            patternChainTo: result.patternChainTo || null,
           });
         } else {
           setDetectedSkill(null);
@@ -609,13 +695,17 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
     // Include conversationId so server can save the message at end of streaming
     // Use selectedModel which reflects user's current selection
-    const body = {
+    const body: Record<string, any> = {
       model: selectedModel || conversation?.model || "gpt-4o-mini",
       messages: apiMessages,
       stream: true,
       conversationId,
       skillUsed,
     };
+    // Include preferredProvider if user explicitly selected one
+    if (selectedProviderId) {
+      body.preferredProvider = selectedProviderId;
+    }
 
     try {
       const resp = await fetch("/api/llm/stream", {
@@ -626,7 +716,8 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
       if (!resp.ok || !resp.body) {
         const txt = await resp.text().catch(() => "Stream failed");
-        setStreamingContent(`[Error] ${txt}`);
+        const friendlyError = parseErrorResponse(txt);
+        setStreamingContent(`[Error] ${friendlyError}`);
         setIsStreaming(false);
         return "";
       }
@@ -667,6 +758,18 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                     console.log("[Chat Client] Server saved message:", { savedMessageId, creditsUsed });
                   } else if (eventName === "save_error") {
                     console.error("[Chat Client] Server save error:", parsed.error);
+                  } else if (eventName === "fallback_required") {
+                    // Free provider failed, paid fallback available
+                    console.log("[Chat Client] Fallback required:", parsed);
+                    setFallbackRequest({
+                      from: parsed.from,
+                      to: parsed.to,
+                      estimatedCredits: parsed.estimatedCredits || 0,
+                      originalMessages: messages.map(m => ({ role: m.role, content: m.content })),
+                    });
+                    setIsStreaming(false);
+                    reader.releaseLock();
+                    return ""; // Stop processing, user must decide
                   }
                 } catch {
                   // Ignore parse errors for event data
@@ -810,8 +913,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: { message: "Brainstorm request failed" } }));
-        throw new Error(err?.error?.message || "Brainstorm failed");
+        const errText = await resp.text().catch(() => '{"error":{"message":"Brainstorm request failed"}}');
+        const friendlyError = parseErrorResponse(errText);
+        throw new Error(friendlyError);
       }
 
       const reader = resp.body!.getReader();
@@ -904,7 +1008,8 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 utils.credits.balance.invalidate();
                 toast.success(`Brainstorm complete — ${data.totalCredits} credits used`);
               } else if (eventName === "brainstorm_error") {
-                toast.error(data.error || "Brainstorm failed");
+                const friendlyError = parseErrorResponse(JSON.stringify({ error: { message: data.error } }));
+                toast.error(friendlyError || "Brainstorm failed");
               }
             } catch {}
           }
@@ -969,6 +1074,160 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     const currentSkillId = detectedSkill?.id;
     const currentSkillType = detectedSkill?.type;
     const skillPrompt = detectedSkill?.suggestedPrompt || text;
+    const currentChainTo = detectedSkill?.chainTo;
+    // Per-pattern chainTo takes precedence over skill-level chainTo
+    const currentPatternChainTo = detectedSkill?.patternChainTo;
+
+    // Detect image edit patterns - "แก้ไขภาพนี้", "ช่วยแก้ไขภาพ", "แก้ไขภาพ", "edit image"
+    const imageEditPattern = /(?:แก้ไขภาพนี้|ช่วยแก้ไขภาพ|แก้ไขภาพ|edit\s*(?:this\s*)?image|modify\s*(?:this\s*)?image|change\s*(?:this\s*)?image)/i;
+    const isImageEditRequest = imageEditPattern.test(text);
+
+    // Find reference image for image-to-image editing
+    let referenceImageUrl: string | null = null;
+    if (isImageEditRequest) {
+      // Check user's current attachments first
+      const userImageAttachment = attachments.find(a => a.fileType.startsWith("image/"));
+      if (userImageAttachment) {
+        referenceImageUrl = userImageAttachment.url;
+      } else {
+        // Find image from previous messages (prefer most recent)
+        const messagesReversed = [...messages].reverse();
+        for (const msg of messagesReversed) {
+          const imageAttachment = msg.attachments?.find(a =>
+            a.type?.startsWith("image") || a.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+          );
+          if (imageAttachment) {
+            referenceImageUrl = imageAttachment.url;
+            break;
+          }
+        }
+      }
+    }
+
+    // Context-aware prompt extraction: detect "use this prompt" / "ด้วยพรอมต์นี้" patterns
+    const useThisPromptPattern = /(?:ด้วยพรอมต์นี้|ใช้พรอมต์นี้|with\s+this\s+prompt|use\s+this\s+prompt|ตามพรอมต์ที่แล้ว|from\s+previous|พรอมต์ข้างบน|พรอมต์ด้านบน)/i;
+    const isUseThisPromptRequest = useThisPromptPattern.test(text);
+
+    // Also detect "สร้างภาพ" without specific description (implying use previous prompt)
+    const isImageRequestWithoutDetails = /^(?:สร้างภาพ|generate\s+image|create\s+image)\s*(?:ด้วย|with|ใช้|from|ตาม)?/i.test(text) && text.length < 50;
+
+    if ((isUseThisPromptRequest || isImageRequestWithoutDetails) &&
+        (currentSkillId === "image-creator" || currentSkillType === "image-generation" || !currentSkillId)) {
+      // Find the last assistant message to extract prompt
+      const lastAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
+
+      if (lastAssistantMessage) {
+        const msgContent = typeof lastAssistantMessage.content === "string"
+          ? lastAssistantMessage.content
+          : JSON.stringify(lastAssistantMessage.content);
+
+        // Try to extract prompt and media parameters from various formats
+        let extractedPrompt: string | null = null;
+        let extractedParams: Record<string, any> = {};
+
+        // Try JSON format first (to get all parameters)
+        try {
+          const jsonMatch = msgContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[1].trim());
+            if (parsed.prompt) {
+              extractedPrompt = parsed.prompt;
+              // Extract all media parameters
+              if (parsed.aspectRatio) extractedParams.aspectRatio = parsed.aspectRatio;
+              if (parsed.style) extractedParams.style = parsed.style;
+              if (parsed.numImages) extractedParams.numImages = parsed.numImages;
+              if (parsed.quality) extractedParams.quality = parsed.quality;
+              if (parsed.model) extractedParams.model = parsed.model;
+            }
+          }
+        } catch {
+          // Not JSON
+        }
+
+        // Simple fallback: Send entire previous message content to image-creator
+        // Let the LLM/skill extract the prompt intelligently
+        if (!extractedPrompt && msgContent.length > 10) {
+          // Prefix with context so image-creator knows to extract prompt from this content
+          extractedPrompt = `สร้างภาพจากพรอมต์ในข้อความนี้:\n\n${msgContent}`;
+        }
+
+        if (extractedPrompt && extractedPrompt.length > 10) {
+          // Execute image-creator directly with extracted prompt and parameters
+          setIsStreaming(true);
+          const paramsInfo = Object.keys(extractedParams).length > 0
+            ? ` (${Object.entries(extractedParams).map(([k, v]) => `${k}: ${v}`).join(', ')})`
+            : '';
+          setStreamingContent(`Using prompt from previous message to create image...${paramsInfo}`);
+
+          try {
+            const result = await executeSkillMutation.mutateAsync({
+              skillId: "image-creator",
+              prompt: extractedPrompt,
+              conversationId,
+              ...extractedParams, // Pass aspectRatio, style, quality, numImages, etc.
+              // Pass reference image if this is an image edit request
+              ...(referenceImageUrl ? { referenceImageUrls: [referenceImageUrl] } : {}),
+            });
+
+            let responseContent = "";
+            let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
+
+            if (result.success) {
+              if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
+                responseContent = `Generated image using prompt:\n> ${extractedPrompt.substring(0, 100)}${extractedPrompt.length > 100 ? "..." : ""}\n\n${result.resultUrls.map(url => `![Generated Image](${url})`).join('\n\n')}`;
+                imageAttachments = result.resultUrls.map((url, i) => ({
+                  type: "image" as const, url, name: `generated-image-${i + 1}.png`,
+                }));
+              } else if (result.resultUrl) {
+                responseContent = `Generated image using prompt:\n> ${extractedPrompt.substring(0, 100)}${extractedPrompt.length > 100 ? "..." : ""}\n\n![Generated Image](${result.resultUrl})`;
+                imageAttachments = [{ type: "image" as const, url: result.resultUrl, name: "generated-image.png" }];
+              } else {
+                responseContent = result.message || "Image generated successfully!";
+              }
+              if (result.creditsUsed) {
+                responseContent += `\n\n*Credits used: ${result.creditsUsed}*`;
+              }
+              if (result.creditsUsed && result.creditsUsed > 0) {
+                addSkillCreditsMutation.mutate({ conversationId, creditsUsed: result.creditsUsed, skillUsed: "image-creator" });
+              }
+            } else {
+              responseContent = `Failed to generate image: ${result.error || "Unknown error"}`;
+            }
+
+            lastLocalAddTime.current = Date.now();
+            setMessages((prev) => [...prev, {
+              id: Date.now(), role: "assistant" as const, content: responseContent,
+              attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
+              creditsUsed: result.creditsUsed?.toString(), skillUsed: "image-creator", createdAt: new Date(),
+            }]);
+            setStreamingContent("");
+            setIsStreaming(false);
+            utils.chat.getMessages.invalidate({ conversationId });
+            utils.credits.balance.invalidate();
+          } catch (error) {
+            console.error("Context-aware image generation error:", error);
+            lastLocalAddTime.current = Date.now();
+            setMessages((prev) => [...prev, {
+              id: Date.now(), role: "assistant" as const,
+              content: `Could not generate image: ${error instanceof Error ? error.message : "Unknown error"}\n\nExtracted prompt was: "${extractedPrompt}"`,
+              skillUsed: "image-creator", createdAt: new Date(),
+            }]);
+            setStreamingContent("");
+            setIsStreaming(false);
+          }
+          return; // Exit early - don't continue with normal flow
+        } else {
+          // Could not extract prompt - inform user
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [...prev, {
+            id: Date.now(), role: "assistant" as const,
+            content: "ไม่พบพรอมต์ในข้อความก่อนหน้า กรุณาสร้างพรอมต์ก่อน หรือพิมพ์คำอธิบายภาพที่ต้องการสร้างโดยตรง\n\n(Could not find a prompt in the previous message. Please generate a prompt first, or type the image description directly.)",
+            createdAt: new Date(),
+          }]);
+          return; // Exit early
+        }
+      }
+    }
 
     // Check if this is a chat-alert (scheduling) skill
     if (currentSkillId === "chat-alert" || currentSkillType === "automation") {
@@ -1046,6 +1305,8 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             prompt: mediaPrompt,
             conversationId,
             ...mediaParams,
+            // Pass reference image if this is an image edit request
+            ...(referenceImageUrl ? { referenceImageUrls: [referenceImageUrl] } : {}),
           });
 
           let responseContent = "";
@@ -1110,12 +1371,126 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       });
     } else {
       // Stream response for regular chat (non-media skills)
-      await streamResponse({
+      const generatedContent = await streamResponse({
         id: userMessage.id,
         role: "user",
         content: typeof content === "string" ? content : text,
         createdAt: new Date(userMessage.createdAt),
       }, currentSkillId);
+
+      // Handle skill chaining:
+      // Priority: 1. Per-pattern chainTo (from matched trigger pattern)
+      //           2. Skill-level chainTo
+      //           3. Manual fallback for image edit requests
+      const shouldChainToImageCreator = isImageEditRequest && currentSkillId === "image_prompt_engineer";
+      const effectiveChainTo = currentPatternChainTo || currentChainTo || (shouldChainToImageCreator ? "image-creator" : null);
+
+      if (generatedContent && effectiveChainTo && currentSkillId) {
+        // Extract prompt and parameters from generated content
+        let chainedPrompt = generatedContent;
+        let chainedParams: Record<string, any> = {};
+
+        // Try JSON extraction first (to get all parameters)
+        try {
+          const jsonMatch = generatedContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[1].trim());
+            if (parsed.prompt) {
+              chainedPrompt = parsed.prompt;
+              // Extract all media parameters
+              if (parsed.aspectRatio) chainedParams.aspectRatio = parsed.aspectRatio;
+              if (parsed.style) chainedParams.style = parsed.style;
+              if (parsed.numImages) chainedParams.numImages = parsed.numImages;
+              if (parsed.quality) chainedParams.quality = parsed.quality;
+              if (parsed.model) chainedParams.model = parsed.model;
+            }
+          }
+        } catch {
+          // Not JSON - try text patterns
+          // First try: prompt with any quotes - "พรอมต์: \"...\""
+          // Quote types: straight " ' and curly "" ''
+          let promptMatch = generatedContent.match(/(?:พรอมต์|Prompt|prompt)\s*[:：]\s*["'""'']([^"'""'']+)["'""'']/i);
+          if (promptMatch) {
+            chainedPrompt = promptMatch[1].trim();
+          } else {
+            // Second try: prompt without quotes but with colon - "พรอมต์: ..."
+            promptMatch = generatedContent.match(/(?:พรอมต์|Prompt|prompt)\s*[:：]\s*([^\n]+?)(?:\n|$)/i);
+            if (promptMatch) {
+              // Remove surrounding quotes of all types
+              chainedPrompt = promptMatch[1].trim().replace(/^["'""'']|["'""'']$/g, "");
+            }
+          }
+        }
+
+        // Small delay to show the prompt first
+        await new Promise(r => setTimeout(r, 800));
+
+        // Now trigger the chained skill (e.g., image-creator)
+        setIsStreaming(true);
+        const paramsInfo = Object.keys(chainedParams).length > 0
+          ? ` (${Object.entries(chainedParams).map(([k, v]) => `${k}: ${v}`).join(', ')})`
+          : '';
+        setStreamingContent(`Using generated prompt to create image...${paramsInfo}`);
+
+        try {
+          const result = await executeSkillMutation.mutateAsync({
+            skillId: effectiveChainTo,
+            prompt: chainedPrompt,
+            conversationId,
+            ...chainedParams, // Pass aspectRatio, style, quality, numImages, etc.
+            // Pass reference image if this is an image edit request
+            ...(referenceImageUrl ? { referenceImageUrls: [referenceImageUrl] } : {}),
+          });
+
+          let responseContent = "";
+          let imageAttachments: Array<{ type: "image"; url: string; name: string }> = [];
+
+          if (result.success) {
+            if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
+              responseContent = `Generated image:\n\n${result.resultUrls.map(url => `![Generated Image](${url})`).join('\n\n')}`;
+              imageAttachments = result.resultUrls.map((url, i) => ({
+                type: "image" as const, url, name: `generated-image-${i + 1}.png`,
+              }));
+            } else if (result.resultUrl) {
+              responseContent = `Generated image:\n\n![Generated Image](${result.resultUrl})`;
+              if (result.type === "image") {
+                imageAttachments = [{ type: "image" as const, url: result.resultUrl, name: "generated-image.png" }];
+              }
+            } else {
+              responseContent = result.message || "Image generated successfully!";
+            }
+            if (result.creditsUsed) {
+              responseContent += `\n\n*Credits used: ${result.creditsUsed}*`;
+            }
+            if (result.creditsUsed && result.creditsUsed > 0) {
+              addSkillCreditsMutation.mutate({ conversationId, creditsUsed: result.creditsUsed, skillUsed: effectiveChainTo });
+            }
+          } else {
+            responseContent = `Failed to generate image: ${result.error || "Unknown error"}`;
+          }
+
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [...prev, {
+            id: Date.now(), role: "assistant" as const, content: responseContent,
+            attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
+            creditsUsed: result.creditsUsed?.toString(), skillUsed: effectiveChainTo, createdAt: new Date(),
+          }]);
+          setStreamingContent("");
+          setIsStreaming(false);
+          utils.chat.getMessages.invalidate({ conversationId });
+          utils.credits.balance.invalidate();
+        } catch (error) {
+          console.error("Chained skill execution error:", error);
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [...prev, {
+            id: Date.now(), role: "assistant" as const,
+            content: `Prompt generated above. Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            skillUsed: effectiveChainTo, createdAt: new Date(),
+          }]);
+          setStreamingContent("");
+          setIsStreaming(false);
+        }
+      }
     }
   };
 
@@ -1203,12 +1578,30 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 size="sm"
                 className="h-7 max-w-[180px] sm:max-w-[280px] justify-start gap-1.5 text-xs font-normal shrink-0"
                 onClick={() => setModelDialogOpen(true)}
-                disabled={isStreaming || updateConversationMutation.isPending}
+                disabled={isStreaming || updateConversationMutation.isPending || !!fallbackRequest}
               >
                 <Bot className="h-3 w-3 shrink-0" />
                 <span className="truncate">
-                  {modelsData.models.find(m => m.id === selectedModel)?.name || selectedModel || "Select model"}
+                  {(() => {
+                    const modelData = modelsData.models.find(m => m.id === selectedModel);
+                    const multiModel = multiProviderModels?.find((m: AvailableModel) => m.modelId === selectedModel);
+                    const provider = multiModel?.providers?.find((p: ModelProvider) => p.providerId === selectedProviderId)
+                      || (multiModel?.providers?.length ? getCheapestProvider(multiModel.providers) : null);
+                    const displayName = modelData?.name || selectedModel || "Select model";
+                    return formatModelDisplayName(displayName, provider?.providerName);
+                  })()}
                 </span>
+                {/* FREE badge in header */}
+                {(() => {
+                  const multiModel = multiProviderModels?.find((m: AvailableModel) => m.modelId === selectedModel);
+                  const provider = multiModel?.providers?.find((p: ModelProvider) => p.providerId === selectedProviderId)
+                    || (multiModel?.providers?.length ? getCheapestProvider(multiModel.providers) : null);
+                  return provider?.isFree ? (
+                    <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600 ml-1">
+                      FREE
+                    </Badge>
+                  ) : null;
+                })()}
               </Button>
               <CommandDialog
                 open={modelDialogOpen}
@@ -1219,29 +1612,70 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 <CommandInput placeholder="Search models..." />
                 <CommandList className="max-h-[60vh]">
                   <CommandEmpty>No models found.</CommandEmpty>
-                  {Object.entries(modelsByProvider).map(([provider, models]) => (
-                    <CommandGroup key={provider} heading={provider}>
-                      {models.map((model) => (
-                        <CommandItem
-                          key={model.id}
-                          value={`${model.name} ${model.id} ${provider}`}
-                          onSelect={() => {
-                            handleModelChange(model.id);
-                            setModelDialogOpen(false);
-                          }}
-                          className="flex items-center gap-2"
-                        >
-                          <Check className={cn("h-3.5 w-3.5 shrink-0", selectedModel === model.id ? "opacity-100" : "opacity-0")} />
-                          <span className="flex-1 truncate">{model.name}</span>
-                          {model.isDefault && (
-                            <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
-                              Default
-                            </Badge>
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  ))}
+                  {/* Use multi-provider models grouped by provider */}
+                  {(() => {
+                    if (!multiProviderModels || multiProviderModels.length === 0) {
+                      return Object.entries(modelsByProvider).map(([provider, models]) => (
+                        <CommandGroup key={provider} heading={provider}>
+                          {models.map((model) => (
+                            <CommandItem
+                              key={model.id}
+                              value={`${model.name} ${model.id} ${provider}`}
+                              onSelect={() => {
+                                handleModelChange(model.id);
+                                setModelDialogOpen(false);
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <Check className={cn("h-3.5 w-3.5 shrink-0", selectedModel === model.id ? "opacity-100" : "opacity-0")} />
+                              <span className="flex-1 truncate">{formatModelDisplayName(model.name, model.provider)}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      ));
+                    }
+
+                    // Group multi-provider models by their best provider
+                    const grouped: Record<string, Array<{ model: AvailableModel; provider: ModelProvider }>> = {};
+                    for (const model of multiProviderModels) {
+                      if (!model.providers || model.providers.length === 0) continue;
+                      const bestProvider = getCheapestProvider(model.providers);
+                      if (!bestProvider) continue;
+                      const providerKey = bestProvider.providerName;
+                      if (!grouped[providerKey]) {
+                        grouped[providerKey] = [];
+                      }
+                      grouped[providerKey].push({ model, provider: bestProvider });
+                    }
+
+                    return Object.entries(grouped).map(([providerName, items]) => (
+                      <CommandGroup key={providerName} heading={providerName}>
+                        {items.map(({ model, provider }) => (
+                          <CommandItem
+                            key={`${model.modelId}-${provider.providerId}`}
+                            value={`${model.modelName} ${model.modelId} ${providerName}`}
+                            onSelect={() => {
+                              handleModelChange(model.modelId, provider.providerId);
+                              setModelDialogOpen(false);
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Check className={cn("h-3.5 w-3.5 shrink-0", selectedModel === model.modelId ? "opacity-100" : "opacity-0")} />
+                            <span className="flex-1 truncate">{formatModelDisplayName(model.modelName, providerName)}</span>
+                            {provider.isFree ? (
+                              <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600">
+                                FREE
+                              </Badge>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground shrink-0">
+                                {formatModelCost(provider.pricingInput, provider.pricingOutput, false)}
+                              </span>
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    ));
+                  })()}
                 </CommandList>
               </CommandDialog>
             </>
@@ -1284,7 +1718,11 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               >
                 <Brain className="h-3 w-3 shrink-0 text-purple-500" />
                 <span className="truncate text-purple-700">
-                  {modelsData.models.find(m => m.id === brainstormPartnerModel)?.name || "Select Model B"}
+                  {(() => {
+                    const modelData = modelsData.models.find(m => m.id === brainstormPartnerModel);
+                    if (!modelData) return "Select Model B";
+                    return formatModelDisplayName(modelData.name, modelData.provider);
+                  })()}
                 </span>
               </Button>
               <CommandDialog
@@ -1309,7 +1747,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                           className="flex items-center gap-2"
                         >
                           <Check className={cn("h-3.5 w-3.5 shrink-0", brainstormPartnerModel === model.id ? "opacity-100" : "opacity-0")} />
-                          <span className="flex-1 truncate">{model.name}</span>
+                          <span className="flex-1 truncate">{formatModelDisplayName(model.name, model.provider)}</span>
                           {model.id === selectedModel && (
                             <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
                               Model A
@@ -1597,6 +2035,93 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   </SafeMarkdown>
                 </div>
               )}
+
+              {/* Fallback Consent Banner */}
+              {fallbackRequest && (
+                <FallbackConsent
+                  fromProvider={fallbackRequest.from.providerName}
+                  toProvider={fallbackRequest.to.providerName}
+                  toProviderId={fallbackRequest.to.providerId}
+                  estimatedCredits={fallbackRequest.estimatedCredits}
+                  onAccept={async (providerId) => {
+                    setFallbackRequest(null);
+                    setSelectedProviderId(providerId);
+                    // Re-send with preferred provider
+                    const lastUserMsg = messages.filter(m => m.role === "user").pop();
+                    if (lastUserMsg) {
+                      // Trigger re-send by simulating submit with preferredProvider
+                      const body: Record<string, any> = {
+                        model: selectedModel || conversation?.model || "gpt-4o-mini",
+                        messages: fallbackRequest.originalMessages,
+                        stream: true,
+                        conversationId,
+                        preferredProvider: providerId,
+                      };
+                      setIsStreaming(true);
+                      try {
+                        const resp = await fetch("/api/llm/stream", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(body),
+                        });
+                        if (resp.ok && resp.body) {
+                          const reader = resp.body.getReader();
+                          const decoder = new TextDecoder("utf-8");
+                          let buf = "";
+                          let fullContent = "";
+                          while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buf += decoder.decode(value, { stream: true });
+                            while (true) {
+                              const idx = buf.indexOf("\n");
+                              if (idx < 0) break;
+                              const line = buf.slice(0, idx).replace(/\r$/, "");
+                              buf = buf.slice(idx + 1);
+                              if (line.startsWith("data:")) {
+                                const data = line.slice("data:".length).trim();
+                                if (data === "[DONE]") break;
+                                try {
+                                  const j = JSON.parse(data);
+                                  const delta = j?.choices?.[0]?.delta?.content;
+                                  if (typeof delta === "string") {
+                                    fullContent += delta;
+                                    setStreamingContent(fullContent);
+                                  }
+                                } catch {}
+                              }
+                            }
+                          }
+                          reader.releaseLock();
+                          if (fullContent) {
+                            setMessages((prev) => [...prev, {
+                              id: Date.now(),
+                              role: "assistant" as const,
+                              content: fullContent,
+                              createdAt: new Date(),
+                            }]);
+                            setStreamingContent("");
+                          }
+                        }
+                      } catch (err) {
+                        console.error("Fallback request failed:", err);
+                        toast.error("Failed to send request with fallback provider");
+                      }
+                      setIsStreaming(false);
+                    }
+                  }}
+                  onReject={() => {
+                    setFallbackRequest(null);
+                    // Show error message in chat
+                    setMessages((prev) => [...prev, {
+                      id: Date.now(),
+                      role: "assistant" as const,
+                      content: `Request cancelled. ${fallbackRequest.from.modelName} via ${fallbackRequest.from.providerName} is temporarily unavailable. You can try again later or select a different model.`,
+                      createdAt: new Date(),
+                    }]);
+                  }}
+                />
+              )}
             </>
           )}
           <div ref={bottomRef} />
@@ -1604,7 +2129,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       </div>
 
       {/* Input Area */}
-      <div className="shrink-0 border-t px-4 py-2 pb-[env(safe-area-inset-bottom,0.5rem)]">
+      <div className="shrink-0 border-t px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {/* Quick Actions for Generation */}
         {!isStreaming && messages.length === 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -1822,7 +2347,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   onSend();
                 }
               }}
-              disabled={isStreaming}
+              disabled={isStreaming || !!fallbackRequest}
             />
           </div>
           <Button
@@ -1831,7 +2356,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             onPointerDown={startRecording}
             onPointerUp={stopRecording}
             onPointerLeave={isRecording ? stopRecording : undefined}
-            disabled={isTranscribing || isStreaming}
+            disabled={isTranscribing || isStreaming || !!fallbackRequest}
             title="Hold to record"
           >
             {isTranscribing ? (
@@ -1842,7 +2367,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           </Button>
           <Button
             onClick={onSend}
-            disabled={isStreaming || uploadMutation.isPending || (!input.trim() && attachments.length === 0)}
+            disabled={isStreaming || uploadMutation.isPending || (!input.trim() && attachments.length === 0) || !!fallbackRequest}
           >
             {isStreaming ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -215,6 +215,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/redoc",
         "/redoc/",
         "/openapi.json",
+        "/login",
+        "/register",
         "/api/auth/login",
         "/api/auth/register",
         "/api/auth/refresh",

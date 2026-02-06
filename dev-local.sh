@@ -96,19 +96,14 @@ check_node() {
     log_info "Node.js: $(node --version)"
 }
 
-check_pnpm() {
-    # Try multiple paths for pnpm
-    if command -v pnpm &> /dev/null; then
-        PNPM_CMD="pnpm"
-    elif [ -f "/c/Program Files/nodejs/pnpm.CMD" ]; then
-        PNPM_CMD="/c/Program Files/nodejs/pnpm.CMD"
-    elif [ -f "$HOME/AppData/Local/pnpm/pnpm.CMD" ]; then
-        PNPM_CMD="$HOME/AppData/Local/pnpm/pnpm.CMD"
+check_npm() {
+    if command -v npm &> /dev/null; then
+        NPM_CMD="npm"
     else
-        log_error "pnpm is not installed. Run: npm install -g pnpm"
+        log_error "npm is not installed"
         exit 1
     fi
-    log_info "pnpm found: $PNPM_CMD"
+    log_info "npm found: $NPM_CMD"
 }
 
 check_python() {
@@ -219,16 +214,16 @@ kill_port() {
 
 cmd_web() {
     check_node
-    check_pnpm
+    check_npm
 
     log_step "Starting SmartSpec Web (Host)..."
     kill_port "${WEB_PORT:-3000}"
-    cd "$WEB_DIR"
 
-    # Install dependencies if needed
-    if [ ! -d "node_modules" ]; then
+    # Install dependencies if needed at workspace level
+    if [ ! -d "$WEB_DIR/node_modules" ]; then
         log_step "Installing dependencies..."
-        "$PNPM_CMD" install
+        cd "$PROJECT_ROOT"
+        "$NPM_CMD" install
     fi
 
     # Environment is already loaded from .env.local
@@ -239,7 +234,10 @@ cmd_web() {
 
     log_info "Environment: DATABASE_URL=$DATABASE_URL"
     log_info "Starting Vite dev server on port $PORT..."
-    "$PNPM_CMD" dev
+
+    # Run from workspace directory
+    cd "$WEB_DIR"
+    "$NPM_CMD" run dev
 }
 
 cmd_backend() {
@@ -429,8 +427,8 @@ cmd_db() {
         migrate)
             log_step "Running database migrations..."
             cd "$WEB_DIR"
-            check_pnpm
-            "$PNPM_CMD" db:push
+            check_npm
+            "$NPM_CMD" db:push
             log_info "Migrations complete."
             ;;
         *)

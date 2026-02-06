@@ -354,6 +354,12 @@ export default function Credits() {
                         <td className="px-6 py-4">
                           {transaction.metadata && (
                             <div className="text-xs text-gray-500 space-y-0.5">
+                              {transaction.metadata.provider && (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">Provider:</span>
+                                  <span className="text-gray-700 font-semibold">{String(transaction.metadata.provider)}</span>
+                                </div>
+                              )}
                               {transaction.metadata.model && (
                                 <div className="flex items-center gap-1">
                                   <span className="font-medium">Model:</span>

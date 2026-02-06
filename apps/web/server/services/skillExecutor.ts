@@ -63,6 +63,8 @@ export interface SkillExecutionParams {
   apiConfig?: Record<string, string>;
   /** Dynamic input field values from configJson.inputFields */
   extraParams?: Record<string, any>;
+  /** Public URL for tenant domain (e.g., https://smartaihub.app) for external services */
+  publicUrl?: string;
 }
 
 export interface SkillExecutionResult {
@@ -191,6 +193,7 @@ async function executeImageGeneration(
         referenceStyleUrl: params.referenceStyleUrl,
         ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
         ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+        ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
       } as any,
       userToken
     );
@@ -297,6 +300,7 @@ async function executeVideoGeneration(
         referenceImageUrls: params.referenceImageUrls,
         ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
         ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+        ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
       } as any,
       userToken
     );

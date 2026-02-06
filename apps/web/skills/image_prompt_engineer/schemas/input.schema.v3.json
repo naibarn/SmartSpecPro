@@ -1,0 +1,517 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Image Prompt Engineer Input (v3.0 - Flat)",
+  "description": "Simplified flat schema for dynamic UI generation",
+  "type": "object",
+  "required": ["request"],
+
+  "properties": {
+    "request": {
+      "type": "string",
+      "title": "Your idea / request",
+      "description": "Describe what you want to create",
+      "_ui": { "section": "basic", "type": "textarea", "rows": 3 }
+    },
+
+    "prompt_count": {
+      "type": "string",
+      "title": "Number of prompts",
+      "description": "Generate multiple prompts with specific layout arrangement",
+      "default": "1",
+      "enum": [
+        "1",
+        "2_distinct", "2_1x2", "2_2x1",
+        "3_distinct", "3_1x3", "3_3x1",
+        "4_distinct", "4_2x2", "4_1x4", "4_4x1",
+        "6_distinct", "6_3x2", "6_2x3", "6_storyboard",
+        "8_distinct", "8_4x2", "8_2x4",
+        "9_distinct", "9_3x3",
+        "10_distinct", "10_5x2", "10_2x5",
+        "12_distinct", "12_4x3", "12_3x4",
+        "16_distinct", "16_4x4"
+      ],
+      "_ui": {
+        "section": "basic",
+        "type": "select",
+        "labels": {
+          "1": "1 prompt (Single image)",
+          "2_distinct": "2 distinct shots",
+          "2_1x2": "2 images (1×2 vertical)",
+          "2_2x1": "2 images (2×1 horizontal)",
+          "3_distinct": "3 distinct shots",
+          "3_1x3": "3 images (1×3 vertical)",
+          "3_3x1": "3 images (3×1 horizontal)",
+          "4_distinct": "4 distinct shots",
+          "4_2x2": "4 images (2×2 grid)",
+          "4_1x4": "4 images (1×4 vertical)",
+          "4_4x1": "4 images (4×1 horizontal)",
+          "6_distinct": "6 distinct shots",
+          "6_3x2": "6 images (3×2 grid)",
+          "6_2x3": "6 images (2×3 grid)",
+          "6_storyboard": "6 frames storyboard",
+          "8_distinct": "8 distinct shots",
+          "8_4x2": "8 images (4×2 grid)",
+          "8_2x4": "8 images (2×4 grid)",
+          "9_distinct": "9 distinct shots",
+          "9_3x3": "9 images (3×3 grid)",
+          "10_distinct": "10 distinct shots",
+          "10_5x2": "10 images (5×2 grid)",
+          "10_2x5": "10 images (2×5 grid)",
+          "12_distinct": "12 distinct shots",
+          "12_4x3": "12 images (4×3 grid)",
+          "12_3x4": "12 images (3×4 grid)",
+          "16_distinct": "16 distinct shots",
+          "16_4x4": "16 images (4×4 grid)"
+        }
+      }
+    },
+
+    "generation_mode": {
+      "type": "string",
+      "title": "Generation mode",
+      "default": "text_to_image",
+      "enum": ["text_to_image", "image_to_image", "inpaint", "outpaint", "variation"],
+      "_ui": {
+        "section": "basic",
+        "type": "select",
+        "labels": {
+          "text_to_image": "Text to Image",
+          "image_to_image": "Image to Image",
+          "inpaint": "Inpaint (Edit region)",
+          "outpaint": "Outpaint (Expand)",
+          "variation": "Variation"
+        }
+      }
+    },
+
+    "background_type": {
+      "type": "string",
+      "title": "Background type",
+      "default": "normal",
+      "enum": ["normal", "green_screen", "blue_screen", "transparent"],
+      "_ui": {
+        "section": "basic",
+        "type": "select",
+        "labels": {
+          "normal": "Normal Background",
+          "green_screen": "Green Screen",
+          "blue_screen": "Blue Screen",
+          "transparent": "Transparent/Cutout"
+        }
+      }
+    },
+
+    "task": {
+      "type": "string",
+      "title": "Task type",
+      "default": "final_prompt",
+      "enum": ["final_prompt", "background_10", "ideas_10", "angles_10", "storyboard_continue", "storyboard_6", "infographic_layout"],
+      "_ui": {
+        "section": "basic",
+        "type": "select",
+        "labels": {
+          "final_prompt": "Generate Prompt",
+          "background_10": "Random Background Ideas",
+          "ideas_10": "Concept Ideas",
+          "angles_10": "Camera Angles",
+          "storyboard_continue": "Continue Frame Storyboard",
+          "storyboard_6": "6-frame storyboard",
+          "infographic_layout": "Infographic layout"
+        }
+      }
+    },
+
+    "detail_level": {
+      "type": "string",
+      "title": "Detail level",
+      "default": "standard",
+      "enum": ["compact", "standard", "full"],
+      "_ui": {
+        "section": "basic",
+        "type": "select",
+        "labels": {
+          "compact": "Compact - minimal output",
+          "standard": "Standard - balanced",
+          "full": "Full - with breakdown"
+        }
+      }
+    },
+
+    "language": {
+      "type": "string",
+      "title": "Output language",
+      "default": "en",
+      "enum": ["en", "th", "both"],
+      "_ui": { "section": "basic", "type": "select" }
+    },
+
+    "aspect_ratio": {
+      "type": "string",
+      "title": "Aspect ratio",
+      "default": "9:16",
+      "enum": ["9:16", "16:9", "1:1", "4:5", "3:2", "2:3", "21:9"],
+      "_ui": { "section": "style", "type": "select" }
+    },
+
+    "aspect_ratio_custom": {
+      "type": "string",
+      "title": "Custom aspect ratio",
+      "description": "e.g., 5:4, 10:16",
+      "_ui": { "section": "style", "type": "text" }
+    },
+
+    "style": {
+      "type": "string",
+      "title": "Image style",
+      "default": "na",
+      "enum": [
+        "na",
+        "photorealistic", "ultra_realistic", "raw_realism", "dslr_look", "natural_light_realism",
+        "street_photography", "documentary", "candid_realism",
+        "soft_commercial", "lifestyle_photography", "beauty_commercial", "product_commercial", "e_commerce_clean_style",
+        "kodak_portra", "fujifilm_superia", "cinestill_800t", "black_and_white_film", "grainy_film", "polaroid",
+        "hollywood_cinematic", "teal_and_orange", "dark_cinematic", "film_noir", "moody_cinematic", "golden_hour_cinematic",
+        "watercolor", "oil_painting", "gouache", "charcoal", "sketch_pencil", "ink_drawing", "pastel",
+        "clean_vector", "flat_illustration", "isometric", "semi_realistic_illustration",
+        "children_book_style", "storybook_art", "clip_art_style",
+        "medieval_fantasy", "elven_fantasy", "magic_forest", "gothic_fantasy", "fairycore", "cottagecore", "dreamy_fantasy",
+        "dreamlike", "impossible_geometry", "dali_style_surreal", "vaporwave", "synthwave", "psychedelic_art", "glitch_art",
+        "modern_anime", "old_school_anime", "chibi", "shonen", "shojo", "seinen", "ghibli_style_mood", "cel_shaded",
+        "cyberpunk", "neon_city", "biopunk", "post_apocalyptic", "tech_noir",
+        "deep_space_realism", "alien_worlds", "space_opera",
+        "unreal_engine", "blender_cycles", "octane_render", "pbr_realistic",
+        "rpg_concept_art", "moba_splash_art", "jrpg_illustration", "creature_concept_design",
+        "clean_minimal", "geometric_minimal", "scandinavian_style", "white_space_heavy",
+        "poster_style", "magazine_editorial", "infographic_style",
+        "bauhaus", "swiss_design", "80s_neon", "90s_grunge", "y2k_aesthetic",
+        "victorian", "baroque", "art_nouveau", "art_deco", "renaissance_painting",
+        "editorial_fashion", "runway_style", "street_fashion", "korean_soft_fashion", "japanese_casual",
+        "portraiture", "glamour", "beauty_portrait", "character_portrait",
+        "mixed_media", "collage", "double_exposure", "photo_bashing",
+        "pixar_3d_animated", "disney_3d_animated", "dreamworks_3d", "claymation", "low_poly_3d"
+      ],
+      "_ui": {
+        "section": "style",
+        "type": "select",
+        "searchable": true,
+        "grouped": true
+      }
+    },
+
+    "style_custom": {
+      "type": "string",
+      "title": "Custom style",
+      "description": "Describe your own style",
+      "_ui": { "section": "style", "type": "text" }
+    },
+
+    "vfx_category": {
+      "type": "string",
+      "title": "VFX category",
+      "default": "na",
+      "enum": ["na", "particles", "lighting", "weather", "magic", "atmospheric", "motion"],
+      "_ui": {
+        "section": "vfx",
+        "type": "select",
+        "labels": {
+          "na": "None",
+          "particles": "Particles",
+          "lighting": "Lighting",
+          "weather": "Weather",
+          "magic": "Magic",
+          "atmospheric": "Atmospheric",
+          "motion": "Motion"
+        }
+      }
+    },
+
+    "vfx_effects": {
+      "type": "array",
+      "title": "VFX effects",
+      "items": { "type": "string" },
+      "default": [],
+      "enum": [
+        "dust_particles", "smoke", "fire_particles", "water_droplets", "sparks", "embers", "snow_flakes", "pollen",
+        "glow_effect", "lens_flare", "god_rays", "neon_glow", "light_streaks", "bioluminescence", "volumetric_light",
+        "rain", "heavy_rain", "snow", "lightning", "storm", "tornado", "wind_effects",
+        "energy_aura", "magic_circle", "spell_effects", "portal", "glowing_runes", "magical_particles", "force_field",
+        "mist", "fog", "haze", "steam", "volumetric_fog", "smoke_atmosphere",
+        "motion_blur", "speed_lines", "trailing_effects", "impact_waves", "shockwave", "dynamic_trail"
+      ],
+      "_ui": { "section": "vfx", "type": "multiselect" }
+    },
+
+    "vfx_custom": {
+      "type": "string",
+      "title": "Custom VFX",
+      "description": "Describe custom effects",
+      "_ui": { "section": "vfx", "type": "text" }
+    },
+
+    "text_on_image": {
+      "type": "boolean",
+      "title": "Add text on image",
+      "default": false,
+      "_ui": { "section": "typography", "type": "boolean" }
+    },
+
+    "headline": {
+      "type": "string",
+      "title": "Headline text",
+      "_ui": {
+        "section": "typography",
+        "type": "text",
+        "dependsOn": { "field": "text_on_image", "value": true }
+      }
+    },
+
+    "body_text": {
+      "type": "string",
+      "title": "Body text",
+      "_ui": {
+        "section": "typography",
+        "type": "text",
+        "dependsOn": { "field": "text_on_image", "value": true }
+      }
+    },
+
+    "typo_font_personality": {
+      "type": "array",
+      "title": "Font personality",
+      "items": { "type": "string" },
+      "default": [],
+      "enum": ["modern_clean", "minimal_light", "bold_strong", "elegant_serif", "soft_rounded", "handwriting_script", "retro_vintage", "tech_futuristic", "playful_fun"],
+      "_ui": {
+        "section": "typography",
+        "type": "multiselect",
+        "dependsOn": { "field": "text_on_image", "value": true }
+      }
+    },
+
+    "typo_composition": {
+      "type": "array",
+      "title": "Composition style",
+      "items": { "type": "string" },
+      "default": [],
+      "enum": ["centered_layout", "left_aligned_clean", "grid_based", "big_title_small_subtext", "overlap_layered_text", "asymmetrical_layout", "full_bleed_typography"],
+      "_ui": {
+        "section": "typography",
+        "type": "multiselect",
+        "dependsOn": { "field": "text_on_image", "value": true }
+      }
+    },
+
+    "typo_mood": {
+      "type": "array",
+      "title": "Typography mood",
+      "items": { "type": "string" },
+      "default": [],
+      "enum": ["minimal_and_calm", "energetic_and_bold", "elegant_and_luxury", "youthful_and_cute", "futuristic_neon", "vintage_warm", "high_contrast_dramatic"],
+      "_ui": {
+        "section": "typography",
+        "type": "multiselect",
+        "dependsOn": { "field": "text_on_image", "value": true }
+      }
+    },
+
+    "typo_effects": {
+      "type": "array",
+      "title": "Text effects",
+      "items": { "type": "string" },
+      "default": [],
+      "enum": ["drop_shadow", "outline_stroke", "glow_neon", "3d_extrude", "metallic_text", "paper_cut_text", "liquid_gel_text", "glitch_distortion"],
+      "_ui": {
+        "section": "typography",
+        "type": "multiselect",
+        "dependsOn": { "field": "text_on_image", "value": true }
+      }
+    },
+
+    "identity_lock": {
+      "type": "string",
+      "title": "Identity lock",
+      "default": "none",
+      "enum": ["none", "soft_lock_person", "strict_lock_product"],
+      "_ui": {
+        "section": "reference",
+        "type": "select",
+        "labels": {
+          "none": "None",
+          "soft_lock_person": "Soft lock (person)",
+          "strict_lock_product": "Strict lock (product)"
+        }
+      }
+    },
+
+    "realistic_skin": {
+      "type": "boolean",
+      "title": "Realistic skin",
+      "description": "Preserve realistic skin texture",
+      "default": false,
+      "_ui": { "section": "reference", "type": "boolean" }
+    },
+
+    "target_platform": {
+      "type": "string",
+      "title": "Target platform",
+      "default": "generic",
+      "enum": ["generic", "stable_diffusion", "midjourney", "dall_e_3", "gemini_imagen", "flux", "firefly"],
+      "_ui": {
+        "section": "advanced",
+        "type": "select",
+        "labels": {
+          "generic": "Generic (universal)",
+          "stable_diffusion": "Stable Diffusion",
+          "midjourney": "Midjourney",
+          "dall_e_3": "DALL-E 3",
+          "gemini_imagen": "Google Gemini/Imagen",
+          "flux": "Flux",
+          "firefly": "Adobe Firefly"
+        }
+      }
+    },
+
+    "controlnet_enabled": {
+      "type": "boolean",
+      "title": "Enable ControlNet",
+      "default": false,
+      "_ui": { "section": "advanced", "type": "boolean" }
+    },
+
+    "controlnet_type": {
+      "type": "string",
+      "title": "ControlNet type",
+      "default": "canny",
+      "enum": ["canny", "depth", "pose", "normal", "scribble", "mlsd", "lineart", "softedge"],
+      "_ui": {
+        "section": "advanced",
+        "type": "select",
+        "dependsOn": { "field": "controlnet_enabled", "value": true }
+      }
+    },
+
+    "controlnet_weight": {
+      "type": "number",
+      "title": "ControlNet weight",
+      "default": 1.0,
+      "minimum": 0,
+      "maximum": 2,
+      "_ui": {
+        "section": "advanced",
+        "type": "slider",
+        "step": 0.1,
+        "dependsOn": { "field": "controlnet_enabled", "value": true }
+      }
+    },
+
+    "guidance_scale": {
+      "type": "number",
+      "title": "Guidance scale (CFG)",
+      "default": 7.5,
+      "minimum": 1,
+      "maximum": 30,
+      "_ui": { "section": "advanced", "type": "slider", "step": 0.5 }
+    },
+
+    "steps": {
+      "type": "integer",
+      "title": "Sampling steps",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 150,
+      "_ui": { "section": "advanced", "type": "slider", "step": 1 }
+    },
+
+    "denoising_strength": {
+      "type": "number",
+      "title": "Denoising strength",
+      "default": 0.75,
+      "minimum": 0,
+      "maximum": 1,
+      "_ui": {
+        "section": "advanced",
+        "type": "slider",
+        "step": 0.05,
+        "dependsOn": { "field": "generation_mode", "value": "image_to_image" }
+      }
+    },
+
+    "seed": {
+      "type": "integer",
+      "title": "Random seed",
+      "default": -1,
+      "_ui": { "section": "advanced", "type": "number" }
+    },
+
+    "mask_segment_prompt": {
+      "type": "string",
+      "title": "Mask segment prompt",
+      "description": "Describe area to edit (e.g., 'sky', 'background')",
+      "_ui": {
+        "section": "advanced",
+        "type": "text",
+        "dependsOn": { "field": "generation_mode", "value": "inpaint" }
+      }
+    },
+
+    "outpaint_direction": {
+      "type": "array",
+      "title": "Outpaint direction",
+      "items": { "type": "string" },
+      "default": [],
+      "enum": ["left", "right", "top", "bottom"],
+      "_ui": {
+        "section": "advanced",
+        "type": "multiselect",
+        "dependsOn": { "field": "generation_mode", "value": "outpaint" }
+      }
+    },
+
+    "outpaint_pixels": {
+      "type": "integer",
+      "title": "Outpaint pixels",
+      "default": 256,
+      "minimum": 64,
+      "maximum": 1024,
+      "_ui": {
+        "section": "advanced",
+        "type": "slider",
+        "step": 64,
+        "dependsOn": { "field": "generation_mode", "value": "outpaint" }
+      }
+    }
+  },
+
+  "_uiSections": {
+    "basic": {
+      "title": "Basic Input",
+      "icon": "sparkles",
+      "collapsed": false
+    },
+    "style": {
+      "title": "Style & Aspect",
+      "icon": "palette",
+      "collapsed": false
+    },
+    "vfx": {
+      "title": "VFX Effects",
+      "icon": "wand-2",
+      "collapsed": true
+    },
+    "typography": {
+      "title": "Typography",
+      "icon": "type",
+      "collapsed": true
+    },
+    "reference": {
+      "title": "Reference & Identity",
+      "icon": "image",
+      "collapsed": true
+    },
+    "advanced": {
+      "title": "Advanced Parameters",
+      "icon": "settings",
+      "collapsed": true
+    }
+  }
+}

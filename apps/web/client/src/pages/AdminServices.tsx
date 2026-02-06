@@ -50,17 +50,52 @@ interface Service {
   restarts?: number;
 }
 
+interface MemoryInfo {
+  total: number;
+  used: number;
+  free: number;
+  available: number;
+  usedPercent: number;
+}
+
 interface DiskInfo {
+  total: number;
+  used: number;
+  available: number;
+  usedPercent: number;
+  mountPoint: string;
+}
+
+interface DockerDiskInfo {
   volumesSize: number;
   imagesSize: number;
   totalUsed: number;
+}
+
+interface GPUInfo {
+  id: number;
+  name: string;
+  utilization: number;
+  memoryUsed: number;
+  memoryTotal: number;
+  memoryPercent: number;
+  temperature: number;
+  powerUsage: number;
+  powerLimit: number;
+}
+
+interface SystemInfo {
+  memory: MemoryInfo | null;
+  disk: DiskInfo | null;
+  gpu: GPUInfo[] | null;
+  docker: DockerDiskInfo | null;
 }
 
 export default function AdminServices() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
   const [services, setServices] = useState<Service[]>([]);
-  const [diskInfo, setDiskInfo] = useState<DiskInfo | null>(null);
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [logs, setLogs] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -90,7 +125,7 @@ export default function AdminServices() {
       if (response.ok) {
         const data = await response.json();
         setServices(data.services || []);
-        setDiskInfo(data.disk || null);
+        setSystemInfo(data.system || null);
       } else {
         console.error('Failed to fetch services:', response.status);
       }
@@ -313,8 +348,16 @@ export default function AdminServices() {
             <div className="flex items-center gap-3 mb-2">
               <Database className="w-8 h-8 text-blue-500" />
               <div>
-                <div className="text-2xl font-bold text-gray-900">{totalMemory.toFixed(0)}MB</div>
-                <div className="text-sm text-gray-500">Total RAM</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {systemInfo?.memory
+                    ? `${systemInfo.memory.available / 1024 >= 1
+                        ? `${(systemInfo.memory.available / 1024).toFixed(1)}GB`
+                        : `${systemInfo.memory.available}MB`} / ${(systemInfo.memory.total / 1024).toFixed(1)}GB`
+                    : 'N/A'}
+                </div>
+                <div className="text-sm text-gray-500">
+                  RAM Available {systemInfo?.memory ? `(${100 - systemInfo.memory.usedPercent}%)` : ''}
+                </div>
               </div>
             </div>
           </div>
@@ -324,12 +367,40 @@ export default function AdminServices() {
               <Database className="w-8 h-8 text-orange-500" />
               <div>
                 <div className="text-2xl font-bold text-gray-900">
-                  {diskInfo ? `${diskInfo.totalUsed.toFixed(1)}GB` : 'N/A'}
+                  {systemInfo?.disk
+                    ? `${systemInfo.disk.available.toFixed(1)}GB / ${systemInfo.disk.total.toFixed(1)}GB`
+                    : 'N/A'}
                 </div>
-                <div className="text-sm text-gray-500">Disk Used</div>
+                <div className="text-sm text-gray-500">
+                  Storage Available {systemInfo?.disk ? `(${100 - systemInfo.disk.usedPercent}%)` : ''}
+                </div>
               </div>
             </div>
           </div>
+
+          {/* GPU Cards - show each GPU separately */}
+          {systemInfo?.gpu && systemInfo.gpu.length > 0 && systemInfo.gpu.map((gpu) => (
+            <div key={gpu.id} className="bg-white/70 backdrop-blur-xl rounded-xl border border-white/50 shadow-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Cpu className="w-8 h-8 text-green-500" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-600 mb-1">
+                    GPU {gpu.id}: {gpu.name.length > 20 ? gpu.name.substring(0, 20) + '...' : gpu.name}
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {gpu.utilization.toFixed(0)}%
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    VRAM: {gpu.memoryUsed.toFixed(1)}/{gpu.memoryTotal.toFixed(1)}GB ({gpu.memoryPercent}%)
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {gpu.temperature > 0 && `${gpu.temperature}°C`}
+                    {gpu.powerUsage > 0 && ` • ${gpu.powerUsage.toFixed(0)}W/${gpu.powerLimit.toFixed(0)}W`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </motion.div>
 
         {/* Services List */}

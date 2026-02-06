@@ -1,7 +1,14 @@
 /**
  * Media Generation Service
  * Proxies requests to Python backend for image, video, and audio generation
+ * Uses rate limiting to prevent overwhelming external APIs
  */
+
+import {
+  scheduleMediaWithLimiter,
+  recordMediaUsage,
+  type MediaType as RateLimiterMediaType,
+} from './llmRateLimiter';
 
 // ==================== Types ====================
 
@@ -164,6 +171,8 @@ export interface VideoGenerationRequest {
   duration?: number;
   aspectRatio?: string;
   fps?: number;
+  /** Output resolution (e.g., "720p", "1080p") */
+  resolution?: string;
   /** Reference images for video generation (img2vid) */
   referenceImageUrls?: string[];
   /** Reference video URL for vid2vid */
@@ -221,13 +230,21 @@ export interface TaskListResponse {
 // ==================== Service Class ====================
 
 // Support multiple env var names for docker compatibility
-// PYTHON_BACKEND_URL (preferred) -> BACKEND_URL -> OAUTH_SERVER_URL (fallback)
+// PYTHON_BACKEND_URL (preferred) -> BACKEND_URL -> localhost fallback
 const PYTHON_BACKEND_URL =
   process.env.PYTHON_BACKEND_URL ||
   process.env.BACKEND_URL ||
-  process.env.OAUTH_SERVER_URL ||
   "http://localhost:8000";
 const NODE_ENV = process.env.NODE_ENV || "development";
+
+// Public URL for external services (like KIE AI) to access uploaded files
+// This should be the tenant's public domain (e.g., https://smartaihub.app)
+// Falls back to internal URL for backward compatibility
+const PUBLIC_URL =
+  process.env.PUBLIC_URL ||
+  process.env.APP_PUBLIC_URL ||
+  process.env.VITE_APP_URL ||
+  null;
 
 // Internal URL for Python backend to access Node.js server (for file downloads)
 // In Docker, this is the internal container network URL
@@ -237,9 +254,11 @@ const NODE_SERVER_INTERNAL_URL =
 
 /**
  * Convert relative URLs (e.g., /uploads/xxx.png) to full URLs
- * so the Python backend can download the files
+ * so external services (like KIE AI) can download the files
+ * @param url The URL to resolve
+ * @param publicUrl Optional public URL from request context (tenant domain, e.g., https://smartaihub.app)
  */
-function resolveReferenceUrl(url: string): string {
+function resolveReferenceUrl(url: string, publicUrl?: string | null): string {
   if (!url) return url;
 
   // If already a full URL, return as-is
@@ -247,12 +266,38 @@ function resolveReferenceUrl(url: string): string {
     return url;
   }
 
-  // Convert relative path to full URL using internal Docker network
+  // Convert relative path to full URL
+  // Priority: 1) Request's publicUrl (tenant domain), 2) Env PUBLIC_URL, 3) Internal URL
   if (url.startsWith("/uploads/") || url.startsWith("/")) {
-    return `${NODE_SERVER_INTERNAL_URL}${url}`;
+    const baseUrl = publicUrl || PUBLIC_URL || NODE_SERVER_INTERNAL_URL;
+    return `${baseUrl}${url}`;
   }
 
   return url;
+}
+
+/**
+ * Process extraParams and resolve any relative URLs (e.g., image_input field)
+ * This ensures URLs like /uploads/... are converted to full URLs for the Python backend
+ * @param extraParams The extra parameters object
+ * @param publicUrl Optional public URL from request context (tenant domain)
+ */
+function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: string | null): Record<string, any> {
+  const resolved = { ...extraParams };
+  for (const [key, value] of Object.entries(resolved)) {
+    // If value is an array of strings that look like relative URLs, resolve them
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
+      const firstVal = value[0] as string;
+      if (firstVal.startsWith('/uploads/') || (firstVal.startsWith('/') && !firstVal.startsWith('//'))) {
+        resolved[key] = value.map((url: string) => resolveReferenceUrl(url, publicUrl));
+      }
+    }
+    // If value is a single string that looks like a relative URL
+    else if (typeof value === 'string' && (value.startsWith('/uploads/') || (value.startsWith('/') && !value.startsWith('//')))) {
+      resolved[key] = resolveReferenceUrl(value, publicUrl);
+    }
+  }
+  return resolved;
 }
 
 /**
@@ -306,15 +351,19 @@ export class MediaGenerationService {
   }
 
   /**
-   * Generate image synchronously
+   * Generate image synchronously (with rate limiting)
    */
   async generateImage(
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
+    const modelId = request.model || DEFAULT_MODELS.image;
+    const modelMeta = MEDIA_MODELS[modelId];
+    const provider = modelMeta?.provider || "kie.ai";
+
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
-      model: request.model || DEFAULT_MODELS.image,
+      model: modelId,
       size: request.size,
       aspect_ratio: request.aspectRatio,
       negative_prompt: request.negativePrompt,
@@ -336,9 +385,13 @@ export class MediaGenerationService {
       payload.api_config = (request as any).apiConfig;
     }
 
+    // Get publicUrl from request for resolving relative URLs to tenant domain
+    const publicUrl = (request as any).publicUrl as string | undefined;
+
     // Add extra params from dynamic input fields
+    // Resolve any relative URLs (e.g., image_input with /uploads/... paths)
     if ((request as any).extraParams) {
-      payload.extra_params = (request as any).extraParams;
+      payload.extra_params = resolveExtraParamsUrls((request as any).extraParams, publicUrl);
     }
 
     // Add reference images if provided (1-5 images)
@@ -346,39 +399,56 @@ export class MediaGenerationService {
     if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
       payload.reference_image_urls = request.referenceImageUrls
         .slice(0, 5)
-        .map(resolveReferenceUrl);
+        .map(url => resolveReferenceUrl(url, publicUrl));
     }
 
     // Add reference style if provided
     if (request.referenceStyleUrl) {
-      payload.reference_style_url = resolveReferenceUrl(request.referenceStyleUrl);
+      payload.reference_style_url = resolveReferenceUrl(request.referenceStyleUrl, publicUrl);
     }
 
-    const response = await fetch(`${this.baseUrl}/api/v1/media/image`, {
-      method: "POST",
-      headers: this.getHeaders(userToken),
-      body: JSON.stringify(payload),
-    });
+    // Use rate limiter to prevent overwhelming the API
+    try {
+      const result = await scheduleMediaWithLimiter(provider, "image" as RateLimiterMediaType, async () => {
+        const response = await fetch(`${this.baseUrl}/api/v1/media/image`, {
+          method: "POST",
+          headers: this.getHeaders(userToken),
+          body: JSON.stringify(payload),
+        });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || `Image generation failed: ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Image generation failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return this.mapResponse(data);
+      });
+
+      // Record successful usage
+      recordMediaUsage(provider, modelId, "image" as RateLimiterMediaType, true, result.creditsUsed);
+      return result;
+    } catch (error) {
+      // Record failed usage
+      recordMediaUsage(provider, modelId, "image" as RateLimiterMediaType, false, 0);
+      throw error;
     }
-
-    const data = await response.json();
-    return this.mapResponse(data);
   }
 
   /**
-   * Generate video synchronously
+   * Generate video synchronously (with rate limiting)
    */
   async generateVideo(
     request: VideoGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
+    const modelId = request.model || DEFAULT_MODELS.video;
+    const modelMeta = MEDIA_MODELS[modelId];
+    const provider = modelMeta?.provider || "kie.ai";
+
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
-      model: request.model || DEFAULT_MODELS.video,
+      model: modelId,
       duration: request.duration,
       aspect_ratio: request.aspectRatio,
       fps: request.fps,
@@ -394,9 +464,13 @@ export class MediaGenerationService {
       payload.api_config = (request as any).apiConfig;
     }
 
+    // Get publicUrl from request for resolving relative URLs to tenant domain
+    const publicUrl = (request as any).publicUrl as string | undefined;
+
     // Add extra params from dynamic input fields
+    // Resolve any relative URLs (e.g., image_input with /uploads/... paths)
     if ((request as any).extraParams) {
-      payload.extra_params = (request as any).extraParams;
+      payload.extra_params = resolveExtraParamsUrls((request as any).extraParams, publicUrl);
     }
 
     // Add reference images for img2vid
@@ -404,172 +478,244 @@ export class MediaGenerationService {
     if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
       payload.reference_image_urls = request.referenceImageUrls
         .slice(0, 5)
-        .map(resolveReferenceUrl);
+        .map(url => resolveReferenceUrl(url, publicUrl));
     }
 
     // Add reference video for vid2vid
     if (request.referenceVideoUrl) {
-      payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl);
+      payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl, publicUrl);
     }
 
-    const response = await fetch(`${this.baseUrl}/api/v1/media/video`, {
-      method: "POST",
-      headers: this.getHeaders(userToken),
-      body: JSON.stringify(payload),
-    });
+    // Use rate limiter with video priority (lower priority due to resource intensity)
+    try {
+      const result = await scheduleMediaWithLimiter(provider, "video" as RateLimiterMediaType, async () => {
+        const response = await fetch(`${this.baseUrl}/api/v1/media/video`, {
+          method: "POST",
+          headers: this.getHeaders(userToken),
+          body: JSON.stringify(payload),
+        });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || `Video generation failed: ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Video generation failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return this.mapResponse(data);
+      });
+
+      recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, true, result.creditsUsed);
+      return result;
+    } catch (error) {
+      recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, false, 0);
+      throw error;
     }
-
-    const data = await response.json();
-    return this.mapResponse(data);
   }
 
   /**
-   * Generate audio synchronously
+   * Generate audio synchronously (with rate limiting)
    */
   async generateAudio(
     request: AudioGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
+    const modelId = request.model || DEFAULT_MODELS.audio;
+    const modelMeta = MEDIA_MODELS[modelId];
+    const provider = modelMeta?.provider || "kie.ai";
+
     const payload = {
       text: request.text,
-      model: request.model || DEFAULT_MODELS.audio,
+      model: modelId,
       voice: request.voice,
       speed: request.speed,
     };
 
-    const response = await fetch(`${this.baseUrl}/api/v1/media/audio`, {
-      method: "POST",
-      headers: this.getHeaders(userToken),
-      body: JSON.stringify(payload),
-    });
+    try {
+      const result = await scheduleMediaWithLimiter(provider, "audio" as RateLimiterMediaType, async () => {
+        const response = await fetch(`${this.baseUrl}/api/v1/media/audio`, {
+          method: "POST",
+          headers: this.getHeaders(userToken),
+          body: JSON.stringify(payload),
+        });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || `Audio generation failed: ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Audio generation failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return this.mapResponse(data);
+      });
+
+      recordMediaUsage(provider, modelId, "audio" as RateLimiterMediaType, true, result.creditsUsed);
+      return result;
+    } catch (error) {
+      recordMediaUsage(provider, modelId, "audio" as RateLimiterMediaType, false, 0);
+      throw error;
     }
-
-    const data = await response.json();
-    return this.mapResponse(data);
   }
 
   /**
-   * Generate image asynchronously (returns task ID for polling)
+   * Generate image asynchronously (returns task ID for polling, with rate limiting)
    */
   async generateImageAsync(
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
+    const modelId = request.model || DEFAULT_MODELS.image;
+    const modelMeta = MEDIA_MODELS[modelId];
+    const provider = modelMeta?.provider || "kie.ai";
+
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
-      model: request.model || DEFAULT_MODELS.image,
+      model: modelId,
       size: request.size,
       aspect_ratio: request.aspectRatio,
       negative_prompt: request.negativePrompt,
       n: request.numImages || 1,
     };
 
+    // Get publicUrl from request for resolving relative URLs to tenant domain
+    const publicUrl = (request as any).publicUrl as string | undefined;
+
     // Add reference images if provided (1-5 images)
-    // Convert relative URLs to full URLs for Python backend
     if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
       payload.reference_image_urls = request.referenceImageUrls
         .slice(0, 5)
-        .map(resolveReferenceUrl);
+        .map(url => resolveReferenceUrl(url, publicUrl));
     }
 
     // Add reference style if provided
     if (request.referenceStyleUrl) {
-      payload.reference_style_url = resolveReferenceUrl(request.referenceStyleUrl);
+      payload.reference_style_url = resolveReferenceUrl(request.referenceStyleUrl, publicUrl);
     }
 
-    const response = await fetch(`${this.baseUrl}/api/v1/media/async/image`, {
-      method: "POST",
-      headers: this.getHeaders(userToken),
-      body: JSON.stringify(payload),
-    });
+    try {
+      const task = await scheduleMediaWithLimiter(provider, "image" as RateLimiterMediaType, async () => {
+        const response = await fetch(`${this.baseUrl}/api/v1/media/async/image`, {
+          method: "POST",
+          headers: this.getHeaders(userToken),
+          body: JSON.stringify(payload),
+        });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || `Async image generation failed: ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Async image generation failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return this.mapTask(data);
+      });
+
+      // Record task submission (actual completion tracked separately)
+      recordMediaUsage(provider, modelId, "image" as RateLimiterMediaType, true, 0);
+      return task;
+    } catch (error) {
+      recordMediaUsage(provider, modelId, "image" as RateLimiterMediaType, false, 0);
+      throw error;
     }
-
-    const data = await response.json();
-    return this.mapTask(data);
   }
 
   /**
-   * Generate video asynchronously (returns task ID for polling)
+   * Generate video asynchronously (returns task ID for polling, with rate limiting)
    */
   async generateVideoAsync(
     request: VideoGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
+    const modelId = request.model || DEFAULT_MODELS.video;
+    const modelMeta = MEDIA_MODELS[modelId];
+    const provider = modelMeta?.provider || "kie.ai";
+
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
-      model: request.model || DEFAULT_MODELS.video,
+      model: modelId,
       duration: request.duration,
       aspect_ratio: request.aspectRatio,
       fps: request.fps,
     };
 
+    // Get publicUrl from request for resolving relative URLs to tenant domain
+    const publicUrl = (request as any).publicUrl as string | undefined;
+
     // Add reference images for img2vid
-    // Convert relative URLs to full URLs for Python backend
     if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
       payload.reference_image_urls = request.referenceImageUrls
         .slice(0, 5)
-        .map(resolveReferenceUrl);
+        .map(url => resolveReferenceUrl(url, publicUrl));
     }
 
     // Add reference video for vid2vid
     if (request.referenceVideoUrl) {
-      payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl);
+      payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl, publicUrl);
     }
 
-    const response = await fetch(`${this.baseUrl}/api/v1/media/async/video`, {
-      method: "POST",
-      headers: this.getHeaders(userToken),
-      body: JSON.stringify(payload),
-    });
+    try {
+      const task = await scheduleMediaWithLimiter(provider, "video" as RateLimiterMediaType, async () => {
+        const response = await fetch(`${this.baseUrl}/api/v1/media/async/video`, {
+          method: "POST",
+          headers: this.getHeaders(userToken),
+          body: JSON.stringify(payload),
+        });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || `Async video generation failed: ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Async video generation failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return this.mapTask(data);
+      });
+
+      recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, true, 0);
+      return task;
+    } catch (error) {
+      recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, false, 0);
+      throw error;
     }
-
-    const data = await response.json();
-    return this.mapTask(data);
   }
 
   /**
-   * Generate audio asynchronously (returns task ID for polling)
+   * Generate audio asynchronously (returns task ID for polling, with rate limiting)
    */
   async generateAudioAsync(
     request: AudioGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
+    const modelId = request.model || DEFAULT_MODELS.audio;
+    const modelMeta = MEDIA_MODELS[modelId];
+    const provider = modelMeta?.provider || "kie.ai";
+
     const payload = {
       text: request.text,
-      model: request.model || DEFAULT_MODELS.audio,
+      model: modelId,
       voice: request.voice,
       speed: request.speed,
     };
 
-    const response = await fetch(`${this.baseUrl}/api/v1/media/async/audio`, {
-      method: "POST",
-      headers: this.getHeaders(userToken),
-      body: JSON.stringify(payload),
-    });
+    try {
+      const task = await scheduleMediaWithLimiter(provider, "audio" as RateLimiterMediaType, async () => {
+        const response = await fetch(`${this.baseUrl}/api/v1/media/async/audio`, {
+          method: "POST",
+          headers: this.getHeaders(userToken),
+          body: JSON.stringify(payload),
+        });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || `Async audio generation failed: ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Async audio generation failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return this.mapTask(data);
+      });
+
+      recordMediaUsage(provider, modelId, "audio" as RateLimiterMediaType, true, 0);
+      return task;
+    } catch (error) {
+      recordMediaUsage(provider, modelId, "audio" as RateLimiterMediaType, false, 0);
+      throw error;
     }
-
-    const data = await response.json();
-    return this.mapTask(data);
   }
 
   /**
@@ -600,6 +746,7 @@ export class MediaGenerationService {
       status?: TaskStatus;
       limit?: number;
       offset?: number;
+      daysAgo?: number;
     }
   ): Promise<TaskListResponse> {
     const params = new URLSearchParams();
@@ -607,6 +754,7 @@ export class MediaGenerationService {
     if (options?.status) params.append("status_filter", options.status);
     if (options?.limit) params.append("limit", options.limit.toString());
     if (options?.offset) params.append("offset", options.offset.toString());
+    if (options?.daysAgo) params.append("days_ago", options.daysAgo.toString());
 
     const url = `${this.baseUrl}/api/v1/media/tasks${params.toString() ? `?${params}` : ""}`;
 

@@ -10,6 +10,7 @@ export type { SkillScope, SkillMode, SkillFormat, SkillBase } from '@smartspec/s
 export type SkillType =
   | "image-generation"
   | "video-generation"
+  | "image-video-generation"
   | "audio-generation"
   | "code-assistant"
   | "document-analysis"
@@ -19,6 +20,32 @@ export type SkillType =
   | "chat-assistant"
   | "translation";
 
+/**
+ * A parsed trigger rule with regex and optional chainTo
+ */
+export interface TriggerRule {
+  /** The compiled regex pattern */
+  regex: RegExp;
+  /** Original pattern string for display/logging */
+  pattern: string;
+  /** Optional skill slug to chain to when this pattern matches */
+  chainTo?: string | null;
+  /** Optional label for admin UI display */
+  label?: string;
+}
+
+/**
+ * Raw pattern rule from database (JSON format)
+ */
+export interface PatternRule {
+  /** Regex pattern string */
+  pattern: string;
+  /** Optional skill slug to chain to */
+  chainTo?: string | null;
+  /** Optional label for admin UI */
+  label?: string;
+}
+
 export interface SkillDefinition {
   id: string;
   name: string;
@@ -26,8 +53,8 @@ export interface SkillDefinition {
   icon: string;
   type: SkillType;
 
-  /** Regex patterns that trigger this skill */
-  triggers: RegExp[];
+  /** Trigger rules (regex + optional per-pattern chainTo) */
+  triggers: TriggerRule[];
 
   /** Whether this skill requires explicit invocation */
   requiresExplicit: boolean;
@@ -58,6 +85,9 @@ export interface SkillDefinition {
 
   /** Execution mode: llm-only (text), media-generate (LLM→prompt→media API) */
   executionMode?: "llm-only" | "media-generate";
+
+  /** Chain to another skill after this skill completes (skill slug) */
+  chainTo?: string;
 
   /** Database ID if from database */
   dbId?: number;
@@ -97,6 +127,8 @@ export interface SkillDetectionResult {
   confidence: number;
   matchedTrigger: string | null;
   suggestedPrompt: string | null;
+  /** chainTo target from the matched trigger pattern (per-pattern configuration) */
+  patternChainTo?: string | null;
 }
 
 export interface SkillSettings {

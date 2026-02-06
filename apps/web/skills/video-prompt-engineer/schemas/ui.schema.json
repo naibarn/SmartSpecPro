@@ -1,0 +1,639 @@
+{
+  "$schema": "https://smartspec.pro/skill-ui-schema/v1",
+  "version": "1.0",
+  "skillId": "video_prompt_engineer",
+  "title": "Video Prompt Engineer",
+  "titleTh": "ตัวช่วยสร้าง Prompt วิดีโอ",
+  "description": "Generate professional AI video prompts for Sora, Veo, Kling, Wan, and Seedance",
+  "sections": [
+    {
+      "id": "basic",
+      "title": "Basic Input",
+      "titleTh": "ข้อมูลพื้นฐาน",
+      "icon": "video",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "request",
+          "type": "textarea",
+          "label": "Video Concept",
+          "labelTh": "แนวคิดวิดีโอ",
+          "placeholder": "Describe your video concept...",
+          "placeholderTh": "อธิบายแนวคิดวิดีโอของคุณ...",
+          "helpText": "The main video concept or description",
+          "helpTextTh": "แนวคิดหรือคำอธิบายหลักของวิดีโอ",
+          "rows": 3,
+          "required": true
+        },
+        {
+          "id": "target_platform",
+          "type": "select",
+          "label": "Target Platform",
+          "labelTh": "แพลตฟอร์มเป้าหมาย",
+          "helpText": "Choose AI video generation platform",
+          "helpTextTh": "เลือกแพลตฟอร์ม AI สร้างวิดีโอ",
+          "default": "compatible",
+          "options": [
+            { "value": "compatible", "label": "Universal (All platforms)", "labelTh": "ใช้ได้ทุกแพลตฟอร์ม" },
+            { "value": "sora", "label": "OpenAI Sora", "labelTh": "OpenAI Sora" },
+            { "value": "veo", "label": "Google Veo", "labelTh": "Google Veo" },
+            { "value": "kling", "label": "Kling AI", "labelTh": "Kling AI" },
+            { "value": "wan", "label": "Wan Show AI", "labelTh": "Wan Show AI" },
+            { "value": "seedance", "label": "Seedance", "labelTh": "Seedance" }
+          ]
+        },
+        {
+          "id": "duration",
+          "type": "slider",
+          "label": "Duration (seconds)",
+          "labelTh": "ความยาว (วินาที)",
+          "helpText": "Video duration (platform limits apply)",
+          "helpTextTh": "ความยาววิดีโอ (ขึ้นอยู่กับข้อจำกัดแพลตฟอร์ม)",
+          "default": 8,
+          "min": 4,
+          "max": 60,
+          "step": 1
+        },
+        {
+          "id": "aspect_ratio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "default": "9:16",
+          "options": [
+            { "value": "9:16", "label": "9:16 (TikTok/Reels/Shorts)", "labelTh": "9:16 (TikTok/Reels/Shorts)" },
+            { "value": "16:9", "label": "16:9 (YouTube/Standard)", "labelTh": "16:9 (YouTube/มาตรฐาน)" },
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" },
+            { "value": "4:5", "label": "4:5 (Instagram)", "labelTh": "4:5 (Instagram)" },
+            { "value": "21:9", "label": "21:9 (Cinematic Ultra-wide)", "labelTh": "21:9 (ภาพยนตร์จอกว้าง)" }
+          ]
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Output Language",
+          "labelTh": "ภาษาผลลัพธ์",
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai", "labelTh": "ไทย" },
+            { "value": "auto", "label": "Auto-detect", "labelTh": "ตรวจจับอัตโนมัติ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Visual Style",
+      "titleTh": "สไตล์ภาพ",
+      "icon": "palette",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "cinematic_style",
+          "type": "select",
+          "label": "Cinematic Style",
+          "labelTh": "สไตล์ภาพยนตร์",
+          "helpText": "Overall cinematic style and aesthetic",
+          "helpTextTh": "สไตล์ภาพยนตร์และความสวยงามโดยรวม",
+          "default": "cinematic",
+          "options": [
+            { "value": "none", "label": "None", "labelTh": "ไม่มี" },
+            { "value": "cinematic", "label": "Cinematic", "labelTh": "ภาพยนตร์" },
+            { "value": "documentary", "label": "Documentary", "labelTh": "สารคดี" },
+            { "value": "commercial", "label": "Commercial", "labelTh": "โฆษณา" },
+            { "value": "music_video", "label": "Music Video", "labelTh": "มิวสิควิดีโอ" },
+            { "value": "vlog", "label": "Vlog", "labelTh": "วล็อก" },
+            { "value": "narrative", "label": "Narrative", "labelTh": "เล่าเรื่อง" },
+            { "value": "experimental", "label": "Experimental", "labelTh": "ทดลอง" },
+            { "value": "noir", "label": "Film Noir", "labelTh": "ฟิล์มนัวร์" },
+            { "value": "sci_fi", "label": "Sci-Fi", "labelTh": "ไซไฟ" },
+            { "value": "horror", "label": "Horror", "labelTh": "สยองขวัญ" },
+            { "value": "romance", "label": "Romance", "labelTh": "โรแมนติก" },
+            { "value": "action", "label": "Action", "labelTh": "แอคชั่น" },
+            { "value": "drama", "label": "Drama", "labelTh": "ดราม่า" }
+          ]
+        },
+        {
+          "id": "visual_style",
+          "type": "select",
+          "label": "Visual Treatment",
+          "labelTh": "การปรับแต่งภาพ",
+          "helpText": "Visual treatment and color grading",
+          "helpTextTh": "การปรับแต่งภาพและการเกรดสี",
+          "default": "cinematic",
+          "options": [
+            { "value": "photorealistic", "label": "Photorealistic", "labelTh": "สมจริง" },
+            { "value": "cinematic", "label": "Cinematic", "labelTh": "ภาพยนตร์" },
+            { "value": "corporate", "label": "Corporate", "labelTh": "องค์กร" },
+            { "value": "minimalist", "label": "Minimalist", "labelTh": "มินิมอล" },
+            { "value": "vibrant", "label": "Vibrant", "labelTh": "สดใส" },
+            { "value": "documentary", "label": "Documentary", "labelTh": "สารคดี" },
+            { "value": "retro", "label": "Retro", "labelTh": "เรโทร" },
+            { "value": "neon", "label": "Neon", "labelTh": "นีออน" },
+            { "value": "pastel", "label": "Pastel", "labelTh": "พาสเทล" },
+            { "value": "dark", "label": "Dark", "labelTh": "มืด" },
+            { "value": "hand_drawn", "label": "Hand Drawn", "labelTh": "วาดมือ" },
+            { "value": "anime", "label": "Anime", "labelTh": "อนิเมะ" },
+            { "value": "surreal", "label": "Surreal", "labelTh": "เหนือจริง" },
+            { "value": "vintage_film", "label": "Vintage Film", "labelTh": "ฟิล์มวินเทจ" },
+            { "value": "modern_clean", "label": "Modern Clean", "labelTh": "โมเดิร์นสะอาด" }
+          ]
+        },
+        {
+          "id": "color_grading",
+          "type": "select",
+          "label": "Color Grading",
+          "labelTh": "การเกรดสี",
+          "default": "natural",
+          "options": [
+            { "value": "natural", "label": "Natural", "labelTh": "ธรรมชาติ" },
+            { "value": "warm", "label": "Warm", "labelTh": "อบอุ่น" },
+            { "value": "cool", "label": "Cool", "labelTh": "เย็น" },
+            { "value": "desaturated", "label": "Desaturated", "labelTh": "ลดความอิ่มสี" },
+            { "value": "vibrant", "label": "Vibrant", "labelTh": "สดใส" },
+            { "value": "vintage", "label": "Vintage", "labelTh": "วินเทจ" },
+            { "value": "teal_orange", "label": "Teal & Orange", "labelTh": "ฟ้าเขียวและส้ม" },
+            { "value": "noir", "label": "Noir", "labelTh": "นัวร์" },
+            { "value": "bleach_bypass", "label": "Bleach Bypass", "labelTh": "Bleach Bypass" }
+          ]
+        },
+        {
+          "id": "lighting_style",
+          "type": "select",
+          "label": "Lighting Style",
+          "labelTh": "สไตล์แสง",
+          "default": "natural",
+          "options": [
+            { "value": "natural", "label": "Natural", "labelTh": "ธรรมชาติ" },
+            { "value": "golden_hour", "label": "Golden Hour", "labelTh": "ชั่วโมงทอง" },
+            { "value": "blue_hour", "label": "Blue Hour", "labelTh": "ชั่วโมงฟ้า" },
+            { "value": "studio", "label": "Studio", "labelTh": "สตูดิโอ" },
+            { "value": "dramatic", "label": "Dramatic", "labelTh": "ดราม่า" },
+            { "value": "soft", "label": "Soft", "labelTh": "นุ่มนวล" },
+            { "value": "hard", "label": "Hard", "labelTh": "แข็ง" },
+            { "value": "neon", "label": "Neon", "labelTh": "นีออน" },
+            { "value": "sunset", "label": "Sunset", "labelTh": "พระอาทิตย์ตก" },
+            { "value": "sunrise", "label": "Sunrise", "labelTh": "พระอาทิตย์ขึ้น" },
+            { "value": "moonlight", "label": "Moonlight", "labelTh": "แสงจันทร์" },
+            { "value": "candlelight", "label": "Candlelight", "labelTh": "แสงเทียน" },
+            { "value": "volumetric", "label": "Volumetric", "labelTh": "เชิงปริมาตร" },
+            { "value": "rim_light", "label": "Rim Light", "labelTh": "แสงขอบ" },
+            { "value": "silhouette", "label": "Silhouette", "labelTh": "ซิลูเอท" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "camera",
+      "title": "Camera & Composition",
+      "titleTh": "กล้องและการจัดองค์ประกอบ",
+      "icon": "camera",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "camera_movement",
+          "type": "select",
+          "label": "Camera Movement",
+          "labelTh": "การเคลื่อนที่ของกล้อง",
+          "default": "dynamic",
+          "options": [
+            { "value": "static", "label": "Static", "labelTh": "นิ่ง" },
+            { "value": "dolly_in", "label": "Dolly In", "labelTh": "เข้าหา" },
+            { "value": "dolly_out", "label": "Dolly Out", "labelTh": "ออกห่าง" },
+            { "value": "pan_left", "label": "Pan Left", "labelTh": "แพนซ้าย" },
+            { "value": "pan_right", "label": "Pan Right", "labelTh": "แพนขวา" },
+            { "value": "tilt_up", "label": "Tilt Up", "labelTh": "เงยขึ้น" },
+            { "value": "tilt_down", "label": "Tilt Down", "labelTh": "ก้มลง" },
+            { "value": "tracking", "label": "Tracking", "labelTh": "ติดตาม" },
+            { "value": "crane", "label": "Crane", "labelTh": "เครน" },
+            { "value": "handheld", "label": "Handheld", "labelTh": "ถือมือ" },
+            { "value": "steadicam", "label": "Steadicam", "labelTh": "Steadicam" },
+            { "value": "orbit", "label": "Orbit", "labelTh": "โคจร" },
+            { "value": "zoom_in", "label": "Zoom In", "labelTh": "ซูมเข้า" },
+            { "value": "zoom_out", "label": "Zoom Out", "labelTh": "ซูมออก" },
+            { "value": "dynamic", "label": "Dynamic", "labelTh": "ไดนามิก" }
+          ]
+        },
+        {
+          "id": "shot_composition",
+          "type": "select",
+          "label": "Shot Composition",
+          "labelTh": "องค์ประกอบภาพ",
+          "default": "medium_shot",
+          "options": [
+            { "value": "extreme_close_up", "label": "Extreme Close Up", "labelTh": "ใกล้มากที่สุด" },
+            { "value": "close_up", "label": "Close Up", "labelTh": "ใกล้" },
+            { "value": "medium_close_up", "label": "Medium Close Up", "labelTh": "ใกล้ปานกลาง" },
+            { "value": "medium_shot", "label": "Medium Shot", "labelTh": "ระยะกลาง" },
+            { "value": "medium_wide", "label": "Medium Wide", "labelTh": "กลางไกล" },
+            { "value": "wide_shot", "label": "Wide Shot", "labelTh": "ไกล" },
+            { "value": "extreme_wide", "label": "Extreme Wide", "labelTh": "ไกลมาก" },
+            { "value": "over_shoulder", "label": "Over Shoulder", "labelTh": "ข้ามไหล่" },
+            { "value": "pov", "label": "POV (First Person)", "labelTh": "POV (มุมบุคคลที่หนึ่ง)" },
+            { "value": "dutch_angle", "label": "Dutch Angle", "labelTh": "มุมเอียง" },
+            { "value": "low_angle", "label": "Low Angle", "labelTh": "มุมต่ำ" },
+            { "value": "high_angle", "label": "High Angle", "labelTh": "มุมสูง" },
+            { "value": "birds_eye", "label": "Bird's Eye", "labelTh": "มุมนก" }
+          ]
+        },
+        {
+          "id": "pacing",
+          "type": "select",
+          "label": "Pacing",
+          "labelTh": "จังหวะ",
+          "default": "medium",
+          "options": [
+            { "value": "fast", "label": "Fast", "labelTh": "เร็ว" },
+            { "value": "medium", "label": "Medium", "labelTh": "ปานกลาง" },
+            { "value": "slow", "label": "Slow", "labelTh": "ช้า" },
+            { "value": "variable", "label": "Variable", "labelTh": "หลากหลาย" },
+            { "value": "suspenseful", "label": "Suspenseful", "labelTh": "ตื่นเต้น" }
+          ]
+        },
+        {
+          "id": "montage_style",
+          "type": "select",
+          "label": "Montage Style",
+          "labelTh": "สไตล์ Montage",
+          "default": "none",
+          "options": [
+            { "value": "none", "label": "None (Single Shot)", "labelTh": "ไม่มี (ช็อตเดียว)" },
+            { "value": "fast_cuts", "label": "Fast Cuts", "labelTh": "ตัดเร็ว" },
+            { "value": "smooth_transitions", "label": "Smooth Transitions", "labelTh": "เปลี่ยนนุ่มนวล" },
+            { "value": "split_screen", "label": "Split Screen", "labelTh": "แบ่งหน้าจอ" },
+            { "value": "zoom_focus", "label": "Zoom Focus", "labelTh": "โฟกัสซูม" },
+            { "value": "pan_scan", "label": "Pan & Scan", "labelTh": "แพนและสแกน" },
+            { "value": "time_lapse", "label": "Time Lapse", "labelTh": "ไทม์แลปส์" },
+            { "value": "before_after", "label": "Before/After", "labelTh": "ก่อน/หลัง" },
+            { "value": "step_by_step", "label": "Step by Step", "labelTh": "ทีละขั้นตอน" },
+            { "value": "parallel_action", "label": "Parallel Action", "labelTh": "เหตุการณ์คู่ขนาน" },
+            { "value": "slow_motion", "label": "Slow Motion", "labelTh": "สโลว์โมชั่น" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio",
+      "title": "Audio & Sound",
+      "titleTh": "เสียงและดนตรี",
+      "icon": "music",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "audio_language",
+          "type": "select",
+          "label": "Spoken Language",
+          "labelTh": "ภาษาพูด",
+          "default": "english",
+          "options": [
+            { "value": "english", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "thai", "label": "Thai", "labelTh": "ไทย" },
+            { "value": "no_dialogue", "label": "No Dialogue", "labelTh": "ไม่มีบทพูด" },
+            { "value": "ambient_only", "label": "Ambient Only", "labelTh": "เสียงบรรยากาศเท่านั้น" }
+          ]
+        },
+        {
+          "id": "sound_design",
+          "type": "select",
+          "label": "Sound Design",
+          "labelTh": "ออกแบบเสียง",
+          "default": "balanced",
+          "options": [
+            { "value": "silent_subtitles", "label": "Silent + Subtitles", "labelTh": "เงียบ + ซับไตเติ้ล" },
+            { "value": "music_only", "label": "Music Only", "labelTh": "เพลงอย่างเดียว" },
+            { "value": "voiceover_dominant", "label": "Voiceover Dominant", "labelTh": "เน้นเสียงบรรยาย" },
+            { "value": "balanced", "label": "Balanced", "labelTh": "สมดุล" },
+            { "value": "asmr", "label": "ASMR", "labelTh": "ASMR" },
+            { "value": "sfx_heavy", "label": "SFX Heavy", "labelTh": "เน้นเสียงเอฟเฟกต์" },
+            { "value": "dramatic", "label": "Dramatic", "labelTh": "ดราม่า" },
+            { "value": "upbeat", "label": "Upbeat", "labelTh": "สดใส" },
+            { "value": "lo_fi", "label": "Lo-Fi", "labelTh": "โลไฟ" },
+            { "value": "epic", "label": "Epic", "labelTh": "มหากาพย์" },
+            { "value": "ambient", "label": "Ambient", "labelTh": "บรรยากาศ" },
+            { "value": "minimal", "label": "Minimal", "labelTh": "มินิมอล" }
+          ]
+        },
+        {
+          "id": "music_mood",
+          "type": "select",
+          "label": "Music Mood",
+          "labelTh": "อารมณ์เพลง",
+          "default": "none",
+          "options": [
+            { "value": "none", "label": "None", "labelTh": "ไม่มี" },
+            { "value": "upbeat_pop", "label": "Upbeat Pop", "labelTh": "ป๊อปสดใส" },
+            { "value": "dramatic_orchestral", "label": "Dramatic Orchestral", "labelTh": "ออเคสตราดราม่า" },
+            { "value": "lo_fi_chill", "label": "Lo-Fi Chill", "labelTh": "โลไฟชิล" },
+            { "value": "epic_cinematic", "label": "Epic Cinematic", "labelTh": "ภาพยนตร์มหากาพย์" },
+            { "value": "romantic_piano", "label": "Romantic Piano", "labelTh": "เปียโนโรแมนติก" },
+            { "value": "suspense_tension", "label": "Suspense/Tension", "labelTh": "ตื่นเต้น/ลุ้น" },
+            { "value": "corporate_motivational", "label": "Corporate/Motivational", "labelTh": "องค์กร/สร้างแรงบันดาลใจ" },
+            { "value": "ambient_nature", "label": "Ambient Nature", "labelTh": "บรรยากาศธรรมชาติ" },
+            { "value": "electronic_modern", "label": "Electronic Modern", "labelTh": "อิเล็กทรอนิกส์โมเดิร์น" },
+            { "value": "acoustic_warm", "label": "Acoustic Warm", "labelTh": "อะคูสติกอบอุ่น" }
+          ]
+        },
+        {
+          "id": "include_sfx",
+          "type": "boolean",
+          "label": "Include Sound Effects",
+          "labelTh": "รวมเสียงเอฟเฟกต์",
+          "helpText": "Include sound effects descriptions in prompt",
+          "helpTextTh": "รวมคำอธิบายเสียงเอฟเฟกต์ในพรอมต์",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "title": "Content & Audience",
+      "titleTh": "เนื้อหาและกลุ่มเป้าหมาย",
+      "icon": "layers",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "content_type",
+          "type": "select",
+          "label": "Content Type",
+          "labelTh": "ประเภทเนื้อหา",
+          "default": "general",
+          "options": [
+            { "value": "general", "label": "General", "labelTh": "ทั่วไป" },
+            { "value": "product_review", "label": "Product Review", "labelTh": "รีวิวผลิตภัณฑ์" },
+            { "value": "fashion_content", "label": "Fashion Content", "labelTh": "เนื้อหาแฟชั่น" },
+            { "value": "lifestyle_vlog", "label": "Lifestyle Vlog", "labelTh": "ไลฟ์สไตล์วล็อก" },
+            { "value": "comedy_skit", "label": "Comedy Skit", "labelTh": "ตลก/สั้น" },
+            { "value": "storytelling", "label": "Storytelling", "labelTh": "เล่าเรื่อง" },
+            { "value": "behind_scenes", "label": "Behind the Scenes", "labelTh": "เบื้องหลัง" },
+            { "value": "tutorial", "label": "Tutorial", "labelTh": "สอน" },
+            { "value": "announcement", "label": "Announcement", "labelTh": "ประกาศ" },
+            { "value": "testimonial", "label": "Testimonial", "labelTh": "รีวิว/ประจักษ์" },
+            { "value": "montage", "label": "Montage", "labelTh": "มอนทาจ" }
+          ]
+        },
+        {
+          "id": "target_audience",
+          "type": "select",
+          "label": "Target Audience",
+          "labelTh": "กลุ่มเป้าหมาย",
+          "default": "general",
+          "options": [
+            { "value": "general", "label": "General", "labelTh": "ทั่วไป" },
+            { "value": "gen_z", "label": "Gen Z (18-24)", "labelTh": "เจนซี (18-24)" },
+            { "value": "millennials", "label": "Millennials (25-40)", "labelTh": "มิลเลนเนียล (25-40)" },
+            { "value": "gen_x_plus", "label": "Gen X+ (40+)", "labelTh": "เจนเอ็กซ์ขึ้นไป (40+)" },
+            { "value": "business", "label": "Business/Professional", "labelTh": "ธุรกิจ/มืออาชีพ" },
+            { "value": "lifestyle", "label": "Lifestyle", "labelTh": "ไลฟ์สไตล์" },
+            { "value": "educational", "label": "Educational", "labelTh": "การศึกษา" },
+            { "value": "entertainment", "label": "Entertainment", "labelTh": "บันเทิง" }
+          ]
+        },
+        {
+          "id": "social_platform",
+          "type": "select",
+          "label": "Social Platform",
+          "labelTh": "แพลตฟอร์มโซเชียล",
+          "helpText": "Optimize for specific social platform",
+          "helpTextTh": "ปรับให้เหมาะกับแพลตฟอร์มโซเชียล",
+          "default": "universal",
+          "options": [
+            { "value": "universal", "label": "Universal", "labelTh": "ใช้ได้ทั่วไป" },
+            { "value": "tiktok", "label": "TikTok", "labelTh": "TikTok" },
+            { "value": "instagram", "label": "Instagram", "labelTh": "Instagram" },
+            { "value": "youtube_shorts", "label": "YouTube Shorts", "labelTh": "YouTube Shorts" },
+            { "value": "youtube", "label": "YouTube", "labelTh": "YouTube" },
+            { "value": "facebook", "label": "Facebook", "labelTh": "Facebook" },
+            { "value": "linkedin", "label": "LinkedIn", "labelTh": "LinkedIn" },
+            { "value": "twitter", "label": "Twitter/X", "labelTh": "Twitter/X" }
+          ]
+        },
+        {
+          "id": "emotion",
+          "type": "select",
+          "label": "Emotional Tone",
+          "labelTh": "โทนอารมณ์",
+          "default": "neutral",
+          "options": [
+            { "value": "neutral", "label": "Neutral", "labelTh": "เป็นกลาง" },
+            { "value": "joy", "label": "Joy", "labelTh": "ความสุข" },
+            { "value": "surprise", "label": "Surprise", "labelTh": "ประหลาดใจ" },
+            { "value": "curiosity", "label": "Curiosity", "labelTh": "อยากรู้" },
+            { "value": "trust", "label": "Trust", "labelTh": "ไว้วางใจ" },
+            { "value": "urgency", "label": "Urgency", "labelTh": "เร่งด่วน" },
+            { "value": "nostalgia", "label": "Nostalgia", "labelTh": "คิดถึง" },
+            { "value": "empathy", "label": "Empathy", "labelTh": "เห็นอกเห็นใจ" },
+            { "value": "excitement", "label": "Excitement", "labelTh": "ตื่นเต้น" },
+            { "value": "calm", "label": "Calm", "labelTh": "สงบ" },
+            { "value": "tension", "label": "Tension", "labelTh": "เครียด" },
+            { "value": "inspiration", "label": "Inspiration", "labelTh": "แรงบันดาลใจ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "engagement",
+      "title": "Hooks & Engagement",
+      "titleTh": "Hooks และการมีส่วนร่วม",
+      "icon": "zap",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "hook_strategy",
+          "type": "select",
+          "label": "Hook Strategy",
+          "labelTh": "กลยุทธ์ Hook",
+          "helpText": "Opening hook strategy for first 3 seconds",
+          "helpTextTh": "กลยุทธ์ Hook เปิดเรื่อง 3 วินาทีแรก",
+          "default": "none",
+          "options": [
+            { "value": "none", "label": "None", "labelTh": "ไม่มี" },
+            { "value": "question", "label": "Question", "labelTh": "คำถาม" },
+            { "value": "shock_value", "label": "Shock Value", "labelTh": "ช็อค" },
+            { "value": "before_after", "label": "Before/After", "labelTh": "ก่อน/หลัง" },
+            { "value": "problem_statement", "label": "Problem Statement", "labelTh": "แถลงปัญหา" },
+            { "value": "curiosity_gap", "label": "Curiosity Gap", "labelTh": "ช่องว่างอยากรู้" },
+            { "value": "pattern_interrupt", "label": "Pattern Interrupt", "labelTh": "ตัดรูปแบบ" }
+          ]
+        },
+        {
+          "id": "cta",
+          "type": "select",
+          "label": "Call to Action",
+          "labelTh": "Call to Action",
+          "default": "none",
+          "options": [
+            { "value": "none", "label": "None", "labelTh": "ไม่มี" },
+            { "value": "like", "label": "Like", "labelTh": "กดไลค์" },
+            { "value": "comment", "label": "Comment", "labelTh": "คอมเมนต์" },
+            { "value": "share", "label": "Share", "labelTh": "แชร์" },
+            { "value": "follow", "label": "Follow", "labelTh": "ติดตาม" },
+            { "value": "save", "label": "Save", "labelTh": "บันทึก" },
+            { "value": "soft_reminder", "label": "Soft Reminder", "labelTh": "เตือนเบาๆ" },
+            { "value": "website_visit", "label": "Visit Website", "labelTh": "เข้าเว็บไซต์" },
+            { "value": "product_link", "label": "Product Link", "labelTh": "ลิงก์ผลิตภัณฑ์" }
+          ]
+        },
+        {
+          "id": "optimize_for_virality",
+          "type": "boolean",
+          "label": "Optimize for Virality",
+          "labelTh": "ปรับให้เป็นไวรัล",
+          "helpText": "Add viral potential optimizations",
+          "helpTextTh": "เพิ่มการปรับแต่งศักยภาพไวรัล",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "script",
+      "title": "Script & Text",
+      "titleTh": "บทและข้อความ",
+      "icon": "type",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "script_required",
+          "type": "boolean",
+          "label": "Generate Script",
+          "labelTh": "สร้างบท",
+          "helpText": "Generate dialogue or voiceover script",
+          "helpTextTh": "สร้างบทพูดหรือเสียงบรรยาย",
+          "default": true
+        },
+        {
+          "id": "script_language",
+          "type": "select",
+          "label": "Script Language",
+          "labelTh": "ภาษาบท",
+          "default": "english",
+          "options": [
+            { "value": "english", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "thai", "label": "Thai", "labelTh": "ไทย" },
+            { "value": "bilingual", "label": "Bilingual", "labelTh": "สองภาษา" }
+          ],
+          "dependsOn": {
+            "field": "script_required",
+            "value": true
+          }
+        },
+        {
+          "id": "text_overlay",
+          "type": "boolean",
+          "label": "Include Text Overlays",
+          "labelTh": "รวมข้อความซ้อนทับ",
+          "helpText": "Add text overlay descriptions (Sora only)",
+          "helpTextTh": "เพิ่มคำอธิบายข้อความซ้อนทับ (Sora เท่านั้น)",
+          "default": false
+        },
+        {
+          "id": "text_overlay_style",
+          "type": "select",
+          "label": "Text Overlay Style",
+          "labelTh": "สไตล์ข้อความซ้อนทับ",
+          "default": "none",
+          "options": [
+            { "value": "none", "label": "None", "labelTh": "ไม่มี" },
+            { "value": "keywords", "label": "Keywords", "labelTh": "คีย์เวิร์ด" },
+            { "value": "subtitles", "label": "Subtitles", "labelTh": "ซับไตเติ้ล" },
+            { "value": "emojis", "label": "Emojis", "labelTh": "อิโมจิ" },
+            { "value": "animated_text", "label": "Animated Text", "labelTh": "ข้อความเคลื่อนไหว" },
+            { "value": "emphasis", "label": "Emphasis", "labelTh": "เน้น" },
+            { "value": "minimal", "label": "Minimal", "labelTh": "มินิมอล" },
+            { "value": "bold_impact", "label": "Bold Impact", "labelTh": "หนาโดดเด่น" }
+          ],
+          "dependsOn": {
+            "field": "text_overlay",
+            "value": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced Options",
+      "titleTh": "ตัวเลือกขั้นสูง",
+      "icon": "settings",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "creative_freedom",
+          "type": "slider",
+          "label": "Creative Freedom",
+          "labelTh": "อิสระในการสร้างสรรค์",
+          "helpText": "0 = Conservative, 100 = Maximum creativity",
+          "helpTextTh": "0 = อนุรักษ์นิยม, 100 = ความคิดสร้างสรรค์สูงสุด",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "step": 5
+        },
+        {
+          "id": "output_format",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "default": "detailed",
+          "options": [
+            { "value": "standard", "label": "Standard", "labelTh": "มาตรฐาน" },
+            { "value": "compact", "label": "Compact", "labelTh": "กระชับ" },
+            { "value": "detailed", "label": "Detailed", "labelTh": "ละเอียด" },
+            { "value": "json", "label": "JSON", "labelTh": "JSON" }
+          ]
+        },
+        {
+          "id": "include_technical_specs",
+          "type": "boolean",
+          "label": "Include Technical Specs",
+          "labelTh": "รวมข้อมูลทางเทคนิค",
+          "helpText": "Include technical specifications in output",
+          "helpTextTh": "รวมข้อมูลจำเพาะทางเทคนิคในผลลัพธ์",
+          "default": true
+        },
+        {
+          "id": "cinematography_notes",
+          "type": "textarea",
+          "label": "Cinematography Notes",
+          "labelTh": "หมายเหตุการถ่ายทำ",
+          "placeholder": "Additional cinematography instructions...",
+          "placeholderTh": "คำสั่งการถ่ายทำเพิ่มเติม...",
+          "rows": 2
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "request": "request",
+    "target_platform": "target_platform",
+    "duration": "duration",
+    "aspect_ratio": "aspect_ratio",
+    "language": "language",
+    "cinematic_style": "cinematic_style",
+    "visual_style": "visual_style",
+    "color_grading": "color_grading",
+    "lighting_style": "lighting_style",
+    "camera_movement": "camera_movement",
+    "shot_composition": "shot_composition",
+    "pacing": "pacing",
+    "montage_style": "montage_style",
+    "audio_language": "audio_language",
+    "sound_design": "sound_design",
+    "music_mood": "music_mood",
+    "include_sfx": "include_sfx",
+    "content_type": "content_type",
+    "target_audience": "target_audience",
+    "social_platform": "social_platform",
+    "emotion": "emotion",
+    "hook_strategy": "hook_strategy",
+    "cta": "cta",
+    "optimize_for_virality": "optimize_for_virality",
+    "script_required": "script_required",
+    "script_language": "script_language",
+    "text_overlay": "text_overlay",
+    "text_overlay_style": "text_overlay_style",
+    "creative_freedom": "creative_freedom",
+    "output_format": "output_format",
+    "include_technical_specs": "include_technical_specs",
+    "cinematography_notes": "cinematography_notes"
+  }
+}

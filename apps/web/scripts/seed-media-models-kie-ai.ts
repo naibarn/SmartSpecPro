@@ -1182,11 +1182,14 @@ const IMAGE_MODELS = [
       kieModelId: "seedream/4.5-text-to-image",
       generateType: "text-to-image",
       inputFields: [
+        { key: "quality", label: "Quality", type: "select",
+          options: [{ value: "basic", label: "Basic" }, { value: "high", label: "High" }],
+          default: "high", affectsPricing: true },
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [{ value: "1:1", label: "1:1" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }],
           default: "1:1" },
       ],
-      pricingTiers: { "default": 45 },
+      pricingTiers: { "basic": 35, "high": 45 },
       pricingFormula: "flat",
     } as ModelDefinition,
   },
@@ -1312,6 +1315,7 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "z-image",
       generateType: "text-to-image",
+      maxPromptLength: 500, // Kie.ai limit for z-image
       inputFields: [
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [{ value: "1:1", label: "1:1" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }],

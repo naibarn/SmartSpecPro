@@ -1,0 +1,2 @@
+CREATE TYPE "public"."api_style" AS ENUM('chat-completions', 'responses', 'messages', 'gemini');--> statement-breakpoint
+ALTER TABLE "model_provider_map" ADD COLUMN "apiStyle" "api_style" DEFAULT 'chat-completions' NOT NULL;

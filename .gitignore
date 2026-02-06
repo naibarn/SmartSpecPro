@@ -124,8 +124,13 @@ logs/
 data/
 uploads/
 downloads/
-media/
-!**/client/src/components/**/media/
+# Ignore media uploads but NOT component directories
+/media/
+/public/media/
+/static/media/
+# Explicitly allow component media directories
+!apps/**/components/**/media/
+!packages/**/components/**/media/
 *.csv
 *.xlsx
 *.xls

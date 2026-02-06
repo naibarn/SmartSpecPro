@@ -29,15 +29,11 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: [
-      ".manuspre.computer",
-      ".manus.computer",
-      ".manus-asia.computer",
-      ".manuscomputer.ai",
-      ".manusvm.computer",
       "localhost",
       "127.0.0.1",
       ".smartspec.local",
       ".smartspec.pro",
+      ".smartaihub.app",
       "smartspec-web",
       "tauri.localhost",
     ],

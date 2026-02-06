@@ -66,9 +66,19 @@ const SERVICE_CONFIGS: ServiceConfig[] = [
 
   // System services
   {
+    id: 'docker', name: 'docker', displayName: 'Docker',
+    ports: [], type: 'systemd', systemdName: 'docker',
+    description: 'Container runtime engine'
+  },
+  {
+    id: 'cloudflared', name: 'cloudflared', displayName: 'Cloudflare Tunnel',
+    ports: [], type: 'host', checkProcess: 'cloudflared.*tunnel',
+    description: 'Cloudflare Tunnel for public access (smartaihub.app)'
+  },
+  {
     id: 'nginx', name: 'nginx', displayName: 'Nginx',
     ports: ['80', '443'], type: 'systemd', systemdName: 'nginx',
-    description: 'Reverse proxy with HTTPS'
+    description: 'Reverse proxy with HTTPS (optional)'
   },
 
   // Optional services (Docker or host mode)
@@ -172,7 +182,7 @@ async function isPortInUse(port: number): Promise<boolean> {
 }
 
 // Get process info by port
-async function getProcessByPort(port: number): Promise<{ pid: number; uptime: string; memory?: number } | null> {
+async function getProcessByPort(port: number): Promise<{ pid: number; uptime: string; memory?: number; cpu?: number } | null> {
   try {
     validatePort(port);
     const { stdout: pidStr } = await execAsync(`lsof -i:${port} -t 2>/dev/null | head -1 || true`);
@@ -187,18 +197,20 @@ async function getProcessByPort(port: number): Promise<{ pid: number; uptime: st
       uptime = formatUptime(new Date(started).toISOString());
     }
 
-    // Get memory usage in MB
-    const { stdout: memStr } = await execAsync(`ps -o rss= -p ${pid} 2>/dev/null || true`);
-    const memoryKB = parseInt(memStr.trim()) || 0;
+    // Get memory usage in MB and CPU percentage
+    const { stdout: statsStr } = await execAsync(`ps -o rss=,pcpu= -p ${pid} 2>/dev/null || true`);
+    const parts = statsStr.trim().split(/\s+/);
+    const memoryKB = parseInt(parts[0]) || 0;
+    const cpuPercent = parseFloat(parts[1]) || 0;
 
-    return { pid, uptime, memory: memoryKB / 1024 };
+    return { pid, uptime, memory: memoryKB / 1024, cpu: cpuPercent };
   } catch {
     return null;
   }
 }
 
 // Get process info by name pattern (using pgrep)
-async function getProcessByName(pattern: string): Promise<{ pid: number; uptime: string; memory?: number } | null> {
+async function getProcessByName(pattern: string): Promise<{ pid: number; uptime: string; memory?: number; cpu?: number } | null> {
   try {
     // Find process by name pattern
     validateName(pattern);
@@ -214,11 +226,13 @@ async function getProcessByName(pattern: string): Promise<{ pid: number; uptime:
       uptime = formatUptime(new Date(started).toISOString());
     }
 
-    // Get memory usage in MB
-    const { stdout: memStr } = await execAsync(`ps -o rss= -p ${pid} 2>/dev/null || true`);
-    const memoryKB = parseInt(memStr.trim()) || 0;
+    // Get memory usage in MB and CPU percentage
+    const { stdout: statsStr } = await execAsync(`ps -o rss=,pcpu= -p ${pid} 2>/dev/null || true`);
+    const parts = statsStr.trim().split(/\s+/);
+    const memoryKB = parseInt(parts[0]) || 0;
+    const cpuPercent = parseFloat(parts[1]) || 0;
 
-    return { pid, uptime, memory: memoryKB / 1024 };
+    return { pid, uptime, memory: memoryKB / 1024, cpu: cpuPercent };
   } catch {
     return null;
   }
@@ -358,6 +372,7 @@ async function getServiceStatus(serviceId: string): Promise<ServiceStatus> {
               status: 'running',
               uptime: processInfo.uptime,
               memory: processInfo.memory,
+              cpu: processInfo.cpu,
             };
           }
         }
@@ -371,6 +386,7 @@ async function getServiceStatus(serviceId: string): Promise<ServiceStatus> {
               status: 'running',
               uptime: processInfo.uptime,
               memory: processInfo.memory,
+              cpu: processInfo.cpu,
             };
           }
         }
@@ -459,6 +475,147 @@ async function restartSystemdService(serviceName: string): Promise<void> {
   await execAsync(`sudo systemctl restart ${serviceName}`);
 }
 
+// Get system memory (RAM) information
+async function getSystemMemory(): Promise<{
+  total: number;
+  used: number;
+  free: number;
+  available: number;
+  usedPercent: number;
+} | null> {
+  try {
+    const { stdout } = await execAsync("free -m | grep Mem:");
+    const parts = stdout.trim().split(/\s+/);
+    // Format: Mem: total used free shared buff/cache available
+    const total = parseInt(parts[1]) || 0;
+    const used = parseInt(parts[2]) || 0;
+    const free = parseInt(parts[3]) || 0;
+    const available = parseInt(parts[6]) || 0;
+
+    return {
+      total,
+      used,
+      free,
+      available,
+      usedPercent: total > 0 ? Math.round((used / total) * 100) : 0,
+    };
+  } catch (error) {
+    console.error('Error fetching memory info:', error);
+    return null;
+  }
+}
+
+// Get system disk space information
+async function getSystemDisk(): Promise<{
+  total: number;
+  used: number;
+  available: number;
+  usedPercent: number;
+  mountPoint: string;
+} | null> {
+  try {
+    const { stdout } = await execAsync("df -BG / | tail -1");
+    const parts = stdout.trim().split(/\s+/);
+    // Format: Filesystem Size Used Avail Use% Mounted
+    const total = parseFloat(parts[1].replace('G', '')) || 0;
+    const used = parseFloat(parts[2].replace('G', '')) || 0;
+    const available = parseFloat(parts[3].replace('G', '')) || 0;
+    const usedPercent = parseInt(parts[4].replace('%', '')) || 0;
+
+    return {
+      total,
+      used,
+      available,
+      usedPercent,
+      mountPoint: parts[5] || '/',
+    };
+  } catch (error) {
+    console.error('Error fetching disk info:', error);
+    return null;
+  }
+}
+
+// Get GPU information (supports NVIDIA and AMD)
+async function getGPUInfo(): Promise<Array<{
+  id: number;
+  name: string;
+  utilization: number;
+  memoryUsed: number;
+  memoryTotal: number;
+  memoryPercent: number;
+  temperature: number;
+  powerUsage: number;
+  powerLimit: number;
+}> | null> {
+  try {
+    // Try NVIDIA first
+    try {
+      const { stdout } = await execAsync(
+        "nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit --format=csv,noheader,nounits 2>/dev/null"
+      );
+
+      const gpus = stdout.trim().split('\n').map(line => {
+        const parts = line.split(',').map(p => p.trim());
+        const memoryUsed = parseFloat(parts[3]) || 0;
+        const memoryTotal = parseFloat(parts[4]) || 0;
+
+        return {
+          id: parseInt(parts[0]) || 0,
+          name: parts[1] || 'Unknown GPU',
+          utilization: parseFloat(parts[2]) || 0,
+          memoryUsed,
+          memoryTotal,
+          memoryPercent: memoryTotal > 0 ? Math.round((memoryUsed / memoryTotal) * 100) : 0,
+          temperature: parseFloat(parts[5]) || 0,
+          powerUsage: parseFloat(parts[6]) || 0,
+          powerLimit: parseFloat(parts[7]) || 0,
+        };
+      });
+
+      if (gpus.length > 0) {
+        return gpus;
+      }
+    } catch (nvidiaError) {
+      // NVIDIA not available, try AMD
+    }
+
+    // Try AMD ROCm
+    try {
+      const { stdout } = await execAsync("rocm-smi --showuse --showmeminfo vram --json 2>/dev/null");
+      const data = JSON.parse(stdout);
+
+      const gpus = Object.keys(data).map((key, index) => {
+        const gpu = data[key];
+        const memoryUsed = parseInt(gpu?.['VRAM Total Memory (B)']?.['VRAM Total Used Memory (B)']) / (1024 ** 3) || 0;
+        const memoryTotal = parseInt(gpu?.['VRAM Total Memory (B)']?.['VRAM Total Memory (B)']) / (1024 ** 3) || 0;
+
+        return {
+          id: index,
+          name: gpu?.['Card series'] || 'AMD GPU',
+          utilization: parseFloat(gpu?.['GPU use (%)']) || 0,
+          memoryUsed,
+          memoryTotal,
+          memoryPercent: memoryTotal > 0 ? Math.round((memoryUsed / memoryTotal) * 100) : 0,
+          temperature: parseFloat(gpu?.['Temperature (Sensor edge) (C)']) || 0,
+          powerUsage: 0,
+          powerLimit: 0,
+        };
+      });
+
+      if (gpus.length > 0) {
+        return gpus;
+      }
+    } catch (amdError) {
+      // AMD not available
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching GPU info:', error);
+    return null;
+  }
+}
+
 export function registerServicesRoutes(app: Express) {
   // Get all services status
   app.get('/api/admin/services/status', requireAdmin, async (req, res) => {
@@ -467,10 +624,16 @@ export function registerServicesRoutes(app: Express) {
         SERVICE_CONFIGS.map(config => getServiceStatus(config.id))
       );
 
-      // Get system-wide disk usage
-      let diskInfo = null;
+      // Get system resources
+      const [memoryInfo, diskInfo, gpuInfo] = await Promise.all([
+        getSystemMemory(),
+        getSystemDisk(),
+        getGPUInfo(),
+      ]);
+
+      // Get Docker disk usage (optional, for additional details)
+      let dockerDiskInfo = null;
       try {
-        // Try Docker disk usage first
         if (docker) {
           const dfResult = await docker.df();
           const volumes = dfResult.Volumes || [];
@@ -479,30 +642,24 @@ export function registerServicesRoutes(app: Express) {
           const volumesSize = volumes.reduce((sum: number, v: any) => sum + (v.UsageData?.Size || 0), 0);
           const imagesSize = images.reduce((sum: number, img: any) => sum + (img.Size || 0), 0);
 
-          diskInfo = {
+          dockerDiskInfo = {
             volumesSize: Math.round(volumesSize / (1024 * 1024 * 1024) * 100) / 100,
             imagesSize: Math.round(imagesSize / (1024 * 1024 * 1024) * 100) / 100,
             totalUsed: Math.round((volumesSize + imagesSize) / (1024 * 1024 * 1024) * 100) / 100,
           };
         }
-
-        // Fallback: get system disk usage
-        if (!diskInfo) {
-          const { stdout } = await execAsync("df -BG / | tail -1 | awk '{print $3}'");
-          const usedGB = parseFloat(stdout.replace('G', '').trim()) || 0;
-          diskInfo = {
-            volumesSize: 0,
-            imagesSize: 0,
-            totalUsed: usedGB,
-          };
-        }
-      } catch (diskError) {
-        console.error('Error fetching disk info:', diskError);
+      } catch (dockerError) {
+        console.error('Error fetching Docker disk info:', dockerError);
       }
 
       res.json({
         services: statuses,
-        disk: diskInfo
+        system: {
+          memory: memoryInfo,
+          disk: diskInfo,
+          gpu: gpuInfo,
+          docker: dockerDiskInfo,
+        }
       });
     } catch (error) {
       console.error('Error fetching services status:', error);

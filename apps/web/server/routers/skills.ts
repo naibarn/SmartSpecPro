@@ -11,6 +11,7 @@ import {
   getSkillById,
   SkillDefinition,
   refreshSkillCache,
+  syncSingleSkillIfChanged,
 } from "../services/skillRegistry";
 import {
   getStyleCategories,
@@ -26,6 +27,7 @@ import { db, getDb } from "../db";
 import { llmProviders, skills, type Skill, type InsertSkill } from "../../drizzle/schema";
 import { eq, asc, desc, like, or, and, sql } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM, hasEnoughCredits } from "../services/creditService";
+import { getProviderForModel } from "../services/llmRouter";
 import { getUploadsDir } from "../storage";
 import crypto from "crypto";
 import fs from "fs";
@@ -91,6 +93,8 @@ function mapCategoryToEnum(category?: string): string {
     "image-generation": "image_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
+    "image_video_generation": "image_video_generation",
+    "image-video-generation": "image_video_generation",
     "audio_generation": "audio_generation",
     "audio-generation": "audio_generation",
     "sound_effects": "sound_effects",
@@ -131,43 +135,7 @@ function decryptApiKey(text: string): string {
   return decrypt(text);
 }
 
-/**
- * Get the active LLM provider configuration from database
- */
-async function getActiveLlmProvider() {
-  try {
-    const [provider] = await db
-      .select({
-        providerName: llmProviders.providerName,
-        baseUrl: llmProviders.baseUrl,
-        apiKeyEncrypted: llmProviders.apiKeyEncrypted,
-        defaultModel: llmProviders.defaultModel,
-      })
-      .from(llmProviders)
-      .where(eq(llmProviders.isEnabled, true))
-      .orderBy(asc(llmProviders.sortOrder))
-      .limit(1);
-
-    if (!provider || !provider.apiKeyEncrypted || !provider.baseUrl) {
-      return null;
-    }
-
-    const apiKey = decryptApiKey(provider.apiKeyEncrypted);
-    if (!apiKey) {
-      return null;
-    }
-
-    return {
-      providerName: provider.providerName,
-      baseUrl: provider.baseUrl,
-      apiKey,
-      defaultModel: provider.defaultModel,
-    };
-  } catch (error) {
-    console.error("[Skills] Failed to get LLM provider:", error);
-    return null;
-  }
-}
+// Note: getActiveLlmProvider removed — now uses getProviderForModel from llmRouter
 
 /**
  * Convert image URL to a format the LLM can use
@@ -245,19 +213,20 @@ async function convertImageUrlForLLM(url: string): Promise<string> {
 
 /**
  * Call LLM with vision support
+ * @param maxTokens - Maximum tokens for response. Default 2000. For multi-prompt, use ~500 per prompt.
  */
 async function callLLMWithVision(
   systemPrompt: string,
   userPrompt: string,
   imageUrls: string[] = [],
-  model?: string
+  model?: string,
+  maxTokens: number = 2000
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number } }> {
-  const provider = await getActiveLlmProvider();
+  const useModel = model || "gpt-4o-mini";
+  const provider = await getProviderForModel(useModel);
   if (!provider) {
     throw new Error("No LLM provider configured");
   }
-
-  const useModel = model || provider.defaultModel || "gpt-4o-mini";
 
   // Build messages with vision support
   const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
@@ -293,7 +262,7 @@ async function callLLMWithVision(
     body: JSON.stringify({
       model: useModel,
       messages,
-      max_tokens: 2000,
+      max_tokens: maxTokens,
       temperature: 0.7,
     }),
   });
@@ -304,7 +273,27 @@ async function callLLMWithVision(
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || "";
+
+  // Extract content - reasoning models like GPT-5.2 may put response in `reasoning` field
+  const message = data.choices?.[0]?.message;
+  let content = message?.content || "";
+
+  // Fallback: If content is empty, try to extract from reasoning field (for reasoning models)
+  if (!content && message?.reasoning) {
+    const reasoning = message.reasoning as string;
+    // Try to extract content after "Output:" or similar markers
+    const outputMatch = reasoning.match(/(?:Output|Result|Final prompt|Generated prompt):\s*(.+?)(?:\n\n|$)/is);
+    if (outputMatch) {
+      content = outputMatch[1].trim();
+    } else {
+      // If no clear marker, use the last substantial paragraph as fallback
+      const paragraphs = reasoning.split(/\n\n+/).filter(p => p.trim().length > 20);
+      if (paragraphs.length > 0) {
+        content = paragraphs[paragraphs.length - 1].trim();
+      }
+    }
+  }
+
   const usage = data.usage || {};
 
   return {
@@ -354,7 +343,19 @@ const promptEnhancementRequestSchema = z.object({
 
   // === Full Schema Support (v2.1) ===
   generationMode: z.enum(["text_to_image", "image_to_image", "inpaint", "outpaint", "variation"]).optional(),
-  task: z.enum(["final_prompt", "ideas_10", "angles_10", "storyboard_6", "infographic_layout", "style_catalog", "vfx_catalog", "typography_catalog"]).optional(),
+  backgroundType: z.enum(["normal", "green_screen", "blue_screen", "transparent"]).optional(),
+  task: z.enum(["final_prompt", "background_10", "ideas_10", "angles_10", "storyboard_continue", "storyboard_6", "infographic_layout", "style_catalog", "vfx_catalog", "typography_catalog"]).optional(),
+  // prompt_count can be "1", "2_distinct", "4_2x2", etc. - extract the leading number
+  prompt_count: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const num = parseInt(val, 10);
+        return isNaN(num) ? undefined : num;
+      }
+      return val;
+    },
+    z.number().int().min(1).max(16).optional()
+  ),
   detailLevel: z.enum(["compact", "standard", "full"]).optional(),
   textOnImage: z.boolean().optional(),
   headline: z.string().optional(),
@@ -409,6 +410,8 @@ const promptEnhancementRequestSchema = z.object({
   }).optional(),
   targetPlatform: z.enum(["generic", "stable_diffusion", "midjourney", "dall_e_3", "gemini_imagen", "flux", "firefly"]).optional(),
   preferences: z.array(z.string()).optional(),
+  // Max prompt length from selected media model - skill will respect this limit
+  maxPromptLength: z.number().int().min(100).max(10000).optional(),
 });
 
 // ==================== Schema Conversion Helpers ====================
@@ -657,7 +660,7 @@ export const skillsRouter = router({
 
       return {
         ...skill,
-        triggers: skill.triggers.map((t) => t.source), // Convert RegExp to string
+        triggers: skill.triggers.map((t) => t.pattern), // Return original pattern string
         skillContent,
       };
     }),
@@ -756,6 +759,9 @@ export const skillsRouter = router({
   getInputSchema: protectedProcedure
     .input(z.object({ skillId: z.string() }))
     .query(async ({ input }) => {
+      // Sync skill if contentHash changed (ensures latest skill.md is used)
+      await syncSingleSkillIfChanged(input.skillId);
+
       const skill = getSkillById(input.skillId);
 
       if (!skill) {
@@ -966,6 +972,9 @@ export const skillsRouter = router({
   getSkillConfig: protectedProcedure
     .input(z.object({ skillId: z.string() }))
     .query(async ({ input }) => {
+      // Sync skill if contentHash changed
+      await syncSingleSkillIfChanged(input.skillId);
+
       try {
         const [skill] = await db
           .select({
@@ -1053,6 +1062,9 @@ export const skillsRouter = router({
       }
 
       try {
+        // DEBUG: Log maxPromptLength to verify it's being passed
+        console.log(`[Skills] enhancePrompt called with maxPromptLength: ${input.maxPromptLength}`);
+
         // Build prompts using the CreateImagePrompt skill
         const systemPrompt = buildSystemPrompt(input);
 
@@ -1074,13 +1086,36 @@ export const skillsRouter = router({
         // Call LLM with vision support
         // Use user-selected model or default to openai/gpt-4o for vision capability
         const visionModel = input.model || "openai/gpt-4o";
-        console.log(`[Skills] Using LLM model for vision: ${visionModel}`);
+
+        // Calculate max_tokens based on prompt_count and maxPromptLength
+        // If maxPromptLength is provided (from model config), use it to constrain output
+        // Otherwise use default of 5000 characters
+        const promptCount = input.prompt_count || 1;
+        const maxCharLength = input.maxPromptLength || 5000;
+
+        // Convert character limit to approximate token limit (1 token ≈ 3-4 chars)
+        // For single prompt: full character budget
+        // For multiple prompts: divide budget per prompt with some overhead
+        const charsPerToken = 3.5;
+        // Use proportional overhead (10%) instead of fixed, with min 50 chars
+        const overheadChars = Math.max(50, Math.ceil(maxCharLength * 0.1));
+        const effectiveMaxChars = maxCharLength - overheadChars;
+        // Set minimum 800 tokens - reasoning models (like GPT-5.2) use tokens for encrypted thinking before output
+        // With 300 tokens, all were consumed by reasoning with nothing left for content output
+        const calculatedMaxTokens = Math.max(
+          800, // Minimum tokens - reasoning models need ~500+ just for thinking overhead
+          Math.min(
+            Math.ceil(effectiveMaxChars / charsPerToken),
+            2000 // Hard cap at 2000 tokens
+          )
+        );
 
         const result = await callLLMWithVision(
           systemPrompt,
           userPrompt,
           input.referenceImages || [],
-          visionModel
+          visionModel,
+          calculatedMaxTokens
         );
 
         // Check if LLM refused the request (safety filter)
@@ -1109,6 +1144,52 @@ export const skillsRouter = router({
         // Parse the response to extract prompts
         const parsed = parsePromptResponse(result.content);
 
+        // HARD LIMIT ENFORCEMENT: Truncate prompt if it exceeds maxPromptLength
+        // LLMs don't always follow character limit instructions strictly,
+        // so we enforce the limit server-side as a safety net
+        let finalPromptEn = parsed.promptEn;
+        let finalPromptTh = parsed.promptTh;
+        let wasTruncated = false;
+
+        if (input.maxPromptLength && finalPromptEn.length > input.maxPromptLength) {
+          console.warn(
+            `[Skills] Prompt exceeded limit: ${finalPromptEn.length}/${input.maxPromptLength} chars - truncating`
+          );
+
+          // Smart truncation: try to cut at sentence boundary if possible
+          const targetLength = input.maxPromptLength - 3; // Leave room for "..."
+          let truncatedPrompt = finalPromptEn.substring(0, targetLength);
+
+          // Find the last sentence boundary (., !, ?) within the truncated portion
+          const lastSentenceEnd = Math.max(
+            truncatedPrompt.lastIndexOf(". "),
+            truncatedPrompt.lastIndexOf("! "),
+            truncatedPrompt.lastIndexOf("? "),
+            truncatedPrompt.lastIndexOf(".\n"),
+            truncatedPrompt.lastIndexOf("!\n"),
+            truncatedPrompt.lastIndexOf("?\n")
+          );
+
+          // If we found a sentence boundary in the last 20% of the truncated text, use it
+          const minSentencePosition = targetLength * 0.8;
+          if (lastSentenceEnd > minSentencePosition) {
+            truncatedPrompt = finalPromptEn.substring(0, lastSentenceEnd + 1);
+          } else {
+            // Otherwise, just add ellipsis
+            truncatedPrompt = truncatedPrompt.trimEnd() + "...";
+          }
+
+          finalPromptEn = truncatedPrompt;
+          wasTruncated = true;
+          console.log(`[Skills] Truncated prompt to ${finalPromptEn.length} chars`);
+        }
+
+        // Also truncate Thai prompt if provided
+        if (input.maxPromptLength && finalPromptTh && finalPromptTh.length > input.maxPromptLength) {
+          const targetLength = input.maxPromptLength - 3;
+          finalPromptTh = finalPromptTh.substring(0, targetLength).trimEnd() + "...";
+        }
+
         // Calculate and deduct credits based on the model used
         const creditsUsed = calculateCreditsForLLM(
           result.usage.promptTokens,
@@ -1132,8 +1213,9 @@ export const skillsRouter = router({
 
         return {
           success: true,
-          promptEn: parsed.promptEn,
-          promptTh: parsed.promptTh,
+          promptEn: finalPromptEn,
+          promptTh: finalPromptTh,
+          wasTruncated,
           creditsUsed,
           usage: result.usage,
           skillId: "create-image-prompt",
@@ -1160,6 +1242,151 @@ export const skillsRouter = router({
         success: true,
         ...result,
       };
+    }),
+
+  /**
+   * Execute a custom skill with LLM using skill's content as system prompt
+   * This is for skills that need their skill.md content to guide the LLM
+   * (not for media-generation skills which are auto-executed)
+   */
+  executeCustomSkill: protectedProcedure
+    .input(
+      z.object({
+        skillId: z.string().min(1),
+        userInputs: z.record(z.any()), // Dynamic form values
+        model: z.string().optional(),
+        referenceImages: z.array(z.string()).max(5).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user?.id;
+      if (!userId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User not authenticated",
+        });
+      }
+
+      // Check credits
+      const hasCredits = await hasEnoughCredits(userId, 1);
+      if (!hasCredits) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Insufficient credits",
+        });
+      }
+
+      // Sync skill if contentHash changed (ensures latest skill.md is used)
+      const syncResult = await syncSingleSkillIfChanged(input.skillId);
+      if (syncResult.synced) {
+        console.log(`[Skills] Skill '${input.skillId}' was auto-synced before execution`);
+      } else {
+        console.log(`[Skills] Skill '${input.skillId}' already up-to-date, no sync needed`);
+      }
+
+      // Get skill from database
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [skill] = await dbInstance
+        .select({
+          id: skills.id,
+          slug: skills.slug,
+          name: skills.name,
+          skillContent: skills.skillContent,
+          systemPrompt: skills.systemPrompt,
+        })
+        .from(skills)
+        .where(eq(skills.slug, input.skillId))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Skill '${input.skillId}' not found`,
+        });
+      }
+
+      // Use skillContent or systemPrompt as the system prompt
+      const systemPrompt = skill.skillContent || skill.systemPrompt;
+      if (!systemPrompt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Skill '${input.skillId}' has no content to execute`,
+        });
+      }
+
+      // DEBUG: Log first 500 chars of skill content to verify it has the correct language template
+      console.log(`[Skills] Executing skill '${input.skillId}' with content preview:`);
+      console.log(`[Skills]   First 500 chars: ${systemPrompt.slice(0, 500).replace(/\n/g, '\\n')}`);
+
+      // DEBUG: Check if the new language-aware sections are present
+      const hasEnglishTemplate = systemPrompt.includes('promptLanguage=en') && systemPrompt.includes('**Character:**');
+      const hasThaiTemplate = systemPrompt.includes('promptLanguage=th') && systemPrompt.includes('**ตัวละคร:**');
+      console.log(`[Skills]   Has English template: ${hasEnglishTemplate}, Has Thai template: ${hasThaiTemplate}`);
+
+      // Build user prompt from form inputs
+      let userPrompt = "## User Inputs\n\n";
+      for (const [key, value] of Object.entries(input.userInputs)) {
+        if (value !== undefined && value !== null && value !== "") {
+          userPrompt += `**${key}:** ${value}\n`;
+        }
+      }
+
+      // DEBUG: Log userInputs to verify promptLanguage is being passed
+      console.log(`[Skills]   User inputs: ${JSON.stringify(input.userInputs)}`);
+      console.log(`[Skills]   promptLanguage value: ${input.userInputs.promptLanguage || '(not set - defaults to en)'}`)
+      userPrompt += "\n## Task\n\nPlease execute the skill based on the inputs above and generate the output as specified in the skill instructions.";
+
+      try {
+        const visionModel = input.model || "openai/gpt-4o";
+
+        // Call LLM with skill content as system prompt
+        const result = await callLLMWithVision(
+          systemPrompt,
+          userPrompt,
+          input.referenceImages || [],
+          visionModel,
+          4000 // Higher token limit for complex outputs
+        );
+
+
+        // Calculate and deduct credits
+        const creditsUsed = calculateCreditsForLLM(
+          result.usage.promptTokens,
+          result.usage.completionTokens,
+          visionModel
+        );
+
+        await deductCredits({
+          userId,
+          amount: creditsUsed,
+          description: `Skill execution: ${skill.name}`,
+          metadata: {
+            model: visionModel,
+            skill: input.skillId,
+            inputTokens: result.usage.promptTokens,
+            outputTokens: result.usage.completionTokens,
+          },
+        });
+
+        return {
+          success: true,
+          content: result.content,
+          skillId: input.skillId,
+          skillName: skill.name,
+          creditsUsed,
+          usage: result.usage,
+        };
+      } catch (error) {
+        console.error("[Skills] executeCustomSkill error:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to execute skill: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      }
     }),
 
   // List editable skills (skills with skill files)
@@ -1535,7 +1762,7 @@ export const skillsRouter = router({
         creditMultiplier: z.number().min(0).max(100).optional(),
         priority: z.number().min(0).max(100).optional(),
         defaultModel: z.string().nullable().optional(),
-        executionMode: z.enum(["llm-only", "media-generate"]).optional(),
+        executionMode: z.enum(["llm-only", "media-generate", "enhance-prompt"]).optional(),
         systemPrompt: z.string().nullable().optional(),
         skillContent: z.string().nullable().optional(),
         marketplaceContent: z.string().nullable().optional(),

@@ -358,3 +358,41 @@
 .safe-md-dl-btn:hover {
   background: rgba(0, 0, 0, 0.85);
 }
+
+/* Hide preview mode banners - CSS-based removal as backup */
+#manus-previewer-content-root,
+#preview-mode-banner,
+#staging-banner,
+[data-loc*="PreviewerMode"],
+[data-loc*="preview"],
+[data-preview-mode],
+[class*="preview-banner"],
+[class*="staging-banner"],
+[class*="manus-preview"],
+[class*="previewer"],
+[class*="Previewer"],
+[id*="previewer"],
+[id*="Previewer"],
+/* Target any fixed/absolute positioned elements at bottom that look like banners */
+body > div[style*="position: fixed"][style*="bottom"],
+body > div[style*="position:fixed"][style*="bottom"],
+body > div[style*="z-index: 9999"],
+body > div[style*="z-index:9999"],
+body > div[style*="z-index: 99999"],
+body > div[style*="z-index:99999"],
+/* Common external preview banner patterns */
+[data-testid*="preview"],
+[data-testid*="banner"],
+[aria-label*="preview"],
+[aria-label*="Preview"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}

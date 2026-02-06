@@ -52,6 +52,7 @@ export async function detectSkill(
     confidence: 0,
     matchedTrigger: null,
     suggestedPrompt: null,
+    patternChainTo: null,
   };
 
   // If auto-detect is disabled, return no match
@@ -112,7 +113,7 @@ export async function detectSkill(
     }
 
     for (const trigger of skill.triggers) {
-      const match = message.match(trigger);
+      const match = message.match(trigger.regex);
       if (match) {
         // Calculate confidence based on match quality
         const confidence = calculateConfidence(message, match[0], skill);
@@ -126,6 +127,8 @@ export async function detectSkill(
           confidence,
           matchedTrigger: match[0],
           suggestedPrompt,
+          // Include per-pattern chainTo if configured
+          patternChainTo: trigger.chainTo ?? null,
         };
       }
     }

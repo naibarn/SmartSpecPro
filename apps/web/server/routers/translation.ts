@@ -6,10 +6,10 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { users, llmProviders } from "../../drizzle/schema";
-import { eq, asc } from "drizzle-orm";
-import { decrypt } from "../services/crypto";
+import { users } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM } from "../services/creditService";
+import { getProviderForModel } from "../services/llmRouter";
 
 const LANGUAGE_NAMES: Record<string, string> = {
   th: "Thai", zh: "Chinese (Simplified)", "zh-TW": "Chinese (Traditional)",
@@ -26,28 +26,7 @@ function isLikelyEnglish(text: string): boolean {
   return asciiLetters / Math.max(sample.length, 1) > 0.5;
 }
 
-async function getActiveLlmProvider() {
-  const db = await getDb();
-  if (!db) return null;
-
-  const [provider] = await db
-    .select({
-      providerName: llmProviders.providerName,
-      baseUrl: llmProviders.baseUrl,
-      apiKeyEncrypted: llmProviders.apiKeyEncrypted,
-    })
-    .from(llmProviders)
-    .where(eq(llmProviders.isEnabled, true))
-    .orderBy(asc(llmProviders.sortOrder))
-    .limit(1);
-
-  if (!provider?.apiKeyEncrypted || !provider?.baseUrl) return null;
-
-  const apiKey = decrypt(provider.apiKeyEncrypted);
-  if (!apiKey) return null;
-
-  return { providerName: provider.providerName, baseUrl: provider.baseUrl, apiKey };
-}
+// Note: getActiveLlmProvider removed — now uses getProviderForModel from llmRouter
 
 function resolveChatUrl(baseUrl: string): string {
   const base = baseUrl.replace(/\/+$/, "");
@@ -83,7 +62,7 @@ export const translationRouter = router({
         : `You are a professional translator. Translate the following text to English. Return ONLY the translated text, no explanations or notes.`;
 
       // Get LLM provider
-      const provider = await getActiveLlmProvider();
+      const provider = await getProviderForModel(model);
       if (!provider) throw new Error("No LLM provider available");
 
       // Call LLM (non-streaming)

@@ -49,6 +49,7 @@ import {
   Play,
   Trash2,
   ImagePlus,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -92,7 +93,7 @@ export default function MediaHistory() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isFetchingResult, setIsFetchingResult] = useState(false);
 
-  // Fetch tasks from API
+  // Fetch tasks from API - only last 12 days
   const {
     data: tasksData,
     isLoading: tasksLoading,
@@ -102,6 +103,7 @@ export default function MediaHistory() {
     status: statusFilter !== 'all' ? statusFilter : undefined,
     limit: 100,
     offset: 0,
+    daysAgo: 12, // Only show tasks from last 12 days
   });
 
   // Mutation for fetching task result from Kie.ai
@@ -367,11 +369,29 @@ export default function MediaHistory() {
           ))}
         </motion.div>
 
-        {/* Filters */}
+        {/* Data Retention Notice */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3"
+        >
+          <Info className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+          <div className="text-sm text-amber-800">
+            <p className="font-medium">Data Retention Notice</p>
+            <p className="mt-1">
+              This page shows generation history from the <strong>last 12 days</strong> only.
+              Items older than <strong>12 days</strong> are automatically deleted to manage storage.
+              Please download any important media before it expires.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
           className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-4 mb-6 shadow-lg shadow-purple-500/5"
         >
           <div className="flex flex-wrap items-center gap-4">

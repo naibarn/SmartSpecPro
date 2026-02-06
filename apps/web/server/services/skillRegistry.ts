@@ -19,6 +19,7 @@ import {
   type SkillType,
   type SkillDefinition,
   type SkillMetadata,
+  type PatternRule,
   parseSkillFile,
   mapCategoryToEnum,
   categoryToSkillType,
@@ -53,7 +54,7 @@ function dbSkillToDefinition(dbSkill: {
   category: string;
   icon: string | null;
   isAutoTrigger: boolean;
-  triggerPatterns: string[] | null;
+  triggerPatterns: Array<string | PatternRule> | null;
   isEnabled: boolean;
   enabledByDefault: boolean;
   creditMultiplier: string | null;
@@ -64,6 +65,7 @@ function dbSkillToDefinition(dbSkill: {
   skillContent: string | null;
   folderPath: string | null;
   executionMode: string | null;
+  chainTo: string | null;
 }): SkillDefinition {
   const skillType = categoryToSkillType(dbSkill.category) as SkillType;
   const mediaType = SKILL_TO_MEDIA_TYPE[skillType];
@@ -100,6 +102,7 @@ function dbSkillToDefinition(dbSkill: {
     skillContent: dbSkill.skillContent || undefined,
     skillFilePath: dbSkill.folderPath ? `${dbSkill.folderPath}/skill.md` : undefined,
     executionMode: (dbSkill.executionMode as any) || "llm-only",
+    chainTo: dbSkill.chainTo || undefined,
   };
 }
 
@@ -278,6 +281,112 @@ export async function autoSyncSkillsFromFolder(): Promise<{
 
   console.log(`[SkillRegistry] Auto-sync complete: ${result.synced.length} synced, ${result.skipped.length} skipped, ${result.errors.length} errors`);
   return result;
+}
+
+/**
+ * Sync a single skill if its contentHash has changed
+ * Called when user selects a skill or loads Media Studio
+ * Returns true if skill was synced, false if already up-to-date
+ */
+export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: boolean; error?: string }> {
+  const db = await getDb();
+  if (!db) {
+    return { synced: false, error: "Database not available" };
+  }
+
+  // Find skill.md file
+  const folders = scanSkillsFolder();
+  const folder = folders.find(f => f.slug === slug);
+
+  if (!folder || !folder.hasSkillMd) {
+    // Not a folder-based skill, skip
+    return { synced: false };
+  }
+
+  try {
+    // Get current hash from database
+    const [dbSkill] = await db
+      .select({ contentHash: skillsTable.contentHash })
+      .from(skillsTable)
+      .where(eq(skillsTable.slug, slug))
+      .limit(1);
+
+    // Calculate current file hash
+    const rawContent = fs.readFileSync(folder.skillMdPath, "utf-8");
+    const fileHash = crypto.createHash("md5").update(rawContent).digest("hex");
+
+    // Compare hashes
+    if (dbSkill?.contentHash === fileHash) {
+      // Already up-to-date
+      return { synced: false };
+    }
+
+    // Hash mismatch - sync the skill
+    console.log(`[SkillRegistry] Hash mismatch for ${slug}, syncing...`);
+    console.log(`[SkillRegistry]   DB hash: ${dbSkill?.contentHash || "(none)"}`);
+    console.log(`[SkillRegistry]   File hash: ${fileHash}`);
+
+    // Parse skill.md
+    const parsed = parseSkillFile(rawContent);
+    const metadata: SkillMetadata = { name: slug, ...parsed.metadata };
+
+    const updateData = {
+      skillContent: parsed.content,
+      systemPrompt: parsed.content,
+      contentHash: fileHash,
+      version: metadata.version || undefined,
+      executionMode: metadata.executionMode ?? metadata.execution_mode ?? undefined,
+      // Include category to allow category changes via skill.md
+      ...(metadata.category ? { category: mapCategoryToEnum(metadata.category) as any } : {}),
+      ...(metadata.defaultModel ?? metadata.default_model ? { defaultModel: metadata.defaultModel ?? metadata.default_model } : {}),
+      ...(metadata.triggerPatterns ?? metadata.trigger_patterns ? { triggerPatterns: metadata.triggerPatterns ?? metadata.trigger_patterns } : {}),
+      ...(metadata.priority !== undefined ? { priority: metadata.priority } : {}),
+      ...(metadata.isAutoTrigger ?? metadata.auto_trigger !== undefined ? { isAutoTrigger: metadata.isAutoTrigger ?? metadata.auto_trigger } : {}),
+      ...(metadata.creditMultiplier ?? metadata.credit_multiplier !== undefined ? { creditMultiplier: String(metadata.creditMultiplier ?? metadata.credit_multiplier) } : {}),
+    };
+
+    if (dbSkill) {
+      // Update existing
+      await db.update(skillsTable).set(updateData).where(eq(skillsTable.slug, slug));
+    } else {
+      // Insert new (shouldn't happen normally, but handle gracefully)
+      const skillData = {
+        slug,
+        name: metadata.name || slug,
+        description: metadata.description || `Auto-imported from skills/${slug}`,
+        category: mapCategoryToEnum(metadata.category) as any,
+        version: metadata.version || "1.0.0",
+        author: metadata.author,
+        icon: metadata.icon || "sparkles",
+        tags: metadata.tags || [],
+        folderPath: `skills/${slug}`,
+        isAutoTrigger: metadata.isAutoTrigger ?? metadata.auto_trigger ?? false,
+        triggerPatterns: metadata.triggerPatterns ?? metadata.trigger_patterns ?? [],
+        isEnabled: true,
+        enabledByDefault: metadata.enabledByDefault ?? metadata.enabled_by_default ?? true,
+        creditMultiplier: String(metadata.creditMultiplier ?? metadata.credit_multiplier ?? 1.0),
+        priority: metadata.priority ?? 50,
+        skillContent: parsed.content,
+        systemPrompt: parsed.content,
+        contentHash: fileHash,
+        configJson: metadata.config,
+        executionMode: metadata.executionMode ?? metadata.execution_mode ?? "llm-only",
+        defaultModel: metadata.defaultModel ?? metadata.default_model ?? null,
+        importSource: "folder" as const,
+      };
+      await db.insert(skillsTable).values(skillData);
+    }
+
+    // Clear cache to reload
+    clearSkillRegistryCache();
+
+    console.log(`[SkillRegistry] Synced skill: ${slug}`);
+    return { synced: true };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[SkillRegistry] Error syncing skill ${slug}:`, error);
+    return { synced: false, error: errorMsg };
+  }
 }
 
 /**

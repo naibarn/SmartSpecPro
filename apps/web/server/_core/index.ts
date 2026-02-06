@@ -1,7 +1,8 @@
+import "dotenv/config";
 import express from "express";
-import { createServer } from "http";
 import { fileURLToPath } from "url";
 import path from "path";
+import { createServer } from "http";
 import cookieParser from "cookie-parser";
 
 import { createContext } from "./context";
@@ -22,6 +23,8 @@ import { debugError } from "./logger";
 import { getUploadsDir, useLocalStorage } from "../storage";
 import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initializeScheduler } from "../services/scheduler";
+import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
+import { initializeQueues } from "../services/llmQueue";
 import { PostgresAdapter } from "../services/postgresAdapter";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
@@ -39,7 +42,7 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
 
   // Allow cross-origin access from trusted domains and desktop app
-  const allowedSuffixes = ['.smartspec.local', '.smartspec.pro', '.localhost', '.smartaihub.app', '.manus.computer'];
+  const allowedSuffixes = ['.smartspec.local', '.smartspec.pro', '.localhost', '.smartaihub.app'];
   const allowedExact = ['tauri://localhost', 'http://tauri.localhost'];
   let originHost = '';
   try { originHost = origin ? new URL(origin).hostname : ''; } catch {}
@@ -71,7 +74,7 @@ app.use((_req, res, next) => {
   res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none';");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; frame-ancestors 'none';");
   next();
 });
 
@@ -157,6 +160,21 @@ async function main() {
     initializeScheduler();
   } catch (error) {
     console.error("[Startup] Failed to initialize scheduler:", error);
+  }
+
+  // Initialize provider health circuit breaker from DB state
+  try {
+    await initFromDb();
+    startPeriodicPersistence();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize provider health:", error);
+  }
+
+  // Initialize LLM queue system (BullMQ workers for background tasks)
+  try {
+    await initializeQueues();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize LLM queues:", error);
   }
 
   if (process.env.NODE_ENV === "development") {

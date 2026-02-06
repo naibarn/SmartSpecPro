@@ -23,15 +23,11 @@ function requireGatewayKey(req: any, res: any): boolean {
 }
 
 function resolveApiUrl() {
-  return ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+  throw new Error("Built-in Forge API is not configured. Please configure an LLM provider.");
 }
 
 function assertApiKey() {
-  if (!ENV.forgeApiKey) {
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
-  }
+  throw new Error("Built-in Forge API is not configured. Please configure an LLM provider.");
 }
 
 export function registerOpenAICompatRoutes(app: any) {

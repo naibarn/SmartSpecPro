@@ -30,6 +30,7 @@ import {
   Coins,
   ExternalLink,
   Film,
+  Gauge,
 } from 'lucide-react';
 import {
   getMenuItemsByGroup,
@@ -70,6 +71,7 @@ const iconMap: Record<string, LucideIcon> = {
   Coins,
   ExternalLink,
   Film,
+  Gauge,
 };
 
 export interface ResolvedMenuItem extends MenuItem {

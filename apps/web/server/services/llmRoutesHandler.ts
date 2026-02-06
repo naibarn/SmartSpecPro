@@ -45,6 +45,7 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
       const { creditsUsed } = await deductCreditsForModel({
         userId,
         model,
+        provider: result.providerName,
         inputTokens,
         outputTokens,
         costUsd,
@@ -119,6 +120,7 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
       const { creditsUsed } = await deductCreditsForModel({
         userId,
         model,
+        provider: result.providerName,
         inputTokens,
         outputTokens,
         costUsd,

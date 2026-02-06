@@ -50,6 +50,27 @@
       "when": 1770088941765,
       "tag": "0006_round_sunset_bain",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1770126582563,
+      "tag": "0007_add-chain-to-skills",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1770164223706,
+      "tag": "0008_fancy_overlord",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1770210000000,
+      "tag": "0009_add_image_video_generation_category",
+      "breakpoints": true
     }
   ]
 }

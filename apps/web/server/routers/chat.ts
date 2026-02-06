@@ -790,6 +790,7 @@ export const chatRouter = router({
           confidence: 0,
           matchedTrigger: null,
           suggestedPrompt: null,
+          patternChainTo: null,
           params: null,
         };
       }
@@ -807,10 +808,13 @@ export const chatRouter = router({
           defaultModel: result.skill.defaultModel,
           creditMultiplier: result.skill.creditMultiplier,
           executionMode: result.skill.executionMode || "llm-only",
+          chainTo: result.skill.chainTo || null,
         },
         confidence: result.confidence,
         matchedTrigger: result.matchedTrigger,
         suggestedPrompt: result.suggestedPrompt,
+        // Per-pattern chainTo from matched trigger pattern (takes precedence)
+        patternChainTo: result.patternChainTo || null,
         params,
       };
     }),
@@ -960,6 +964,7 @@ export const chatRouter = router({
           resolution: input.resolution,
           apiConfig: input.apiConfig,
           extraParams: input.extraParams,
+          publicUrl: ctx.publicUrl,
         },
         ctx.user.id,
         userToken

@@ -15,10 +15,9 @@ import {
   conversations,
   messages,
 } from "../../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
-import { decrypt } from "./crypto";
-import { llmProviders } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
+import { getProviderForModel } from "./llmRouter";
 
 const QUEUE_NAME = "chat-alerts";
 
@@ -52,34 +51,7 @@ export function getSchedulerQueue(): Queue {
   return queue;
 }
 
-/**
- * Get active LLM provider config (duplicated from llmRoutes to avoid circular deps)
- */
-async function getActiveLlmProvider() {
-  const db = await getDb();
-  if (!db) return null;
-
-  const providers = await db
-    .select()
-    .from(llmProviders)
-    .where(eq(llmProviders.isEnabled, true))
-    .orderBy(asc(llmProviders.sortOrder))
-    .limit(1);
-
-  if (providers.length === 0) return null;
-
-  const p = providers[0];
-  if (!p.apiKeyEncrypted) return null;
-
-  const apiKey = decrypt(p.apiKeyEncrypted);
-  if (!apiKey) return null;
-
-  return {
-    baseUrl: p.baseUrl,
-    apiKey,
-    defaultModel: p.defaultModel,
-  };
-}
+// Note: getActiveLlmProvider removed — now uses getProviderForModel from llmRouter
 
 /**
  * Execute a scheduled message job
@@ -103,14 +75,13 @@ async function executeScheduledJob(job: Job) {
   }
 
   const userId = schedule.targetUserId || schedule.userId;
-  const provider = await getActiveLlmProvider();
+  const model = schedule.modelId || "gpt-4o-mini";
+  const provider = await getProviderForModel(model);
 
   if (!provider) {
     await logExecution(db, scheduleId, null, "failed", "No LLM provider configured");
     return;
   }
-
-  const model = schedule.modelId || provider.defaultModel || "gpt-4o-mini";
 
   try {
     // Check credits

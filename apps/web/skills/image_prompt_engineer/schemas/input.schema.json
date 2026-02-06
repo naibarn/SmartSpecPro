@@ -763,6 +763,26 @@
         {
           "const": "deconstruction_style",
           "title": "Deconstruction style — แตกชิ้นส่วนรูปแล้วจัดใหม่แบบทดลอง"
+        },
+        {
+          "const": "pixar_3d_animated",
+          "title": "Pixar 3D Animated — สไตล์แอนิเมชัน 3D แบบ Pixar มีความสดใส น่ารัก และมีชีวิตชีวา"
+        },
+        {
+          "const": "disney_3d_animated",
+          "title": "Disney 3D Animated — สไตล์แอนิเมชัน 3D แบบ Disney สวยงามและมีเสน่ห์"
+        },
+        {
+          "const": "dreamworks_3d",
+          "title": "DreamWorks 3D — สไตล์แอนิเมชัน 3D แบบ DreamWorks ดูสนุกและมีอารมณ์ขัน"
+        },
+        {
+          "const": "claymation",
+          "title": "Claymation — สไตล์ดินน้ำมันปั้น Stop Motion"
+        },
+        {
+          "const": "low_poly_3d",
+          "title": "Low Poly 3D — สไตล์ 3D แบบ Low Polygon เรียบง่ายและมีเหลี่ยมมุม"
         }
       ],
       "default": "na"

@@ -5,7 +5,7 @@ import { authorizeRequest, AuthResult } from "./authz";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
 import { getUserByOpenId, getDb, db } from "../db";
 import { llmProviders } from "../../drizzle/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 import {
   getCreditBalance,
   getCreditBalanceByOpenId,
@@ -14,8 +14,228 @@ import {
   calculateCreditsFromCost,
 } from "../services/creditService";
 import { debugLog, debugError } from "./logger";
+import { handleChatWithRouter, handleStreamWithRouter } from "../services/llmRoutesHandler";
 
+// --- Provider-specific Rate Limiter with Queue System ---
+// Uses Bottleneck with Redis for distributed rate limiting when available
+// Falls back to in-memory limiting for single-instance deployments
 
+import {
+  getProviderLimiter,
+  getProviderLimitConfig,
+  scheduleWithLimiter,
+  getLimiterStats,
+  getAllLimiterStats,
+  getLimiterCounts,
+  recordModelUsage,
+  type LimiterStats,
+} from "../services/llmRateLimiter";
+import { isRedisAvailable } from "../services/redis";
+
+// In-memory fallback for when Redis/Bottleneck is not available
+interface ProviderQueueConfig {
+  minDelayMs: number;
+  maxConcurrent: number;
+  freeModelMultiplier: number;
+}
+
+interface ProviderRateLimiter {
+  lastRequestTime: number;
+  activeRequests: number;
+  waitingCount: number;
+  config: ProviderQueueConfig;
+}
+
+const providerRateLimiters: Map<string, ProviderRateLimiter> = new Map();
+
+const PROVIDER_QUEUE_CONFIGS: Record<string, ProviderQueueConfig> = {
+  'opencode-zen': { minDelayMs: 1500, maxConcurrent: 2, freeModelMultiplier: 2 },
+  'opencode': { minDelayMs: 1500, maxConcurrent: 2, freeModelMultiplier: 2 },
+  'openrouter': { minDelayMs: 50, maxConcurrent: 10, freeModelMultiplier: 1.5 },
+  'default': { minDelayMs: 200, maxConcurrent: 5, freeModelMultiplier: 1.5 },
+};
+
+function getInMemoryRateLimiter(providerName: string): ProviderRateLimiter {
+  const key = providerName.toLowerCase();
+  let limiter = providerRateLimiters.get(key);
+
+  if (!limiter) {
+    const config = PROVIDER_QUEUE_CONFIGS[key] ?? PROVIDER_QUEUE_CONFIGS['default'];
+    limiter = { lastRequestTime: 0, activeRequests: 0, waitingCount: 0, config };
+    providerRateLimiters.set(key, limiter);
+  }
+
+  return limiter;
+}
+
+/**
+ * Acquire a slot in the provider queue
+ * Uses Bottleneck with Redis when available, falls back to in-memory
+ */
+async function acquireProviderSlot(providerName: string, isFreeModel: boolean = false): Promise<{ queuePosition: number }> {
+  // Try to use Bottleneck if available (has Redis)
+  // Note: For streaming, we still need the slot pattern since we can't wrap
+  // the entire stream in scheduleWithLimiter
+  const limiter = getInMemoryRateLimiter(providerName);
+  limiter.waitingCount++;
+  const queuePosition = limiter.waitingCount + limiter.activeRequests;
+
+  // Wait for concurrency slot
+  while (limiter.activeRequests >= limiter.config.maxConcurrent) {
+    debugLog("LLM", `Waiting for slot: ${providerName} (active: ${limiter.activeRequests}/${limiter.config.maxConcurrent})`);
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  // Apply rate limit delay
+  const now = Date.now();
+  const timeSinceLastRequest = now - limiter.lastRequestTime;
+  let requiredDelay = limiter.config.minDelayMs;
+
+  if (isFreeModel) {
+    requiredDelay = Math.floor(requiredDelay * limiter.config.freeModelMultiplier);
+  }
+
+  if (timeSinceLastRequest < requiredDelay) {
+    const waitTime = requiredDelay - timeSinceLastRequest;
+    debugLog("LLM", `Rate limiting ${providerName}: waiting ${waitTime}ms (free=${isFreeModel})`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+
+  limiter.lastRequestTime = Date.now();
+  limiter.activeRequests++;
+  limiter.waitingCount--;
+
+  return { queuePosition };
+}
+
+/**
+ * Release a slot in the provider queue
+ */
+function releaseProviderSlot(providerName: string): void {
+  const limiter = getInMemoryRateLimiter(providerName);
+  limiter.activeRequests = Math.max(0, limiter.activeRequests - 1);
+}
+
+/**
+ * Get current queue status for a provider
+ */
+function getProviderQueueStatus(providerName: string): { active: number; waiting: number; maxConcurrent: number } {
+  const limiter = getInMemoryRateLimiter(providerName);
+  return {
+    active: limiter.activeRequests,
+    waiting: limiter.waitingCount,
+    maxConcurrent: limiter.config.maxConcurrent,
+  };
+}
+
+// Legacy function for backwards compatibility
+async function waitForRateLimit(providerName: string): Promise<void> {
+  await acquireProviderSlot(providerName, false);
+}
+
+// Export for use by other modules
+export { acquireProviderSlot, releaseProviderSlot, getProviderQueueStatus, getLimiterStats, getAllLimiterStats };
+
+// --- User-friendly Error Parsing ---
+
+interface ParsedError {
+  message: string;
+  userMessage: string;
+  errorType: 'rate_limit' | 'overloaded' | 'invalid_model' | 'auth' | 'network' | 'unknown';
+  suggestedAction: 'retry' | 'wait' | 'switch_provider' | 'check_model' | 'contact_support';
+  provider?: string;
+  retryAfterMs?: number;
+}
+
+/**
+ * Parse provider error response into user-friendly format
+ */
+function parseProviderError(errorText: string, providerName: string): ParsedError {
+  const lowerError = errorText.toLowerCase();
+
+  // Rate limit / Too many requests
+  if (lowerError.includes('too_many_requests') || lowerError.includes('rate_limit') || lowerError.includes('rate limit')) {
+    return {
+      message: errorText,
+      userMessage: `${providerName} is currently handling many requests. Please wait a moment and try again.`,
+      errorType: 'rate_limit',
+      suggestedAction: 'wait',
+      provider: providerName,
+      retryAfterMs: 5000,
+    };
+  }
+
+  // Service overloaded / Deadline exceeded
+  if (lowerError.includes('overload') || lowerError.includes('deadline') || lowerError.includes('service is overloaded')) {
+    return {
+      message: errorText,
+      userMessage: `${providerName} is currently overloaded. Try using a different provider like OpenRouter, or wait a few minutes.`,
+      errorType: 'overloaded',
+      suggestedAction: 'switch_provider',
+      provider: providerName,
+      retryAfterMs: 30000,
+    };
+  }
+
+  // Invalid model
+  if (lowerError.includes('invalid') && lowerError.includes('model') || lowerError.includes('not a valid model')) {
+    return {
+      message: errorText,
+      userMessage: `This model may be temporarily unavailable. Please try a different model.`,
+      errorType: 'invalid_model',
+      suggestedAction: 'check_model',
+      provider: providerName,
+    };
+  }
+
+  // Authentication errors
+  if (lowerError.includes('unauthorized') || lowerError.includes('invalid api key') || lowerError.includes('authentication')) {
+    return {
+      message: errorText,
+      userMessage: `Authentication failed for ${providerName}. Please check the API key configuration.`,
+      errorType: 'auth',
+      suggestedAction: 'contact_support',
+      provider: providerName,
+    };
+  }
+
+  // Network / Connection errors
+  if (lowerError.includes('network') || lowerError.includes('connection') || lowerError.includes('timeout')) {
+    return {
+      message: errorText,
+      userMessage: `Connection to ${providerName} failed. Please check your network and try again.`,
+      errorType: 'network',
+      suggestedAction: 'retry',
+      provider: providerName,
+      retryAfterMs: 2000,
+    };
+  }
+
+  // Default unknown error
+  return {
+    message: errorText,
+    userMessage: `An error occurred with ${providerName}. Please try again or use a different provider.`,
+    errorType: 'unknown',
+    suggestedAction: 'retry',
+    provider: providerName,
+  };
+}
+
+/**
+ * Format error response for API
+ */
+function formatErrorResponse(error: ParsedError): object {
+  return {
+    error: {
+      message: error.message,
+      userMessage: error.userMessage,
+      errorType: error.errorType,
+      suggestedAction: error.suggestedAction,
+      provider: error.provider,
+      retryAfterMs: error.retryAfterMs,
+    },
+  };
+}
 
 // Cached provider config (refreshed periodically)
 interface LlmProviderConfig {
@@ -28,6 +248,108 @@ interface LlmProviderConfig {
 let cachedProvider: LlmProviderConfig | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 60000; // Refresh every 60 seconds
+
+type ResolvedModel = {
+  providerModelId: string;
+  apiStyle: 'chat-completions' | 'responses' | 'messages' | 'gemini';
+} | null;
+
+/**
+ * Resolve the provider-specific model ID and API style from the database
+ * Returns both the providerModelId and apiStyle for correct endpoint routing
+ *
+ * Lookup strategy:
+ * 1. First try exact match on modelId (e.g., "kimi-k2.5-free")
+ * 2. If not found, try matching on providerModelId (e.g., "moonshotai/kimi-k2.5")
+ * This provides flexibility for clients using either format
+ */
+async function resolveProviderModel(modelId: string, providerId: number): Promise<ResolvedModel> {
+  try {
+    const { modelProviderMap } = await import("../../drizzle/schema");
+
+    // First try exact modelId match
+    let [mapping] = await db
+      .select({
+        providerModelId: modelProviderMap.providerModelId,
+        apiStyle: modelProviderMap.apiStyle,
+      })
+      .from(modelProviderMap)
+      .where(and(
+        eq(modelProviderMap.modelId, modelId),
+        eq(modelProviderMap.providerId, providerId),
+        eq(modelProviderMap.isEnabled, true)
+      ))
+      .limit(1);
+
+    // If not found, try matching on providerModelId (for backwards compatibility)
+    if (!mapping) {
+      [mapping] = await db
+        .select({
+          providerModelId: modelProviderMap.providerModelId,
+          apiStyle: modelProviderMap.apiStyle,
+        })
+        .from(modelProviderMap)
+        .where(and(
+          eq(modelProviderMap.providerModelId, modelId),
+          eq(modelProviderMap.providerId, providerId),
+          eq(modelProviderMap.isEnabled, true)
+        ))
+        .limit(1);
+
+      if (mapping) {
+        debugLog("LLM", "Resolved model via providerModelId fallback", { modelId, providerId });
+      }
+    }
+
+    if (!mapping) return null;
+
+    return {
+      providerModelId: mapping.providerModelId,
+      apiStyle: mapping.apiStyle as 'chat-completions' | 'responses' | 'messages' | 'gemini',
+    };
+  } catch (error) {
+    console.error("[LLM] Failed to resolve provider model:", { modelId, providerId, error });
+    return null;
+  }
+}
+
+/**
+ * Get a specific LLM provider configuration by ID
+ */
+async function getLlmProviderById(providerId: number): Promise<LlmProviderConfig | null> {
+  try {
+    const [provider] = await db
+      .select({
+        providerName: llmProviders.providerName,
+        baseUrl: llmProviders.baseUrl,
+        apiKeyEncrypted: llmProviders.apiKeyEncrypted,
+        defaultModel: llmProviders.defaultModel,
+      })
+      .from(llmProviders)
+      .where(and(eq(llmProviders.id, providerId), eq(llmProviders.isEnabled, true)))
+      .limit(1);
+
+    if (!provider || !provider.apiKeyEncrypted || !provider.baseUrl) {
+      return null;
+    }
+
+    const apiKey = decrypt(provider.apiKeyEncrypted);
+    if (!apiKey) {
+      console.warn("[LLM] Failed to decrypt API key for provider:", provider.providerName);
+      return null;
+    }
+
+    return {
+      providerName: provider.providerName,
+      baseUrl: provider.baseUrl,
+      apiKey,
+      defaultModel: provider.defaultModel,
+    };
+  } catch (error) {
+    console.error("[LLM] Failed to get provider config by ID:", providerId, error);
+    return null;
+  }
+}
 
 /**
  * Get the active LLM provider configuration from database
@@ -102,20 +424,247 @@ interface LLMUsageInfo {
   providerCostUsd?: number; // Actual cost from provider (e.g. OpenRouter usage.cost)
 }
 
-function resolveChatUrl(baseUrl: string): string {
+/**
+ * Determine the API style based on model ID
+ * OpenCode Zen uses different endpoints for different model families
+ */
+type ApiStyle = 'chat-completions' | 'responses' | 'messages' | 'gemini';
+
+function getApiStyleForModel(modelId: string): ApiStyle {
+  const id = modelId.toLowerCase();
+
+  // OpenAI Responses API (gpt-5.x models)
+  if (id.startsWith('gpt-')) {
+    return 'responses';
+  }
+
+  // Anthropic Messages API (claude models)
+  if (id.startsWith('claude-')) {
+    return 'messages';
+  }
+
+  // Google Gemini (special per-model endpoint)
+  if (id.startsWith('gemini-')) {
+    return 'gemini';
+  }
+
+  // Default: OpenAI-compatible Chat Completions (kimi, glm, minimax, qwen, big-pickle, etc.)
+  return 'chat-completions';
+}
+
+/**
+ * Resolve the API endpoint URL based on provider base URL and API style
+ * The apiStyle is read from database (model_provider_map.apiStyle)
+ *
+ * Provider-specific endpoint handling:
+ * - OpenCode Zen: Uses apiStyle from database (chat-completions, responses, messages, gemini)
+ * - Anthropic: Uses /messages endpoint (native API)
+ * - Google: Uses /models/{model}:generateContent endpoint (native API)
+ * - Others: Use standard /chat/completions (OpenAI-compatible)
+ */
+function resolveApiUrl(
+  baseUrl: string,
+  modelId: string,
+  providerName: string,
+  apiStyle?: ApiStyle
+): string {
   const base = baseUrl.replace(/\/+$/, "");
-  // Handle different provider URL patterns
+  const providerLower = providerName.toLowerCase();
+
+  // OpenCode Zen: Use apiStyle from database for endpoint routing
+  if (providerLower.includes('opencode') || providerLower.includes('zen')) {
+    const style = apiStyle || getApiStyleForModel(modelId);
+
+    switch (style) {
+      case 'responses':
+        return base.includes("/v1") ? `${base}/responses` : `${base}/v1/responses`;
+      case 'messages':
+        return base.includes("/v1") ? `${base}/messages` : `${base}/v1/messages`;
+      case 'gemini':
+        return base.includes("/v1") ? `${base}/models/${modelId}` : `${base}/v1/models/${modelId}`;
+      case 'chat-completions':
+      default:
+        return base.includes("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
+    }
+  }
+
+  // Direct Anthropic: Uses /messages endpoint with native API format
+  if (providerLower === 'anthropic') {
+    // Anthropic API: https://api.anthropic.com/v1/messages
+    return base.includes("/v1") ? `${base}/messages` : `${base}/v1/messages`;
+  }
+
+  // Direct Google AI: Uses /models/{model}:generateContent endpoint
+  if (providerLower === 'google' || providerLower.includes('gemini')) {
+    // Google AI API: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+    // Note: Google uses different versioning (v1beta vs v1)
+    return `${base}/models/${modelId}:generateContent`;
+  }
+
+  // All other providers: Use standard OpenAI-compatible /chat/completions
+  // This includes: OpenRouter, OpenAI, Groq, DeepSeek, Qwen, Zhipu, Minimax, Moonshot, Together, Fireworks, Ollama
   if (base.includes("/v1")) {
     return `${base}/chat/completions`;
   }
   return `${base}/v1/chat/completions`;
 }
 
-function upstreamHeaders(apiKey: string) {
+// Legacy function for backward compatibility
+function resolveChatUrl(baseUrl: string): string {
+  const base = baseUrl.replace(/\/+$/, "");
+  if (base.includes("/v1")) {
+    return `${base}/chat/completions`;
+  }
+  return `${base}/v1/chat/completions`;
+}
+
+/**
+ * Build upstream headers based on provider type
+ * Different providers require different authentication methods
+ */
+function upstreamHeaders(apiKey: string, providerName?: string): Record<string, string> {
+  const providerLower = (providerName || '').toLowerCase();
+
+  // Anthropic: Uses x-api-key header and requires anthropic-version
+  if (providerLower === 'anthropic') {
+    return {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    };
+  }
+
+  // Google AI: Uses x-goog-api-key header
+  if (providerLower === 'google' || providerLower.includes('gemini')) {
+    return {
+      "x-goog-api-key": apiKey,
+      "Content-Type": "application/json",
+    };
+  }
+
+  // All other providers: Standard Bearer token auth
   return {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
   };
+}
+
+/**
+ * Internal fields that should NOT be sent to upstream LLM APIs
+ * These are used for internal routing and message tracking
+ */
+const INTERNAL_FIELDS = [
+  'conversationId',
+  'preferredProvider',
+  'skillUsed',
+  'skillArgs',
+  'saveMessage',
+  '_internal',
+] as const;
+
+/**
+ * Extract only valid OpenAI Chat Completions API fields from request body
+ * Filters out internal fields that are not part of the LLM API spec
+ */
+function extractOpenAIFields(body: any): Record<string, any> {
+  // Valid OpenAI Chat Completions API fields
+  const validFields = [
+    'messages',
+    'temperature',
+    'top_p',
+    'max_tokens',
+    'frequency_penalty',
+    'presence_penalty',
+    'stop',
+    'n',
+    'user',
+    'logit_bias',
+    'logprobs',
+    'top_logprobs',
+    'response_format',
+    'seed',
+    'tools',
+    'tool_choice',
+    'parallel_tool_calls',
+    'service_tier',
+    // Note: 'model' and 'stream' are handled separately
+  ];
+
+  const result: Record<string, any> = {};
+  for (const field of validFields) {
+    if (body[field] !== undefined) {
+      result[field] = body[field];
+    }
+  }
+  return result;
+}
+
+/**
+ * Transform OpenAI-format request body to provider-specific format
+ * IMPORTANT: This function filters out internal fields (conversationId, preferredProvider, etc.)
+ * to prevent them from being sent to upstream LLM APIs
+ */
+function transformRequestBody(
+  body: any,
+  providerName: string,
+  model: string,
+  stream: boolean
+): any {
+  const providerLower = providerName.toLowerCase();
+
+  // Anthropic: Different message format
+  if (providerLower === 'anthropic') {
+    const messages = body.messages || [];
+
+    // Extract system message (Anthropic uses separate 'system' field)
+    const systemMessages = messages.filter((m: any) => m.role === 'system');
+    const nonSystemMessages = messages.filter((m: any) => m.role !== 'system');
+
+    return {
+      model,
+      max_tokens: body.max_tokens || 4096,
+      stream,
+      system: systemMessages.map((m: any) => m.content).join('\n\n') || undefined,
+      messages: nonSystemMessages.map((m: any) => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content,
+      })),
+    };
+  }
+
+  // Google AI: Completely different format
+  if (providerLower === 'google' || providerLower.includes('gemini')) {
+    const messages = body.messages || [];
+
+    // Convert to Google's format
+    const contents = messages
+      .filter((m: any) => m.role !== 'system')
+      .map((m: any) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+    // System instruction (if any)
+    const systemMessages = messages.filter((m: any) => m.role === 'system');
+    const systemInstruction = systemMessages.length > 0
+      ? { parts: [{ text: systemMessages.map((m: any) => m.content).join('\n\n') }] }
+      : undefined;
+
+    return {
+      contents,
+      systemInstruction,
+      generationConfig: {
+        maxOutputTokens: body.max_tokens || 8192,
+        temperature: body.temperature ?? 1.0,
+        topP: body.top_p ?? 0.95,
+      },
+    };
+  }
+
+  // All other providers: Standard OpenAI format
+  // Filter out internal fields to prevent validation errors from upstream APIs
+  const cleanBody = extractOpenAIFields(body);
+  return { ...cleanBody, model, stream };
 }
 
 /**
@@ -248,9 +797,21 @@ async function proxyChatWithCredits(
 ) {
   debugLog("LLM", "proxyChatWithCredits called", { mode, userId, conversationId, skillUsed });
 
-  // Get LLM provider config from database
-  const provider = await getActiveLlmProvider();
-  debugLog("LLM", "Provider config", provider ? { name: provider.providerName, baseUrl: provider.baseUrl, hasKey: !!provider.apiKey } : null);
+  // Check if a specific provider is requested (multi-provider support)
+  const preferredProviderId = req.body?.preferredProvider;
+  let provider: LlmProviderConfig | null = null;
+
+  if (preferredProviderId != null) {
+    // Use the specified provider
+    provider = await getLlmProviderById(preferredProviderId);
+    debugLog("LLM", "Using preferred provider", { providerId: preferredProviderId, found: !!provider });
+  }
+
+  // Fallback to default provider if no specific provider requested or not found
+  if (!provider) {
+    provider = await getActiveLlmProvider();
+    debugLog("LLM", "Using default provider", provider ? { name: provider.providerName, baseUrl: provider.baseUrl, hasKey: !!provider.apiKey } : null);
+  }
 
   if (!provider) {
     throw new Error(
@@ -258,32 +819,82 @@ async function proxyChatWithCredits(
     );
   }
 
-  const url = resolveChatUrl(provider.baseUrl);
-  const model = req.body?.model || provider.defaultModel || "gpt-4o-mini";
-  debugLog("LLM", "Request details", { url, model });
+  const requestedModelId = req.body?.model || provider.defaultModel || "gpt-4o-mini";
+
+  // Resolve the provider-specific model ID and API style from database
+  let model = requestedModelId;
+  let apiStyle: ApiStyle | undefined;
+
+  if (preferredProviderId != null) {
+    const resolved = await resolveProviderModel(requestedModelId, preferredProviderId);
+    if (resolved) {
+      model = resolved.providerModelId;
+      apiStyle = resolved.apiStyle;
+      debugLog("LLM", "Resolved provider model", {
+        requestedModelId,
+        providerModelId: resolved.providerModelId,
+        apiStyle: resolved.apiStyle,
+        providerId: preferredProviderId
+      });
+    } else {
+      debugLog("LLM", "Failed to resolve provider model, using requested ID", { requestedModelId, providerId: preferredProviderId });
+    }
+  }
+
+  // Use the resolved model ID and API style to determine the correct endpoint
+  const url = resolveApiUrl(provider.baseUrl, model, provider.providerName, apiStyle);
+  debugLog("LLM", "Request details", { url, model, requestedModelId, apiStyle, providerName: provider.providerName });
 
   const controller = new AbortController();
   req.on("close", () => controller.abort());
 
   const stream = mode === "stream";
-  const upstream = await fetch(url, {
-    method: "POST",
-    headers: upstreamHeaders(provider.apiKey),
-    body: JSON.stringify({ ...req.body, stream }),
-    signal: controller.signal,
-  });
+
+  // Transform request body for provider-specific API format
+  const requestBody = transformRequestBody(req.body, provider.providerName, model, stream);
+
+  // Apply provider-specific rate limiting with queue system to avoid API rate limit errors
+  const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
+  await acquireProviderSlot(provider.providerName, isFreeModel);
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(url, {
+      method: "POST",
+      headers: upstreamHeaders(provider.apiKey, provider.providerName),
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    });
+  } catch (fetchError: any) {
+    // Release slot on fetch error (network issues, etc.)
+    releaseProviderSlot(provider.providerName);
+    // Record failed request
+    recordModelUsage(provider.providerName, requestedModelId, false);
+    const parsedError = parseProviderError(fetchError?.message || "Network error", provider.providerName);
+    res.status(500).json(formatErrorResponse(parsedError));
+    return;
+  }
 
   debugLog("LLM", "Upstream response", { status: upstream.status, statusText: upstream.statusText });
 
   if (!upstream.ok) {
+    // Release slot on upstream error
+    releaseProviderSlot(provider.providerName);
+    // Record failed request
+    recordModelUsage(provider.providerName, requestedModelId, false);
     const message = await upstream.text().catch(() => upstream.statusText);
     debugLog("LLM", "Upstream error", message);
-    res.status(upstream.status || 500).json({ error: { message } });
+    // Parse error into user-friendly format
+    const parsedError = parseProviderError(message, provider.providerName);
+    res.status(upstream.status || 500).json(formatErrorResponse(parsedError));
     return;
   }
 
   if (!stream) {
     // Non-streaming: parse response, deduct credits, return
+    // Release slot immediately since we have the response
+    releaseProviderSlot(provider.providerName);
+
     const text = await upstream.text();
     let data: any;
     try {
@@ -293,8 +904,22 @@ async function proxyChatWithCredits(
     }
 
     // Deduct credits based on usage
-    const usage = parseUsageFromResponse(data, model);
-    await deductCreditsForUsage(userId, usage);
+    const inputTokens = data?.usage?.prompt_tokens ?? 0;
+    const outputTokens = data?.usage?.completion_tokens ?? 0;
+    const costUsd = data?.usage?.cost;
+
+    const { deductCreditsForModel } = await import("../services/creditService");
+    await deductCreditsForModel({
+      userId,
+      model: requestedModelId,  // Use generic model ID for pricing lookup
+      provider: provider.providerName,
+      inputTokens,
+      outputTokens,
+      costUsd,
+    });
+
+    // Record model usage for analytics
+    recordModelUsage(provider.providerName, requestedModelId, true, inputTokens, outputTokens);
 
     // Add credit info to response (optional, for client awareness)
     if (userId > 0) {
@@ -302,7 +927,7 @@ async function proxyChatWithCredits(
       const balance = await getCreditBalance(userId);
       if (data && typeof data === "object") {
         data._credits = {
-          used: calculateCreditsForLLM(usage.promptTokens, usage.completionTokens, usage.model),
+          used: calculateCreditsForLLM(inputTokens, outputTokens, model),
           remaining: balance?.credits ?? 0,
         };
       }
@@ -370,6 +995,9 @@ async function proxyChatWithCredits(
       reader.releaseLock();
     } catch {}
 
+    // Release provider slot after streaming completes
+    releaseProviderSlot(provider.providerName);
+
     // Try to extract usage from the last SSE message
     // OpenAI/OpenRouter sends usage in the final chunk before [DONE]
     let inputTokens = 0;
@@ -403,15 +1031,18 @@ async function proxyChatWithCredits(
     }
 
     // Deduct credits for streaming
-    await deductCreditsForUsage(userId, {
+    const { deductCreditsForModel } = await import("../services/creditService");
+    await deductCreditsForModel({
       userId,
-      openId: null,
-      model,
-      promptTokens: inputTokens,
-      completionTokens: outputTokens,
-      totalTokens: inputTokens + outputTokens,
-      providerCostUsd,
+      model: requestedModelId,  // Use generic model ID for pricing lookup
+      provider: provider.providerName,
+      inputTokens,
+      outputTokens,
+      costUsd: providerCostUsd,
     });
+
+    // Record model usage for analytics
+    recordModelUsage(provider.providerName, requestedModelId, true, inputTokens, outputTokens);
 
     // If conversationId provided, save the assistant message and send final event
     if (conversationId && fullContent) {
@@ -1121,14 +1752,25 @@ export function registerLLMRoutes(app: Express) {
         // Send turn start
         res.write(`event: brainstorm_turn\ndata: ${JSON.stringify({ round: meta.round, role: meta.role, model, status: "start" })}\n\n`);
 
-        const upstream = await fetch(url, {
-          method: "POST",
-          headers: upstreamHeaders(provider!.apiKey),
-          body: JSON.stringify({ model, messages: msgs, stream: true }),
-          signal: controller.signal,
-        });
+        // Apply rate limiting with queue system before brainstorm API call
+        const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
+        await acquireProviderSlot(provider!.providerName, isFreeModel);
+
+        let upstream: Response;
+        try {
+          upstream = await fetch(url, {
+            method: "POST",
+            headers: upstreamHeaders(provider!.apiKey, provider!.providerName),
+            body: JSON.stringify({ model, messages: msgs, stream: true }),
+            signal: controller.signal,
+          });
+        } catch (fetchError: any) {
+          releaseProviderSlot(provider!.providerName);
+          throw new Error(`Model ${model} failed: ${fetchError?.message || "Network error"}`);
+        }
 
         if (!upstream.ok || !upstream.body) {
+          releaseProviderSlot(provider!.providerName);
           const errText = await upstream.text().catch(() => "LLM request failed");
           throw new Error(`Model ${model} failed: ${errText}`);
         }
@@ -1165,6 +1807,8 @@ export function registerLLMRoutes(app: Express) {
           }
         } finally {
           try { reader.releaseLock(); } catch {}
+          // Release provider slot after streaming completes
+          releaseProviderSlot(provider!.providerName);
         }
 
         // Parse usage from the last SSE chunk that contains it
@@ -1367,6 +2011,64 @@ Be comprehensive but avoid redundancy.`;
       }
 
       res.end();
+    }
+  );
+
+  // ─── Multi-provider router endpoints ──────────────────────────────
+  // These use the new llmRouter with provider fallback and health tracking.
+  // Clients can opt-in by sending requests to /api/llm/v2/* instead of /api/llm/*.
+
+  app.post(
+    "/api/llm/v2/chat",
+    llmLimiter,
+    enforceJsonBodyMaxBytes(MAX_LLM_BODY_BYTES),
+    async (req: Request, res: Response) => {
+      const check = await guardWithCredits(req, res);
+      if (!check.ok) return;
+
+      try {
+        await handleChatWithRouter({
+          model: req.body?.model || "gpt-4o-mini",
+          messages: req.body?.messages || [],
+          userId: check.userId,
+          conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
+          preferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : undefined,
+          res,
+        });
+      } catch (err: any) {
+        if (!res.headersSent) {
+          res.status(500).json({ error: { message: err?.message || "LLM error" } });
+        }
+      }
+    }
+  );
+
+  app.post(
+    "/api/llm/v2/stream",
+    llmLimiter,
+    enforceJsonBodyMaxBytes(MAX_LLM_BODY_BYTES),
+    async (req: Request, res: Response) => {
+      const check = await guardWithCredits(req, res);
+      if (!check.ok) return;
+
+      try {
+        await handleStreamWithRouter({
+          model: req.body?.model || "gpt-4o-mini",
+          messages: req.body?.messages || [],
+          userId: check.userId,
+          conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
+          preferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : undefined,
+          res,
+        });
+      } catch (err: any) {
+        if (!res.headersSent) {
+          res.status(200);
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        }
+        res.write(`event: error\ndata: ${JSON.stringify({ message: err?.message || "Stream error" })}\n\n`);
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+      }
     }
   );
 }

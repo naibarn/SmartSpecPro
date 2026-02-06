@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "../lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -47,6 +48,7 @@ import {
 import {
   Plus,
   Pencil,
+  Copy,
   Trash2,
   Loader2,
   Image,
@@ -110,6 +112,7 @@ interface FormData {
   kieModelId: string;
   pricingFormula: string;
   generateType: string;
+  maxPromptLength: number;
   inputFieldsJson: string;
   pricingTiersJson: string;
 }
@@ -133,6 +136,7 @@ const DEFAULT_FORM_DATA: FormData = {
   kieModelId: "",
   pricingFormula: "flat",
   generateType: "",
+  maxPromptLength: 2000,
   inputFieldsJson: "[]",
   pricingTiersJson: '{"default": 10}',
 };
@@ -152,6 +156,8 @@ export default function AdminMediaModels() {
 
   // Form state
   const [formData, setFormData] = useState<FormData>(DEFAULT_FORM_DATA);
+  // Store original configJson when duplicating to preserve extra fields
+  const [duplicateSourceConfig, setDuplicateSourceConfig] = useState<Record<string, any> | null>(null);
 
   // Check auth
   useEffect(() => {
@@ -178,25 +184,48 @@ export default function AdminMediaModels() {
 
   // Mutations
   const createMutation = trpc.mediaModels.create.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: (data) => {
+      // Close dialog and reset form FIRST before refetching
       setIsCreateDialogOpen(false);
       resetForm();
+      toast.success("Model created", {
+        description: `${data.name} has been added successfully.`,
+      });
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Failed to create model", {
+        description: error.message,
+      });
     },
   });
 
   const updateMutation = trpc.mediaModels.update.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: (data) => {
       setEditingModel(null);
       resetForm();
+      toast.success("Model updated", {
+        description: `${data.name} has been updated successfully.`,
+      });
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Failed to update model", {
+        description: error.message,
+      });
     },
   });
 
   const deleteMutation = trpc.mediaModels.delete.useMutation({
     onSuccess: () => {
-      refetch();
       setDeleteConfirm(null);
+      toast.success("Model deleted");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete model", {
+        description: error.message,
+      });
     },
   });
 
@@ -209,6 +238,7 @@ export default function AdminMediaModels() {
   const resetForm = () => {
     setFormData(DEFAULT_FORM_DATA);
     setActiveTab("basic");
+    setDuplicateSourceConfig(null);
   };
 
   const handleEditModel = (model: MediaModel) => {
@@ -233,10 +263,47 @@ export default function AdminMediaModels() {
       kieModelId: cfg.kieModelId || "",
       pricingFormula: cfg.pricingFormula || "flat",
       generateType: cfg.generateType || "",
+      maxPromptLength: cfg.maxPromptLength || 2000,
       inputFieldsJson: cfg.inputFields ? JSON.stringify(cfg.inputFields, null, 2) : "[]",
       pricingTiersJson: cfg.pricingTiers ? JSON.stringify(cfg.pricingTiers, null, 2) : '{"default": 10}',
     });
     setActiveTab("basic");
+  };
+
+  const handleDuplicateModel = (model: MediaModel) => {
+    // Clone the model data but with modified modelId and clear editingModel to create new
+    setEditingModel(null);
+    const cfg = model.configJson || {};
+    // Store original configJson to preserve extra fields when saving
+    setDuplicateSourceConfig(cfg);
+    setFormData({
+      modelId: `${model.modelId}_copy`,
+      name: `${model.name} (Copy)`,
+      description: model.description || "",
+      modelType: model.modelType,
+      provider: model.provider,
+      aliases: (model.aliases || []).join(", "),
+      creditCost: model.creditCost,
+      aspectRatios: (model.aspectRatios || []).join(", "),
+      sizes: (model.sizes || []).join(", "),
+      durations: (model.durations || []).join(", "),
+      voices: (model.voices || []).join(", "),
+      isEnabled: false, // Start disabled for safety
+      priority: model.priority,
+      apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
+      apiPayloadFormat: cfg.apiPayloadFormat || "market",
+      kieModelId: cfg.kieModelId || "",
+      pricingFormula: cfg.pricingFormula || "flat",
+      generateType: cfg.generateType || "",
+      maxPromptLength: cfg.maxPromptLength || 2000,
+      inputFieldsJson: cfg.inputFields ? JSON.stringify(cfg.inputFields, null, 2) : "[]",
+      pricingTiersJson: cfg.pricingTiers ? JSON.stringify(cfg.pricingTiers, null, 2) : '{"default": 10}',
+    });
+    setActiveTab("basic");
+    setIsCreateDialogOpen(true);
+    toast.info("Model duplicated", {
+      description: "Please modify the Model ID before saving.",
+    });
   };
 
   const handleSave = () => {
@@ -264,12 +331,38 @@ export default function AdminMediaModels() {
     // Build configJson from structured fields
     let inputFields: any[] = [];
     let pricingTiers: Record<string, number> = {};
+    let parseErrors: string[] = [];
+
     try {
-      inputFields = JSON.parse(formData.inputFieldsJson);
-    } catch {}
+      const parsed = JSON.parse(formData.inputFieldsJson);
+      if (Array.isArray(parsed)) {
+        inputFields = parsed;
+      } else {
+        parseErrors.push("Input Fields must be a JSON array");
+      }
+    } catch (e: any) {
+      parseErrors.push(`Input Fields JSON error: ${e.message}`);
+    }
+
     try {
-      pricingTiers = JSON.parse(formData.pricingTiersJson);
-    } catch {}
+      const parsed = JSON.parse(formData.pricingTiersJson);
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        pricingTiers = parsed;
+      } else {
+        parseErrors.push("Pricing Tiers must be a JSON object");
+      }
+    } catch (e: any) {
+      parseErrors.push(`Pricing Tiers JSON error: ${e.message}`);
+    }
+
+    // Show validation errors and abort save
+    if (parseErrors.length > 0) {
+      toast.error("JSON Validation Error", {
+        description: parseErrors.join(" | "),
+        duration: 5000,
+      });
+      return;
+    }
 
     const configJson: Record<string, any> = {
       apiEndpoint: formData.apiEndpoint,
@@ -277,6 +370,7 @@ export default function AdminMediaModels() {
       kieModelId: formData.kieModelId || undefined,
       pricingFormula: formData.pricingFormula,
       generateType: formData.generateType || undefined,
+      maxPromptLength: formData.maxPromptLength,
       inputFields,
       pricingTiers,
     };
@@ -303,6 +397,10 @@ export default function AdminMediaModels() {
         priority: formData.priority,
       });
     } else {
+      // If duplicating, merge original configJson to preserve extra fields
+      const finalConfigJson = duplicateSourceConfig
+        ? { ...duplicateSourceConfig, ...configJson }
+        : configJson;
       createMutation.mutate({
         modelId: formData.modelId,
         name: formData.name,
@@ -315,7 +413,7 @@ export default function AdminMediaModels() {
         sizes: sizes.length > 0 ? sizes : undefined,
         durations: durations.length > 0 ? durations : undefined,
         voices: voices.length > 0 ? voices : undefined,
-        configJson,
+        configJson: finalConfigJson,
         isEnabled: formData.isEnabled,
         priority: formData.priority,
       });
@@ -373,7 +471,7 @@ export default function AdminMediaModels() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-primary" />
-              AI Models
+              Media AI Models
             </h1>
             <p className="text-muted-foreground mt-1">
               Manage AI models for image, video, and audio generation skills
@@ -578,13 +676,23 @@ export default function AdminMediaModels() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEditModel(model)}
+                          title="Edit"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => handleDuplicateModel(model)}
+                          title="Duplicate"
+                        >
+                          <Copy className="h-4 w-4 text-blue-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setDeleteConfirm(model)}
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -1001,6 +1109,19 @@ function ModelForm({
                 onChange={(e) => setFormData({ ...formData, generateType: e.target.value })}
                 placeholder="e.g., text-to-video, image-to-video"
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="maxPromptLength">Max Prompt Length</Label>
+              <Input
+                id="maxPromptLength"
+                type="number"
+                value={formData.maxPromptLength}
+                onChange={(e) => setFormData({ ...formData, maxPromptLength: parseInt(e.target.value) || 2000 })}
+                placeholder="2000"
+              />
+              <p className="text-xs text-muted-foreground">
+                Maximum characters allowed for prompts. Shows warning in Media Studio when exceeded.
+              </p>
             </div>
           </div>
 

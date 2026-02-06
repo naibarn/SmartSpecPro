@@ -1,0 +1,287 @@
+{
+  "version": "1.0",
+  "skillId": "viral-talking-objects",
+  "title": "Viral Talking Objects",
+  "titleTh": "สร้างวิดีโอสิ่งของพูดได้ไวรัล",
+  "description": "Create viral TikTok 'Talking Objects' content with character design, scripts, storyboards, and AI generation prompts",
+  "descriptionTh": "สร้างคอนเทนต์สไตล์ 'สิ่งของพูดได้' พร้อมตัวละคร สคริปต์ สตอรี่บอร์ด และ Prompt สำหรับสร้างภาพ/วิดีโอ",
+  "sections": [
+    {
+      "id": "character",
+      "title": "Character Setup",
+      "titleTh": "ตั้งค่าตัวละคร",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "character",
+          "type": "text",
+          "label": "Character Object(s)",
+          "labelTh": "ตัวละคร (วัตถุ/คน)",
+          "placeholder": "e.g., banana pixar 3d, mom 25yo realistic | or just: sunscreen bottle",
+          "placeholderTh": "เช่น กล้วยหอม pixar 3d, คุณแม่ 25 ปี realistic | หรือแค่: ขวดกันแดด",
+          "helpText": "Single or multiple characters with optional style. Format: '<name> <style>' comma-separated. Styles: pixar 3d, chibi, realistic. If no style specified, uses Visual Style dropdown.",
+          "helpTextTh": "ตัวละครเดียวหรือหลายตัว พร้อมระบุ style (ไม่บังคับ) รูปแบบ: '<ชื่อ> <style>' คั่นด้วย comma. Styles: pixar 3d, chibi, realistic. ถ้าไม่ระบุ style จะใช้จาก dropdown สไตล์ภาพ",
+          "required": true
+        },
+        {
+          "id": "personality",
+          "type": "select",
+          "label": "Personality Style",
+          "labelTh": "สไตล์บุคลิกภาพ",
+          "helpText": "How the character speaks and behaves",
+          "helpTextTh": "ลักษณะการพูดและพฤติกรรมของตัวละคร",
+          "required": true,
+          "default": "engaging-narrator",
+          "options": [
+            {"value": "engaging-narrator", "label": "Captivating Storyteller", "labelTh": "นักเล่าเรื่องชวนติดตาม"},
+            {"value": "cute-complaining", "label": "Cute but Whiny", "labelTh": "น่ารักแต่ขี้บ่น"},
+            {"value": "pretty-sharp-tongued", "label": "Beautiful but Sarcastic", "labelTh": "สวยปากร้าย"},
+            {"value": "fun-conversationalist", "label": "Fun & Entertaining", "labelTh": "คุยสนุกสนาน"},
+            {"value": "friendly-peer", "label": "Friendly Peer", "labelTh": "เพื่อนคุยกับเพื่อน"},
+            {"value": "professional-expert", "label": "Professional Expert", "labelTh": "พูดดูเป็นมืออาชีพ"}
+          ]
+        },
+        {
+          "id": "characterStyle",
+          "type": "select",
+          "label": "Visual Style",
+          "labelTh": "สไตล์ภาพ",
+          "helpText": "Art style for the character",
+          "helpTextTh": "สไตล์ศิลปะสำหรับตัวละคร",
+          "required": true,
+          "default": "3D-Pixar",
+          "options": [
+            {"value": "3D-Pixar", "label": "3D Pixar Style", "labelTh": "3D สไตล์ Pixar"},
+            {"value": "Chibi", "label": "Chibi Anime", "labelTh": "ชิบิ อนิเมะ"},
+            {"value": "Realistic", "label": "Photorealistic", "labelTh": "สมจริง"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "title": "Story Content",
+      "titleTh": "เนื้อหาเรื่อง",
+      "icon": "film",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Story Topic",
+          "labelTh": "หัวข้อเรื่อง",
+          "placeholder": "e.g., 3 mistakes people make when applying sunscreen",
+          "placeholderTh": "เช่น 3 ข้อผิดพลาดที่คนทำเวลาทากันแดด",
+          "helpText": "The main topic for the script content",
+          "helpTextTh": "หัวข้อหลักสำหรับเนื้อหาสคริปต์",
+          "required": true,
+          "rows": 3
+        },
+        {
+          "id": "closingMessage",
+          "type": "text",
+          "label": "Closing Message (Optional)",
+          "labelTh": "ข้อความปิดท้าย (ไม่บังคับ)",
+          "placeholder": "e.g., Follow for more tips!",
+          "placeholderTh": "เช่น กดติดตามเพื่อรับทิปส์เพิ่มเติม!",
+          "helpText": "Custom message at the end",
+          "helpTextTh": "ข้อความที่ต้องการใส่ตอนจบ"
+        }
+      ]
+    },
+    {
+      "id": "language",
+      "title": "Language Settings",
+      "titleTh": "ตั้งค่าภาษา",
+      "icon": "globe",
+      "collapsible": true,
+      "defaultCollapsed": false,
+      "fields": [
+        {
+          "id": "promptLanguage",
+          "type": "select",
+          "label": "Prompt Language",
+          "labelTh": "ภาษา Prompt",
+          "helpText": "Language for image/video prompts",
+          "helpTextTh": "ภาษาสำหรับ Prompt สร้างภาพ/วิดีโอ",
+          "required": true,
+          "default": "en",
+          "options": [
+            {"value": "en", "label": "English", "labelTh": "อังกฤษ"},
+            {"value": "th", "label": "Thai", "labelTh": "ไทย"}
+          ]
+        },
+        {
+          "id": "dialogueLanguage",
+          "type": "select",
+          "label": "Dialogue Language",
+          "labelTh": "ภาษาบทพูด",
+          "helpText": "Language for spoken dialogue",
+          "helpTextTh": "ภาษาสำหรับบทพูดในวิดีโอ",
+          "required": true,
+          "default": "en",
+          "options": [
+            {"value": "en", "label": "English", "labelTh": "อังกฤษ"},
+            {"value": "th", "label": "Thai", "labelTh": "ไทย"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "output",
+      "title": "Output Settings",
+      "titleTh": "ตั้งค่า Output",
+      "icon": "settings",
+      "collapsible": true,
+      "defaultCollapsed": false,
+      "fields": [
+        {
+          "id": "outputType",
+          "type": "select",
+          "label": "Output Type",
+          "labelTh": "ประเภท Output",
+          "helpText": "Choose what type of prompts to generate",
+          "helpTextTh": "เลือกว่าจะสร้าง Prompt ประเภทไหน",
+          "required": true,
+          "default": "both",
+          "options": [
+            {"value": "image", "label": "Image Prompts Only", "labelTh": "เฉพาะ Prompt สร้างภาพ"},
+            {"value": "video", "label": "Video Prompts Only", "labelTh": "เฉพาะ Prompt สร้างวิดีโอ"},
+            {"value": "both", "label": "Both Image & Video Prompts (Recommended)", "labelTh": "ทั้ง Prompt ภาพและวิดีโอ (แนะนำ)"}
+          ]
+        },
+        {
+          "id": "totalDuration",
+          "type": "select",
+          "label": "Total Video Duration",
+          "labelTh": "ความยาวรวมของวิดีโอ",
+          "helpText": "Total video length. Scene count = totalDuration ÷ sceneDuration",
+          "helpTextTh": "ความยาวรวมของวิดีโอ จำนวนฉาก = ความยาวรวม ÷ ความยาวต่อฉาก",
+          "required": true,
+          "default": "40",
+          "options": [
+            {"value": "8", "label": "8 seconds (Very Short)", "labelTh": "8 วินาที (สั้นมาก)"},
+            {"value": "16", "label": "16 seconds (Short)", "labelTh": "16 วินาที (สั้น)"},
+            {"value": "24", "label": "24 seconds", "labelTh": "24 วินาที"},
+            {"value": "32", "label": "32 seconds", "labelTh": "32 วินาที"},
+            {"value": "40", "label": "40 seconds (Recommended)", "labelTh": "40 วินาที (แนะนำ)"},
+            {"value": "48", "label": "48 seconds", "labelTh": "48 วินาที"},
+            {"value": "56", "label": "56 seconds", "labelTh": "56 วินาที"},
+            {"value": "64", "label": "64 seconds (~1 min)", "labelTh": "64 วินาที (~1 นาที)"},
+            {"value": "72", "label": "72 seconds", "labelTh": "72 วินาที"},
+            {"value": "80", "label": "80 seconds", "labelTh": "80 วินาที"},
+            {"value": "120", "label": "120 seconds (2 min)", "labelTh": "120 วินาที (2 นาที)"},
+            {"value": "152", "label": "152 seconds (~2.5 min)", "labelTh": "152 วินาที (~2.5 นาที)"},
+            {"value": "176", "label": "176 seconds (~3 min)", "labelTh": "176 วินาที (~3 นาที)"}
+          ]
+        },
+        {
+          "id": "sceneDuration",
+          "type": "select",
+          "label": "Scene Duration",
+          "labelTh": "ความยาวต่อฉาก",
+          "helpText": "Duration per scene. Scenes = totalDuration ÷ sceneDuration",
+          "helpTextTh": "ความยาวแต่ละฉาก จำนวนฉาก = ความยาวรวม ÷ ความยาวต่อฉาก",
+          "required": true,
+          "default": "8",
+          "options": [
+            {"value": "5", "label": "5 seconds per scene", "labelTh": "5 วินาทีต่อฉาก"},
+            {"value": "6", "label": "6 seconds per scene", "labelTh": "6 วินาทีต่อฉาก"},
+            {"value": "8", "label": "8 seconds per scene (Recommended)", "labelTh": "8 วินาทีต่อฉาก (แนะนำ)"},
+            {"value": "10", "label": "10 seconds per scene", "labelTh": "10 วินาทีต่อฉาก"},
+            {"value": "12", "label": "12 seconds per scene", "labelTh": "12 วินาทีต่อฉาก"},
+            {"value": "15", "label": "15 seconds per scene", "labelTh": "15 วินาทีต่อฉาก"}
+          ]
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "Video aspect ratio",
+          "helpTextTh": "อัตราส่วนของวิดีโอ",
+          "required": true,
+          "default": "9:16",
+          "options": [
+            {"value": "9:16", "label": "9:16 (Vertical - TikTok/Reels)", "labelTh": "9:16 (แนวตั้ง - TikTok/Reels)"},
+            {"value": "16:9", "label": "16:9 (Horizontal - YouTube)", "labelTh": "16:9 (แนวนอน - YouTube)"}
+          ]
+        },
+        {
+          "id": "includeTextInImage",
+          "type": "select",
+          "label": "Text Overlay in Images",
+          "labelTh": "ข้อความในภาพ",
+          "helpText": "Include text/captions in the generated images",
+          "helpTextTh": "ใส่ข้อความ/คำบรรยายในภาพที่สร้าง",
+          "required": true,
+          "default": "no",
+          "options": [
+            {"value": "yes", "label": "Yes - Include text overlay", "labelTh": "ใช่ - ใส่ข้อความในภาพ"},
+            {"value": "no", "label": "No - Image only (Recommended)", "labelTh": "ไม่ - ภาพอย่างเดียว (แนะนำ)"}
+          ]
+        },
+        {
+          "id": "subImageAspectRatio",
+          "type": "select",
+          "label": "Sub-Image Aspect Ratio",
+          "labelTh": "สัดส่วนภาพย่อยแต่ละช็อต",
+          "helpText": "Aspect ratio for each individual shot/frame in the storyboard",
+          "helpTextTh": "สัดส่วนของแต่ละภาพย่อย/เฟรมใน storyboard",
+          "required": true,
+          "default": "9:16",
+          "options": [
+            {"value": "9:16", "label": "9:16 Vertical (TikTok/Reels)", "labelTh": "9:16 แนวตั้ง (TikTok/Reels)"},
+            {"value": "16:9", "label": "16:9 Horizontal (YouTube)", "labelTh": "16:9 แนวนอน (YouTube)"}
+          ]
+        },
+        {
+          "id": "compositeAspectRatio",
+          "type": "select",
+          "label": "Composite/Storyboard Aspect Ratio",
+          "labelTh": "สัดส่วนภาพรวม Storyboard",
+          "helpText": "Aspect ratio for the final combined storyboard/contact sheet",
+          "helpTextTh": "สัดส่วนของภาพรวมที่รวมทุกเฟรมเป็นภาพเดียว",
+          "required": true,
+          "default": "16:9",
+          "options": [
+            {"value": "16:9", "label": "16:9 Horizontal (Recommended)", "labelTh": "16:9 แนวนอน (แนะนำ)"},
+            {"value": "9:16", "label": "9:16 Vertical", "labelTh": "9:16 แนวตั้ง"}
+          ]
+        },
+        {
+          "id": "backgroundType",
+          "type": "select",
+          "label": "Background Type",
+          "labelTh": "ประเภทพื้นหลัง",
+          "helpText": "Background style for the generated images. Use Green/Blue Screen or Transparent for easy compositing.",
+          "helpTextTh": "สไตล์พื้นหลังของภาพที่สร้าง ใช้ Green/Blue Screen หรือ Transparent สำหรับนำไปตัดต่อง่าย",
+          "required": true,
+          "default": "normal",
+          "options": [
+            {"value": "normal", "label": "Normal Background", "labelTh": "พื้นหลังปกติ"},
+            {"value": "green_screen", "label": "Green Screen", "labelTh": "ฉากเขียว (Green Screen)"},
+            {"value": "blue_screen", "label": "Blue Screen", "labelTh": "ฉากน้ำเงิน (Blue Screen)"},
+            {"value": "transparent", "label": "Transparent/Cutout", "labelTh": "โปร่งใส/ตัดพื้นหลัง"}
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "character": "character",
+    "topic": "topic",
+    "promptLanguage": "promptLanguage",
+    "dialogueLanguage": "dialogueLanguage",
+    "personality": "personality",
+    "characterStyle": "characterStyle",
+    "closingMessage": "closingMessage",
+    "aspectRatio": "aspectRatio",
+    "outputType": "outputType",
+    "totalDuration": "totalDuration",
+    "sceneDuration": "sceneDuration",
+    "includeTextInImage": "includeTextInImage",
+    "subImageAspectRatio": "subImageAspectRatio",
+    "compositeAspectRatio": "compositeAspectRatio",
+    "backgroundType": "backgroundType"
+  }
+}

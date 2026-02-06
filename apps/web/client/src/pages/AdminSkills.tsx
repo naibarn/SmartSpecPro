@@ -113,6 +113,7 @@ interface FolderInfo {
 const categoryIcons: Record<string, typeof Sparkles> = {
   image_generation: Image,
   video_generation: Video,
+  image_video_generation: Video,
   audio_generation: Music,
   sound_effects: Music,
   prompt_enhancement: Sparkles,
@@ -128,6 +129,7 @@ const categoryIcons: Record<string, typeof Sparkles> = {
 const categoryLabels: Record<string, string> = {
   image_generation: "Image Generation",
   video_generation: "Video Generation",
+  image_video_generation: "Image/Video Generation",
   audio_generation: "Audio Generation",
   sound_effects: "Sound Effects",
   prompt_enhancement: "Prompt Enhancement",
@@ -1074,14 +1076,17 @@ export default function AdminSkills() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="llm-only">LLM Only (text response)</SelectItem>
+                    <SelectItem value="llm-only">LLM Only (Custom Skill - uses skill.md as system prompt)</SelectItem>
+                    <SelectItem value="enhance-prompt">Enhance Prompt (specialized prompt enhancement endpoint)</SelectItem>
                     <SelectItem value="media-generate">Media Generate (LLM prompt + media API)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   {editingSkill.executionMode === "media-generate"
                     ? "LLM generates optimized prompt JSON, then auto-calls media generation API."
-                    : "LLM generates text response only (default)."}
+                    : editingSkill.executionMode === "enhance-prompt"
+                    ? "Uses specialized enhancePrompt endpoint for image prompt generation."
+                    : "Uses skill.md content as system prompt for LLM (default)."}
                 </p>
               </div>
 
@@ -1098,7 +1103,7 @@ export default function AdminSkills() {
                         <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                           {editingSkill.defaultModel
                             ? (() => {
-                                const models = editingSkill.category === "image_generation" ? imageModels?.models : videoModels?.models;
+                                const models = editingSkill.category === "image_generation" ? imageModels?.models : (editingSkill.category === "image_video_generation" ? [...(imageModels?.models || []), ...(videoModels?.models || [])] : videoModels?.models);
                                 const found = models?.find((m: any) => m.modelId === editingSkill.defaultModel);
                                 return found ? `${found.name} (${found.provider})` : editingSkill.defaultModel;
                               })()
@@ -1106,10 +1111,10 @@ export default function AdminSkills() {
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[400px] p-0" align="start">
+                      <PopoverContent className="w-[450px] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Search models..." />
-                          <CommandList className="max-h-[200px] overflow-y-auto">
+                          <CommandInput placeholder="Search media models..." />
+                          <CommandList className="max-h-[300px] overflow-y-auto">
                             <CommandEmpty>No model found.</CommandEmpty>
                             <CommandGroup>
                               <CommandItem
@@ -1119,7 +1124,7 @@ export default function AdminSkills() {
                                 <Check className={`mr-2 h-4 w-4 ${!editingSkill.defaultModel ? "opacity-100" : "opacity-0"}`} />
                                 <span className="text-muted-foreground">Auto (highest priority model)</span>
                               </CommandItem>
-                              {(editingSkill.category === "image_generation" ? imageModels?.models : videoModels?.models)?.map((model: any) => (
+                              {(editingSkill.category === "image_generation" ? imageModels?.models : (editingSkill.category === "image_video_generation" ? [...(imageModels?.models || []), ...(videoModels?.models || [])] : videoModels?.models))?.map((model: any) => (
                                 <CommandItem
                                   key={model.modelId}
                                   value={`${model.name} ${model.modelId} ${model.provider}`}
@@ -1145,36 +1150,50 @@ export default function AdminSkills() {
                       <Sparkles className="h-4 w-4 text-purple-500" />
                       Default LLM Model (Auto Prompt)
                     </Label>
-                    <Select
-                      value={editingSkill.defaultModel || "__system_default__"}
-                      onValueChange={(value) =>
-                        setEditingSkill({ ...editingSkill, defaultModel: value === "__system_default__" ? null : value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select default model..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__system_default__">
-                          <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>
-                        </SelectItem>
-                        {visionModels?.models?.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{model.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({model.providerDisplayName})
-                              </span>
-                              {model.isDefault && (
-                                <Badge variant="secondary" className="text-[10px] h-4">
-                                  provider default
-                                </Badge>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                          {editingSkill.defaultModel
+                            ? (() => {
+                                const found = visionModels?.models?.find((m) => m.id === editingSkill.defaultModel);
+                                return found ? `${found.name} (${found.providerDisplayName})` : editingSkill.defaultModel;
+                              })()
+                            : <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[450px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search LLM models..." />
+                          <CommandList className="max-h-[300px] overflow-y-auto">
+                            <CommandEmpty>No model found.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                value="__system_default__"
+                                onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: null })}
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${!editingSkill.defaultModel ? "opacity-100" : "opacity-0"}`} />
+                                <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>
+                              </CommandItem>
+                              {visionModels?.models?.map((model) => (
+                                <CommandItem
+                                  key={model.id}
+                                  value={`${model.name} ${model.id} ${model.providerDisplayName}`}
+                                  onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: model.id })}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${editingSkill.defaultModel === model.id ? "opacity-100" : "opacity-0"}`} />
+                                  <span>{model.name}</span>
+                                  <span className="ml-1 text-xs text-muted-foreground">({model.providerDisplayName})</span>
+                                  {model.isDefault && (
+                                    <Badge variant="secondary" className="ml-1 text-[10px] h-4">default</Badge>
+                                  )}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <p className="text-xs text-muted-foreground">
                       The LLM model used for Auto Prompt in Media Studio. Users can override in Advanced Mode.
                     </p>

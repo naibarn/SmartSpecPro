@@ -841,24 +841,42 @@ export const systemSettingsRouter = router({
       .where(eq(systemSettings.category, "smtp"));
 
     const map: Record<string, string | null> = {};
+    const rawValues: Record<string, string | null> = {}; // Track original values
     for (const s of settings) {
+      rawValues[s.key] = s.value;
       if (s.isSensitive && s.value) {
-        try { map[s.key] = decrypt(s.value); } catch { map[s.key] = s.value; }
+        const decrypted = decrypt(s.value);
+        map[s.key] = decrypted;
       } else {
         map[s.key] = s.value;
       }
     }
 
-    if (!map.host || !map.user || !map.pass) {
-      return { success: false, message: "SMTP not fully configured (host, user, pass required)" };
+    // Check for missing or decryption-failed fields
+    const missing: string[] = [];
+    if (!map.host) missing.push("host");
+    if (!map.user) missing.push("user");
+    if (!map.pass) {
+      // Check if password was stored but decryption failed (returns empty string)
+      if (rawValues.pass) {
+        missing.push("pass (decryption failed - check LLM_ENCRYPTION_KEY)");
+      } else {
+        missing.push("pass");
+      }
     }
 
+    if (missing.length > 0) {
+      return { success: false, message: `SMTP not configured: missing ${missing.join(", ")}` };
+    }
+
+    console.log(`[SMTP Test] Testing connection to ${map.host}:${map.port || "587"} as ${map.user}`);
+
     return testSmtpConnection({
-      host: map.host,
+      host: map.host!,
       port: parseInt(map.port || "587", 10),
       secure: map.secure === "true",
-      user: map.user,
-      pass: map.pass,
+      user: map.user!,
+      pass: map.pass!,
     });
   }),
 
