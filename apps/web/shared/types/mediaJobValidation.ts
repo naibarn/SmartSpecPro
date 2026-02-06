@@ -114,7 +114,19 @@ export function isInternalUri(uri: string): boolean {
  * Returns the sanitized URI or throws with a descriptive error.
  */
 export function sanitizeUri(uri: string, context: EngineContext): string {
-  // Reject shell metacharacters in all contexts
+  // Allow relative paths (e.g. /uploads/...) — same-origin, no SSRF risk.
+  // These are served by Express/nginx and never passed to a shell,
+  // so filenames with parentheses, spaces, etc. are safe.
+  // Only block path traversal.
+  if (uri.startsWith("/")) {
+    const decoded = decodeURIComponent(uri);
+    if (decoded.includes("..")) {
+      throw new Error(`Path traversal detected in relative URI: "${uri}"`);
+    }
+    return uri;
+  }
+
+  // Reject shell metacharacters in external URIs (passed to FFmpeg CLI)
   if (SHELL_METACHAR_RE.test(uri)) {
     throw new Error(
       `URI contains shell metacharacter: "${uri}"`,

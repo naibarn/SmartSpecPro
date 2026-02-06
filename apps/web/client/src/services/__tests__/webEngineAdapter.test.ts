@@ -177,4 +177,92 @@ describe("WebEngineAdapter", () => {
     expect(callback).toHaveBeenCalledTimes(1);
     expect(es.closed).toBe(true);
   });
+
+  it("onProgress closes on error event and calls callback", () => {
+    const callback = vi.fn();
+    adapter.onProgress("job-err", callback);
+
+    const es = MockEventSource.instances[0];
+    es.emit("error", {
+      jobId: "job-err",
+      status: "error",
+      progress: 0,
+      message: "FFmpeg crashed",
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "error" }),
+    );
+    expect(es.closed).toBe(true);
+  });
+
+  it("cancelJob throws on non-ok response", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+
+    await expect(adapter.cancelJob("abc123")).rejects.toThrow(
+      "Cancel failed: 500",
+    );
+  });
+
+  it("getStatus throws descriptive error for non-404 failures", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+
+    await expect(adapter.getStatus("job-xyz")).rejects.toThrow(
+      "Get status failed: 500",
+    );
+  });
+
+  it("submitJob falls back to statusText when json parsing fails", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+      json: () => Promise.reject(new Error("parse failed")),
+    });
+
+    await expect(adapter.submitJob(makeSpec())).rejects.toThrow(
+      "Internal Server Error",
+    );
+  });
+
+  it("uses baseUrl prefix for all requests", async () => {
+    const customAdapter = new WebEngineAdapter("https://api.example.com");
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ jobId: "remote-123" }),
+    });
+
+    await customAdapter.submitJob(makeSpec());
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.example.com/api/media-jobs",
+      expect.any(Object),
+    );
+  });
+
+  it("encodes jobId in URL to prevent injection", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          jobId: "job/../../secret",
+          status: "running",
+          progress: 0,
+        }),
+    });
+
+    await adapter.getStatus("job/../../secret");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining(encodeURIComponent("job/../../secret")),
+      expect.any(Object),
+    );
+  });
 });

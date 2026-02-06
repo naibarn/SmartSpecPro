@@ -312,13 +312,15 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           justify-content: center;
         }
 
-        .media-thumbnail img {
+        .media-thumbnail img,
+        .media-video-thumb {
           position: absolute;
           top: 0;
           left: 0;
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          background: #000;
         }
 
         .media-thumbnail-icon {
@@ -528,7 +530,18 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
               >
                 <div className="media-thumbnail">
                   {asset.type === 'video' ? (
-                    asset.thumbnailUrl ? (
+                    asset.url ? (
+                      <video
+                        src={asset.url}
+                        preload="metadata"
+                        muted
+                        playsInline
+                        className="media-video-thumb"
+                        onLoadedData={(e) => { e.currentTarget.currentTime = 1; }}
+                        onMouseEnter={(e) => { e.currentTarget.currentTime = 0; e.currentTarget.play().catch(() => {}); }}
+                        onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }}
+                      />
+                    ) : asset.thumbnailUrl ? (
                       <img src={asset.thumbnailUrl} alt={asset.title} />
                     ) : (
                       <div className="media-thumbnail-icon">🎬</div>

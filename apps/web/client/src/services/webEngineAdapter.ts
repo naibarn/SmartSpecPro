@@ -20,8 +20,8 @@ export class WebEngineAdapter implements IEngineAdapter {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: res.statusText }));
-      throw new Error(err.message || `Submit failed: ${res.status}`);
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || err.message || `Submit failed: ${res.status}`);
     }
 
     const data = await res.json();

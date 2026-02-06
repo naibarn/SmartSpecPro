@@ -227,7 +227,8 @@ export class VideoEditorMediaLibrary {
 
   /**
    * Probe media file metadata.
-   * Desktop: FFmpeg via Tauri. Web: MediaJobClient probe job.
+   * Desktop: FFmpeg via Tauri.
+   * Web: Browser HTMLMediaElement (instant, no backend needed).
    */
   async probeMediaFile(filePath: string): Promise<MediaFileInfo> {
     if (isDesktop()) {
@@ -239,25 +240,46 @@ export class VideoEditorMediaLibrary {
       }
     }
 
-    try {
-      const client = await getJobClient();
-      const result = await client.probe(filePath);
-      const derived = (result as any).derived || {};
-      return {
-        duration: derived.durationMs ? derived.durationMs / 1000 : 0,
-        width: derived.width,
-        height: derived.height,
-        fps: derived.fps,
-        sample_rate: derived.sampleRate,
-        codec_video: derived.codecVideo,
-        codec_audio: derived.codecAudio,
-        has_video: !!derived.width,
-        has_audio: !!derived.sampleRate,
+    return this.probeWithBrowser(filePath);
+  }
+
+  /**
+   * Probe media metadata using browser HTMLVideoElement / HTMLAudioElement.
+   * Works for any URL the browser can play (same-origin uploads, blob URLs, etc.).
+   */
+  private probeWithBrowser(url: string): Promise<MediaFileInfo> {
+    return new Promise((resolve, reject) => {
+      const isAudioOnly = /\.(mp3|wav|ogg|flac|aac)$/i.test(url);
+      const el = document.createElement(isAudioOnly ? 'audio' : 'video') as HTMLVideoElement | HTMLAudioElement;
+
+      const timeoutId = setTimeout(() => {
+        el.src = '';
+        reject(new Error('Browser probe timed out after 10s'));
+      }, 10_000);
+
+      el.preload = 'metadata';
+
+      el.onloadedmetadata = () => {
+        clearTimeout(timeoutId);
+        const isVideo = el instanceof HTMLVideoElement;
+        resolve({
+          duration: isFinite(el.duration) ? el.duration : 0,
+          width: isVideo ? (el as HTMLVideoElement).videoWidth || undefined : undefined,
+          height: isVideo ? (el as HTMLVideoElement).videoHeight || undefined : undefined,
+          has_video: isVideo && (el as HTMLVideoElement).videoWidth > 0,
+          has_audio: true, // browsers can't easily detect audio track absence from metadata alone
+        });
+        el.src = '';
       };
-    } catch (error) {
-      console.error('Failed to probe media file via job:', error);
-      throw error;
-    }
+
+      el.onerror = () => {
+        clearTimeout(timeoutId);
+        reject(new Error(`Browser cannot read media metadata for: ${url}`));
+        el.src = '';
+      };
+
+      el.src = url;
+    });
   }
 
   async detectEncoders(): Promise<string[]> {

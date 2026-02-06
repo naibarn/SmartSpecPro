@@ -1,6 +1,6 @@
 /**
  * Toolbar Component
- * Phase 1: Timeline controls (zoom, undo/redo, tools)
+ * Positioned above the timeline with zoom, edit tools, and export
  */
 
 import React from 'react';
@@ -21,6 +21,9 @@ interface ToolbarProps {
   rippleEditMode?: boolean;
   onToggleRippleEdit?: () => void;
   selectedCount?: number;
+  onGroupClips?: () => void;
+  onUngroupClips?: () => void;
+  onAddText?: () => void;
 }
 
 const ZOOM_LEVELS = [10, 20, 30, 50, 75, 100, 150, 200];
@@ -40,7 +43,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   isDirty,
   rippleEditMode = false,
   onToggleRippleEdit,
-  selectedCount = 0
+  selectedCount = 0,
+  onGroupClips,
+  onUngroupClips,
+  onAddText
 }) => {
   const handleZoomIn = () => {
     if (onZoomIn) {
@@ -68,7 +74,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (onResetZoom) {
       onResetZoom();
     } else {
-      onZoomChange(50); // Reset to default
+      onZoomChange(50);
     }
   };
 
@@ -78,18 +84,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         .toolbar {
           display: flex;
           align-items: center;
-          gap: 16px;
-          padding: 8px 16px;
-          background: #2a2a2a;
-          border-bottom: 1px solid #444;
+          gap: 6px;
+          padding: 4px 12px;
+          background: #252525;
+          border-bottom: 1px solid #333;
+          min-height: 36px;
         }
 
         .toolbar-group {
           display: flex;
           align-items: center;
-          gap: 4px;
-          padding: 0 8px;
-          border-right: 1px solid #444;
+          gap: 2px;
+          padding: 0 6px;
+          border-right: 1px solid #3a3a3a;
         }
 
         .toolbar-group:last-child {
@@ -97,186 +104,156 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           margin-left: auto;
         }
 
-        .toolbar-button {
-          width: 32px;
-          height: 32px;
+        .tb {
+          width: 28px;
+          height: 28px;
           background: transparent;
           border: 1px solid transparent;
-          border-radius: 4px;
-          color: #e0e0e0;
+          border-radius: 3px;
+          color: #ccc;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 16px;
-          transition: all 0.2s;
+          font-size: 14px;
+          transition: all 0.15s;
+          flex-shrink: 0;
         }
 
-        .toolbar-button:hover:not(:disabled) {
+        .tb:hover:not(:disabled) {
           background: #333;
           border-color: #555;
+          color: #fff;
         }
 
-        .toolbar-button:active:not(:disabled) {
+        .tb:active:not(:disabled) {
           background: #1a1a1a;
         }
 
-        .toolbar-button:disabled {
-          opacity: 0.4;
+        .tb:disabled {
+          opacity: 0.3;
           cursor: not-allowed;
         }
 
-        .toolbar-button.primary {
+        .tb.active {
           background: #0078d4;
           border-color: #0078d4;
+          color: #fff;
         }
 
-        .toolbar-button.primary:hover:not(:disabled) {
-          background: #005a9e;
-        }
-
-        .toolbar-button.active {
-          background: #0078d4;
-          border-color: #0078d4;
-        }
-
-        .toolbar-button.danger {
-          color: #ff6b6b;
-        }
-
-        .toolbar-info {
-          font-size: 11px;
-          color: #0078d4;
-          padding: 0 8px;
-          font-weight: 500;
+        .tb-label {
+          font-size: 10px;
+          color: #888;
+          margin-right: 2px;
+          white-space: nowrap;
         }
 
         .zoom-display {
-          font-size: 12px;
-          color: #e0e0e0;
-          min-width: 60px;
+          font-size: 10px;
+          color: #aaa;
+          min-width: 42px;
           text-align: center;
+          white-space: nowrap;
         }
 
-        .save-indicator {
+        .tb-text {
+          width: auto;
+          padding: 0 8px;
           font-size: 11px;
+          gap: 4px;
+        }
+
+        .tb-export {
+          background: #0078d4;
+          border-color: #0078d4;
+          color: #fff;
+          padding: 0 12px;
+          height: 28px;
+          font-size: 12px;
+          font-weight: 600;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          width: auto;
+        }
+
+        .tb-export:hover {
+          background: #005a9e;
+        }
+
+        .save-dot {
+          font-size: 10px;
           color: #888;
         }
 
-        .save-indicator.dirty {
+        .save-dot.dirty {
           color: #ffa500;
         }
 
-        .toolbar-label {
-          font-size: 11px;
-          color: #888;
-          margin-right: 4px;
+        .sel-info {
+          font-size: 10px;
+          color: #0078d4;
+          white-space: nowrap;
         }
       `}</style>
 
-      {/* Undo/Redo Group */}
+      {/* Undo/Redo */}
       <div className="toolbar-group">
-        <button
-          className="toolbar-button"
-          onClick={onUndo}
-          disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
-        >
-          ↶
-        </button>
-        <button
-          className="toolbar-button"
-          onClick={onRedo}
-          disabled={!canRedo}
-          title="Redo (Ctrl+Shift+Z)"
-        >
-          ↷
-        </button>
+        <button className="tb" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">&#8630;</button>
+        <button className="tb" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">&#8631;</button>
       </div>
 
-      {/* Zoom Group */}
+      {/* Zoom */}
       <div className="toolbar-group">
-        <span className="toolbar-label">Zoom:</span>
-        <button
-          className="toolbar-button"
-          onClick={handleZoomOut}
-          disabled={zoom <= ZOOM_LEVELS[0]}
-          title="Zoom Out (Ctrl+- or Ctrl+Scroll Down)"
-          aria-label="Zoom out timeline"
-        >
-          🔍−
-        </button>
+        <button className="tb" onClick={handleZoomOut} disabled={zoom <= ZOOM_LEVELS[0]} title="Zoom Out">&#8722;</button>
         <div className="zoom-display">{Math.round(zoom)}px/s</div>
-        <button
-          className="toolbar-button"
-          onClick={handleZoomIn}
-          disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-          title="Zoom In (Ctrl++ or Ctrl+Scroll Up)"
-          aria-label="Zoom in timeline"
-        >
-          🔍+
-        </button>
-        <button
-          className="toolbar-button"
-          onClick={handleZoomFit}
-          title="Reset Zoom (Ctrl+0)"
-          aria-label="Reset timeline zoom to default"
-        >
-          ⊡
-        </button>
+        <button className="tb" onClick={handleZoomIn} disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]} title="Zoom In">&#43;</button>
+        <button className="tb" onClick={handleZoomFit} title="Reset Zoom">&#8861;</button>
       </div>
 
-      {/* Tools Group (Placeholder for future) */}
+      {/* Tools */}
       <div className="toolbar-group">
-        <button
-          className="toolbar-button"
-          title="Selection Tool (V)"
-        >
-          ➤
-        </button>
-        <button
-          className="toolbar-button"
-          title="Razor Tool (C)"
-        >
-          ✂
-        </button>
+        <button className="tb" title="Selection Tool (V)">&#10148;</button>
+        <button className="tb" title="Razor Tool (C)">&#9986;</button>
         {onToggleRippleEdit && (
           <button
-            className={`toolbar-button ${rippleEditMode ? 'active' : ''}`}
+            className={`tb ${rippleEditMode ? 'active' : ''}`}
             onClick={onToggleRippleEdit}
-            title={`Ripple Edit: ${rippleEditMode ? 'ON (auto-close gaps)' : 'OFF'}`}
+            title={`Ripple Edit: ${rippleEditMode ? 'ON' : 'OFF'}`}
           >
-            🌊
+            &#127754;
           </button>
         )}
-        {selectedCount > 0 && (
-          <span className="toolbar-info" title={`${selectedCount} clips selected`}>
-            {selectedCount} selected
-          </span>
+        {onAddText && (
+          <button className="tb tb-text" onClick={onAddText} title="Add Text Overlay">
+            T+
+          </button>
         )}
       </div>
 
-      {/* Save/Export Group */}
-      <div className="toolbar-group">
-        <button
-          className="toolbar-button"
-          onClick={onSave}
-          title="Save Project (Ctrl+S)"
-        >
-          💾
-        </button>
-        <span className={`save-indicator ${isDirty ? 'dirty' : ''}`}>
-          {isDirty ? '● Unsaved' : '✓ Saved'}
-        </span>
-      </div>
+      {/* Selection info + Group */}
+      {selectedCount > 0 && (
+        <div className="toolbar-group">
+          <span className="sel-info">{selectedCount} sel</span>
+          {selectedCount >= 2 && onGroupClips && (
+            <button className="tb tb-text" onClick={onGroupClips} title="Group clips">&#128279;</button>
+          )}
+          {selectedCount >= 1 && onUngroupClips && (
+            <button className="tb tb-text" onClick={onUngroupClips} title="Ungroup">&#9986;</button>
+          )}
+        </div>
+      )}
 
+      {/* Save + Export (right-aligned) */}
       <div className="toolbar-group">
-        <button
-          className="toolbar-button primary"
-          onClick={onExport}
-          title="Export Video"
-        >
-          📤 Export
+        <button className="tb" onClick={onSave} title="Save Project (Ctrl+S)">&#128190;</button>
+        <span className={`save-dot ${isDirty ? 'dirty' : ''}`}>
+          {isDirty ? '●' : '✓'}
+        </span>
+        <button className="tb-export" onClick={onExport} title="Export Video">
+          <span style={{ fontSize: '14px' }}>&#128228;</span>
+          <span>Export</span>
         </button>
       </div>
     </div>

@@ -214,6 +214,200 @@ describe("MediaJobClient", () => {
     expect(spec.params?.thresholdDb).toBe(-35);
     expect(spec.params?.minSilenceMs).toBe(800);
   });
+
+  it("detectDeadAir uses default params when none provided", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.detectDeadAir("file:///test.wav");
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.thresholdDb).toBe(-40);
+    expect(spec.params?.minSilenceMs).toBe(500);
+  });
+
+  it("cutDeadAir convenience method builds correct job spec", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const segments = [
+      { startMs: 0, endMs: 2000 },
+      { startMs: 5000, endMs: 7000 },
+    ];
+    const promise = client.cutDeadAir("file:///test.mp4", segments, "remove");
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.jobType).toBe("dead_air_cut");
+    expect(spec.params?.segments).toEqual(segments);
+    expect(spec.params?.mode).toBe("remove");
+    expect(spec.inputs.assets?.[0].uri).toBe("file:///test.mp4");
+  });
+
+  it("cutDeadAir defaults to remove mode", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.cutDeadAir("file:///test.mp4", []);
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.mode).toBe("remove");
+  });
+
+  it("getThumbnails convenience method builds correct job spec", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.getThumbnails("file:///test.mp4", 3000);
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.jobType).toBe("thumbnails");
+    expect(spec.params?.intervalMs).toBe(3000);
+    expect(spec.inputs.assets?.[0].uri).toBe("file:///test.mp4");
+    expect(spec.output.mode).toBe("dir");
+  });
+
+  it("getThumbnails defaults to 5000ms interval", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.getThumbnails("file:///test.mp4");
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.intervalMs).toBe(5000);
+  });
+
+  it("extractSubtitles convenience method builds correct job spec", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.extractSubtitles("file:///test.mp4", "vtt");
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.jobType).toBe("subtitles_extract");
+    expect(spec.params?.format).toBe("vtt");
+  });
+
+  it("extractSubtitles defaults to srt format", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.extractSubtitles("file:///test.mp4");
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.format).toBe("srt");
+  });
+
+  it("concat convenience method builds correct multi-clip spec", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const clips = [
+      { uri: "file:///a.mp4", inMs: 0, outMs: 5000 },
+      { uri: "file:///b.mp4" },
+      { uri: "file:///c.mp4", inMs: 1000, outMs: 4000 },
+    ];
+
+    const promise = client.concat(clips, "concat_reencode");
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.jobType).toBe("concat");
+    expect(spec.inputs.assets).toHaveLength(3);
+    expect(spec.inputs.assets?.[0].assetId).toBe("clip-0");
+    expect(spec.inputs.assets?.[1].assetId).toBe("clip-1");
+    expect(spec.inputs.assets?.[2].assetId).toBe("clip-2");
+    expect(spec.params?.strategy).toBe("concat_reencode");
+  });
+
+  it("submitJob auto-generates jobId when empty", async () => {
+    const spec: MediaJobSpec = {
+      specVersion: "0.1",
+      jobId: "",
+      jobType: "probe",
+      inputs: { assets: [] },
+      output: { mode: "memory", target: "" },
+    };
+
+    await client.submitJob(spec);
+    expect(mockAdapter.submitJobCalls[0].jobId).toBeTruthy();
+    expect(mockAdapter.submitJobCalls[0].jobId.length).toBeGreaterThan(0);
+  });
+
+  it("submitJob auto-sets specVersion when falsy", async () => {
+    const spec = {
+      specVersion: undefined as any,
+      jobId: "test-id",
+      jobType: "probe" as const,
+      inputs: { assets: [] },
+      output: { mode: "memory" as const, target: "" },
+    };
+
+    await client.submitJob(spec);
+    expect(mockAdapter.submitJobCalls[0].specVersion).toBe("0.1");
+  });
+
+  it("renderMp4 passes optional render params", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const timeline = {
+      projectId: "p1",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      tracks: [],
+    };
+
+    const promise = client.renderMp4(timeline, "/out.mp4", {
+      codec: "libx265",
+      bitrate: 8000,
+      audioBitrate: 256,
+    });
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.codec).toBe("libx265");
+    expect(spec.params?.bitrate).toBe(8000);
+    expect(spec.params?.audioBitrate).toBe(256);
+  });
+
+  it("getWaveformPeaks uses default bucketMs when not specified", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.getWaveformPeaks("file:///test.wav");
+    await vi.advanceTimersByTimeAsync(1100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.bucketMs).toBe(100);
+  });
 });
 
 describe("createMediaJobClient", () => {

@@ -8,6 +8,8 @@ import { nanoid } from "nanoid";
 import type { Express, Request, Response } from "express";
 import { authorizeRequest } from "../_core/authz";
 import { rateLimit } from "../_core/limits";
+import multer from "multer";
+import { storagePut } from "../storage";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -67,9 +69,14 @@ async function getActiveJobIds(userId: string): Promise<string[]> {
   return redis.smembers(ACTIVE_JOBS_KEY(userId));
 }
 
+const STALE_QUEUED_MS = 10 * 60 * 1000; // 10 min: queued but never picked up
+const STALE_PROCESSING_MS = 60 * 60 * 1000; // 60 min: processing but never finished
+
 async function checkConcurrencyLimit(userId: string): Promise<boolean> {
   const activeIds = await getActiveJobIds(userId);
-  // Prune stale entries (jobs that completed/failed/canceled)
+  const now = Date.now();
+
+  // Prune stale entries (terminal status OR stuck too long)
   for (const id of activeIds) {
     const status = await getJobKey(id, "status");
     if (
@@ -78,6 +85,26 @@ async function checkConcurrencyLimit(userId: string): Promise<boolean> {
       status.status === "error" ||
       status.status === "canceled"
     ) {
+      await removeActiveJob(userId, id);
+      continue;
+    }
+
+    // Prune jobs that have been queued/processing for too long (worker likely down)
+    const meta = await getJobKey(id, "meta");
+    const age = meta?.submittedAt ? now - meta.submittedAt : Infinity;
+    if (status.status === "queued" && age > STALE_QUEUED_MS) {
+      await setJobKey(id, "status", {
+        ...status,
+        status: "error",
+        message: "Timed out waiting for worker (stale after 10 min)",
+      });
+      await removeActiveJob(userId, id);
+    } else if (status.status === "processing" && age > STALE_PROCESSING_MS) {
+      await setJobKey(id, "status", {
+        ...status,
+        status: "error",
+        message: "Timed out during processing (stale after 60 min)",
+      });
       await removeActiveJob(userId, id);
     }
   }
@@ -89,6 +116,25 @@ async function checkConcurrencyLimit(userId: string): Promise<boolean> {
 // Celery dispatch (HTTP bridge to Python backend)
 // ========================================
 
+/**
+ * Resolve relative URIs (e.g. /uploads/...) in a job spec to absolute URLs
+ * so the Python Celery worker can fetch them over HTTP.
+ */
+function resolveRelativeUris(specJson: string): string {
+  const nodeBaseUrl =
+    process.env.NODE_BASE_URL ||
+    `http://localhost:${process.env.PORT || 3000}`;
+  const spec = JSON.parse(specJson);
+  if (spec.inputs?.assets) {
+    for (const asset of spec.inputs.assets) {
+      if (typeof asset.uri === "string" && asset.uri.startsWith("/")) {
+        asset.uri = `${nodeBaseUrl}${asset.uri}`;
+      }
+    }
+  }
+  return JSON.stringify(spec);
+}
+
 async function dispatchToCelery(
   specJson: string,
   userId: string,
@@ -98,10 +144,13 @@ async function dispatchToCelery(
   const pythonUrl =
     ENV.pythonBackendUrl || process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
+  // Resolve relative asset URIs so Python worker can access them via HTTP
+  const resolvedSpecJson = resolveRelativeUris(specJson);
+
   const res = await fetch(`${pythonUrl}/api/v1/media-jobs/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ spec_json: specJson, user_id: userId, job_id: jobId }),
+    body: JSON.stringify({ spec_json: resolvedSpecJson, user_id: userId, job_id: jobId }),
   });
 
   if (!res.ok) {
@@ -468,10 +517,92 @@ export function registerMediaJobRoutes(app: Express) {
   }
 
   // ========================================
+  // File upload endpoint
+  // ========================================
+
+  const ALLOWED_UPLOAD_EXTENSIONS = new Set([
+    "mp4", "webm", "mov", "avi", "mkv",
+    "mp3", "wav", "ogg", "flac", "aac",
+    "srt", "vtt",
+    "jpg", "jpeg", "png", "webp", "gif",
+  ]);
+  const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500 MB
+
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_UPLOAD_SIZE },
+  });
+
+  app.post(
+    "/api/media-jobs/upload",
+    upload.single("file") as any,
+    async (req: Request, res: Response) => {
+      try {
+        console.log("[MediaJobs Upload] Request received, file:", !!(req as any).file);
+        const authResult = await authenticateMediaJobRequest(req, res);
+        if (!authResult) return;
+
+        const file = (req as any).file as {
+          buffer: Buffer;
+          originalname: string;
+          mimetype: string;
+          size: number;
+        } | undefined;
+
+        if (!file) {
+          res.status(400).json({ error: "No file provided" });
+          return;
+        }
+
+        console.log("[MediaJobs Upload] File:", file.originalname, file.size, "bytes");
+
+        // Validate extension
+        const ext = file.originalname.split(".").pop()?.toLowerCase() || "";
+        if (!ALLOWED_UPLOAD_EXTENSIONS.has(ext)) {
+          res.status(400).json({
+            error: `Unsupported file type: .${ext}. Allowed: ${Array.from(ALLOWED_UPLOAD_EXTENSIONS).join(", ")}`,
+          });
+          return;
+        }
+
+        const assetId = nanoid(21);
+        const storageKey = `media-jobs/assets/${assetId}/${file.originalname}`;
+        const { url } = await storagePut(
+          storageKey,
+          file.buffer,
+          file.mimetype || "application/octet-stream",
+        );
+
+        console.log("[MediaJobs Upload] Saved:", url);
+        res.json({ assetId, uri: url });
+      } catch (e: any) {
+        console.error("[MediaJobs Upload] Error:", e);
+        res.status(500).json({ error: e.message || "Upload failed" });
+      }
+    },
+  );
+
+  // Multer error handler for upload route
+  app.use("/api/media-jobs/upload", ((err: any, _req: Request, res: Response, next: any) => {
+    if (err?.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({
+        error: `File exceeds maximum size of ${MAX_UPLOAD_SIZE / (1024 * 1024)}MB`,
+      });
+      return;
+    }
+    if (err?.name === "MulterError" || err?.storageErrors) {
+      res.status(400).json({ error: err.message || "Upload error" });
+      return;
+    }
+    next(err);
+  }) as any);
+
+  // ========================================
   // REST endpoints (non-tRPC) for direct HTTP access
   // ========================================
 
   const mediaJobLimiter = rateLimit("media-jobs", { rpm: 30 });
+  const mediaJobStatusLimiter = rateLimit("media-jobs-status", { rpm: 120 });
 
   app.post("/api/media-jobs", mediaJobLimiter, async (req: Request, res: Response) => {
     try {
@@ -527,7 +658,7 @@ export function registerMediaJobRoutes(app: Express) {
     }
   });
 
-  app.get("/api/media-jobs/:id", mediaJobLimiter, async (req: Request, res: Response) => {
+  app.get("/api/media-jobs/:id", mediaJobStatusLimiter, async (req: Request, res: Response) => {
     try {
       const authResult = await authenticateMediaJobRequest(req, res);
       if (!authResult) return;

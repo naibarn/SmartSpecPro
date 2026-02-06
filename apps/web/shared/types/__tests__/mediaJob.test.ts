@@ -331,4 +331,340 @@ describe("VALID_JOB_TYPES", () => {
     expect(VALID_JOB_TYPES).toContain("probe");
     expect(VALID_JOB_TYPES).toContain("render_mp4_h264");
   });
+
+  it("contains all 11 defined job types", () => {
+    const expected: MediaJobType[] = [
+      "probe",
+      "render_mp4_h264",
+      "render_hls",
+      "waveform_peaks",
+      "thumbnails",
+      "subtitles_extract",
+      "subtitles_burnin",
+      "concat",
+      "dead_air_detect",
+      "dead_air_cut",
+      "generate_clip_from_api",
+    ];
+    for (const type of expected) {
+      expect(VALID_JOB_TYPES).toContain(type);
+    }
+    expect(VALID_JOB_TYPES).toHaveLength(expected.length);
+  });
+});
+
+// ========================================
+// Additional validateJobSpec edge cases
+// ========================================
+
+describe("validateJobSpec — additional edge cases", () => {
+  it("rejects missing jobId", () => {
+    const spec = makeMinimalSpec();
+    // @ts-expect-error testing invalid input
+    delete spec.jobId;
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => /jobId/i.test(e))).toBe(true);
+  });
+
+  it("rejects missing inputs", () => {
+    const spec = makeMinimalSpec();
+    // @ts-expect-error testing invalid input
+    delete spec.inputs;
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => /inputs/i.test(e))).toBe(true);
+  });
+
+  it("rejects missing output", () => {
+    const spec = makeMinimalSpec();
+    // @ts-expect-error testing invalid input
+    delete spec.output;
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => /output/i.test(e))).toBe(true);
+  });
+
+  it("rejects wrong specVersion value", () => {
+    const spec = makeMinimalSpec();
+    (spec as any).specVersion = "2.0";
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => /specVersion.*0\.1/i.test(e))).toBe(true);
+  });
+
+  it("accepts all valid job types", () => {
+    for (const jobType of VALID_JOB_TYPES) {
+      const spec = makeMinimalSpec({ jobType });
+      const result = validateJobSpec(spec);
+      // Some job types may have param requirements, but jobType itself should be valid
+      expect(result.errors.some((e) => /jobType.*not valid/i.test(e))).toBe(false);
+    }
+  });
+
+  it("accepts segmentSeconds within range", () => {
+    const spec = makeMinimalSpec({
+      jobType: "render_hls",
+      params: { segmentSeconds: 6 },
+    });
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(true);
+  });
+
+  it("accepts segmentSeconds at boundaries (2 and 10)", () => {
+    const low = makeMinimalSpec({
+      jobType: "render_hls",
+      params: { segmentSeconds: 2 },
+    });
+    expect(validateJobSpec(low).valid).toBe(true);
+
+    const high = makeMinimalSpec({
+      jobType: "render_hls",
+      params: { segmentSeconds: 10 },
+    });
+    expect(validateJobSpec(high).valid).toBe(true);
+  });
+
+  it("accepts bucketMs at boundaries (10 and 500)", () => {
+    const low = makeMinimalSpec({
+      jobType: "waveform_peaks",
+      params: { bucketMs: 10 },
+    });
+    expect(validateJobSpec(low).valid).toBe(true);
+
+    const high = makeMinimalSpec({
+      jobType: "waveform_peaks",
+      params: { bucketMs: 500 },
+    });
+    expect(validateJobSpec(high).valid).toBe(true);
+  });
+
+  it("rejects multiple shell metacharacters", () => {
+    const metacharTests = [
+      "file:///tmp/test.mp4|cat /etc/passwd",
+      "file:///tmp/test.mp4&echo pwned",
+      "file:///tmp/test.mp4`id`",
+      "file:///tmp/$HOME/test.mp4",
+      "file:///tmp/test.mp4()",
+      "file:///tmp/test.mp4{}",
+      "file:///tmp/test.mp4>log",
+      "file:///tmp/test.mp4<input",
+    ];
+
+    for (const uri of metacharTests) {
+      const spec = makeMinimalSpec({
+        inputs: {
+          assets: [{ assetId: "a1", kind: "video", uri }],
+        },
+      });
+      const result = validateJobSpec(spec);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => /metacharacter/i.test(e))).toBe(true);
+    }
+  });
+
+  it("allows spec with no assets (project-only input)", () => {
+    const spec = makeMinimalSpec({
+      inputs: {
+        project: {
+          projectId: "p1",
+          fps: 30,
+          width: 1920,
+          height: 1080,
+          tracks: [],
+        },
+      },
+    });
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(true);
+  });
+
+  it("validates outMs = inMs as invalid (must be strictly greater)", () => {
+    const spec = makeRenderSpec();
+    spec.inputs.project!.tracks[0].clips[0].inMs = 3000;
+    spec.inputs.project!.tracks[0].clips[0].outMs = 3000;
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => /outMs.*inMs/i.test(e))).toBe(true);
+  });
+
+  it("reports multiple errors at once", () => {
+    const spec = makeMinimalSpec();
+    // @ts-expect-error testing invalid input
+    delete spec.specVersion;
+    // @ts-expect-error testing invalid input
+    delete spec.jobType;
+    // @ts-expect-error testing invalid input
+    delete spec.jobId;
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// ========================================
+// Additional timelineToProject edge cases
+// ========================================
+
+describe("timelineToProject — additional cases", () => {
+  it("maps subtitle track type to video", () => {
+    const timeline: MediaTimeline = {
+      projectId: "p1",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      tracks: [
+        {
+          trackId: "sub-1",
+          type: "subtitle",
+          clips: [],
+        },
+      ],
+    };
+
+    const project = timelineToProject(timeline);
+    expect(project.timeline.tracks[0].type).toBe("video");
+  });
+
+  it("handles clips with undefined inMs/outMs", () => {
+    const timeline: MediaTimeline = {
+      projectId: "p1",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      tracks: [
+        {
+          trackId: "t1",
+          type: "video",
+          clips: [
+            {
+              clipId: "c1",
+              assetId: "a1",
+              startMs: 2000,
+              // No inMs, outMs — should default to 0
+            },
+          ],
+        },
+      ],
+    };
+
+    const project = timelineToProject(timeline);
+    const clip = project.timeline.tracks[0].clips[0];
+    expect(clip.startTime).toBe(2);
+    expect(clip.trimIn).toBe(0);
+    expect(clip.trimOut).toBe(0);
+    expect(clip.duration).toBe(0);
+  });
+
+  it("preserves default volume and speed when not set", () => {
+    const timeline: MediaTimeline = {
+      projectId: "p1",
+      fps: 24,
+      width: 1280,
+      height: 720,
+      tracks: [
+        {
+          trackId: "t1",
+          type: "audio",
+          clips: [
+            {
+              clipId: "c1",
+              assetId: "a1",
+              startMs: 0,
+              inMs: 0,
+              outMs: 10000,
+              // No volume, no playbackRate
+            },
+          ],
+        },
+      ],
+    };
+
+    const project = timelineToProject(timeline);
+    const clip = project.timeline.tracks[0].clips[0];
+    expect(clip.volume).toBe(1.0);
+    expect(clip.speed).toBe(1.0);
+  });
+
+  it("sets project name from timeline projectId", () => {
+    const timeline: MediaTimeline = {
+      projectId: "My Cool Project",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      tracks: [],
+    };
+
+    const project = timelineToProject(timeline);
+    expect(project.name).toBe("My Cool Project");
+  });
+});
+
+// ========================================
+// Additional projectToTimeline edge cases
+// ========================================
+
+describe("projectToTimeline — additional cases", () => {
+  it("uses project name as projectId", () => {
+    const project = createEmptyProject("My Project");
+    const timeline = projectToTimeline(project);
+    expect(timeline.projectId).toBe("My Project");
+  });
+
+  it("converts empty project without errors", () => {
+    const project = createEmptyProject();
+    const timeline = projectToTimeline(project);
+    expect(timeline.tracks).toHaveLength(2);
+    expect(timeline.tracks[0].clips).toHaveLength(0);
+    expect(timeline.tracks[1].clips).toHaveLength(0);
+  });
+
+  it("round-trips through projectToTimeline and timelineToProject", () => {
+    const project = createEmptyProject("Round Trip");
+    project.timeline.tracks[0].clips.push({
+      id: "c1",
+      assetId: "a1",
+      trackId: "track-v1",
+      startTime: 2.5,
+      duration: 5.0,
+      trimIn: 0.5,
+      trimOut: 5.5,
+      volume: 0.8,
+      speed: 1.25,
+      effects: [],
+    });
+
+    const timeline = projectToTimeline(project);
+    const roundTripped = timelineToProject(timeline);
+
+    const originalClip = project.timeline.tracks[0].clips[0];
+    const newClip = roundTripped.timeline.tracks[0].clips[0];
+
+    expect(newClip.startTime).toBe(originalClip.startTime);
+    expect(newClip.trimIn).toBe(originalClip.trimIn);
+    expect(newClip.trimOut).toBe(originalClip.trimOut);
+    expect(newClip.volume).toBe(originalClip.volume);
+    expect(newClip.speed).toBe(originalClip.speed);
+  });
+});
+
+// ========================================
+// msToSeconds / secondsToMs additional cases
+// ========================================
+
+describe("msToSeconds / secondsToMs — additional edge cases", () => {
+  it("handles zero correctly", () => {
+    expect(msToSeconds(0)).toBe(0);
+    expect(secondsToMs(0)).toBe(0);
+  });
+
+  it("handles large values", () => {
+    expect(msToSeconds(7200000)).toBe(7200);
+    expect(secondsToMs(7200)).toBe(7200000);
+  });
+
+  it("msToSeconds handles fractional milliseconds", () => {
+    expect(msToSeconds(1500)).toBe(1.5);
+    expect(msToSeconds(333)).toBeCloseTo(0.333, 3);
+  });
 });
