@@ -6,6 +6,7 @@ import type { MediaJobSpec, MediaJobProgress } from "../../shared/types/mediaJob
 import { validateWebJobSpec } from "../../shared/types/mediaJobValidation";
 import { nanoid } from "nanoid";
 import type { Express, Request, Response } from "express";
+import { authorizeRequest } from "../_core/authz";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -428,9 +429,35 @@ export function registerMediaJobRoutes(app: Express) {
     req.on("close", cleanup);
   });
 
+  // ========================================
+  // REST auth helper
+  // ========================================
+
+  async function authenticateMediaJobRequest(
+    req: Request,
+    res: Response,
+  ): Promise<{ userId: string } | null> {
+    const auth = await authorizeRequest(req, {
+      allowBearer: true,
+      allowSession: true,
+    });
+    if (!auth.ok) {
+      res.status(401).json({ error: auth.error });
+      return null;
+    }
+    return { userId: auth.sub };
+  }
+
+  // ========================================
   // REST endpoints (non-tRPC) for direct HTTP access
+  // ========================================
+
   app.post("/api/media-jobs", async (req: Request, res: Response) => {
     try {
+      const authResult = await authenticateMediaJobRequest(req, res);
+      if (!authResult) return;
+      const userId = authResult.userId;
+
       const spec = req.body as MediaJobSpec;
       const jobId = spec.jobId || nanoid(21);
       const fullSpec = { ...spec, jobId };
@@ -439,20 +466,6 @@ export function registerMediaJobRoutes(app: Express) {
       if (!validation.valid) {
         res.status(400).json({ error: validation.errors.join("; ") });
         return;
-      }
-
-      // Extract user from cookie
-      let userId = "anonymous";
-      try {
-        const { COOKIE_NAME } = await import("../../shared/const");
-        const cookieValue = req.cookies?.[COOKIE_NAME];
-        if (cookieValue) {
-          const { sdk } = await import("../_core/sdk");
-          const session = await sdk.verifySession(cookieValue);
-          if (session?.openId) userId = session.openId;
-        }
-      } catch {
-        // Allow anonymous for now
       }
 
       await setJobKey(jobId, "spec", fullSpec);
@@ -472,22 +485,69 @@ export function registerMediaJobRoutes(app: Express) {
   });
 
   app.get("/api/media-jobs/:id", async (req: Request, res: Response) => {
-    const status = await getJobKey(req.params.id, "status");
-    if (!status) {
-      res.status(404).json({ error: "Job not found" });
-      return;
+    try {
+      const authResult = await authenticateMediaJobRequest(req, res);
+      if (!authResult) return;
+
+      const meta = await getJobKey(req.params.id, "meta");
+      if (!meta) {
+        res.status(404).json({ error: "Job not found" });
+        return;
+      }
+      if (meta.userId !== authResult.userId) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+
+      const status = await getJobKey(req.params.id, "status");
+      if (!status) {
+        res.status(404).json({ error: "Job not found" });
+        return;
+      }
+
+      // Attach result/error for terminal states (matches tRPC getStatus)
+      if (status.status === "done") {
+        const result = await getJobKey(req.params.id, "result");
+        res.json({ ...status, result });
+        return;
+      }
+      if (status.status === "error") {
+        const error = await getJobKey(req.params.id, "error");
+        res.json({ ...status, error });
+        return;
+      }
+
+      res.json(status);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Internal error" });
     }
-    res.json(status);
   });
 
   app.delete("/api/media-jobs/:id", async (req: Request, res: Response) => {
-    const cancelStatus = {
-      jobId: req.params.id,
-      status: "canceled",
-      progress: 0,
-    };
-    await setJobKey(req.params.id, "status", cancelStatus);
-    await publishProgress(req.params.id, cancelStatus);
-    res.json({ success: true });
+    try {
+      const authResult = await authenticateMediaJobRequest(req, res);
+      if (!authResult) return;
+
+      const meta = await getJobKey(req.params.id, "meta");
+      if (!meta) {
+        res.status(404).json({ error: "Job not found" });
+        return;
+      }
+      if (meta.userId !== authResult.userId) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+
+      const cancelStatus = {
+        jobId: req.params.id,
+        status: "canceled",
+        progress: 0,
+      };
+      await setJobKey(req.params.id, "status", cancelStatus);
+      await publishProgress(req.params.id, cancelStatus);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Internal error" });
+    }
   });
 }
