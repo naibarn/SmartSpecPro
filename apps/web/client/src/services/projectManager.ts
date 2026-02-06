@@ -11,6 +11,8 @@ import { migrateProjectV1ToV2 } from '../types/videoEditor';
 // Platform Detection
 // ========================================
 
+const WEB_AUTOSAVE_KEY = 'videoEditorAutoSave';
+
 function isDesktop(): boolean {
   return typeof window !== 'undefined' && !!(window as any).__TAURI__;
 }
@@ -211,7 +213,7 @@ export class ProjectManager {
    */
   async saveProject(project: VideoEditorProject, path?: string): Promise<string> {
     if (!isDesktop()) {
-      throw new Error('Web project storage not yet implemented (see Section 06)');
+      return this.saveProjectWeb(project);
     }
 
     try {
@@ -256,12 +258,37 @@ export class ProjectManager {
   }
 
   /**
+   * Web: Save project by triggering a browser file download.
+   */
+  private async saveProjectWeb(project: VideoEditorProject): Promise<string> {
+    project.modifiedAt = new Date().toISOString();
+    const json = JSON.stringify(project, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    const fileName = `${project.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.videoproj`;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Also persist to localStorage for auto-save / recent list
+    this.currentProjectPath = `web:${fileName}`;
+
+    console.log('Project saved (web download):', fileName);
+    return this.currentProjectPath;
+  }
+
+  /**
    * Load project from file.
    * Auto-migrates v1.0 projects to v2.0.
    */
   async loadProject(path?: string): Promise<{ project: VideoEditorProject; path: string }> {
     if (!isDesktop()) {
-      throw new Error('Web project storage not yet implemented (see Section 06)');
+      return this.loadProjectWeb();
     }
 
     try {
@@ -308,6 +335,62 @@ export class ProjectManager {
       console.error('Failed to load project:', error);
       throw error;
     }
+  }
+
+  /**
+   * Web: Load project via browser file picker + FileReader.
+   */
+  private loadProjectWeb(): Promise<{ project: VideoEditorProject; path: string }> {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.videoproj';
+
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) {
+          reject(new Error('Load cancelled'));
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const json = reader.result as string;
+            let data = JSON.parse(json);
+
+            // Auto-migrate v1.0 -> v2.0
+            if (data.version === '1.0') {
+              data = migrateProjectV1ToV2(data);
+            }
+
+            // Security: Validate project structure thoroughly
+            const project = validateProjectStructure(data);
+
+            const fileName = file.name;
+            this.currentProjectPath = `web:${fileName}`;
+
+            console.log('Project loaded (web):', fileName);
+            resolve({ project, path: this.currentProjectPath });
+          } catch (err) {
+            reject(err instanceof Error ? err : new Error('Failed to parse project file'));
+          }
+        };
+
+        reader.onerror = () => {
+          reject(new Error('Failed to read project file'));
+        };
+
+        reader.readAsText(file);
+      };
+
+      // Handle cancel (user closes file picker without selecting)
+      input.oncancel = () => {
+        reject(new Error('Load cancelled'));
+      };
+
+      input.click();
+    });
   }
 
   /**
@@ -388,7 +471,15 @@ export class ProjectManager {
    * Auto-save project (for recovery)
    */
   async autoSave(project: VideoEditorProject): Promise<void> {
-    if (!isDesktop()) return; // Skip auto-save on web for now
+    if (!isDesktop()) {
+      try {
+        const json = JSON.stringify(project);
+        localStorage.setItem(WEB_AUTOSAVE_KEY, json);
+      } catch (error) {
+        console.warn('Web auto-save failed (localStorage may be full):', error);
+      }
+      return;
+    }
 
     try {
       const { writeTextFile } = await getTauriApis();
@@ -405,7 +496,25 @@ export class ProjectManager {
    * Load auto-saved project (for recovery)
    */
   async loadAutoSave(): Promise<VideoEditorProject | null> {
-    if (!isDesktop()) return null;
+    if (!isDesktop()) {
+      try {
+        const json = localStorage.getItem(WEB_AUTOSAVE_KEY);
+        if (!json) return null;
+
+        let data = JSON.parse(json);
+
+        if (data.version === '1.0') {
+          data = migrateProjectV1ToV2(data);
+        }
+
+        const project = validateProjectStructure(data);
+        console.log('Loaded auto-saved project (web)');
+        return project;
+      } catch (error) {
+        console.warn('Failed to load web auto-save:', error);
+        return null;
+      }
+    }
 
     try {
       const { invoke, readTextFile } = await getTauriApis();
@@ -437,7 +546,10 @@ export class ProjectManager {
    * Delete auto-save file
    */
   async deleteAutoSave(): Promise<void> {
-    if (!isDesktop()) return;
+    if (!isDesktop()) {
+      localStorage.removeItem(WEB_AUTOSAVE_KEY);
+      return;
+    }
 
     try {
       const { invoke } = await getTauriApis();

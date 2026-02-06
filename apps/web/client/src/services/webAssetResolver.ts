@@ -38,11 +38,27 @@ export class WebAssetResolver {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/api/media-jobs/upload", {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    });
+    // Timeout after 120s to prevent infinite hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+    let res: Response;
+    try {
+      res = await fetch("/api/media-jobs/upload", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+        signal: controller.signal,
+      });
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      if (e.name === "AbortError") {
+        throw new Error("Upload timed out after 120 seconds");
+      }
+      throw new Error(`Upload network error: ${e.message}`);
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));

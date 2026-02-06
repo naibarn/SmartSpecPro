@@ -9,6 +9,7 @@ import {
   type Clip,
   type Asset,
   type Timeline as TimelineData,
+  type MediaLibraryAsset,
   formatTime
 } from '../../types/videoEditor';
 import WaveformCanvas from './WaveformCanvas';
@@ -28,6 +29,7 @@ interface TimelineProps {
   selectedClipIds?: string[];
   onTrackToggleLock?: (trackId: string) => void;
   onTrackToggleMute?: (trackId: string) => void;
+  onDropAsset?: (asset: MediaLibraryAsset, trackId: string, startTime: number) => void;
 }
 
 // Type guards for better type safety
@@ -40,11 +42,39 @@ const isValidZoom = (zoom: number): zoom is number => {
 };
 
 const TRACK_HEIGHT = 80;
-const OVERLAY_TRACK_HEIGHT = 60; // Smaller height for overlay tracks
+const OVERLAY_TRACK_HEIGHT = 60;
+const TEXT_TRACK_HEIGHT = 50;
 const HEADER_WIDTH = 100;
 const RULER_HEIGHT = 30;
 const SNAP_THRESHOLD = 5; // pixels
 const PLAYHEAD_SNAP_DISTANCE = 0.2; // seconds - snap when within 0.2s of playhead
+
+function getTrackHeight(track: Track): number {
+  if (track.height) return track.height;
+  switch (track.type) {
+    case 'overlay': return OVERLAY_TRACK_HEIGHT;
+    case 'text': return TEXT_TRACK_HEIGHT;
+    default: return TRACK_HEIGHT;
+  }
+}
+
+function getTrackIcon(type: Track['type']): string {
+  switch (type) {
+    case 'video': return '🎬';
+    case 'audio': return '🎤';
+    case 'overlay': return '🎞️';
+    case 'text': return '🅃';
+  }
+}
+
+function getTrackColor(type: Track['type']): string {
+  switch (type) {
+    case 'video': return '#0078d4';
+    case 'audio': return '#00b294';
+    case 'overlay': return '#ff6b6b';
+    case 'text': return '#ffa726';
+  }
+}
 
 export const Timeline: React.FC<TimelineProps> = ({
   timeline,
@@ -60,9 +90,12 @@ export const Timeline: React.FC<TimelineProps> = ({
   selectedClipId,
   selectedClipIds = [],
   onTrackToggleLock,
-  onTrackToggleMute
+  onTrackToggleMute,
+  onDropAsset
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [draggingClip, setDraggingClip] = useState<{
     clipId: string;
@@ -76,6 +109,7 @@ export const Timeline: React.FC<TimelineProps> = ({
     originalDuration: number;
     originalTrimIn: number;
     originalStartTime: number;
+    startMouseTime: number;  // mouse position in timeline seconds when resize started
   } | null>(null);
   const [hoveredClipId, setHoveredClipId] = useState<string | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -112,7 +146,9 @@ export const Timeline: React.FC<TimelineProps> = ({
     const rect = timelineRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    const x = e.clientX - rect.left - HEADER_WIDTH + scrollLeft;
+    // rect.left moves with scroll since .timeline-tracks expands to full width,
+    // so e.clientX - rect.left gives absolute position in the timeline canvas.
+    const x = e.clientX - rect.left;
     const time = pixelsToTime(Math.max(0, x));
 
     onTimeChange(Math.min(time, duration));
@@ -122,20 +158,26 @@ export const Timeline: React.FC<TimelineProps> = ({
   const handleClipMouseDown = (e: React.MouseEvent, clip: Clip, trackId: string) => {
     e.stopPropagation();
 
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
+    const clipRect = (e.target as HTMLElement).getBoundingClientRect();
+    const offsetX = e.clientX - clipRect.left;
 
     // Check if clicking on resize handles
     const isLeftEdge = offsetX < 10;
-    const isRightEdge = offsetX > rect.width - 10;
+    const isRightEdge = offsetX > clipRect.width - 10;
 
     if (isLeftEdge || isRightEdge) {
+      // Calculate the initial mouse time position on the timeline
+      const timelineRect = timelineRef.current?.getBoundingClientRect();
+      const mouseX = timelineRect ? e.clientX - timelineRect.left : 0;
+      const startMouseTime = pixelsToTime(Math.max(0, mouseX));
+
       setResizingClip({
         clipId: clip.id,
         edge: isLeftEdge ? 'left' : 'right',
         originalDuration: clip.duration,
         originalTrimIn: clip.trimIn,
-        originalStartTime: clip.startTime
+        originalStartTime: clip.startTime,
+        startMouseTime
       });
     } else {
       setDraggingClip({
@@ -166,7 +208,8 @@ export const Timeline: React.FC<TimelineProps> = ({
       if (!timelineRef.current) return;
 
       const rect = timelineRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left - HEADER_WIDTH + scrollLeft;
+      // rect.left moves with scroll since .timeline-tracks expands to full width
+      const x = e.clientX - rect.left;
       const time = pixelsToTime(Math.max(0, x));
 
       if (draggingClip) {
@@ -184,47 +227,59 @@ export const Timeline: React.FC<TimelineProps> = ({
           newStartTime = Math.round(newStartTime * 2) / 2;
         }
 
-        // Find track under cursor
-        const y = e.clientY - rect.top - RULER_HEIGHT;
-        const trackIndex = Math.floor(y / TRACK_HEIGHT);
-        const track = timeline.tracks[trackIndex];
+        // Find track under cursor (variable heights)
+        const y = e.clientY - rect.top;
+        let cumulativeY = 0;
+        let track: typeof timeline.tracks[number] | undefined;
+        for (const t of timeline.tracks) {
+          const h = getTrackHeight(t);
+          if (y < cumulativeY + h) {
+            track = t;
+            break;
+          }
+          cumulativeY += h;
+        }
 
         if (track && !track.locked) {
           onClipMove(draggingClip.clipId, newStartTime, track.id);
         }
       } else if (resizingClip) {
-        const clip = timeline.tracks
-          .flatMap(t => t.clips)
-          .find(c => c.id === resizingClip.clipId);
-
-        if (!clip) return;
-
-        const asset = assets[clip.assetId];
+        const asset = (() => {
+          for (const t of timeline.tracks) {
+            const c = t.clips.find(c => c.id === resizingClip.clipId);
+            if (c) return assets[c.assetId];
+          }
+          return undefined;
+        })();
         if (!asset) return;
 
+        // Delta = how far the mouse has moved from where resize started
+        const delta = time - resizingClip.startMouseTime;
+
         if (resizingClip.edge === 'left') {
-          // Resize from left (adjust trim in and start time)
-          const delta = time - resizingClip.originalStartTime;
-          const newTrimIn = Math.max(0, Math.min(resizingClip.originalTrimIn + delta, asset.duration));
-          const newDuration = resizingClip.originalDuration - (newTrimIn - resizingClip.originalTrimIn);
+          // Resize from left: moving mouse right = trim more (shorter clip)
+          // moving mouse left = trim less (longer clip)
+          const newTrimIn = Math.max(0, Math.min(resizingClip.originalTrimIn + delta, asset.duration - 0.1));
+          const trimDelta = newTrimIn - resizingClip.originalTrimIn;
+          const newDuration = resizingClip.originalDuration - trimDelta;
 
           if (newDuration > 0.1) {
             onClipResize(resizingClip.clipId, newDuration, newTrimIn);
           }
         } else {
-          // Resize from right (adjust duration)
-          const newDuration = Math.max(0.1, time - clip.startTime);
-          const maxDuration = asset.duration - clip.trimIn;
+          // Resize from right: moving mouse right = longer, left = shorter
+          const newDuration = Math.max(0.1, resizingClip.originalDuration + delta);
+          const maxDuration = asset.duration - resizingClip.originalTrimIn;
 
           onClipResize(
             resizingClip.clipId,
             Math.min(newDuration, maxDuration),
-            clip.trimIn
+            resizingClip.originalTrimIn
           );
         }
       }
     });
-  }, [draggingClip, resizingClip, scrollLeft, zoom, timeline, assets, pixelsToTime, onClipMove, onClipResize, currentTime]);
+  }, [draggingClip, resizingClip, zoom, timeline, assets, pixelsToTime, onClipMove, onClipResize, currentTime]);
 
   // Handle mouse up (end drag or resize)
   const handleMouseUp = useCallback(() => {
@@ -270,10 +325,98 @@ export const Timeline: React.FC<TimelineProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedClipId, onClipDelete]);
 
-  // Handle scroll
+  // Handle scroll — sync ruler with timeline content
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollLeft(e.currentTarget.scrollLeft);
+    const sl = e.currentTarget.scrollLeft;
+    setScrollLeft(sl);
+    if (rulerRef.current) {
+      rulerRef.current.scrollLeft = sl;
+    }
   };
+
+  // Horizontal wheel scroll on timeline
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      // Shift+wheel or trackpad horizontal scroll
+      if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        // Let native horizontal scroll handle deltaX
+        if (e.shiftKey && e.deltaX === 0) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY;
+        }
+      } else {
+        // Convert vertical wheel to horizontal scroll on the timeline
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Handle drag-over (allow drop)
+  const [dropIndicator, setDropIndicator] = useState<{ trackId: string; time: number } | null>(null);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('application/video-editor-asset')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+
+    if (!timelineRef.current) return;
+    const rect = timelineRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const time = pixelsToTime(Math.max(0, x));
+
+    let cumulativeY = 0;
+    for (const t of timeline.tracks) {
+      const h = getTrackHeight(t);
+      if (y < cumulativeY + h) {
+        setDropIndicator({ trackId: t.id, time });
+        break;
+      }
+      cumulativeY += h;
+    }
+  }, [timeline, pixelsToTime]);
+
+  const handleDragLeave = useCallback(() => {
+    setDropIndicator(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDropIndicator(null);
+
+    const raw = e.dataTransfer.getData('application/video-editor-asset');
+    if (!raw || !onDropAsset) return;
+
+    try {
+      const asset: MediaLibraryAsset = JSON.parse(raw);
+      if (!timelineRef.current) return;
+
+      const rect = timelineRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const time = pixelsToTime(Math.max(0, x));
+
+      // Find track under cursor
+      let cumulativeY = 0;
+      for (const t of timeline.tracks) {
+        const h = getTrackHeight(t);
+        if (y < cumulativeY + h) {
+          if (!t.locked) {
+            onDropAsset(asset, t.id, time);
+          }
+          break;
+        }
+        cumulativeY += h;
+      }
+    } catch {
+      console.error('Failed to parse dropped asset');
+    }
+  }, [timeline, pixelsToTime, onDropAsset]);
 
   // Render time ruler - memoized for performance
   const rulerMarkers = useMemo(() => {
@@ -309,17 +452,21 @@ export const Timeline: React.FC<TimelineProps> = ({
     const isDragging = draggingClip?.clipId === clip.id;
     const isResizing = resizingClip?.clipId === clip.id;
     const isMultiSelected = selectedClipIds.includes(clip.id);
-    const isOverlay = track.type === 'overlay';
+    const isOverlay = track.type === 'overlay' || track.type === 'text';
     const hasTransform = !!clip.transform;
+    const trackH = getTrackHeight(track);
+    const isGrouped = !!clip.groupId;
+    const isTextClip = !!clip.textConfig;
 
     return (
       <div
         key={clip.id}
-        className={`timeline-clip ${isSelected ? 'selected' : ''} ${isMultiSelected ? 'multi-selected' : ''} ${isHovered ? 'hovered' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''} ${isOverlay ? 'overlay-clip' : ''}`}
+        className={`timeline-clip ${isSelected ? 'selected' : ''} ${isMultiSelected ? 'multi-selected' : ''} ${isHovered ? 'hovered' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''} ${isOverlay ? 'overlay-clip' : ''} ${isGrouped ? 'grouped-clip' : ''}`}
         style={{
           left: `${x}px`,
           width: `${width}px`,
-          backgroundColor: track.type === 'video' ? '#0078d4' : track.type === 'overlay' ? '#ff6b6b' : '#00b294'
+          height: `${trackH - 10}px`,
+          backgroundColor: getTrackColor(track.type)
         }}
         onMouseDown={(e) => handleClipMouseDown(e, clip, track.id)}
         onMouseEnter={() => setHoveredClipId(clip.id)}
@@ -338,7 +485,7 @@ export const Timeline: React.FC<TimelineProps> = ({
             <WaveformCanvas
               waveformData={asset.waveformData}
               width={width}
-              height={TRACK_HEIGHT - 10}
+              height={trackH - 10}
               color="rgba(255, 255, 255, 0.6)"
               backgroundColor="transparent"
             />
@@ -346,12 +493,15 @@ export const Timeline: React.FC<TimelineProps> = ({
         )}
 
         <div className="clip-content">
-          <div className="clip-name">{asset.filename}</div>
+          <div className="clip-name">{isTextClip ? clip.textConfig!.text.slice(0, 20) : asset.filename}</div>
           <div className="clip-duration">{formatTime(clip.duration)}</div>
           {hasTransform && (
             <div className="clip-transform-indicator" title="Has transform/keyframes">
               🎨
             </div>
+          )}
+          {isGrouped && (
+            <div className="clip-group-badge" title="Grouped clip">🔗</div>
           )}
         </div>
         <div className="clip-resize-handle right" aria-label="Resize clip from end" role="button" tabIndex={-1} />
@@ -376,7 +526,19 @@ export const Timeline: React.FC<TimelineProps> = ({
           height: ${RULER_HEIGHT}px;
           background: #2a2a2a;
           border-bottom: 1px solid #444;
-          margin-left: ${HEADER_WIDTH}px;
+          min-width: 0;
+          overflow: hidden;
+          scrollbar-width: none;
+        }
+
+        .timeline-ruler::-webkit-scrollbar {
+          display: none;
+        }
+
+        .timeline-body {
+          display: flex;
+          flex: 1;
+          min-height: 0;
           overflow: hidden;
         }
 
@@ -400,11 +562,28 @@ export const Timeline: React.FC<TimelineProps> = ({
         }
 
         .timeline-content {
-          position: relative;
           flex: 1;
-          display: flex;
-          overflow-x: auto;
+          min-width: 0;
+          overflow-x: scroll;
           overflow-y: auto;
+          scrollbar-color: #555 #1e1e1e;
+        }
+
+        .timeline-content::-webkit-scrollbar {
+          height: 10px;
+        }
+
+        .timeline-content::-webkit-scrollbar-track {
+          background: #1e1e1e;
+        }
+
+        .timeline-content::-webkit-scrollbar-thumb {
+          background: #555;
+          border-radius: 5px;
+        }
+
+        .timeline-content::-webkit-scrollbar-thumb:hover {
+          background: #777;
         }
 
         .timeline-tracks-header {
@@ -415,7 +594,6 @@ export const Timeline: React.FC<TimelineProps> = ({
         }
 
         .track-header {
-          height: ${TRACK_HEIGHT}px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -464,19 +642,17 @@ export const Timeline: React.FC<TimelineProps> = ({
 
         .timeline-tracks {
           position: relative;
-          flex: 1;
           cursor: crosshair;
         }
 
         .timeline-canvas {
           position: relative;
-          width: ${timelineWidth}px;
+          min-width: ${timelineWidth}px;
           min-height: 100%;
         }
 
         .track-lane {
           position: relative;
-          height: ${TRACK_HEIGHT}px;
           border-bottom: 1px solid #333;
           background: repeating-linear-gradient(
             90deg,
@@ -495,14 +671,13 @@ export const Timeline: React.FC<TimelineProps> = ({
         .timeline-clip {
           position: absolute;
           top: 5px;
-          height: ${TRACK_HEIGHT - 10}px;
           border-radius: 4px;
           cursor: move;
           overflow: hidden;
-          transition: all 0.2s ease-in-out;
           border: 1px solid rgba(255, 255, 255, 0.1);
           transform: translateZ(0);
-          will-change: transform, box-shadow;
+          will-change: left, width;
+          contain: layout style;
         }
 
         .timeline-clip:hover {
@@ -523,6 +698,17 @@ export const Timeline: React.FC<TimelineProps> = ({
 
         .timeline-clip.overlay-clip {
           border-left: 3px solid #ff6b6b;
+        }
+
+        .timeline-clip.grouped-clip {
+          border: 2px dashed rgba(255, 215, 0, 0.7);
+        }
+
+        .clip-group-badge {
+          position: absolute;
+          top: 2px;
+          right: 20px;
+          font-size: 10px;
         }
 
         .clip-transform-indicator {
@@ -644,27 +830,31 @@ export const Timeline: React.FC<TimelineProps> = ({
         }
       `}</style>
 
-      {/* Ruler */}
-      <div className="timeline-ruler" role="presentation" aria-label="Timeline ruler">
-        <div style={{ position: 'relative', width: `${timelineWidth}px`, height: '100%' }}>
-          {rulerMarkers}
+      {/* Ruler row: fixed header spacer + scrollable ruler */}
+      <div style={{ display: 'flex' }}>
+        <div style={{ width: `${HEADER_WIDTH}px`, flexShrink: 0, background: '#2a2a2a', borderBottom: '1px solid #444' }} />
+        <div ref={rulerRef} className="timeline-ruler" style={{ overflowX: 'scroll', flex: 1 }} role="presentation" aria-label="Timeline ruler">
+          <div style={{ position: 'relative', width: `${timelineWidth}px`, height: '100%' }}>
+            {rulerMarkers}
+          </div>
         </div>
       </div>
 
-      {/* Timeline Content */}
-      <div className="timeline-content" onScroll={handleScroll} role="region" aria-label="Timeline editor">
-        {/* Track Headers */}
+      {/* Timeline body: fixed track headers + scrollable tracks */}
+      <div className="timeline-body">
+        {/* Track Headers — fixed, don't scroll horizontally */}
         <div className="timeline-tracks-header" role="complementary" aria-label="Track headers">
           {timeline.tracks.map(track => (
             <div
               key={track.id}
               className="track-header"
+              style={{ height: `${getTrackHeight(track)}px` }}
               role="heading"
               aria-level={2}
-              aria-label={`${track.type === 'video' ? 'Video' : 'Audio'} track ${track.name}`}
+              aria-label={`${track.type} track ${track.name}`}
             >
               <div className="track-header-name">
-                {track.type === 'video' ? '🎬' : '🎤'} {track.name}
+                {getTrackIcon(track.type)} {track.name}
               </div>
               <div className="track-header-controls">
                 <button
@@ -690,26 +880,34 @@ export const Timeline: React.FC<TimelineProps> = ({
           ))}
         </div>
 
-        {/* Tracks */}
-        <div
-          ref={timelineRef}
-          className="timeline-tracks"
-          onClick={handleTimelineClick}
-          role="application"
-          aria-label="Timeline tracks"
-        >
+        {/* Scrollable tracks area */}
+        <div ref={contentRef} className="timeline-content" onScroll={handleScroll} role="region" aria-label="Timeline editor">
+          <div
+            ref={timelineRef}
+            className="timeline-tracks"
+            onClick={handleTimelineClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            role="application"
+            aria-label="Timeline tracks"
+          >
           <div className="timeline-canvas">
-            {timeline.tracks.map(track => (
-              <div
-                key={track.id}
-                className={`track-lane ${track.locked ? 'locked' : ''}`}
-                role="group"
-                aria-label={`${track.name} track lane`}
-                aria-readonly={track.locked}
-              >
-                {track.clips.map(clip => renderClip(clip, track))}
-              </div>
-            ))}
+            {timeline.tracks.map(track => {
+              const h = getTrackHeight(track);
+              return (
+                <div
+                  key={track.id}
+                  className={`track-lane ${track.locked ? 'locked' : ''}`}
+                  style={{ height: `${h}px` }}
+                  role="group"
+                  aria-label={`${track.name} track lane`}
+                  aria-readonly={track.locked}
+                >
+                  {track.clips.map(clip => renderClip(clip, track))}
+                </div>
+              );
+            })}
 
             {/* Playhead */}
             <div
@@ -724,9 +922,10 @@ export const Timeline: React.FC<TimelineProps> = ({
             />
           </div>
         </div>
-      </div>
+      </div>{/* .timeline-content */}
+      </div>{/* .timeline-body */}
     </div>
   );
 };
 
-export default Timeline;
+export default React.memo(Timeline);

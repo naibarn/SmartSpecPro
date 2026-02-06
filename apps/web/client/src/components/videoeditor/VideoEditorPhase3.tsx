@@ -3,10 +3,10 @@
  * Complete editor with UX improvements and aspect ratio selector
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import MediaLibraryPanel from './MediaLibraryPanel';
 import Timeline from './Timeline';
-import PreviewPlayer from './PreviewPlayer';
+import PreviewPlayer, { type ActiveClipInfo } from './PreviewPlayer';
 import Toolbar from './Toolbar';
 import ExportDialog from './ExportDialog';
 import RenderProgressDialog from './RenderProgressDialog';
@@ -19,8 +19,10 @@ import HistoryPanel from './HistoryPanel';
 import TransitionsPanel from './TransitionsPanel';
 import OverlayPanel from './OverlayPanel';
 import SilenceDetectionPanel from './SilenceDetectionPanel';
+import TextClipEditor from './TextClipEditor';
 import { projectManager } from '../../services/projectManager';
-import { videoEditorRenderService } from '../../services/videoEditorService';
+import { videoEditorRenderService, videoEditorMediaLibrary } from '../../services/videoEditorService';
+import ToastContainer from './Toast';
 import { sanitizeProjectName } from '@smartspec/shared';
 import {
   type VideoEditorProject,
@@ -29,6 +31,7 @@ import {
   type ExportSettings,
   type DuckingConfig,
   type ClipTransform,
+  type TextConfig,
   type SilentRegion,
   createEmptyProject,
   generateId,
@@ -63,7 +66,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
 
   // Sidebar view
-  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence'>('library');
+  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence' | 'text'>('library');
 
   // Save project to sessionStorage for error recovery
   useEffect(() => {
@@ -140,14 +143,20 @@ export const VideoEditorPhase3: React.FC = () => {
   };
 
   const loadProject = async () => {
-    const { project: loadedProject } = await projectManager.loadProject();
-    setProject(loadedProject);
-    setHistory([loadedProject]);
-    setHistoryIndex(0);
-    setIsDirty(false);
-    setCurrentTime(0);
-    setSelectedClipId(null);
-    setConfirmDialog(null);
+    try {
+      const { project: loadedProject } = await projectManager.loadProject();
+      setProject(loadedProject);
+      setHistory([loadedProject]);
+      setHistoryIndex(0);
+      setIsDirty(false);
+      setCurrentTime(0);
+      setSelectedClipId(null);
+      setConfirmDialog(null);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Load cancelled') return;
+      console.error('Load failed:', error);
+      alert(`Failed to load project: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleExportClick = () => {
@@ -221,29 +230,170 @@ export const VideoEditorPhase3: React.FC = () => {
     });
   };
 
+  const handleDropAsset = useCallback(async (asset: MediaLibraryAsset, trackId: string, startTime: number) => {
+    try {
+      // Validate track type before downloading
+      const targetTrack = project.timeline.tracks.find(t => t.id === trackId);
+      if (!targetTrack) return;
+
+      // Type restrictions: video assets -> video/overlay tracks, audio -> audio track
+      if (asset.type === 'video' && targetTrack.type === 'audio') return;
+      if (asset.type === 'video' && targetTrack.type === 'text') return;
+      if (asset.type === 'audio' && (targetTrack.type === 'video' || targetTrack.type === 'overlay' || targetTrack.type === 'text')) return;
+
+      const localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
+      try {
+        const fileInfo = await videoEditorMediaLibrary.probeMediaFile(localPath);
+        asset.duration = fileInfo.duration;
+        if (fileInfo.width && fileInfo.height) {
+          asset.resolution = `${fileInfo.width}x${fileInfo.height}`;
+        }
+      } catch { /* non-fatal */ }
+
+      setProject(prevProject => {
+        const newProject = JSON.parse(JSON.stringify(prevProject));
+        const newAsset = addAssetToProject(newProject, asset, localPath);
+        const track = newProject.timeline.tracks.find((t: any) => t.id === trackId);
+        if (!track) return prevProject;
+        addClipToTrack(track, newAsset, startTime);
+        newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+        newProject.modifiedAt = new Date().toISOString();
+        addToHistory(newProject);
+        return newProject;
+      });
+    } catch (err) {
+      console.error('Drop failed:', err);
+    }
+  }, [addToHistory, project.timeline.tracks]);
+
   const handleClipMove = useCallback((clipId: string, newStartTime: number, newTrackId: string) => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
 
+      // Find the clip and its source track type
       let clip: Clip | null = null;
+      let sourceTrackType: string = '';
       for (const track of newProject.timeline.tracks) {
         const index = track.clips.findIndex((c: Clip) => c.id === clipId);
         if (index !== -1) {
           clip = track.clips.splice(index, 1)[0];
+          sourceTrackType = track.type;
           break;
         }
       }
 
       if (!clip) return prevProject;
 
-      clip.startTime = newStartTime;
-      clip.trackId = newTrackId;
-
       const newTrack = newProject.timeline.tracks.find((t: any) => t.id === newTrackId);
-      if (newTrack) {
-        newTrack.clips.push(clip);
-        newTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+      if (!newTrack) return prevProject;
+
+      // Track type restrictions:
+      // - Text clips can only go on text tracks
+      // - Video/image clips cannot go on audio tracks
+      // - Audio clips cannot go on video/overlay/text tracks
+      const isTextClip = !!clip.textConfig;
+      const clipMediaType = isTextClip ? 'text' : sourceTrackType;
+
+      if (isTextClip && newTrack.type !== 'text') {
+        // Text clips can only go to T1
+        newTrack.clips.length; // no-op, put clip back
+        const origTrack = newProject.timeline.tracks.find((t: any) => t.type === 'text');
+        if (origTrack) {
+          clip.trackId = origTrack.id;
+          origTrack.clips.push(clip);
+          origTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+        }
+        return prevProject;
       }
+      if ((clipMediaType === 'video' || clipMediaType === 'overlay') && newTrack.type === 'audio') {
+        // Video clips can't go on audio track — revert
+        const origTrack = newProject.timeline.tracks.find((t: any) => t.type === sourceTrackType);
+        if (origTrack) {
+          origTrack.clips.push(clip);
+          origTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+        }
+        return prevProject;
+      }
+      if (clipMediaType === 'audio' && (newTrack.type === 'video' || newTrack.type === 'overlay' || newTrack.type === 'text')) {
+        // Audio clips can't go on video/overlay/text tracks — revert
+        const origTrack = newProject.timeline.tracks.find((t: any) => t.type === 'audio');
+        if (origTrack) {
+          origTrack.clips.push(clip);
+          origTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+        }
+        return prevProject;
+      }
+
+      // Auto-snap on all tracks: snap to end/start of nearest clip
+      const otherClips = newTrack.clips.filter((c: Clip) => c.id !== clip!.id);
+      otherClips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+
+      let snapped = newStartTime;
+      const SNAP_SECONDS = 0.3;
+
+      // Snap to end of each existing clip
+      for (const other of otherClips) {
+        const otherEnd = other.startTime + other.duration;
+        if (Math.abs(newStartTime - otherEnd) < SNAP_SECONDS) {
+          snapped = otherEnd;
+          break;
+        }
+        if (Math.abs(newStartTime - other.startTime) < SNAP_SECONDS) {
+          snapped = other.startTime;
+          break;
+        }
+      }
+      // Snap to timeline start
+      if (newStartTime < SNAP_SECONDS) {
+        snapped = 0;
+      }
+
+      // Overlap prevention: check if placing clip at snapped position would overlap
+      const clipEnd = snapped + clip.duration;
+      const hasOverlap = otherClips.some((other: Clip) => {
+        const otherEnd = other.startTime + other.duration;
+        return snapped < otherEnd && clipEnd > other.startTime;
+      });
+
+      if (hasOverlap) {
+        // Find the nearest non-overlapping position
+        // Try inserting after each clip
+        let bestPos = snapped;
+        let found = false;
+
+        // Try placing at end of each clip
+        for (const other of otherClips) {
+          const candidateStart = other.startTime + other.duration;
+          const candidateEnd = candidateStart + clip.duration;
+          const wouldOverlap = otherClips.some((o: Clip) => {
+            if (o.id === other.id) return false;
+            const oEnd = o.startTime + o.duration;
+            return candidateStart < oEnd && candidateEnd > o.startTime;
+          });
+          if (!wouldOverlap) {
+            // Pick the closest available slot
+            if (!found || Math.abs(candidateStart - newStartTime) < Math.abs(bestPos - newStartTime)) {
+              bestPos = candidateStart;
+              found = true;
+            }
+          }
+        }
+
+        // Also try placing at 0
+        if (otherClips.length === 0 || otherClips[0].startTime >= clip.duration) {
+          if (!found || Math.abs(0 - newStartTime) < Math.abs(bestPos - newStartTime)) {
+            bestPos = 0;
+            found = true;
+          }
+        }
+
+        snapped = found ? bestPos : snapped;
+      }
+
+      clip.startTime = Math.max(0, snapped);
+      clip.trackId = newTrackId;
+      newTrack.clips.push(clip);
+      newTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
 
       newProject.settings.duration = calculateProjectDuration(newProject.timeline);
       newProject.modifiedAt = new Date().toISOString();
@@ -260,6 +410,11 @@ export const VideoEditorPhase3: React.FC = () => {
       for (const track of newProject.timeline.tracks) {
         const clip = track.clips.find((c: Clip) => c.id === clipId);
         if (clip) {
+          // If trimIn changed, adjust startTime to keep the clip anchored visually
+          const trimDelta = newTrimIn - clip.trimIn;
+          if (Math.abs(trimDelta) > 0.001) {
+            clip.startTime = Math.max(0, clip.startTime + trimDelta);
+          }
           clip.duration = newDuration;
           clip.trimIn = newTrimIn;
           clip.trimOut = newTrimIn + newDuration;
@@ -270,10 +425,10 @@ export const VideoEditorPhase3: React.FC = () => {
       newProject.settings.duration = calculateProjectDuration(newProject.timeline);
       newProject.modifiedAt = new Date().toISOString();
 
-      addToHistory(newProject);
+      // Don't add to history on every resize frame — just update the project
       return newProject;
     });
-  }, [addToHistory]);
+  }, []);
 
   const handleClipDelete = useCallback((clipId: string) => {
     const clipCount = selectedClipIds.length > 0 ? selectedClipIds.length : 1;
@@ -511,6 +666,149 @@ export const VideoEditorPhase3: React.FC = () => {
   }, [addToHistory]);
 
   // ========================================
+  // Text Clip Management
+  // ========================================
+
+  const handleAddTextClip = useCallback((textConfig: TextConfig, duration: number) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      // Create a virtual text asset
+      const textAssetId = generateId('text-asset');
+      newProject.assets[textAssetId] = {
+        id: textAssetId,
+        type: 'image',
+        source: 'generated',
+        path: '',
+        filename: textConfig.text.slice(0, 20) || 'Text',
+        format: 'text',
+        duration,
+      };
+
+      // Find the T1 text track
+      const textTrack = newProject.timeline.tracks.find((t: any) => t.type === 'text');
+      if (!textTrack) return prevProject;
+
+      // Place after last clip on T1
+      const lastClip = textTrack.clips[textTrack.clips.length - 1];
+      const startTime = lastClip ? lastClip.startTime + lastClip.duration : currentTime;
+
+      const newClip: Clip = {
+        id: generateId('clip'),
+        assetId: textAssetId,
+        trackId: textTrack.id,
+        startTime,
+        duration,
+        trimIn: 0,
+        trimOut: duration,
+        volume: 0,
+        speed: 1.0,
+        effects: [],
+        textConfig,
+      };
+
+      textTrack.clips.push(newClip);
+      textTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+
+      addToHistory(newProject);
+      return newProject;
+    });
+
+    setSidebarView('library');
+  }, [addToHistory, currentTime]);
+
+  // ========================================
+  // Compound Clips (Group/Ungroup)
+  // ========================================
+
+  const handleGroupClips = useCallback(() => {
+    if (selectedClipIds.length < 2) return;
+
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+      const groupId = generateId('group');
+
+      for (const track of newProject.timeline.tracks) {
+        for (const clip of track.clips) {
+          if (selectedClipIds.includes(clip.id)) {
+            clip.groupId = groupId;
+          }
+        }
+      }
+
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [selectedClipIds, addToHistory]);
+
+  const handleUngroupClips = useCallback(() => {
+    if (selectedClipIds.length === 0) return;
+
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      // Find groupIds of selected clips
+      const groupIds = new Set<string>();
+      for (const track of newProject.timeline.tracks) {
+        for (const clip of track.clips) {
+          if (selectedClipIds.includes(clip.id) && clip.groupId) {
+            groupIds.add(clip.groupId);
+          }
+        }
+      }
+
+      // Remove groupId from all clips in those groups
+      for (const track of newProject.timeline.tracks) {
+        for (const clip of track.clips) {
+          if (clip.groupId && groupIds.has(clip.groupId)) {
+            delete clip.groupId;
+          }
+        }
+      }
+
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [selectedClipIds, addToHistory]);
+
+  // When selecting a clip that has a groupId, select all clips in the group
+  const handleClipSelectWithGroup = useCallback((clipId: string, isMultiSelect: boolean) => {
+    // Find if this clip belongs to a group
+    let groupId: string | undefined;
+    for (const track of project.timeline.tracks) {
+      const clip = track.clips.find(c => c.id === clipId);
+      if (clip?.groupId) {
+        groupId = clip.groupId;
+        break;
+      }
+    }
+
+    if (groupId && !isMultiSelect) {
+      // Select all clips in the group
+      const groupClipIds: string[] = [];
+      for (const track of project.timeline.tracks) {
+        for (const clip of track.clips) {
+          if (clip.groupId === groupId) {
+            groupClipIds.push(clip.id);
+          }
+        }
+      }
+      setSelectedClipId(clipId);
+      setSelectedClipIds(groupClipIds);
+    } else if (isMultiSelect) {
+      setSelectedClipIds(prev => prev.includes(clipId) ? prev.filter(id => id !== clipId) : [...prev, clipId]);
+    } else {
+      setSelectedClipId(clipId);
+      setSelectedClipIds([]);
+    }
+  }, [project.timeline.tracks]);
+
+  // ========================================
   // Track Controls
   // ========================================
 
@@ -572,6 +870,34 @@ export const VideoEditorPhase3: React.FC = () => {
   };
 
   // ========================================
+  // Active Clip for Preview
+  // ========================================
+
+  const activeClip = useMemo((): ActiveClipInfo | null => {
+    // Search all video-capable tracks for a clip at currentTime
+    // Priority: video > overlay (V1 first, then V2)
+    const videoTracks = project.timeline.tracks.filter(
+      t => t.type === 'video' || t.type === 'overlay'
+    );
+
+    for (const track of videoTracks) {
+      for (const clip of track.clips) {
+        if (currentTime >= clip.startTime && currentTime < clip.startTime + clip.duration) {
+          const asset = project.assets[clip.assetId];
+          if (!asset || !asset.path) continue;
+          return {
+            videoUrl: asset.path,
+            clipStartTime: clip.startTime,
+            trimIn: clip.trimIn,
+            clipDuration: clip.duration,
+          };
+        }
+      }
+    }
+    return null;
+  }, [project.timeline.tracks, project.assets, currentTime]);
+
+  // ========================================
   // Playback Controls
   // ========================================
 
@@ -584,8 +910,11 @@ export const VideoEditorPhase3: React.FC = () => {
     setCurrentTime(Math.max(0, Math.min(time, project.settings.duration)));
   };
 
+  // Timer-driven playback fallback: only ticks when no active video clip
+  // (video clips drive time via PreviewPlayer's onTimeUpdate)
   useEffect(() => {
     if (!isPlaying) return;
+    if (activeClip) return; // Video element is driving time
 
     const interval = setInterval(() => {
       setCurrentTime(prev => {
@@ -599,7 +928,7 @@ export const VideoEditorPhase3: React.FC = () => {
     }, 1000/30);
 
     return () => clearInterval(interval);
-  }, [isPlaying, project.settings.duration]);
+  }, [isPlaying, project.settings.duration, activeClip]);
 
   // ========================================
   // Keyboard Shortcuts
@@ -1016,16 +1345,20 @@ export const VideoEditorPhase3: React.FC = () => {
             flex: 1;
             display: flex;
             flex-direction: column;
+            min-width: 0;
           }
 
           .preview-container {
             flex: 1;
-            min-height: 300px;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
           }
 
-          .timeline-container {
+          .timeline-section {
             height: 300px;
             border-top: 1px solid #333;
+            overflow: hidden;
           }
 
           .sidebar {
@@ -1064,7 +1397,8 @@ export const VideoEditorPhase3: React.FC = () => {
 
           .sidebar-content {
             flex: 1;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
             display: flex;
             flex-direction: column;
           }
@@ -1082,31 +1416,12 @@ export const VideoEditorPhase3: React.FC = () => {
 
         {/* Header */}
         <div className="editor-header">
-          <div className="project-title">🎬 {sanitizeProjectName(project.name)}</div>
+          <div className="project-title">&#127916; {sanitizeProjectName(project.name)}</div>
           <div className="header-spacer" />
           <button className="header-button" onClick={handleLoad}>
-            📂 Open
+            &#128194; Open
           </button>
         </div>
-
-        {/* Toolbar */}
-        <Toolbar
-          zoom={zoom}
-          onZoomChange={setZoom}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onResetZoom={handleResetZoom}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < history.length - 1}
-          onUndo={undo}
-          onRedo={redo}
-          onSave={handleSave}
-          onExport={handleExportClick}
-          isDirty={isDirty}
-          rippleEditMode={rippleEditMode}
-          onToggleRippleEdit={() => setRippleEditMode(prev => !prev)}
-          selectedCount={selectedClipIds.length}
-        />
 
         {/* Main Layout */}
         <div className="editor-layout">
@@ -1120,10 +1435,33 @@ export const VideoEditorPhase3: React.FC = () => {
                 onTimeChange={handleTimeChange}
                 onPlayPause={handlePlayPause}
                 onStop={handleStop}
+                activeClip={activeClip}
               />
             </div>
 
-            <div className="timeline-container">
+            {/* Toolbar — above timeline */}
+            <Toolbar
+              zoom={zoom}
+              onZoomChange={setZoom}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onResetZoom={handleResetZoom}
+              canUndo={historyIndex > 0}
+              canRedo={historyIndex < history.length - 1}
+              onUndo={undo}
+              onRedo={redo}
+              onSave={handleSave}
+              onExport={handleExportClick}
+              isDirty={isDirty}
+              rippleEditMode={rippleEditMode}
+              onToggleRippleEdit={() => setRippleEditMode(prev => !prev)}
+              selectedCount={selectedClipIds.length}
+              onGroupClips={handleGroupClips}
+              onUngroupClips={handleUngroupClips}
+              onAddText={() => setSidebarView('text')}
+            />
+
+            <div className="timeline-section">
               <Timeline
                 timeline={project.timeline}
                 assets={project.assets}
@@ -1131,7 +1469,7 @@ export const VideoEditorPhase3: React.FC = () => {
                 duration={project.settings.duration}
                 zoom={zoom}
                 onTimeChange={handleTimeChange}
-                onClipSelect={handleClipSelect}
+                onClipSelect={handleClipSelectWithGroup}
                 onClipMove={handleClipMove}
                 onClipResize={handleClipResize}
                 onClipDelete={handleClipDelete}
@@ -1139,6 +1477,7 @@ export const VideoEditorPhase3: React.FC = () => {
                 selectedClipIds={selectedClipIds}
                 onTrackToggleLock={handleTrackToggleLock}
                 onTrackToggleMute={handleTrackToggleMute}
+                onDropAsset={handleDropAsset}
               />
             </div>
           </div>
@@ -1187,6 +1526,12 @@ export const VideoEditorPhase3: React.FC = () => {
                 onClick={() => setSidebarView('silence')}
               >
                 🔇 Silence
+              </button>
+              <button
+                className={`sidebar-tab ${sidebarView === 'text' ? 'active' : ''}`}
+                onClick={() => setSidebarView('text')}
+              >
+                🅃 Text
               </button>
             </div>
 
@@ -1250,6 +1595,12 @@ export const VideoEditorPhase3: React.FC = () => {
                   onCutAndCombine={handleCutAndCombine}
                 />
               )}
+              {sidebarView === 'text' && (
+                <TextClipEditor
+                  onSave={handleAddTextClip}
+                  onCancel={() => setSidebarView('library')}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -1283,6 +1634,9 @@ export const VideoEditorPhase3: React.FC = () => {
 
         {/* Keyboard Shortcuts Overlay */}
         <KeyboardShortcutsOverlay />
+
+        {/* Toast notifications */}
+        <ToastContainer />
       </div>
     </ErrorBoundary>
   );

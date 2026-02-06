@@ -107,11 +107,12 @@ export class MediaJobClient {
 
     return new Promise<MediaJobResult>((resolve, reject) => {
       let resolved = false;
+      let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
       const cleanup = () => {
         resolved = true;
         unsubscribe();
-        clearInterval(pollInterval);
+        if (pollTimer) clearTimeout(pollTimer);
         clearTimeout(timeoutId);
       };
 
@@ -143,15 +144,22 @@ export class MediaJobClient {
 
       const unsubscribe = this.adapter.onProgress(jobId, handleProgress);
 
-      const pollInterval = setInterval(async () => {
-        if (resolved) return;
-        try {
-          const status = await this.adapter.getStatus(jobId);
-          handleProgress(status);
-        } catch {
-          // Retry silently — polling is best-effort
-        }
-      }, 1000);
+      // Fallback polling with exponential backoff on errors
+      let pollMs = 3000;
+      const schedulePoll = () => {
+        pollTimer = setTimeout(async () => {
+          if (resolved) return;
+          try {
+            const status = await this.adapter.getStatus(jobId);
+            pollMs = 3000; // reset on success
+            handleProgress(status);
+          } catch {
+            pollMs = Math.min(pollMs * 2, 15000); // backoff on error
+          }
+          if (!resolved) schedulePoll();
+        }, pollMs);
+      };
+      schedulePoll();
     });
   }
 

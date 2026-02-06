@@ -33,8 +33,8 @@ export interface Timeline {
 
 export interface Track {
   id: string;
-  type: 'video' | 'audio' | 'overlay';
-  name: string;              // "V1", "A1", "OV1", etc.
+  type: 'video' | 'audio' | 'overlay' | 'text';
+  name: string;              // "V1", "V2", "A1", "T1", etc.
   clips: Clip[];
   muted: boolean;
   locked: boolean;
@@ -58,6 +58,21 @@ export interface Clip {
     fadeOut?: number;        // fade out duration (seconds)
   };
   transform?: ClipTransform; // For overlay clips
+  textConfig?: TextConfig;   // For text clips
+  groupId?: string;          // For compound clip grouping
+}
+
+export interface TextConfig {
+  text: string;
+  fontFamily: string;        // Google Fonts family name
+  fontSize: number;          // px
+  fontWeight: number;        // 400, 700, etc.
+  fontStyle: 'normal' | 'italic';
+  color: string;             // hex color
+  backgroundColor: string;   // hex color or 'transparent'
+  textAlign: 'left' | 'center' | 'right';
+  effect: 'none' | 'shadow' | 'outline' | 'glow' | 'typewriter' | 'fade-in-word';
+  effectColor?: string;      // for shadow/outline/glow
 }
 
 export interface Asset {
@@ -262,6 +277,26 @@ export function createEmptyProject(name: string = 'Untitled Project'): VideoEdit
     timeline: {
       tracks: [
         {
+          id: 'track-t1',
+          type: 'text',
+          name: 'T1',
+          clips: [],
+          muted: false,
+          locked: false,
+          height: 50,
+          zIndex: 20
+        },
+        {
+          id: 'track-v2',
+          type: 'overlay',
+          name: 'V2',
+          clips: [],
+          muted: false,
+          locked: false,
+          height: 60,
+          zIndex: 10
+        },
+        {
           id: 'track-v1',
           type: 'video',
           name: 'V1',
@@ -380,14 +415,16 @@ export function addClipToTrack(
   asset: Asset,
   startTime: number = 0
 ): Clip {
+  // Fallback to 10s if duration is 0 or unknown (e.g. browser probe failed)
+  const clipDuration = asset.duration > 0 ? asset.duration : 10;
   const newClip: Clip = {
     id: generateId('clip'),
     assetId: asset.id,
     trackId: track.id,
     startTime,
-    duration: asset.duration,
+    duration: clipDuration,
     trimIn: 0,
-    trimOut: asset.duration,
+    trimOut: clipDuration,
     volume: 1.0,
     speed: 1.0,
     effects: []

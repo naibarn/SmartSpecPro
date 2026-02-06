@@ -380,11 +380,11 @@ body > div[style*="z-index: 9999"],
 body > div[style*="z-index:9999"],
 body > div[style*="z-index: 99999"],
 body > div[style*="z-index:99999"],
-/* Common external preview banner patterns */
-[data-testid*="preview"],
-[data-testid*="banner"],
-[aria-label*="preview"],
-[aria-label*="Preview"] {
+/* Common external preview banner patterns — scoped to body > to avoid matching app elements */
+body > [data-testid*="preview"],
+body > [data-testid*="banner"],
+body > [aria-label*="preview"],
+body > [aria-label*="Preview"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
