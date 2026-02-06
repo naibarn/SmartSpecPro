@@ -1,7 +1,7 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, THIRTY_DAYS_MS, TWENTY_FOUR_HOURS_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, router, loginProcedure, registerProcedure, verifyEmailProcedure, resetPasswordProcedure } from "./_core/trpc";
 import { z } from "zod";
 import {
   getGalleryItems,
@@ -44,8 +44,15 @@ import { skillRepositoriesRouter } from "./routers/skillRepositories";
 import { sttProvidersRouter } from "./routers/sttProviders";
 import { multiProviderRouter } from "./routers/multiProvider";
 import { queuesRouter } from "./routers/queues";
+import { auditRouter } from "./routers/audit";
+import { usageRouter } from "./routers/usage";
+import { mediaJobsRouter } from "./routers/mediaJobs";
 
 // Zod schemas for validation
+const strongPasswordSchema = z.string().min(8).refine(
+  (pw) => /[A-Z]/.test(pw) && /[0-9]/.test(pw),
+  { message: "Password must contain at least one uppercase letter and one digit" }
+);
 const galleryTypeSchema = z.enum(["image", "video", "website"]);
 const aspectRatioSchema = z.enum(["1:1", "9:16", "16:9"]);
 
@@ -106,7 +113,22 @@ export const appRouter = router({
         role: user.role
       };
     }),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      // Revoke the session token before clearing the cookie
+      const cookieValue = ctx.req.cookies?.[COOKIE_NAME];
+      if (cookieValue) {
+        try {
+          const { sdk } = await import("./_core/sdk");
+          const { revokeJti } = await import("./_core/revocation");
+          const session = await sdk.verifySession(cookieValue);
+          if (session?.jti) {
+            await revokeJti(session.jti, Date.now() + THIRTY_DAYS_MS);
+          }
+        } catch {
+          // Best-effort revocation — still clear cookie even if revocation fails
+        }
+      }
+
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return {
@@ -118,11 +140,11 @@ export const appRouter = router({
       const user = ctx.user;
       const { sdk } = await import("./_core/sdk");
 
-      // Create JWT token with 1 year expiry (same as session)
-      const accessToken = await sdk.createSessionToken(
+      // Create JWT token with 24h expiry for cross-domain access
+      const { token: accessToken } = await sdk.createSessionToken(
         user.openId || user.email || String(user.id),
         {
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: TWENTY_FOUR_HOURS_MS,
           name: user.name || user.email || 'User'
         }
       );
@@ -173,7 +195,7 @@ export const appRouter = router({
           loginMethod: user.loginMethod
         };
       }),
-    login: publicProcedure
+    login: loginProcedure
       .input(z.object({
         email: z.string().email(),
         password: z.string().min(1),
@@ -221,21 +243,21 @@ export const appRouter = router({
         }
 
         // Create session token
-        const token = await sdk.createSessionToken(user.openId, {
+        const { token } = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || '',
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
         return { success: true, user: { id: user.id, email: user.email, name: user.name } };
       }),
 
-    register: publicProcedure
+    register: registerProcedure
       .input(z.object({
         name: z.string().min(1).max(255),
         email: z.string().email(),
-        password: z.string().min(8),
+        password: strongPasswordSchema,
         company: z.string().max(255).optional(),
         plan: z.enum(['free', 'pro']).default('free'),
       }))
@@ -333,7 +355,7 @@ export const appRouter = router({
         return { success: true, email: input.email };
       }),
 
-    verifyEmail: publicProcedure
+    verifyEmail: verifyEmailProcedure
       .input(z.object({
         email: z.string().email(),
         code: z.string().length(6),
@@ -377,12 +399,12 @@ export const appRouter = router({
         if (!user) throw new Error('User not found');
 
         // Create session
-        const sessionToken = await sdk.createSessionToken(user.openId, {
+        const { token: sessionToken } = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || '',
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
         return { success: true, user: { id: user.id, email: user.email, name: user.name } };
       }),
@@ -437,7 +459,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    forgotPassword: publicProcedure
+    forgotPassword: resetPasswordProcedure
       .input(z.object({
         email: z.string().optional(),
         phone: z.string().optional(),
@@ -926,7 +948,7 @@ export const appRouter = router({
     }),
 
     /** Verify 2FA code during login (public — uses pending session token) */
-    verify2FA: publicProcedure
+    verify2FA: loginProcedure
       .input(z.object({
         email: z.string().email(),
         code: z.string().min(1),
@@ -969,13 +991,13 @@ export const appRouter = router({
         if (!valid) throw new Error("Invalid verification code");
 
         // Create session
-        const token = await sdk.createSessionToken(user.openId, {
+        const { token } = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || "",
         });
 
         const { getSessionCookieOptions } = await import("./_core/cookies");
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
         return {
           success: true,
@@ -1075,7 +1097,7 @@ export const appRouter = router({
         const [token] = await db.select().from(emailVerificationTokens)
           .where(and(
             eq(emailVerificationTokens.email, contactField),
-            eq(emailVerificationTokens.token, input.code),
+            eq(emailVerificationTokens.code, input.code),
             eq(emailVerificationTokens.channel, channelKey),
             gt(emailVerificationTokens.expiresAt, new Date()),
           ))
@@ -1092,22 +1114,22 @@ export const appRouter = router({
           .where(eq(users.id, user.id));
 
         // Create session
-        const sessionToken = await sdk.createSessionToken(user.openId, {
+        const { token: sessionToken } = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || "",
         });
         const { getSessionCookieOptions } = await import("./_core/cookies");
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
         return { success: true, user: { id: user.id, email: user.email, name: user.name } };
       }),
 
-    resetPassword: publicProcedure
+    resetPassword: resetPasswordProcedure
       .input(z.object({
         email: z.string().optional(),
         phone: z.string().optional(),
         code: z.string().length(6),
-        newPassword: z.string().min(8),
+        newPassword: strongPasswordSchema,
         channel: z.enum(["email", "backup_email", "sms"]).default("email"),
       }))
       .mutation(async ({ input }) => {
@@ -1133,10 +1155,10 @@ export const appRouter = router({
 
         if (!token) throw new Error('Invalid or expired reset code');
 
-        // Hash new password and update
+        // Hash new password and update (set passwordChangedAt to invalidate old sessions)
         const passwordHash = await bcrypt.hash(input.newPassword, 12);
         await db.update(users)
-          .set({ password: passwordHash })
+          .set({ password: passwordHash, passwordChangedAt: new Date() })
           .where(eq(users.id, token.userId));
 
         await db.update(emailVerificationTokens)
@@ -1201,6 +1223,15 @@ export const appRouter = router({
 
   // Queue management and monitoring (admin)
   queues: queuesRouter,
+
+  // Audit logging and cost audit (admin)
+  audit: auditRouter,
+
+  // Usage analytics (user + admin)
+  usage: usageRouter,
+
+  // Media Job processing (FFmpeg pipeline)
+  mediaJobs: mediaJobsRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({
