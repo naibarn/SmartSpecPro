@@ -12,8 +12,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
         .manage(terminal_pty::PtyState::default())
         .manage(Arc::new(Mutex::new(video_editor::render::RenderEngine::default())))
+        .manage(Arc::new(Mutex::new(video_editor::job_dispatcher::JobStore::default())))
         .invoke_handler(tauri::generate_handler![
             // Docker
             docker_commands::docker_check,
@@ -72,6 +74,10 @@ pub fn run() {
             video_editor::render::get_render_status,
             video_editor::render::cancel_render,
             video_editor::render::list_render_jobs,
+            // Video Editor - Job Dispatcher
+            video_editor::job_dispatcher::submit_media_job,
+            video_editor::job_dispatcher::get_media_job_status,
+            video_editor::job_dispatcher::cancel_media_job,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

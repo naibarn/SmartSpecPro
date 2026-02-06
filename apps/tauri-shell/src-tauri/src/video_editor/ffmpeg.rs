@@ -1,5 +1,6 @@
 use std::process::{Command, Stdio};
 use std::path::PathBuf;
+use std::io::Read as IoRead;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -39,34 +40,38 @@ pub fn get_ffmpeg_path() -> PathBuf {
 
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
-        panic!("Unsupported platform for bundled FFmpeg");
+        // Fall back to system-installed ffmpeg on Linux
+        PathBuf::from("ffmpeg")
     }
 }
 
 /// Get FFprobe path (same directory as FFmpeg)
 pub fn get_ffprobe_path() -> PathBuf {
     let ffmpeg_path = get_ffmpeg_path();
-    let parent = ffmpeg_path.parent().expect("Failed to get ffmpeg parent dir");
 
     #[cfg(target_os = "windows")]
-    return parent.join("ffprobe.exe");
+    {
+        let parent = ffmpeg_path.parent().expect("Failed to get ffmpeg parent dir");
+        return parent.join("ffprobe.exe");
+    }
 
-    #[cfg(not(target_os = "windows"))]
-    return parent.join("ffprobe");
+    #[cfg(target_os = "macos")]
+    {
+        let parent = ffmpeg_path.parent().expect("Failed to get ffmpeg parent dir");
+        return parent.join("ffprobe");
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        // Fall back to system-installed ffprobe on Linux
+        return PathBuf::from("ffprobe");
+    }
 }
 
 /// Probe media file with ffprobe to extract metadata
 #[tauri::command]
 pub async fn ffmpeg_probe_file(path: String) -> Result<MediaFileInfo, String> {
     let ffprobe_path = get_ffprobe_path();
-
-    // Check if ffprobe exists
-    if !ffprobe_path.exists() {
-        return Err(format!(
-            "FFprobe not found at: {}. Please ensure FFmpeg is bundled with the application.",
-            ffprobe_path.display()
-        ));
-    }
 
     let output = Command::new(&ffprobe_path)
         .args(&[
@@ -136,20 +141,13 @@ pub async fn ffmpeg_generate_thumbnail(
 ) -> Result<(), String> {
     let ffmpeg_path = get_ffmpeg_path();
 
-    if !ffmpeg_path.exists() {
-        return Err(format!(
-            "FFmpeg not found at: {}",
-            ffmpeg_path.display()
-        ));
-    }
-
     let status = Command::new(&ffmpeg_path)
         .args(&[
             "-ss", &time_seconds.to_string(),
             "-i", &input_path,
             "-vframes", "1",
             "-q:v", "2",
-            "-vf", "scale=320:-1",  // 320px width, maintain aspect ratio
+            "-vf", "scale=320:-1",
             "-y",
             &output_path
         ])
@@ -170,13 +168,6 @@ pub async fn ffmpeg_generate_thumbnail(
 pub async fn ffmpeg_detect_encoders() -> Result<Vec<String>, String> {
     let ffmpeg_path = get_ffmpeg_path();
 
-    if !ffmpeg_path.exists() {
-        return Err(format!(
-            "FFmpeg not found at: {}",
-            ffmpeg_path.display()
-        ));
-    }
-
     let output = Command::new(&ffmpeg_path)
         .args(&["-hide_banner", "-encoders"])
         .output()
@@ -186,7 +177,6 @@ pub async fn ffmpeg_detect_encoders() -> Result<Vec<String>, String> {
 
     let mut encoders = Vec::new();
 
-    // Check for hardware encoders first (preferred)
     if stdout.contains("h264_videotoolbox") {
         encoders.push("h264_videotoolbox".to_string());
     }
@@ -207,7 +197,7 @@ pub async fn ffmpeg_detect_encoders() -> Result<Vec<String>, String> {
     }
 
     if encoders.is_empty() {
-        return Err("No suitable H.264 encoder found. Hardware acceleration may not be available.".to_string());
+        return Err("No suitable H.264 encoder found.".to_string());
     }
 
     Ok(encoders)
@@ -218,13 +208,6 @@ pub async fn ffmpeg_detect_encoders() -> Result<Vec<String>, String> {
 pub async fn ffmpeg_version() -> Result<String, String> {
     let ffmpeg_path = get_ffmpeg_path();
 
-    if !ffmpeg_path.exists() {
-        return Err(format!(
-            "FFmpeg not found at: {}",
-            ffmpeg_path.display()
-        ));
-    }
-
     let output = Command::new(&ffmpeg_path)
         .args(&["-version"])
         .output()
@@ -232,7 +215,6 @@ pub async fn ffmpeg_version() -> Result<String, String> {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    // Extract first line (version info)
     let version = stdout
         .lines()
         .next()
@@ -242,15 +224,12 @@ pub async fn ffmpeg_version() -> Result<String, String> {
     Ok(version)
 }
 
-/// Extract audio waveform data for visualization
-/// Returns array of amplitude values (0.0 - 1.0)
-/// FIXED: Added resource limits to prevent DoS
+/// Extract audio waveform data for visualization (legacy API)
 #[tauri::command]
 pub async fn ffmpeg_extract_waveform(
     input_path: String,
     samples: usize
 ) -> Result<Vec<f32>, String> {
-    // Security: Limit maximum samples to prevent resource exhaustion
     const MAX_WAVEFORM_SAMPLES: usize = 10000;
     if samples > MAX_WAVEFORM_SAMPLES {
         return Err(format!(
@@ -263,40 +242,215 @@ pub async fn ffmpeg_extract_waveform(
         return Err("Samples must be greater than 0".to_string());
     }
 
+    // Delegate to the new PCM-based extraction with default bucket size
+    extract_waveform_pcm(&input_path, 100).await
+}
+
+/// Extract real waveform peaks from raw PCM audio data
+pub async fn extract_waveform_pcm(
+    input_path: &str,
+    bucket_ms: usize,
+) -> Result<Vec<f32>, String> {
+    const MAX_BUCKETS: usize = 10000;
     let ffmpeg_path = get_ffmpeg_path();
 
-    if !ffmpeg_path.exists() {
-        return Err(format!(
-            "FFmpeg not found at: {}",
-            ffmpeg_path.display()
-        ));
+    // Extract raw 16-bit signed mono PCM via ffmpeg
+    let mut child = Command::new(&ffmpeg_path)
+        .args(&[
+            "-i", input_path,
+            "-af", "aformat=sample_fmts=s16:channel_layouts=mono",
+            "-f", "s16le",
+            "-",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn ffmpeg for waveform: {}", e))?;
+
+    let mut pcm_data = Vec::new();
+    if let Some(mut stdout) = child.stdout.take() {
+        stdout
+            .read_to_end(&mut pcm_data)
+            .map_err(|e| format!("Failed to read PCM data: {}", e))?;
     }
 
-    // Generate temp file for audio data
-    let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join(format!("waveform_{}.txt", uuid::Uuid::new_v4()));
+    let _ = child.wait();
 
-    // Extract audio as text using astats filter
-    let status = Command::new(&ffmpeg_path)
+    if pcm_data.is_empty() {
+        return Err("No audio data extracted".to_string());
+    }
+
+    let peaks = parse_waveform_pcm(&pcm_data, 44100, bucket_ms, MAX_BUCKETS);
+    Ok(peaks)
+}
+
+/// Parse raw 16-bit signed LE PCM data into per-bucket peak values (0.0-1.0)
+pub fn parse_waveform_pcm(
+    pcm_data: &[u8],
+    sample_rate: u32,
+    bucket_ms: usize,
+    max_buckets: usize,
+) -> Vec<f32> {
+    let samples_per_bucket = (sample_rate as usize * bucket_ms) / 1000;
+    if samples_per_bucket == 0 {
+        return vec![];
+    }
+
+    let total_samples = pcm_data.len() / 2; // 2 bytes per i16 sample
+    let num_buckets = (total_samples + samples_per_bucket - 1) / samples_per_bucket;
+    let num_buckets = num_buckets.min(max_buckets);
+
+    let mut peaks = Vec::with_capacity(num_buckets);
+
+    for bucket_idx in 0..num_buckets {
+        let start_sample = bucket_idx * samples_per_bucket;
+        let end_sample = ((bucket_idx + 1) * samples_per_bucket).min(total_samples);
+
+        let mut max_abs: i16 = 0;
+        for s in start_sample..end_sample {
+            let byte_offset = s * 2;
+            if byte_offset + 1 < pcm_data.len() {
+                let sample =
+                    i16::from_le_bytes([pcm_data[byte_offset], pcm_data[byte_offset + 1]]);
+                let abs_val = sample.saturating_abs();
+                if abs_val > max_abs {
+                    max_abs = abs_val;
+                }
+            }
+        }
+
+        peaks.push(max_abs as f32 / i16::MAX as f32);
+    }
+
+    peaks
+}
+
+// ========================================
+// Silence Detection
+// ========================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SilenceSegment {
+    pub start_ms: u64,
+    pub end_ms: u64,
+    pub duration_ms: u64,
+}
+
+/// Detect silence in audio using FFmpeg's silencedetect filter
+pub async fn detect_silence(
+    input_path: &str,
+    threshold_db: f64,
+    min_silence_ms: u64,
+) -> Result<Vec<SilenceSegment>, String> {
+    let ffmpeg_path = get_ffmpeg_path();
+
+    let min_duration = min_silence_ms as f64 / 1000.0;
+    let af_filter = format!(
+        "silencedetect=noise={}dB:d={}",
+        threshold_db, min_duration
+    );
+
+    let output = Command::new(&ffmpeg_path)
         .args(&[
-            "-i", &input_path,
-            "-af", &format!("aformat=channel_layouts=mono,compand,showwavespic=s={}x100:colors=white", samples),
-            "-frames:v", "1",
+            "-i", input_path,
+            "-af", &af_filter,
             "-f", "null",
-            "-"
+            "-",
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
-        .status()
-        .map_err(|e| format!("Failed to run ffmpeg: {}", e))?;
+        .output()
+        .map_err(|e| format!("Failed to run silence detection: {}", e))?;
 
-    if !status.success() {
-        return Err("Waveform extraction failed".to_string());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    Ok(parse_silence_detect_output(&stderr))
+}
+
+/// Parse FFmpeg silencedetect output from stderr
+pub fn parse_silence_detect_output(stderr: &str) -> Vec<SilenceSegment> {
+    let mut segments = Vec::new();
+    let mut current_start: Option<f64> = None;
+
+    for line in stderr.lines() {
+        if line.contains("silence_start:") {
+            if let Some(val) = extract_float_after(line, "silence_start:") {
+                current_start = Some(val);
+            }
+        } else if line.contains("silence_end:") {
+            if let (Some(start), Some(end)) =
+                (current_start, extract_float_after(line, "silence_end:"))
+            {
+                let duration = extract_float_after(line, "silence_duration:")
+                    .unwrap_or(end - start);
+                segments.push(SilenceSegment {
+                    start_ms: (start * 1000.0) as u64,
+                    end_ms: (end * 1000.0) as u64,
+                    duration_ms: (duration * 1000.0) as u64,
+                });
+                current_start = None;
+            }
+        }
     }
 
-    // For now, return dummy data
-    // In production, this should parse actual audio data
-    Ok(vec![0.5; samples])
+    segments
+}
+
+/// Extract a float value after a given prefix in a string
+fn extract_float_after(line: &str, prefix: &str) -> Option<f64> {
+    let idx = line.find(prefix)?;
+    let after = &line[idx + prefix.len()..];
+    let trimmed = after.trim().split(|c: char| !c.is_ascii_digit() && c != '.' && c != '-')
+        .next()?;
+    trimmed.trim().parse().ok()
+}
+
+/// Compute keep segments by inverting silence segments
+pub fn compute_keep_segments(
+    silence_segments: &[SilenceSegment],
+    total_duration_ms: u64,
+    padding_ms: u64,
+) -> Vec<(u64, u64)> {
+    if silence_segments.is_empty() {
+        return vec![(0, total_duration_ms)];
+    }
+
+    let mut keep = Vec::new();
+    let mut cursor: u64 = 0;
+
+    for seg in silence_segments {
+        let keep_end = seg.start_ms.saturating_add(padding_ms);
+        if cursor < keep_end {
+            keep.push((cursor, keep_end.min(total_duration_ms)));
+        }
+        cursor = seg.end_ms.saturating_sub(padding_ms);
+    }
+
+    if cursor < total_duration_ms {
+        keep.push((cursor, total_duration_ms));
+    }
+
+    // Merge adjacent segments closer than 2*padding
+    merge_keep_segments(keep, padding_ms * 2)
+}
+
+fn merge_keep_segments(segments: Vec<(u64, u64)>, merge_threshold: u64) -> Vec<(u64, u64)> {
+    if segments.is_empty() {
+        return segments;
+    }
+
+    let mut merged = vec![segments[0]];
+
+    for &(start, end) in &segments[1..] {
+        let last = merged.last_mut().unwrap();
+        if start <= last.1 + merge_threshold {
+            last.1 = last.1.max(end);
+        } else {
+            merged.push((start, end));
+        }
+    }
+
+    merged
 }
 
 /// Parse FPS string like "30/1" or "29.97"
@@ -320,5 +474,103 @@ mod tests {
         assert_eq!(parse_fps("30/1"), Some(30.0));
         assert_eq!(parse_fps("29.97"), Some(29.97));
         assert_eq!(parse_fps("60/1"), Some(60.0));
+    }
+
+    #[test]
+    fn test_parse_waveform_pcm_basic() {
+        // Create PCM data: 4 samples at i16::MAX
+        let mut pcm = Vec::new();
+        for _ in 0..4 {
+            pcm.extend_from_slice(&i16::MAX.to_le_bytes());
+        }
+        let peaks = parse_waveform_pcm(&pcm, 4, 1000, 100); // 4 Hz, 1000ms bucket = all in one bucket
+        assert_eq!(peaks.len(), 1);
+        assert!((peaks[0] - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_parse_waveform_pcm_normalized() {
+        // Half amplitude
+        let mut pcm = Vec::new();
+        let half = i16::MAX / 2;
+        for _ in 0..4 {
+            pcm.extend_from_slice(&half.to_le_bytes());
+        }
+        let peaks = parse_waveform_pcm(&pcm, 4, 1000, 100);
+        assert_eq!(peaks.len(), 1);
+        assert!((peaks[0] - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_parse_waveform_pcm_multiple_buckets() {
+        // 8 samples at 8 Hz, bucketMs=500 => 2 buckets of 4 samples
+        let mut pcm = Vec::new();
+        // Bucket 0: low amplitude
+        for _ in 0..4 {
+            pcm.extend_from_slice(&1000i16.to_le_bytes());
+        }
+        // Bucket 1: high amplitude
+        for _ in 0..4 {
+            pcm.extend_from_slice(&i16::MAX.to_le_bytes());
+        }
+        let peaks = parse_waveform_pcm(&pcm, 8, 500, 100);
+        assert_eq!(peaks.len(), 2);
+        assert!(peaks[0] < 0.1);
+        assert!((peaks[1] - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_parse_silence_detect_output_basic() {
+        let stderr = r#"
+[silencedetect @ 0x1234] silence_start: 1.234
+[silencedetect @ 0x1234] silence_end: 3.456 | silence_duration: 2.222
+"#;
+        let segments = parse_silence_detect_output(stderr);
+        assert_eq!(segments.len(), 1);
+        assert_eq!(segments[0].start_ms, 1234);
+        assert_eq!(segments[0].end_ms, 3456);
+        assert_eq!(segments[0].duration_ms, 2222);
+    }
+
+    #[test]
+    fn test_parse_silence_detect_output_empty() {
+        let stderr = "Some random FFmpeg output\nNo silence here";
+        let segments = parse_silence_detect_output(stderr);
+        assert!(segments.is_empty());
+    }
+
+    #[test]
+    fn test_parse_silence_detect_output_multiple() {
+        let stderr = r#"
+[silencedetect @ 0x1] silence_start: 1.0
+[silencedetect @ 0x1] silence_end: 2.0 | silence_duration: 1.0
+[silencedetect @ 0x1] silence_start: 5.0
+[silencedetect @ 0x1] silence_end: 7.5 | silence_duration: 2.5
+"#;
+        let segments = parse_silence_detect_output(stderr);
+        assert_eq!(segments.len(), 2);
+        assert_eq!(segments[0].start_ms, 1000);
+        assert_eq!(segments[1].start_ms, 5000);
+        assert_eq!(segments[1].end_ms, 7500);
+    }
+
+    #[test]
+    fn test_compute_keep_segments_basic() {
+        let silence = vec![SilenceSegment {
+            start_ms: 2000,
+            end_ms: 4000,
+            duration_ms: 2000,
+        }];
+        let keeps = compute_keep_segments(&silence, 10000, 200);
+        assert_eq!(keeps.len(), 2);
+        assert_eq!(keeps[0], (0, 2200));
+        assert_eq!(keeps[1], (3800, 10000));
+    }
+
+    #[test]
+    fn test_compute_keep_segments_no_silence() {
+        let keeps = compute_keep_segments(&[], 10000, 200);
+        assert_eq!(keeps.len(), 1);
+        assert_eq!(keeps[0], (0, 10000));
     }
 }

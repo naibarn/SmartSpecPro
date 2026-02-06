@@ -4,6 +4,7 @@
 pub mod ffmpeg;
 pub mod workspace;
 pub mod render;
+pub mod job_dispatcher;
 
 pub use ffmpeg::*;
 pub use workspace::*;
