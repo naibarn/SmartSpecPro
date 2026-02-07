@@ -626,12 +626,6 @@ class LLMGateway:
 
     async def _check_credits(self, user: User, estimated_cost: Decimal) -> None:
         """Check if user has sufficient credits."""
-        # TEMPORARY: Skip credit check in DEBUG mode for testing (remove in production)
-        import os
-        if os.environ.get("SKIP_CREDIT_CHECK", "").lower() == "true" or os.environ.get("DEBUG", "").lower() == "true":
-            logger.warning("credit_check_skipped", user_id=user.id, reason="DEBUG or SKIP_CREDIT_CHECK enabled")
-            return
-
         has_credits = await self.credit_service.check_sufficient_credits(
             user_id=user.id,
             estimated_cost_usd=estimated_cost

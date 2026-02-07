@@ -29,6 +29,7 @@ interface TimelineProps {
   selectedClipIds?: string[];
   onTrackToggleLock?: (trackId: string) => void;
   onTrackToggleMute?: (trackId: string) => void;
+  onTrackToggleVisible?: (trackId: string) => void;
   onDropAsset?: (asset: MediaLibraryAsset, trackId: string, startTime: number) => void;
 }
 
@@ -91,6 +92,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   selectedClipIds = [],
   onTrackToggleLock,
   onTrackToggleMute,
+  onTrackToggleVisible,
   onDropAsset
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -480,6 +482,25 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div className="clip-resize-handle left" aria-label="Resize clip from start" role="button" tabIndex={-1} />
 
         {/* Waveform for audio clips */}
+        {asset.type === 'image' && asset.path && (
+          <img
+            src={asset.thumbnailPath || asset.path}
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: 0.35,
+              pointerEvents: 'none',
+              borderRadius: 'inherit',
+            }}
+          />
+        )}
+
         {track.type === 'audio' && asset.waveformData && asset.waveformData.length > 0 && (
           <div className="clip-waveform">
             <WaveformCanvas
@@ -875,6 +896,15 @@ export const Timeline: React.FC<TimelineProps> = ({
                 >
                   {track.muted ? '🔇' : '🔊'}
                 </button>
+                <button
+                  className={`track-control-btn ${track.visible === false ? 'active' : ''}`}
+                  onClick={() => onTrackToggleVisible?.(track.id)}
+                  title={track.visible === false ? 'Show Track' : 'Hide Track'}
+                  aria-label={track.visible === false ? 'Show track' : 'Hide track'}
+                  aria-pressed={track.visible === false}
+                >
+                  {track.visible === false ? '🚫' : '👁️'}
+                </button>
               </div>
             </div>
           ))}
@@ -898,8 +928,8 @@ export const Timeline: React.FC<TimelineProps> = ({
               return (
                 <div
                   key={track.id}
-                  className={`track-lane ${track.locked ? 'locked' : ''}`}
-                  style={{ height: `${h}px` }}
+                  className={`track-lane ${track.locked ? 'locked' : ''} ${track.visible === false ? 'hidden-track' : ''}`}
+                  style={{ height: `${h}px`, opacity: track.visible === false ? 0.3 : 1 }}
                   role="group"
                   aria-label={`${track.name} track lane`}
                   aria-readonly={track.locked}

@@ -850,12 +850,11 @@ async function takeHistorySnapshot(): Promise<void> {
       },
     };
 
-    queueHistory.push(entry);
-
-    // Trim old entries
-    while (queueHistory.length > MAX_HISTORY_ENTRIES) {
-      queueHistory.shift();
+    // Enforce hard limit before push (defense in depth)
+    if (queueHistory.length >= MAX_HISTORY_ENTRIES) {
+      queueHistory.splice(0, queueHistory.length - MAX_HISTORY_ENTRIES + 1);
     }
+    queueHistory.push(entry);
   } catch (error) {
     debugError('Queue', 'Failed to take history snapshot', error);
   }

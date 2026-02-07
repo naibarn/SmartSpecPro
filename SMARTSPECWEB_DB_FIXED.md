@@ -9,7 +9,7 @@ SmartSpecWeb was experiencing `DrizzleQueryError` exceptions due to missing data
 
 ## Root Cause
 
-The Drizzle migration files in `SmartSpecWeb/drizzle/` were generated with **MySQL syntax** (backticks, AUTO_INCREMENT, ON UPDATE CURRENT_TIMESTAMP) but the database is **PostgreSQL**. Additionally, there was a schema conflict between:
+The Drizzle migration files in `SmartSpecWeb/drizzle/` were originally generated with **MySQL syntax** (backticks, AUTO_INCREMENT, ON UPDATE CURRENT_TIMESTAMP) but the database is **PostgreSQL**. All MySQL references have since been fully removed from the codebase — the system now uses PostgreSQL + Redis exclusively. Additionally, there was a schema conflict between:
 - **Python Backend**: Uses SQLAlchemy with its own schema
 - **SmartSpecWeb**: Uses Drizzle ORM with a different schema
 

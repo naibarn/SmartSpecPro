@@ -3,6 +3,7 @@
  * Handles conversations, messages, memory, and skill preferences
  */
 
+import crypto from "crypto";
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import {
@@ -47,7 +48,7 @@ function createSkillToken(userId: number): string {
     sub: String(userId),
     type: "access", // Required by Python backend for token validation
     scopes: ["skill:execute"],
-    jti: `skill_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    jti: `skill_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
   }, "15m");
 }
 
@@ -507,9 +508,9 @@ export const chatRouter = router({
         });
       }
 
-      // Verify conversation ownership
+      // Verify conversation ownership (prevents IDOR — user must own the conversation)
       const conversation = await getConversationById(message.conversationId, ctx.user.id);
-      if (!conversation) {
+      if (!conversation || conversation.userId !== ctx.user.id) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Not authorized",

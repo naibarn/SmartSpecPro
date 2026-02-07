@@ -684,7 +684,7 @@ export default function DomainBlogAdmin() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(`/blog/${post.slug}`, "_blank")}
+                          onClick={() => window.open(`/blog/${post.slug}`, "_blank", "noopener,noreferrer")}
                         >
                           <ExternalLink className="w-4 h-4" />
                         </Button>

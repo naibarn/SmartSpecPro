@@ -12,7 +12,7 @@ import { skillRepositories, skills } from "../../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { generateMarketplaceContent } from "../services/marketplaceContentGenerator";
 import { refreshSkillCache } from "../services/skillRegistry";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -193,22 +193,36 @@ export const skillRepositoriesRouter = router({
         const cloneUrl = repo.gitUrl;
         const branch = repo.branch || "main";
 
-        // Clone or pull
+        // Security: validate branch name to prevent command injection
+        const SAFE_BRANCH_RE = /^[a-zA-Z0-9_\-\/.]+$/;
+        if (!SAFE_BRANCH_RE.test(branch)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid branch name" });
+        }
+
+        // Clone or pull — use spawnSync (no shell) to prevent command injection via cloneUrl
         if (fs.existsSync(path.join(repoDir, ".git"))) {
-          execSync(`git -C "${repoDir}" fetch origin ${branch} && git -C "${repoDir}" reset --hard origin/${branch}`, {
-            timeout: 120000,
-            stdio: "pipe",
+          const fetch = spawnSync("git", ["-C", repoDir, "fetch", "origin", branch], {
+            timeout: 120000, stdio: "pipe",
           });
+          if (fetch.status !== 0) throw new Error(`git fetch failed: ${fetch.stderr?.toString()}`);
+          const reset = spawnSync("git", ["-C", repoDir, "reset", "--hard", `origin/${branch}`], {
+            timeout: 120000, stdio: "pipe",
+          });
+          if (reset.status !== 0) throw new Error(`git reset failed: ${reset.stderr?.toString()}`);
         } else {
           fs.mkdirSync(repoDir, { recursive: true });
-          execSync(`git clone --depth 1 --branch ${branch} "${cloneUrl}" "${repoDir}"`, {
-            timeout: 120000,
-            stdio: "pipe",
+          const clone = spawnSync("git", ["clone", "--depth", "1", "--branch", branch, cloneUrl, repoDir], {
+            timeout: 120000, stdio: "pipe",
           });
+          if (clone.status !== 0) throw new Error(`git clone failed: ${clone.stderr?.toString()}`);
         }
 
         // Get commit hash
-        const commitHash = execSync(`git -C "${repoDir}" rev-parse HEAD`, { encoding: "utf-8" }).trim();
+        const revParse = spawnSync("git", ["-C", repoDir, "rev-parse", "HEAD"], {
+          timeout: 10000, encoding: "utf-8",
+        });
+        if (revParse.status !== 0) throw new Error("git rev-parse failed");
+        const commitHash = (revParse.stdout as string).trim();
 
         // Scan skills directory
         const skillsDir = path.join(repoDir, repo.skillsSubdir || "skills");

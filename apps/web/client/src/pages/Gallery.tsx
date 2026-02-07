@@ -200,7 +200,7 @@ export default function Gallery() {
     e.stopPropagation();
     if (item.fileUrl) {
       downloadMutation.mutate({ id: item.id });
-      window.open(item.fileUrl, '_blank');
+      window.open(item.fileUrl, '_blank', 'noopener,noreferrer');
       toast.success('Download started!');
     }
   };
@@ -511,7 +511,7 @@ export default function Gallery() {
                                 className="h-8 bg-white/90 hover:bg-white text-foreground"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.open(item.demoUrl!, '_blank');
+                                  window.open(item.demoUrl!, '_blank', 'noopener,noreferrer');
                                 }}
                               >
                                 <ExternalLink className="w-4 h-4 mr-1" />
@@ -693,7 +693,7 @@ export default function Gallery() {
                     {selectedItem.type === 'website' && selectedItem.demoUrl && (
                       <Button
                         variant="outline"
-                        onClick={() => window.open(selectedItem.demoUrl!, '_blank')}
+                        onClick={() => window.open(selectedItem.demoUrl!, '_blank', 'noopener,noreferrer')}
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />
                         View Demo

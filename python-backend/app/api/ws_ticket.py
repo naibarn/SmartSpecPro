@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 
@@ -35,7 +36,7 @@ def _require_proxy_token(req: Request):
         token = h.split(" ", 1)[1].strip()
     if not token:
         token = (req.headers.get("x-proxy-token") or "").strip()
-    if token != settings.SMARTSPEC_PROXY_TOKEN:
+    if not secrets.compare_digest(token, settings.SMARTSPEC_PROXY_TOKEN):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 

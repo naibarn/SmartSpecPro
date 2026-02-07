@@ -220,8 +220,10 @@ async def _check_credit_balance(
         raise
     except Exception as e:
         logger.error("credit_check_failed", user_id=str(user.id), error=str(e))
-        # Don't block request on credit check errors - log and continue
-        pass
+        raise HTTPException(
+            status_code=503,
+            detail="Credit service unavailable, try again later",
+        )
 
 
 def _check_rate_limit(

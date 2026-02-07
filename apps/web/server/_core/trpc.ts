@@ -2,6 +2,7 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { createRateLimitMiddleware } from "./rateLimitedProcedure";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -43,6 +44,36 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+// Rate-limited auth procedures (public, no auth required)
+export const loginProcedure = t.procedure.use(
+  createRateLimitMiddleware({ namespace: "login", limit: 10, windowMs: 60_000 }),
+);
+
+export const registerProcedure = t.procedure.use(
+  createRateLimitMiddleware({ namespace: "register", limit: 5, windowMs: 60_000 }),
+);
+
+export const verifyEmailProcedure = t.procedure.use(
+  createRateLimitMiddleware({ namespace: "verify-email", limit: 10, windowMs: 60_000 }),
+);
+
+export const resetPasswordProcedure = t.procedure.use(
+  createRateLimitMiddleware({ namespace: "reset-password", limit: 5, windowMs: 60_000 }),
+);
+
+// Rate-limited admin procedure — auth check first (rejects unauthenticated
+// before consuming a rate-limit bucket), then rate limit to prevent abuse
+export const rateLimitedAdminProcedure = t.procedure
+  .use(
+    t.middleware(async opts => {
+      if (!opts.ctx.user || opts.ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
+      }
+      return opts.next({ ctx: { ...opts.ctx, user: opts.ctx.user } });
+    }),
+  )
+  .use(createRateLimitMiddleware({ namespace: "admin", limit: 60, windowMs: 60_000 }));
 
 // Domain admin procedure - has access to manage users in their domain
 export const domainAdminProcedure = t.procedure.use(

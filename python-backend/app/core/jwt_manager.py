@@ -204,7 +204,7 @@ class JWTManager:
             )
             raise
 
-    def decode_token_unsafe(self, token: str) -> Dict[str, Any]:
+    def _decode_token_metadata_only(self, token: str) -> Dict[str, Any]:
         """
         Decode token without verification (for debugging only)
 
@@ -235,7 +235,7 @@ class JWTManager:
             Expiration datetime or None if not found
         """
         try:
-            payload = self.decode_token_unsafe(token)
+            payload = self._decode_token_metadata_only(token)
             exp = payload.get("exp")
             if exp:
                 return datetime.fromtimestamp(exp)

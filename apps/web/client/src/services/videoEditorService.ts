@@ -131,18 +131,53 @@ export class VideoEditorMediaLibrary {
   }
 
   /**
-   * Fetch all generated media (videos + audio)
+   * Fetch all generated images
+   */
+  async fetchGeneratedImages(limit: number = 100): Promise<MediaLibraryAsset[]> {
+    try {
+      const response = await mediaService.listTasks(
+        'image',
+        'completed',
+        limit,
+        0
+      );
+
+      return response.tasks
+        .filter((task: mediaService.TaskStatus) => task.result_url)
+        .map((task: mediaService.TaskStatus) => ({
+          id: task.id,
+          type: 'image' as const,
+          title: this.extractTitle(task.prompt),
+          thumbnailUrl: task.result_url!,
+          duration: 5, // Default 5s duration for image clips
+          url: task.result_url!,
+          model: task.model,
+          createdAt: new Date(task.completed_at!),
+          resolution: task.parameters?.resolution || '',
+          format: this.extractFormat(task.result_url!),
+          localPath: undefined
+        }));
+    } catch (error) {
+      console.error('Failed to fetch generated images:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch all generated media (videos + audio + images)
    */
   async fetchAllGeneratedMedia(videoLimit: number = 50, audioLimit: number = 50): Promise<{
     videos: MediaLibraryAsset[];
     audio: MediaLibraryAsset[];
+    images: MediaLibraryAsset[];
   }> {
-    const [videos, audio] = await Promise.all([
+    const [videos, audio, images] = await Promise.all([
       this.fetchGeneratedVideos(videoLimit),
-      this.fetchGeneratedAudio(audioLimit)
+      this.fetchGeneratedAudio(audioLimit),
+      this.fetchGeneratedImages(50)
     ]);
 
-    return { videos, audio };
+    return { videos, audio, images };
   }
 
   /**

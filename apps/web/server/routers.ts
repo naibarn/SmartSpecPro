@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { COOKIE_NAME, THIRTY_DAYS_MS, TWENTY_FOUR_HOURS_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -47,6 +48,7 @@ import { queuesRouter } from "./routers/queues";
 import { auditRouter } from "./routers/audit";
 import { usageRouter } from "./routers/usage";
 import { mediaJobsRouter } from "./routers/mediaJobs";
+import { videoEditorProjectsRouter } from "./routers/videoEditorProjects";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -276,7 +278,7 @@ export const appRouter = router({
 
         // Hash password
         const passwordHash = await bcrypt.hash(input.password, 12);
-        const openId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        const openId = `local_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`;
 
         // Create user (disabled until email verified)
         const db = await getDb();
@@ -338,7 +340,7 @@ export const appRouter = router({
         if (!user) throw new Error('Failed to create account');
 
         // Generate 6-digit verification code
-        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const code = String(crypto.randomInt(100000, 999999));
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
         await db.insert(emailVerificationTokens).values({
@@ -443,7 +445,7 @@ export const appRouter = router({
         }
 
         // Generate new code
-        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const code = String(crypto.randomInt(100000, 999999));
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
         await db.insert(emailVerificationTokens).values({
@@ -481,14 +483,14 @@ export const appRouter = router({
 
         if (input.channel === "sms") {
           if (!input.phone) return { success: true };
-          const [found] = await db.select().from(users)
+          const [found] = await db.select({ id: users.id, name: users.name, password: users.password }).from(users)
             .where(and(eq(users.phone, input.phone), eq(users.phoneVerified, true)))
             .limit(1);
           user = found;
           destination = input.phone;
         } else if (input.channel === "backup_email") {
           if (!input.email) return { success: true };
-          const [found] = await db.select().from(users)
+          const [found] = await db.select({ id: users.id, name: users.name, password: users.password }).from(users)
             .where(and(eq(users.backupEmail, input.email), eq(users.backupEmailVerified, true)))
             .limit(1);
           user = found;
@@ -512,7 +514,7 @@ export const appRouter = router({
 
         if (recent) throw new Error('Please wait 60 seconds before requesting a new code');
 
-        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const code = String(crypto.randomInt(100000, 999999));
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
         await db.insert(emailVerificationTokens).values({
@@ -631,7 +633,7 @@ export const appRouter = router({
           )).limit(1);
         if (recent) throw new Error("Please wait 60 seconds before requesting a new code");
 
-        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const code = String(crypto.randomInt(100000, 999999));
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
         await db.insert(emailVerificationTokens).values({
@@ -715,7 +717,7 @@ export const appRouter = router({
           )).limit(1);
         if (recent) throw new Error("Please wait 60 seconds before requesting a new code");
 
-        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const code = String(crypto.randomInt(100000, 999999));
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
         await db.insert(emailVerificationTokens).values({
@@ -799,7 +801,7 @@ export const appRouter = router({
       const issuer = cfg.issuer || "SmartSpec Pro";
       const codesCount = parseInt(cfg.backup_codes_count || "10", 10);
 
-      const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id));
+      const [user] = await db.select({ id: users.id, email: users.email, twoFactorEnabled: users.twoFactorEnabled }).from(users).where(eq(users.id, ctx.user.id));
       if (!user) throw new Error("User not found");
       if (user.twoFactorEnabled) throw new Error("2FA is already enabled");
 
@@ -830,7 +832,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id));
+        const [user] = await db.select({ id: users.id, twoFactorEnabled: users.twoFactorEnabled, twoFactorSecret: users.twoFactorSecret }).from(users).where(eq(users.id, ctx.user.id));
         if (!user || !user.twoFactorSecret) throw new Error("2FA setup not started");
         if (user.twoFactorEnabled) throw new Error("2FA is already enabled");
 
@@ -857,7 +859,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id));
+        const [user] = await db.select({ id: users.id, twoFactorEnabled: users.twoFactorEnabled, twoFactorSecret: users.twoFactorSecret, recoveryCodes: users.recoveryCodes }).from(users).where(eq(users.id, ctx.user.id));
         if (!user || !user.twoFactorEnabled) throw new Error("2FA is not enabled");
 
         const secret = decryptSecret(user.twoFactorSecret!);
@@ -904,7 +906,7 @@ export const appRouter = router({
         for (const s of twoFaSettings) { if (s.value) cfg[s.key] = s.value; }
         const codesCount = parseInt(cfg.backup_codes_count || "10", 10);
 
-        const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id));
+        const [user] = await db.select({ id: users.id, twoFactorEnabled: users.twoFactorEnabled, twoFactorSecret: users.twoFactorSecret }).from(users).where(eq(users.id, ctx.user.id));
         if (!user || !user.twoFactorEnabled) throw new Error("2FA is not enabled");
 
         const secret = decryptSecret(user.twoFactorSecret!);
@@ -1232,6 +1234,9 @@ export const appRouter = router({
 
   // Media Job processing (FFmpeg pipeline)
   mediaJobs: mediaJobsRouter,
+
+  // Video Editor project persistence
+  videoEditorProjects: videoEditorProjectsRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

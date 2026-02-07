@@ -66,7 +66,7 @@ Date: 2026-01-18
 **Content:**
 - Complete template with all required environment variables
 - API keys section (OpenRouter, OpenAI, Anthropic)
-- Database configuration (PostgreSQL + MySQL)
+- Database configuration (PostgreSQL)
 - Redis configuration
 - Security settings (JWT, secrets, tokens)
 - Application settings
@@ -95,7 +95,7 @@ Date: 2026-01-18
 
 ### 10. ✅ docker-compose.yml
 **Status:** Complete (base infrastructure)
-- PostgreSQL, MySQL, Redis, ChromaDB
+- PostgreSQL, Redis, ChromaDB
 - Health checks on all services
 - Proper volume management
 - Network isolation
@@ -105,7 +105,6 @@ Date: 2026-01-18
 | Service         | Container Port | Host Port |
 |-----------------|----------------|-----------|
 | postgres        | 5432           | 5432      |
-| mysql           | 3306           | 3306      |
 | redis           | 6379           | 6379      |
 | python-backend  | 8000           | 8001      |
 | control-plane   | 7070           | 7070      |

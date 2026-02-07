@@ -11,6 +11,7 @@ export interface ActiveClipInfo {
   clipStartTime: number;  // where the clip starts on the timeline
   trimIn: number;         // trim offset within the source file
   clipDuration: number;   // visible duration on timeline
+  isImage?: boolean;      // true for image clips (renders <img> instead of <video>)
 }
 
 interface PreviewPlayerProps {
@@ -24,7 +25,7 @@ interface PreviewPlayerProps {
   activeClip?: ActiveClipInfo | null;
 }
 
-const ZOOM_PRESETS = [10, 25, 50, 75, 100, 125, 150, 200];
+const ZOOM_PRESETS = [10, 25, 50, 75, 100, 125, 150, 200, 250, 300, 350, 400];
 
 export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   currentTime,
@@ -44,6 +45,12 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const [previewZoom, setPreviewZoom] = useState(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+
+  // Pan state for zoomed preview
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef<{ x: number; y: number; ox: number; oy: number }>({ x: 0, y: 0, ox: 0, oy: 0 });
+  const lastTouchDistRef = useRef<number | null>(null);
 
   // Compute the effective video URL
   const effectiveUrl = activeClip?.videoUrl || previewVideoUrl;
@@ -220,6 +227,93 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Reset pan when zoom returns to <= 100%
+  useEffect(() => {
+    if (previewZoom <= 100) {
+      setPanOffset({ x: 0, y: 0 });
+    }
+  }, [previewZoom]);
+
+  // Mouse drag panning (when zoomed > 100%)
+  const handlePreviewMouseDown = useCallback((e: React.MouseEvent) => {
+    if (previewZoom <= 100) return;
+    e.preventDefault();
+    setIsPanning(true);
+    panStartRef.current = { x: e.clientX, y: e.clientY, ox: panOffset.x, oy: panOffset.y };
+  }, [previewZoom, panOffset]);
+
+  const handlePreviewMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning) return;
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    setPanOffset({ x: panStartRef.current.ox + dx, y: panStartRef.current.oy + dy });
+  }, [isPanning]);
+
+  const handlePreviewMouseUp = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  // Ctrl+Scroll zoom toward cursor
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+
+      const rect = container.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left - rect.width / 2;
+      const cursorY = e.clientY - rect.top - rect.height / 2;
+
+      const oldZoom = previewZoom;
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      const newZoom = Math.round(Math.max(10, Math.min(400, oldZoom * factor)));
+
+      const scaleFactor = newZoom / oldZoom;
+      setPanOffset(prev => ({
+        x: cursorX - scaleFactor * (cursorX - prev.x),
+        y: cursorY - scaleFactor * (cursorY - prev.y),
+      }));
+      setPreviewZoom(newZoom);
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [previewZoom]);
+
+  // Pinch-to-zoom for touch devices
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[1].clientX - e.touches[0].clientX,
+          e.touches[1].clientY - e.touches[0].clientY
+        );
+        if (lastTouchDistRef.current !== null) {
+          const scale = dist / lastTouchDistRef.current;
+          setPreviewZoom(prev => Math.round(Math.max(10, Math.min(400, prev * scale))));
+        }
+        lastTouchDistRef.current = dist;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      lastTouchDistRef.current = null;
+    };
+
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd);
+    return () => {
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -259,8 +353,8 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [currentTime, duration, onPlayPause, onTimeChange, toggleFullscreen]);
 
-  const zoomStyle: React.CSSProperties = previewZoom !== 100 ? {
-    transform: `scale(${previewZoom / 100})`,
+  const zoomStyle: React.CSSProperties = (previewZoom !== 100 || panOffset.x !== 0 || panOffset.y !== 0) ? {
+    transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${previewZoom / 100})`,
     transformOrigin: 'center center',
   } : {};
 
@@ -477,7 +571,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       `}</style>
 
       {/* Video Container */}
-      <div className="preview-video-container" role="region" aria-label="Media viewport">
+      <div
+        className="preview-video-container"
+        role="region"
+        aria-label="Media viewport"
+        onMouseDown={handlePreviewMouseDown}
+        onMouseMove={handlePreviewMouseMove}
+        onMouseUp={handlePreviewMouseUp}
+        onMouseLeave={handlePreviewMouseUp}
+        style={{ cursor: previewZoom > 100 ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
+      >
         {videoError ? (
           <div className="preview-placeholder">
             <div className="placeholder-icon">&#9888;</div>
@@ -505,6 +608,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             >
               Retry
             </button>
+          </div>
+        ) : activeClip?.isImage && effectiveUrl ? (
+          <div className="preview-video-wrapper">
+            <img
+              src={effectiveUrl}
+              className="preview-video"
+              style={{ ...zoomStyle, objectFit: 'contain' }}
+              alt="Image preview"
+              draggable={false}
+            />
           </div>
         ) : effectiveUrl ? (
           <div className="preview-video-wrapper">
@@ -638,7 +751,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         </div>
 
         <div className="keyboard-hint">
-          Space: Play/Pause &bull; F: Fullscreen &bull; &larr;/&rarr;: Frame Step
+          Space: Play/Pause &bull; F: Fullscreen &bull; &larr;/&rarr;: Frame Step &bull; Ctrl+Scroll: Zoom &bull; Drag: Pan
         </div>
       </div>
     </div>

@@ -33,7 +33,7 @@ def decrypt_smartspecweb(ciphertext: str) -> str:
 
     parts = ciphertext.split(":")
     if len(parts) != 3:
-        return ""
+        raise ValueError(f"Malformed ciphertext: expected 3 parts, got {len(parts)}")
 
     try:
         iv = bytes.fromhex(parts[0])
@@ -45,5 +45,5 @@ def decrypt_smartspecweb(ciphertext: str) -> str:
         # AES-GCM expects ciphertext + auth_tag concatenated
         decrypted = aesgcm.decrypt(iv, encrypted + auth_tag, None)
         return decrypted.decode("utf-8")
-    except Exception:
-        return ""
+    except Exception as e:
+        raise ValueError(f"Decryption failed: {e}") from e

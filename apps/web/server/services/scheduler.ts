@@ -18,6 +18,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
 import { getProviderForModel } from "./llmRouter";
+import { decrypt } from "./crypto";
 
 const QUEUE_NAME = "chat-alerts";
 
@@ -75,6 +76,49 @@ async function executeScheduledJob(job: Job) {
   }
 
   const userId = schedule.targetUserId || schedule.userId;
+
+  // ── Simple Reminder: skip LLM, 0 credits, just fire notification ──
+  if (schedule.isSimpleReminder) {
+    try {
+      const content = schedule.prompt;
+
+      await db.insert(userNotifications).values({
+        userId,
+        type: "scheduled_message",
+        title: schedule.description || "Reminder",
+        content: content.slice(0, 500),
+        scheduledMessageId: scheduleId,
+        priority: schedule.priority || "normal",
+      });
+
+      await db
+        .update(scheduledMessages)
+        .set({
+          lastRunAt: new Date(),
+          updatedAt: new Date(),
+          ...(schedule.isRecurring ? {} : { status: "completed" as const }),
+        })
+        .where(eq(scheduledMessages.id, scheduleId));
+
+      await logExecution(db, scheduleId, content, "success", null, 0);
+
+      if (schedule.emailNotify) {
+        try {
+          await sendAlertEmail(db, userId, schedule, content);
+        } catch (emailErr) {
+          console.error("[Scheduler] Email notification failed:", emailErr);
+        }
+      }
+
+      console.log(`[Scheduler] Simple reminder ${scheduleId} fired (0 credits)`);
+      return;
+    } catch (err: any) {
+      await logExecution(db, scheduleId, null, "failed", err.message);
+      throw err;
+    }
+  }
+
+  // ── LLM-powered alert: standard flow ──
   const model = schedule.modelId || "gpt-4o-mini";
   const provider = await getProviderForModel(model);
 
@@ -184,6 +228,7 @@ async function executeScheduledJob(job: Job) {
       content: content.slice(0, 500),
       conversationId: convId,
       scheduledMessageId: scheduleId,
+      priority: schedule.priority || "normal",
     });
 
     // Update schedule timestamps
@@ -232,6 +277,26 @@ async function logExecution(
   });
 }
 
+/**
+ * Sanitize text for use in email headers (subject line)
+ * Removes newlines, control characters, and limits length to prevent header injection
+ */
+function sanitizeEmailHeader(text: string): string {
+  return text.replace(/[\r\n\x00-\x1F\x7F]/g, ' ').trim().slice(0, 78);
+}
+
+/**
+ * Escape HTML entities to prevent XSS in email body
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 async function sendAlertEmail(db: any, userId: number, schedule: any, content: string) {
   // Import user for email
   const { users } = await import("../../drizzle/schema");
@@ -262,15 +327,17 @@ async function sendAlertEmail(db: any, userId: number, schedule: any, content: s
       auth: smtpUser ? { user: smtpUser, pass: smtpPass ? decrypt(smtpPass) : undefined } : undefined,
     });
 
+    const safeDescription = sanitizeEmailHeader(schedule.description || schedule.prompt.slice(0, 50));
+
     await transporter.sendMail({
       from: fromEmail,
       to: user.email,
-      subject: `🔔 Chat Alert: ${schedule.description || schedule.prompt.slice(0, 50)}`,
+      subject: `🔔 Chat Alert: ${safeDescription}`,
       html: `
         <h3>Chat Alert</h3>
-        <p><strong>Prompt:</strong> ${schedule.prompt}</p>
+        <p><strong>Prompt:</strong> ${escapeHtml(schedule.prompt)}</p>
         <hr />
-        <div>${content.replace(/\n/g, "<br>")}</div>
+        <div>${escapeHtml(content).replace(/\n/g, "<br>")}</div>
         <hr />
         <p style="color: #666; font-size: 12px;">This is an automated alert from SmartSpec Chat.</p>
       `,

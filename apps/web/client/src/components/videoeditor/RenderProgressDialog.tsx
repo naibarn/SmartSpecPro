@@ -327,15 +327,45 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
         {/* Buttons */}
         <div className="dialog-buttons">
           {job?.status === 'rendering' && (
-            <button
-              className="dialog-button cancel"
-              onClick={handleCancel}
-            >
-              Cancel Render
-            </button>
+            <>
+              <button
+                className="dialog-button cancel"
+                onClick={handleCancel}
+              >
+                Cancel Render
+              </button>
+              <button
+                className="dialog-button close"
+                onClick={onCancel}
+                title="Close dialog — render continues in background"
+              >
+                Close (Background)
+              </button>
+            </>
           )}
 
-          {(job?.status === 'completed' || job?.status === 'failed' || job?.status === 'cancelled') && (
+          {job?.status === 'completed' && (
+            <>
+              {job.output_path && (
+                <a
+                  href={job.output_path}
+                  download
+                  className="dialog-button close"
+                  style={{ textDecoration: 'none' }}
+                >
+                  Download
+                </a>
+              )}
+              <button
+                className="dialog-button close"
+                onClick={onCancel}
+              >
+                Close
+              </button>
+            </>
+          )}
+
+          {(job?.status === 'failed' || job?.status === 'cancelled') && (
             <button
               className="dialog-button close"
               onClick={onCancel}
@@ -350,6 +380,16 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
               Initializing...
             </div>
           )}
+        </div>
+
+        {/* Task Queue link */}
+        <div style={{ marginTop: '12px' }}>
+          <a
+            href="/tasks"
+            style={{ color: '#0078d4', fontSize: '12px', textDecoration: 'underline' }}
+          >
+            View Task Queue
+          </a>
         </div>
       </div>
     </div>

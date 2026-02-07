@@ -28,7 +28,7 @@ const isValidAsset = (asset: unknown): asset is MediaLibraryAsset => {
     'type' in asset &&
     'title' in asset &&
     typeof (asset as MediaLibraryAsset).id === 'string' &&
-    ((asset as MediaLibraryAsset).type === 'video' || (asset as MediaLibraryAsset).type === 'audio')
+    ((asset as MediaLibraryAsset).type === 'video' || (asset as MediaLibraryAsset).type === 'audio' || (asset as MediaLibraryAsset).type === 'image')
   );
 };
 
@@ -37,8 +37,9 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
 }) => {
   const [videos, setVideos] = useState<MediaLibraryAsset[]>([]);
   const [audio, setAudio] = useState<MediaLibraryAsset[]>([]);
+  const [images, setImages] = useState<MediaLibraryAsset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'videos' | 'audio'>('videos');
+  const [selectedTab, setSelectedTab] = useState<'videos' | 'audio' | 'images'>('videos');
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -53,11 +54,12 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
     setError(null);
 
     try {
-      const { videos: videosData, audio: audioData } =
+      const { videos: videosData, audio: audioData, images: imagesData } =
         await videoEditorMediaLibrary.fetchAllGeneratedMedia(50, 50);
 
       setVideos(videosData);
       setAudio(audioData);
+      setImages(imagesData || []);
     } catch (err) {
       console.error('Failed to load media library:', err);
       setError(err instanceof Error ? err.message : 'Failed to load media library');
@@ -76,12 +78,13 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
       for (const file of Array.from(files)) {
         const { assetId, uri } = await webAssetResolver.uploadAsset(file);
         const isVideo = file.type.startsWith('video/');
+        const isImage = file.type.startsWith('image/');
 
         const newAsset: MediaLibraryAsset = {
           id: assetId,
-          type: isVideo ? 'video' : 'audio',
+          type: isImage ? 'image' : isVideo ? 'video' : 'audio',
           title: file.name,
-          thumbnailUrl: '',
+          thumbnailUrl: isImage ? uri : '',
           duration: 0,
           url: uri,
           model: 'uploaded',
@@ -89,7 +92,9 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           format: file.name.split('.').pop() || 'mp4',
         };
 
-        if (isVideo) {
+        if (isImage) {
+          setImages(prev => [newAsset, ...prev]);
+        } else if (isVideo) {
           setVideos(prev => [newAsset, ...prev]);
         } else {
           setAudio(prev => [newAsset, ...prev]);
@@ -191,7 +196,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
     return `${mb.toFixed(1)}MB`;
   };
 
-  const currentAssets = selectedTab === 'videos' ? videos : audio;
+  const currentAssets = selectedTab === 'videos' ? videos : selectedTab === 'images' ? images : audio;
 
   return (
     <div className="media-library-panel">
@@ -460,7 +465,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="video/*,audio/*"
+          accept="video/*,audio/*,image/*"
           multiple
           style={{ display: 'none' }}
           onChange={handleFileUpload}
@@ -493,6 +498,12 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
             onClick={() => setSelectedTab('audio')}
           >
             🎤 Audio ({audio.length})
+          </button>
+          <button
+            className={`tab-button ${selectedTab === 'images' ? 'active' : ''}`}
+            onClick={() => setSelectedTab('images')}
+          >
+            🖼️ Images ({images.length})
           </button>
         </div>
       </div>
@@ -545,6 +556,12 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
                       <img src={asset.thumbnailUrl} alt={asset.title} />
                     ) : (
                       <div className="media-thumbnail-icon">🎬</div>
+                    )
+                  ) : asset.type === 'image' ? (
+                    asset.url ? (
+                      <img src={asset.url} alt={asset.title} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="media-thumbnail-icon">🖼️</div>
                     )
                   ) : (
                     <div className="media-thumbnail-icon">🎵</div>

@@ -1235,7 +1235,7 @@ export default function MediaStudio() {
     }
 
     // Fallback: Open in new tab (user can right-click to save)
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   // Open image in lightbox
@@ -2845,7 +2845,7 @@ export default function MediaStudio() {
                   )}
                   <Button
                     variant="outline"
-                    onClick={() => window.open(previewUrl, "_blank")}
+                    onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>
@@ -3039,7 +3039,7 @@ export default function MediaStudio() {
                   src={lightboxImage.url}
                   alt="Full size preview"
                   className="max-w-full max-h-[80vh] object-contain cursor-zoom-in"
-                  onClick={() => window.open(lightboxImage.url, "_blank")}
+                  onClick={() => window.open(lightboxImage.url, "_blank", "noopener,noreferrer")}
                   title="Click to open full size in new tab"
                 />
               )}
@@ -3109,7 +3109,7 @@ export default function MediaStudio() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => lightboxImage && window.open(lightboxImage.url, "_blank")}
+                  onClick={() => lightboxImage && window.open(lightboxImage.url, "_blank", "noopener,noreferrer")}
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>

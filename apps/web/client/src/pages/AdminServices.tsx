@@ -29,6 +29,10 @@ import {
   ChevronLeft,
   Eye,
   Download,
+  Box,
+  ChevronDown,
+  ChevronUp,
+  Image,
 } from 'lucide-react';
 
 type ServiceStatus = 'running' | 'stopped' | 'starting' | 'unhealthy' | 'unknown';
@@ -91,6 +95,27 @@ interface SystemInfo {
   docker: DockerDiskInfo | null;
 }
 
+interface DockerContainer {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  ports: string[];
+  created: string;
+  networks: string[];
+}
+
+interface DockerContainerData {
+  containers: DockerContainer[];
+  summary: {
+    total: number;
+    running: number;
+    stopped: number;
+    images: number;
+  };
+}
+
 export default function AdminServices() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
@@ -100,6 +125,8 @@ export default function AdminServices() {
   const [logs, setLogs] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [dockerData, setDockerData] = useState<DockerContainerData | null>(null);
+  const [dockerExpanded, setDockerExpanded] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -113,6 +140,7 @@ export default function AdminServices() {
 
   useEffect(() => {
     fetchServices();
+    fetchDockerContainers();
     const interval = setInterval(fetchServices, 5000); // Auto-refresh every 5s
     return () => clearInterval(interval);
   }, []);
@@ -131,6 +159,20 @@ export default function AdminServices() {
       }
     } catch (error) {
       console.error('Failed to fetch services:', error);
+    }
+  };
+
+  const fetchDockerContainers = async () => {
+    try {
+      const response = await fetch('/api/admin/services/docker/containers', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDockerData(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch Docker containers:', error);
     }
   };
 
@@ -176,7 +218,7 @@ export default function AdminServices() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchServices();
+    await Promise.all([fetchServices(), fetchDockerContainers()]);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
@@ -236,6 +278,39 @@ export default function AdminServices() {
       default:
         return 'text-gray-600 bg-gray-50';
     }
+  };
+
+  const getContainerStateColor = (state: string) => {
+    switch (state) {
+      case 'running': return 'text-green-600 bg-green-50';
+      case 'exited': return 'text-gray-600 bg-gray-50';
+      case 'created': return 'text-blue-600 bg-blue-50';
+      case 'paused': return 'text-yellow-600 bg-yellow-50';
+      case 'restarting': return 'text-orange-600 bg-orange-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  const getContainerStateIcon = (state: string) => {
+    switch (state) {
+      case 'running': return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'exited': return <Square className="w-4 h-4 text-gray-400" />;
+      case 'paused': return <Circle className="w-4 h-4 text-yellow-500" />;
+      case 'restarting': return <RefreshCw className="w-4 h-4 text-orange-500 animate-spin" />;
+      default: return <Circle className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const formatRelativeTime = (isoDate: string) => {
+    if (!isoDate) return '-';
+    const diff = Date.now() - new Date(isoDate).getTime();
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(mins / 60);
+    const days = Math.floor(hours / 24);
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (mins > 0) return `${mins}m ago`;
+    return 'just now';
   };
 
   const runningServices = services.filter(s => s.status === 'running').length;
@@ -402,6 +477,131 @@ export default function AdminServices() {
             </div>
           ))}
         </motion.div>
+
+        {/* Docker Containers Section */}
+        {dockerData && dockerData.containers.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg overflow-hidden mb-8"
+          >
+            <div
+              className="p-6 border-b border-gray-200/50 flex items-center justify-between cursor-pointer"
+              onClick={() => setDockerExpanded(!dockerExpanded)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                  <Box className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Docker Containers</h2>
+                  <p className="text-sm text-gray-500">
+                    {dockerData.summary.total} containers &middot;{' '}
+                    <span className="text-green-600">{dockerData.summary.running} running</span>
+                    {dockerData.summary.stopped > 0 && (
+                      <> &middot; <span className="text-gray-500">{dockerData.summary.stopped} stopped</span></>
+                    )}
+                    {' '}&middot; {dockerData.summary.images} images
+                  </p>
+                </div>
+              </div>
+              {dockerExpanded ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </div>
+
+            {dockerExpanded && (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Container
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Image
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ports
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Networks
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Created
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200/50">
+                    {dockerData.containers.map((container) => (
+                      <tr key={container.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            {getContainerStateIcon(container.state)}
+                            <div>
+                              <div className="font-medium text-gray-900">{container.name}</div>
+                              <div className="text-xs text-gray-400 font-mono">{container.id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <Image className="w-3.5 h-3.5 text-gray-400" />
+                            <span className="text-sm text-gray-700 font-mono max-w-[200px] truncate" title={container.image}>
+                              {container.image}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getContainerStateColor(container.state)}`}>
+                            {container.state}
+                          </span>
+                          <div className="text-xs text-gray-500 mt-0.5">{container.status}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {container.ports.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {container.ports.slice(0, 3).map((port, i) => (
+                                <div key={i} className="text-xs font-mono">{port}</div>
+                              ))}
+                              {container.ports.length > 3 && (
+                                <div className="text-xs text-gray-400">+{container.ports.length - 3} more</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {container.networks.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {container.networks.map((net) => (
+                                <span key={net} className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-purple-50 text-purple-700">
+                                  {net}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatRelativeTime(container.created)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Services List */}
         <motion.div

@@ -26,6 +26,15 @@ DEFAULT_TENANT_NAME = "SmartSpec Pro"
 DEFAULT_TENANT_COMPANY = "SmartSpec"
 
 
+def _write_admin_password(password: str) -> None:
+    """Write generated admin password to a file instead of printing to stdout."""
+    pw_path = "/tmp/smartspec-admin-pw.txt"
+    with open(pw_path, "w") as f:
+        f.write(password)
+    os.chmod(pw_path, 0o600)
+    print(f"       Generated password written to: {pw_path}")
+
+
 async def seed_admin_user(db: AsyncSession) -> bool:
     """
     Create default admin user if no admin exists
@@ -64,7 +73,7 @@ async def seed_admin_user(db: AsyncSession) -> bool:
         await db.commit()
         print(f"[Seed] Upgraded existing user to admin: {existing_user.email}")
         if generated:
-            print(f"       Generated password: {admin_password}")
+            _write_admin_password(admin_password)
             print(f"       CHANGE PASSWORD AFTER FIRST LOGIN!")
         return True
 
@@ -88,7 +97,7 @@ async def seed_admin_user(db: AsyncSession) -> bool:
     print(f"[Seed] Created default admin user:")
     print(f"       Email: {DEFAULT_ADMIN_EMAIL}")
     if generated:
-        print(f"       Generated password: {admin_password}")
+        _write_admin_password(admin_password)
     else:
         print(f"       Password: (set via ADMIN_PASSWORD env var)")
     print(f"       Credits: {DEFAULT_ADMIN_CREDITS}")

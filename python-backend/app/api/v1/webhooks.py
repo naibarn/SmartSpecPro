@@ -61,6 +61,12 @@ async def configure_webhook(
     ```
     """
     webhook_url = str(config.webhook_url)
+    # Validate URL is not targeting internal services
+    from app.core.media_job_validators import validate_uri_no_ssrf
+    try:
+        validate_uri_no_ssrf(webhook_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid webhook URL: {e}")
     set_user_webhook(current_user.id, webhook_url)
 
     logger.info("webhook_configured", user_id=current_user.id, webhook_url=webhook_url)

@@ -91,7 +91,7 @@ export async function getProviderForModel(modelId: string): Promise<ProviderCand
 
 async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult> {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return { candidates: [], maxFallbacks: 0 };
 
   // 1. Query model_provider_map JOIN llm_providers
   const rows = await db
@@ -284,7 +284,7 @@ export async function executeWithFallback(params: {
           statusCode: 200,
           wasFallback: i > 0,
           fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
-        }).catch(() => {});
+        }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
         return { type: "success", response: data, providerId: candidate.providerId, providerName: candidate.providerName };
       }
@@ -308,7 +308,7 @@ export async function executeWithFallback(params: {
         errorType: `http_${statusCode}`,
         wasFallback: i > 0,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
-      }).catch(() => {});
+      }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
       // Non-retriable client error
       if (!isFallbackEligible(statusCode)) {
@@ -346,7 +346,7 @@ export async function executeWithFallback(params: {
         errorType: "network_error",
         wasFallback: i > 0,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
-      }).catch(() => {});
+      }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
       // Check free->paid boundary
       const nextCandidate = targets[i + 1];

@@ -47,9 +47,10 @@ class KeyEncryption:
     def __init__(self, master_key: Optional[str] = None):
         self.master_key = master_key or getattr(settings, 'ENCRYPTION_MASTER_KEY', None)
         if not self.master_key:
-            # Generate a default key for development (NOT for production!)
-            self.master_key = "dev_master_key_32_characters_long"
-            logger.warning("Using default encryption key - NOT FOR PRODUCTION!")
+            raise RuntimeError(
+                "ENCRYPTION_MASTER_KEY is required for API key encryption. "
+                'Set it in .env: python -c "import secrets; print(secrets.token_urlsafe(48))"'
+            )
     
     def _derive_key(self, salt: bytes) -> bytes:
         """Derive encryption key from master key using PBKDF2."""

@@ -156,9 +156,9 @@ export default function SkillBrowser() {
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4 mb-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Settings
+              Dashboard
             </Button>
             <div>
               <h1 className="text-xl font-bold">Skill Browser</h1>

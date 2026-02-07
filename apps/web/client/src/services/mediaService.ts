@@ -3,9 +3,12 @@
  * Handles API calls for image, video, and audio generation
  */
 
-import { getAuthToken } from './authService';
+const API_BASE_URL = `${import.meta.env.VITE_PY_BACKEND_URL || ''}/api/v1/media`;
 
-const API_BASE_URL = `${import.meta.env.VITE_PY_BACKEND_URL || 'http://127.0.0.1:8000'}/api/v1/media`;
+/** Fetch with session cookie auth (Express proxy converts cookie → JWT for Python) */
+function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetch(url, { ...init, credentials: 'include' });
+}
 
 export interface ImageGenerationRequest {
   model: string;
@@ -89,14 +92,9 @@ async function uploadFiles(files: File[]): Promise<string[]> {
  * Generate an image
  */
 export async function generateImage(request: ImageGenerationRequest): Promise<TaskStatus> {
-  const token = await getAuthToken();
-
-  const response = await fetch(`${API_BASE_URL}/image`, {
+  const response = await authFetch(`${API_BASE_URL}/image`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
 
@@ -112,14 +110,9 @@ export async function generateImage(request: ImageGenerationRequest): Promise<Ta
  * Generate a video
  */
 export async function generateVideo(request: VideoGenerationRequest): Promise<TaskStatus> {
-  const token = await getAuthToken();
-
-  const response = await fetch(`${API_BASE_URL}/video`, {
+  const response = await authFetch(`${API_BASE_URL}/video`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
 
@@ -135,14 +128,9 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Ta
  * Generate audio
  */
 export async function generateAudio(request: AudioGenerationRequest): Promise<TaskStatus> {
-  const token = await getAuthToken();
-
-  const response = await fetch(`${API_BASE_URL}/audio`, {
+  const response = await authFetch(`${API_BASE_URL}/audio`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
 
@@ -158,14 +146,7 @@ export async function generateAudio(request: AudioGenerationRequest): Promise<Ta
  * Get task status (for polling)
  */
 export async function getTaskStatus(taskId: string): Promise<TaskStatus> {
-  const token = await getAuthToken();
-
-  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
+  const response = await authFetch(`${API_BASE_URL}/tasks/${taskId}`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -184,20 +165,13 @@ export async function listTasks(
   limit: number = 50,
   offset: number = 0
 ): Promise<{ tasks: TaskStatus[]; total: number; limit: number; offset: number }> {
-  const token = await getAuthToken();
-
   const params = new URLSearchParams();
   if (mediaType) params.append('media_type', mediaType);
   if (status) params.append('status_filter', status);
   params.append('limit', limit.toString());
   params.append('offset', offset.toString());
 
-  const response = await fetch(`${API_BASE_URL}/tasks?${params}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
+  const response = await authFetch(`${API_BASE_URL}/tasks?${params}`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -211,13 +185,8 @@ export async function listTasks(
  * Cancel a task
  */
 export async function cancelTask(taskId: string): Promise<{ success: boolean; message: string; task: TaskStatus }> {
-  const token = await getAuthToken();
-
-  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/cancel`, {
+  const response = await authFetch(`${API_BASE_URL}/tasks/${taskId}/cancel`, {
     method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
   });
 
   if (!response.ok) {
@@ -237,14 +206,9 @@ export async function batchGenerate(
   mediaType: 'image' | 'video' | 'audio',
   parameters?: Record<string, any>
 ): Promise<{ task_ids: string[]; total_tasks: number }> {
-  const token = await getAuthToken();
-
-  const response = await fetch(`${API_BASE_URL}/batch`, {
+  const response = await authFetch(`${API_BASE_URL}/batch`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompts,
       model,
@@ -265,17 +229,10 @@ export async function batchGenerate(
  * List available models
  */
 export async function listModels(mediaType?: 'image' | 'video' | 'audio'): Promise<{ models: ModelInfo[]; total: number }> {
-  const token = await getAuthToken();
-
   const params = new URLSearchParams();
   if (mediaType) params.append('media_type', mediaType);
 
-  const response = await fetch(`${API_BASE_URL}/models?${params}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
+  const response = await authFetch(`${API_BASE_URL}/models?${params}`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -289,14 +246,7 @@ export async function listModels(mediaType?: 'image' | 'video' | 'audio'): Promi
  * Download media file
  */
 export async function downloadMedia(taskId: string): Promise<Blob> {
-  const token = await getAuthToken();
-
-  const response = await fetch(`${API_BASE_URL}/download/${taskId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
+  const response = await authFetch(`${API_BASE_URL}/download/${taskId}`);
 
   if (!response.ok) {
     const error = await response.json();

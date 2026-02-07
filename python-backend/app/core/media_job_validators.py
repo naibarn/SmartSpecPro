@@ -8,10 +8,10 @@ These validators are called at the top of the Celery task
 (from section-04's media_job_worker.py) before dispatching
 to any job handler.
 
-NOTE: validate_uri_no_ssrf checks hostname/IP only. It does NOT
-perform DNS resolution, so a hostname like evil.com resolving to
-127.0.0.1 would pass. Full SSRF protection requires DNS rebinding
-prevention at the infrastructure level.
+NOTE: validate_uri_no_ssrf performs DNS resolution to detect DNS
+rebinding attacks. Hostnames are resolved to IP addresses and checked
+against private/loopback/link-local/reserved ranges. Unresolvable
+hostnames are blocked by default for safety.
 """
 
 import ipaddress
@@ -49,7 +49,12 @@ ALLOWED_CODECS = {
 # ========================================
 
 def _is_private_ip(hostname: str) -> bool:
-    """Check if hostname is a private/internal IP address."""
+    """Check if hostname is a private/internal IP address.
+
+    Resolves hostnames via DNS to prevent DNS rebinding attacks.
+    """
+    import socket
+
     try:
         addr = ipaddress.ip_address(hostname)
         return (
@@ -59,8 +64,15 @@ def _is_private_ip(hostname: str) -> bool:
             or addr.is_reserved
         )
     except ValueError:
-        # Not an IP address (it's a hostname) — cannot determine
-        # without DNS lookup. Return False but note the DNS rebinding risk.
+        # Not an IP literal — resolve via DNS
+        try:
+            resolved = socket.getaddrinfo(hostname, None)
+            for _, _, _, _, sockaddr in resolved:
+                ip = ipaddress.ip_address(sockaddr[0])
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    return True
+        except socket.gaierror:
+            return True  # Unresolvable hostname — block by default
         return False
 
 

@@ -62,7 +62,7 @@ Total: 64 lines changed
 
 **เนื้อหา:**
 - ✅ API Keys configuration (OpenRouter, OpenAI, Anthropic)
-- ✅ Database settings (PostgreSQL + MySQL)
+- ✅ Database settings (PostgreSQL)
 - ✅ Redis configuration
 - ✅ Security & Auth (JWT, secrets, tokens)
 - ✅ CORS settings
@@ -114,7 +114,7 @@ Total: 64 lines changed
 
 2. **docker-compose.yml**
    - Infrastructure services complete
-   - PostgreSQL, MySQL, Redis, ChromaDB
+   - PostgreSQL, Redis, ChromaDB
    - Health checks ครบ
 
 ### ✅ Development Scripts

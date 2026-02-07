@@ -80,9 +80,10 @@ class EncryptionService:
             algorithm: Default encryption algorithm
         """
         self._master_key = master_key or os.environ.get(
-            "SMARTSPEC_MASTER_KEY",
-            "default-dev-key-change-in-production"
+            "SMARTSPEC_MASTER_KEY", ""
         )
+        if not self._master_key:
+            raise RuntimeError("SMARTSPEC_MASTER_KEY is required for encryption service")
         self._algorithm = algorithm
         self._logger = logger.bind(component="encryption_service")
         

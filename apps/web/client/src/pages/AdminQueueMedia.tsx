@@ -56,11 +56,12 @@ import {
   CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
 export default function AdminQueueMedia() {
   const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [refreshInterval, setRefreshInterval] = useState<number | null>(5000);
 
   // Queries
@@ -118,15 +119,19 @@ export default function AdminQueueMedia() {
   const audioRequests = audioModels.reduce((sum, m) => sum + m.requests, 0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+      <div className="border-b bg-card shrink-0">
+        <div className="px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => setLocation('/dashboard')}>
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Dashboard
+              </Button>
               <Link href="/admin/queues">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-5 w-5" />
+                <Button variant="outline" size="sm">
+                  Queue Dashboard
                 </Button>
               </Link>
               <div>
@@ -177,7 +182,7 @@ export default function AdminQueueMedia() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="flex-1 overflow-auto px-4 py-6 space-y-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card>

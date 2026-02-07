@@ -421,6 +421,11 @@ export const providerUsageLog = pgTable("provider_usage_log", {
   /** Error classification: 'rate_limit', 'timeout', 'server_error' */
   errorType: varchar("errorType", { length: 64 }),
 
+  /** Audit trace correlation */
+  traceId: varchar("traceId", { length: 32 }),
+  errorMessage: text("errorMessage"),
+  requestType: varchar("requestType", { length: 32 }),
+
   wasFallback: boolean("wasFallback").default(false).notNull(),
   fallbackFromProviderId: integer("fallbackFromProviderId").references(() => llmProviders.id),
 
@@ -428,10 +433,42 @@ export const providerUsageLog = pgTable("provider_usage_log", {
 }, (t) => [
   index("provider_usage_log_user_created").on(t.userId, t.createdAt),
   index("provider_usage_log_provider_created").on(t.providerId, t.createdAt),
+  index("provider_usage_log_trace_id").on(t.traceId),
 ]);
 
 export type ProviderUsageLog = typeof providerUsageLog.$inferSelect;
 export type InsertProviderUsageLog = typeof providerUsageLog.$inferInsert;
+
+/**
+ * API audit events
+ * Structured logging for media/skill/LLM requests with trace correlation
+ */
+export const apiAuditEvents = pgTable("api_audit_events", {
+  id: serial("id").primaryKey(),
+  traceId: varchar("traceId", { length: 32 }).notNull(),
+  eventType: varchar("eventType", { length: 64 }).notNull(),
+  userId: integer("userId").references(() => users.id),
+  endpoint: varchar("endpoint", { length: 512 }),
+  model: varchar("model", { length: 128 }),
+  provider: varchar("provider", { length: 64 }),
+  statusCode: integer("statusCode"),
+  errorMessage: text("errorMessage"),
+  responseTimeMs: integer("responseTimeMs"),
+  creditsCharged: integer("creditsCharged").default(0),
+  costUsd: numeric("costUsd", { precision: 12, scale: 8 }),
+  skillSlug: varchar("skillSlug", { length: 100 }),
+  mediaType: varchar("mediaType", { length: 20 }),
+  mediaTaskId: varchar("mediaTaskId", { length: 128 }),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("api_audit_events_trace_id").on(t.traceId),
+  index("api_audit_events_user_created").on(t.userId, t.createdAt),
+  index("api_audit_events_type_created").on(t.eventType, t.createdAt),
+]);
+
+export type ApiAuditEvent = typeof apiAuditEvents.$inferSelect;
+export type InsertApiAuditEvent = typeof apiAuditEvents.$inferInsert;
 
 /**
  * Routing rules
@@ -1720,6 +1757,7 @@ export type InsertBlogPost = typeof blogPosts.$inferInsert;
 
 export const scheduleStatusEnum = pgEnum("schedule_status", ["active", "paused", "completed", "failed"]);
 export const notificationTypeEnum = pgEnum("notification_type", ["scheduled_message", "follow_request", "alert", "system"]);
+export const reminderPriorityEnum = pgEnum("reminder_priority", ["low", "normal", "high", "critical"]);
 export const followStatusEnum = pgEnum("follow_status", ["active", "blocked"]);
 
 /**
@@ -1761,6 +1799,12 @@ export const scheduledMessages = pgTable("scheduled_messages", {
   /** Associated skill */
   skillId: varchar("skillId", { length: 100 }).default("chat-alert"),
 
+  /** Simple reminder — skip LLM, just show prompt as-is (0 credits) */
+  isSimpleReminder: boolean("isSimpleReminder").default(false).notNull(),
+
+  /** Priority level — critical shows full-screen modal */
+  priority: reminderPriorityEnum("priority").default("normal").notNull(),
+
   /** Send email notification on execution */
   emailNotify: boolean("emailNotify").default(true).notNull(),
 
@@ -1778,7 +1822,11 @@ export const scheduledMessages = pgTable("scheduled_messages", {
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("scheduled_messages_user_status").on(t.userId, t.status),
+  index("scheduled_messages_user_created").on(t.userId, t.createdAt),
+  index("scheduled_messages_status").on(t.status),
+]);
 
 export type ScheduledMessage = typeof scheduledMessages.$inferSelect;
 export type InsertScheduledMessage = typeof scheduledMessages.$inferInsert;
@@ -1806,7 +1854,9 @@ export const scheduledMessageLogs = pgTable("scheduled_message_logs", {
 
   /** Error message if failed */
   error: text("error"),
-});
+}, (t) => [
+  index("scheduled_message_logs_schedule_id").on(t.scheduledMessageId, t.executedAt),
+]);
 
 export type ScheduledMessageLog = typeof scheduledMessageLogs.$inferSelect;
 export type InsertScheduledMessageLog = typeof scheduledMessageLogs.$inferInsert;
@@ -1847,10 +1897,16 @@ export const userNotifications = pgTable("user_notifications", {
   /** Link to related schedule */
   scheduledMessageId: integer("scheduledMessageId").references(() => scheduledMessages.id, { onDelete: "set null" }),
 
+  /** Priority — high/critical triggers full-screen modal */
+  priority: reminderPriorityEnum("priority").default("normal").notNull(),
+
   isRead: boolean("isRead").default(false).notNull(),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("user_notifications_user_read").on(t.userId, t.isRead, t.createdAt),
+  index("user_notifications_user_priority").on(t.userId, t.isRead, t.priority),
+]);
 
 export type UserNotification = typeof userNotifications.$inferSelect;
 export type InsertUserNotification = typeof userNotifications.$inferInsert;
@@ -1935,6 +1991,29 @@ export const menuConfig = pgTable("menu_config", {
 
 export type MenuConfig = typeof menuConfig.$inferSelect;
 export type InsertMenuConfig = typeof menuConfig.$inferInsert;
+
+// Video Editor Projects — persistent project storage with auto-save
+export const videoEditorProjects = pgTable("video_editor_projects", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 256 }).notNull(),
+  projectData: json("projectData").notNull(),
+  thumbnailUrl: text("thumbnailUrl"),
+  duration: numeric("duration", { precision: 10, scale: 2 }).default("0"),
+  resolution: varchar("resolution", { length: 20 }),
+  trackCount: integer("trackCount").default(4),
+  clipCount: integer("clipCount").default(0),
+  version: varchar("version", { length: 10 }).default("1.0"),
+  isAutoSave: boolean("isAutoSave").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("video_editor_projects_user_idx").on(t.userId),
+  index("video_editor_projects_updated_idx").on(t.updatedAt),
+]);
+
+export type VideoEditorProject = typeof videoEditorProjects.$inferSelect;
+export type InsertVideoEditorProject = typeof videoEditorProjects.$inferInsert;
 
 // Email verification tokens for signup flow
 export const emailVerificationTokens = pgTable("email_verification_tokens", {

@@ -9,8 +9,62 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { scheduledMessages, scheduledMessageLogs, userNotifications } from "../../drizzle/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { createScheduledJob, cancelScheduledJob } from "../services/scheduler";
+
+/**
+ * Validates cron expression for security and rate limiting
+ * Enforces minimum 15-minute interval to prevent resource exhaustion
+ */
+function validateCronExpression(cron: string): { valid: boolean; error?: string } {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) return { valid: false, error: "Cron must have exactly 5 fields (min hour dom mon dow)" };
+
+  const [min, hour] = parts;
+
+  // Block every-minute patterns
+  if (min === "*" && hour === "*") return { valid: false, error: "Cron runs too frequently (every minute). Minimum interval is 15 minutes." };
+
+  // Block sub-15-minute intervals
+  if (min.startsWith("*/")) {
+    const interval = parseInt(min.slice(2), 10);
+    if (!isNaN(interval) && interval < 15 && hour === "*") {
+      return { valid: false, error: `Cron runs every ${interval} minutes. Minimum interval is 15 minutes.` };
+    }
+  }
+
+  // Validate field ranges
+  const ranges = [
+    { name: "minute", min: 0, max: 59 },
+    { name: "hour", min: 0, max: 23 },
+    { name: "day of month", min: 1, max: 31 },
+    { name: "month", min: 1, max: 12 },
+    { name: "day of week", min: 0, max: 7 },
+  ];
+
+  for (let i = 0; i < 5; i++) {
+    const field = parts[i];
+    if (field === "*") continue;
+    if (field.startsWith("*/")) {
+      const step = parseInt(field.slice(2), 10);
+      if (isNaN(step) || step < 1) return { valid: false, error: `Invalid step in ${ranges[i].name}: ${field}` };
+      continue;
+    }
+    // Allow ranges like "1-5", lists like "1,3,5", and single numbers
+    const segments = field.split(",");
+    for (const seg of segments) {
+      const rangeParts = seg.split("-");
+      for (const p of rangeParts) {
+        const n = parseInt(p, 10);
+        if (isNaN(n) || n < ranges[i].min || n > ranges[i].max) {
+          return { valid: false, error: `Invalid value in ${ranges[i].name}: ${p} (must be ${ranges[i].min}-${ranges[i].max})` };
+        }
+      }
+    }
+  }
+
+  return { valid: true };
+}
 
 export const scheduledMessagesRouter = router({
   /**
@@ -28,15 +82,65 @@ export const scheduledMessagesRouter = router({
       description: z.string().max(500).optional().nullable(),
       conversationId: z.number().optional().nullable(),
       targetUserId: z.number().optional().nullable(),
+      isSimpleReminder: z.boolean().default(false),
+      priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      // SECURITY: Authorization check for targetUserId
+      if (input.targetUserId && input.targetUserId !== ctx.user.id) {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "domain_admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can create schedules for other users" });
+        }
+      }
+
+      // SECURITY: Validate cron expression to prevent DoS
+      if (input.cronExpression) {
+        const cronValidation = validateCronExpression(input.cronExpression);
+        if (!cronValidation.valid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: cronValidation.error || "Invalid cron expression" });
+        }
+      }
+
+      // SECURITY: Enforce per-user schedule limit to prevent resource exhaustion
+      const [{ count: existingCount }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(scheduledMessages)
+        .where(eq(scheduledMessages.userId, ctx.user.id));
+
+      if (existingCount >= 50) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Maximum 50 schedules per user" });
+      }
+
       const scheduledAtDate = input.scheduledAt ? new Date(input.scheduledAt) : null;
+
+      // SECURITY: Validate scheduledAt date format and range
+      if (scheduledAtDate) {
+        if (isNaN(scheduledAtDate.getTime())) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid date format for scheduledAt" });
+        }
+        if (scheduledAtDate.getTime() < Date.now()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "scheduledAt must be in the future" });
+        }
+        const oneYearFromNow = Date.now() + 365 * 24 * 60 * 60 * 1000;
+        if (scheduledAtDate.getTime() > oneYearFromNow) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "scheduledAt cannot be more than 1 year in the future" });
+        }
+      }
 
       if (!input.cronExpression && !scheduledAtDate) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Either cronExpression or scheduledAt is required" });
+      }
+
+      // SECURITY: Credit check for LLM-powered schedules
+      if (!input.isSimpleReminder) {
+        const { hasEnoughCredits } = await import("../services/creditService");
+        const enough = await hasEnoughCredits(ctx.user.id, 10);
+        if (!enough) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits (minimum 10 required for LLM-powered schedule)" });
+        }
       }
 
       // Insert into DB
@@ -47,7 +151,9 @@ export const scheduledMessagesRouter = router({
         timezone: input.timezone,
         scheduledAt: scheduledAtDate,
         isRecurring: input.isRecurring,
-        modelId: input.modelId || undefined,
+        isSimpleReminder: input.isSimpleReminder,
+        priority: input.priority,
+        modelId: input.isSimpleReminder ? undefined : (input.modelId || undefined),
         emailNotify: input.emailNotify,
         description: input.description || undefined,
         conversationId: input.conversationId || undefined,
@@ -147,6 +253,8 @@ export const scheduledMessagesRouter = router({
       description: z.string().max(500).optional().nullable(),
       emailNotify: z.boolean().optional(),
       modelId: z.string().max(128).optional().nullable(),
+      priority: z.enum(["low", "normal", "high", "critical"]).optional(),
+      isSimpleReminder: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -159,6 +267,14 @@ export const scheduledMessagesRouter = router({
         .limit(1);
 
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // SECURITY: Validate cron expression to prevent DoS
+      if (input.cronExpression !== undefined && input.cronExpression !== null) {
+        const cronValidation = validateCronExpression(input.cronExpression);
+        if (!cronValidation.valid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: cronValidation.error || "Invalid cron expression" });
+        }
+      }
 
       const { id, ...updates } = input;
       const updateData: any = { ...updates, updatedAt: new Date() };
@@ -281,6 +397,32 @@ export const scheduledMessagesRouter = router({
       ));
 
     return { count };
+  }),
+
+  /**
+   * Get unread high/critical priority notifications (for full-screen modal)
+   */
+  getUrgentReminders: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+
+    return db
+      .select({
+        id: userNotifications.id,
+        title: userNotifications.title,
+        content: userNotifications.content,
+        priority: userNotifications.priority,
+        createdAt: userNotifications.createdAt,
+        scheduledMessageId: userNotifications.scheduledMessageId,
+      })
+      .from(userNotifications)
+      .where(and(
+        eq(userNotifications.userId, ctx.user.id),
+        eq(userNotifications.isRead, false),
+        inArray(userNotifications.priority, ["high", "critical"])
+      ))
+      .orderBy(desc(userNotifications.createdAt))
+      .limit(5);
   }),
 
   /**

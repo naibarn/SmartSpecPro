@@ -24,7 +24,6 @@
 | **docker-status** | 3001 | Docker container monitoring |
 | **control-plane** | 7070 | Control plane service |
 | **api-generator** | - | API code generation (on-demand) |
-| **mysql** | 3306 | MySQL database |
 | **postgres** | 5432 | PostgreSQL database |
 | **redis** | 6379 | Redis cache |
 | **chromadb** | 8001 | Vector store for RAG |
@@ -142,7 +141,6 @@ cp .env.example .env
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MYSQL_PASSWORD` | MySQL password | smartspec123 |
 | `POSTGRES_PASSWORD` | PostgreSQL password | smartspec123 |
 | `SESSION_SECRET` | Session encryption key | (change in production) |
 | `OPENAI_API_KEY` | OpenAI API key | - |
@@ -198,11 +196,10 @@ docker-compose -f docker-compose.full.yml up -d --no-deps --build smartspec-web
 
 ```bash
 # Check if database is ready
-docker-compose logs mysql
 docker-compose logs postgres
 
 # Restart database
-docker-compose restart mysql postgres
+docker-compose restart postgres
 ```
 
 #### 2. Docker Socket Permission Denied (docker-status)
@@ -296,10 +293,10 @@ docker system prune -a --volumes
 │                          │                                      │
 │    ┌─────────────────────┼─────────────────────┐               │
 │    │                     │                     │               │
-│  ┌─┴───┐  ┌─────┐  ┌────┴────┐  ┌─────────┐  │               │
-│  │MySQL│  │Redis│  │PostgreSQL│  │ChromaDB │  │               │
-│  │:3306│  │:6379│  │  :5432   │  │  :8001  │  │               │
-│  └─────┘  └─────┘  └─────────┘  └─────────┘  │               │
+│  ┌─────┐  ┌────┴────┐  ┌─────────┐             │               │
+│  │Redis│  │PostgreSQL│  │ChromaDB │             │               │
+│  │:6379│  │  :5432   │  │  :8001  │             │               │
+│  └─────┘  └─────────┘  └─────────┘             │               │
 │                                               │               │
 │              Infrastructure Layer             │               │
 └───────────────────────────────────────────────┴───────────────┘

@@ -6,7 +6,7 @@ import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, Media
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, PanelLeftClose, PanelLeft, Brain, Wand2, Layers, Sparkles, Bell, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+
 
 type RightPanel = "none" | "memory" | "skills" | "artifacts" | "generate" | "schedule";
 
@@ -17,6 +17,11 @@ export default function Chat() {
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [rightPanel, setRightPanel] = useState<RightPanel>("none");
+
+  // Deep-link state from GlobalAlerts (e.g. /chat?dm=123&dmName=John)
+  const [initialDmUserId, setInitialDmUserId] = useState<number | null>(null);
+  const [initialDmUserName, setInitialDmUserName] = useState<string>("");
+  const [initialAlertId, setInitialAlertId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -55,6 +60,27 @@ export default function Chat() {
       setLocation("/login");
     }
   }, [isLoading, isAuthenticated, setLocation]);
+
+  // Parse URL search params for deep-linking from GlobalAlerts
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dm = params.get("dm");
+    const dmName = params.get("dmName");
+    const panel = params.get("panel");
+
+    const alertId = params.get("alertId");
+
+    if (dm) {
+      setInitialDmUserId(Number(dm));
+      setInitialDmUserName(dmName || "User");
+      setRightPanel("schedule");
+      window.history.replaceState({}, "", "/chat");
+    } else if (panel === "schedule") {
+      setRightPanel("schedule");
+      if (alertId) setInitialAlertId(Number(alertId));
+      window.history.replaceState({}, "", "/chat");
+    }
+  }, []);
 
   // Create new conversation with default model from LLM Provider
   const handleNewChat = async () => {
@@ -132,9 +158,6 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Urgent message alerts */}
-      <UrgentMessageAlert onOpenAlerts={() => setRightPanel("schedule")} />
-
       {/* Top Bar */}
       <div className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 z-50 relative">
         <div className="flex items-center gap-3">
@@ -160,7 +183,6 @@ export default function Chat() {
             )}
           </Button>
           <h1 className="text-lg font-semibold hidden sm:block">AI Chat</h1>
-          <NotificationBell onOpenSchedule={() => setRightPanel("schedule")} />
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -329,6 +351,10 @@ export default function Chat() {
                 setSelectedConversationId(id);
                 setRightPanel("none");
               }}
+              initialDmUserId={initialDmUserId}
+              initialDmUserName={initialDmUserName}
+              isFromAlert={!!initialDmUserId}
+              initialAlertId={initialAlertId}
             />
           )}
         </div>
@@ -337,66 +363,3 @@ export default function Chat() {
   );
 }
 
-function UrgentMessageAlert({ onOpenAlerts }: { onOpenAlerts: () => void }) {
-  const { data: urgentMessages } = trpc.follows.getUrgentMessages.useQuery(undefined, {
-    refetchInterval: 10000,
-  });
-
-  const [shownIds, setShownIds] = useState<Set<number>>(new Set());
-
-  useEffect(() => {
-    if (!urgentMessages?.length) return;
-    const newMessages = urgentMessages.filter((m: any) => !shownIds.has(m.id));
-    if (newMessages.length === 0) return;
-
-    setShownIds(prev => {
-      const next = new Set(prev);
-      newMessages.forEach((m: any) => next.add(m.id));
-      return next;
-    });
-
-    newMessages.forEach((m: any) => {
-      toast.warning(
-        `${m.senderName || m.senderEmail}: ${m.content.slice(0, 100)}`,
-        {
-          description: "Urgent message",
-          duration: 10000,
-          action: { label: "View", onClick: onOpenAlerts },
-        }
-      );
-    });
-  }, [urgentMessages, shownIds, onOpenAlerts]);
-
-  return null;
-}
-
-function NotificationBell({ onOpenSchedule }: { onOpenSchedule: () => void }) {
-  const utils = trpc.useUtils();
-  const { data } = trpc.scheduledMessages.getNotificationCount.useQuery(undefined, {
-    refetchInterval: 30000,
-  });
-  const markAllRead = trpc.scheduledMessages.markAllRead.useMutation({
-    onSuccess: () => utils.scheduledMessages.getNotificationCount.invalidate(),
-  });
-
-  const count = data?.count || 0;
-
-  const handleClick = () => {
-    if (count > 0) markAllRead.mutate();
-    onOpenSchedule();
-  };
-
-  if (count === 0) return null;
-
-  return (
-    <button
-      onClick={handleClick}
-      className="relative ml-2 text-muted-foreground hover:text-foreground"
-    >
-      <Bell className="h-4 w-4" />
-      <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-        {count > 9 ? "9+" : count}
-      </span>
-    </button>
-  );
-}

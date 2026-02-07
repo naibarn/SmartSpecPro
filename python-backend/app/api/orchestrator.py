@@ -1,3 +1,4 @@
+import secrets
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 import os
@@ -17,7 +18,7 @@ def _require_api_key(request: Request):
     if not settings.orchestrator_api_key:
         return
     key = request.headers.get("x-orchestrator-key", "")
-    if key != settings.orchestrator_api_key:
+    if not secrets.compare_digest(key, settings.orchestrator_api_key):
         raise HTTPException(status_code=401, detail="invalid_orchestrator_key")
 
 class FactoryRun(BaseModel):

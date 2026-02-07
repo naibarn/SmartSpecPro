@@ -30,9 +30,7 @@ class OAuthConnection(Base):
     user = relationship("User")
     
     # Unique constraint: one provider account per user
-    __table_args__ = (
-        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'},
-    )
+    __table_args__ = ()
     
     def __repr__(self):
         return f"<OAuthConnection {self.provider}:{self.provider_user_id}>"
