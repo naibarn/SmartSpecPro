@@ -87,7 +87,9 @@ export const followsRouter = router({
       const areFriends = await isFriend(db, ctx.user.id, input.userId);
 
       // Notify the other user
-      await db.insert(userNotifications).values({
+      const { createNotification } = await import("../services/notificationService");
+      await createNotification({
+        db,
         userId: input.userId,
         type: areFriends ? "alert" : "follow_request",
         title: areFriends
@@ -96,6 +98,7 @@ export const followsRouter = router({
         content: areFriends
           ? "You can now send unlimited messages to each other."
           : "Follow back to become friends and chat freely.",
+        priority: areFriends ? "high" : "normal",
       });
 
       return { success: true, alreadyFollowing: false, isFriend: areFriends };
@@ -376,13 +379,16 @@ export const followsRouter = router({
       }).returning();
 
       // Create notification
-      await db.insert(userNotifications).values({
+      const { createNotification } = await import("../services/notificationService");
+      await createNotification({
+        db,
         userId: input.receiverId,
         type: input.isUrgent ? "urgent_message" as any : "direct_message" as any,
         title: input.isUrgent
           ? `Urgent from ${ctx.user.name || ctx.user.email}`
           : `Message from ${ctx.user.name || ctx.user.email}`,
         content: input.content.slice(0, 500),
+        priority: input.isUrgent ? "critical" : "normal",
       });
 
       return { id: msg.id, success: true };

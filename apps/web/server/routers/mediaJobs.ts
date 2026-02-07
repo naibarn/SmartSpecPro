@@ -100,7 +100,8 @@ async function notifyJobFailure(
 ) {
   try {
     const { getDb } = await import("../db");
-    const { userNotifications, users } = await import("../../drizzle/schema");
+    const { users } = await import("../../drizzle/schema");
+    const { createNotification } = await import("../services/notificationService");
     const db = await getDb();
     if (!db) return;
 
@@ -108,11 +109,13 @@ async function notifyJobFailure(
     if (isNaN(userIdNum)) return;
 
     // Notify the job owner
-    await db.insert(userNotifications).values({
+    await createNotification({
+      db,
       userId: userIdNum,
       type: "alert",
       title: "Media Job Failed",
       content: `Your media job (${jobId.slice(0, 8)}...) failed: ${errorMessage.slice(0, 200)}`,
+      priority: "high",
     });
 
     // Notify all admins
@@ -123,11 +126,13 @@ async function notifyJobFailure(
 
     for (const admin of adminRows) {
       if (admin.id === userIdNum) continue; // skip if user is already admin
-      await db.insert(userNotifications).values({
+      await createNotification({
+        db,
         userId: admin.id,
         type: "alert",
         title: "Media Job Failed (Admin Alert)",
         content: `User ${userId} — job ${jobId}: ${errorMessage.slice(0, 200)}`,
+        priority: "high",
       });
     }
   } catch {
