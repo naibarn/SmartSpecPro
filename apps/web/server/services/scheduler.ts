@@ -82,7 +82,9 @@ async function executeScheduledJob(job: Job) {
     try {
       const content = schedule.prompt;
 
-      await db.insert(userNotifications).values({
+      const { createNotification } = await import("./notificationService");
+      await createNotification({
+        db,
         userId,
         type: "scheduled_message",
         title: schedule.description || "Reminder",
@@ -221,7 +223,9 @@ async function executeScheduledJob(job: Job) {
     });
 
     // Create notification
-    await db.insert(userNotifications).values({
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      db,
       userId,
       type: "scheduled_message",
       title: schedule.description || `Scheduled Alert`,
