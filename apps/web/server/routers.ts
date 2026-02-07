@@ -49,6 +49,7 @@ import { auditRouter } from "./routers/audit";
 import { usageRouter } from "./routers/usage";
 import { mediaJobsRouter } from "./routers/mediaJobs";
 import { videoEditorProjectsRouter } from "./routers/videoEditorProjects";
+import { telegramRouter } from "./routers/telegram";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1237,6 +1238,9 @@ export const appRouter = router({
 
   // Video Editor project persistence
   videoEditorProjects: videoEditorProjectsRouter,
+
+  // Telegram notifications
+  telegram: telegramRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({
