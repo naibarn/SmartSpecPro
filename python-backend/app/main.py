@@ -56,6 +56,7 @@ from app.api import (
     approvals,  # Phase 3: Approval Gates
     csrf,  # CSRF Protection
     oauth,  # OAuth Social Login
+    telegram_webhook,  # Telegram bot webhook for account linking
 )
 from app.api.v1 import (
     skills,
@@ -199,6 +200,7 @@ app.include_router(auth_generator.router, prefix="/api/v1", tags=["Auth Generato
 app.include_router(media_generation.router, prefix="/api/v1/media", tags=["Media Generation"])
 app.include_router(media_advanced.router, prefix="/api/v1/media/tasks", tags=["Media Advanced"])
 app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
+app.include_router(telegram_webhook.router, prefix="/webhook", tags=["Telegram Webhook"])
 app.include_router(prompt_enhancement.router, prefix="/api/v1/prompt", tags=["Prompt Enhancement"])
 app.include_router(skill_customization.router, prefix="/api/v1", tags=["Skill Customization"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])
