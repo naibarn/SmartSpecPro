@@ -359,6 +359,47 @@ async def list_tasks(
     )
 
 
+@router.get("/tasks/admin", response_model=TaskListResponse)
+async def list_all_tasks(
+    media_type: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List ALL media tasks across all users (admin only).
+    """
+    from app.core.auth import get_current_admin_user
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    media_type_enum = MediaType(media_type) if media_type else None
+    status_enum = TaskStatus(status_filter) if status_filter else None
+
+    tasks = await MediaTaskService.list_all_tasks(
+        db,
+        media_type=media_type_enum,
+        status=status_enum,
+        limit=limit,
+        offset=offset,
+    )
+
+    total = await MediaTaskService.count_all_tasks(
+        db,
+        media_type=media_type_enum,
+        status=status_enum,
+    )
+
+    return TaskListResponse(
+        tasks=[TaskResponse(**task.to_dict()) for task in tasks],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @router.patch("/tasks/{task_id}/cancel")
 async def cancel_task(
     task_id: str,
@@ -972,8 +1013,28 @@ async def kie_ai_callback(
     3. Set callback URL to: https://abc123.trycloudflare.com/api/v1/media/callback/kie-ai
     """
     try:
-        # Parse the callback payload
-        body = await request.json()
+        # Verify HMAC signature if webhook secret is configured
+        import hmac
+        import hashlib
+        kie_webhook_secret = os.environ.get("KIE_AI_WEBHOOK_SECRET", "")
+        if kie_webhook_secret:
+            sig = request.headers.get("x-signature", "")
+            body_bytes = await request.body()
+            expected = hmac.new(
+                kie_webhook_secret.encode(), body_bytes, hashlib.sha256
+            ).hexdigest()
+            if not hmac.compare_digest(sig, expected):
+                logger.warning("kie_ai_callback_invalid_signature")
+                return JSONResponse(
+                    status_code=401,
+                    content={"success": False, "error": "Invalid signature"},
+                )
+            import json
+            body = json.loads(body_bytes)
+        else:
+            # No secret configured — accept without verification (log warning)
+            logger.warning("kie_ai_callback_no_webhook_secret_configured")
+            body = await request.json()
         logger.info("kie_ai_callback_received", body=body)
 
         task_id = body.get("taskId") or body.get("task_id")

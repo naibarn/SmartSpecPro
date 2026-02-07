@@ -1,9 +1,14 @@
 """HTTP bridge for Node.js → Celery media job dispatch."""
 
-from fastapi import APIRouter, HTTPException
+import os
+import secrets
+
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter()
+
+MEDIA_JOB_INTERNAL_TOKEN = os.environ.get("MEDIA_JOB_INTERNAL_TOKEN", "")
 
 
 class MediaJobRequest(BaseModel):
@@ -13,8 +18,19 @@ class MediaJobRequest(BaseModel):
 
 
 @router.post("/media-jobs/execute")
-async def execute_media_job_endpoint(request: MediaJobRequest):
-    """Accept a media job spec from the Node.js server and dispatch to Celery."""
+async def execute_media_job_endpoint(
+    request: MediaJobRequest,
+    x_internal_token: str = Header(..., alias="x-internal-token"),
+):
+    """Accept a media job spec from the Node.js server and dispatch to Celery.
+
+    Requires internal service token for authentication (node.js → python).
+    """
+    if not MEDIA_JOB_INTERNAL_TOKEN or not secrets.compare_digest(
+        x_internal_token, MEDIA_JOB_INTERNAL_TOKEN
+    ):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     try:
         from app.tasks.media_job_worker import execute_media_job
 
@@ -25,4 +41,4 @@ async def execute_media_job_endpoint(request: MediaJobRequest):
         )
         return {"taskId": task.id, "jobId": request.job_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Media job dispatch failed")

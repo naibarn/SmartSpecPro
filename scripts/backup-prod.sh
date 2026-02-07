@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SmartSpecPro Production Backup Script
-# สคริปต์สำหรับสำรองข้อมูลฐานข้อมูล (PostgreSQL & MySQL) และจัดการไฟล์สำรอง
+# สคริปต์สำหรับสำรองข้อมูลฐานข้อมูล PostgreSQL และจัดการไฟล์สำรอง
 
 # ============================================
 # Configuration
@@ -12,11 +12,8 @@ RETENTION_DAYS=7 # เก็บไฟล์สำรองไว้ย้อน�
 
 # รายละเอียดคอนเทนเนอร์ (อ้างอิงจาก docker-compose.full.yml)
 POSTGRES_CONTAINER="smartspec-postgres"
-MYSQL_CONTAINER="smartspec-mysql"
 POSTGRES_USER="smartspec"
 POSTGRES_DB="smartspecpro"
-MYSQL_USER="smartspec"
-MYSQL_DB="smartspecweb"
 
 # ============================================
 # Colors & Helpers
@@ -34,7 +31,6 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # สร้างโฟลเดอร์สำรองข้อมูลหากยังไม่มี
 mkdir -p "$BACKUP_DIR/postgres"
-mkdir -p "$BACKUP_DIR/mysql"
 
 echo -e "${BLUE}"
 echo "╔═══════════════════════════════════════════════════════════════╗"
@@ -52,19 +48,8 @@ else
     log_error "PostgreSQL backup failed!"
 fi
 
-# 2. Backup MySQL
-log_step "2. Backing up MySQL ($MYSQL_DB)..."
-MY_BACKUP_FILE="$BACKUP_DIR/mysql/my_backup_$DATE.sql.gz"
-# ดึงรหัสผ่านจาก environment variable ในคอนเทนเนอร์
-MYSQL_PWD=$(docker exec $MYSQL_CONTAINER printenv MYSQL_PASSWORD)
-if docker exec -e MYSQL_PWD=$MYSQL_PWD $MYSQL_CONTAINER /usr/bin/mysqldump -u $MYSQL_USER $MYSQL_DB | gzip > "$MY_BACKUP_FILE"; then
-    log_info "MySQL backup successful: $MY_BACKUP_FILE"
-else
-    log_error "MySQL backup failed!"
-fi
-
-# 3. Cleanup old backups (Retention)
-log_step "3. Cleaning up backups older than $RETENTION_DAYS days..."
+# 2. Cleanup old backups (Retention)
+log_step "2. Cleaning up backups older than $RETENTION_DAYS days..."
 find "$BACKUP_DIR" -type f -mtime +$RETENTION_DAYS -name "*.gz" -exec rm {} \;
 log_info "Cleanup complete."
 

@@ -3,8 +3,7 @@ version: '3.8'
 # This file sets up the complete infrastructure and application services
 # 
 # Infrastructure Services:
-# - PostgreSQL: For python-backend
-# - MySQL: For apps/web and docker-status
+# - PostgreSQL: Primary database
 # - Redis: Shared cache
 # - ChromaDB: Vector store for RAG
 #
@@ -23,31 +22,8 @@ services:
   # ============================================
   # INFRASTRUCTURE SERVICES
   # ============================================
-  
-  # MySQL Database (for web app and docker-status)
-  mysql:
-    image: mysql:8.0
-    container_name: smartspec-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-smartspecweb}
-      MYSQL_USER: ${MYSQL_USER:-smartspec}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smartspec123}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    command: --default-authentication-plugin=mysql_native_password
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - smartspec-network
 
-  # PostgreSQL Database (for python-backend)
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: smartspec-postgres
@@ -146,14 +122,14 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=mysql://${MYSQL_USER:-smartspec}:${MYSQL_PASSWORD:-smartspec123}@mysql:3306/${MYSQL_DATABASE:-smartspecweb}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspecpro}
       - REDIS_URL=redis://redis:6379
       - BACKEND_URL=http://python-backend:8000
       - SESSION_SECRET=${SESSION_SECRET:-your-session-secret-change-in-production}
     ports:
       - "3000:3000"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -177,13 +153,13 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=mysql://${MYSQL_USER:-smartspec}:${MYSQL_PASSWORD:-smartspec123}@mysql:3306/${MYSQL_DATABASE:-smartspecweb}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspecpro}
     ports:
       - "3001:3001"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
@@ -229,8 +205,6 @@ services:
 # VOLUMES
 # ============================================
 volumes:
-  mysql_data:
-    driver: local
   postgres_data:
     driver: local
   redis_data:

@@ -26,21 +26,30 @@ class EncryptionService:
         """
         Initialize Fernet cipher with master key.
 
-        Uses ENCRYPTION_MASTER_KEY from environment.
-        If not set, generates a key (not recommended for production).
+        Uses ENCRYPTION_MASTER_KEY from environment (required).
         """
+        import hashlib
+
         master_key = os.getenv("ENCRYPTION_MASTER_KEY", "")
 
         if not master_key:
-            # Generate a key for development (NOT secure for production)
-            master_key = "smartspec-dev-key-change-in-production"
-            print("⚠️  WARNING: Using default encryption key. Set ENCRYPTION_MASTER_KEY in production!")
+            raise RuntimeError(
+                "ENCRYPTION_MASTER_KEY environment variable is required. "
+                'Generate with: python -c "import secrets; print(secrets.token_urlsafe(48))"'
+            )
 
-        # Derive a proper 32-byte key using PBKDF2HMAC
+        # Per-installation salt from env, or derive from master key
+        salt_str = os.getenv("ENCRYPTION_SALT", "")
+        if salt_str:
+            salt = salt_str.encode()
+        else:
+            # Derive a stable salt from the key itself (better than fixed salt)
+            salt = hashlib.sha256(f"salt:{master_key}".encode()).digest()[:16]
+
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
-            salt=b"smartspec-salt",  # Fixed salt (in production, use a random salt per-installation)
+            salt=salt,
             iterations=100000,
         )
         key = base64.urlsafe_b64encode(kdf.derive(master_key.encode()))
@@ -114,5 +123,15 @@ class EncryptionService:
         return None
 
 
-# Global encryption service instance
-encryption_service = EncryptionService()
+# Lazy-initialized encryption service — avoids import-time crash
+# when ENCRYPTION_MASTER_KEY is not yet set (e.g. during testing or CLI tools)
+class _LazyEncryptionService:
+    _instance: Optional[EncryptionService] = None
+
+    def __getattr__(self, name: str):
+        if _LazyEncryptionService._instance is None:
+            _LazyEncryptionService._instance = EncryptionService()
+        return getattr(_LazyEncryptionService._instance, name)
+
+
+encryption_service: EncryptionService = _LazyEncryptionService()  # type: ignore[assignment]

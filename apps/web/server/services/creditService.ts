@@ -90,6 +90,9 @@ export async function hasEnoughCredits(userId: number, amount: number): Promise<
 /**
  * Deduct credits from user account
  * Returns the transaction record or throws if insufficient credits
+ *
+ * Uses atomic SQL: UPDATE ... SET credits = credits - amount WHERE credits >= amount
+ * This prevents TOCTOU race conditions and negative balances.
  */
 export async function deductCredits(params: DeductCreditsParams) {
   const { userId, amount, description, metadata } = params;
@@ -98,30 +101,31 @@ export async function deductCredits(params: DeductCreditsParams) {
     throw new Error("Deduction amount must be positive");
   }
 
-  // Get current balance
-  const balance = await getCreditBalance(userId);
-  if (!balance) {
-    throw new Error("User not found");
-  }
-
-  if (balance.credits < amount) {
-    throw new Error("Insufficient credits");
-  }
-
-  const newBalance = balance.credits - amount;
-
   let transactionId: number = 0;
+  let newBalance: number = 0;
 
-  // Update user credits and create transaction in a transaction
   await db.transaction(async (tx) => {
-    // Update user credits
-    await tx
+    // Atomic deduction: balance check + decrement in one statement
+    const [result] = await tx
       .update(users)
-      .set({ credits: newBalance })
-      .where(eq(users.id, userId));
+      .set({ credits: sql`${users.credits} - ${amount}` })
+      .where(and(eq(users.id, userId), gte(users.credits, amount)))
+      .returning({ newBalance: users.credits });
 
-    // Create transaction record - PostgreSQL returns the inserted rows
-    const result = await tx.insert(creditTransactions).values({
+    if (!result) {
+      // Either user not found or insufficient credits
+      const [user] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      if (!user) throw new Error("User not found");
+      throw new Error("Insufficient credits");
+    }
+
+    newBalance = result.newBalance;
+
+    const [txRecord] = await tx.insert(creditTransactions).values({
       userId,
       amount: -amount, // Negative for deductions
       type: "usage",
@@ -130,7 +134,7 @@ export async function deductCredits(params: DeductCreditsParams) {
       balanceAfter: newBalance,
     }).returning({ id: creditTransactions.id });
 
-    transactionId = result[0]?.id || 0;
+    transactionId = txRecord?.id || 0;
   });
 
   return {
@@ -143,6 +147,9 @@ export async function deductCredits(params: DeductCreditsParams) {
 
 /**
  * Add credits to user account
+ *
+ * Uses atomic SQL: UPDATE ... SET credits = credits + amount
+ * to prevent race conditions on concurrent additions.
  */
 export async function addCredits(params: AddCreditsParams) {
   const { userId, amount, type, description, referenceId, metadata } = params;
@@ -151,26 +158,24 @@ export async function addCredits(params: AddCreditsParams) {
     throw new Error("Amount must be positive");
   }
 
-  // Get current balance
-  const balance = await getCreditBalance(userId);
-  if (!balance) {
-    throw new Error("User not found");
-  }
-
-  const newBalance = balance.credits + amount;
-
   let transactionId: number = 0;
+  let newBalance: number = 0;
 
-  // Update user credits and create transaction
   await db.transaction(async (tx) => {
-    // Update user credits
-    await tx
+    // Atomic addition
+    const [result] = await tx
       .update(users)
-      .set({ credits: newBalance })
-      .where(eq(users.id, userId));
+      .set({ credits: sql`${users.credits} + ${amount}` })
+      .where(eq(users.id, userId))
+      .returning({ newBalance: users.credits });
 
-    // Create transaction record - PostgreSQL returns the inserted rows
-    const result = await tx.insert(creditTransactions).values({
+    if (!result) {
+      throw new Error("User not found");
+    }
+
+    newBalance = result.newBalance;
+
+    const [txRecord] = await tx.insert(creditTransactions).values({
       userId,
       amount, // Positive for additions
       type,
@@ -180,7 +185,7 @@ export async function addCredits(params: AddCreditsParams) {
       referenceId,
     }).returning({ id: creditTransactions.id });
 
-    transactionId = result[0]?.id || 0;
+    transactionId = txRecord?.id || 0;
   });
 
   return {

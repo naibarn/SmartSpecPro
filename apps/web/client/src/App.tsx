@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { GlobalAlerts } from "@/components/GlobalAlerts";
 import NotFound from "@/pages/NotFound";
 import DockerPage from "@/pages/DockerPage";
 import TerminalPage from "@/pages/TerminalPage";
@@ -68,6 +69,8 @@ import Status from "./pages/Status";
 import Security from "./pages/Security";
 import BlogPost from "./pages/BlogPost";
 import DomainBlogAdmin from "./pages/DomainBlogAdmin";
+import UsageAnalytics from "./pages/UsageAnalytics";
+import TaskQueueMonitor from "./pages/TaskQueueMonitor";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -120,6 +123,8 @@ function Router() {
       <Route path="/generate/:type?" component={Generate} />
       <Route path="/media-studio" component={MediaStudio} />
       <Route path="/credits" component={Credits} />
+      <Route path="/usage" component={UsageAnalytics} />
+      <Route path="/tasks" component={TaskQueueMonitor} />
       <Route path="/media-history" component={MediaHistory} />
       <Route path="/settings" component={Settings} />
       <Route path="/settings/skills" component={SkillBrowser} />
@@ -150,6 +155,7 @@ function App() {
             <TenantProvider>
               <TooltipProvider>
                 <Toaster />
+                <GlobalAlerts />
                 <Router />
               </TooltipProvider>
             </TenantProvider>

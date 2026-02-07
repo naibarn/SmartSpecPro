@@ -239,7 +239,7 @@ export default function Factory() {
               disabled={!projectId || !sessionId || !artifactKey}
               onClick={async () => {
                 const res: any = await presignGet.mutateAsync({ projectId, sessionId, key: artifactKey });
-                window.open(res.url, "_blank");
+                window.open(res.url, "_blank", "noopener,noreferrer");
               }}
               className="gap-1.5"
             >

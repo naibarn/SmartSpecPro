@@ -1,32 +1,33 @@
 version: '3.8'
 
-services:
-  # Redis for Celery broker and result backend
-  redis:
-    image: redis:7-alpine
-    container_name: smartspec-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
+# SmartSpec Pro - Media Processing Stack
+# Isolated Celery workers for media generation (API) and video rendering (FFmpeg)
+#
+# REQUIRES: Main stack running first (docker-compose.nginx.yml or docker-compose.yml)
+#   to provide: postgres, redis on smartspec-network
+#
+# Usage:
+#   docker compose -f docker-compose.media.yml up -d
+#
+# Monitor:
+#   Flower dashboard: http://localhost:5555
 
-  # Celery worker for media generation tasks
-  celery_worker:
+services:
+  # ============================================
+  # CELERY MEDIA WORKER
+  # Handles: generate_image_task, generate_video_task,
+  #          generate_audio_task, cleanup, retry
+  # These are API-bound (LLM/provider calls), light CPU
+  # ============================================
+  celery-media:
     build:
       context: ./python-backend
       dockerfile: Dockerfile
-    container_name: smartspec-celery-worker
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+    container_name: smartspec-celery-media
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q media -n media@%h
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
       - DATABASE_URL=${DATABASE_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - KIE_AI_API_KEY=${KIE_AI_API_KEY}
@@ -35,55 +36,131 @@ services:
       - S3_BUCKET=${S3_BUCKET}
       - S3_REGION=${S3_REGION:-us-east-1}
       - CDN_BASE_URL=${CDN_BASE_URL}
-    depends_on:
-      redis:
-        condition: service_healthy
     volumes:
       - ./python-backend:/app
       - media_storage:/app/media_storage
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping -d media@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     restart: unless-stopped
+    networks:
+      - smartspec-network
 
-  # Celery beat for periodic tasks
-  celery_beat:
+  # ============================================
+  # CELERY VIDEO WORKER
+  # Handles: execute_media_job (FFmpeg rendering)
+  # These are CPU/IO-heavy (FFmpeg encode, probe, etc.)
+  # Isolated so overload doesn't affect other services
+  # ============================================
+  celery-video:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-celery-video
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q video -n video@%h
+    environment:
+      - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://smartspec-redis:6379/0
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - CDN_BASE_URL=${CDN_BASE_URL}
+    volumes:
+      - ./python-backend:/app
+      - media_storage:/app/media_storage
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping -d video@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # ============================================
+  # CELERY BEAT (Periodic Task Scheduler)
+  # Runs exactly once — schedules cleanup + retry tasks
+  # ============================================
+  celery-beat:
     build:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-celery-beat
     command: celery -A app.core.celery_app beat --loglevel=info
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
       - DATABASE_URL=${DATABASE_URL}
-    depends_on:
-      redis:
-        condition: service_healthy
     volumes:
       - ./python-backend:/app
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
     restart: unless-stopped
+    networks:
+      - smartspec-network
 
-  # Flower - Celery monitoring dashboard
+  # ============================================
+  # FLOWER (Celery Monitoring Dashboard)
+  # Monitors both media and video queues
+  # ============================================
   flower:
     build:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-flower
-    command: celery -A app.core.celery_app flower --port=5555
+    command: celery -A app.core.celery_app flower --port=5555 --broker=redis://smartspec-redis:6379/0
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
     ports:
       - "5555:5555"
     depends_on:
-      - redis
-      - celery_worker
+      - celery-media
+      - celery-video
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5555/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
     restart: unless-stopped
+    networks:
+      - smartspec-network
 
 volumes:
-  redis_data:
-    driver: local
   media_storage:
     driver: local
 
 networks:
-  default:
-    name: smartspec-network
+  smartspec-network:
+    external: true

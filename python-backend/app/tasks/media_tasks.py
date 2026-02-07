@@ -22,6 +22,30 @@ import asyncio
 logger = structlog.get_logger()
 
 
+async def _send_failure_notifications(task_id: str, user_id: str, media_type: str, error: str):
+    """Send in-app + email notifications on final task failure."""
+    async with AsyncSessionLocal() as db:
+        try:
+            from app.services.notification_service import notify_task_failed, notify_admin_task_alert
+
+            # Notify the user who owns the task
+            await notify_task_failed(
+                db=db, user_id=user_id, task_id=task_id,
+                media_type=media_type, error=error,
+            )
+
+            # Notify all admins
+            await notify_admin_task_alert(
+                db=db,
+                title=f"Media task failed after max retries",
+                message=f"User {user_id} — {media_type} task {task_id}: {error[:200]}",
+                data={"task_id": task_id, "user_id": user_id, "media_type": media_type},
+                send_email=True,
+            )
+        except Exception as notify_err:
+            logger.warning("failure_notification_error", task_id=task_id, error=str(notify_err))
+
+
 async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
     """
     Async implementation of image generation
@@ -100,6 +124,8 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60)  # Retry after 1 minute
 
+        # Max retries exhausted — notify user + admins
+        asyncio.run(_send_failure_notifications(task_id, user_id, "image", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
@@ -173,6 +199,8 @@ def generate_video_task(self, task_id: str, user_id: str, request_data: dict):
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=120)  # Retry after 2 minutes
 
+        # Max retries exhausted — notify user + admins
+        asyncio.run(_send_failure_notifications(task_id, user_id, "video", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
@@ -246,6 +274,8 @@ def generate_audio_task(self, task_id: str, user_id: str, request_data: dict):
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60)
 
+        # Max retries exhausted — notify user + admins
+        asyncio.run(_send_failure_notifications(task_id, user_id, "audio", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
@@ -253,6 +283,7 @@ async def _cleanup_expired_tasks_async():
     """
     Async implementation of cleanup expired tasks.
     Deletes tasks older than 12 days to manage storage.
+    Also prunes stale entries from Redis active-job sets.
     """
     async with AsyncSessionLocal() as db:
         try:
@@ -274,8 +305,41 @@ async def _cleanup_expired_tasks_async():
 
             await db.commit()
 
-            logger.info("cleanup_expired_tasks_completed", deleted_count=deleted_count)
-            return {"status": "success", "deleted_count": deleted_count}
+            # Prune stale Redis active-job set entries
+            stale_removed = 0
+            try:
+                from app.core.config import settings
+                import redis.asyncio as aioredis
+
+                redis_client = aioredis.from_url(
+                    settings.CELERY_BROKER_URL or "redis://localhost:6379/0"
+                )
+                cursor = 0
+                while True:
+                    cursor, keys = await redis_client.scan(
+                        cursor, match="media-jobs:user:*:active", count=100
+                    )
+                    for key in keys:
+                        members = await redis_client.smembers(key)
+                        for job_id_bytes in members:
+                            job_id = job_id_bytes.decode() if isinstance(job_id_bytes, bytes) else str(job_id_bytes)
+                            status_raw = await redis_client.get(f"media-job:{job_id}:status")
+                            if status_raw is None:
+                                # Job key expired (24h TTL) → stale entry
+                                await redis_client.srem(key, job_id_bytes)
+                                stale_removed += 1
+                    if cursor == 0:
+                        break
+                await redis_client.aclose()
+            except Exception as redis_err:
+                logger.warning("cleanup_redis_active_sets_failed", error=str(redis_err))
+
+            logger.info(
+                "cleanup_expired_tasks_completed",
+                deleted_count=deleted_count,
+                stale_redis_removed=stale_removed,
+            )
+            return {"status": "success", "deleted_count": deleted_count, "stale_redis_removed": stale_removed}
 
         except Exception as e:
             logger.error("cleanup_expired_tasks_failed", error=str(e))

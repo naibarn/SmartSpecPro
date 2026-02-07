@@ -77,8 +77,15 @@ export const usersRouter = router({
         .from(users)
         .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-      // Get users
-      let query = db.select().from(users);
+      // Get users — explicit columns to exclude password, twoFactorSecret, recoveryCodes
+      const USER_SAFE_FIELDS = {
+        id: users.id, openId: users.openId, name: users.name,
+        email: users.email, role: users.role, credits: users.credits,
+        plan: users.plan, loginMethod: users.loginMethod,
+        registeredDomain: users.registeredDomain, isDisabled: users.isDisabled,
+        createdAt: users.createdAt, lastSignedIn: users.lastSignedIn,
+      };
+      let query = db.select(USER_SAFE_FIELDS).from(users);
 
       if (conditions.length > 0) {
         query = query.where(and(...conditions)) as typeof query;
@@ -592,8 +599,15 @@ export const usersRouter = router({
         .from(users)
         .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-      // Get users
-      let query = db.select().from(users);
+      // Get users — explicit columns to exclude password, twoFactorSecret, recoveryCodes
+      const USER_SAFE_FIELDS = {
+        id: users.id, openId: users.openId, name: users.name,
+        email: users.email, role: users.role, credits: users.credits,
+        plan: users.plan, loginMethod: users.loginMethod,
+        registeredDomain: users.registeredDomain, isDisabled: users.isDisabled,
+        createdAt: users.createdAt, lastSignedIn: users.lastSignedIn,
+      };
+      let query = db.select(USER_SAFE_FIELDS).from(users);
 
       if (conditions.length > 0) {
         query = query.where(and(...conditions)) as typeof query;

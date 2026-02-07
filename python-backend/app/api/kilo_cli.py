@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import json
 import asyncio
+import secrets
 import yaml
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -65,7 +66,7 @@ def _require_proxy_token(req: Request):
     if not token:
         token = (req.headers.get("x-proxy-token") or "").strip()
 
-    if token != settings.SMARTSPEC_PROXY_TOKEN:
+    if not secrets.compare_digest(token, settings.SMARTSPEC_PROXY_TOKEN):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 

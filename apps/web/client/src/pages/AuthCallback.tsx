@@ -30,7 +30,7 @@ export default function AuthCallback() {
         }
 
         const provider = params?.provider;
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
         // Retrieve CSRF state token
         const savedState = sessionStorage.getItem('oauth_state');
@@ -53,10 +53,10 @@ export default function AuthCallback() {
         }
 
         const data = await response.json();
-        
-        // Store token
-        localStorage.setItem('auth_token', data.access_token);
-        
+
+        // Auth token is set via httpOnly cookie by the server response.
+        // Do NOT store in localStorage (XSS-vulnerable).
+
         setStatus('success');
         setMessage('Authentication successful! Redirecting...');
         

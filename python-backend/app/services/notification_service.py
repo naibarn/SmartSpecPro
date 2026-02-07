@@ -415,3 +415,55 @@ async def notify_refund_processed(db: AsyncSession, user_id: str, amount_usd: fl
         data={"amount_usd": amount_usd},
         send_email=True
     )
+
+
+async def notify_task_failed(
+    db: AsyncSession,
+    user_id: str,
+    task_id: str,
+    media_type: str,
+    error: str,
+):
+    """Notify the task owner that their media generation failed after all retries."""
+    service = NotificationService(db)
+    await service.create_notification(
+        user_id=user_id,
+        type="error",
+        title=f"{media_type.capitalize()} Generation Failed",
+        message=(
+            f"Your {media_type} generation task failed after multiple retries. "
+            f"Error: {error[:200]}"
+        ),
+        data={"task_id": task_id, "media_type": media_type, "error": error[:500]},
+        send_email=True,
+    )
+
+
+async def notify_admin_task_alert(
+    db: AsyncSession,
+    title: str,
+    message: str,
+    data: Optional[Dict[str, Any]] = None,
+    send_email: bool = True,
+):
+    """
+    Notify ALL admin users about a system-level task failure.
+    Creates an in-app notification for each admin and optionally sends email.
+    """
+    from app.models.user import User, Role
+
+    result = await db.execute(
+        select(User).where(User.role == Role.admin)
+    )
+    admins = result.scalars().all()
+
+    service = NotificationService(db)
+    for admin in admins:
+        await service.create_notification(
+            user_id=str(admin.id),
+            type="error",
+            title=title,
+            message=message,
+            data=data,
+            send_email=send_email,
+        )

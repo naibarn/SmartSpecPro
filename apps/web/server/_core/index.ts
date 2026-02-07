@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { fileURLToPath } from "url";
 import path from "path";
-import { createServer } from "http";
+import { createServer, request as httpRequest } from "http";
 import cookieParser from "cookie-parser";
 
 import { createContext } from "./context";
@@ -21,6 +21,8 @@ import { registerAdminTenantsRoutes } from "../routers/adminTenants";
 import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
 import { debugError } from "./logger";
+import { sdk } from "./sdk";
+import { signBearerToken } from "./tokens";
 import { getUploadsDir, useLocalStorage } from "../storage";
 import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initAuditLogger, auditLogger } from "../services/auditLogger";
@@ -105,6 +107,26 @@ app.use(auditMiddleware());
 // Multi-tenant middleware - identifies tenant from domain
 app.use(tenantMiddleware);
 
+// CSRF protection: verify Origin header on state-changing requests
+// Registered BEFORE route handlers so it protects both /trpc and /api/* REST endpoints
+const csrfCheck = (req: any, res: any, next: any) => {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+
+  const origin = req.headers.origin;
+  // Allow requests with no Origin header (same-origin, server-to-server, curl)
+  if (!origin) return next();
+
+  if (!isAllowedOrigin(origin)) {
+    res.status(403).json({ error: { message: "Forbidden: invalid origin" } });
+    return;
+  }
+
+  next();
+};
+
+app.use("/trpc", csrfCheck);
+app.use("/api", csrfCheck);
+
 // Serve uploaded files AFTER tenant middleware for access control
 if (useLocalStorage()) {
   const uploadsDir = getUploadsDir();
@@ -135,20 +157,73 @@ registerAdminTenantsRoutes(app);
 // Blog routes
 registerBlogRoutes(app);
 
-// CSRF protection: verify Origin header on tRPC mutation (POST) requests
-app.use("/trpc", (req, res, next) => {
-  if (req.method !== "POST") return next();
-
-  const origin = req.headers.origin;
-  // Allow requests with no Origin header (same-origin, server-to-server, curl)
-  if (!origin) return next();
-
-  if (!isAllowedOrigin(origin)) {
-    res.status(403).json({ error: { message: "Forbidden: invalid origin" } });
-    return;
+// Reverse proxy: forward unhandled /api/v1/ requests to Python backend.
+// Express routes registered above (e.g. /api/v1/llm/...) are matched first.
+// This catches remaining /api/v1/ paths (media, generation, etc.) so they work
+// even when requests bypass nginx and hit Express/Vite directly.
+// Auth: validates session cookie → generates short-lived JWT for Python.
+const PY_BACKEND = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+app.all("/api/v1/*", async (req, res) => {
+  const target = new URL(PY_BACKEND);
+  const headers: Record<string, string> = {};
+  for (const key of ["content-type", "accept"]) {
+    const val = req.headers[key];
+    if (typeof val === "string") headers[key] = val;
   }
 
-  next();
+  // If the request already has a Bearer token, forward it as-is.
+  // Otherwise, authenticate via session cookie and generate a JWT.
+  const existingAuth = req.headers.authorization;
+  if (existingAuth && typeof existingAuth === "string") {
+    headers["authorization"] = existingAuth;
+  } else {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      const token = signBearerToken({
+        sub: String(user.id),
+        type: "access",
+        scopes: ["media:generate"],
+      }, "15m");
+      headers["authorization"] = `Bearer ${token}`;
+    } catch {
+      // No valid session — forward without auth (Python will return 401)
+    }
+  }
+
+  const proxyReq = httpRequest(
+    {
+      hostname: target.hostname,
+      port: target.port,
+      path: req.originalUrl,
+      method: req.method,
+      headers,
+    },
+    (proxyRes) => {
+      const resHeaders: Record<string, string | string[]> = {};
+      for (const [k, v] of Object.entries(proxyRes.headers)) {
+        if (v && !["transfer-encoding", "connection"].includes(k)) {
+          resHeaders[k] = v;
+        }
+      }
+      res.writeHead(proxyRes.statusCode || 502, resHeaders);
+      proxyRes.pipe(res, { end: true });
+    },
+  );
+
+  proxyReq.on("error", () => {
+    if (!res.headersSent) {
+      res.status(502).json({ error: "Python backend unavailable" });
+    }
+  });
+
+  // Forward body for POST/PUT/PATCH (already parsed by express.json)
+  if (req.body && ["POST", "PUT", "PATCH"].includes(req.method)) {
+    const body = JSON.stringify(req.body);
+    proxyReq.setHeader("content-length", Buffer.byteLength(body).toString());
+    proxyReq.write(body);
+  }
+
+  proxyReq.end();
 });
 
 app.use(

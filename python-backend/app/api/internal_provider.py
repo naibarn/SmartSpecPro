@@ -24,12 +24,11 @@ async def verify_cli_token(x_proxy_token: Optional[str] = Header(None)):
     if not x_proxy_token:
         raise HTTPException(status_code=401, detail="Missing proxy token")
 
-    # In development, allow dev token
-    if settings.DEBUG and secrets.compare_digest(x_proxy_token, "dev-token-smartspec-2026"):
-        return True
+    proxy_token = settings.SMARTSPEC_PROXY_TOKEN
+    if not proxy_token:
+        raise HTTPException(status_code=500, detail="SMARTSPEC_PROXY_TOKEN not configured")
 
-    # TODO: Add proper token validation
-    if not secrets.compare_digest(x_proxy_token, settings.PROXY_TOKEN):
+    if not secrets.compare_digest(x_proxy_token, proxy_token):
         raise HTTPException(status_code=401, detail="Invalid proxy token")
 
     return True

@@ -3,8 +3,9 @@
  * Handles image, video, and audio generation via Python backend
  */
 
+import crypto from "crypto";
 import { z } from "zod";
-import { router, protectedProcedure } from "../_core/trpc";
+import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import {
   mediaGenerationService,
@@ -30,7 +31,7 @@ function createMediaToken(userId: number): string {
     sub: String(userId),
     type: "access", // Required by Python backend for token validation
     scopes: ["media:generate"],
-    jti: `media_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    jti: `media_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
   }, "15m"); // Short-lived token for single request
 }
 
@@ -666,6 +667,53 @@ export const mediaRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Failed to list tasks",
+        });
+      }
+    }),
+
+  // List ALL tasks (admin only)
+  listAllTasks: adminProcedure
+    .input(
+      z.object({
+        mediaType: z.enum(["image", "video", "audio"]).optional(),
+        status: z.enum(["pending", "processing", "completed", "failed", "cancelled"]).optional(),
+        limit: z.number().min(1).max(200).default(50),
+        offset: z.number().min(0).default(0),
+      }).optional()
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        const userToken = getUserToken(ctx);
+        const PYTHON_BACKEND_URL =
+          process.env.PYTHON_BACKEND_URL ||
+          process.env.BACKEND_URL ||
+          "http://localhost:8000";
+
+        const params = new URLSearchParams();
+        if (input?.mediaType) params.append("media_type", input.mediaType);
+        if (input?.status) params.append("status_filter", input.status);
+        if (input?.limit) params.append("limit", input.limit.toString());
+        if (input?.offset) params.append("offset", input.offset.toString());
+
+        const url = `${PYTHON_BACKEND_URL}/api/v1/media/tasks/admin${params.toString() ? `?${params}` : ""}`;
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(error.detail || `Admin list tasks failed: ${response.status}`);
+        }
+
+        return await response.json();
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to list all tasks",
         });
       }
     }),

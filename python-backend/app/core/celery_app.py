@@ -29,6 +29,18 @@ celery_app.conf.update(
     worker_max_tasks_per_child=100,
     task_acks_late=True,
     task_reject_on_worker_lost=True,
+    # Queue routing: isolate FFmpeg video tasks from API-based media tasks
+    task_routes={
+        # FFmpeg video processing -> video queue (heavy CPU/IO)
+        "app.tasks.media_job_worker.execute_media_job": {"queue": "video"},
+        # API-based media generation -> media queue (network-bound)
+        "app.tasks.media_tasks.generate_image_task": {"queue": "media"},
+        "app.tasks.media_tasks.generate_video_task": {"queue": "media"},
+        "app.tasks.media_tasks.generate_audio_task": {"queue": "media"},
+        # Periodic maintenance -> media queue (lightweight)
+        "app.tasks.media_tasks.cleanup_expired_tasks": {"queue": "media"},
+        "app.tasks.media_tasks.retry_failed_tasks": {"queue": "media"},
+    },
 )
 
 # Periodic tasks

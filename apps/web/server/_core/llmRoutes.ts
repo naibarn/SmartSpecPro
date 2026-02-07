@@ -692,8 +692,10 @@ async function checkCredits(
   auth: AuthResult & { ok: true },
   res: Response
 ): Promise<{ ok: true; userId: number } | { ok: false }> {
-  // Skip credit check for static tokens if configured
+  // Skip credit check for internal server-to-server static tokens only.
+  // Logs every bypass for audit trail — disable in production if not needed.
   if (auth.mode === "bearer" && auth.sub === "static" && SKIP_CREDIT_CHECK_FOR_STATIC) {
+    debugLog("LLM", "[CreditBypass] Static token credit skip — internal service request");
     return { ok: true, userId: 0 }; // userId 0 means no credit tracking
   }
 

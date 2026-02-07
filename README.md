@@ -12,7 +12,7 @@
 
 - **AI-Driven Specifications**: Leverage advanced LLMs to generate and manage technical specifications.
 - **Full Stack Integration**: Seamless communication between Desktop (Tauri), Web (React), and Backend (FastAPI).
-- **Multi-Database Support**: Integrated PostgreSQL for core data and MySQL for web services.
+- **Database**: PostgreSQL for all services with Redis caching.
 - **Vector Store Capabilities**: Built-in ChromaDB support for RAG (Retrieval-Augmented Generation) features.
 - **Admin Management Suite**: Comprehensive scripts for deployment, monitoring, and automated backups.
 - **High Test Coverage**: Robust testing suite ensuring system stability and reliability.
@@ -95,7 +95,7 @@ Current Test Coverage: **~84%** (Detailed report in [TEST_COVERAGE_REPORT.md](do
 
 ## 🛡️ Security & Backups
 
-- **Automated Backups**: Daily backups for PostgreSQL and MySQL.
+- **Automated Backups**: Daily backups for PostgreSQL.
 - **Restore Verification**: Weekly automated testing of backup integrity.
 - **Monitoring**: Real-time health checks and Discord/Slack alerts via `alert-monitor.sh`.
 

@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 interface ApiResponse<T> {
   data: T | null;
@@ -33,20 +33,15 @@ export function useApi<T>() {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const token = localStorage.getItem('auth_token');
-      
       const requestHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
         ...headers,
       };
 
-      if (requireAuth && token) {
-        requestHeaders['Authorization'] = `Bearer ${token}`;
-      }
-
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method,
         headers: requestHeaders,
+        credentials: requireAuth ? 'include' : 'same-origin',
         body: body ? JSON.stringify(body) : undefined,
       });
 

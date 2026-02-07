@@ -205,6 +205,51 @@ class MediaTaskService:
         return result.scalar() or 0
 
     @staticmethod
+    async def list_all_tasks(
+        db: AsyncSession,
+        media_type: Optional[MediaType] = None,
+        status: Optional[TaskStatus] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[MediaTask]:
+        """List ALL tasks across all users (admin only)"""
+        query = select(MediaTask)
+
+        if media_type:
+            media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            query = query.where(MediaTask.media_type == media_type_value)
+        if status:
+            status_value = status.value if isinstance(status, TaskStatus) else str(status)
+            query = query.where(MediaTask.status == status_value)
+
+        query = query.order_by(MediaTask.created_at.desc())
+        query = query.limit(limit).offset(offset)
+
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def count_all_tasks(
+        db: AsyncSession,
+        media_type: Optional[MediaType] = None,
+        status: Optional[TaskStatus] = None,
+    ) -> int:
+        """Count ALL tasks across all users (admin only)"""
+        from sqlalchemy import func
+
+        query = select(func.count(MediaTask.id))
+
+        if media_type:
+            media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            query = query.where(MediaTask.media_type == media_type_value)
+        if status:
+            status_value = status.value if isinstance(status, TaskStatus) else str(status)
+            query = query.where(MediaTask.status == status_value)
+
+        result = await db.execute(query)
+        return result.scalar() or 0
+
+    @staticmethod
     async def get_task_by_external_id(
         db: AsyncSession,
         external_task_id: str

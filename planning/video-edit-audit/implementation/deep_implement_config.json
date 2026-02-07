@@ -1,0 +1,30 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/planning/video-edit-audit/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/planning/video-edit-audit/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-job-spec-types",
+    "section-02-media-job-client",
+    "section-03-desktop-engine-adapter",
+    "section-04-web-engine-adapter",
+    "section-05-frontend-consolidation",
+    "section-06-web-ui",
+    "section-07-ffmpeg-bundling",
+    "section-08-validation-security",
+    "section-09-testing"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-06T08:49:20.724057+00:00"
+}

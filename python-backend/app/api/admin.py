@@ -564,7 +564,9 @@ async def admin_list_tenants(
             params["search"] = f"%{search}%"
 
         query += " ORDER BY \"createdAt\" DESC"
-        query += f" LIMIT {limit} OFFSET {skip}"
+        query += " LIMIT :limit OFFSET :skip"
+        params["limit"] = limit
+        params["skip"] = skip
 
         result = await db.execute(text(query), params)
         rows = result.fetchall()

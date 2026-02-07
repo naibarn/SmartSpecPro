@@ -146,7 +146,7 @@ export default function Signup() {
 
   const handleSocialSignup = async (provider: string) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_BASE_URL}/api/oauth/${provider.toLowerCase()}/authorize`);
       if (!response.ok) {
         const err = await response.json();

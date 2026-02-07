@@ -38,6 +38,7 @@ export interface Track {
   clips: Clip[];
   muted: boolean;
   locked: boolean;
+  visible: boolean;          // Whether track is visible in preview/render
   height?: number;           // UI track height
   zIndex?: number;           // For overlay tracks stacking order
 }
@@ -241,7 +242,7 @@ export interface RenderJob {
 
 export interface MediaLibraryAsset {
   id: string;
-  type: 'video' | 'audio';
+  type: 'video' | 'audio' | 'image';
   title: string;
   thumbnailUrl: string;
   duration: number;
@@ -283,6 +284,7 @@ export function createEmptyProject(name: string = 'Untitled Project'): VideoEdit
           clips: [],
           muted: false,
           locked: false,
+          visible: true,
           height: 50,
           zIndex: 20
         },
@@ -293,6 +295,7 @@ export function createEmptyProject(name: string = 'Untitled Project'): VideoEdit
           clips: [],
           muted: false,
           locked: false,
+          visible: true,
           height: 60,
           zIndex: 10
         },
@@ -303,6 +306,7 @@ export function createEmptyProject(name: string = 'Untitled Project'): VideoEdit
           clips: [],
           muted: false,
           locked: false,
+          visible: true,
           height: 80
         },
         {
@@ -312,6 +316,7 @@ export function createEmptyProject(name: string = 'Untitled Project'): VideoEdit
           clips: [],
           muted: false,
           locked: false,
+          visible: true,
           height: 60
         }
       ]
@@ -415,8 +420,9 @@ export function addClipToTrack(
   asset: Asset,
   startTime: number = 0
 ): Clip {
-  // Fallback to 10s if duration is 0 or unknown (e.g. browser probe failed)
-  const clipDuration = asset.duration > 0 ? asset.duration : 10;
+  // Images get 5s default; video/audio fallback to 10s if duration unknown
+  const isImageAsset = asset.type === 'image';
+  const clipDuration = isImageAsset ? 5 : (asset.duration > 0 ? asset.duration : 10);
   const newClip: Clip = {
     id: generateId('clip'),
     assetId: asset.id,
@@ -443,8 +449,14 @@ export function addClipToTrack(
  */
 export function findTrackByType(
   timeline: Timeline,
-  type: 'video' | 'audio'
+  type: 'video' | 'audio' | 'image'
 ): Track | undefined {
+  if (type === 'image') {
+    // Images go to video track first, then overlay
+    return timeline.tracks.find(track =>
+      (track.type === 'video' || track.type === 'overlay') && !track.muted && !track.locked
+    );
+  }
   return timeline.tracks.find(track => track.type === type && !track.muted && !track.locked);
 }
 

@@ -23,7 +23,6 @@ print_usage() {
     echo "  backend        - Python FastAPI Backend"
     echo "  web            - SmartSpec Web Application"
     echo "  db             - PostgreSQL Database"
-    echo "  mysql          - MySQL Database"
     echo "  redis          - Redis Cache"
     echo "  chroma         - ChromaDB Vector Store"
     echo "  control        - Control Plane"
@@ -66,7 +65,6 @@ case "$SERVICE" in
     backend) TARGET="python-backend" ;;
     web) TARGET="smartspec-web" ;;
     db|postgres) TARGET="postgres" ;;
-    mysql) TARGET="mysql" ;;
     redis) TARGET="redis" ;;
     chroma|chromadb) TARGET="chromadb" ;;
     control|cp) TARGET="control-plane" ;;

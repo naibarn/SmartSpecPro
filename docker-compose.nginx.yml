@@ -27,7 +27,7 @@ services:
     container_name: smartspec-nginx
     ports:
       - "80:80"
-      # - "443:443"  # Uncomment for HTTPS
+      - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
@@ -174,13 +174,13 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=mysql://${MYSQL_USER:-smartspec}:${MYSQL_PASSWORD:-smartspec123}@mysql:3306/${MYSQL_DATABASE:-smartspecweb}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspecpro}
     expose:
       - "3001"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]

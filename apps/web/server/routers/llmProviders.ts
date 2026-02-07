@@ -500,6 +500,7 @@ export const llmProvidersRouter = router({
         const response = await fetch(testUrl, {
           method: "GET",
           headers,
+          redirect: "manual",  // Don't follow redirects to internal IPs
           signal: AbortSignal.timeout(10000),
         });
 

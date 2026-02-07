@@ -201,7 +201,7 @@ export default function Dashboard() {
                     <button
                       key={item.id}
                       onClick={() => {
-                        if (item.external) { window.open(item.path, '_blank'); }
+                        if (item.external) { window.open(item.path, '_blank', 'noopener,noreferrer'); }
                         else { setLocation(item.path); }
                         setSidebarOpen(false);
                       }}
@@ -290,7 +290,7 @@ export default function Dashboard() {
                   key={item.id}
                   onClick={() => {
                     if (item.external) {
-                      window.open(item.path, '_blank');
+                      window.open(item.path, '_blank', 'noopener,noreferrer');
                     } else {
                       setLocation(item.path);
                     }

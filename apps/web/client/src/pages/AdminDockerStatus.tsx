@@ -79,7 +79,7 @@ export default function AdminDockerStatus() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open('/docker/', '_blank')}
+              onClick={() => window.open('/docker/', '_blank', 'noopener,noreferrer')}
             >
               <ExternalLink className="w-4 h-4 mr-2" />
               Open in New Tab

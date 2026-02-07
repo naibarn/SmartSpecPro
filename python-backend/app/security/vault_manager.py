@@ -161,9 +161,10 @@ class SecretsManager:
             vault_token: Vault authentication token
         """
         self._encryption_key = encryption_key or os.environ.get(
-            "SMARTSPEC_ENCRYPTION_KEY",
-            "default-dev-key-change-in-production"
+            "SMARTSPEC_ENCRYPTION_KEY", ""
         )
+        if not self._encryption_key:
+            raise RuntimeError("SMARTSPEC_ENCRYPTION_KEY is required for secrets management")
         self._vault_url = vault_url
         self._vault_token = vault_token
         

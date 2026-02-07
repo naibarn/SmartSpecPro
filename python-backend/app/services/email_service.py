@@ -545,6 +545,100 @@ class EmailService:
         )
 
 
+    async def send_task_failure_alert(
+        self,
+        to_email: str,
+        user_name: str,
+        task_type: str,
+        task_id: str,
+        error_msg: str,
+    ) -> bool:
+        """
+        Send task failure alert email to admin.
+
+        Args:
+            to_email: Admin email
+            user_name: Name of the user whose task failed
+            task_type: Media type (image/video/audio)
+            task_id: Task ID
+            error_msg: Error message
+
+        Returns:
+            True if sent successfully
+        """
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #DC2626; color: white; padding: 20px; text-align: center; }}
+                .content {{ background-color: #f9fafb; padding: 30px; }}
+                .details {{ background-color: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #DC2626; }}
+                .button {{
+                    display: inline-block;
+                    padding: 12px 24px;
+                    background-color: #4F46E5;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    margin: 20px 0;
+                }}
+                .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Media Task Failed</h1>
+                </div>
+                <div class="content">
+                    <p>A media generation task has failed after exhausting all retries.</p>
+                    <div class="details">
+                        <p><strong>Task Type:</strong> {task_type}</p>
+                        <p><strong>Task ID:</strong> {task_id}</p>
+                        <p><strong>User:</strong> {user_name}</p>
+                        <p><strong>Error:</strong> {error_msg[:300]}</p>
+                        <p><strong>Time:</strong> {datetime.now().strftime('%B %d, %Y at %I:%M %p UTC')}</p>
+                    </div>
+                    <p style="text-align: center;">
+                        <a href="{settings.FRONTEND_URL}/tasks" class="button">View Task Queue</a>
+                    </p>
+                </div>
+                <div class="footer">
+                    <p>&copy; {datetime.now().year} SmartSpec. All rights reserved.</p>
+                    <p>This is an automated admin alert.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_content = f"""
+        Media Task Failed
+
+        A media generation task has failed after exhausting all retries.
+
+        Task Type: {task_type}
+        Task ID: {task_id}
+        User: {user_name}
+        Error: {error_msg[:300]}
+        Time: {datetime.now().strftime('%B %d, %Y at %I:%M %p UTC')}
+
+        View Task Queue: {settings.FRONTEND_URL}/tasks
+
+        (c) {datetime.now().year} SmartSpec. All rights reserved.
+        """
+
+        return await self.send_email(
+            to_email=to_email,
+            subject=f"[ALERT] Media Task Failed - {task_type} ({task_id[:8]})",
+            html_content=html_content,
+            text_content=text_content,
+        )
+
+
 # Singleton instance
 _email_service = None
 

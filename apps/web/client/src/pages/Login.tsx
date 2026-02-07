@@ -66,16 +66,19 @@ export default function Login() {
     }
   }, [resendCountdown]);
 
-  // Get returnUrl from query params
+  // Get returnUrl from query params (with strict domain allowlist)
   const getReturnUrl = () => {
     const params = new URLSearchParams(window.location.search);
     const returnUrl = params.get('returnUrl');
-    // Only allow returnUrl from same domain or subdomains
     if (returnUrl) {
       try {
         const url = new URL(returnUrl);
         const currentHost = window.location.hostname;
-        if (url.hostname === currentHost || url.hostname.endsWith('.smartspec.pro') || url.hostname.endsWith('.smartspec.local')) {
+        const ALLOWED_HOSTS = [currentHost, 'smartspec.pro', 'smartaihub.app', 'smartspec.local'];
+        const isAllowed = ALLOWED_HOSTS.some(h =>
+          url.hostname === h || url.hostname.endsWith('.' + h)
+        );
+        if (isAllowed) {
           return returnUrl;
         }
       } catch {
@@ -227,7 +230,7 @@ export default function Login() {
 
   const handleSocialLogin = async (provider: string) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_BASE_URL}/api/oauth/${provider.toLowerCase()}/authorize`);
       if (!response.ok) {
         const err = await response.json();

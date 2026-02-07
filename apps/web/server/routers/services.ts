@@ -125,7 +125,7 @@ const requireAdmin = async (req: any, res: any, next: any) => {
     }
 
     // Check if user is admin
-    const [dbUser] = await db.select().from(users).where(eq(users.id, user.id));
+    const [dbUser] = await db.select({ id: users.id, role: users.role, name: users.name, email: users.email }).from(users).where(eq(users.id, user.id));
     if (!dbUser || dbUser.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
@@ -664,6 +664,59 @@ export function registerServicesRoutes(app: Express) {
     } catch (error) {
       console.error('Error fetching services status:', error);
       res.status(500).json({ error: 'Failed to fetch services status' });
+    }
+  });
+
+  // List all Docker containers (dynamic discovery)
+  app.get('/api/admin/services/docker/containers', requireAdmin, async (req, res) => {
+    if (!docker) {
+      return res.json({ containers: [], summary: { total: 0, running: 0, stopped: 0, images: 0 } });
+    }
+
+    try {
+      const rawContainers = await docker.listContainers({ all: true });
+
+      const containers = rawContainers.map((c: any) => {
+        // Format port mappings
+        const ports = (c.Ports || [])
+          .filter((p: any) => p.PublicPort)
+          .map((p: any) => `${p.IP || '0.0.0.0'}:${p.PublicPort}->${p.PrivatePort}/${p.Type}`)
+          .concat(
+            (c.Ports || [])
+              .filter((p: any) => !p.PublicPort && p.PrivatePort)
+              .map((p: any) => `${p.PrivatePort}/${p.Type}`)
+          );
+
+        // Extract network names
+        const networks = Object.keys(c.NetworkSettings?.Networks || {});
+
+        return {
+          id: (c.Id || '').substring(0, 12),
+          name: (c.Names?.[0] || '').replace(/^\//, ''),
+          image: c.Image || '',
+          state: c.State || 'unknown',
+          status: c.Status || '',
+          ports,
+          created: c.Created ? new Date(c.Created * 1000).toISOString() : '',
+          networks,
+        };
+      });
+
+      const running = containers.filter((c: any) => c.state === 'running').length;
+      const uniqueImages = new Set(containers.map((c: any) => c.image)).size;
+
+      res.json({
+        containers,
+        summary: {
+          total: containers.length,
+          running,
+          stopped: containers.length - running,
+          images: uniqueImages,
+        },
+      });
+    } catch (error) {
+      console.error('Error listing Docker containers:', error);
+      res.status(500).json({ error: 'Failed to list Docker containers' });
     }
   });
 

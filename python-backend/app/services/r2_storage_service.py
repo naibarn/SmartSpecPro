@@ -23,30 +23,20 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 # Encryption settings (must match Node.js side)
-ENCRYPTION_KEY = os.getenv("STORAGE_ENCRYPTION_KEY") or os.getenv("LLM_ENCRYPTION_KEY") or "smartspec-storage-key-32chars!"
+ENCRYPTION_KEY = os.getenv("STORAGE_ENCRYPTION_KEY") or os.getenv("LLM_ENCRYPTION_KEY") or ""
+if not ENCRYPTION_KEY:
+    logger.warning("STORAGE_ENCRYPTION_KEY / LLM_ENCRYPTION_KEY not set — encrypted storage settings will fail")
 
 
 def decrypt_aes256(encrypted_text: str) -> str:
-    """Decrypt text encrypted by Node.js encrypt function (AES-256-CBC)"""
+    """Decrypt text encrypted by Node.js encrypt function (AES-256-GCM).
+
+    Delegates to smartspecweb_crypto.decrypt_smartspecweb() which handles
+    the current GCM format (iv:authTag:ciphertext) using LLM_ENCRYPTION_KEY.
+    """
     try:
-        parts = encrypted_text.split(":")
-        if len(parts) != 2:
-            return ""
-
-        iv = bytes.fromhex(parts[0])
-        encrypted_data = bytes.fromhex(parts[1])
-
-        # Pad key to 32 bytes
-        key = ENCRYPTION_KEY.ljust(32)[:32].encode()
-
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-        decryptor = cipher.decryptor()
-
-        decrypted = decryptor.update(encrypted_data) + decryptor.finalize()
-
-        # Remove PKCS7 padding
-        padding_length = decrypted[-1]
-        return decrypted[:-padding_length].decode('utf-8')
+        from app.core.smartspecweb_crypto import decrypt_smartspecweb
+        return decrypt_smartspecweb(encrypted_text)
     except Exception as e:
         logger.error("decrypt_error", error=str(e))
         return ""

@@ -23,7 +23,9 @@ import TextClipEditor from './TextClipEditor';
 import { projectManager } from '../../services/projectManager';
 import { videoEditorRenderService, videoEditorMediaLibrary } from '../../services/videoEditorService';
 import ToastContainer from './Toast';
+import { useLocation } from 'wouter';
 import { sanitizeProjectName } from '@smartspec/shared';
+import { trpc } from '../../lib/trpc';
 import {
   type VideoEditorProject,
   type MediaLibraryAsset,
@@ -43,6 +45,8 @@ import {
 } from '../../types/videoEditor';
 
 export const VideoEditorPhase3: React.FC = () => {
+  const [, setLocation] = useLocation();
+
   // Project state
   const [project, setProject] = useState<VideoEditorProject>(() => createEmptyProject());
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -68,6 +72,19 @@ export const VideoEditorPhase3: React.FC = () => {
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence' | 'text'>('library');
 
+  // DB project persistence
+  const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
+  const [showProjectList, setShowProjectList] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const trpcUtils = trpc.useUtils();
+  const projectListQuery = trpc.videoEditorProjects.list.useQuery(
+    { limit: 50, offset: 0 },
+    { enabled: showProjectList }
+  );
+  const saveMutation = trpc.videoEditorProjects.save.useMutation();
+  const autoSaveMutation = trpc.videoEditorProjects.autoSave.useMutation();
+  const deleteMutation = trpc.videoEditorProjects.delete.useMutation();
+
   // Save project to sessionStorage for error recovery
   useEffect(() => {
     sessionStorage.setItem('currentProject', JSON.stringify(project));
@@ -80,10 +97,11 @@ export const VideoEditorPhase3: React.FC = () => {
   const addToHistory = useCallback((newProject: VideoEditorProject) => {
     setHistory(prev => {
       const trimmed = prev.slice(0, historyIndex + 1);
-      const updated = [...trimmed, JSON.parse(JSON.stringify(newProject))];
-      return updated.slice(-50);
+      const updated = [...trimmed, JSON.parse(JSON.stringify(newProject))].slice(-50);
+      // Adjust historyIndex to match actual new length
+      setHistoryIndex(updated.length - 1);
+      return updated;
     });
-    setHistoryIndex(prev => prev + 1);
     setIsDirty(true);
   }, [historyIndex]);
 
@@ -113,12 +131,72 @@ export const VideoEditorPhase3: React.FC = () => {
   // ========================================
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
-      await projectManager.saveProject(project);
+      const clipCount = project.timeline.tracks.reduce((sum, t) => sum + t.clips.length, 0);
+      const result = await saveMutation.mutateAsync({
+        id: currentProjectId ?? undefined,
+        name: project.name,
+        projectData: project,
+        duration: project.settings.duration,
+        resolution: `${project.settings.width}x${project.settings.height}`,
+        trackCount: project.timeline.tracks.length,
+        clipCount,
+      });
+      setCurrentProjectId(result.id);
       setIsDirty(false);
-      alert('Project saved successfully!');
     } catch (error) {
       alert(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Auto-save to DB every 30s when dirty and project is saved
+  useEffect(() => {
+    if (!currentProjectId || !isDirty) return;
+    const timer = setTimeout(() => {
+      const clipCount = project.timeline.tracks.reduce((sum, t) => sum + t.clips.length, 0);
+      autoSaveMutation.mutate({
+        id: currentProjectId,
+        projectData: project,
+        clipCount,
+        duration: project.settings.duration,
+      });
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, [currentProjectId, isDirty, project]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOpenProject = async (projectId: number) => {
+    try {
+      const loaded = await trpcUtils.videoEditorProjects.get.fetch({ id: projectId });
+      if (!loaded) {
+        alert('Project not found');
+        return;
+      }
+      setProject(loaded.projectData as VideoEditorProject);
+      setCurrentProjectId(loaded.id);
+      setHistory([loaded.projectData as VideoEditorProject]);
+      setHistoryIndex(0);
+      setIsDirty(false);
+      setCurrentTime(0);
+      setSelectedClipId(null);
+      setShowProjectList(false);
+    } catch (error) {
+      alert(`Failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: number) => {
+    if (!confirm('Delete this project permanently?')) return;
+    try {
+      await deleteMutation.mutateAsync({ id: projectId });
+      projectListQuery.refetch();
+      if (currentProjectId === projectId) {
+        setCurrentProjectId(null);
+      }
+    } catch (error) {
+      alert(`Failed to delete: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -132,6 +210,11 @@ export const VideoEditorPhase3: React.FC = () => {
           cancelText: 'Cancel',
           type: 'warning',
           showUndoHint: false
+        });
+        setConfirmCallback(() => () => {
+          setConfirmDialog(null);
+          setConfirmCallback(null);
+          loadProject();
         });
         return;
       }
@@ -151,12 +234,33 @@ export const VideoEditorPhase3: React.FC = () => {
       setIsDirty(false);
       setCurrentTime(0);
       setSelectedClipId(null);
+      setCurrentProjectId(null);
       setConfirmDialog(null);
     } catch (error) {
       if (error instanceof Error && error.message === 'Load cancelled') return;
       console.error('Load failed:', error);
       alert(`Failed to load project: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  };
+
+  const handleBackToDashboard = () => {
+    if (isDirty) {
+      setConfirmDialog({
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes. Leave without saving?',
+        confirmText: 'Leave',
+        cancelText: 'Stay',
+        type: 'warning',
+        showUndoHint: false
+      });
+      setConfirmCallback(() => () => {
+        setConfirmDialog(null);
+        setConfirmCallback(null);
+        setLocation('/dashboard');
+      });
+      return;
+    }
+    setLocation('/dashboard');
   };
 
   const handleExportClick = () => {
@@ -177,14 +281,22 @@ export const VideoEditorPhase3: React.FC = () => {
       // Update project export settings
       project.export = settings;
 
+      // Create a copy excluding clips from hidden tracks for render
+      const renderProject = JSON.parse(JSON.stringify(project));
+      renderProject.timeline.tracks = renderProject.timeline.tracks.map((track: any) => ({
+        ...track,
+        clips: track.visible === false ? [] : track.clips,
+      }));
+
       // Convert project to JSON for render
-      const projectJson = JSON.stringify(project);
+      const projectJson = JSON.stringify(renderProject);
 
       // Start render job
       const jobId = await videoEditorRenderService.startRender(projectJson, outputPath);
 
       setCurrentRenderJob(jobId);
       setShowRenderProgress(true);
+      showToast('Render job submitted. Track progress here or in Task Queue.', 'info', 4000);
     } catch (error) {
       alert(`Failed to start export: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -193,7 +305,13 @@ export const VideoEditorPhase3: React.FC = () => {
   const handleRenderComplete = (outputPath: string) => {
     setShowRenderProgress(false);
     setCurrentRenderJob(null);
-    alert(`✅ Export complete!\n\nSaved to: ${outputPath}`);
+    showToast('Export complete! Video is ready to download.', 'success', 5000);
+
+    // Trigger media library refresh
+    if (sidebarView === 'library') {
+      setSidebarView('history');
+      setTimeout(() => setSidebarView('library'), 100);
+    }
   };
 
   const handleRenderCancel = () => {
@@ -236,9 +354,10 @@ export const VideoEditorPhase3: React.FC = () => {
       const targetTrack = project.timeline.tracks.find(t => t.id === trackId);
       if (!targetTrack) return;
 
-      // Type restrictions: video assets -> video/overlay tracks, audio -> audio track
+      // Type restrictions: video/image assets -> video/overlay tracks, audio -> audio track
       if (asset.type === 'video' && targetTrack.type === 'audio') return;
       if (asset.type === 'video' && targetTrack.type === 'text') return;
+      if (asset.type === 'image' && (targetTrack.type === 'audio' || targetTrack.type === 'text')) return;
       if (asset.type === 'audio' && (targetTrack.type === 'video' || targetTrack.type === 'overlay' || targetTrack.type === 'text')) return;
 
       const localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
@@ -842,6 +961,21 @@ export const VideoEditorPhase3: React.FC = () => {
     });
   }, [addToHistory]);
 
+  const handleTrackToggleVisible = useCallback((trackId: string) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      const track = newProject.timeline.tracks.find((t: any) => t.id === trackId);
+      if (track) {
+        track.visible = track.visible === false ? true : false;
+      }
+
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
   // ========================================
   // Aspect Ratio
   // ========================================
@@ -874,10 +1008,10 @@ export const VideoEditorPhase3: React.FC = () => {
   // ========================================
 
   const activeClip = useMemo((): ActiveClipInfo | null => {
-    // Search all video-capable tracks for a clip at currentTime
+    // Search all visible video-capable tracks for a clip at currentTime
     // Priority: video > overlay (V1 first, then V2)
     const videoTracks = project.timeline.tracks.filter(
-      t => t.type === 'video' || t.type === 'overlay'
+      t => (t.type === 'video' || t.type === 'overlay') && t.visible !== false
     );
 
     for (const track of videoTracks) {
@@ -890,6 +1024,7 @@ export const VideoEditorPhase3: React.FC = () => {
             clipStartTime: clip.startTime,
             trimIn: clip.trimIn,
             clipDuration: clip.duration,
+            isImage: asset.type === 'image',
           };
         }
       }
@@ -914,7 +1049,7 @@ export const VideoEditorPhase3: React.FC = () => {
   // (video clips drive time via PreviewPlayer's onTimeUpdate)
   useEffect(() => {
     if (!isPlaying) return;
-    if (activeClip) return; // Video element is driving time
+    if (activeClip && !activeClip.isImage) return; // Video element is driving time (images use timer)
 
     const interval = setInterval(() => {
       setCurrentTime(prev => {
@@ -944,6 +1079,7 @@ export const VideoEditorPhase3: React.FC = () => {
       setIsDirty(false);
       setCurrentTime(0);
       setSelectedClipId(null);
+      setCurrentProjectId(null);
       setConfirmDialog(null);
       setConfirmCallback(null);
     };
@@ -1416,10 +1552,21 @@ export const VideoEditorPhase3: React.FC = () => {
 
         {/* Header */}
         <div className="editor-header">
+          <button className="header-button" onClick={handleBackToDashboard} title="Back to Dashboard">
+            &#8592; Dashboard
+          </button>
           <div className="project-title">&#127916; {sanitizeProjectName(project.name)}</div>
+          {currentProjectId && <span style={{ fontSize: '10px', color: '#666', marginLeft: '4px' }}>#{currentProjectId}</span>}
+          {isDirty && <span style={{ fontSize: '10px', color: '#ffa500', marginLeft: '4px' }}>unsaved</span>}
           <div className="header-spacer" />
-          <button className="header-button" onClick={handleLoad}>
-            &#128194; Open
+          <button className="header-button" onClick={handleSave} disabled={isSaving} title="Save to cloud">
+            {isSaving ? '...' : '\uD83D\uDCBE'} Save
+          </button>
+          <button className="header-button" onClick={() => { setShowProjectList(true); projectListQuery.refetch(); }} title="Open saved project">
+            &#128194; Projects
+          </button>
+          <button className="header-button" onClick={handleLoad} title="Open from file">
+            &#128196; File
           </button>
         </div>
 
@@ -1461,6 +1608,38 @@ export const VideoEditorPhase3: React.FC = () => {
               onAddText={() => setSidebarView('text')}
             />
 
+            {/* Active render banner */}
+            {currentRenderJob && !showRenderProgress && (
+              <div
+                style={{
+                  padding: '6px 16px',
+                  background: 'linear-gradient(90deg, #0078d420, #00b29420)',
+                  borderBottom: '1px solid #0078d4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '12px',
+                  color: '#e0e0e0',
+                }}
+              >
+                <span>Render in progress...</span>
+                <span style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setShowRenderProgress(true)}
+                    style={{ background: '#0078d4', border: 'none', color: 'white', padding: '2px 10px', borderRadius: '3px', cursor: 'pointer', fontSize: '11px' }}
+                  >
+                    View Progress
+                  </button>
+                  <a
+                    href="/tasks"
+                    style={{ color: '#0078d4', textDecoration: 'underline', fontSize: '11px', lineHeight: '24px' }}
+                  >
+                    Task Queue
+                  </a>
+                </span>
+              </div>
+            )}
+
             <div className="timeline-section">
               <Timeline
                 timeline={project.timeline}
@@ -1477,6 +1656,7 @@ export const VideoEditorPhase3: React.FC = () => {
                 selectedClipIds={selectedClipIds}
                 onTrackToggleLock={handleTrackToggleLock}
                 onTrackToggleMute={handleTrackToggleMute}
+                onTrackToggleVisible={handleTrackToggleVisible}
                 onDropAsset={handleDropAsset}
               />
             </div>
@@ -1630,6 +1810,67 @@ export const VideoEditorPhase3: React.FC = () => {
             onConfirm={handleConfirmDialogConfirm}
             onCancel={handleConfirmDialogCancel}
           />
+        )}
+
+        {/* Project List Modal */}
+        {showProjectList && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          }} onClick={() => setShowProjectList(false)}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: '#2a2a2a', border: '1px solid #444', borderRadius: '8px',
+              width: '600px', maxWidth: '90vw', maxHeight: '80vh',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            }}>
+              <div style={{
+                padding: '16px 20px', borderBottom: '1px solid #444',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <span style={{ fontSize: '16px', fontWeight: 600, color: '#e0e0e0' }}>Saved Projects</span>
+                <button onClick={() => setShowProjectList(false)} style={{
+                  background: 'transparent', border: 'none', color: '#888',
+                  fontSize: '20px', cursor: 'pointer',
+                }}>&times;</button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+                {projectListQuery.isLoading ? (
+                  <div style={{ textAlign: 'center', color: '#888', padding: '24px' }}>Loading...</div>
+                ) : !projectListQuery.data?.projects.length ? (
+                  <div style={{ textAlign: 'center', color: '#888', padding: '24px' }}>
+                    No saved projects yet. Click Save to store your first project.
+                  </div>
+                ) : (
+                  projectListQuery.data.projects.map((p: any) => (
+                    <div key={p.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 12px', borderRadius: '6px', marginBottom: '4px',
+                      background: currentProjectId === p.id ? '#0078d420' : '#1e1e1e',
+                      border: `1px solid ${currentProjectId === p.id ? '#0078d4' : '#333'}`,
+                      cursor: 'pointer',
+                    }} onClick={() => handleOpenProject(p.id)}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#e0e0e0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.name}
+                          {p.isAutoSave && <span style={{ fontSize: '9px', color: '#ffa500', marginLeft: '6px' }}>auto-saved</span>}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                          {p.clipCount || 0} clips &bull; {p.resolution || 'N/A'} &bull; {new Date(p.updatedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(p.id); }} style={{
+                        background: 'transparent', border: '1px solid #444', borderRadius: '4px',
+                        color: '#888', padding: '4px 8px', cursor: 'pointer', fontSize: '11px', flexShrink: 0,
+                      }} title="Delete project">
+                        &#128465;
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Keyboard Shortcuts Overlay */}

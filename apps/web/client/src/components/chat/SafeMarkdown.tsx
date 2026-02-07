@@ -71,7 +71,9 @@ function sanitizeUrls(content: string): string {
         trimmedUrl.startsWith("javascript:") ||
         trimmedUrl.startsWith("vbscript:") ||
         trimmedUrl.startsWith("data:text") ||
-        trimmedUrl.startsWith("data:application")
+        trimmedUrl.startsWith("data:application") ||
+        trimmedUrl.startsWith("blob:") ||
+        trimmedUrl.startsWith("file:")
       ) {
         return `[${text}](#blocked)`;
       }
@@ -118,7 +120,7 @@ async function downloadImage(src: string, name?: string) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch {
-    window.open(src, "_blank");
+    window.open(src, "_blank", "noopener,noreferrer");
   }
 }
 

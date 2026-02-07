@@ -14,6 +14,7 @@ import {
   Zap,
   CreditCard,
   ChevronLeft,
+  ChevronDown,
   Check,
   TrendingUp,
   Clock,
@@ -31,6 +32,7 @@ export default function Credits() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [buyCreditsExpanded, setBuyCreditsExpanded] = useState(false);
   const [page, setPage] = useState(0);
   const pageSize = 20;
 
@@ -168,20 +170,68 @@ export default function Credits() {
           ))}
         </motion.div>
 
-        {/* Credit Packages */}
+        {/* Credit Packages — Collapsible */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="mb-8"
         >
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Buy Credits</h2>
-              <p className="text-gray-600">Choose a package that fits your needs (15% markup from base rate)</p>
+          {/* Collapsible header */}
+          <button
+            className="w-full flex items-center justify-between mb-4 group cursor-pointer"
+            onClick={() => setBuyCreditsExpanded(!buyCreditsExpanded)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-left">
+                <h2 className="text-2xl font-bold text-gray-900">Buy Credits</h2>
+                {!buyCreditsExpanded && (
+                  <p className="text-sm text-gray-500">
+                    {packages?.length ?? 0} packages available &mdash; click to expand
+                  </p>
+                )}
+                {buyCreditsExpanded && (
+                  <p className="text-sm text-gray-600">Choose a package that fits your needs (15% markup from base rate)</p>
+                )}
+              </div>
             </div>
-          </div>
+            <motion.div
+              animate={{ rotate: buyCreditsExpanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="w-6 h-6 text-gray-400 group-hover:text-gray-600" />
+            </motion.div>
+          </button>
 
+          {/* Collapsed summary card */}
+          {!buyCreditsExpanded && (
+            <div
+              className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-4 cursor-pointer hover:border-purple-200 transition-colors shadow-lg"
+              onClick={() => setBuyCreditsExpanded(true)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  <span className="text-sm font-medium">Need more credits? Browse {packages?.length ?? 0} packages</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-purple-400" />
+              </div>
+            </div>
+          )}
+
+          {/* Expandable content */}
+          <motion.div
+            initial={false}
+            animate={{
+              height: buyCreditsExpanded ? 'auto' : 0,
+              opacity: buyCreditsExpanded ? 1 : 0,
+            }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
           {packagesLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
@@ -192,7 +242,7 @@ export default function Credits() {
               <p className="text-gray-500">No packages available</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pt-2">
               {packages.map((pkg) => (
                 <motion.div
                   key={pkg.id}
@@ -254,6 +304,7 @@ export default function Credits() {
               ))}
             </div>
           )}
+          </motion.div>
         </motion.div>
 
         {/* Transaction History */}

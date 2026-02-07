@@ -80,9 +80,9 @@ class Settings(BaseSettings):
     PAYMENT_MIN_AMOUNT: float = 5.00
     PAYMENT_MAX_AMOUNT: float = 10000.00
 
-    # Security
-    SECRET_KEY: str = "change-this-in-production"
-    JWT_SECRET: str = "change-this-in-production"
+    # Security — random defaults prevent accidental use of shared secrets
+    SECRET_KEY: str = __import__("secrets").token_urlsafe(32)
+    JWT_SECRET: str = __import__("secrets").token_urlsafe(32)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes for security
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days

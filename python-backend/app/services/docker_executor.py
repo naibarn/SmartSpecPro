@@ -407,7 +407,8 @@ class DockerExecutor:
         
         # Wrap command in bash for proper environment
         # This ensures PATH and other env vars are loaded
-        cmd_str = " ".join(f'"{arg}"' if " " in arg else arg for arg in command)
+        import shlex
+        cmd_str = " ".join(shlex.quote(arg) for arg in command)
         docker_cmd.extend(["bash", "-lc", cmd_str])
         
         logger.debug(

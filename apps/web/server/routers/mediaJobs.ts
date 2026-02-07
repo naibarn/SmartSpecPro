@@ -10,6 +10,7 @@ import { authorizeRequest } from "../_core/authz";
 import { rateLimit } from "../_core/limits";
 import multer from "multer";
 import { storagePut } from "../storage";
+import { eq } from "drizzle-orm";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -71,6 +72,52 @@ async function getActiveJobIds(userId: string): Promise<string[]> {
 
 const STALE_QUEUED_MS = 10 * 60 * 1000; // 10 min: queued but never picked up
 const STALE_PROCESSING_MS = 60 * 60 * 1000; // 60 min: processing but never finished
+
+// ========================================
+// Job failure notification helper
+// ========================================
+
+async function notifyJobFailure(
+  userId: string,
+  jobId: string,
+  errorMessage: string,
+) {
+  try {
+    const { getDb } = await import("../db");
+    const { userNotifications, users } = await import("../../drizzle/schema");
+    const db = await getDb();
+    if (!db) return;
+
+    const userIdNum = parseInt(userId, 10);
+    if (isNaN(userIdNum)) return;
+
+    // Notify the job owner
+    await db.insert(userNotifications).values({
+      userId: userIdNum,
+      type: "alert",
+      title: "Media Job Failed",
+      content: `Your media job (${jobId.slice(0, 8)}...) failed: ${errorMessage.slice(0, 200)}`,
+    });
+
+    // Notify all admins
+    const adminRows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, "admin"));
+
+    for (const admin of adminRows) {
+      if (admin.id === userIdNum) continue; // skip if user is already admin
+      await db.insert(userNotifications).values({
+        userId: admin.id,
+        type: "alert",
+        title: "Media Job Failed (Admin Alert)",
+        content: `User ${userId} — job ${jobId}: ${errorMessage.slice(0, 200)}`,
+      });
+    }
+  } catch {
+    // Best effort — don't break the caller
+  }
+}
 
 async function checkConcurrencyLimit(userId: string): Promise<boolean> {
   const activeIds = await getActiveJobIds(userId);
@@ -147,9 +194,13 @@ async function dispatchToCelery(
   // Resolve relative asset URIs so Python worker can access them via HTTP
   const resolvedSpecJson = resolveRelativeUris(specJson);
 
+  const internalToken = process.env.MEDIA_JOB_INTERNAL_TOKEN || "";
   const res = await fetch(`${pythonUrl}/api/v1/media-jobs/execute`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-token": internalToken,
+    },
     body: JSON.stringify({ spec_json: resolvedSpecJson, user_id: userId, job_id: jobId }),
   });
 
@@ -488,7 +539,7 @@ export function registerMediaJobRoutes(app: Express) {
       closed = true;
       clearInterval(pollInterval);
       if (subRedis) {
-        subRedis.unsubscribe().catch(() => {});
+        subRedis.unsubscribe().catch((err) => console.error("[MediaJobs] Redis unsubscribe failed:", err?.message));
         subRedis.disconnect();
       }
       res.end();
@@ -562,6 +613,16 @@ export function registerMediaJobRoutes(app: Express) {
           res.status(400).json({
             error: `Unsupported file type: .${ext}. Allowed: ${Array.from(ALLOWED_UPLOAD_EXTENSIONS).join(", ")}`,
           });
+          return;
+        }
+
+        // Validate MIME type
+        const ALLOWED_MIMES = new Set([
+          "video/mp4", "video/webm", "video/quicktime", "audio/mpeg", "audio/wav",
+          "image/jpeg", "image/png", "image/webp", "application/octet-stream",
+        ]);
+        if (file.mimetype && !ALLOWED_MIMES.has(file.mimetype)) {
+          res.status(400).json({ error: `Unsupported MIME type: ${file.mimetype}` });
           return;
         }
 
@@ -641,13 +702,15 @@ export function registerMediaJobRoutes(app: Express) {
       try {
         await dispatchToCelery(JSON.stringify(fullSpec), userId, jobId);
       } catch {
+        const errMsg = "Failed to dispatch to worker";
         await setJobKey(jobId, "status", {
           status: "error",
           progress: 0,
           jobId,
-          message: "Failed to dispatch to worker",
+          message: errMsg,
         });
         await removeActiveJob(userId, jobId);
+        notifyJobFailure(userId, jobId, errMsg);
         res.status(502).json({ error: "Failed to dispatch media job to worker" });
         return;
       }
@@ -725,4 +788,51 @@ export function registerMediaJobRoutes(app: Express) {
       res.status(500).json({ error: e.message || "Internal error" });
     }
   });
+
+  // Periodic cleanup of stale Redis active-job set entries (every 5 min)
+  setInterval(async () => {
+    try {
+      const redis = await getRedis();
+      const now = Date.now();
+      // Scan for all user active-set keys
+      let cursor = "0";
+      do {
+        const [nextCursor, keys] = await redis.scan(
+          cursor, "MATCH", "media-jobs:user:*:active", "COUNT", "100",
+        );
+        cursor = nextCursor;
+        for (const key of keys) {
+          const members = await redis.smembers(key);
+          for (const jobId of members) {
+            const status = await getJobKey(jobId, "status");
+            if (!status) {
+              // Redis key expired → stale entry
+              await redis.srem(key, jobId);
+              continue;
+            }
+            if (["done", "error", "canceled"].includes(status.status)) {
+              await redis.srem(key, jobId);
+              continue;
+            }
+            // Check for stale queued/processing
+            const meta = await getJobKey(jobId, "meta");
+            const age = meta?.submittedAt ? now - meta.submittedAt : Infinity;
+            if (status.status === "queued" && age > STALE_QUEUED_MS) {
+              const msg = "Stale: queued >10 min";
+              await setJobKey(jobId, "status", { ...status, status: "error", message: msg });
+              await redis.srem(key, jobId);
+              if (meta?.userId) notifyJobFailure(meta.userId, jobId, msg);
+            } else if (status.status === "processing" && age > STALE_PROCESSING_MS) {
+              const msg = "Stale: processing >60 min";
+              await setJobKey(jobId, "status", { ...status, status: "error", message: msg });
+              await redis.srem(key, jobId);
+              if (meta?.userId) notifyJobFailure(meta.userId, jobId, msg);
+            }
+          }
+        }
+      } while (cursor !== "0");
+    } catch (err) {
+      // Ignore cleanup errors — best effort
+    }
+  }, 5 * 60 * 1000);
 }

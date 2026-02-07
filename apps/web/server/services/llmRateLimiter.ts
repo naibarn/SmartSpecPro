@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 /**
  * AI Provider Rate Limiter Service
  *
@@ -475,7 +477,7 @@ export async function scheduleWithLimiter<T>(
     const result = await limiter.schedule(
       {
         priority,
-        id: `${providerName}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id: `${providerName}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`,
       },
       async () => {
         // Apply extra delay for free models
@@ -635,7 +637,7 @@ export async function scheduleMediaWithLimiter<T>(
     const result = await limiter.schedule(
       {
         priority,
-        id: `media-${providerName}-${mediaType}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id: `media-${providerName}-${mediaType}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`,
       },
       async () => {
         // Apply extra delay for video/audio if needed

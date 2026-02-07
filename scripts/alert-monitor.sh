@@ -22,7 +22,6 @@ declare -A SERVICES=(
 declare -A PORTS=(
     ["PostgreSQL"]="5432"
     ["Redis"]="6379"
-    ["MySQL"]="3306"
 )
 
 # ============================================

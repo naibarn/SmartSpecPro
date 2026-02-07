@@ -27,6 +27,11 @@ async def proxy(path: str, request: Request):
         mint.raise_for_status()
         token = mint.json()["token"]
 
+        # Validate path to prevent traversal
+        import re
+        if ".." in path or not re.match(r"^[a-zA-Z0-9/_\-]+$", path):
+            raise HTTPException(status_code=400, detail="Invalid path")
+
         # Forward request
         url = f"{CONTROL_PLANE_URL}/{path}".rstrip("/")
         headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}

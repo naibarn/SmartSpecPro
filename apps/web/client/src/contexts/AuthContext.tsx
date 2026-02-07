@@ -42,7 +42,7 @@ interface SignupData {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // API base URL for legacy Python backend (for OAuth flows)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -196,7 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     // Store state for CSRF protection
-    const state = Math.random().toString(36).substring(7);
+    const state = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
     sessionStorage.setItem('oauth_state', state);
     sessionStorage.setItem('oauth_provider', 'google');
     
@@ -208,7 +209,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGitHub = async () => {
     // Store state for CSRF protection
-    const state = Math.random().toString(36).substring(7);
+    const state = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
     sessionStorage.setItem('oauth_state', state);
     sessionStorage.setItem('oauth_provider', 'github');
     
