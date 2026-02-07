@@ -75,6 +75,8 @@ export const users = pgTable("users", {
   userPreferences: json("userPreferences").$type<{
     translationLanguage?: string;
     translationModel?: string;
+    telegramNotifyLevel?: "all" | "high_critical" | "critical_only" | "off";
+    telegramDeliveryFailing?: boolean;
   }>().default({}),
 
   // Recovery contacts
@@ -82,6 +84,12 @@ export const users = pgTable("users", {
   backupEmailVerified: boolean("backupEmailVerified").default(false).notNull(),
   phone: varchar("phone", { length: 20 }),
   phoneVerified: boolean("phoneVerified").default(false).notNull(),
+
+  // Telegram account linking
+  telegramChatId: varchar("telegramChatId", { length: 64 }),
+  telegramUsername: varchar("telegramUsername", { length: 64 }),
+  telegramVerified: boolean("telegramVerified").default(false).notNull(),
+  telegramVerifiedAt: timestamp("telegramVerifiedAt", { withTimezone: true }),
 
   // Two-Factor Authentication
   twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
@@ -91,6 +99,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
+  passwordChangedAt: timestamp("passwordChangedAt", { withTimezone: true }),
 });
 
 export type User = typeof users.$inferSelect;
