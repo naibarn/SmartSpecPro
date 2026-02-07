@@ -447,25 +447,165 @@ Complex work (multi-file changes, architecture changes, security fixes, new feat
 - **Follow industry standards** (OWASP, 12-factor app, semantic versioning, etc.)
 - **For security issues**: Create a detailed fix plan IMMEDIATELY, assess blast radius, ensure no functional regression after fix
 
-## AI Orchestra Agents — Development Orchestration System
+## AI Orchestra Agents — MANDATORY Orchestration Protocol
 
 ### Overview
 
 SmartSpecPro uses a multi-level AI agent orchestration system for efficient parallel development. The full specification is in `planning/ai-orchestra/architecture.md`.
 
-### Quick Reference: When to Spawn Agents
+**This section defines MANDATORY rules.** Inconsistent agent usage degrades quality. Follow these rules every time.
 
-| Situation | Action | Agents to Spawn |
-|---|---|---|
-| **Single-file bug** (clear cause) | Handle directly | None |
-| **Multi-file bug** (unclear cause) | Debug first, then fix | CMD-7 Debug Detective → Domain Commander |
-| **New feature** (multi-module) | Plan, then parallel implement | Parallel: CMD-1 + CMD-2 + CMD-4 analysis → implementation |
-| **Performance issue** | Analyze, then optimize | CMD-7 + affected domain commanders |
-| **Security concern** | Audit, then fix | CMD-6 Security Auditor + domain commanders |
-| **Refactoring** | Analyze impact, then implement | Affected domain commanders in parallel |
-| **System design** | Architecture council | Parallel: all relevant commanders |
+### Rule 1: MANDATORY Agent Dispatch — When Agents Are REQUIRED
 
-### Domain Commanders (Level 1 Agents)
+You MUST spawn specialized agents for these task types. Do NOT handle them directly.
+
+| Task Type | Mandatory? | Required Agents | Why |
+|---|---|---|---|
+| **Security audit / vulnerability scan** | **ALWAYS** | CMD-6 (backend-security-coder) per domain | Security needs specialized focus |
+| **Multi-file bug** (3+ files, unclear cause) | **ALWAYS** | CMD-7 (error-debugging:debugger) first | Prevent shotgun debugging |
+| **New feature** (touches frontend + backend) | **ALWAYS** | Parallel: CMD-1 + CMD-2 analysis → implementation | Ensures cross-layer consistency |
+| **Database schema changes** | **ALWAYS** | CMD-4 (Explore) for analysis, then direct implementation | Schema design needs holistic view |
+| **Performance investigation** | **ALWAYS** | CMD-7 + relevant domain agents | Need data before optimization |
+| **Accessibility audit** | **ALWAYS** | ui-design:accessibility-expert | Specialized WCAG knowledge |
+| **Python backend changes** | **ALWAYS** | CMD-3 (python-development:fastapi-pro) | Python expertise + style conventions |
+| Single-file fix (clear root cause) | Optional | Handle directly, spawn if complex | Simple fixes don't need agents |
+| Documentation-only changes | Never | Handle directly | No agent needed |
+
+### Rule 2: MANDATORY Prompt Structure — Every Agent Gets a Complete Brief
+
+**NEVER send a vague prompt.** Every agent Task prompt MUST include ALL of these sections:
+
+```
+TASK: [Specific action — what to do, not what to "look at"]
+DOMAIN: [Which commander area: CMD-1 through CMD-8]
+FILES: [Exact file paths to read/modify — be specific]
+CONTEXT: [What happened before, what the user reported, relevant error messages]
+CONSTRAINTS: [What NOT to touch, max scope, coding conventions to follow]
+OUTPUT: [Exact deliverable — "modify file X to add Y" or "return analysis of Z"]
+```
+
+**Example — BAD (vague, agent won't know what to do):**
+```
+"Check the frontend for issues"
+```
+
+**Example — GOOD (specific, actionable, complete):**
+```
+TASK: Audit SchedulePanel.tsx for React anti-patterns and missing error handling.
+DOMAIN: CMD-1 Frontend
+FILES: apps/web/client/src/components/chat/SchedulePanel.tsx (1336 lines)
+CONTEXT: User reported UI inconsistencies. Calendar view was recently added.
+CONSTRAINTS: Do NOT modify code. Return analysis only with line numbers.
+OUTPUT: List of issues found with severity (HIGH/MEDIUM/LOW), affected line numbers, and recommended fix for each.
+```
+
+### Rule 3: MANDATORY Result Validation
+
+After EVERY agent completes, the Conductor (main instance) MUST:
+
+1. **Read the agent's output** — Never ignore or skip agent results
+2. **Verify actionable items** — If agent found issues, create a TodoWrite list
+3. **Cross-check conflicts** — If multiple agents ran in parallel, check their outputs don't conflict
+4. **Apply fixes immediately** — Don't defer. If an agent reports a vulnerability, fix it NOW
+5. **Report to user** — Summarize what each agent found, what was fixed, what remains
+
+**If an agent returns empty/unhelpful results:**
+- Check if the prompt was too vague → re-spawn with better prompt
+- Check if the agent type was wrong → try a different subagent_type
+- If still empty after 2 attempts → handle directly and note why agent failed
+
+### Rule 4: MANDATORY Parallel Dispatch — Maximize Concurrency
+
+When dispatching multiple agents, ALWAYS send them in a SINGLE message with multiple Task tool calls. Never dispatch agents one-by-one when they're independent.
+
+**BAD (sequential, slow):**
+```
+Message 1: Task(CMD-1 analysis) → wait for result
+Message 2: Task(CMD-2 analysis) → wait for result
+Message 3: Task(CMD-6 security) → wait for result
+```
+
+**GOOD (parallel, fast):**
+```
+Message 1: Task(CMD-1 analysis) + Task(CMD-2 analysis) + Task(CMD-6 security) → all run simultaneously
+```
+
+### Rule 5: Agent Type Selection Matrix
+
+Use the CORRECT agent type for each task. Wrong agent type = poor results.
+
+| Task | subagent_type | Description prefix |
+|------|---------------|-------------------|
+| **Frontend analysis** (read-only) | `Explore` | "CMD-1: Analyze..." |
+| **Frontend implementation** (write code) | `multi-platform-apps:frontend-developer` | "CMD-1: Build/Fix..." |
+| **Backend analysis** (read-only) | `Explore` | "CMD-2: Analyze..." |
+| **Backend implementation** (write code) | `multi-platform-apps:backend-architect` | "CMD-2: Build/Fix..." |
+| **Backend security audit** | `backend-api-security:backend-security-coder` | "CMD-6: Audit..." |
+| **Backend security fix** (write code) | `backend-api-security:backend-security-coder` | "CMD-6: Fix..." |
+| **Python analysis** | `Explore` | "CMD-3: Analyze..." |
+| **Python implementation** | `python-development:fastapi-pro` | "CMD-3: Build/Fix..." |
+| **Database/schema analysis** | `Explore` | "CMD-4: Analyze..." |
+| **Infrastructure analysis** | `Explore` | "CMD-5: Analyze..." |
+| **Bug debugging** | `error-debugging:debugger` | "CMD-7: Debug..." |
+| **Error log analysis** | `error-debugging:error-detective` | "CMD-7: Investigate..." |
+| **Accessibility audit** | `ui-design:accessibility-expert` | "CMD-1/A11Y: Audit..." |
+| **UI design review** | `ui-design:ui-designer` | "CMD-1/UI: Review..." |
+| **General research** | `general-purpose` | "Research: ..." |
+
+### Rule 6: Orchestration Patterns (MUST follow for each task type)
+
+**Pattern A: Security Audit** (user says "ตรวจสอบช่องโหว่" / "check vulnerabilities")
+```
+Step 1: Spawn 3-4 agents IN PARALLEL:
+  - backend-security-coder → audit backend endpoints
+  - backend-security-coder → audit Python backend
+  - Explore → audit frontend (XSS, auth bypass, data exposure)
+  - Explore → audit database (indexes, encrypted columns, access patterns)
+Step 2: Collect all findings, deduplicate, prioritize by severity
+Step 3: Spawn fix agents IN PARALLEL (group by file to avoid conflicts):
+  - backend-security-coder → fix backend vulnerabilities
+  - backend-security-coder → fix Python vulnerabilities
+  - frontend-developer → fix frontend vulnerabilities
+Step 4: TypeScript check + verify fixes
+Step 5: Report all changes to user
+```
+
+**Pattern B: Bug Fix** (user reports a specific bug)
+```
+Step 1: Spawn error-debugging:debugger → identify root cause
+Step 2: Based on root cause, spawn appropriate Domain Commander to fix
+Step 3: Verify fix (run affected test or typecheck)
+```
+
+**Pattern C: New Feature** (user requests a new capability)
+```
+Step 1: Enter Plan Mode
+Step 2: Spawn parallel analysis agents (Explore type) for affected domains
+Step 3: Synthesize into implementation plan → get user approval
+Step 4: Spawn parallel implementation agents (domain-specific types)
+Step 5: TypeScript check + tests
+Step 6: Security review of new endpoints (if any)
+```
+
+**Pattern D: Refactoring** (user wants to restructure code)
+```
+Step 1: Spawn Explore agents to analyze current structure + dependencies
+Step 2: Create refactoring plan → get user approval
+Step 3: Implement in dependency order (schema → service → router → UI)
+Step 4: Run full test suite
+```
+
+### Rule 7: Failure Recovery
+
+| Situation | Action |
+|---|---|
+| Agent returns empty result | Re-spawn with more specific prompt (add file paths, line numbers) |
+| Agent makes wrong changes | Revert changes, re-spawn with corrected constraints |
+| Agent conflicts with another agent | Resolve conflict manually, then re-run affected agent |
+| Agent times out | Check if task was too large, break into smaller sub-tasks |
+| Same error after 3 agent attempts | STOP, ask user for guidance |
+
+### Domain Commanders Reference
 
 | ID | Name | Domain | Key Files |
 |----|------|--------|-----------|
@@ -477,25 +617,6 @@ SmartSpecPro uses a multi-level AI agent orchestration system for efficient para
 | CMD-6 | Security Auditor | Auth, Encryption, Validation | `crypto.ts`, middleware, `security.ts` |
 | CMD-7 | Debug Detective | Root Cause Analysis, Tracing | All source + `logs/audit/` |
 | CMD-8 | Quality Assurance | Testing, Coverage, Types | `*.test.ts`, `tests/`, tsconfig |
-
-### Agent Spawning via Task Tool
-
-```
-# Analysis (read-only, safe to parallelize)
-Task(subagent_type="Explore", description="CMD-1: Analyze video editor export")
-Task(subagent_type="Explore", description="CMD-2: Analyze media generation pipeline")
-
-# Implementation (use specialized agents)
-Task(subagent_type="multi-platform-apps:frontend-developer", description="CMD-1: Build notification UI")
-Task(subagent_type="multi-platform-apps:backend-architect", description="CMD-2: Create notification router")
-Task(subagent_type="python-development:fastapi-pro", description="CMD-3: Add webhook endpoint")
-
-# Debugging
-Task(subagent_type="error-debugging:debugger", description="CMD-7: Debug black screen issue")
-
-# Security
-Task(subagent_type="backend-api-security:backend-security-coder", description="CMD-6: Audit auth endpoints")
-```
 
 ### Parallel Execution Rules
 
@@ -516,18 +637,6 @@ Task(subagent_type="backend-api-security:backend-security-coder", description="C
 - Max 2 agents editing files simultaneously
 - Only 1 agent for DB operations
 - Only 1 agent for git operations
-
-### Orchestration Patterns
-
-**Bug Fix:** Debug Detective → identify root cause → Domain Commander fixes → QA validates
-
-**New Feature:**
-1. Parallel analysis (Frontend + Backend + Database + Infrastructure)
-2. Synthesize into plan → user approval
-3. Parallel implementation (different modules)
-4. Sequential: tests → security review
-
-**Performance:** Parallel analysis → identify bottlenecks → targeted optimizations → validate
 
 ### System Map (for agent context)
 
