@@ -40,6 +40,7 @@ import {
   Users,
   Shield,
   MessageSquare,
+  Send,
   UserPlus,
   Lock,
   Mic,
@@ -228,6 +229,73 @@ export default function AdminSettings() {
     }
   }, [smsSettings]);
 
+  // Telegram settings
+  const [telegramForm, setTelegramForm] = useState({
+    botToken: "",
+    botUsername: "",
+    appUrl: "",
+    enabled: false,
+  });
+  const [showBotToken, setShowBotToken] = useState(false);
+  const [botTokenConfigured, setBotTokenConfigured] = useState(false);
+  const [webhookSecretConfigured, setWebhookSecretConfigured] = useState(false);
+
+  const { data: telegramSettings, refetch: refetchTelegram } =
+    trpc.telegram.getTelegramSettings.useQuery(undefined, {
+      enabled: !!user && user.role === "admin",
+    });
+
+  const updateTelegramMutation = trpc.telegram.updateTelegramSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Telegram settings saved");
+      refetchTelegram();
+      setTelegramForm((prev) => ({ ...prev, botToken: "" }));
+    },
+    onError: (err: any) => {
+      toast.error(`Failed: ${err.message}`);
+    },
+  });
+
+  const testTelegramMutation = trpc.telegram.testTelegramConnection.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(`Connected to bot: @${data.botInfo?.username || "unknown"}`);
+      } else {
+        toast.error(data.message || "Connection test failed");
+      }
+    },
+    onError: (err: any) => {
+      toast.error(`Test failed: ${err.message}`);
+    },
+  });
+
+  const registerWebhookMutation = trpc.telegram.registerWebhook.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success("Webhook registered successfully");
+      } else {
+        toast.error(data.message || "Webhook registration failed");
+      }
+    },
+    onError: (err: any) => {
+      toast.error(`Webhook registration failed: ${err.message}`);
+    },
+  });
+
+  // Load Telegram settings
+  useEffect(() => {
+    if (telegramSettings) {
+      setTelegramForm((prev) => ({
+        ...prev,
+        botUsername: telegramSettings.botUsername || "",
+        appUrl: telegramSettings.appUrl || "",
+        enabled: telegramSettings.enabled || false,
+      }));
+      setBotTokenConfigured(!!telegramSettings.botTokenConfigured);
+      setWebhookSecretConfigured(!!telegramSettings.webhookSecretConfigured);
+    }
+  }, [telegramSettings]);
+
   // 2FA settings
   const [twoFaForm, setTwoFaForm] = useState({ enabled: true, enforced: false, issuer: "SmartSpec Pro", backupCodesCount: 10 });
   const { data: twoFaSettings, refetch: refetchTwoFa } =
@@ -365,7 +433,8 @@ export default function AdminSettings() {
     { key: "registration", label: "Registration", sublabel: "Signup & Credits", icon: UserPlus },
     { key: "smtp", label: "Email", sublabel: "SMTP Settings", icon: Mail },
     { key: "sms", label: "SMS", sublabel: "Provider Config", icon: MessageSquare },
-    { key: "2fa", label: "2FA", sublabel: "Authenticator", icon: Shield },
+    { key: "telegram", label: "Telegram Bot", sublabel: "Alert Notifications", icon: Send },
+    { key: "2FA", label: "2FA", sublabel: "Authenticator", icon: Shield },
     { key: "stt", label: "STT", sublabel: "Speech-to-Text", icon: Mic },
     { key: "ai", label: "AI / Memory", sublabel: "Summary Model", icon: Brain },
     { key: "menu", label: "Main Menu", sublabel: "Visibility Control", icon: Menu },
@@ -1074,6 +1143,172 @@ export default function AdminSettings() {
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
                     ) : (
                       <><Save className="w-4 h-4 mr-2" /> Save SMS Settings</>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Telegram Bot Settings Tab */}
+          <TabsContent value="telegram">
+            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Send className="w-5 h-5 text-purple-500" />
+                  Telegram Bot Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure Telegram Bot API credentials to send alert notifications to users who link their Telegram accounts.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Configuration Status Badge */}
+                {botTokenConfigured && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Check className="w-3 h-3 mr-1" /> Bot Token Configured
+                  </Badge>
+                )}
+
+                {/* Enable/Disable Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div>
+                    <div className="font-medium text-gray-900">Enable Telegram Notifications</div>
+                    <div className="text-sm text-gray-500">Master switch for all Telegram alert delivery</div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={telegramForm.enabled}
+                      onChange={(e) => setTelegramForm((p) => ({ ...p, enabled: e.target.checked }))}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                {/* Bot Token */}
+                <div>
+                  <Label htmlFor="botToken">
+                    Bot Token
+                    {botTokenConfigured && (
+                      <Badge variant="outline" className="ml-2 text-green-600 border-green-600">
+                        <Check className="w-3 h-3 mr-1" />
+                        Configured
+                      </Badge>
+                    )}
+                  </Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="botToken"
+                      type={showBotToken ? "text" : "password"}
+                      placeholder={botTokenConfigured ? "Enter new token to update..." : "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"}
+                      value={telegramForm.botToken}
+                      onChange={(e) => setTelegramForm((p) => ({ ...p, botToken: e.target.value }))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowBotToken(!showBotToken)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showBotToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Create a bot at <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">@BotFather</a> on Telegram
+                  </p>
+                </div>
+
+                {/* Bot Username */}
+                <div>
+                  <Label htmlFor="botUsername">Bot Username</Label>
+                  <Input
+                    id="botUsername"
+                    placeholder="SmartSpecProBot"
+                    value={telegramForm.botUsername}
+                    onChange={(e) => setTelegramForm((p) => ({ ...p, botUsername: e.target.value }))}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    The bot's @username (without @) — used to generate deep links for account linking
+                  </p>
+                </div>
+
+                {/* App URL */}
+                <div>
+                  <Label htmlFor="appUrl">Application URL</Label>
+                  <Input
+                    id="appUrl"
+                    placeholder="https://app.smartspecpro.com"
+                    value={telegramForm.appUrl}
+                    onChange={(e) => setTelegramForm((p) => ({ ...p, appUrl: e.target.value }))}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Base URL for "View in SmartSpecPro" inline buttons in notifications
+                  </p>
+                </div>
+
+                {/* Setup Guide */}
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-sm space-y-3">
+                  <p className="font-semibold text-blue-800">Setup Instructions</p>
+                  <ol className="text-blue-700 space-y-1.5 text-xs list-decimal pl-4">
+                    <li>Open Telegram and search for <strong>@BotFather</strong></li>
+                    <li>Send <code className="bg-blue-100 px-1 rounded">/newbot</code> and follow the prompts to create a bot</li>
+                    <li>Copy the bot token (format: <code className="bg-blue-100 px-1 rounded">123456:ABC-DEF...</code>)</li>
+                    <li>Paste the token above and save settings</li>
+                    <li>Click "Test Connection" to verify the bot is reachable</li>
+                    <li>Click "Register Webhook" to enable the bot to receive verification requests</li>
+                    <li>Users can then link their Telegram accounts from Settings → Telegram Notifications</li>
+                  </ol>
+                </div>
+
+                {/* Webhook Status */}
+                {webhookSecretConfigured && (
+                  <div className="rounded-lg border border-green-200 bg-green-50/50 p-3 text-sm flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-600" />
+                    <span className="text-green-700">Webhook secret is configured and secured</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 justify-end border-t pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => testTelegramMutation.mutate()}
+                    disabled={testTelegramMutation.isPending || !botTokenConfigured}
+                  >
+                    {testTelegramMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Testing...</>
+                    ) : (
+                      <><TestTube className="w-4 h-4 mr-2" /> Test Connection</>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => registerWebhookMutation.mutate()}
+                    disabled={registerWebhookMutation.isPending || !botTokenConfigured}
+                  >
+                    {registerWebhookMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Registering...</>
+                    ) : (
+                      <><Key className="w-4 h-4 mr-2" /> Register Webhook</>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => updateTelegramMutation.mutate({
+                      botToken: telegramForm.botToken || undefined,
+                      botUsername: telegramForm.botUsername,
+                      appUrl: telegramForm.appUrl,
+                      enabled: telegramForm.enabled,
+                    })}
+                    disabled={updateTelegramMutation.isPending}
+                    className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                  >
+                    {updateTelegramMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                    ) : (
+                      <><Save className="w-4 h-4 mr-2" /> Save Settings</>
                     )}
                   </Button>
                 </div>
