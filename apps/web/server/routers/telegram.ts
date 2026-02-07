@@ -7,12 +7,14 @@
 
 import { z } from "zod";
 import crypto from "crypto";
+import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
-import { getDb } from "../db";
-import { systemSettings } from "../../drizzle/schema";
+import { db, getDb } from "../db";
+import { systemSettings, users } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import { clearTelegramCache } from "../services/telegramService";
+import { getRedisClient } from "../services/redis";
 
 // ============================================================================
 // Admin Endpoints
@@ -338,6 +340,221 @@ const registerWebhook = adminProcedure.mutation(async () => {
 // Export Router
 // ============================================================================
 
+// ============================================================================
+// User Endpoints (Section 06)
+// ============================================================================
+
+/**
+ * Generate a verification code and return a Telegram deep link.
+ * User clicks this link in Telegram to initiate account linking.
+ */
+const generateTelegramLink = protectedProcedure.mutation(
+  async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database unavailable",
+      });
+    }
+
+    // Check if Telegram feature is enabled
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "telegram"));
+
+    const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
+    const enabled = settingsMap.get("enabled") === "true";
+
+    if (!enabled) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Telegram notifications are not enabled",
+      });
+    }
+
+    const botUsername = settingsMap.get("bot_username");
+    if (!botUsername) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Telegram bot username not configured",
+      });
+    }
+
+    // Generate verification code (128-bit entropy)
+    const code = crypto.randomBytes(16).toString("hex"); // 32-char hex string
+
+    // Store in Redis with 5-minute TTL
+    const redis = getRedisClient();
+    const verificationData = {
+      userId: ctx.user.id,
+      createdAt: Date.now(),
+      attempts: 0,
+    };
+
+    try {
+      await redis.set(
+        `telegram:verify:${code}`,
+        JSON.stringify(verificationData),
+        "EX",
+        300 // 5 minutes
+      );
+    } catch (err) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to generate verification link",
+      });
+    }
+
+    // Construct deep link
+    const deepLink = `https://t.me/${botUsername}?start=${code}`;
+
+    return {
+      code,
+      deepLink,
+      expiresIn: 300,
+    };
+  }
+);
+
+/**
+ * Check current Telegram linking status and preferences.
+ * Frontend polls this endpoint to detect when verification completes.
+ */
+const checkTelegramStatus = protectedProcedure.query(async ({ ctx }) => {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+
+  const [user] = await db
+    .select({
+      telegramChatId: users.telegramChatId,
+      telegramUsername: users.telegramUsername,
+      telegramVerified: users.telegramVerified,
+      telegramVerifiedAt: users.telegramVerifiedAt,
+      userPreferences: users.userPreferences,
+    })
+    .from(users)
+    .where(eq(users.id, ctx.user.id))
+    .limit(1);
+
+  if (!user) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "User not found",
+    });
+  }
+
+  const prefs = (user.userPreferences || {}) as any;
+
+  return {
+    linked: user.telegramVerified === true, // Canonical signal
+    username: user.telegramUsername || undefined,
+    verifiedAt: user.telegramVerifiedAt || undefined,
+    notifyLevel: prefs.telegramNotifyLevel || "off",
+    deliveryFailing: prefs.telegramDeliveryFailing || false,
+  };
+});
+
+/**
+ * Unlink the user's Telegram account and clear all related settings.
+ */
+const unlinkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+
+  // Fetch current userPreferences to preserve non-Telegram fields
+  const [user] = await db
+    .select({ userPreferences: users.userPreferences })
+    .from(users)
+    .where(eq(users.id, ctx.user.id))
+    .limit(1);
+
+  const currentPrefs = (user?.userPreferences || {}) as any;
+  const {
+    telegramNotifyLevel,
+    telegramDeliveryFailing,
+    ...remainingPrefs
+  } = currentPrefs;
+
+  // Update users table - clear all Telegram fields
+  await db
+    .update(users)
+    .set({
+      telegramChatId: null,
+      telegramUsername: null,
+      telegramVerified: false,
+      telegramVerifiedAt: null,
+      userPreferences: remainingPrefs,
+    })
+    .where(eq(users.id, ctx.user.id));
+
+  // Delete Redis failure counter
+  const redis = getRedisClient();
+  try {
+    await redis.del(`telegram:failures:${ctx.user.id}`);
+  } catch (err) {
+    // Non-fatal - log and continue
+    console.warn(
+      `[Telegram] Failed to delete Redis failure counter for user ${ctx.user.id}:`,
+      err
+    );
+  }
+
+  return { success: true };
+});
+
+/**
+ * Update the user's Telegram notification preferences.
+ */
+const updateTelegramPreferences = protectedProcedure
+  .input(
+    z.object({
+      notifyLevel: z.enum(["all", "high_critical", "critical_only", "off"]),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    const db = await getDb();
+    if (!db) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database unavailable",
+      });
+    }
+
+    // Fetch current userPreferences
+    const [user] = await db
+      .select({ userPreferences: users.userPreferences })
+      .from(users)
+      .where(eq(users.id, ctx.user.id))
+      .limit(1);
+
+    const currentPrefs = (user?.userPreferences || {}) as any;
+
+    // Update only telegramNotifyLevel, preserve all other keys
+    await db
+      .update(users)
+      .set({
+        userPreferences: {
+          ...currentPrefs,
+          telegramNotifyLevel: input.notifyLevel,
+        },
+      })
+      .where(eq(users.id, ctx.user.id));
+
+    return { success: true };
+  });
+
 export const telegramRouter = router({
   // Admin endpoints
   getTelegramSettings,
@@ -345,6 +562,9 @@ export const telegramRouter = router({
   testTelegramConnection,
   registerWebhook,
 
-  // User endpoints (section-06)
-  // generateTelegramLink, checkTelegramStatus, unlinkTelegram, updateTelegramPreferences
+  // User endpoints
+  generateTelegramLink,
+  checkTelegramStatus,
+  unlinkTelegram,
+  updateTelegramPreferences,
 });
