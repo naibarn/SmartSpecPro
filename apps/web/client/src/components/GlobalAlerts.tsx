@@ -8,7 +8,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, AlarmClock } from "lucide-react";
+import { Bell, AlarmClock, X, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export function GlobalAlerts() {
@@ -458,6 +458,8 @@ function GlobalUrgentReminders() {
 function GlobalNotificationBell() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data } = trpc.scheduledMessages.getNotificationCount.useQuery(
     undefined,
@@ -467,62 +469,312 @@ function GlobalNotificationBell() {
     }
   );
 
+  const { data: notifications } = trpc.scheduledMessages.getNotifications.useQuery(
+    { limit: 20 },
+    { enabled: showDropdown }
+  );
+
   const markAllRead = trpc.scheduledMessages.markAllRead.useMutation({
-    onSuccess: () => utils.scheduledMessages.getNotificationCount.invalidate(),
+    onSuccess: () => {
+      utils.scheduledMessages.getNotificationCount.invalidate();
+      utils.scheduledMessages.getNotifications.invalidate();
+    },
+  });
+
+  const markRead = trpc.scheduledMessages.markRead.useMutation({
+    onSuccess: () => {
+      utils.scheduledMessages.getNotificationCount.invalidate();
+      utils.scheduledMessages.getNotifications.invalidate();
+    },
   });
 
   const count = data?.count || 0;
 
-  const handleClick = () => {
-    if (count > 0) markAllRead.mutate();
-    setLocation("/chat?panel=schedule");
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDropdown]);
+
+  if (count === 0 && !showDropdown) return null;
+
+  const formatTimeAgo = (date: string | Date) => {
+    const now = Date.now();
+    const then = new Date(date).getTime();
+    const diffMs = now - then;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHrs = Math.floor(diffMin / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays}d ago`;
   };
 
-  if (count === 0) return null;
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "critical": return "#ef4444";
+      case "high": return "#f59e0b";
+      case "normal": return "#6b7280";
+      case "low": return "#4b5563";
+      default: return "#6b7280";
+    }
+  };
 
   return (
-    <button
-      onClick={handleClick}
-      title={`${count} unread notification${count !== 1 ? "s" : ""}`}
-      aria-label={`${count} unread notification${count !== 1 ? "s" : ""}`}
-      style={{
-        position: "fixed",
-        top: "12px",
-        right: "12px",
-        zIndex: 9990,
-        background: "var(--background, #1e1e1e)",
-        border: "1px solid var(--border, #333)",
-        borderRadius: "8px",
-        padding: "8px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-      }}
-    >
-      <Bell style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />
-      <span
+    <div ref={dropdownRef} style={{ position: "fixed", top: "12px", right: "12px", zIndex: 9990 }}>
+      <button
+        onClick={() => setShowDropdown((v) => !v)}
+        title={`${count} unread notification${count !== 1 ? "s" : ""}`}
+        aria-label={`${count} unread notification${count !== 1 ? "s" : ""}`}
         style={{
-          position: "absolute",
-          top: "-4px",
-          right: "-4px",
-          background: "#ef4444",
-          color: "white",
-          fontSize: "10px",
-          fontWeight: 700,
-          borderRadius: "9999px",
-          minWidth: "18px",
-          height: "18px",
+          background: "var(--background, #1e1e1e)",
+          border: "1px solid var(--border, #333)",
+          borderRadius: "8px",
+          padding: "8px",
+          cursor: "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "0 4px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          position: "relative",
         }}
       >
-        {count > 9 ? "9+" : count}
-      </span>
-    </button>
+        <Bell style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />
+        {count > 0 && (
+          <span
+            style={{
+              position: "absolute",
+              top: "-4px",
+              right: "-4px",
+              background: "#ef4444",
+              color: "white",
+              fontSize: "10px",
+              fontWeight: 700,
+              borderRadius: "9999px",
+              minWidth: "18px",
+              height: "18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 4px",
+            }}
+          >
+            {count > 9 ? "9+" : count}
+          </span>
+        )}
+      </button>
+
+      {showDropdown && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 8px)",
+            right: 0,
+            width: "360px",
+            maxHeight: "480px",
+            background: "var(--background, #1e1e1e)",
+            border: "1px solid var(--border, #333)",
+            borderRadius: "10px",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              padding: "12px 16px",
+              borderBottom: "1px solid var(--border, #333)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--foreground, #e0e0e0)" }}>
+              Notifications {count > 0 && `(${count})`}
+            </span>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              {count > 0 && (
+                <button
+                  onClick={() => markAllRead.mutate()}
+                  title="Mark all as read"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#0078d4",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  Mark all read
+                </button>
+              )}
+              <button
+                onClick={() => setShowDropdown(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--muted-foreground, #888)",
+                  cursor: "pointer",
+                  padding: "2px",
+                  display: "flex",
+                }}
+              >
+                <X style={{ width: 14, height: 14 }} />
+              </button>
+            </div>
+          </div>
+
+          {/* Notification List */}
+          <div style={{ overflowY: "auto", flex: 1, maxHeight: "400px" }}>
+            {notifications && notifications.length > 0 ? (
+              notifications.map((n: any) => (
+                <div
+                  key={n.id}
+                  style={{
+                    padding: "12px 16px",
+                    borderBottom: "1px solid var(--border, #222)",
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "flex-start",
+                    background: n.isRead ? "transparent" : "rgba(0, 120, 212, 0.06)",
+                    cursor: n.conversationId ? "pointer" : "default",
+                  }}
+                  onClick={() => {
+                    if (n.conversationId) {
+                      setShowDropdown(false);
+                      setLocation(`/chat`);
+                    }
+                    if (!n.isRead) markRead.mutate({ id: n.id });
+                  }}
+                >
+                  {/* Unread dot */}
+                  <div style={{ paddingTop: "4px", minWidth: "8px" }}>
+                    {!n.isRead && (
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: getPriorityColor(n.priority),
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "8px" }}>
+                      <span
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: n.isRead ? 400 : 600,
+                          color: "var(--foreground, #e0e0e0)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {n.title}
+                      </span>
+                      <span style={{ fontSize: "11px", color: "var(--muted-foreground, #666)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {formatTimeAgo(n.createdAt)}
+                      </span>
+                    </div>
+                    {n.content && n.content !== n.title && (
+                      <p
+                        style={{
+                          fontSize: "12px",
+                          color: "var(--muted-foreground, #888)",
+                          marginTop: "2px",
+                          lineHeight: 1.4,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                        }}
+                      >
+                        {n.content}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Mark read button */}
+                  {!n.isRead && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markRead.mutate({ id: n.id });
+                      }}
+                      title="Mark as read"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--muted-foreground, #666)",
+                        cursor: "pointer",
+                        padding: "4px",
+                        borderRadius: "4px",
+                        display: "flex",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Check style={{ width: 14, height: 14 }} />
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div
+                style={{
+                  padding: "32px 16px",
+                  textAlign: "center",
+                  color: "var(--muted-foreground, #666)",
+                  fontSize: "13px",
+                }}
+              >
+                No notifications
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div
+            style={{
+              padding: "8px 16px",
+              borderTop: "1px solid var(--border, #333)",
+              textAlign: "center",
+            }}
+          >
+            <button
+              onClick={() => {
+                setShowDropdown(false);
+                setLocation("/chat?panel=schedule");
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#0078d4",
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              View Scheduled Alerts
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

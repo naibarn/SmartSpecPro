@@ -58,6 +58,7 @@ export interface Clip {
     fadeIn?: number;         // fade in duration (seconds)
     fadeOut?: number;        // fade out duration (seconds)
   };
+  inTransition?: ClipTransition;  // Clip-to-clip transition from previous clip
   transform?: ClipTransform; // For overlay clips
   textConfig?: TextConfig;   // For text clips
   groupId?: string;          // For compound clip grouping
@@ -130,6 +131,40 @@ export interface ExportSettings {
 export interface Effect {
   type: 'fadeIn' | 'fadeOut' | 'transition' | 'speed' | 'filter';
   parameters: Record<string, any>;
+}
+
+// ========================================
+// Clip-to-Clip Transitions
+// ========================================
+
+export type TransitionName =
+  | 'none'
+  | 'crossfade'
+  | 'wipeLeft'
+  | 'wipeRight'
+  | 'wipeUp'
+  | 'wipeDown'
+  | 'slideLeft'
+  | 'slideRight'
+  | 'slideUp'
+  | 'slideDown'
+  | 'zoomIn'
+  | 'zoomOut'
+  | 'circleOpen'
+  | 'circleClose'
+  | 'diamondOpen'
+  | 'blur'
+  | 'pixelize'
+  | 'radial'
+  | 'smoothLeft'
+  | 'smoothRight';
+
+export type TransitionAlignment = 'start' | 'center' | 'end';
+
+export interface ClipTransition {
+  name: TransitionName;
+  durationMs: number;  // 200-2000ms, default 500ms
+  alignment?: TransitionAlignment;  // default 'center' — how overlap is distributed
 }
 
 // ========================================

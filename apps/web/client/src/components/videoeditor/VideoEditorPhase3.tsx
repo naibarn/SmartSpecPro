@@ -30,9 +30,11 @@ import {
   type VideoEditorProject,
   type MediaLibraryAsset,
   type Clip,
+  type Effect,
   type ExportSettings,
   type DuckingConfig,
   type ClipTransform,
+  type ClipTransition,
   type TextConfig,
   type SilentRegion,
   createEmptyProject,
@@ -57,10 +59,13 @@ export const VideoEditorPhase3: React.FC = () => {
   const [clipboardClip, setClipboardClip] = useState<Clip | null>(null);
   const [rippleEditMode, setRippleEditMode] = useState(false);
 
-  // History
-  const [history, setHistory] = useState<VideoEditorProject[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  // History — seed with initial project so first undo works
+  const [history, setHistory] = useState<VideoEditorProject[]>(() => [
+    JSON.parse(JSON.stringify(createEmptyProject())),
+  ]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
+  const [editingProjectName, setEditingProjectName] = useState(false);
 
   // Dialogs
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -82,7 +87,11 @@ export const VideoEditorPhase3: React.FC = () => {
     { enabled: showProjectList }
   );
   const saveMutation = trpc.videoEditorProjects.save.useMutation();
-  const autoSaveMutation = trpc.videoEditorProjects.autoSave.useMutation();
+  const [lastAutoSaveAt, setLastAutoSaveAt] = useState<Date | null>(null);
+  const autoSaveMutation = trpc.videoEditorProjects.autoSave.useMutation({
+    onSuccess: () => setLastAutoSaveAt(new Date()),
+    onError: (err: any) => console.warn('[AutoSave] DB auto-save failed:', err.message),
+  });
   const deleteMutation = trpc.videoEditorProjects.delete.useMutation();
 
   // Save project to sessionStorage for error recovery
@@ -90,20 +99,33 @@ export const VideoEditorPhase3: React.FC = () => {
     sessionStorage.setItem('currentProject', JSON.stringify(project));
   }, [project]);
 
+  // Warn user on browser refresh/close when there are unsaved changes
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
   // ========================================
   // History Management
   // ========================================
 
+  // Use a ref to track historyIndex so addToHistory never has a stale closure
+  const historyIndexRef = React.useRef(historyIndex);
+  historyIndexRef.current = historyIndex;
+
   const addToHistory = useCallback((newProject: VideoEditorProject) => {
     setHistory(prev => {
-      const trimmed = prev.slice(0, historyIndex + 1);
+      const trimmed = prev.slice(0, historyIndexRef.current + 1);
       const updated = [...trimmed, JSON.parse(JSON.stringify(newProject))].slice(-50);
-      // Adjust historyIndex to match actual new length
       setHistoryIndex(updated.length - 1);
       return updated;
     });
     setIsDirty(true);
-  }, [historyIndex]);
+  }, []);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
@@ -145,6 +167,7 @@ export const VideoEditorPhase3: React.FC = () => {
       });
       setCurrentProjectId(result.id);
       setIsDirty(false);
+      setLastAutoSaveAt(new Date());
     } catch (error) {
       alert(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -167,7 +190,7 @@ export const VideoEditorPhase3: React.FC = () => {
     return () => clearTimeout(timer);
   }, [currentProjectId, isDirty, project]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleOpenProject = async (projectId: number) => {
+  const doOpenProject = async (projectId: number) => {
     try {
       const loaded = await trpcUtils.videoEditorProjects.get.fetch({ id: projectId });
       if (!loaded) {
@@ -185,6 +208,26 @@ export const VideoEditorPhase3: React.FC = () => {
     } catch (error) {
       alert(`Failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  };
+
+  const handleOpenProject = (projectId: number) => {
+    if (isDirty) {
+      setConfirmDialog({
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes. Opening another project will discard them. Continue?',
+        confirmText: 'Open Anyway',
+        cancelText: 'Cancel',
+        type: 'warning',
+        showUndoHint: false
+      });
+      setConfirmCallback(() => () => {
+        setConfirmDialog(null);
+        setConfirmCallback(null);
+        doOpenProject(projectId);
+      });
+      return;
+    }
+    doOpenProject(projectId);
   };
 
   const handleDeleteProject = async (projectId: number) => {
@@ -278,14 +321,15 @@ export const VideoEditorPhase3: React.FC = () => {
     try {
       setShowExportDialog(false);
 
-      // Update project export settings
-      project.export = settings;
-
-      // Create a copy excluding clips from hidden tracks for render
+      // Create a copy excluding clips from hidden/muted tracks for render
       const renderProject = JSON.parse(JSON.stringify(project));
+      renderProject.export = settings;
       renderProject.timeline.tracks = renderProject.timeline.tracks.map((track: any) => ({
         ...track,
-        clips: track.visible === false ? [] : track.clips,
+        // Exclude hidden tracks entirely; mute audio on muted tracks
+        clips: track.visible === false ? [] : track.clips.map((c: any) =>
+          track.muted ? { ...c, volume: 0 } : c
+        ),
       }));
 
       // Convert project to JSON for render
@@ -568,8 +612,22 @@ export const VideoEditorPhase3: React.FC = () => {
       // Delete all selected clips or single clip
       const clipsToDelete = selectedClipIds.length > 0 ? selectedClipIds : [clipId];
 
+      const deletedSet = new Set(clipsToDelete);
       for (const track of newProject.timeline.tracks) {
-        track.clips = track.clips.filter((c: Clip) => !clipsToDelete.includes(c.id));
+        // Remember predecessor for each clip before filtering
+        const predecessorMap = new Map<string, string | null>();
+        for (let i = 0; i < track.clips.length; i++) {
+          predecessorMap.set(track.clips[i].id, i > 0 ? track.clips[i - 1].id : null);
+        }
+        track.clips = track.clips.filter((c: Clip) => !deletedSet.has(c.id));
+        // Clear orphaned inTransition on any clip whose predecessor was deleted or is now first
+        for (let i = 0; i < track.clips.length; i++) {
+          if (!track.clips[i].inTransition) continue;
+          const prevId = predecessorMap.get(track.clips[i].id);
+          if (i === 0 || !prevId || deletedSet.has(prevId)) {
+            track.clips[i].inTransition = undefined;
+          }
+        }
       }
 
       // Handle ripple edit mode - close gaps after deletion
@@ -602,7 +660,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
   const handleDuckingChange = (ducking: DuckingConfig) => {
     setProject(prevProject => {
-      const newProject = { ...prevProject };
+      const newProject = JSON.parse(JSON.stringify(prevProject));
       newProject.audioMixing.ducking = ducking;
       newProject.modifiedAt = new Date().toISOString();
       addToHistory(newProject);
@@ -650,6 +708,44 @@ export const VideoEditorPhase3: React.FC = () => {
         }
       }
 
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  // ========================================
+  // Clip Effects (filter, speed, etc.)
+  // ========================================
+
+  const handleEffectsChange = useCallback((clipId: string, effects: Effect[]) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          clip.effects = effects;
+          break;
+        }
+      }
+
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  const handleClipTransitionChange = useCallback((clipId: string, transition: ClipTransition | undefined) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          clip.inTransition = transition;
+          break;
+        }
+      }
       newProject.modifiedAt = new Date().toISOString();
       addToHistory(newProject);
       return newProject;
@@ -993,7 +1089,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
   const confirmResolutionChange = (width: number, height: number) => {
     setProject(prevProject => {
-      const newProject = { ...prevProject };
+      const newProject = JSON.parse(JSON.stringify(prevProject));
       newProject.settings.width = width;
       newProject.settings.height = height;
       newProject.modifiedAt = new Date().toISOString();
@@ -1025,12 +1121,115 @@ export const VideoEditorPhase3: React.FC = () => {
             trimIn: clip.trimIn,
             clipDuration: clip.duration,
             isImage: asset.type === 'image',
+            transitions: clip.transitions,
+            transform: clip.transform,
+            effects: clip.effects,
           };
         }
       }
     }
     return null;
   }, [project.timeline.tracks, project.assets, currentTime]);
+
+  // Active audio clips for preview playback
+  const activeAudioClips = useMemo((): ActiveClipInfo[] => {
+    const audioTracks = project.timeline.tracks.filter(
+      t => t.type === 'audio' && t.visible !== false
+    );
+    const clips: ActiveClipInfo[] = [];
+    for (const track of audioTracks) {
+      for (const clip of track.clips) {
+        if (currentTime >= clip.startTime && currentTime < clip.startTime + clip.duration) {
+          const asset = project.assets[clip.assetId];
+          if (!asset || !asset.path) continue;
+          clips.push({
+            videoUrl: asset.path,
+            clipStartTime: clip.startTime,
+            trimIn: clip.trimIn,
+            clipDuration: clip.duration,
+          });
+        }
+      }
+    }
+    return clips;
+  }, [project.timeline.tracks, project.assets, currentTime]);
+
+  // Previous clip on same track (for transition picker)
+  const previousClip = useMemo((): Clip | null => {
+    if (!selectedClipId) return null;
+    for (const track of project.timeline.tracks) {
+      const idx = track.clips.findIndex(c => c.id === selectedClipId);
+      if (idx > 0) return track.clips[idx - 1];
+    }
+    return null;
+  }, [selectedClipId, project]);
+
+  // Next clip on same track (for outgoing transition picker)
+  const nextClip = useMemo((): Clip | null => {
+    if (!selectedClipId) return null;
+    for (const track of project.timeline.tracks) {
+      const idx = track.clips.findIndex(c => c.id === selectedClipId);
+      if (idx >= 0 && idx < track.clips.length - 1) return track.clips[idx + 1];
+    }
+    return null;
+  }, [selectedClipId, project]);
+
+  // Outgoing clip + transition info for dual-clip preview
+  // Preview always shows transition within clip B's time range (CSS approximation).
+  // Alignment ('start'/'center'/'end') affects only FFmpeg xfade offset in final render.
+  const { outgoingClip, activeTransitionName, transitionProgress } = useMemo(() => {
+    const empty = {
+      outgoingClip: null as ActiveClipInfo | null,
+      activeTransitionName: undefined as string | undefined,
+      transitionProgress: undefined as number | undefined,
+    };
+    if (!activeClip) return empty;
+
+    const videoTracks = project.timeline.tracks.filter(
+      t => (t.type === 'video' || t.type === 'overlay') && t.visible !== false
+    );
+
+    // Scan all adjacent clip pairs for transition zones
+    for (const track of videoTracks) {
+      for (let i = 1; i < track.clips.length; i++) {
+        const clip = track.clips[i]; // clip B (incoming)
+        const prevClip = track.clips[i - 1]; // clip A (outgoing)
+        if (!clip.inTransition || clip.inTransition.name === 'none') continue;
+
+        const rawDuration = clip.inTransition.durationMs / 1000;
+        const maxDuration = Math.min(rawDuration, clip.duration, prevClip.duration);
+        const transitionDuration = Math.max(0.001, maxDuration);
+
+        // Preview zone always starts at clip B's startTime to avoid
+        // swapping activeClip mid-playback (which causes video reload).
+        const zoneStart = clip.startTime;
+        const zoneEnd = clip.startTime + transitionDuration;
+
+        if (currentTime < zoneStart || currentTime > zoneEnd) continue;
+
+        const prevAsset = project.assets[prevClip.assetId];
+        if (!prevAsset || !prevAsset.path) continue;
+
+        const progress = (currentTime - zoneStart) / transitionDuration;
+
+        return {
+          outgoingClip: {
+            videoUrl: prevAsset.path,
+            clipStartTime: prevClip.startTime,
+            trimIn: prevClip.trimIn,
+            clipDuration: prevClip.duration,
+            isImage: prevAsset.type === 'image',
+            transitions: prevClip.transitions,
+            transform: prevClip.transform,
+            effects: prevClip.effects,
+          },
+          activeTransitionName: clip.inTransition.name,
+          transitionProgress: Math.max(0, Math.min(1, progress)),
+        };
+      }
+    }
+    return empty;
+  }, [activeClip, project.timeline.tracks, project.assets, currentTime]);
 
   // ========================================
   // Playback Controls
@@ -1105,11 +1304,11 @@ export const VideoEditorPhase3: React.FC = () => {
     if (!selectedClipId) return;
 
     setProject(prevProject => {
-      const newProject = { ...prevProject };
+      const newProject = JSON.parse(JSON.stringify(prevProject));
 
       // Find the selected clip
       for (const track of newProject.timeline.tracks) {
-        const clipIndex = track.clips.findIndex(c => c.id === selectedClipId);
+        const clipIndex = track.clips.findIndex((c: Clip) => c.id === selectedClipId);
         if (clipIndex !== -1) {
           const originalClip = track.clips[clipIndex];
 
@@ -1144,11 +1343,11 @@ export const VideoEditorPhase3: React.FC = () => {
     if (!selectedClipId) return;
 
     setProject(prevProject => {
-      const newProject = { ...prevProject };
+      const newProject = JSON.parse(JSON.stringify(prevProject));
 
       // Find the selected clip
       for (const track of newProject.timeline.tracks) {
-        const clipIndex = track.clips.findIndex(c => c.id === selectedClipId);
+        const clipIndex = track.clips.findIndex((c: Clip) => c.id === selectedClipId);
         if (clipIndex !== -1) {
           const originalClip = track.clips[clipIndex];
 
@@ -1166,7 +1365,7 @@ export const VideoEditorPhase3: React.FC = () => {
           const firstClip: Clip = {
             ...originalClip,
             duration: splitOffset,
-            trimOut: originalClip.trimOut + (originalClip.duration - splitOffset)
+            trimOut: originalClip.trimIn + splitOffset,
           };
 
           // Create second part (after split)
@@ -1176,7 +1375,8 @@ export const VideoEditorPhase3: React.FC = () => {
             startTime: currentTime,
             duration: originalClip.duration - splitOffset,
             trimIn: originalClip.trimIn + splitOffset,
-            trimOut: originalClip.trimOut
+            trimOut: originalClip.trimOut,
+            inTransition: undefined, // Split clip can't inherit transition
           };
 
           // Replace original clip with the two new clips
@@ -1217,10 +1417,10 @@ export const VideoEditorPhase3: React.FC = () => {
     if (!clipboardClip) return;
 
     setProject(prevProject => {
-      const newProject = { ...prevProject };
+      const newProject = JSON.parse(JSON.stringify(prevProject));
 
       // Find the track that matches the clipboard clip's type
-      const targetTrack = newProject.timeline.tracks.find(t => t.id === clipboardClip.trackId);
+      const targetTrack = newProject.timeline.tracks.find((t: any) => t.id === clipboardClip.trackId);
       if (!targetTrack) {
         alert('Cannot paste: target track not found');
         return prevProject;
@@ -1451,6 +1651,24 @@ export const VideoEditorPhase3: React.FC = () => {
             font-size: 14px;
             font-weight: 600;
           }
+          .project-title:hover {
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin: -2px -6px;
+          }
+          .project-title-input {
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #0078d4;
+            border-radius: 4px;
+            color: inherit;
+            padding: 2px 6px;
+            outline: none;
+            min-width: 120px;
+            max-width: 300px;
+          }
 
           .header-spacer {
             flex: 1;
@@ -1555,9 +1773,46 @@ export const VideoEditorPhase3: React.FC = () => {
           <button className="header-button" onClick={handleBackToDashboard} title="Back to Dashboard">
             &#8592; Dashboard
           </button>
-          <div className="project-title">&#127916; {sanitizeProjectName(project.name)}</div>
+          {editingProjectName ? (
+            <input
+              className="project-title-input"
+              autoFocus
+              defaultValue={project.name}
+              maxLength={100}
+              onBlur={(e) => {
+                const newName = e.target.value.trim() || 'Untitled Project';
+                if (newName !== project.name) {
+                  setProject(prev => {
+                    const updated = { ...prev, name: newName, modifiedAt: new Date().toISOString() };
+                    addToHistory(updated);
+                    return updated;
+                  });
+                }
+                setEditingProjectName(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                if (e.key === 'Escape') setEditingProjectName(false);
+              }}
+            />
+          ) : (
+            <div
+              className="project-title"
+              onClick={() => setEditingProjectName(true)}
+              title="Click to rename project"
+              style={{ cursor: 'pointer' }}
+            >
+              &#127916; {sanitizeProjectName(project.name)}
+            </div>
+          )}
           {currentProjectId && <span style={{ fontSize: '10px', color: '#666', marginLeft: '4px' }}>#{currentProjectId}</span>}
           {isDirty && <span style={{ fontSize: '10px', color: '#ffa500', marginLeft: '4px' }}>unsaved</span>}
+          {lastAutoSaveAt && !isDirty && <span style={{ fontSize: '10px', color: '#4caf50', marginLeft: '4px' }}>saved</span>}
+          {lastAutoSaveAt && isDirty && currentProjectId && (
+            <span style={{ fontSize: '9px', color: '#666', marginLeft: '4px' }} title={`Last auto-saved: ${lastAutoSaveAt.toLocaleTimeString()}`}>
+              auto-saved {lastAutoSaveAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
           <div className="header-spacer" />
           <button className="header-button" onClick={handleSave} disabled={isSaving} title="Save to cloud">
             {isSaving ? '...' : '\uD83D\uDCBE'} Save
@@ -1583,6 +1838,10 @@ export const VideoEditorPhase3: React.FC = () => {
                 onPlayPause={handlePlayPause}
                 onStop={handleStop}
                 activeClip={activeClip}
+                activeAudioClips={activeAudioClips}
+                outgoingClip={outgoingClip}
+                transitionName={activeTransitionName}
+                transitionProgress={transitionProgress}
               />
             </div>
 
@@ -1632,6 +1891,8 @@ export const VideoEditorPhase3: React.FC = () => {
                   </button>
                   <a
                     href="/tasks"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{ color: '#0078d4', textDecoration: 'underline', fontSize: '11px', lineHeight: '24px' }}
                   >
                     Task Queue
@@ -1717,7 +1978,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
             <div className="sidebar-content">
               {sidebarView === 'library' && (
-                <MediaLibraryPanel onAddToTimeline={handleAddToTimeline} />
+                <MediaLibraryPanel onAddToTimeline={handleAddToTimeline} projectAssets={project.assets} />
               )}
               {sidebarView === 'ducking' && (
                 <div className="ducking-container">
@@ -1755,7 +2016,11 @@ export const VideoEditorPhase3: React.FC = () => {
                       .find(c => c.id === selectedClipId) || null
                     : null
                   }
+                  previousClip={previousClip}
+                  nextClip={nextClip}
                   onTransitionsChange={handleTransitionsChange}
+                  onEffectsChange={handleEffectsChange}
+                  onClipTransitionChange={handleClipTransitionChange}
                 />
               )}
               {sidebarView === 'overlay' && (

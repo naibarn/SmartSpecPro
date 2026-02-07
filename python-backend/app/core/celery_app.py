@@ -5,8 +5,12 @@ Handles long-running media generation tasks
 
 from celery import Celery
 from celery.schedules import crontab
+from kombu import Queue
 from app.core.config import settings
 import os
+
+# Required queues — worker MUST consume from all of these
+REQUIRED_QUEUES = ["celery", "video", "media"]
 
 # Create Celery app
 celery_app = Celery(
@@ -29,6 +33,14 @@ celery_app.conf.update(
     worker_max_tasks_per_child=100,
     task_acks_late=True,
     task_reject_on_worker_lost=True,
+    # Declare all queues so worker consumes from them by default
+    # (even without -Q flag). This prevents jobs stuck in queue.
+    task_queues=[
+        Queue("celery"),
+        Queue("video"),
+        Queue("media"),
+    ],
+    task_create_missing_queues=True,
     # Queue routing: isolate FFmpeg video tasks from API-based media tasks
     task_routes={
         # FFmpeg video processing -> video queue (heavy CPU/IO)

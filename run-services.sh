@@ -6,6 +6,7 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MEDIA_COMPOSE="docker-compose.media.yml"
 
 # Load NVM if available
 export NVM_DIR="$HOME/.nvm"
@@ -75,6 +76,50 @@ stop_service() {
     fi
 }
 
+# Docker media workers management
+start_media_workers() {
+    log_step "Starting Docker media workers (celery-media, celery-video, celery-beat, flower)..."
+
+    # Ensure the network exists (created by base infra stack)
+    if ! docker network ls --format '{{.Name}}' | grep -q '^smartspecpro_default$'; then
+        log_warn "Network smartspecpro_default not found — infra may not be running"
+    fi
+
+    cd "$PROJECT_ROOT"
+    docker compose -f "$MEDIA_COMPOSE" up -d 2>&1
+
+    # Check containers started
+    local running
+    running=$(docker compose -f "$MEDIA_COMPOSE" ps --status running -q 2>/dev/null | wc -l)
+    if [ "$running" -ge 3 ]; then
+        log_info "Docker media workers started ($running containers running)"
+    else
+        log_warn "Only $running media containers running — check: docker compose -f $MEDIA_COMPOSE ps"
+    fi
+}
+
+stop_media_workers() {
+    log_step "Stopping Docker media workers..."
+    cd "$PROJECT_ROOT"
+    docker compose -f "$MEDIA_COMPOSE" down 2>&1 || true
+    log_info "Docker media workers stopped"
+}
+
+media_workers_status() {
+    local containers=("smartspec-celery-media" "smartspec-celery-video" "smartspec-celery-beat" "smartspec-flower")
+    for cname in "${containers[@]}"; do
+        local state
+        state=$(docker inspect --format='{{.State.Status}}' "$cname" 2>/dev/null || echo "not found")
+        local health=""
+        if [ "$state" = "running" ]; then
+            health=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no healthcheck{{end}}' "$cname" 2>/dev/null || echo "")
+            echo -e "  ${GREEN}✓${NC} $cname (${state}, ${health})"
+        else
+            echo -e "  ${RED}✗${NC} $cname (${state})"
+        fi
+    done
+}
+
 cmd_start() {
     print_banner
     check_screen
@@ -91,8 +136,9 @@ cmd_start() {
     # Start Backend
     start_service "smartspec-backend" "bash dev-local.sh backend"
 
-    # Start Celery Worker
-    start_service "smartspec-celery" "bash dev-local.sh celery"
+    # Start Docker media workers (replaces host-based celery)
+    echo ""
+    start_media_workers
 
     echo ""
     log_info "All services started!"
@@ -101,17 +147,19 @@ cmd_start() {
     echo "  ┌─────────────────────────────────────────────────────────────┐"
     echo "  │ SmartSpec Web      │ http://localhost:3000                  │"
     echo "  │ Python Backend     │ http://localhost:8000                  │"
+    echo "  │ Flower Dashboard   │ http://localhost:5555                  │"
     echo "  │ Public Domain      │ https://smartaihub.app                 │"
     echo "  │ Public API         │ https://api.smartaihub.app             │"
     echo "  └─────────────────────────────────────────────────────────────┘"
     echo ""
     echo -e "${CYAN}Useful commands:${NC}"
-    echo "  ./run-services.sh status    - Show service status"
-    echo "  ./run-services.sh attach web - Attach to web console"
-    echo "  ./run-services.sh attach backend - Attach to backend console"
-    echo "  ./run-services.sh attach celery - Attach to celery console"
-    echo "  ./run-services.sh logs web  - View web logs"
-    echo "  ./run-services.sh stop      - Stop all services"
+    echo "  ./run-services.sh status          - Show service status"
+    echo "  ./run-services.sh attach web      - Attach to web console"
+    echo "  ./run-services.sh attach backend  - Attach to backend console"
+    echo "  ./run-services.sh logs web        - View web logs"
+    echo "  ./run-services.sh logs media      - View media worker logs"
+    echo "  ./run-services.sh restart media   - Restart media workers"
+    echo "  ./run-services.sh stop            - Stop all services"
     echo ""
     echo -e "${YELLOW}Tip:${NC} To detach from screen, press: Ctrl+A then D"
 }
@@ -121,7 +169,9 @@ cmd_stop() {
 
     stop_service "smartspec-web"
     stop_service "smartspec-backend"
-    stop_service "smartspec-celery"
+
+    # Stop Docker media workers
+    stop_media_workers
 
     log_step "Stopping infrastructure..."
     sg docker -c "bash dev-local.sh infra stop"
@@ -148,12 +198,9 @@ cmd_status() {
         echo -e "  ${RED}✗${NC} Python Backend (not running)"
     fi
 
-    # Check Celery
-    if screen -list | grep -q "\.smartspec-celery"; then
-        echo -e "  ${GREEN}✓${NC} Celery Worker (screen session: smartspec-celery)"
-    else
-        echo -e "  ${RED}✗${NC} Celery Worker (not running)"
-    fi
+    echo ""
+    echo -e "${CYAN}Docker Media Workers:${NC}"
+    media_workers_status
 
     echo ""
     echo -e "${CYAN}Infrastructure Status:${NC}"
@@ -187,18 +234,17 @@ cmd_attach() {
                 log_error "smartspec-backend is not running"
             fi
             ;;
-        celery)
-            if screen -list | grep -q "\.smartspec-celery"; then
-                log_info "Attaching to smartspec-celery... (Press Ctrl+A then D to detach)"
-                sleep 1
-                screen -r smartspec-celery
-            else
-                log_error "smartspec-celery is not running"
-            fi
+        media)
+            log_info "Media workers run in Docker. Use these commands instead:"
+            echo "  docker logs -f smartspec-celery-media   # Media worker logs"
+            echo "  docker logs -f smartspec-celery-video   # Video worker logs"
+            echo "  docker logs -f smartspec-celery-beat    # Beat scheduler logs"
+            echo "  docker logs -f smartspec-flower         # Flower dashboard logs"
+            echo "  http://localhost:5555                    # Flower web dashboard"
             ;;
         *)
             log_error "Unknown service: $service"
-            echo "Usage: ./run-services.sh attach [web|backend|celery]"
+            echo "Usage: ./run-services.sh attach [web|backend|media]"
             exit 1
             ;;
     esac
@@ -230,20 +276,24 @@ cmd_logs() {
                 log_error "smartspec-backend is not running"
             fi
             ;;
-        celery)
-            if screen -list | grep -q "\.smartspec-celery"; then
-                log_info "Showing logs for smartspec-celery... (Press Ctrl+C to exit)"
-                screen -S smartspec-celery -X hardcopy /tmp/smartspec-celery.log
-                cat /tmp/smartspec-celery.log
-                echo ""
-                log_info "To see live logs, use: ./run-services.sh attach celery"
-            else
-                log_error "smartspec-celery is not running"
-            fi
+        media)
+            log_info "Showing recent logs for Docker media workers..."
+            echo ""
+            echo -e "${CYAN}=== celery-media (last 30 lines) ===${NC}"
+            docker logs --tail 30 smartspec-celery-media 2>&1 || echo "  Container not running"
+            echo ""
+            echo -e "${CYAN}=== celery-video (last 30 lines) ===${NC}"
+            docker logs --tail 30 smartspec-celery-video 2>&1 || echo "  Container not running"
+            echo ""
+            echo -e "${CYAN}=== celery-beat (last 10 lines) ===${NC}"
+            docker logs --tail 10 smartspec-celery-beat 2>&1 || echo "  Container not running"
+            echo ""
+            log_info "For live logs: docker logs -f smartspec-celery-media"
+            log_info "Flower dashboard: http://localhost:5555"
             ;;
         *)
             log_error "Unknown service: $service"
-            echo "Usage: ./run-services.sh logs [web|backend|celery]"
+            echo "Usage: ./run-services.sh logs [web|backend|media]"
             exit 1
             ;;
     esac
@@ -269,14 +319,15 @@ cmd_restart() {
                 sleep 1
                 start_service "smartspec-backend" "bash dev-local.sh backend"
                 ;;
-            celery)
-                stop_service "smartspec-celery"
-                sleep 1
-                start_service "smartspec-celery" "bash dev-local.sh celery"
+            media)
+                log_step "Restarting Docker media workers..."
+                cd "$PROJECT_ROOT"
+                docker compose -f "$MEDIA_COMPOSE" restart
+                log_info "Docker media workers restarted"
                 ;;
             *)
                 log_error "Unknown service: $service"
-                echo "Usage: ./run-services.sh restart [web|backend|celery]"
+                echo "Usage: ./run-services.sh restart [web|backend|media]"
                 exit 1
                 ;;
         esac
@@ -289,20 +340,32 @@ cmd_help() {
     echo "Usage: ./run-services.sh <command> [options]"
     echo ""
     echo -e "${CYAN}Commands:${NC}"
-    echo "  start                Start all services in screen sessions"
+    echo "  start                Start all services (screen + Docker media workers)"
     echo "  stop                 Stop all services"
     echo "  restart [service]    Restart all services or specific service"
     echo "  status               Show status of all services"
-    echo "  attach <service>     Attach to service console (web|backend|celery)"
-    echo "  logs <service>       View service logs (web|backend|celery)"
+    echo "  attach <service>     Attach to service console (web|backend|media)"
+    echo "  logs <service>       View service logs (web|backend|media)"
     echo "  help                 Show this help message"
+    echo ""
+    echo -e "${CYAN}Services:${NC}"
+    echo "  web       SmartSpec Web (Node.js/React, screen session)"
+    echo "  backend   Python Backend (FastAPI, screen session)"
+    echo "  media     Media Workers (Docker: celery-media, celery-video, celery-beat, flower)"
     echo ""
     echo -e "${CYAN}Examples:${NC}"
     echo "  ./run-services.sh start          # Start all services"
     echo "  ./run-services.sh status         # Check status"
     echo "  ./run-services.sh attach backend # Attach to backend console"
-    echo "  ./run-services.sh restart web    # Restart only web service"
+    echo "  ./run-services.sh logs media     # View media worker logs"
+    echo "  ./run-services.sh restart media  # Restart media workers"
     echo "  ./run-services.sh stop           # Stop everything"
+    echo ""
+    echo -e "${CYAN}Docker Media Workers:${NC}"
+    echo "  celery-media   API-bound media generation (2 CPUs, 3GB)"
+    echo "  celery-video   FFmpeg video rendering (4 CPUs, 8GB)"
+    echo "  celery-beat    Periodic task scheduler"
+    echo "  flower         Monitoring dashboard → http://localhost:5555"
     echo ""
     echo -e "${YELLOW}Screen Tips:${NC}"
     echo "  Ctrl+A then D  - Detach from screen (leave it running)"

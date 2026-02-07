@@ -6,7 +6,8 @@
 
 import * as mediaService from './mediaService';
 import { createMediaJobClient, type MediaJobClient } from './mediaJobClient';
-import type { MediaLibraryAsset, RenderJob } from '../types/videoEditor';
+import type { MediaLibraryAsset, RenderJob, VideoEditorProject } from '../types/videoEditor';
+import { projectToTimeline } from '../../../shared/types/mediaJob';
 
 // Re-export canonical types for backward compat
 export type { MediaLibraryAsset, RenderJob } from '../types/videoEditor';
@@ -405,11 +406,30 @@ export class VideoEditorRenderService {
       }
     }
 
+    // Submit the job and return immediately — don't block on waitForCompletion.
+    // RenderProgressDialog handles progress polling separately.
     try {
       const client = await getJobClient();
-      const project = JSON.parse(projectJson);
-      const result = await client.renderMp4(project, outputPath);
-      return result.jobId;
+      const rawProject: VideoEditorProject = JSON.parse(projectJson);
+
+      // Convert seconds-based VideoEditorProject → ms-based MediaTimeline for Python worker
+      const timeline = projectToTimeline(rawProject);
+
+      // Build MediaAsset array so Python worker can resolve clip URIs and durations
+      const assets = Object.entries(rawProject.assets || {}).map(([id, asset]) => ({
+        assetId: id,
+        kind: asset.type as 'video' | 'audio' | 'image',
+        uri: asset.path || asset.originalPath || '',
+        durationMs: Math.round((asset.duration || 0) * 1000),
+      }));
+
+      const jobId = await client.submitJob({
+        specVersion: "0.1",
+        jobType: "render_mp4_h264",
+        inputs: { project: timeline, assets },
+        output: { mode: "file", target: outputPath },
+      } as any);
+      return jobId;
     } catch (error) {
       console.error('Failed to start render via job:', error);
       throw error;
@@ -429,12 +449,24 @@ export class VideoEditorRenderService {
     try {
       const client = await getJobClient();
       const status = await (client as any).adapter.getStatus(jobId);
+
+      // Extract output path from result artifacts (set by Python worker on completion)
+      // Backend returns: { result: { artifacts: [{ kind, uri, mime }] } } for "done" jobs
+      let outputPath = '';
+      if (status.result?.artifacts?.length > 0) {
+        outputPath = status.result.artifacts[0].uri || '';
+      }
+      // Fallback to legacy field names
+      if (!outputPath) {
+        outputPath = status.outputUrl || status.output_path || '';
+      }
+
       return {
         id: jobId,
-        outputPath: '',
+        outputPath,
         status: status.status === 'done' ? 'completed'
           : status.status === 'error' ? 'failed'
-          : status.status === 'running' ? 'rendering'
+          : (status.status === 'running' || status.status === 'processing') ? 'rendering'
           : 'pending',
         progress: status.progress || 0,
         error: status.message,

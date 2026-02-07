@@ -309,7 +309,7 @@ cmd_celery() {
     export CELERY_BROKER_URL="redis://localhost:6379/0"
     export CELERY_RESULT_BACKEND="redis://localhost:6379/0"
 
-    celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q celery,video,media
 }
 
 cmd_start() {

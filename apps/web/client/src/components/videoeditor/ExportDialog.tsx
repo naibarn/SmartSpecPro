@@ -572,7 +572,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <div>Export enters the render queue.</div>
             <div style={{ fontSize: '10px', color: '#666', marginTop: '2px' }}>
               You can close this dialog and track progress in{' '}
-              <a href="/tasks" style={{ color: '#0078d4', textDecoration: 'underline' }}>Task Queue</a>.
+              <a href="/tasks" target="_blank" rel="noopener noreferrer" style={{ color: '#0078d4', textDecoration: 'underline' }}>Task Queue</a>.
             </div>
           </div>
           <div className="footer-buttons">

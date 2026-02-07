@@ -49,6 +49,7 @@ const HEADER_WIDTH = 100;
 const RULER_HEIGHT = 30;
 const SNAP_THRESHOLD = 5; // pixels
 const PLAYHEAD_SNAP_DISTANCE = 0.2; // seconds - snap when within 0.2s of playhead
+const RESIZE_SNAP_DISTANCE = 0.15; // seconds - snap resize edges to other clip edges
 
 function getTrackHeight(track: Track): number {
   if (track.height) return track.height;
@@ -114,10 +115,25 @@ export const Timeline: React.FC<TimelineProps> = ({
     startMouseTime: number;  // mouse position in timeline seconds when resize started
   } | null>(null);
   const [hoveredClipId, setHoveredClipId] = useState<string | null>(null);
+  const [snapIndicatorTime, setSnapIndicatorTime] = useState<number | null>(null);
   const rafIdRef = useRef<number | null>(null);
 
   // Calculate timeline width
   const timelineWidth = Math.max(duration * zoom, 1000);
+
+  // Collect snap points from all clip edges (for resize snapping)
+  const resizeSnapPoints = useMemo(() => {
+    if (!resizingClip) return [];
+    const points: number[] = [currentTime]; // playhead is always a snap point
+    for (const track of timeline.tracks) {
+      for (const clip of track.clips) {
+        if (clip.id === resizingClip.clipId) continue;
+        points.push(clip.startTime);
+        points.push(clip.startTime + clip.duration);
+      }
+    }
+    return [...new Set(points)].sort((a, b) => a - b);
+  }, [timeline.tracks, resizingClip, currentTime]);
 
   // Convert time to pixels
   const timeToPixels = useCallback((time: number): number => {
@@ -160,7 +176,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   const handleClipMouseDown = (e: React.MouseEvent, clip: Clip, trackId: string) => {
     e.stopPropagation();
 
-    const clipRect = (e.target as HTMLElement).getBoundingClientRect();
+    const clipRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const offsetX = e.clientX - clipRect.left;
 
     // Check if clicking on resize handles
@@ -261,27 +277,70 @@ export const Timeline: React.FC<TimelineProps> = ({
         if (resizingClip.edge === 'left') {
           // Resize from left: moving mouse right = trim more (shorter clip)
           // moving mouse left = trim less (longer clip)
-          const newTrimIn = Math.max(0, Math.min(resizingClip.originalTrimIn + delta, asset.duration - 0.1));
-          const trimDelta = newTrimIn - resizingClip.originalTrimIn;
-          const newDuration = resizingClip.originalDuration - trimDelta;
+          const rawTrimIn = Math.max(0, Math.min(resizingClip.originalTrimIn + delta, asset.duration - 0.1));
+          const rawTrimDelta = rawTrimIn - resizingClip.originalTrimIn;
+          let newStartTime = resizingClip.originalStartTime + rawTrimDelta;
 
-          if (newDuration > 0.1) {
-            onClipResize(resizingClip.clipId, newDuration, newTrimIn);
+          // Snap the start edge to other clip edges / playhead
+          let bestSnap: number | null = null;
+          let bestDist = RESIZE_SNAP_DISTANCE;
+          for (const sp of resizeSnapPoints) {
+            const dist = Math.abs(newStartTime - sp);
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestSnap = sp;
+            }
+          }
+
+          if (bestSnap !== null) {
+            newStartTime = bestSnap;
+            setSnapIndicatorTime(bestSnap);
+          } else {
+            setSnapIndicatorTime(null);
+          }
+
+          const adjustedTrimDelta = newStartTime - resizingClip.originalStartTime;
+          const adjustedTrimIn = resizingClip.originalTrimIn + adjustedTrimDelta;
+          const adjustedDuration = resizingClip.originalDuration - adjustedTrimDelta;
+
+          if (adjustedTrimIn >= 0 && adjustedTrimIn < asset.duration && adjustedDuration > 0.1) {
+            onClipResize(resizingClip.clipId, adjustedDuration, adjustedTrimIn);
           }
         } else {
           // Resize from right: moving mouse right = longer, left = shorter
-          const newDuration = Math.max(0.1, resizingClip.originalDuration + delta);
+          let newDuration = Math.max(0.1, resizingClip.originalDuration + delta);
           const maxDuration = asset.duration - resizingClip.originalTrimIn;
+          newDuration = Math.min(newDuration, maxDuration);
 
-          onClipResize(
-            resizingClip.clipId,
-            Math.min(newDuration, maxDuration),
-            resizingClip.originalTrimIn
-          );
+          // Snap the end edge to other clip edges / playhead
+          const newEndTime = resizingClip.originalStartTime + newDuration;
+          let bestSnap: number | null = null;
+          let bestDist = RESIZE_SNAP_DISTANCE;
+          for (const sp of resizeSnapPoints) {
+            const dist = Math.abs(newEndTime - sp);
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestSnap = sp;
+            }
+          }
+
+          if (bestSnap !== null) {
+            const snappedDuration = bestSnap - resizingClip.originalStartTime;
+            if (snappedDuration > 0.1 && snappedDuration <= maxDuration) {
+              newDuration = snappedDuration;
+              setSnapIndicatorTime(bestSnap);
+            } else {
+              setSnapIndicatorTime(null);
+            }
+          } else {
+            setSnapIndicatorTime(null);
+          }
+
+          onClipResize(resizingClip.clipId, newDuration, resizingClip.originalTrimIn);
         }
       }
     });
-  }, [draggingClip, resizingClip, zoom, timeline, assets, pixelsToTime, onClipMove, onClipResize, currentTime]);
+  }, [draggingClip, resizingClip, zoom, timeline, assets, pixelsToTime, onClipMove, onClipResize, currentTime, resizeSnapPoints]);
 
   // Handle mouse up (end drag or resize)
   const handleMouseUp = useCallback(() => {
@@ -292,6 +351,7 @@ export const Timeline: React.FC<TimelineProps> = ({
     }
     setDraggingClip(null);
     setResizingClip(null);
+    setSnapIndicatorTime(null);
   }, []);
 
   // Add mouse event listeners
@@ -366,10 +426,10 @@ export const Timeline: React.FC<TimelineProps> = ({
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
 
-    if (!timelineRef.current) return;
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    if (!contentRef.current) return;
+    const rect = contentRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left + contentRef.current.scrollLeft;
+    const y = e.clientY - rect.top + contentRef.current.scrollTop;
     const time = pixelsToTime(Math.max(0, x));
 
     let cumulativeY = 0;
@@ -396,11 +456,11 @@ export const Timeline: React.FC<TimelineProps> = ({
 
     try {
       const asset: MediaLibraryAsset = JSON.parse(raw);
-      if (!timelineRef.current) return;
+      if (!contentRef.current) return;
 
-      const rect = timelineRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const rect = contentRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left + contentRef.current.scrollLeft;
+      const y = e.clientY - rect.top + contentRef.current.scrollTop;
       const time = pixelsToTime(Math.max(0, x));
 
       // Find track under cursor
@@ -526,6 +586,14 @@ export const Timeline: React.FC<TimelineProps> = ({
           )}
         </div>
         <div className="clip-resize-handle right" aria-label="Resize clip from end" role="button" tabIndex={-1} />
+        {clip.inTransition && clip.inTransition.name !== 'none' && (
+          <div
+            className="clip-transition-indicator"
+            title={`${clip.inTransition.name} (${clip.inTransition.durationMs}ms)`}
+          >
+            ◆
+          </div>
+        )}
       </div>
     );
   }, [assets, zoom, selectedClipId, selectedClipIds, hoveredClipId, draggingClip, resizingClip, timeToPixels, handleClipMouseDown]);
@@ -740,6 +808,29 @@ export const Timeline: React.FC<TimelineProps> = ({
           filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
         }
 
+        .clip-transition-indicator {
+          position: absolute;
+          left: -8px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 16px;
+          height: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          color: #0078d4;
+          z-index: 5;
+          pointer-events: auto;
+          cursor: default;
+          transition: transform 0.15s, color 0.15s;
+        }
+
+        .clip-transition-indicator:hover {
+          transform: translateY(-50%) scale(1.3);
+          color: #00b294;
+        }
+
         @keyframes pulse {
           0%, 100% {
             box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
@@ -760,6 +851,61 @@ export const Timeline: React.FC<TimelineProps> = ({
         .timeline-clip.resizing {
           opacity: 0.8;
           box-shadow: 0 2px 8px rgba(0, 120, 212, 0.6);
+        }
+
+        .snap-indicator {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 1px;
+          background: #00bcd4;
+          pointer-events: none;
+          z-index: 99;
+          opacity: 0.9;
+          box-shadow: 0 0 4px rgba(0, 188, 212, 0.6);
+        }
+
+        .drop-indicator-line {
+          position: absolute;
+          top: 0;
+          width: 2px;
+          background: #4fc3f7;
+          pointer-events: none;
+          z-index: 98;
+          animation: drop-indicator-pulse 1s ease-in-out infinite;
+        }
+
+        .drop-indicator-line::before {
+          content: '+';
+          position: absolute;
+          top: -14px;
+          left: -7px;
+          width: 16px;
+          height: 16px;
+          background: #4fc3f7;
+          border-radius: 50%;
+          font-size: 12px;
+          font-weight: 700;
+          color: #000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+        }
+
+        @keyframes drop-indicator-pulse {
+          0%, 100% { opacity: 0.8; box-shadow: 0 0 4px rgba(79, 195, 247, 0.4); }
+          50% { opacity: 1; box-shadow: 0 0 8px rgba(79, 195, 247, 0.8); }
+        }
+
+        .track-lane.drop-target {
+          background: repeating-linear-gradient(
+            90deg,
+            rgba(79, 195, 247, 0.08),
+            rgba(79, 195, 247, 0.08) 1px,
+            transparent 1px,
+            transparent ${zoom}px
+          ) !important;
         }
 
         .clip-waveform {
@@ -925,10 +1071,11 @@ export const Timeline: React.FC<TimelineProps> = ({
           <div className="timeline-canvas">
             {timeline.tracks.map(track => {
               const h = getTrackHeight(track);
+              const isDropTarget = dropIndicator?.trackId === track.id;
               return (
                 <div
                   key={track.id}
-                  className={`track-lane ${track.locked ? 'locked' : ''} ${track.visible === false ? 'hidden-track' : ''}`}
+                  className={`track-lane ${track.locked ? 'locked' : ''} ${track.visible === false ? 'hidden-track' : ''} ${isDropTarget ? 'drop-target' : ''}`}
                   style={{ height: `${h}px`, opacity: track.visible === false ? 0.3 : 1 }}
                   role="group"
                   aria-label={`${track.name} track lane`}
@@ -938,6 +1085,26 @@ export const Timeline: React.FC<TimelineProps> = ({
                 </div>
               );
             })}
+
+            {/* Drop indicator line (shows where dragged asset will be placed) */}
+            {dropIndicator && (
+              <div
+                className="drop-indicator-line"
+                style={{
+                  left: `${timeToPixels(dropIndicator.time)}px`,
+                  top: `${timeline.tracks.slice(0, timeline.tracks.findIndex(t => t.id === dropIndicator.trackId)).reduce((sum, t) => sum + getTrackHeight(t), 0)}px`,
+                  height: `${getTrackHeight(timeline.tracks.find(t => t.id === dropIndicator.trackId) || timeline.tracks[0])}px`,
+                }}
+              />
+            )}
+
+            {/* Snap indicator line */}
+            {snapIndicatorTime !== null && (
+              <div
+                className="snap-indicator"
+                style={{ left: `${timeToPixels(snapIndicatorTime)}px` }}
+              />
+            )}
 
             {/* Playhead */}
             <div
