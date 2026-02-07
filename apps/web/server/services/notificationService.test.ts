@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createNotification } from "./notificationService";
 
-// Mock the telegram service (not yet implemented in section-03)
+// Mock the telegram service
 vi.mock("./telegramService", () => ({
   enqueueTelegramNotification: vi.fn().mockResolvedValue(undefined),
 }));
@@ -81,12 +81,14 @@ describe("notificationService", () => {
       });
 
       expect(enqueueTelegramNotification).toHaveBeenCalledWith(
-        1,
+        expect.anything(), // db
+        1, // userId
         expect.objectContaining({
           notificationId: 42,
           title: "Test",
           content: "Content",
           priority: "critical",
+          createdAt: expect.any(Date),
         })
       );
     });
@@ -119,7 +121,8 @@ describe("notificationService", () => {
       });
 
       expect(enqueueTelegramNotification).toHaveBeenCalledWith(
-        1,
+        expect.anything(), // db
+        1, // userId
         expect.objectContaining({ priority: "critical" })
       );
     });
