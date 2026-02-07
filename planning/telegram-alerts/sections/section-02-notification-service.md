@@ -235,3 +235,36 @@ This section does NOT modify the database schema. However, when refactoring call
 - Ensure all existing notification parameters are preserved
 - Verify notification IDs are still returned correctly (many call sites use the returned ID for follow-up actions)
 - Check that any downstream code expecting the old return format (`[{ id }]` from `.returning()`) is updated to use the new format (`{ notificationId }`)
+---
+
+## Implementation Notes
+
+**Completed:** 2026-02-08
+
+### Files Created
+- `apps/web/server/services/notificationService.ts` — centralized notification service with createNotification()
+- `apps/web/server/services/notificationService.test.ts` — comprehensive test suite (7 tests)
+- `apps/web/server/services/telegramService.ts` — stub for Telegram delivery (section-03)
+
+### Files Modified
+- `apps/web/server/routers/mediaJobs.ts` — refactored 2 notification call sites
+- `apps/web/server/routers/follows.ts` — refactored 2 notification call sites
+- `apps/web/server/services/scheduler.ts` — refactored 2 notification call sites
+
+### Test Results
+All 7 tests passing:
+- ✓ inserts into user_notifications with correct fields
+- ✓ returns the inserted notification ID
+- ✓ calls enqueueTelegramNotification after DB insert
+- ✓ does not fail if enqueueTelegramNotification throws
+- ✓ passes priority through to Telegram enqueue
+- ✓ handles optional fields (conversationId, scheduledMessageId)
+- ✓ defaults priority to normal when not provided
+
+### Verification
+- Fire-and-forget pattern working correctly (Telegram failures logged but not thrown)
+- All 6 notification insertion points now use createNotification()
+- Priority levels properly assigned (high for job failures/friends, critical for urgent messages, normal for others)
+- Tests demonstrate proper chainable mock pattern for Drizzle ORM
+
+Commit: 7ac1e7c

@@ -32,7 +32,7 @@ vi.mock("../db", () => ({
 
 // Mock Redis client
 vi.mock("../services/redis", () => ({
-  getRedisClient: vi.fn().mockReturnValue(mockRedis),
+  getRedisClient: () => mockRedis,
 }));
 
 // Mock system_settings cache
