@@ -48,6 +48,7 @@ import {
   TestTube2,
   Menu,
   Brain,
+  Search,
 } from "lucide-react";
 import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
 
@@ -346,6 +347,7 @@ export default function AdminSettings() {
 
   // AI / Memory settings
   const [aiSummaryModel, setAiSummaryModel] = useState("");
+  const [modelSearch, setModelSearch] = useState("");
   const { data: aiSettings, refetch: refetchAi } = trpc.systemSettings.getSettingsByCategory.useQuery(
     { category: "ai" as any },
     { enabled: !!user && user.role === "admin" }
@@ -1678,18 +1680,45 @@ export default function AdminSettings() {
                   <p className="text-xs text-muted-foreground">
                     Model used for auto-summarizing conversation history and consolidating memory. Use a cheaper model to save credits.
                   </p>
+
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search models... (e.g., gpt-4, claude, gemini)"
+                      value={modelSearch}
+                      onChange={(e) => setModelSearch(e.target.value)}
+                      className="pl-9 max-w-md"
+                    />
+                  </div>
+
                   <Select value={aiSummaryModel || ""} onValueChange={setAiSummaryModel}>
                     <SelectTrigger className="w-full max-w-md">
                       <SelectValue placeholder="Select model (default: gpt-4o-mini)" />
                     </SelectTrigger>
                     <SelectContent>
-                      {modelsData?.models?.map((m: any) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.id}
-                        </SelectItem>
-                      ))}
+                      {modelsData?.models
+                        ?.filter((m: any) =>
+                          !modelSearch ||
+                          m.id.toLowerCase().includes(modelSearch.toLowerCase())
+                        )
+                        .map((m: any) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.id}
+                          </SelectItem>
+                        ))}
                       {(!modelsData?.models || modelsData.models.length === 0) && (
                         <SelectItem value="gpt-4o-mini">gpt-4o-mini (default)</SelectItem>
+                      )}
+                      {modelsData?.models &&
+                       modelsData.models.length > 0 &&
+                       modelsData.models.filter((m: any) =>
+                         !modelSearch ||
+                         m.id.toLowerCase().includes(modelSearch.toLowerCase())
+                       ).length === 0 && (
+                        <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                          No models found matching "{modelSearch}"
+                        </div>
                       )}
                     </SelectContent>
                   </Select>
