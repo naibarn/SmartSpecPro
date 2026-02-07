@@ -50,6 +50,7 @@ import {
   Copy,
   ShieldCheck,
   ShieldOff,
+  Send,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -455,6 +456,55 @@ export default function Settings() {
     onSuccess: () => toast.success('Translation preferences saved'),
     onError: (err: any) => toast.error(err.message),
   });
+
+  // Telegram state
+  const [telegramState, setTelegramState] = useState<'idle' | 'linking' | 'linked'>('idle');
+  const [telegramLink, setTelegramLink] = useState('');
+  const [linkStartTime, setLinkStartTime] = useState(0);
+
+  const telegramStatus = trpc.telegram.checkTelegramStatus.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchInterval: (query) => {
+      if (telegramState !== 'linking') return false;
+      if (query.state.data?.linked) {
+        setTelegramState('linked');
+        return false;
+      }
+      if (Date.now() - linkStartTime > 300000) return false; // 5 min timeout
+      return 3000; // Poll every 3s
+    },
+  });
+
+  const generateLinkMutation = trpc.telegram.generateTelegramLink.useMutation({
+    onSuccess: (data) => {
+      setTelegramLink(data.deepLink);
+      setTelegramState('linking');
+      setLinkStartTime(Date.now());
+      telegramStatus.refetch();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const unlinkMutation = trpc.telegram.unlinkTelegram.useMutation({
+    onSuccess: () => {
+      toast.success('Telegram account unlinked');
+      setTelegramState('idle');
+      telegramStatus.refetch();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const updateTelegramPrefsMutation = trpc.telegram.updateTelegramPreferences.useMutation({
+    onSuccess: () => toast.success('Telegram preferences updated'),
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  // Set initial Telegram state
+  useEffect(() => {
+    if (telegramStatus.data?.linked) {
+      setTelegramState('linked');
+    }
+  }, [telegramStatus.data]);
 
   useEffect(() => {
     if (prefsData) {
@@ -988,6 +1038,117 @@ export default function Settings() {
                           </button>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Telegram Notifications */}
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Send className="w-5 h-5" />
+                        Telegram Notifications
+                      </h3>
+
+                      {telegramState === 'idle' && (
+                        <div className="space-y-4">
+                          <p className="text-sm text-gray-600">
+                            Link your Telegram account to receive instant alerts for important notifications.
+                          </p>
+                          <Button
+                            onClick={() => generateLinkMutation.mutate()}
+                            disabled={generateLinkMutation.isPending}
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            {generateLinkMutation.isPending ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                            ) : (
+                              <><Send className="w-4 h-4 mr-2" /> Link Telegram Account</>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {telegramState === 'linking' && (
+                        <div className="space-y-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                          <div className="flex items-center gap-2 text-blue-800 font-medium">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Waiting for verification...
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-sm text-blue-700">Click the link below to verify your account in Telegram:</p>
+                            <a
+                              href={telegramLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block w-full p-3 bg-white rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50 text-sm break-all"
+                            >
+                              {telegramLink}
+                            </a>
+                            <p className="text-xs text-blue-600">This link expires in 5 minutes. Checking every 3 seconds...</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { setTelegramState('idle'); setTelegramLink(''); }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+
+                      {telegramState === 'linked' && telegramStatus.data && (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 p-4 bg-green-50 rounded-xl border border-green-200">
+                            <Check className="w-5 h-5 text-green-600" />
+                            <div>
+                              <div className="font-medium text-green-900">Connected</div>
+                              <div className="text-sm text-green-700">
+                                {telegramStatus.data.username || 'Telegram account linked'}
+                              </div>
+                            </div>
+                          </div>
+
+                          {telegramStatus.data.deliveryFailing && (
+                            <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                              <AlertCircle className="w-4 h-4 text-yellow-600" />
+                              <div className="text-sm text-yellow-700">
+                                Delivery issues detected. You may have blocked the bot. Unblock it in Telegram to resume.
+                              </div>
+                            </div>
+                          )}
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Notification Level
+                            </label>
+                            <select
+                              value={telegramStatus.data.notifyLevel}
+                              onChange={(e) => updateTelegramPrefsMutation.mutate({ notifyLevel: e.target.value as any })}
+                              className="w-full p-2 border border-gray-300 rounded-lg"
+                            >
+                              <option value="all">All Notifications</option>
+                              <option value="high_critical">High + Critical Only</option>
+                              <option value="critical_only">Critical Only</option>
+                              <option value="off">Off</option>
+                            </select>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to unlink your Telegram account?')) {
+                                unlinkMutation.mutate();
+                              }
+                            }}
+                            disabled={unlinkMutation.isPending}
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                          >
+                            {unlinkMutation.isPending ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Unlinking...</>
+                            ) : (
+                              <><X className="w-4 h-4 mr-2" /> Unlink Account</>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <div>
