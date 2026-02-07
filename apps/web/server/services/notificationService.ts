@@ -91,12 +91,12 @@ async function createNotification(
   // 2. Enqueue for Telegram delivery (fire-and-forget)
   try {
     const { enqueueTelegramNotification } = await import("./telegramService");
-    await enqueueTelegramNotification(userId, {
+    await enqueueTelegramNotification(db, userId, {
       notificationId,
       title,
       content,
       priority,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
     });
   } catch (err) {
     // Log but don't throw - Telegram delivery is optional

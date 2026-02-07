@@ -28,6 +28,7 @@ import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
 import { initializeScheduler } from "../services/scheduler";
+import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { initializeQueues } from "../services/llmQueue";
 import { PostgresAdapter } from "../services/postgresAdapter";
@@ -262,6 +263,17 @@ async function main() {
     console.error("[Startup] Failed to initialize scheduler:", error);
   }
 
+  // Initialize Telegram notification queue
+  try {
+    await initializeTelegramQueue(db, {
+      host: process.env.REDIS_HOST || "localhost",
+      port: parseInt(process.env.REDIS_PORT || "6379"),
+      password: process.env.REDIS_PASSWORD,
+    });
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Telegram queue:", error);
+  }
+
   // Initialize provider health circuit breaker from DB state
   try {
     await initFromDb();
@@ -307,9 +319,15 @@ process.on("unhandledRejection", (reason, promise) => {
   debugError("Process", "Unhandled Rejection", reason);
 });
 
-// Graceful shutdown: flush audit logs
-process.on("SIGTERM", () => { auditLogger.shutdown().catch(() => {}); });
-process.on("SIGINT", () => { auditLogger.shutdown().catch(() => {}); });
+// Graceful shutdown: flush audit logs and close queues
+process.on("SIGTERM", async () => {
+  await shutdownTelegramWorker().catch(() => {});
+  await auditLogger.shutdown().catch(() => {});
+});
+process.on("SIGINT", async () => {
+  await shutdownTelegramWorker().catch(() => {});
+  await auditLogger.shutdown().catch(() => {});
+});
 
 main().catch((err) => {
   console.error(err);
