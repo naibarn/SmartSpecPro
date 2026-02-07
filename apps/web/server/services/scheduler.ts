@@ -11,7 +11,6 @@ import { getDb } from "../db";
 import {
   scheduledMessages,
   scheduledMessageLogs,
-  userNotifications,
   conversations,
   messages,
 } from "../../drizzle/schema";
