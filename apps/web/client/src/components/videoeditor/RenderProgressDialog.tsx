@@ -44,9 +44,7 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
           setJob(updatedJob);
 
           if (updatedJob.status === 'completed') {
-            setTimeout(() => {
-              onComplete(updatedJob.output_path);
-            }, 1000);
+            // Don't auto-close — let user click Download or Close
           } else if (updatedJob.status === 'failed') {
             setError(updatedJob.error || 'Render failed');
           }
@@ -320,7 +318,7 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
         {job?.status === 'completed' && (
           <div className="success-message">
             Video exported successfully to:<br />
-            <strong>{job.output_path}</strong>
+            <strong>{job.outputPath}</strong>
           </div>
         )}
 
@@ -346,19 +344,19 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
 
           {job?.status === 'completed' && (
             <>
-              {job.output_path && (
+              {job.outputPath && (
                 <a
-                  href={job.output_path}
+                  href={job.outputPath}
                   download
                   className="dialog-button close"
                   style={{ textDecoration: 'none' }}
                 >
-                  Download
+                  &#11015; Download
                 </a>
               )}
               <button
                 className="dialog-button close"
-                onClick={onCancel}
+                onClick={() => onComplete(job.outputPath)}
               >
                 Close
               </button>
@@ -375,10 +373,34 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
           )}
 
           {job?.status === 'pending' && (
-            <div>
-              <span className="spinner" />
-              Initializing...
-            </div>
+            <>
+              <div>
+                <span className="spinner" />
+                Initializing...
+              </div>
+              <button
+                className="dialog-button close"
+                onClick={handleCancel}
+              >
+                Close
+              </button>
+            </>
+          )}
+
+          {/* Fallback close when job hasn't loaded yet */}
+          {!job && !error && (
+            <>
+              <div>
+                <span className="spinner" />
+                Connecting...
+              </div>
+              <button
+                className="dialog-button close"
+                onClick={onCancel}
+              >
+                Close
+              </button>
+            </>
           )}
         </div>
 
@@ -386,6 +408,8 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
         <div style={{ marginTop: '12px' }}>
           <a
             href="/tasks"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{ color: '#0078d4', fontSize: '12px', textDecoration: 'underline' }}
           >
             View Task Queue

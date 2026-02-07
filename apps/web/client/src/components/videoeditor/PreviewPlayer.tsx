@@ -3,8 +3,9 @@
  * Video preview with playback controls, zoom levels, and fullscreen
  */
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { formatTime } from '../../types/videoEditor';
+import type { ClipTransform, TransformKeyframe, Effect, TransitionName } from '../../types/videoEditor';
 
 export interface ActiveClipInfo {
   videoUrl: string;
@@ -12,6 +13,9 @@ export interface ActiveClipInfo {
   trimIn: number;         // trim offset within the source file
   clipDuration: number;   // visible duration on timeline
   isImage?: boolean;      // true for image clips (renders <img> instead of <video>)
+  transitions?: { fadeIn?: number; fadeOut?: number };
+  transform?: ClipTransform;
+  effects?: Effect[];
 }
 
 interface PreviewPlayerProps {
@@ -23,9 +27,113 @@ interface PreviewPlayerProps {
   onStop: () => void;
   previewVideoUrl?: string;
   activeClip?: ActiveClipInfo | null;
+  activeAudioClips?: ActiveClipInfo[];
+  outgoingClip?: ActiveClipInfo | null;
+  transitionName?: string;
+  transitionProgress?: number;
 }
 
 const ZOOM_PRESETS = [10, 25, 50, 75, 100, 125, 150, 200, 250, 300, 350, 400];
+
+/** Resolve transform values at a normalized time (0-1) within the clip, interpolating keyframes. */
+function resolveTransformAtTime(
+  t: ClipTransform,
+  normalizedTime: number,
+): { x: number; y: number; scaleX: number; scaleY: number; rotation: number; opacity: number } {
+  const base = { x: t.x, y: t.y, scaleX: t.scaleX, scaleY: t.scaleY, rotation: t.rotation, opacity: t.opacity };
+  if (!t.keyframes || t.keyframes.length === 0) return base;
+
+  const kfs = [...t.keyframes].sort((a, b) => a.time - b.time);
+  const time = Math.max(0, Math.min(1, normalizedTime));
+
+  // Before first keyframe — use first keyframe values
+  if (time <= kfs[0].time) return kfs[0];
+  // After last keyframe — use last keyframe values
+  if (time >= kfs[kfs.length - 1].time) return kfs[kfs.length - 1];
+
+  // Find the two keyframes to interpolate between
+  for (let i = 0; i < kfs.length - 1; i++) {
+    if (time >= kfs[i].time && time <= kfs[i + 1].time) {
+      const a = kfs[i];
+      const b = kfs[i + 1];
+      const segmentProgress = (time - a.time) / (b.time - a.time);
+      const eased = applyEasing(segmentProgress, b.easing || 'linear');
+      return {
+        x: a.x + (b.x - a.x) * eased,
+        y: a.y + (b.y - a.y) * eased,
+        scaleX: a.scaleX + (b.scaleX - a.scaleX) * eased,
+        scaleY: a.scaleY + (b.scaleY - a.scaleY) * eased,
+        rotation: a.rotation + (b.rotation - a.rotation) * eased,
+        opacity: a.opacity + (b.opacity - a.opacity) * eased,
+      };
+    }
+  }
+  return base;
+}
+
+function applyEasing(t: number, easing: string): number {
+  switch (easing) {
+    case 'ease-in': return t * t;
+    case 'ease-out': return t * (2 - t);
+    case 'ease-in-out': return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    default: return t; // linear
+  }
+}
+
+/** Returns CSS styles for outgoing and incoming clips during a transition. */
+function getTransitionStyles(
+  name: string,
+  progress: number,
+): { outgoing: React.CSSProperties; incoming: React.CSSProperties } {
+  switch (name) {
+    case 'crossfade':
+      return { outgoing: { opacity: 1 - progress }, incoming: { opacity: progress } };
+    case 'wipeLeft':
+      return { outgoing: { clipPath: `inset(0 0 0 ${progress * 100}%)` }, incoming: { clipPath: `inset(0 ${(1 - progress) * 100}% 0 0)` } };
+    case 'wipeRight':
+      return { outgoing: { clipPath: `inset(0 ${progress * 100}% 0 0)` }, incoming: { clipPath: `inset(0 0 0 ${(1 - progress) * 100}%)` } };
+    case 'wipeUp':
+      return { outgoing: { clipPath: `inset(${progress * 100}% 0 0 0)` }, incoming: { clipPath: `inset(0 0 ${(1 - progress) * 100}% 0)` } };
+    case 'wipeDown':
+      return { outgoing: { clipPath: `inset(0 0 ${progress * 100}% 0)` }, incoming: { clipPath: `inset(${(1 - progress) * 100}% 0 0 0)` } };
+    case 'slideLeft':
+      return { outgoing: { transform: `translateX(${-progress * 100}%)` }, incoming: { transform: `translateX(${(1 - progress) * 100}%)` } };
+    case 'slideRight':
+      return { outgoing: { transform: `translateX(${progress * 100}%)` }, incoming: { transform: `translateX(${-(1 - progress) * 100}%)` } };
+    case 'slideUp':
+      return { outgoing: { transform: `translateY(${-progress * 100}%)` }, incoming: { transform: `translateY(${(1 - progress) * 100}%)` } };
+    case 'slideDown':
+      return { outgoing: { transform: `translateY(${progress * 100}%)` }, incoming: { transform: `translateY(${-(1 - progress) * 100}%)` } };
+    case 'zoomIn':
+      return { outgoing: { transform: `scale(${1 + progress})`, opacity: 1 - progress }, incoming: { transform: `scale(${progress})`, opacity: progress } };
+    case 'zoomOut':
+      return { outgoing: { transform: `scale(${1 - progress * 0.5})`, opacity: 1 - progress }, incoming: { transform: `scale(${1 + (1 - progress) * 0.5})`, opacity: progress } };
+    case 'circleOpen': {
+      const r = progress * 75;
+      return { outgoing: {}, incoming: { clipPath: `circle(${r}% at 50% 50%)` } };
+    }
+    case 'circleClose': {
+      const r = (1 - progress) * 75;
+      return { outgoing: { clipPath: `circle(${r}% at 50% 50%)` }, incoming: {} };
+    }
+    case 'diamondOpen': {
+      const d = progress * 75;
+      return { outgoing: {}, incoming: { clipPath: `polygon(50% ${50 - d}%, ${50 + d}% 50%, 50% ${50 + d}%, ${50 - d}% 50%)` } };
+    }
+    case 'blur':
+      return { outgoing: { filter: `blur(${progress * 20}px)`, opacity: 1 - progress }, incoming: { filter: `blur(${(1 - progress) * 20}px)`, opacity: progress } };
+    case 'pixelize':
+      return { outgoing: { filter: `blur(${progress * 10}px) contrast(${1 + progress})`, opacity: 1 - progress }, incoming: { filter: `blur(${(1 - progress) * 10}px) contrast(${2 - progress})`, opacity: progress } };
+    case 'radial':
+      return { outgoing: { opacity: 1 - progress }, incoming: { clipPath: `circle(${progress * 75}% at 50% 50%)` } };
+    case 'smoothLeft':
+      return { outgoing: { transform: `translateX(${-progress * 100}%)`, opacity: 1 - progress * 0.3 }, incoming: { transform: `translateX(${(1 - progress) * 100}%)`, opacity: 0.7 + progress * 0.3 } };
+    case 'smoothRight':
+      return { outgoing: { transform: `translateX(${progress * 100}%)`, opacity: 1 - progress * 0.3 }, incoming: { transform: `translateX(${-(1 - progress) * 100}%)`, opacity: 0.7 + progress * 0.3 } };
+    default:
+      return { outgoing: { opacity: 1 - progress }, incoming: { opacity: progress } };
+  }
+}
 
 export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   currentTime,
@@ -35,9 +143,15 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   onPlayPause,
   onStop,
   previewVideoUrl,
-  activeClip
+  activeClip,
+  activeAudioClips = [],
+  outgoingClip,
+  transitionName,
+  transitionProgress,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const outgoingVideoRef = useRef<HTMLVideoElement>(null);
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const [volume, setVolume] = useState(1.0);
   const [isMuted, setIsMuted] = useState(false);
@@ -58,12 +172,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   // Track the previous URL so we know when the source changes
   const prevUrlRef = useRef<string | undefined>(undefined);
 
-  // Reset loaded state when URL changes
+  // Reset loaded state when URL changes and force browser reload
   useEffect(() => {
     if (effectiveUrl !== prevUrlRef.current) {
       setVideoLoaded(false);
       setVideoError(null);
       prevUrlRef.current = effectiveUrl;
+      // Force the video element to load the new source
+      if (videoRef.current && effectiveUrl) {
+        videoRef.current.load();
+      }
     }
   }, [effectiveUrl]);
 
@@ -98,6 +216,35 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     }
   }, [currentTime, activeClip, effectiveUrl, isPlaying, videoLoaded]);
 
+  // Sync outgoing video element during transition playback
+  useEffect(() => {
+    const video = outgoingVideoRef.current;
+    if (!video || !outgoingClip) {
+      // Pause outgoing video when transition ends
+      if (video && !video.paused) video.pause();
+      return;
+    }
+    // Wait for video to have enough data before seeking
+    if (video.readyState < 2) return;
+
+    const targetTime = outgoingClip.trimIn + (currentTime - outgoingClip.clipStartTime);
+    const clamped = Math.max(0, targetTime);
+    if (Math.abs(video.currentTime - clamped) > 0.05) {
+      try { video.currentTime = clamped; } catch { /* seek error on unloaded video */ }
+    }
+    // Sync play/pause state
+    if (isPlaying && video.paused) {
+      video.play().catch((err) => {
+        // AbortError is expected when play is interrupted by pause/seek — suppress it
+        if (err && err.name !== 'AbortError') {
+          console.warn('Outgoing video play failed:', err.name, err.message);
+        }
+      });
+    } else if (!isPlaying && !video.paused) {
+      video.pause();
+    }
+  }, [currentTime, outgoingClip, isPlaying]);
+
   // Handle play/pause — re-triggers when videoLoaded changes so play() is called
   // after the video element finishes loading (prevents black screen deadlock)
   useEffect(() => {
@@ -128,6 +275,44 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     // those change every frame and would cause play() thrashing
   }, [isPlaying, videoLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sync audio elements with playback state
+  useEffect(() => {
+    audioRefs.current.forEach((audioEl, url) => {
+      const clip = activeAudioClips.find(c => c.videoUrl === url);
+      if (!clip) {
+        audioEl.pause();
+        return;
+      }
+      const targetTime = clip.trimIn + (currentTime - clip.clipStartTime);
+      if (isPlaying) {
+        if (Math.abs(audioEl.currentTime - targetTime) > 0.3) {
+          audioEl.currentTime = Math.max(0, targetTime);
+        }
+        audioEl.volume = isMuted ? 0 : volume;
+        audioEl.play().catch((err) => {
+          if (err && err.name !== 'AbortError') {
+            console.warn('Audio play failed:', err.name, err.message);
+          }
+        });
+      } else {
+        audioEl.pause();
+        audioEl.currentTime = Math.max(0, targetTime);
+      }
+    });
+  }, [isPlaying, currentTime, activeAudioClips, volume, isMuted]);
+
+  // Clean up stale audio elements when clips change
+  useEffect(() => {
+    const activeUrls = new Set(activeAudioClips.map(c => c.videoUrl));
+    audioRefs.current.forEach((audioEl, url) => {
+      if (!activeUrls.has(url)) {
+        audioEl.pause();
+        audioEl.remove();
+        audioRefs.current.delete(url);
+      }
+    });
+  }, [activeAudioClips]);
+
   // Handle video time update — convert source time back to timeline time
   const handleTimeUpdate = useCallback(() => {
     if (!videoRef.current || !isPlaying) return;
@@ -138,8 +323,13 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       if (timelineTime >= activeClip.clipStartTime && timelineTime <= activeClip.clipStartTime + activeClip.clipDuration) {
         onTimeChange(timelineTime);
       } else if (timelineTime > activeClip.clipStartTime + activeClip.clipDuration) {
-        // Reached end of clip — pause
-        onPlayPause();
+        // Reached end of clip — advance to next clip or stop at timeline end
+        const nextTime = activeClip.clipStartTime + activeClip.clipDuration;
+        if (nextTime >= duration) {
+          onPlayPause(); // End of timeline
+        } else {
+          onTimeChange(nextTime); // Advance to next clip/gap
+        }
       }
     } else if (effectiveUrl) {
       onTimeChange(videoRef.current.currentTime);
@@ -160,6 +350,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     if (videoRef.current) {
       videoRef.current.volume = vol;
     }
+    audioRefs.current.forEach(el => { el.volume = vol; });
   };
 
   // Toggle mute
@@ -168,6 +359,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
     }
+    audioRefs.current.forEach(el => { el.volume = !isMuted ? 0 : volume; });
   };
 
   // Handle video error
@@ -357,6 +549,83 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${previewZoom / 100})`,
     transformOrigin: 'center center',
   } : {};
+
+  // ========================================
+  // Compute clip effect styles (transitions, transform, filter effects)
+  // ========================================
+
+  const clipEffectStyle = useMemo((): React.CSSProperties => {
+    if (!activeClip) return {};
+
+    const style: React.CSSProperties = {};
+    const filters: string[] = [];
+    const transforms: string[] = [];
+    let opacity = 1;
+
+    // Time elapsed within this clip
+    const clipElapsed = currentTime - activeClip.clipStartTime;
+
+    // --- Fade transitions ---
+    const fadeIn = activeClip.transitions?.fadeIn || 0;
+    const fadeOut = activeClip.transitions?.fadeOut || 0;
+
+    if (fadeIn > 0 && clipElapsed < fadeIn) {
+      opacity *= clipElapsed / fadeIn;
+    }
+    if (fadeOut > 0 && clipElapsed > activeClip.clipDuration - fadeOut) {
+      opacity *= (activeClip.clipDuration - clipElapsed) / fadeOut;
+    }
+
+    // --- Transform (overlay: position, scale, rotation, opacity) ---
+    if (activeClip.transform) {
+      const t = activeClip.transform;
+
+      // If keyframes exist, interpolate between them
+      let kf = resolveTransformAtTime(t, clipElapsed / activeClip.clipDuration);
+
+      // Apply transform opacity (multiplicative with fade)
+      opacity *= kf.opacity;
+
+      // Position: shift from center (0.5,0.5 = center → no shift)
+      const dx = (kf.x - 0.5) * 100; // percentage offset
+      const dy = (kf.y - 0.5) * 100;
+      if (dx !== 0 || dy !== 0) {
+        transforms.push(`translate(${dx}%, ${dy}%)`);
+      }
+      if (kf.scaleX !== 1 || kf.scaleY !== 1) {
+        transforms.push(`scale(${kf.scaleX}, ${kf.scaleY})`);
+      }
+      if (kf.rotation !== 0) {
+        transforms.push(`rotate(${kf.rotation}deg)`);
+      }
+    }
+
+    // --- Filter effects (from clip.effects array) ---
+    if (activeClip.effects) {
+      for (const effect of activeClip.effects) {
+        if (effect.type === 'filter' && effect.parameters) {
+          const p = effect.parameters;
+          if (p.brightness != null && p.brightness !== 100) filters.push(`brightness(${p.brightness}%)`);
+          if (p.contrast != null && p.contrast !== 100) filters.push(`contrast(${p.contrast}%)`);
+          if (p.saturate != null && p.saturate !== 100) filters.push(`saturate(${p.saturate}%)`);
+          if (p.grayscale != null && p.grayscale > 0) filters.push(`grayscale(${p.grayscale}%)`);
+          if (p.sepia != null && p.sepia > 0) filters.push(`sepia(${p.sepia}%)`);
+          if (p.blur != null && p.blur > 0) filters.push(`blur(${p.blur}px)`);
+          if (p.hueRotate != null && p.hueRotate !== 0) filters.push(`hue-rotate(${p.hueRotate}deg)`);
+          if (p.invert != null && p.invert > 0) filters.push(`invert(${p.invert}%)`);
+        }
+      }
+    }
+
+    // Clamp opacity
+    opacity = Math.max(0, Math.min(1, opacity));
+    if (opacity !== 1) style.opacity = opacity;
+    if (filters.length > 0) style.filter = filters.join(' ');
+    if (transforms.length > 0) style.transform = transforms.join(' ');
+    style.transition = 'opacity 0.05s linear, filter 0.05s linear';
+
+    return style;
+  }, [activeClip, currentTime]);
 
   return (
     <div className="preview-player" ref={containerRef}>
@@ -611,16 +880,68 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           </div>
         ) : activeClip?.isImage && effectiveUrl ? (
           <div className="preview-video-wrapper">
+            {/* Outgoing clip during transition */}
+            {outgoingClip && transitionName && transitionProgress !== undefined && (() => {
+              const tStyles = getTransitionStyles(transitionName, transitionProgress);
+              return outgoingClip.isImage ? (
+                <img
+                  src={outgoingClip.videoUrl}
+                  className="preview-video"
+                  style={{ ...zoomStyle, objectFit: 'contain', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
+                  alt="Outgoing clip"
+                  draggable={false}
+                />
+              ) : (
+                <video
+                  ref={outgoingVideoRef}
+                  className="preview-video"
+                  src={outgoingClip.videoUrl}
+                  preload="auto"
+                  playsInline
+                  muted
+                  style={{ ...zoomStyle, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
+                />
+              );
+            })()}
             <img
               src={effectiveUrl}
               className="preview-video"
-              style={{ ...zoomStyle, objectFit: 'contain' }}
+              style={{ ...zoomStyle, objectFit: 'contain', ...clipEffectStyle,
+                // Merge zoom + clip transforms
+                transform: [zoomStyle.transform, clipEffectStyle.transform].filter(Boolean).join(' ') || undefined,
+                ...(outgoingClip && transitionName && transitionProgress !== undefined
+                  ? getTransitionStyles(transitionName, transitionProgress).incoming
+                  : {}),
+              }}
               alt="Image preview"
               draggable={false}
             />
           </div>
         ) : effectiveUrl ? (
           <div className="preview-video-wrapper">
+            {/* Outgoing clip during transition */}
+            {outgoingClip && transitionName && transitionProgress !== undefined && (() => {
+              const tStyles = getTransitionStyles(transitionName, transitionProgress);
+              return outgoingClip.isImage ? (
+                <img
+                  src={outgoingClip.videoUrl}
+                  className="preview-video"
+                  style={{ ...zoomStyle, objectFit: 'contain', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
+                  alt="Outgoing clip"
+                  draggable={false}
+                />
+              ) : (
+                <video
+                  ref={outgoingVideoRef}
+                  className="preview-video"
+                  src={outgoingClip.videoUrl}
+                  preload="auto"
+                  playsInline
+                  muted
+                  style={{ ...zoomStyle, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
+                />
+              );
+            })()}
             <video
               ref={videoRef}
               className="preview-video"
@@ -629,10 +950,27 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               playsInline
               onLoadedData={handleLoadedData}
               onTimeUpdate={handleTimeUpdate}
-              onEnded={onStop}
+              onEnded={() => {
+                // Advance to next clip instead of stopping
+                if (activeClip) {
+                  const nextTime = activeClip.clipStartTime + activeClip.clipDuration;
+                  if (nextTime >= duration) {
+                    onStop();
+                  } else {
+                    onTimeChange(nextTime);
+                  }
+                } else {
+                  onStop();
+                }
+              }}
               onError={handleVideoError}
               muted={isMuted}
-              style={zoomStyle}
+              style={{ ...zoomStyle, ...clipEffectStyle,
+                transform: [zoomStyle.transform, clipEffectStyle.transform].filter(Boolean).join(' ') || undefined,
+                ...(outgoingClip && transitionName && transitionProgress !== undefined
+                  ? getTransitionStyles(transitionName, transitionProgress).incoming
+                  : {}),
+              }}
             />
           </div>
         ) : (
@@ -645,6 +983,21 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Hidden audio elements for timeline audio tracks */}
+      {activeAudioClips.map(clip => (
+        <audio
+          key={clip.videoUrl}
+          src={clip.videoUrl}
+          preload="auto"
+          ref={el => {
+            if (el) {
+              audioRefs.current.set(clip.videoUrl, el);
+            }
+          }}
+          style={{ display: 'none' }}
+        />
+      ))}
 
       {/* Controls */}
       <div className="preview-controls" role="group" aria-label="Video playback controls">

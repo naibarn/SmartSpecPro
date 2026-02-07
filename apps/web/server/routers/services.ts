@@ -81,21 +81,26 @@ const SERVICE_CONFIGS: ServiceConfig[] = [
     description: 'Reverse proxy with HTTPS (optional)'
   },
 
-  // Optional services (Docker or host mode)
+  // Media Processing (Docker containers via docker-compose.media.yml)
   {
-    id: 'smartspec-celery-worker', name: 'celery-worker', displayName: 'Celery Worker',
-    ports: [], type: 'host', checkProcess: 'celery.*worker',
-    description: 'Background task processor (optional - for async jobs)'
+    id: 'smartspec-celery-media', name: 'celery-media', displayName: 'Celery Media Worker',
+    ports: [], type: 'docker',
+    description: 'API-bound media generation tasks (2 CPUs, 3GB)'
+  },
+  {
+    id: 'smartspec-celery-video', name: 'celery-video', displayName: 'Celery Video Worker',
+    ports: [], type: 'docker',
+    description: 'FFmpeg video rendering tasks (4 CPUs, 8GB)'
   },
   {
     id: 'smartspec-celery-beat', name: 'celery-beat', displayName: 'Celery Beat',
-    ports: [], type: 'host', checkProcess: 'celery.*beat',
-    description: 'Task scheduler (optional - for cron jobs)'
+    ports: [], type: 'docker',
+    description: 'Periodic task scheduler (cleanup, retry)'
   },
   {
-    id: 'smartspec-flower', name: 'flower', displayName: 'Flower',
-    ports: ['5555'], type: 'host', checkPort: 5555, checkProcess: 'flower',
-    description: 'Celery monitoring UI (optional)'
+    id: 'smartspec-flower', name: 'flower', displayName: 'Flower Dashboard',
+    ports: ['5555'], type: 'docker',
+    description: 'Celery monitoring UI → http://localhost:5555'
   },
 ];
 

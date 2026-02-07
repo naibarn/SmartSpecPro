@@ -70,6 +70,22 @@ async function getActiveJobIds(userId: string): Promise<string[]> {
   return redis.smembers(ACTIVE_JOBS_KEY(userId));
 }
 
+// Per-user recent job history (Sorted Set — score = submittedAt timestamp)
+// Unlike active set, entries are NOT removed on completion, so /tasks page can list them.
+const RECENT_JOBS_KEY = (userId: string) =>
+  `media-jobs:user:${userId}:recent`;
+
+async function addRecentJob(userId: string, jobId: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.zadd(RECENT_JOBS_KEY(userId), Date.now(), jobId);
+  await redis.expire(RECENT_JOBS_KEY(userId), JOB_TTL);
+}
+
+async function getRecentJobIds(userId: string, limit = 50): Promise<string[]> {
+  const redis = await getRedis();
+  return redis.zrevrange(RECENT_JOBS_KEY(userId), 0, limit - 1);
+}
+
 const STALE_QUEUED_MS = 10 * 60 * 1000; // 10 min: queued but never picked up
 const STALE_PROCESSING_MS = 60 * 60 * 1000; // 60 min: processing but never finished
 
@@ -254,6 +270,10 @@ const jobSpecInputSchema = z.object({
                 playbackRate: z.number().optional(),
                 volume: z.number().optional(),
                 mute: z.boolean().optional(),
+                inTransition: z.object({
+                  name: z.string(),
+                  durationMs: z.number(),
+                }).optional(),
               }),
             ),
           }),
@@ -319,6 +339,7 @@ export const mediaJobsRouter = router({
         jobId,
       });
       await addActiveJob(String(ctx.user.id), jobId);
+      await addRecentJob(String(ctx.user.id), jobId);
 
       // Dispatch to Python Celery worker
       try {
@@ -408,20 +429,61 @@ export const mediaJobsRouter = router({
 
   listJobs: protectedProcedure.query(async ({ ctx }) => {
     const userId = String(ctx.user.id);
-    const jobIds = await getActiveJobIds(userId);
-    const jobs: Array<{ jobId: string; status: string; submittedAt: number }> =
-      [];
+
+    // Read from recent-jobs sorted set (includes completed/failed jobs)
+    let jobIds = await getRecentJobIds(userId, 50);
+
+    // Fallback to active set for backward compat (jobs submitted before this change)
+    if (jobIds.length === 0) {
+      jobIds = await getActiveJobIds(userId);
+    }
+
+    const jobs: Array<{
+      jobId: string;
+      status: string;
+      progress: number;
+      message?: string;
+      submittedAt: number;
+      jobType: string;
+      outputTarget: string;
+      resultUrl?: string;
+      errorMessage?: string;
+    }> = [];
 
     for (const jobId of jobIds.slice(0, 50)) {
       const meta = await getJobKey(jobId, "meta");
-      if (!meta) {
-        // Stale entry — clean up
-        await removeActiveJob(userId, jobId);
-        continue;
-      }
+      if (!meta) continue; // Redis key expired
+
       const statusRaw = await getJobKey(jobId, "status");
-      const status = statusRaw?.status || "unknown";
-      jobs.push({ jobId, status, submittedAt: meta.submittedAt });
+      if (!statusRaw) continue;
+
+      const spec = await getJobKey(jobId, "spec");
+
+      // For completed jobs, fetch the result to get the output URL
+      let resultUrl: string | undefined;
+      let errorMessage: string | undefined;
+      if (statusRaw.status === "done") {
+        const result = await getJobKey(jobId, "result");
+        if (result?.artifacts?.[0]?.uri) {
+          resultUrl = result.artifacts[0].uri;
+        }
+      }
+      if (statusRaw.status === "error") {
+        const error = await getJobKey(jobId, "error");
+        errorMessage = error?.message || statusRaw.message;
+      }
+
+      jobs.push({
+        jobId,
+        status: statusRaw.status || "unknown",
+        progress: statusRaw.progress || 0,
+        message: statusRaw.message,
+        submittedAt: meta.submittedAt,
+        jobType: spec?.jobType || "unknown",
+        outputTarget: spec?.output?.target || "",
+        resultUrl,
+        errorMessage,
+      });
     }
 
     return jobs.sort((a, b) => b.submittedAt - a.submittedAt);
@@ -462,6 +524,10 @@ export function registerMediaJobRoutes(app: Express) {
     const meta = await getJobKey(jobId, "meta");
     if (!meta) {
       res.status(404).json({ error: "Job not found" });
+      return;
+    }
+    if (meta.userId !== userId) {
+      res.status(403).json({ error: "Access denied" });
       return;
     }
 
@@ -698,11 +764,14 @@ export function registerMediaJobRoutes(app: Express) {
         jobId,
       });
       await addActiveJob(userId, jobId);
+      await addRecentJob(userId, jobId);
 
       try {
         await dispatchToCelery(JSON.stringify(fullSpec), userId, jobId);
-      } catch {
-        const errMsg = "Failed to dispatch to worker";
+      } catch (dispatchErr: any) {
+        const detail = dispatchErr?.message || "unknown";
+        const errMsg = `Failed to dispatch to worker: ${detail}`;
+        console.error("[MediaJobs] Celery dispatch failed:", detail);
         await setJobKey(jobId, "status", {
           status: "error",
           progress: 0,
@@ -711,7 +780,7 @@ export function registerMediaJobRoutes(app: Express) {
         });
         await removeActiveJob(userId, jobId);
         notifyJobFailure(userId, jobId, errMsg);
-        res.status(502).json({ error: "Failed to dispatch media job to worker" });
+        res.status(502).json({ error: errMsg });
         return;
       }
 

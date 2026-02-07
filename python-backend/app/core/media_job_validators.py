@@ -77,8 +77,15 @@ def _is_private_ip(hostname: str) -> bool:
 
 
 def _is_internal_hostname(hostname: str) -> bool:
-    """Check if hostname is a known internal name."""
+    """Check if hostname is a known internal name.
+
+    Note: 'host.docker.internal' is explicitly allowed because Docker
+    media workers use it to reach the Node.js server on the host for
+    downloading assets (uploads, media-job files).
+    """
     lower = hostname.lower()
+    if lower == "host.docker.internal":
+        return False  # Trusted: Docker→Host communication for asset downloads
     return lower in ("localhost", "0.0.0.0")
 
 
@@ -116,6 +123,12 @@ def validate_uri_no_ssrf(uri: str) -> str:
     # Check for internal hostnames
     if _is_internal_hostname(hostname):
         raise ValueError(f"URI targets internal address: {uri!r}")
+
+    # Allow host.docker.internal — Docker workers need to reach the
+    # Node.js host to download assets via /uploads/*. Skip private-IP
+    # check since it resolves to 172.17.0.1 (Docker bridge gateway).
+    if hostname.lower() == "host.docker.internal":
+        return uri
 
     # Check for private/internal IP ranges
     if _is_private_ip(hostname):

@@ -1071,12 +1071,38 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     }
 
     // Capture the detected skill before clearing it
-    const currentSkillId = detectedSkill?.id;
-    const currentSkillType = detectedSkill?.type;
-    const skillPrompt = detectedSkill?.suggestedPrompt || text;
-    const currentChainTo = detectedSkill?.chainTo;
+    // If message starts with "/" and debounced detection hasn't fired yet,
+    // do an immediate detection so explicit slash commands always work.
+    let resolvedSkill = detectedSkill;
+    if (!resolvedSkill && text.startsWith("/") && conversationId) {
+      try {
+        const result = await detectSkillMutation.mutateAsync({
+          message: text,
+          conversationId,
+        });
+        if (result.detected && result.skill) {
+          resolvedSkill = {
+            id: result.skill.id,
+            name: result.skill.name,
+            type: result.skill.type,
+            confidence: result.confidence,
+            suggestedPrompt: result.suggestedPrompt,
+            executionMode: result.skill.executionMode || "llm-only",
+            chainTo: result.skill.chainTo || null,
+            patternChainTo: result.patternChainTo || null,
+          };
+        }
+      } catch {
+        // Skill detection failed — continue with normal LLM flow
+      }
+    }
+
+    const currentSkillId = resolvedSkill?.id;
+    const currentSkillType = resolvedSkill?.type;
+    const skillPrompt = resolvedSkill?.suggestedPrompt || text;
+    const currentChainTo = resolvedSkill?.chainTo;
     // Per-pattern chainTo takes precedence over skill-level chainTo
-    const currentPatternChainTo = detectedSkill?.patternChainTo;
+    const currentPatternChainTo = resolvedSkill?.patternChainTo;
 
     // Detect image edit patterns - "แก้ไขภาพนี้", "ช่วยแก้ไขภาพ", "แก้ไขภาพ", "edit image"
     const imageEditPattern = /(?:แก้ไขภาพนี้|ช่วยแก้ไขภาพ|แก้ไขภาพ|edit\s*(?:this\s*)?image|modify\s*(?:this\s*)?image|change\s*(?:this\s*)?image)/i;
@@ -1256,7 +1282,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     }
 
     // Execution mode determines skill behavior (from DB, no hardcoded patterns)
-    const executionMode = detectedSkill?.executionMode || "llm-only";
+    const executionMode = resolvedSkill?.executionMode || "llm-only";
 
     if (executionMode === "media-generate" && currentSkillId) {
       // media-generate: LLM generates structured prompt+params, then auto-call media API

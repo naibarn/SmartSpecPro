@@ -295,24 +295,47 @@ async def generate_audio_endpoint(
 
 # ==================== Task Management Endpoints ====================
 
-@router.get("/tasks/{task_id}", response_model=TaskResponse)
-async def get_task_status(
-    task_id: str,
+# IMPORTANT: Static routes (/tasks/admin, /tasks) MUST be declared before
+# parameterized routes (/tasks/{task_id}) so FastAPI matches them first.
+
+@router.get("/tasks/admin", response_model=TaskListResponse)
+async def list_all_tasks(
+    media_type: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get the status of a media generation task.
-    Supports polling for async task completion.
+    List ALL media tasks across all users (admin only).
     """
-    task = await MediaTaskService.get_task(db, task_id, current_user.id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task {task_id} not found"
-        )
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
-    return TaskResponse(**task.to_dict())
+    media_type_enum = MediaType(media_type) if media_type else None
+    status_enum = TaskStatus(status_filter) if status_filter else None
+
+    tasks = await MediaTaskService.list_all_tasks(
+        db,
+        media_type=media_type_enum,
+        status=status_enum,
+        limit=limit,
+        offset=offset,
+    )
+
+    total = await MediaTaskService.count_all_tasks(
+        db,
+        media_type=media_type_enum,
+        status=status_enum,
+    )
+
+    return TaskListResponse(
+        tasks=[TaskResponse(**task.to_dict()) for task in tasks],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/tasks", response_model=TaskListResponse)
@@ -359,45 +382,24 @@ async def list_tasks(
     )
 
 
-@router.get("/tasks/admin", response_model=TaskListResponse)
-async def list_all_tasks(
-    media_type: Optional[str] = None,
-    status_filter: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
+@router.get("/tasks/{task_id}", response_model=TaskResponse)
+async def get_task_status(
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    List ALL media tasks across all users (admin only).
+    Get the status of a media generation task.
+    Supports polling for async task completion.
     """
-    from app.core.auth import get_current_admin_user
-    if not current_user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    task = await MediaTaskService.get_task(db, task_id, current_user.id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found"
+        )
 
-    media_type_enum = MediaType(media_type) if media_type else None
-    status_enum = TaskStatus(status_filter) if status_filter else None
-
-    tasks = await MediaTaskService.list_all_tasks(
-        db,
-        media_type=media_type_enum,
-        status=status_enum,
-        limit=limit,
-        offset=offset,
-    )
-
-    total = await MediaTaskService.count_all_tasks(
-        db,
-        media_type=media_type_enum,
-        status=status_enum,
-    )
-
-    return TaskListResponse(
-        tasks=[TaskResponse(**task.to_dict()) for task in tasks],
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
+    return TaskResponse(**task.to_dict())
 
 
 @router.patch("/tasks/{task_id}/cancel")
@@ -872,6 +874,39 @@ async def download_media(
     # If result_url is a remote URL, redirect
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=task.result_url)
+
+
+# ==================== Render File Serving ====================
+
+@router.get("/files/renders/{user_id}/{job_id}/{filename}")
+async def serve_render_file(
+    user_id: str,
+    job_id: str,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Serve a rendered video file from media_storage/renders/.
+    Only the file owner (or admin) can access.
+    """
+    # Ownership check
+    if str(current_user.id) != user_id and getattr(current_user, "role", None) != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    # Path traversal prevention — use only the basename
+    safe_filename = os.path.basename(filename)
+    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
+    file_path = os.path.join(media_storage, "renders", user_id, job_id, safe_filename)
+
+    real_path = os.path.realpath(file_path)
+    real_base = os.path.realpath(media_storage)
+    if not real_path.startswith(real_base + os.sep):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    return FileResponse(file_path, media_type="video/mp4", filename=safe_filename)
 
 
 # ==================== Async Endpoints with Celery ====================

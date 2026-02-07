@@ -89,9 +89,9 @@ export async function tenantMiddleware(
     // Get hostname from request
     const hostname = req.hostname || req.get("host")?.split(":")[0] || "localhost";
 
-    // Skip tenant detection for localhost only (not spoofable private IPs from Host header)
-    // Only trust loopback — actual private network access should go through a known domain
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
+    // Skip tenant detection for localhost and trusted internal hostnames
+    // Only trust loopback + Docker internal — actual private network access should go through a known domain
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "host.docker.internal") {
       // Use default tenant or first tenant for local/private IPs
       const dbInstance = await getDb();
       if (!dbInstance) return next();

@@ -2,15 +2,19 @@ version: '3.8'
 
 # SmartSpec Pro - Media Processing Stack
 # Isolated Celery workers for media generation (API) and video rendering (FFmpeg)
+# Resource limits prevent FFmpeg from overloading the host machine.
 #
-# REQUIRES: Main stack running first (docker-compose.nginx.yml or docker-compose.yml)
-#   to provide: postgres, redis on smartspec-network
+# REQUIRES: Main stack running first (docker-compose.yml)
+#   to provide: postgres, redis on smartspecpro_default network
 #
 # Usage:
 #   docker compose -f docker-compose.media.yml up -d
 #
 # Monitor:
 #   Flower dashboard: http://localhost:5555
+#
+# NOTE: Set NODE_BASE_URL=http://host.docker.internal:3000 in apps/web/.env
+#   so asset URIs resolve correctly from inside Docker containers.
 
 services:
   # ============================================
@@ -25,20 +29,21 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-celery-media
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q media -n media@%h
+    env_file:
+      - ./python-backend/.env
     environment:
+      # Override networking: use Docker hostnames instead of localhost
       - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
-      - DATABASE_URL=${DATABASE_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - KIE_AI_API_KEY=${KIE_AI_API_KEY}
-      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
-      - STORAGE_TYPE=${STORAGE_TYPE:-local}
-      - S3_BUCKET=${S3_BUCKET}
-      - S3_REGION=${S3_REGION:-us-east-1}
-      - CDN_BASE_URL=${CDN_BASE_URL}
+      - REDIS_URL=redis://smartspec-redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@smartspec-postgres:5432/smartspec
+      - MEDIA_STORAGE_PATH=/app/media_storage
+      # API keys inherited from env_file
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./python-backend:/app
-      - media_storage:/app/media_storage
+      - ./python-backend/media_storage:/app/media_storage
     deploy:
       resources:
         limits:
@@ -55,13 +60,14 @@ services:
       retries: 3
     restart: unless-stopped
     networks:
-      - smartspec-network
+      - smartspecpro_default
 
   # ============================================
   # CELERY VIDEO WORKER
   # Handles: execute_media_job (FFmpeg rendering)
   # These are CPU/IO-heavy (FFmpeg encode, probe, etc.)
   # Isolated so overload doesn't affect other services
+  # Resource limits: 4 CPUs / 8GB RAM max
   # ============================================
   celery-video:
     build:
@@ -69,18 +75,20 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-celery-video
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q video -n video@%h
+    env_file:
+      - ./python-backend/.env
     environment:
+      # Override networking: use Docker hostnames instead of localhost
       - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
-      - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://smartspec-redis:6379/0
-      - STORAGE_TYPE=${STORAGE_TYPE:-local}
-      - S3_BUCKET=${S3_BUCKET}
-      - S3_REGION=${S3_REGION:-us-east-1}
-      - CDN_BASE_URL=${CDN_BASE_URL}
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@smartspec-postgres:5432/smartspec
+      - MEDIA_STORAGE_PATH=/app/media_storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./python-backend:/app
-      - media_storage:/app/media_storage
+      - ./python-backend/media_storage:/app/media_storage
     deploy:
       resources:
         limits:
@@ -97,7 +105,7 @@ services:
       retries: 3
     restart: unless-stopped
     networks:
-      - smartspec-network
+      - smartspecpro_default
 
   # ============================================
   # CELERY BEAT (Periodic Task Scheduler)
@@ -109,10 +117,12 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-celery-beat
     command: celery -A app.core.celery_app beat --loglevel=info
+    env_file:
+      - ./python-backend/.env
     environment:
       - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@smartspec-postgres:5432/smartspec
     volumes:
       - ./python-backend:/app
     deploy:
@@ -122,7 +132,7 @@ services:
           memory: 256M
     restart: unless-stopped
     networks:
-      - smartspec-network
+      - smartspecpro_default
 
   # ============================================
   # FLOWER (Celery Monitoring Dashboard)
@@ -155,12 +165,8 @@ services:
       retries: 3
     restart: unless-stopped
     networks:
-      - smartspec-network
-
-volumes:
-  media_storage:
-    driver: local
+      - smartspecpro_default
 
 networks:
-  smartspec-network:
+  smartspecpro_default:
     external: true

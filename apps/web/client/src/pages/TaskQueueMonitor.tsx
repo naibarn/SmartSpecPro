@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ListChecks,
+  Download,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
@@ -109,8 +110,77 @@ export default function TaskQueueMonitor() {
   });
 
   const activeQuery = isAdmin ? adminQuery : userQuery;
-  const tasks = (activeQuery.data as any)?.tasks || [];
-  const total = (activeQuery.data as any)?.total || 0;
+  const mediaTasks = (activeQuery.data as any)?.tasks || [];
+  const mediaTotal = (activeQuery.data as any)?.total || 0;
+
+  // Video editor / media-jobs (Redis-based)
+  const mediaJobsQuery = trpc.mediaJobs.listJobs.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 5_000,
+  });
+
+  // Map Redis job statuses → display statuses
+  const REDIS_STATUS_MAP: Record<string, string> = {
+    queued: "pending",
+    processing: "processing",
+    done: "completed",
+    error: "failed",
+    canceled: "cancelled",
+  };
+
+  const mediaJobRows = useMemo(() => {
+    const raw = mediaJobsQuery.data || [];
+    return raw.map((j: any) => ({
+      id: j.jobId,
+      _source: "mediaJob" as const,
+      status: REDIS_STATUS_MAP[j.status] || j.status,
+      media_type: "video",
+      prompt: j.outputTarget
+        ? `Video Export: ${j.outputTarget}`
+        : `Video Export (${j.jobType || "render"})`,
+      model: j.jobType || "-",
+      user_id: null,
+      created_at: j.submittedAt ? new Date(j.submittedAt).toISOString() : null,
+      started_at: j.status === "processing" ? new Date(j.submittedAt).toISOString() : null,
+      completed_at: j.status === "done" ? new Date().toISOString() : null,
+      error_message: j.errorMessage || (j.status === "error" ? (j.message || "Job failed") : null),
+      progress: j.progress || 0,
+      result_url: j.resultUrl || null,
+    }));
+  }, [mediaJobsQuery.data]);
+
+  // Merge both task sources, deduplicating renders that exist in both Redis and DB
+  const tasks = useMemo(() => {
+    const dbTasks = (mediaTasks as any[]).map((t: any) => ({ ...t, _source: "media" as const }));
+
+    // Build a set of Redis mediaJob IDs for deduplication
+    const mediaJobIds = new Set(mediaJobRows.map((r: any) => r.id));
+
+    // During the 24h Redis/DB overlap period, a completed render appears in both sources.
+    // Skip DB tasks that are video_editor renders if a matching Redis job still exists.
+    const dedupedDbTasks = dbTasks.filter((t: any) => {
+      if (t.parameters?.source === "video_editor" && mediaJobIds.has(t.id)) {
+        return false;
+      }
+      return true;
+    });
+
+    // Apply status & type filters to mediaJob rows
+    let filtered = mediaJobRows;
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((t: any) => t.status === statusFilter);
+    }
+    if (mediaTypeFilter !== "all") {
+      filtered = filtered.filter((t: any) => t.media_type === mediaTypeFilter);
+    }
+    return [...dedupedDbTasks, ...filtered].sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [mediaTasks, mediaJobRows, statusFilter, mediaTypeFilter]);
+
+  const total = mediaTotal + mediaJobRows.length;
 
   const cancelTask = trpc.media.cancelTask.useMutation({
     onSuccess: () => {
@@ -118,6 +188,14 @@ export default function TaskQueueMonitor() {
       activeQuery.refetch();
     },
     onError: (err) => toast.error(err.message),
+  });
+
+  const cancelMediaJob = trpc.mediaJobs.cancelJob.useMutation({
+    onSuccess: () => {
+      toast.success("Job cancelled");
+      mediaJobsQuery.refetch();
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const deleteTask = trpc.media.deleteTask.useMutation({
@@ -128,16 +206,16 @@ export default function TaskQueueMonitor() {
     onError: (err) => toast.error(err.message),
   });
 
-  // Stats
+  // Stats (from both sources)
   const stats = useMemo(() => {
     const all = tasks as any[];
     return {
-      total: total,
+      total: all.length,
       active: all.filter((t: any) => t.status === "pending" || t.status === "processing").length,
       failed: all.filter((t: any) => t.status === "failed").length,
       completed: all.filter((t: any) => t.status === "completed").length,
     };
-  }, [tasks, total]);
+  }, [tasks]);
 
   if (authLoading) {
     return (
@@ -181,17 +259,17 @@ export default function TaskQueueMonitor() {
               {isAdmin && <Badge variant="outline" className="ml-2 text-xs">Admin</Badge>}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isAdmin ? "All users' media generation tasks" : "Your media generation tasks"}
+              {isAdmin ? "All users' media & video editor tasks" : "Your media & video editor tasks"}
             </p>
           </div>
         </div>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => activeQuery.refetch()}
-          disabled={activeQuery.isFetching}
+          onClick={() => { activeQuery.refetch(); mediaJobsQuery.refetch(); }}
+          disabled={activeQuery.isFetching || mediaJobsQuery.isFetching}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-1", activeQuery.isFetching && "animate-spin")} />
+          <RefreshCw className={cn("h-4 w-4 mr-1", (activeQuery.isFetching || mediaJobsQuery.isFetching) && "animate-spin")} />
           Refresh
         </Button>
       </div>
@@ -270,11 +348,11 @@ export default function TaskQueueMonitor() {
       <Card className="bg-card/50 backdrop-blur border-border/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">
-            Tasks ({total})
+            Tasks ({tasks.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {activeQuery.isLoading ? (
+          {(activeQuery.isLoading && mediaJobsQuery.isLoading) ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -311,17 +389,22 @@ export default function TaskQueueMonitor() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={cn("text-xs", STATUS_COLORS[task.status] || "")}
-                            >
-                              {task.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                              {task.status === "processing" && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                              {task.status === "completed" && <CheckCircle className="h-3 w-3 mr-1" />}
-                              {task.status === "failed" && <XCircle className="h-3 w-3 mr-1" />}
-                              {task.status === "cancelled" && <Ban className="h-3 w-3 mr-1" />}
-                              {task.status}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <Badge
+                                variant="outline"
+                                className={cn("text-xs w-fit", STATUS_COLORS[task.status] || "")}
+                              >
+                                {task.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                                {task.status === "processing" && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                {task.status === "completed" && <CheckCircle className="h-3 w-3 mr-1" />}
+                                {task.status === "failed" && <XCircle className="h-3 w-3 mr-1" />}
+                                {task.status === "cancelled" && <Ban className="h-3 w-3 mr-1" />}
+                                {task.status}
+                              </Badge>
+                              {task._source === "mediaJob" && task.status === "processing" && task.progress > 0 && (
+                                <span className="text-[10px] text-blue-400">{Math.round(task.progress * 100)}%</span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <span
@@ -368,19 +451,41 @@ export default function TaskQueueMonitor() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-1 justify-end">
+                              {/* Download button for completed jobs with result URL */}
+                              {task.status === "completed" && task.result_url && (
+                                <a
+                                  href={task.result_url}
+                                  download
+                                  title="Download result"
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs text-green-400 hover:text-green-300"
+                                  >
+                                    <Download className="h-3.5 w-3.5" />
+                                  </Button>
+                                </a>
+                              )}
                               {(task.status === "pending" || task.status === "processing") && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   className="h-7 px-2 text-xs text-yellow-400 hover:text-yellow-300"
-                                  onClick={() => cancelTask.mutate({ taskId: task.id })}
-                                  disabled={cancelTask.isPending}
+                                  onClick={() => {
+                                    if (task._source === "mediaJob") {
+                                      cancelMediaJob.mutate({ jobId: task.id });
+                                    } else {
+                                      cancelTask.mutate({ taskId: task.id });
+                                    }
+                                  }}
+                                  disabled={cancelTask.isPending || cancelMediaJob.isPending}
                                   title="Cancel task"
                                 >
                                   <Ban className="h-3.5 w-3.5" />
                                 </Button>
                               )}
-                              {(task.status === "failed" || task.status === "cancelled" || task.status === "completed") && (
+                              {task._source !== "mediaJob" && (task.status === "failed" || task.status === "cancelled" || task.status === "completed") && (
                                 <Button
                                   variant="ghost"
                                   size="sm"

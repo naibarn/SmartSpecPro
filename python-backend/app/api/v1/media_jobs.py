@@ -20,16 +20,20 @@ class MediaJobRequest(BaseModel):
 @router.post("/media-jobs/execute")
 async def execute_media_job_endpoint(
     request: MediaJobRequest,
-    x_internal_token: str = Header(..., alias="x-internal-token"),
+    x_internal_token: str = Header("", alias="x-internal-token"),
 ):
     """Accept a media job spec from the Node.js server and dispatch to Celery.
 
     Requires internal service token for authentication (node.js → python).
     """
-    if not MEDIA_JOB_INTERNAL_TOKEN or not secrets.compare_digest(
-        x_internal_token, MEDIA_JOB_INTERNAL_TOKEN
-    ):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # If token is configured, both sides must match.
+    # If not configured (dev mode), allow empty-to-empty.
+    if MEDIA_JOB_INTERNAL_TOKEN:
+        if not secrets.compare_digest(x_internal_token, MEDIA_JOB_INTERNAL_TOKEN):
+            raise HTTPException(status_code=401, detail="Unauthorized")
+    elif x_internal_token:
+        # Server has no token but client sent one — surface misconfiguration
+        raise HTTPException(status_code=401, detail="Unauthorized: token mismatch")
 
     try:
         from app.tasks.media_job_worker import execute_media_job

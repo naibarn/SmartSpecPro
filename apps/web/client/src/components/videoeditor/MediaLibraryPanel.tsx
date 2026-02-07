@@ -4,19 +4,21 @@
  * Supports file upload on web platform.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   videoEditorMediaLibrary,
   type MediaLibraryAsset
 } from '../../services/videoEditorService';
 import { showToast } from './Toast';
 import { WebAssetResolver } from '../../services/webAssetResolver';
+import type { Asset } from '../../types/videoEditor';
 
 const isDesktopPlatform = typeof window !== 'undefined' && !!(window as any).__TAURI__;
 const webAssetResolver = new WebAssetResolver();
 
 interface MediaLibraryPanelProps {
   onAddToTimeline?: (asset: MediaLibraryAsset, localPath: string) => void;
+  projectAssets?: Record<string, Asset>;
 }
 
 // Type guards
@@ -33,7 +35,8 @@ const isValidAsset = (asset: unknown): asset is MediaLibraryAsset => {
 };
 
 export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
-  onAddToTimeline
+  onAddToTimeline,
+  projectAssets
 }) => {
   const [videos, setVideos] = useState<MediaLibraryAsset[]>([]);
   const [audio, setAudio] = useState<MediaLibraryAsset[]>([]);
@@ -43,7 +46,25 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Convert project assets to MediaLibraryAsset format for display
+  const projectMediaAssets = useMemo<MediaLibraryAsset[]>(() => {
+    if (!projectAssets) return [];
+    return Object.values(projectAssets).map(a => ({
+      id: a.taskId || a.id,
+      type: a.type,
+      title: a.name || a.filename || 'Untitled',
+      thumbnailUrl: a.type === 'image' ? (a.path || a.originalPath || '') : (a.thumbnailPath || ''),
+      duration: a.duration || 0,
+      url: a.path || a.originalPath || '',
+      model: a.model || (a.source === 'imported' ? 'uploaded' : 'unknown'),
+      createdAt: new Date(),
+      format: a.format || 'mp4',
+      localPath: a.path,
+    }));
+  }, [projectAssets]);
 
   useEffect(() => {
     loadMediaLibrary();
@@ -68,46 +89,66 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
     }
   };
 
-  // Handle file upload (web only)
+  // Handle file upload (web only) — parallel with progress
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const fileList = Array.from(files);
     setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        const { assetId, uri } = await webAssetResolver.uploadAsset(file);
-        const isVideo = file.type.startsWith('video/');
-        const isImage = file.type.startsWith('image/');
+    setUploadProgress({ done: 0, total: fileList.length });
 
-        const newAsset: MediaLibraryAsset = {
-          id: assetId,
-          type: isImage ? 'image' : isVideo ? 'video' : 'audio',
-          title: file.name,
-          thumbnailUrl: isImage ? uri : '',
-          duration: 0,
-          url: uri,
-          model: 'uploaded',
-          createdAt: new Date(),
-          format: file.name.split('.').pop() || 'mp4',
-        };
+    const uploadOne = async (file: File) => {
+      const { assetId, uri } = await webAssetResolver.uploadAsset(file);
+      const isVideo = file.type.startsWith('video/');
+      const isImage = file.type.startsWith('image/');
 
-        if (isImage) {
-          setImages(prev => [newAsset, ...prev]);
-        } else if (isVideo) {
-          setVideos(prev => [newAsset, ...prev]);
-        } else {
-          setAudio(prev => [newAsset, ...prev]);
-        }
+      const newAsset: MediaLibraryAsset = {
+        id: assetId,
+        type: isImage ? 'image' : isVideo ? 'video' : 'audio',
+        title: file.name,
+        thumbnailUrl: isImage ? uri : '',
+        duration: 0,
+        url: uri,
+        model: 'uploaded',
+        createdAt: new Date(),
+        format: file.name.split('.').pop() || 'mp4',
+      };
+
+      if (isImage) {
+        setImages(prev => [newAsset, ...prev]);
+      } else if (isVideo) {
+        setVideos(prev => [newAsset, ...prev]);
+      } else {
+        setAudio(prev => [newAsset, ...prev]);
       }
-      showToast('Upload complete', 'success', 2000);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Upload failed';
-      showToast(msg, 'error', 4000);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+
+      setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
+      return file.name;
+    };
+
+    // Upload files sequentially to avoid server overload
+    let succeeded = 0;
+    let failed = 0;
+    for (const file of fileList) {
+      try {
+        await uploadOne(file);
+        succeeded++;
+      } catch {
+        failed++;
+        setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
+      }
     }
+
+    if (failed === 0) {
+      showToast(`Uploaded ${succeeded} file${succeeded !== 1 ? 's' : ''}`, 'success', 2000);
+    } else {
+      showToast(`${succeeded} uploaded, ${failed} failed`, failed === fileList.length ? 'error' : 'warning', 4000);
+    }
+
+    setUploading(false);
+    setUploadProgress({ done: 0, total: 0 });
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleDragStart = (asset: MediaLibraryAsset) => (e: React.DragEvent) => {
@@ -119,6 +160,25 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
       }
       e.dataTransfer.setData('application/video-editor-asset', JSON.stringify(asset));
       e.dataTransfer.effectAllowed = 'copy';
+
+      // Build a small drag label.
+      // CRITICAL: The element MUST be inside the viewport and painted for
+      // setDragImage to capture it. Off-screen or z-index:-1 elements are
+      // not painted by browsers, causing fallback to the default ghost.
+      const icon = asset.type === 'video' ? '🎬' : asset.type === 'audio' ? '🎵' : '🖼️';
+      const color = asset.type === 'video' ? '#0078d4' : asset.type === 'audio' ? '#00b294' : '#ff6b6b';
+      const dragEl = document.createElement('div');
+      dragEl.textContent = `${icon} ${asset.title}`;
+      dragEl.style.cssText = `position:fixed;top:0;left:0;z-index:99999;padding:6px 12px;background:#2a2a2a;border:1px solid ${color};border-left:3px solid ${color};border-radius:4px;color:#e0e0e0;font-size:11px;font-weight:600;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.4);pointer-events:none;`;
+      document.body.appendChild(dragEl);
+
+      // setDragImage: cursor at (10,14) relative to the label
+      e.dataTransfer.setDragImage(dragEl, 10, 14);
+
+      // Double-rAF: guarantees the browser has painted the element before
+      // we remove it. First rAF fires before the next paint, second rAF
+      // fires after that paint is committed — safe to remove.
+      requestAnimationFrame(() => requestAnimationFrame(() => dragEl.remove()));
     } catch (err) {
       console.error('Failed to start drag operation:', err);
       e.preventDefault();
@@ -197,6 +257,20 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   };
 
   const currentAssets = selectedTab === 'videos' ? videos : selectedTab === 'images' ? images : audio;
+
+  // Filter project assets by current tab type
+  const tabType = selectedTab === 'videos' ? 'video' : selectedTab === 'images' ? 'image' : 'audio';
+  const currentProjectAssets = projectMediaAssets.filter(a => a.type === tabType);
+
+  // File accept filter based on active tab
+  const acceptFilter = useMemo(() => {
+    switch (selectedTab) {
+      case 'videos': return '.mp4,.mov,.webm,.avi,video/*';
+      case 'images': return '.png,.jpg,.jpeg,.gif,.webp,image/*';
+      case 'audio': return '.mp3,.wav,.ogg,.aac,audio/*';
+      default: return 'video/*,audio/*,image/*';
+    }
+  }, [selectedTab]);
 
   return (
     <div className="media-library-panel">
@@ -465,7 +539,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="video/*,audio/*,image/*"
+          accept={acceptFilter}
           multiple
           style={{ display: 'none' }}
           onChange={handleFileUpload}
@@ -482,7 +556,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
               disabled={uploading}
               style={{ fontSize: '11px', padding: '3px 8px' }}
             >
-              {uploading ? '⏳ Uploading...' : '📤 Upload'}
+              {uploading ? `⏳ ${uploadProgress.done}/${uploadProgress.total}` : '📤 Upload'}
             </button>
           )}
         </div>
@@ -509,6 +583,75 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
       </div>
 
       <div className="media-library-content">
+        {/* Project Assets Section — always shown if project has assets for this tab */}
+        {currentProjectAssets.length > 0 && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#0078d4', marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
+              Project Media ({currentProjectAssets.length})
+            </div>
+            <div className="media-grid">
+              {currentProjectAssets.map(asset => (
+                <div
+                  key={`proj-${asset.id}`}
+                  className={`media-item ${downloadingIds.has(asset.id) ? 'downloading' : ''}`}
+                  draggable={!downloadingIds.has(asset.id)}
+                  onDragStart={handleDragStart(asset)}
+                  style={{ borderColor: '#0078d450' }}
+                >
+                  <div className="media-thumbnail">
+                    {asset.type === 'video' ? (
+                      asset.url ? (
+                        <video
+                          src={asset.url}
+                          preload="metadata"
+                          muted
+                          playsInline
+                          draggable={false}
+                          className="media-video-thumb"
+                          onLoadedData={(e) => { e.currentTarget.currentTime = 1; }}
+                          onMouseEnter={(e) => { e.currentTarget.currentTime = 0; e.currentTarget.play().catch(() => {}); }}
+                          onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }}
+                        />
+                      ) : (
+                        <div className="media-thumbnail-icon">🎬</div>
+                      )
+                    ) : asset.type === 'image' ? (
+                      asset.url ? (
+                        <img src={asset.url} alt={asset.title} draggable={false} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div className="media-thumbnail-icon">🖼️</div>
+                      )
+                    ) : (
+                      <div className="media-thumbnail-icon">🎵</div>
+                    )}
+                    {asset.duration > 0 && (
+                      <div className="media-duration">
+                        {formatDuration(asset.duration)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="media-info">
+                    <div className="media-title" title={asset.title}>{asset.title}</div>
+                    <div className="media-meta">
+                      <span className="media-model">{asset.model}</span>
+                    </div>
+                  </div>
+                  <div className="media-actions">
+                    <button
+                      className="add-button"
+                      onClick={() => handleAddToTimeline(asset)}
+                      disabled={downloadingIds.has(asset.id)}
+                    >
+                      {downloadingIds.has(asset.id) ? '⏳ Loading...' : '➕ Add'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Generated Media Section */}
         {loading ? (
           <div className="loading-state">
             <div>Loading media library...</div>
@@ -520,7 +663,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
               Retry
             </button>
           </div>
-        ) : currentAssets.length === 0 ? (
+        ) : currentAssets.length === 0 && currentProjectAssets.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
               {selectedTab === 'videos' ? '🎬' : '🎤'}
@@ -530,7 +673,13 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
               Generate {selectedTab} in the Media Studio first
             </div>
           </div>
-        ) : (
+        ) : currentAssets.length === 0 ? null : (
+          <>
+          {currentProjectAssets.length > 0 && (
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#888', marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
+              Generated ({currentAssets.length})
+            </div>
+          )}
           <div className="media-grid">
             {currentAssets.map(asset => (
               <div
@@ -547,19 +696,20 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
                         preload="metadata"
                         muted
                         playsInline
+                        draggable={false}
                         className="media-video-thumb"
                         onLoadedData={(e) => { e.currentTarget.currentTime = 1; }}
                         onMouseEnter={(e) => { e.currentTarget.currentTime = 0; e.currentTarget.play().catch(() => {}); }}
                         onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }}
                       />
                     ) : asset.thumbnailUrl ? (
-                      <img src={asset.thumbnailUrl} alt={asset.title} />
+                      <img src={asset.thumbnailUrl} alt={asset.title} draggable={false} />
                     ) : (
                       <div className="media-thumbnail-icon">🎬</div>
                     )
                   ) : asset.type === 'image' ? (
                     asset.url ? (
-                      <img src={asset.url} alt={asset.title} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={asset.url} alt={asset.title} draggable={false} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <div className="media-thumbnail-icon">🖼️</div>
                     )
@@ -600,6 +750,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
     </div>

@@ -706,11 +706,17 @@ export const mediaRouter = router({
 
         if (!response.ok) {
           const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-          throw new Error(error.detail || `Admin list tasks failed: ${response.status}`);
+          const msg = error.detail || `Admin list tasks failed: ${response.status}`;
+          const code = response.status === 401 ? "UNAUTHORIZED"
+            : response.status === 403 ? "FORBIDDEN"
+            : response.status === 404 ? "NOT_FOUND"
+            : "INTERNAL_SERVER_ERROR";
+          throw new TRPCError({ code, message: msg });
         }
 
         return await response.json();
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Failed to list all tasks",
