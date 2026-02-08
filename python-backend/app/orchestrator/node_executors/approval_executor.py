@@ -51,17 +51,19 @@ class ApprovalExecutor:
         # Get approvers list
         approvers: List[str] = config.get("approvers", [])
         if not approvers:
-            # No approvers configured - auto-approve for dev
+            # SECURITY: No approvers configured - reject by default
             return {
-                "approved": True,
-                "rejected": False,
-                "approved_by": "system",
+                "approved": False,
+                "rejected": True,
+                "rejected_by": "system",
                 "data": inputs.get("data"),
-                "warning": "No approvers configured - auto-approved",
+                "error": "No approvers configured. Approval gate requires at least one approver.",
             }
 
-        # Get timeout (in seconds)
-        timeout_seconds = config.get("timeout", 3600)  # Default 1 hour
+        # Get timeout (in seconds), bounded between 60s and 7 days
+        MAX_TIMEOUT = 7 * 24 * 3600  # 7 days
+        MIN_TIMEOUT = 60  # 1 minute
+        timeout_seconds = max(MIN_TIMEOUT, min(int(config.get("timeout", 3600)), MAX_TIMEOUT))
         timeout_at = datetime.utcnow() + timedelta(seconds=timeout_seconds)
 
         # Generate approval ID
