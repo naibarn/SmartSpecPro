@@ -980,3 +980,311 @@ async def get_image_providers(
             },
         ]
     }
+
+
+# ============================================================================
+# Schedule Management Endpoints
+# ============================================================================
+
+
+class CreateScheduleRequest(BaseModel):
+    """Request to create/update a workflow schedule."""
+
+    workflow_id: str = Field(..., description="Workflow ID to schedule")
+    node_id: str = Field(..., description="Schedule trigger node ID")
+    cron_expression: str = Field(..., description="Cron expression (5-field format)")
+    timezone: str = Field(default="UTC", description="IANA timezone (e.g., Asia/Bangkok)")
+    is_active: bool = Field(default=True, description="Enable/disable schedule")
+
+
+class ScheduleResponse(BaseModel):
+    """Response for schedule operations."""
+
+    id: str
+    workflow_id: str
+    node_id: str
+    cron_expression: str
+    timezone: str
+    is_active: bool
+    next_run: str | None
+    last_run: str | None
+    created_at: str
+
+
+class ScheduleListResponse(BaseModel):
+    """Paginated schedule list."""
+
+    items: list[ScheduleResponse]
+    total: int
+
+
+@router.post("/schedules", response_model=ScheduleResponse)
+async def create_schedule(
+    request: CreateScheduleRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create or update a workflow schedule.
+
+    The schedule will be monitored by a Celery Beat task that triggers
+    the workflow when the cron expression matches.
+    """
+    from croniter import croniter
+    from datetime import datetime
+    import zoneinfo
+
+    # Validate cron expression
+    if not croniter.is_valid(request.cron_expression):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid cron expression: '{request.cron_expression}'",
+        )
+
+    # Calculate next run time
+    try:
+        tz = zoneinfo.ZoneInfo(request.timezone)
+        now = datetime.now(tz)
+        cron = croniter(request.cron_expression, now)
+        next_run = cron.get_next(datetime)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid timezone or cron calculation failed: {str(e)}",
+        )
+
+    # TODO: Save to workflow_schedules table
+    # For now, return mock response
+
+    schedule_id = f"schedule-{uuid.uuid4().hex[:12]}"
+
+    logger.info(
+        "schedule_created",
+        schedule_id=schedule_id,
+        workflow_id=request.workflow_id,
+        cron=request.cron_expression,
+        timezone=request.timezone,
+        next_run=next_run.isoformat(),
+    )
+
+    return ScheduleResponse(
+        id=schedule_id,
+        workflow_id=request.workflow_id,
+        node_id=request.node_id,
+        cron_expression=request.cron_expression,
+        timezone=request.timezone,
+        is_active=request.is_active,
+        next_run=next_run.isoformat(),
+        last_run=None,
+        created_at=datetime.utcnow().isoformat() + "Z",
+    )
+
+
+@router.get("/schedules", response_model=ScheduleListResponse)
+async def list_schedules(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+):
+    """
+    List all schedules for the current tenant.
+    """
+    # TODO: Query workflow_schedules table filtered by tenant_id
+    # For now, return empty list
+
+    logger.info(
+        "schedules_list_requested",
+        user_id=current_user.id,
+        tenant_id=current_user.currentTenantId,
+    )
+
+    return ScheduleListResponse(items=[], total=0)
+
+
+@router.delete("/schedules/{schedule_id}")
+async def delete_schedule(
+    schedule_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Delete a workflow schedule.
+    """
+    # TODO: Delete from workflow_schedules table with tenant isolation
+
+    logger.info(
+        "schedule_deleted",
+        schedule_id=schedule_id,
+        user_id=current_user.id,
+    )
+
+    return {"status": "deleted", "schedule_id": schedule_id}
+
+
+# ============================================================================
+# Event Subscription Endpoints
+# ============================================================================
+
+
+class CreateEventSubscriptionRequest(BaseModel):
+    """Request to create an event subscription."""
+
+    workflow_id: str = Field(..., description="Workflow ID to trigger")
+    node_id: str = Field(..., description="Event trigger node ID")
+    event_type: str = Field(
+        ...,
+        description="Event type to listen for (e.g., user.created, skill.completed)",
+    )
+    filter_conditions: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional filter conditions (key-value pairs)",
+    )
+    is_active: bool = Field(default=True, description="Enable/disable subscription")
+
+
+class EventSubscriptionResponse(BaseModel):
+    """Response for event subscription operations."""
+
+    id: str
+    workflow_id: str
+    node_id: str
+    event_type: str
+    filter_conditions: dict[str, Any] | None
+    is_active: bool
+    created_at: str
+
+
+class EventSubscriptionListResponse(BaseModel):
+    """Paginated event subscription list."""
+
+    items: list[EventSubscriptionResponse]
+    total: int
+
+
+@router.post("/event-subscriptions", response_model=EventSubscriptionResponse)
+async def create_event_subscription(
+    request: CreateEventSubscriptionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create an event subscription.
+
+    The subscription will be monitored by an event listener service that
+    triggers the workflow when matching events occur.
+    """
+    # Validate event type
+    valid_event_types = {
+        "user.created",
+        "user.updated",
+        "skill.completed",
+        "media.generated",
+        "workflow.completed",
+    }
+
+    if request.event_type not in valid_event_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid event type. Must be one of: {', '.join(valid_event_types)}",
+        )
+
+    # TODO: Save to workflow_event_subscriptions table
+
+    subscription_id = f"sub-{uuid.uuid4().hex[:12]}"
+
+    logger.info(
+        "event_subscription_created",
+        subscription_id=subscription_id,
+        workflow_id=request.workflow_id,
+        event_type=request.event_type,
+        has_filter=bool(request.filter_conditions),
+    )
+
+    return EventSubscriptionResponse(
+        id=subscription_id,
+        workflow_id=request.workflow_id,
+        node_id=request.node_id,
+        event_type=request.event_type,
+        filter_conditions=request.filter_conditions,
+        is_active=request.is_active,
+        created_at=datetime.utcnow().isoformat() + "Z",
+    )
+
+
+@router.get("/event-subscriptions", response_model=EventSubscriptionListResponse)
+async def list_event_subscriptions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+):
+    """
+    List all event subscriptions for the current tenant.
+    """
+    # TODO: Query workflow_event_subscriptions table filtered by tenant_id
+
+    logger.info(
+        "event_subscriptions_list_requested",
+        user_id=current_user.id,
+        tenant_id=current_user.currentTenantId,
+    )
+
+    return EventSubscriptionListResponse(items=[], total=0)
+
+
+@router.delete("/event-subscriptions/{subscription_id}")
+async def delete_event_subscription(
+    subscription_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Delete an event subscription.
+    """
+    # TODO: Delete from workflow_event_subscriptions table with tenant isolation
+
+    logger.info(
+        "event_subscription_deleted",
+        subscription_id=subscription_id,
+        user_id=current_user.id,
+    )
+
+    return {"status": "deleted", "subscription_id": subscription_id}
+
+
+# ============================================================================
+# Skills Endpoint (for skill node)
+# ============================================================================
+
+
+@router.get("/skills")
+async def get_available_skills(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get list of available skills for skill nodes.
+    """
+    # TODO: Integrate with skill registry
+    return {
+        "skills": [
+            {
+                "id": "enhance-prompt",
+                "name": "Enhance Prompt",
+                "description": "Improve and expand user prompts",
+                "category": "text",
+            },
+            {
+                "id": "summarize",
+                "name": "Summarize Text",
+                "description": "Create concise summaries",
+                "category": "text",
+            },
+            {
+                "id": "translate",
+                "name": "Translate",
+                "description": "Translate text between languages",
+                "category": "text",
+            },
+        ]
+    }
