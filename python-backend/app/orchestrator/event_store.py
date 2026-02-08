@@ -18,6 +18,11 @@ class EventStore:
     Supports replay via Last-Event-ID header.
     """
 
+    # Max tracked executions to prevent unbounded memory growth
+    MAX_TRACKED_EXECUTIONS = 500
+    # Cleanup runs every N add_event calls (lazy cleanup)
+    CLEANUP_INTERVAL = 100
+
     def __init__(self, max_events_per_execution: int = 1000, ttl_seconds: int = 60):
         """
         Initialize event store.
@@ -28,6 +33,7 @@ class EventStore:
         """
         self.max_events_per_execution = max_events_per_execution
         self.ttl_seconds = ttl_seconds
+        self._add_count = 0
 
         # execution_id -> deque of events
         self.events: dict[str, deque[WorkflowEvent]] = defaultdict(
@@ -51,6 +57,12 @@ class EventStore:
         self.events[execution_id].append(event)
         self.event_index[event.event_id] = event
         self.last_activity[execution_id] = datetime.utcnow()
+
+        # Periodic lazy cleanup to prevent memory leaks
+        self._add_count += 1
+        if self._add_count >= self.CLEANUP_INTERVAL:
+            self._add_count = 0
+            self.cleanup_expired()
 
         logger.debug(
             "event_stored",
@@ -120,7 +132,7 @@ class EventStore:
         return list(self.events.get(execution_id, deque()))
 
     def cleanup_expired(self) -> None:
-        """Remove events older than TTL."""
+        """Remove events older than TTL and enforce max executions limit."""
         now = datetime.utcnow()
         expired_executions = []
 
@@ -129,21 +141,32 @@ class EventStore:
                 expired_executions.append(execution_id)
 
         for execution_id in expired_executions:
-            # Remove events for this execution
-            execution_events = self.events.pop(execution_id, deque())
+            self._remove_execution(execution_id)
 
-            # Remove from event index
-            for event in execution_events:
-                self.event_index.pop(event.event_id, None)
-
-            # Remove last activity timestamp
-            self.last_activity.pop(execution_id, None)
-
-            logger.info(
-                "cleaned_up_expired_events",
-                execution_id=execution_id,
-                event_count=len(execution_events),
+        # Evict oldest executions if over limit
+        while len(self.events) > self.MAX_TRACKED_EXECUTIONS:
+            oldest_id = min(self.last_activity, key=self.last_activity.get)  # type: ignore[arg-type]
+            self._remove_execution(oldest_id)
+            logger.warning(
+                "evicted_oldest_execution",
+                execution_id=oldest_id,
+                reason="max_tracked_executions_exceeded",
             )
+
+    def _remove_execution(self, execution_id: str) -> None:
+        """Remove all data for an execution."""
+        execution_events = self.events.pop(execution_id, deque())
+
+        for event in execution_events:
+            self.event_index.pop(event.event_id, None)
+
+        self.last_activity.pop(execution_id, None)
+
+        logger.info(
+            "cleaned_up_expired_events",
+            execution_id=execution_id,
+            event_count=len(execution_events),
+        )
 
     def clear_execution(self, execution_id: str) -> None:
         """
@@ -154,18 +177,7 @@ class EventStore:
         Args:
             execution_id: Execution to clear
         """
-        execution_events = self.events.pop(execution_id, deque())
-
-        for event in execution_events:
-            self.event_index.pop(event.event_id, None)
-
-        self.last_activity.pop(execution_id, None)
-
-        logger.info(
-            "cleared_execution_events",
-            execution_id=execution_id,
-            event_count=len(execution_events),
-        )
+        self._remove_execution(execution_id)
 
 
 # Global event store instance

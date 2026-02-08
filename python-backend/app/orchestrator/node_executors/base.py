@@ -1,5 +1,5 @@
 """Base executor protocol and data structures."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 
@@ -12,6 +12,7 @@ class ExecutionContext:
     workflow_id: str
     execution_id: str
     credits_available: int = 0
+    extra_data: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

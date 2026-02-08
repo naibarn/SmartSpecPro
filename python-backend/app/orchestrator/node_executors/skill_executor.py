@@ -1,4 +1,5 @@
 """Skill node executor with dynamic skill discovery."""
+import re
 from typing import Any, Dict, Optional, List
 from app.orchestrator.node_executors.base import ExecutionContext, NodeExecutionData
 
@@ -17,6 +18,9 @@ class SkillExecutor:
     - skill.md - Skill definition with prompts/logic
     - handler (optional) - Custom Python/JS execution logic
     """
+
+    # Only allow alphanumeric, underscores, hyphens (no path separators, dots, etc.)
+    SAFE_SKILL_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_\-]{1,100}$")
 
     async def execute(
         self,
@@ -52,6 +56,13 @@ class SkillExecutor:
         if not skill_id:
             return {
                 "error": "Skill node requires a skill_id in configuration",
+                "outputs": {},
+            }
+
+        # Validate skill_id format (prevent path traversal / injection)
+        if not self.SAFE_SKILL_ID_PATTERN.match(str(skill_id)):
+            return {
+                "error": f"Invalid skill_id format: must be alphanumeric with underscores/hyphens, max 100 chars",
                 "outputs": {},
             }
 

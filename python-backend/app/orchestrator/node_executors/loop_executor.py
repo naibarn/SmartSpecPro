@@ -6,6 +6,9 @@ from app.orchestrator.node_executors.base import ExecutionContext, NodeExecution
 class LoopExecutor:
     """Executor for loop nodes with count and data iteration modes."""
 
+    # Hard cap on iterations to prevent DoS
+    ABSOLUTE_MAX_ITERATIONS = 10000
+
     async def execute(
         self,
         data: NodeExecutionData,
@@ -33,14 +36,15 @@ class LoopExecutor:
             # Count mode: iterate N times
             mode = "count"
             count = int(config["count"])
-            max_iterations = min(count, config.get("maxIterations", 1000))  # Safety limit
+            user_max = min(int(config.get("maxIterations", 1000)), self.ABSOLUTE_MAX_ITERATIONS)
+            max_iterations = min(count, user_max)
         elif "data" in inputs and inputs["data"]:
             # Data mode: iterate over array
             mode = "data"
             loop_data = inputs["data"]
             if not isinstance(loop_data, list):
                 loop_data = [loop_data]
-            max_iterations = len(loop_data)
+            max_iterations = min(len(loop_data), self.ABSOLUTE_MAX_ITERATIONS)
         else:
             # No loop configuration
             return {

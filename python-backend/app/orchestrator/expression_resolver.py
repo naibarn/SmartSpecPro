@@ -7,7 +7,12 @@ class ExpressionResolver:
     """Resolves {{variable}} expressions in workflow node configurations."""
 
     MAX_EXPRESSION_LENGTH = 1000
+    MAX_EXPRESSION_DEPTH = 10  # Max dot-separated parts
+    MAX_EXPRESSIONS_PER_TEXT = 50  # Max number of expressions in a single text
+
+    # Only allow alphanumeric, underscores, hyphens, dots (safe path traversal)
     EXPRESSION_PATTERN = re.compile(r"\{\{([^}]+)\}\}")
+    SAFE_EXPR_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
 
     def resolve(self, text: str, state: dict[str, Any]) -> str:
         """
@@ -26,8 +31,20 @@ class ExpressionResolver:
         if len(text) > self.MAX_EXPRESSION_LENGTH:
             raise ValueError(f"Expression too long (max {self.MAX_EXPRESSION_LENGTH})")
 
+        # Count expressions to prevent abuse
+        matches = self.EXPRESSION_PATTERN.findall(text)
+        if len(matches) > self.MAX_EXPRESSIONS_PER_TEXT:
+            raise ValueError(
+                f"Too many expressions (max {self.MAX_EXPRESSIONS_PER_TEXT}, found {len(matches)})"
+            )
+
         def replace_expression(match):
             expr = match.group(1).strip()
+
+            # Validate expression format (only safe characters)
+            if not self.SAFE_EXPR_PATTERN.match(expr):
+                return f"{{{{{expr}}}}}"  # Return original for invalid format
+
             return str(self._evaluate_expression(expr, state))
 
         return self.EXPRESSION_PATTERN.sub(replace_expression, text)
@@ -44,6 +61,11 @@ class ExpressionResolver:
             Resolved value or original expression if not found
         """
         parts = expr.split(".")
+
+        # Enforce depth limit
+        if len(parts) > self.MAX_EXPRESSION_DEPTH:
+            return f"{{{{{expr}}}}}"
+
         value = state
 
         try:

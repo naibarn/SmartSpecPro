@@ -101,7 +101,8 @@ class ImageExecutor:
         negative_prompt = config.get("negative_prompt")
         style = config.get("style", "vivid")  # DALL-E 3 style
         quality = config.get("quality", "standard")  # DALL-E 3 quality
-        num_images = int(config.get("num_images", 1))
+        MAX_IMAGES = 10  # Hard cap to prevent cost inflation / DoS
+        num_images = max(1, min(int(config.get("num_images", 1)), MAX_IMAGES))
 
         # Generate task ID
         task_id = f"img-{uuid.uuid4().hex[:12]}"
@@ -167,7 +168,8 @@ class ImageExecutor:
         if provider not in self.PROVIDERS:
             provider = "dalle3"
 
-        num_images = int(config.get("num_images", 1))
+        MAX_IMAGES = 10
+        num_images = max(1, min(int(config.get("num_images", 1)), MAX_IMAGES))
         cost_per_image = self.PROVIDERS[provider]["cost_per_image"]
 
         # Convert to credits (assuming 1 credit = $0.01)
