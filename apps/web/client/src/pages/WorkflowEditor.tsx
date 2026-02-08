@@ -617,7 +617,15 @@ function FlowEditor() {
   ];
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => {
+      // Remove sourceHandle and targetHandle to prevent ReactFlow errors
+      const { sourceHandle, targetHandle, ...cleanParams } = params as any;
+      const newEdge = {
+        ...cleanParams,
+        type: 'smoothstep',
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+    },
     [setEdges]
   );
 
