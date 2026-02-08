@@ -1,52 +1,40 @@
-from typing import TypedDict, Dict, List, Any
-from pydantic import BaseModel, field_validator
-import json
+"""Canonical workflow state schema for LangGraph."""
+
+from typing import Any, TypedDict, Annotated
+from langgraph.graph import add_messages
+
+
+def _append_list(existing: list, new: list) -> list:
+    """Reducer: append new items to existing list."""
+    return existing + new
+
 
 class WorkflowState(TypedDict, total=False):
-    execution_id: str
-    skill_id: str
-    user_id: int
-    tenant_id: int
-    inputs: Dict[str, Any]
-    step_results: Dict[str, Any]
-    artifacts: List[Dict[str, Any]]
-    approvals: Dict[str, Any]
-    dependencies: Dict[str, List[str]]
-    budget: Dict[str, int]
-    current_step: str
-    status: str  # pending, running, completed, failed, paused
-    error: str
+    """LangGraph state for workflow execution.
 
-class WorkflowStateValidator(BaseModel):
-    execution_id: str
-    skill_id: str
-    user_id: int
-    tenant_id: int
-    inputs: dict
-    step_results: dict = {}
-    artifacts: list = []
-    approvals: dict = {}
-    dependencies: dict = {}
-    budget: dict = {"reserved": 0, "spent": 0}
-    current_step: str = ""
-    status: str = "pending"
-    error: str = ""
+    Fields with Annotated reducers use append semantics --
+    each node update extends the list rather than replacing it.
 
-    @field_validator('budget')
-    @classmethod
-    def validate_budget(cls, v):
-        if 'reserved' not in v or 'spent' not in v:
-            raise ValueError("Budget must have 'reserved' and 'spent' fields")
-        return v
+    Fields without reducers use last-writer-wins semantics.
+    """
 
-def serialize_state(state: WorkflowState) -> str:
-    return json.dumps(state, ensure_ascii=False)
+    # Output keyed by node_id -> output dict
+    node_outputs: dict[str, Any]
 
-def deserialize_state(data: str) -> WorkflowState:
-    state = json.loads(data)
-    WorkflowStateValidator(**state)
-    return state
+    # Currently executing node id
+    current_node: str
 
-def get_state_size_kb(state: WorkflowState) -> float:
-    serialized = serialize_state(state)
-    return len(serialized.encode('utf-8')) / 1024
+    # LLM conversation history (append-only, uses LangGraph's add_messages)
+    messages: Annotated[list, add_messages]
+
+    # Error accumulation (append-only)
+    errors: Annotated[list[dict], _append_list]
+
+    # Audit trail (append-only)
+    audit_trail: Annotated[list[dict], _append_list]
+
+    # Cache hit counter (last-writer-wins, incremented by cache middleware)
+    cache_hits: int
+
+    # Schema version for checkpoint migration
+    schema_version: int
