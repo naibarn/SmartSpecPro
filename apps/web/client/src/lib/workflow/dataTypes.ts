@@ -12,13 +12,13 @@ export type DataType = "text" | "json" | "array" | "image" | "number" | "boolean
  * Maps each source data type to the target data types it can connect to.
  */
 export const dataTypeCompatibility: Record<DataType, Set<DataType>> = {
-  text: new Set(["text", "any"]),
-  json: new Set(["json", "text", "any"]), // JSON can stringify to text
-  array: new Set(["array", "json", "any"]), // Arrays are JSON-compatible
-  image: new Set(["image", "any"]),
-  number: new Set(["number", "text", "any"]), // Numbers can convert to text
-  boolean: new Set(["boolean", "any"]), // Booleans can convert to text
-  any: new Set(["text", "json", "array", "image", "number", "boolean", "any"]), // Any accepts all
+  text: new Set<DataType>(["text", "any"]),
+  json: new Set<DataType>(["json", "text", "any"]), // JSON can stringify to text
+  array: new Set<DataType>(["array", "json", "any"]), // Arrays are JSON-compatible
+  image: new Set<DataType>(["image", "any"]),
+  number: new Set<DataType>(["number", "text", "any"]), // Numbers can convert to text
+  boolean: new Set<DataType>(["boolean", "any"]), // Booleans can convert to text
+  any: new Set<DataType>(["text", "json", "array", "image", "number", "boolean", "any"]), // Any accepts all
 };
 
 /**

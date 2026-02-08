@@ -6,21 +6,24 @@ from datetime import datetime
 from typing import Any, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.user import User
+from app.models.workflow_execution import WorkflowExecution
+from app.models.workflow_dlq import WorkflowDeadLetterQueue
 from app.orchestrator.cost_estimator import CostEstimator
-from app.orchestrator.execution_registry import get_active_execution
-from app.orchestrator.flow_compiler import CompilationError, FlowCompiler
+from app.orchestrator.execution_registry import get_active_execution, register_execution
+from app.orchestrator.langgraph_runtime import get_langgraph_runtime
 from app.orchestrator.node_registry import NodeRegistry
 from app.orchestrator.ring_buffer import get_ring_buffer_store
 from app.orchestrator.stream_translator import StreamTranslator
+from app.orchestrator.workflow_compiler import WorkflowCompiler, CompilationError
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -52,6 +55,10 @@ class ExecuteWorkflowRequest(BaseModel):
     """Request to execute a compiled workflow."""
 
     workflowJson: dict[str, Any] = Field(..., description="Compiled workflow JSON with _compiledMetadata")
+    input_data: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional input data for the trigger node",
+    )
 
 
 class ExecuteWorkflowResponse(BaseModel):
@@ -60,6 +67,60 @@ class ExecuteWorkflowResponse(BaseModel):
     executionId: str
     status: str
     startedAt: str
+
+
+class ResumeWorkflowRequest(BaseModel):
+    """Request to resume a paused workflow (HITL response)."""
+
+    response: dict[str, Any] = Field(
+        ..., description="User response to the interrupt (e.g., {'approved': true, 'comment': '...'})"
+    )
+
+
+class ResumeWorkflowResponse(BaseModel):
+    """Response from workflow resume."""
+
+    executionId: str
+    status: str  # "running" (resumed)
+    resumedAt: str
+
+
+class DLQItemResponse(BaseModel):
+    """A single DLQ item."""
+
+    id: str
+    workflow_id: str | None
+    execution_id: str
+    node_id: str
+    input_data: dict[str, Any]
+    error: str
+    retry_count: int
+    status: str
+    created_at: str
+
+
+class DLQListResponse(BaseModel):
+    """Paginated DLQ list."""
+
+    items: list[DLQItemResponse]
+    total: int
+
+
+class DLQReprocessRequest(BaseModel):
+    """Optional overrides for DLQ reprocessing."""
+
+    override_input: dict[str, Any] | None = Field(
+        default=None,
+        description="Override the original input data for the retry",
+    )
+
+
+class DLQReprocessResponse(BaseModel):
+    """Response from DLQ reprocessing."""
+
+    dlq_id: str
+    new_execution_id: str | None  # ID of the retry execution, if applicable
+    status: str  # "reprocessing"
 
 
 class EstimateCostRequest(BaseModel):
@@ -115,33 +176,33 @@ async def compile_flow(
         if "author" not in metadata:
             metadata["author"] = current_user.email or "user@smartspecpro.com"
 
-        # Compile flow
-        # TODO Section 14: Switch to WorkflowCompiler from Section 01
-        # from app.orchestrator.workflow_compiler import WorkflowCompiler
-        compiler = FlowCompiler()
-        manifest = compiler.compile(flow_json, metadata=metadata)
+        # Section 14: Use WorkflowCompiler from Section 01
+        compiler = WorkflowCompiler()
+        result = compiler.compile(flow_json, metadata=metadata)
 
         logger.info(
             "flow_compiled_successfully",
             user_id=current_user.id,
-            step_count=len(manifest.get("steps", [])),
-            edge_count=len(manifest["edges"]),
+            node_count=len(flow_json.get("nodes", [])),
+            edge_count=len(flow_json.get("edges", [])),
         )
 
         return FlowCompileResponse(
             success=True,
-            manifest=manifest,
+            manifest=result.manifest,
+            warnings=result.warnings or None,
         )
 
     except CompilationError as e:
         logger.warning(
             "flow_compilation_failed",
             user_id=current_user.id,
-            error=str(e),
+            errors=e.errors,
         )
         return FlowCompileResponse(
             success=False,
-            error=f"Compilation failed: {str(e)}",
+            errors=e.errors,
+            error=e.errors[0] if e.errors else str(e),
         )
 
     except Exception as e:
@@ -196,7 +257,7 @@ async def execute_workflow(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Execute a compiled workflow.
+    Execute a compiled workflow using LangGraphRuntime.
 
     Validates workflow is compiled, checks credit balance, and starts execution.
     Returns execution_id for tracking status.
@@ -214,13 +275,12 @@ async def execute_workflow(
             detail="Workflow has not been compiled. Please compile before executing.",
         )
 
-    # 2. Estimate cost
+    # 2. Estimate cost and check credits
     cost_estimator = CostEstimator()
     cost_result = cost_estimator.estimate(workflow_json)
     estimated_cost = cost_result["total"]
 
-    # 3. Check user credit balance
-    user_balance = getattr(current_user, "creditBalance", 100.0)  # Default for testing
+    user_balance = getattr(current_user, "creditBalance", 100.0)
     if estimated_cost > user_balance:
         logger.warning(
             "insufficient_credits_for_execution",
@@ -233,25 +293,52 @@ async def execute_workflow(
             detail=f"Insufficient credits. Required: {estimated_cost:.2f}, Balance: {user_balance:.2f}",
         )
 
-    # 4. Create execution record
+    # 3. Create execution record in workflow_executions table (Section 13)
     execution_id = f"exec-{uuid.uuid4().hex[:12]}"
-    started_at = datetime.utcnow().isoformat() + "Z"
+    started_at = datetime.utcnow()
 
-    # TODO: Store execution record in database once executions table exists
-    # execution_record = ExecutionRecord(
-    #     execution_id=execution_id,
-    #     workflow_id=workflow_json.get("id"),
-    #     user_id=current_user.id,
-    #     tenant_id=current_user.currentTenantId,
-    #     status="running",
-    #     started_at=datetime.utcnow(),
-    #     node_results={},
-    # )
-    # db.add(execution_record)
-    # await db.commit()
+    execution_record = WorkflowExecution(
+        id=execution_id,
+        workflow_id=workflow_json.get("id"),
+        tenant_id=current_user.currentTenantId,
+        user_id=current_user.id,
+        status="running",
+        input_data=request.input_data or {},
+        started_at=started_at,
+        node_count=len(workflow_json.get("nodes", [])),
+    )
+    db.add(execution_record)
+    await db.commit()
 
-    # 5. Start execution (will be implemented in section-09 with SSE streaming)
-    # await orchestrator.execute(workflow_json, execution_id, execution_context)
+    # 4. Compile the workflow graph using LangGraphRuntime (Section 01)
+    runtime = get_langgraph_runtime()
+
+    try:
+        compiled_graph = await runtime.compile(workflow_json)
+    except CompilationError as e:
+        await db.rollback()
+        logger.error("workflow_compilation_failed_on_execute", execution_id=execution_id, errors=e.errors)
+        raise HTTPException(status_code=400, detail=f"Failed to compile workflow: {e.errors[0] if e.errors else str(e)}")
+
+    # 5. Build config
+    config = {
+        "configurable": {
+            "thread_id": f"{current_user.currentTenantId}:{execution_id}",
+            "user_id": current_user.id,
+            "tenant_id": current_user.currentTenantId,
+            "workflow_id": workflow_json.get("id"),
+            "execution_id": execution_id,
+            "credits_available": user_balance,
+        }
+    }
+
+    # 6. Register execution in execution_registry (Section 02)
+    register_execution(execution_id, compiled_graph, config)
+
+    # 7. Fire-and-forget execution (results streamed via SSE)
+    asyncio.create_task(
+        runtime.execute(compiled_graph, request.input_data or {}, config)
+    )
 
     logger.info(
         "workflow_execution_started",
@@ -264,7 +351,7 @@ async def execute_workflow(
     return ExecuteWorkflowResponse(
         executionId=execution_id,
         status="running",
-        startedAt=started_at,
+        startedAt=started_at.isoformat() + "Z",
     )
 
 
@@ -319,6 +406,7 @@ async def stream_workflow_execution(
     execution_id: str,
     request: Request,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
     last_event_id: Optional[str] = Header(None, alias="Last-Event-ID"),
     lastEventId: Optional[str] = None,  # Query param fallback (EventSource can't send headers)
 ):
@@ -341,6 +429,17 @@ async def stream_workflow_execution(
     effective_last_event_id = last_event_id or lastEventId
     if effective_last_event_id and not SAFE_EVENT_ID_PATTERN.match(effective_last_event_id):
         effective_last_event_id = None
+
+    # Section 14: Verify execution exists and belongs to user's tenant
+    result = await db.execute(
+        select(WorkflowExecution).where(
+            WorkflowExecution.id == execution_id,
+            WorkflowExecution.tenant_id == current_user.currentTenantId,
+        )
+    )
+    execution = result.scalar_one_or_none()
+    if not execution:
+        raise HTTPException(status_code=404, detail="Execution not found")
 
     ring_store = get_ring_buffer_store()
     translator = StreamTranslator(execution_id)
@@ -406,6 +505,76 @@ async def stream_workflow_execution(
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@router.post("/execute/{execution_id}/resume", response_model=ResumeWorkflowResponse)
+async def resume_workflow(
+    execution_id: str,
+    request: ResumeWorkflowRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Resume a paused workflow after HITL interrupt.
+
+    This endpoint:
+    1. Verifies execution exists and is in interrupted state
+    2. Calls LangGraphRuntime.resume() with user response
+    3. Updates execution status to running
+    """
+    EXECUTION_ID_PATTERN = re.compile(r"^exec-[a-f0-9]{12}$")
+    if not EXECUTION_ID_PATTERN.match(execution_id):
+        raise HTTPException(status_code=400, detail="Invalid execution_id format")
+
+    # Verify execution exists and belongs to tenant
+    result = await db.execute(
+        select(WorkflowExecution).where(
+            WorkflowExecution.id == execution_id,
+            WorkflowExecution.tenant_id == current_user.currentTenantId,
+        )
+    )
+    execution = result.scalar_one_or_none()
+    if not execution:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    if execution.status != "interrupted":
+        raise HTTPException(status_code=409, detail="Execution is not paused at an interrupt")
+
+    # Resume via LangGraph runtime (Section 03)
+    runtime = get_langgraph_runtime()
+    thread_id = f"{current_user.currentTenantId}:{execution_id}"
+
+    # Get the active compiled graph from execution registry
+    from app.orchestrator.execution_registry import get_active_execution
+
+    active = get_active_execution(execution_id)
+    if not active:
+        raise HTTPException(status_code=404, detail="Active execution not found in registry")
+
+    compiled_graph = active["graph"]
+
+    # Build Command with resume value (Section 03)
+    from langgraph.types import Command
+
+    command = Command(resume=request.response)
+
+    try:
+        await runtime.resume(compiled_graph, thread_id, command)
+    except Exception as e:
+        logger.exception("workflow_resume_failed", execution_id=execution_id)
+        raise HTTPException(status_code=500, detail="Failed to resume workflow") from e
+
+    # Update execution status
+    execution.status = "running"
+    await db.commit()
+
+    resumed_at = datetime.utcnow()
+    logger.info("workflow_resumed", execution_id=execution_id, user_id=current_user.id)
+
+    return ResumeWorkflowResponse(
+        executionId=execution_id,
+        status="running",
+        resumedAt=resumed_at.isoformat() + "Z",
     )
 
 
@@ -590,6 +759,125 @@ async def get_available_approvers(
             for u in users
         ]
     }
+
+
+@router.get("/dlq", response_model=DLQListResponse)
+async def list_dlq_items(
+    workflow_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = Query(default=50, le=200, ge=1),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List Dead Letter Queue items for the current tenant.
+
+    Supports filtering by workflow_id and status (pending, reprocessed, discarded).
+    Returns paginated results.
+    """
+    query = select(WorkflowDeadLetterQueue).where(
+        WorkflowDeadLetterQueue.tenant_id == current_user.currentTenantId
+    )
+    count_query = select(func.count()).select_from(WorkflowDeadLetterQueue).where(
+        WorkflowDeadLetterQueue.tenant_id == current_user.currentTenantId
+    )
+
+    if workflow_id:
+        query = query.where(WorkflowDeadLetterQueue.workflow_id == workflow_id)
+        count_query = count_query.where(WorkflowDeadLetterQueue.workflow_id == workflow_id)
+    if status:
+        query = query.where(WorkflowDeadLetterQueue.status == status)
+        count_query = count_query.where(WorkflowDeadLetterQueue.status == status)
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    query = query.order_by(WorkflowDeadLetterQueue.created_at.desc()).limit(limit).offset(offset)
+    result = await db.execute(query)
+    items = result.scalars().all()
+
+    return DLQListResponse(
+        items=[
+            DLQItemResponse(
+                id=str(item.id),
+                workflow_id=item.workflow_id,
+                execution_id=item.execution_id,
+                node_id=item.node_id,
+                input_data=item.input_data or {},
+                error=item.error or "",
+                retry_count=item.retry_count,
+                status=item.status,
+                created_at=item.created_at.isoformat() + "Z",
+            )
+            for item in items
+        ],
+        total=total,
+    )
+
+
+@router.post("/dlq/{dlq_id}/reprocess", response_model=DLQReprocessResponse)
+async def reprocess_dlq_item(
+    dlq_id: str,
+    request: DLQReprocessRequest = DLQReprocessRequest(),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Reprocess a Dead Letter Queue item.
+
+    Retrieves the failed node execution, optionally allows overriding input data,
+    and triggers re-execution via LangGraphRuntime.
+    """
+    result = await db.execute(
+        select(WorkflowDeadLetterQueue).where(
+            WorkflowDeadLetterQueue.id == int(dlq_id),
+            WorkflowDeadLetterQueue.tenant_id == current_user.currentTenantId,
+        )
+    )
+    dlq_item = result.scalar_one_or_none()
+    if not dlq_item:
+        raise HTTPException(status_code=404, detail="DLQ item not found")
+    if dlq_item.status != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail=f"DLQ item is already {dlq_item.status}; cannot reprocess",
+        )
+
+    # Update DLQ status
+    dlq_item.status = "reprocessing"
+    dlq_item.retry_count += 1
+    await db.commit()
+
+    # Trigger re-execution (fire-and-forget)
+    runtime = get_langgraph_runtime()
+    input_data = request.override_input or dlq_item.input_data
+
+    new_execution_id = f"exec-{uuid.uuid4().hex[:12]}"
+
+    asyncio.create_task(
+        runtime.reprocess_dlq_item(
+            dlq_item_id=dlq_item.id,
+            node_id=dlq_item.node_id,
+            input_data=input_data,
+            execution_id=new_execution_id,
+            tenant_id=current_user.currentTenantId,
+            user_id=current_user.id,
+        )
+    )
+
+    logger.info(
+        "dlq_reprocess_started",
+        dlq_id=dlq_id,
+        new_execution_id=new_execution_id,
+        user_id=current_user.id,
+    )
+
+    return DLQReprocessResponse(
+        dlq_id=dlq_id,
+        new_execution_id=new_execution_id,
+        status="reprocessing",
+    )
 
 
 @router.get("/image-providers")

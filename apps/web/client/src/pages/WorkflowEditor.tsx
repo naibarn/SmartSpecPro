@@ -21,12 +21,15 @@ import ReactFlow, {
   Background,
   BackgroundVariant,
   MarkerType,
+  useViewport,
   type Node,
   type Edge,
   type Connection,
   type NodeTypes,
+  type ReactFlowInstance,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc';
 import {
@@ -82,12 +85,13 @@ function FlowEditor() {
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
   const [compiledManifest, setCompiledManifest] = useState<any>(null);
+  const viewport = useViewport();
 
   // Step 2: Use node registry instead of hardcoded options
   const { nodeTypes: registryNodeTypes, isLoading: registryLoading, getNodeTypesByCategory } = useNodeRegistry();
@@ -116,7 +120,7 @@ function FlowEditor() {
     { id: workflowId! },
     { enabled: !!workflowId }
   );
-  const templatesQuery = (trpc as any).workflow.listSaved.useQuery({ status: 'published' });
+  const templatesQuery = (trpc as any).workflow.listSaved.useQuery({});
 
   // Load workflow from URL parameter
   useEffect(() => {
@@ -261,7 +265,7 @@ function FlowEditor() {
       if (result.success) {
         setCompiledManifest(result.manifest);
         setValidationErrors([]);
-        alert('Workflow compiled successfully!');
+        toast.success('Workflow compiled successfully!');
       } else {
         setValidationErrors(result.errors || [result.error || 'Unknown error']);
       }
@@ -281,16 +285,39 @@ function FlowEditor() {
       });
 
       setWorkflowId(result.id);
-      alert('Workflow saved successfully!');
+      toast.success('Workflow saved successfully!');
     } catch (error: any) {
-      alert(`Save failed: ${error.message}`);
+      toast.error(`Save failed: ${error.message}`);
+    }
+  };
+
+  // SSE EventSource ref for cleanup
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Cleanup EventSource on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Safe JSON parse helper
+  const safeJsonParse = (data: string): any | null => {
+    try {
+      return JSON.parse(data);
+    } catch {
+      console.error('Failed to parse SSE event data:', data);
+      return null;
     }
   };
 
   // Step 8: Execute workflow with SSE
   const handleExecute = async () => {
     if (!compiledManifest) {
-      alert('Please compile workflow first');
+      toast.error('Please compile workflow first');
       return;
     }
 
@@ -308,14 +335,21 @@ function FlowEditor() {
       // Initialize execution store
       startExecution(result.executionId);
 
+      // Close existing EventSource if any
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
       // Connect to SSE stream
       const eventSource = new EventSource(
-        `/api/v1/workflows/execute/${result.executionId}/stream`,
+        `/api/v1/workflows/execute/${encodeURIComponent(result.executionId)}/stream`,
         { withCredentials: true }
       );
+      eventSourceRef.current = eventSource;
 
       eventSource.addEventListener('node_start', (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
+        const data = safeJsonParse(event.data);
+        if (!data) return;
         updateNodeStatus(data.nodeId, {
           status: 'running',
           startTime: Date.now(),
@@ -331,7 +365,8 @@ function FlowEditor() {
       });
 
       eventSource.addEventListener('node_complete', (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
+        const data = safeJsonParse(event.data);
+        if (!data) return;
         updateNodeStatus(data.nodeId, {
           status: 'success',
           endTime: Date.now(),
@@ -350,7 +385,8 @@ function FlowEditor() {
       });
 
       eventSource.addEventListener('node_error', (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
+        const data = safeJsonParse(event.data);
+        if (!data) return;
         updateNodeStatus(data.nodeId, {
           status: 'failed',
           endTime: Date.now(),
@@ -370,26 +406,29 @@ function FlowEditor() {
       eventSource.addEventListener('workflow_complete', (event: MessageEvent) => {
         completeExecution();
         eventSource.close();
-        alert('Workflow completed successfully!');
+        eventSourceRef.current = null;
       });
 
       eventSource.addEventListener('workflow_error', (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
+        const data = safeJsonParse(event.data);
         completeExecution();
         eventSource.close();
-        alert(`Workflow failed: ${data.error}`);
+        eventSourceRef.current = null;
+        const errorMsg = data?.error || 'Unknown workflow error';
+        setValidationErrors([`Workflow failed: ${errorMsg}`]);
       });
 
       eventSource.onerror = () => {
         eventSource.close();
+        eventSourceRef.current = null;
         completeExecution();
-        alert('Execution stream error');
+        setValidationErrors(['Execution stream connection lost']);
       };
     } catch (error: any) {
       if (error.message?.includes('402') || error.message?.includes('Insufficient')) {
-        alert('Insufficient credits to run workflow');
+        setValidationErrors(['Insufficient credits to run workflow']);
       } else {
-        alert(`Execution failed: ${error.message}`);
+        setValidationErrors([`Execution failed: ${error.message}`]);
       }
     }
   };
@@ -397,23 +436,53 @@ function FlowEditor() {
   // Step 10: Template browser handlers
   const handleLoadTemplate = useCallback(
     (template: any) => {
-      setNodes(template.workflowJson.nodes || []);
-      setEdges(template.workflowJson.edges || []);
-      setWorkflowName(template.name || '');
-      setWorkflowDescription(template.description || '');
+      // Validate template structure before loading
+      const wf = template?.workflowJson;
+      if (!wf || typeof wf !== 'object') {
+        setValidationErrors(['Invalid template: missing workflow data']);
+        return;
+      }
+      const templateNodes = Array.isArray(wf.nodes) ? wf.nodes : [];
+      const templateEdges = Array.isArray(wf.edges) ? wf.edges : [];
+      if (templateNodes.length > 500) {
+        setValidationErrors(['Template too large: maximum 500 nodes allowed']);
+        return;
+      }
+
+      setNodes(templateNodes);
+      setEdges(templateEdges);
+      setWorkflowName(String(template.name || ''));
+      setWorkflowDescription(String(template.description || ''));
       setShowTemplateBrowser(false);
       setWorkflowId(null); // Clear ID so it saves as new workflow
-      alert(`Loaded template: ${template.name}`);
     },
     [setNodes, setEdges]
   );
 
-  // Categorize nodes for sidebar
-  const aiNodes = getNodeTypesByCategory('ai');
-  const flowNodes = getNodeTypesByCategory('flow_control');
-  const humanNodes = getNodeTypesByCategory('human');
-  const mediaNodes = getNodeTypesByCategory('media');
-  const skillNodes = getNodeTypesByCategory('skills');
+  // Node search/filter
+  const [nodeSearchTerm, setNodeSearchTerm] = useState('');
+
+  // Filter function
+  const filterNodes = (nodes: typeof registryNodeTypes) => {
+    if (!nodeSearchTerm.trim()) return nodes;
+    const search = nodeSearchTerm.toLowerCase();
+    return nodes.filter(node =>
+      node.display_name.toLowerCase().includes(search) ||
+      node.type.toLowerCase().includes(search) ||
+      node.description.toLowerCase().includes(search)
+    );
+  };
+
+  // Categorize nodes for sidebar (with search filter)
+  const aiNodes = filterNodes(getNodeTypesByCategory('ai'));
+  const flowNodes = filterNodes(getNodeTypesByCategory('flow_control'));
+  const humanNodes = filterNodes(getNodeTypesByCategory('human'));
+  const mediaNodes = filterNodes(getNodeTypesByCategory('media'));
+  const skillNodes = filterNodes(getNodeTypesByCategory('skills'));
+  const triggerNodes = filterNodes(getNodeTypesByCategory('triggers'));
+  const inputNodes = filterNodes(getNodeTypesByCategory('inputs'));
+  const outputNodes = filterNodes(getNodeTypesByCategory('outputs'));
+  const dataNodes = filterNodes(getNodeTypesByCategory('data'));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
@@ -581,6 +650,51 @@ function FlowEditor() {
                   Node Palette
                 </h3>
 
+                {/* Search/Filter Input */}
+                <div className="mb-3 relative">
+                  <input
+                    type="text"
+                    value={nodeSearchTerm}
+                    onChange={(e) => setNodeSearchTerm(e.target.value)}
+                    placeholder="Search nodes..."
+                    className="w-full px-3 py-2 pl-9 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <svg
+                    className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  {nodeSearchTerm && (
+                    <button
+                      onClick={() => setNodeSearchTerm('')}
+                      className="absolute right-2 top-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                      aria-label="Clear search"
+                    >
+                      <svg
+                        className="h-4 w-4 text-gray-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
                 {registryLoading ? (
                   <div className="text-sm text-gray-500 dark:text-gray-400">Loading nodes...</div>
                 ) : (
@@ -709,6 +823,143 @@ function FlowEditor() {
                         </div>
                       </div>
                     )}
+
+                    {/* Triggers */}
+                    {triggerNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Triggers
+                        </h4>
+                        <div className="space-y-2">
+                          {triggerNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Inputs */}
+                    {inputNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Inputs
+                        </h4>
+                        <div className="space-y-2">
+                          {inputNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-cyan-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Outputs */}
+                    {outputNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Outputs
+                        </h4>
+                        <div className="space-y-2">
+                          {outputNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-teal-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Data */}
+                    {dataNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Data
+                        </h4>
+                        <div className="space-y-2">
+                          {dataNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-amber-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No results message */}
+                    {nodeSearchTerm &&
+                     aiNodes.length === 0 &&
+                     flowNodes.length === 0 &&
+                     humanNodes.length === 0 &&
+                     mediaNodes.length === 0 &&
+                     skillNodes.length === 0 &&
+                     triggerNodes.length === 0 &&
+                     inputNodes.length === 0 &&
+                     outputNodes.length === 0 &&
+                     dataNodes.length === 0 && (
+                      <div className="text-center py-8">
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                          No nodes found for "{nodeSearchTerm}"
+                        </p>
+                        <button
+                          onClick={() => setNodeSearchTerm('')}
+                          className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          Clear search
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -778,13 +1029,19 @@ function FlowEditor() {
               const status = nodeStatuses[node.id];
               if (!status) return null;
 
+              // Transform node position to viewport coordinates (accounting for zoom/pan)
+              const x = node.position.x * viewport.zoom + viewport.x;
+              const y = node.position.y * viewport.zoom + viewport.y;
+
               return (
                 <div
                   key={`overlay-${node.id}`}
                   style={{
                     position: 'absolute',
-                    left: node.position.x,
-                    top: node.position.y,
+                    left: x,
+                    top: y,
+                    transform: `scale(${viewport.zoom})`,
+                    transformOrigin: 'top left',
                     pointerEvents: 'none',
                   }}
                 >
