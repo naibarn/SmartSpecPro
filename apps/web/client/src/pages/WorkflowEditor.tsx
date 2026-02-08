@@ -157,6 +157,7 @@ const exampleWorkflows = [
     edges: [
       {
         id: 'e1',
+        type: 'smoothstep',
         source: 'start',
         target: 'llm-1',
         animated: true,
@@ -165,6 +166,7 @@ const exampleWorkflows = [
       },
       {
         id: 'e2',
+        type: 'smoothstep',
         source: 'llm-1',
         target: 'approval-1',
         style: { stroke: '#3b82f6', strokeWidth: 2 },
@@ -172,6 +174,7 @@ const exampleWorkflows = [
       },
       {
         id: 'e3',
+        type: 'smoothstep',
         source: 'approval-1',
         target: 'image-1',
         style: { stroke: '#3b82f6', strokeWidth: 2 },
@@ -242,6 +245,7 @@ const exampleWorkflows = [
     edges: [
       {
         id: 'e1',
+        type: 'smoothstep',
         source: 'start',
         target: 'llm-summarize',
         animated: true,
@@ -250,6 +254,7 @@ const exampleWorkflows = [
       },
       {
         id: 'e2',
+        type: 'smoothstep',
         source: 'llm-summarize',
         target: 'conditional-1',
         style: { stroke: '#8b5cf6', strokeWidth: 2 },
@@ -257,6 +262,7 @@ const exampleWorkflows = [
       },
       {
         id: 'e3',
+        type: 'smoothstep',
         source: 'conditional-1',
         target: 'llm-short',
         label: 'short',
@@ -265,6 +271,7 @@ const exampleWorkflows = [
       },
       {
         id: 'e4',
+        type: 'smoothstep',
         source: 'conditional-1',
         target: 'llm-long',
         label: 'long',
@@ -584,8 +591,18 @@ function FlowEditor() {
         setWorkflowName(template.name);
         setWorkflowDescription(template.description);
         setNodes(template.nodes);
-        // Remove sourceHandle and targetHandle properties entirely (don't set to undefined)
-        const cleanedEdges = template.edges.map(({ sourceHandle, targetHandle, ...edge }) => edge);
+
+        // Clean edges - ensure no sourceHandle/targetHandle properties
+        const cleanedEdges = template.edges.map((edge) => {
+          const { sourceHandle, targetHandle, ...rest } = edge as any;
+          return {
+            ...rest,
+            // Explicitly ensure these are not present
+            type: rest.type || 'smoothstep',
+          };
+        });
+
+        console.log('Loading template edges:', cleanedEdges);
         setEdges(cleanedEdges);
       }
     }
