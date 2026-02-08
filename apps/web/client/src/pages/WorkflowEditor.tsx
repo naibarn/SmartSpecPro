@@ -3,7 +3,7 @@
  * Create and edit workflows using ReactFlow visual editor
  */
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import ReactFlow, {
   ReactFlowProvider,
@@ -525,6 +525,22 @@ function FlowEditor() {
   const compileMutation = trpc.workflow.compile.useMutation();
   const executeMutation = trpc.workflow.execute.useMutation();
 
+  // Load template from URL parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const templateId = urlParams.get('template');
+
+    if (templateId) {
+      const template = exampleWorkflows.find(w => w.id === templateId);
+      if (template) {
+        setWorkflowName(template.name);
+        setWorkflowDescription(template.description);
+        setNodes(template.nodes);
+        setEdges(template.edges);
+      }
+    }
+  }, []); // Run only once on mount
+
   const nodeTypeOptions = [
     { id: 'llm', label: 'LLM Call', icon: MessageSquare, color: 'blue' },
     { id: 'approval', label: 'Approval Gate', icon: CheckCircle, color: 'yellow' },
@@ -679,66 +695,62 @@ function FlowEditor() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="max-w-full mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => setLocation('/dashboard')}
-              className="flex items-center gap-2"
-            >
-              <Home className="h-5 w-5" />
-              Dashboard
-            </Button>
-            <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <Button
-              variant="ghost"
-              onClick={() => setLocation('/workflows')}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              Workflows
-            </Button>
-            <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <GitBranch className="h-6 w-6" />
-                {workflowName || 'New Workflow'}
-              </h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+      {/* Header - Sticky with Backdrop Blur */}
+      <header className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation('/workflows')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                  <GitBranch className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">{workflowName || 'New Workflow'}</h1>
+                  <p className="text-xs text-muted-foreground">Visual workflow builder</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSave}
+                disabled={compileMutation.isPending}
+              >
+                {compileMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-1" />
+                )}
+                Save
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleRun}
+                disabled={executeMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {executeMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4 mr-1" />
+                )}
+                Run
+              </Button>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={handleSave}
-              disabled={compileMutation.isPending}
-              className="flex items-center gap-2"
-            >
-              {compileMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              Save
-            </Button>
-            <Button
-              onClick={handleRun}
-              disabled={executeMutation.isPending}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {executeMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              Run Test
-            </Button>
-          </div>
         </div>
-      </div>
+      </header>
 
       {/* Validation Errors */}
       {validationErrors.length > 0 && (
