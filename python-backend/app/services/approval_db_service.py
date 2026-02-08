@@ -364,6 +364,165 @@ class ApprovalDBService:
 
         return count
 
+    async def count_requests(
+        self,
+        tenant_id: Optional[str] = None,
+        status: Optional[str] = None,
+        request_type: Optional[str] = None,
+        project_id: Optional[str] = None,
+        user_id: Optional[int] = None,
+    ) -> int:
+        """
+        Count approval requests matching the given filters.
+
+        Args:
+            tenant_id: Filter by tenant ID
+            status: Filter by approval status
+            request_type: Filter by request type
+            project_id: Filter by project ID
+            user_id: Filter by user ID (for user-specific requests)
+
+        Returns:
+            Count of matching requests
+        """
+        from sqlalchemy import func
+
+        stmt = select(func.count(ApprovalRequest.id))
+
+        filters = []
+        if tenant_id:
+            filters.append(ApprovalRequest.tenant_id == tenant_id)
+        if status:
+            filters.append(ApprovalRequest.status == status)
+        if request_type:
+            filters.append(ApprovalRequest.request_type == request_type)
+        if project_id:
+            filters.append(ApprovalRequest.project_id == project_id)
+
+        if filters:
+            stmt = stmt.where(and_(*filters))
+
+        result = await self.db.execute(stmt)
+        count = result.scalar()
+        return count or 0
+
+    async def list_pending_for_user(
+        self,
+        user_id: int,
+        tenant_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[ApprovalRequest]:
+        """
+        List pending approval requests that a specific user can approve.
+
+        For now, this returns all pending requests for the tenant.
+        Future enhancement: filter by approval rules and user permissions.
+
+        Args:
+            user_id: User ID to check approval permissions for
+            tenant_id: Filter by tenant ID
+            limit: Maximum number of results
+
+        Returns:
+            List of pending ApprovalRequest instances
+        """
+        # Currently returns all pending requests for the tenant
+        # TODO: Implement approval rule checking to filter by user permissions
+        return await self.list_pending_requests(
+            tenant_id=tenant_id,
+            limit=limit,
+            offset=0,
+        )
+
+    async def can_user_approve(
+        self,
+        request_id: str,
+        user_id: int,
+    ) -> bool:
+        """
+        Check if a user can approve a specific request.
+
+        For now, returns True for all users (no role-based restrictions).
+        Future enhancement: implement approval rule checking.
+
+        Args:
+            request_id: UUID of the approval request
+            user_id: User ID to check permissions for
+
+        Returns:
+            True if user can approve, False otherwise
+        """
+        # Check if request exists and is pending
+        request = await self.get_request(request_id)
+        if not request:
+            return False
+        if request.status != ApprovalStatus.PENDING:
+            return False
+
+        # TODO: Implement approval rule checking (approver_roles, approver_users)
+        # For now, allow all authenticated users to approve
+        return True
+
+    async def submit_response(
+        self,
+        request_id: str,
+        approver_id: int,
+        decision: str,
+        comment: Optional[str] = None,
+    ) -> Optional[ApprovalRequest]:
+        """
+        Submit an approval response and update request status.
+
+        This is an alias for submit_decision that returns the updated request.
+
+        Args:
+            request_id: UUID of the approval request
+            approver_id: User ID of the approver
+            decision: Decision ("approved" or "rejected")
+            comment: Optional comment explaining the decision
+
+        Returns:
+            Updated ApprovalRequest or None if failed
+        """
+        try:
+            await self.submit_decision(
+                request_id=request_id,
+                approver_id=approver_id,
+                decision=decision,
+                comment=comment,
+            )
+            # Return the updated request
+            return await self.get_request(request_id)
+        except ValueError as e:
+            self._logger.warning(
+                "submit_response_failed",
+                request_id=request_id,
+                error=str(e),
+            )
+            return None
+
+    async def list_responses(
+        self,
+        request_id: str,
+    ) -> List[ApprovalResponse]:
+        """
+        List all responses for a specific approval request.
+
+        Args:
+            request_id: UUID of the approval request
+
+        Returns:
+            List of ApprovalResponse instances
+        """
+        stmt = (
+            select(ApprovalResponse)
+            .where(ApprovalResponse.request_id == request_id)
+            .order_by(ApprovalResponse.created_at.asc())
+        )
+        result = await self.db.execute(stmt)
+        responses = result.scalars().all()
+        return list(responses)
+
     async def cancel_request(
         self,
         request_id: str,
@@ -408,3 +567,61 @@ class ApprovalDBService:
         )
 
         return request
+
+    # ==========================================
+    # Approval Rule Methods (Stub implementations)
+    # ==========================================
+
+    async def create_rule(self, **kwargs):
+        """
+        Create an approval rule.
+        Stub implementation - to be implemented with ApprovalRule model.
+        """
+        self._logger.warning("create_rule_not_implemented", kwargs=kwargs)
+        raise NotImplementedError("Approval rules are not yet implemented")
+
+    async def list_rules(
+        self,
+        tenant_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+        trigger_type: Optional[str] = None,
+        is_active: bool = True,
+    ):
+        """
+        List approval rules.
+        Stub implementation - returns empty list.
+        """
+        self._logger.debug("list_rules_stub_called")
+        return []
+
+    async def get_rule(self, rule_id: str):
+        """
+        Get approval rule by ID.
+        Stub implementation - returns None.
+        """
+        self._logger.debug("get_rule_stub_called", rule_id=rule_id)
+        return None
+
+    async def update_rule(self, rule_id: str, **kwargs):
+        """
+        Update an approval rule.
+        Stub implementation - to be implemented.
+        """
+        self._logger.warning("update_rule_not_implemented", rule_id=rule_id)
+        raise NotImplementedError("Approval rules are not yet implemented")
+
+    async def delete_rule(self, rule_id: str):
+        """
+        Delete an approval rule.
+        Stub implementation - to be implemented.
+        """
+        self._logger.debug("delete_rule_stub_called", rule_id=rule_id)
+        pass  # No-op for now
+
+    async def toggle_rule(self, rule_id: str, is_active: bool):
+        """
+        Toggle approval rule active status.
+        Stub implementation - returns None.
+        """
+        self._logger.debug("toggle_rule_stub_called", rule_id=rule_id, is_active=is_active)
+        return None
