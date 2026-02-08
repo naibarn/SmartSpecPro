@@ -789,7 +789,70 @@ class NodeRegistry:
             )
         )
 
-        # 9. Event Trigger
+        # 9. Queue Trigger
+        self.register_node_type(
+            NodeTypeSpec(
+                type="queue_trigger",
+                display_name="Queue Trigger",
+                description="Start workflow from Redis Streams message queue",
+                icon="inbox",
+                color="green",
+                category="triggers",
+                inputs=[
+                    InputSpec(
+                        name="queueName",
+                        display_name="Queue Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="my-queue-stream",
+                    ),
+                    InputSpec(
+                        name="consumerGroup",
+                        display_name="Consumer Group",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        default="default",
+                        placeholder="default",
+                    ),
+                    InputSpec(
+                        name="batchSize",
+                        display_name="Batch Size",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=10,
+                        validation={"min": 1, "max": 100},
+                    ),
+                    InputSpec(
+                        name="ackMode",
+                        display_name="Acknowledgment Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="after_process",
+                        options=[
+                            {"label": "After Process (safer)", "value": "after_process"},
+                            {"label": "Immediate (faster)", "value": "immediate"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="messages", display_name="Messages", data_type="array"),
+                    OutputSpec(name="messageCount", display_name="Message Count", data_type="number"),
+                    OutputSpec(name="queueName", display_name="Queue Name", data_type="text"),
+                    OutputSpec(name="consumedAt", display_name="Consumed At", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.trigger_executors.queue_trigger_executor.QueueTriggerExecutor",
+            )
+        )
+
+        # 11. Event Trigger
         self.register_node_type(
             NodeTypeSpec(
                 type="event_trigger",
@@ -832,7 +895,7 @@ class NodeRegistry:
             )
         )
 
-        # 10. File Upload Trigger
+        # 12. File Upload Trigger
         self.register_node_type(
             NodeTypeSpec(
                 type="file_upload_trigger",
@@ -875,7 +938,7 @@ class NodeRegistry:
 
         # ===== PHASE 2.4: Advanced Flow Control =====
 
-        # 11. Switch
+        # 13. Switch
         self.register_node_type(
             NodeTypeSpec(
                 type="switch",
@@ -925,7 +988,7 @@ class NodeRegistry:
             )
         )
 
-        # 12. Wait/Delay
+        # 14. Wait/Delay
         self.register_node_type(
             NodeTypeSpec(
                 type="wait",
@@ -967,7 +1030,7 @@ class NodeRegistry:
             )
         )
 
-        # 13. Webhook Response
+        # 15. Webhook Response
         self.register_node_type(
             NodeTypeSpec(
                 type="webhook_response",
@@ -1011,7 +1074,7 @@ class NodeRegistry:
             )
         )
 
-        # 14. Error Trigger
+        # 16. Error Trigger
         self.register_node_type(
             NodeTypeSpec(
                 type="error_trigger",
