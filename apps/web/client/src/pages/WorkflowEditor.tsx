@@ -14,6 +14,7 @@ import ReactFlow, {
   MiniMap,
   Background,
   BackgroundVariant,
+  MarkerType,
   type Node,
   type Edge,
   type Connection,
@@ -154,9 +155,28 @@ const exampleWorkflows = [
       },
     ],
     edges: [
-      { id: 'e1', source: 'start', target: 'llm-1', animated: true },
-      { id: 'e2', source: 'llm-1', target: 'approval-1' },
-      { id: 'e3', source: 'approval-1', target: 'image-1' },
+      {
+        id: 'e1',
+        source: 'start',
+        target: 'llm-1',
+        animated: true,
+        style: { stroke: '#3b82f6', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
+      },
+      {
+        id: 'e2',
+        source: 'llm-1',
+        target: 'approval-1',
+        style: { stroke: '#3b82f6', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
+      },
+      {
+        id: 'e3',
+        source: 'approval-1',
+        target: 'image-1',
+        style: { stroke: '#3b82f6', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
+      },
     ],
   },
   {
@@ -220,10 +240,37 @@ const exampleWorkflows = [
       },
     ],
     edges: [
-      { id: 'e1', source: 'start', target: 'llm-summarize', animated: true },
-      { id: 'e2', source: 'llm-summarize', target: 'conditional-1' },
-      { id: 'e3', source: 'conditional-1', target: 'llm-short', label: 'short' },
-      { id: 'e4', source: 'conditional-1', target: 'llm-long', label: 'long' },
+      {
+        id: 'e1',
+        source: 'start',
+        target: 'llm-summarize',
+        animated: true,
+        style: { stroke: '#8b5cf6', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#8b5cf6' }
+      },
+      {
+        id: 'e2',
+        source: 'llm-summarize',
+        target: 'conditional-1',
+        style: { stroke: '#8b5cf6', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#8b5cf6' }
+      },
+      {
+        id: 'e3',
+        source: 'conditional-1',
+        target: 'llm-short',
+        label: 'short',
+        style: { stroke: '#10b981', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' }
+      },
+      {
+        id: 'e4',
+        source: 'conditional-1',
+        target: 'llm-long',
+        label: 'long',
+        style: { stroke: '#f59e0b', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#f59e0b' }
+      },
     ],
   },
 ];
@@ -520,6 +567,7 @@ function FlowEditor() {
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // tRPC mutations
   const compileMutation = trpc.workflow.compile.useMutation();
@@ -571,10 +619,9 @@ function FlowEditor() {
       const nodeData = nodeTypeOptions.find((n) => n.id === type);
       if (!nodeData) return;
 
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const position = reactFlowInstance.project({
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
       });
 
       const newNode: Node<NodeData> = {
@@ -781,7 +828,22 @@ function FlowEditor() {
 
       <div className="flex h-[calc(100vh-80px)]">
         {/* Sidebar */}
-        <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+        <div className={`${sidebarCollapsed ? 'w-12' : 'w-80'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto transition-all duration-300 relative`}>
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? (
+              <ArrowLeft className="h-4 w-4 rotate-180" />
+            ) : (
+              <ArrowLeft className="h-4 w-4" />
+            )}
+          </button>
+
+          {!sidebarCollapsed && (
+            <>
           {/* Workflow Info */}
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="mb-4">
@@ -887,6 +949,8 @@ function FlowEditor() {
               </div>
             </details>
           </div>
+          </>
+          )}
         </div>
 
         {/* ReactFlow Canvas */}
@@ -902,6 +966,12 @@ function FlowEditor() {
             onDragOver={onDragOver}
             onNodeClick={onNodeClick}
             nodeTypes={nodeTypes}
+            defaultEdgeOptions={{
+              type: 'smoothstep',
+              animated: false,
+              style: { stroke: '#3b82f6', strokeWidth: 2 },
+              markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+            }}
             fitView
             className="bg-gray-50 dark:bg-gray-900"
           >
