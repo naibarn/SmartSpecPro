@@ -1,5 +1,6 @@
 """Workflow API endpoints."""
 import asyncio
+import re
 import uuid
 from datetime import datetime
 from typing import Any, Optional
@@ -29,11 +30,15 @@ router = APIRouter()
 logger = structlog.get_logger(__name__)
 
 
+MAX_NODES = 500
+MAX_EDGES = 1000
+
+
 class FlowCompileRequest(BaseModel):
     """Request to compile ReactFlow JSON to workflow manifest."""
 
-    nodes: list[dict[str, Any]] = Field(..., description="ReactFlow nodes")
-    edges: list[dict[str, Any]] = Field(..., description="ReactFlow edges")
+    nodes: list[dict[str, Any]] = Field(..., description="ReactFlow nodes", max_length=MAX_NODES)
+    edges: list[dict[str, Any]] = Field(..., description="ReactFlow edges", max_length=MAX_EDGES)
     metadata: dict[str, Any] | None = Field(default=None, description="Manifest metadata")
 
 
@@ -43,6 +48,8 @@ class FlowCompileResponse(BaseModel):
     success: bool
     manifest: dict[str, Any] | None = None
     error: str | None = None
+    errors: list[str] | None = None  # Section 14: multiple validation errors
+    warnings: list[str] | None = None  # Section 14: non-fatal warnings
 
 
 class ExecuteWorkflowRequest(BaseModel):
@@ -113,6 +120,8 @@ async def compile_flow(
             metadata["author"] = current_user.email or "user@smartspecpro.com"
 
         # Compile flow
+        # TODO Section 14: Switch to WorkflowCompiler from Section 01
+        # from app.orchestrator.workflow_compiler import WorkflowCompiler
         compiler = FlowCompiler()
         manifest = compiler.compile(flow_json, metadata=metadata)
 
@@ -143,10 +152,11 @@ async def compile_flow(
         logger.exception(
             "flow_compilation_unexpected_error",
             user_id=current_user.id,
+            error=str(e),
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected compilation error: {str(e)}",
+            detail="An internal error occurred during compilation.",
         ) from e
 
 
@@ -314,12 +324,13 @@ async def stream_workflow_execution(
     request: Request,
     current_user: User = Depends(get_current_user),
     last_event_id: Optional[str] = Header(None, alias="Last-Event-ID"),
+    lastEventId: Optional[str] = None,  # Query param fallback (EventSource can't send headers)
 ):
     """
     SSE endpoint for real-time workflow execution visualization.
 
     Authentication: Session cookie or Bearer token (EventSource sends cookies automatically)
-    Reconnection: Last-Event-ID header replays missed events
+    Reconnection: Last-Event-ID via header or ?lastEventId= query param
 
     Event format:
         event: {event_type}
@@ -328,23 +339,38 @@ async def stream_workflow_execution(
 
         (blank line)
     """
+    # Validate execution_id format (exec-{12 hex chars})
+    EXECUTION_ID_PATTERN = re.compile(r"^exec-[a-f0-9]{12}$")
+    if not execution_id or not EXECUTION_ID_PATTERN.match(execution_id):
+        raise HTTPException(status_code=400, detail="Invalid execution_id format")
+
+    # Use query param as fallback for Last-Event-ID (EventSource doesn't support custom headers)
+    # Validate lastEventId format if provided
+    SAFE_EVENT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_\-]{1,200}$")
+    effective_last_event_id = last_event_id or lastEventId
+    if effective_last_event_id and not SAFE_EVENT_ID_PATTERN.match(effective_last_event_id):
+        effective_last_event_id = None  # Discard invalid event ID
+
     event_store = get_event_store()
 
     async def event_generator():
         """Generate SSE events for this execution."""
         try:
-            # TODO: Verify execution belongs to current user's tenant
-            # For now, just check that execution_id is valid
+            # Verify execution belongs to current user's tenant
+            # TODO: When execution persistence is added, verify:
+            # execution = await db.get(execution_id)
+            # if execution.tenant_id != current_user.tenant_id:
+            #     raise HTTPException(403, "Access denied")
             logger.info(
                 "sse_connection_established",
                 execution_id=execution_id,
                 user_id=current_user.id,
-                last_event_id=last_event_id,
+                last_event_id=effective_last_event_id,
             )
 
             # Replay missed events if reconnecting
-            if last_event_id:
-                missed_events = event_store.get_events_since(execution_id, last_event_id)
+            if effective_last_event_id:
+                missed_events = event_store.get_events_since(execution_id, effective_last_event_id)
                 logger.info(
                     "replaying_missed_events",
                     execution_id=execution_id,
@@ -402,9 +428,10 @@ async def stream_workflow_execution(
                 execution_id=execution_id,
                 error=str(e),
             )
-            # Send error event before closing
-            error_event = f"event: error\ndata: {{\"error\": \"{str(e)}\"}}\n\n"
-            yield error_event
+            # Send error event before closing (don't leak internal error details)
+            import json
+            safe_error = json.dumps({"error": "Internal execution error"})
+            yield f"event: error\ndata: {safe_error}\n\n"
 
     return StreamingResponse(
         event_generator(),
