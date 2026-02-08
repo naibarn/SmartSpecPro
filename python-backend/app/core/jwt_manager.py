@@ -176,9 +176,11 @@ class JWTManager:
                 algorithms=[self.algorithm]
             )
 
-            # Verify token type if specified
-            if expected_type and payload.get("type") != expected_type:
-                raise JWTError(f"Invalid token type. Expected {expected_type}, got {payload.get('type')}")
+            # Verify token type if specified (None defaults to "access")
+            if expected_type:
+                token_type = payload.get("type") or "access"  # Default to "access" if not specified
+                if token_type != expected_type:
+                    raise JWTError(f"Invalid token type. Expected {expected_type}, got {token_type}")
 
             # Check if token is revoked (in-memory blacklist)
             jti = payload.get("jti")
