@@ -27,6 +27,23 @@ export const entityTypeEnum = pgEnum("entity_type", ["user", "project", "prefere
 // API style for different LLM provider endpoints (OpenCode Zen uses different endpoints per model family)
 export const apiStyleEnum = pgEnum("api_style", ["chat-completions", "responses", "messages", "gemini"]);
 
+// Workflow status enum
+export const workflowStatusEnum = pgEnum("workflow_status", [
+  "draft",
+  "compiled",
+  "running",
+  "completed",
+  "failed",
+]);
+
+// Template status enum
+export const templateStatusEnum = pgEnum("template_status", [
+  "draft",
+  "pending_review",
+  "published",
+  "archived",
+]);
+
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
@@ -2035,3 +2052,190 @@ export const emailVerificationTokens = pgTable("email_verification_tokens", {
   usedAt: timestamp("usedAt", { withTimezone: true }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Workflows — User's active workflow drafts
+ * Separate from templates. Users edit workflows, then optionally save as template.
+ */
+export const workflows = pgTable("workflows", {
+  id: serial("id").primaryKey(),
+
+  /** Workflow name */
+  name: varchar("name", { length: 255 }).notNull(),
+
+  /** Workflow description */
+  description: text("description"),
+
+  /** ReactFlow state: {nodes: [], edges: [], viewport: {}} */
+  workflowJson: json("workflowJson").$type<{
+    nodes: Array<{
+      id: string;
+      type: string;
+      position: { x: number; y: number };
+      data: Record<string, any>;
+      parentId?: string; // For loop groups
+    }>;
+    edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+      sourceHandle?: string;
+      targetHandle?: string;
+      type?: string;
+    }>;
+    viewport?: { x: number; y: number; zoom: number };
+  }>().notNull(),
+
+  /** Owner user */
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  /** Tenant for multi-tenant isolation */
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Current workflow state */
+  status: workflowStatusEnum("status").default("draft").notNull(),
+
+  /** Last compilation timestamp */
+  lastCompiledAt: timestamp("lastCompiledAt", { withTimezone: true }),
+
+  /** Schema version for forward compatibility */
+  schemaVersion: varchar("schemaVersion", { length: 10 }).default("1.0").notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("workflows_user_idx").on(t.userId),
+  index("workflows_tenant_idx").on(t.tenantId),
+  index("workflows_status_idx").on(t.status),
+]);
+
+export type Workflow = typeof workflows.$inferSelect;
+export type InsertWorkflow = typeof workflows.$inferInsert;
+
+/**
+ * Template Categories — Hierarchical organization
+ */
+export const templateCategories = pgTable("template_categories", {
+  id: serial("id").primaryKey(),
+
+  /** Category name */
+  name: varchar("name", { length: 100 }).notNull(),
+
+  /** URL-safe slug */
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+
+  /** Parent category (null for root categories) */
+  parentId: integer("parentId").references((): any => templateCategories.id),
+
+  /** Display order */
+  sortOrder: integer("sortOrder").default(0).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TemplateCategory = typeof templateCategories.$inferSelect;
+export type InsertTemplateCategory = typeof templateCategories.$inferInsert;
+
+/**
+ * Workflow Templates — Marketplace
+ * Public templates visible to all, private templates scoped to tenant
+ */
+export const workflowTemplates = pgTable("workflow_templates", {
+  id: serial("id").primaryKey(),
+
+  /** Template name */
+  name: varchar("name", { length: 255 }).notNull(),
+
+  /** Template description */
+  description: text("description"),
+
+  /** Validated ReactFlow state (same structure as workflows.workflowJson) */
+  workflowJson: json("workflowJson").$type<{
+    nodes: Array<{
+      id: string;
+      type: string;
+      position: { x: number; y: number };
+      data: Record<string, any>;
+      parentId?: string;
+    }>;
+    edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+      sourceHandle?: string;
+      targetHandle?: string;
+      type?: string;
+    }>;
+    viewport?: { x: number; y: number; zoom: number };
+  }>().notNull(),
+
+  /** Template author */
+  authorId: integer("authorId").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  /** Tenant (null for public templates) */
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Category */
+  categoryId: integer("categoryId").references(() => templateCategories.id, { onDelete: "set null" }),
+
+  /** Tags for filtering */
+  tags: json("tags").$type<string[]>().default([]),
+
+  /** Public visibility */
+  isPublic: boolean("isPublic").default(false).notNull(),
+
+  /** Featured on marketplace */
+  isFeatured: boolean("isFeatured").default(false).notNull(),
+
+  /** Publication status */
+  status: templateStatusEnum("status").default("draft").notNull(),
+
+  /** Download counter */
+  downloadCount: integer("downloadCount").default(0).notNull(),
+
+  /** Version string */
+  version: varchar("version", { length: 20 }).default("1.0").notNull(),
+
+  /** Full-text search vector (auto-generated from name + description) */
+  searchVector: text("searchVector"), // tsvector in migration SQL
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("workflow_templates_author_idx").on(t.authorId),
+  index("workflow_templates_tenant_idx").on(t.tenantId),
+  index("workflow_templates_category_idx").on(t.categoryId),
+  index("workflow_templates_status_idx").on(t.status),
+  // GIN indexes added in migration SQL (can't express in Drizzle directly)
+]);
+
+export type WorkflowTemplate = typeof workflowTemplates.$inferSelect;
+export type InsertWorkflowTemplate = typeof workflowTemplates.$inferInsert;
+
+/**
+ * Template Ratings — User feedback
+ */
+export const templateRatings = pgTable("template_ratings", {
+  id: serial("id").primaryKey(),
+
+  /** Template being rated */
+  templateId: integer("templateId").notNull().references(() => workflowTemplates.id, { onDelete: "cascade" }),
+
+  /** User who rated */
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  /** Rating value (1-5) */
+  rating: integer("rating").notNull(),
+
+  /** Optional review text */
+  review: text("review"),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("template_ratings_unique").on(t.templateId, t.userId),
+  index("template_ratings_template_idx").on(t.templateId),
+]);
+
+export type TemplateRating = typeof templateRatings.$inferSelect;
+export type InsertTemplateRating = typeof templateRatings.$inferInsert;
