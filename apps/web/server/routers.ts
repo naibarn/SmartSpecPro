@@ -50,6 +50,8 @@ import { usageRouter } from "./routers/usage";
 import { mediaJobsRouter } from "./routers/mediaJobs";
 import { videoEditorProjectsRouter } from "./routers/videoEditorProjects";
 import { telegramRouter } from "./routers/telegram";
+import { workflowRouter } from "./routers/workflow";
+import { approvalsRouter } from "./routers/approvals";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -246,7 +248,7 @@ export const appRouter = router({
         }
 
         // Create session token
-        const { token } = await sdk.createSessionToken(user.openId, {
+        const token = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || '',
         });
 
@@ -994,7 +996,7 @@ export const appRouter = router({
         if (!valid) throw new Error("Invalid verification code");
 
         // Create session
-        const { token } = await sdk.createSessionToken(user.openId, {
+        const token = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || "",
         });
 
@@ -1241,6 +1243,12 @@ export const appRouter = router({
 
   // Telegram notifications
   telegram: telegramRouter,
+
+  // Workflow engine (LangGraph integration via Python backend)
+  workflow: workflowRouter,
+
+  // Approval Gate operations (proxies to Python backend)
+  approvals: approvalsRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({
