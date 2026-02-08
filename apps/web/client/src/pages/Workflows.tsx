@@ -44,7 +44,9 @@ export default function Workflows() {
 
   // Fetch workflows
   const { data: workflowsData, refetch } = trpc.workflow.list.useQuery(
-    statusFilter === 'all' ? {} : { status: statusFilter }
+    statusFilter === 'all'
+      ? { limit: 100, offset: 0 }
+      : { limit: 100, offset: 0, status: statusFilter }
   );
 
   const workflows = workflowsData?.workflows || [];
