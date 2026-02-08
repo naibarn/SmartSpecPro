@@ -15,6 +15,8 @@ import ReactFlow, {
   Background,
   BackgroundVariant,
   MarkerType,
+  Handle,
+  Position,
   type Node,
   type Edge,
   type Connection,
@@ -67,24 +69,40 @@ interface NodeData {
 function CustomNode({ data, selected }: { data: NodeData; selected: boolean }) {
   const Icon = data.icon;
   return (
-    <div
-      className={`px-4 py-3 rounded-lg border-2 shadow-lg bg-white dark:bg-gray-800 min-w-[180px] transition-all ${
-        selected
-          ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-800'
-          : `border-${data.color}-400 dark:border-${data.color}-600`
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <Icon className={`h-5 w-5 text-${data.color}-600 dark:text-${data.color}-400`} />
-        <div className="font-medium text-gray-900 dark:text-white">{data.label}</div>
-      </div>
-      {data.config && Object.keys(data.config).length > 0 && (
-        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          <Settings className="h-3 w-3 inline mr-1" />
-          Configured
+    <>
+      {/* Input Handle - where edges can connect TO this node */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
+      />
+
+      <div
+        className={`px-4 py-3 rounded-lg border-2 shadow-lg bg-white dark:bg-gray-800 min-w-[180px] transition-all ${
+          selected
+            ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-800'
+            : `border-${data.color}-400 dark:border-${data.color}-600`
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <Icon className={`h-5 w-5 text-${data.color}-600 dark:text-${data.color}-400`} />
+          <div className="font-medium text-gray-900 dark:text-white">{data.label}</div>
         </div>
-      )}
-    </div>
+        {data.config && Object.keys(data.config).length > 0 && (
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <Settings className="h-3 w-3 inline mr-1" />
+            Configured
+          </div>
+        )}
+      </div>
+
+      {/* Output Handle - where edges can connect FROM this node */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
+      />
+    </>
   );
 }
 
