@@ -273,7 +273,10 @@
       "WebFetch(domain:gramio.dev)",
       "WebFetch(domain:postly.ai)",
       "WebFetch(domain:dexatel.com)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(git checkout:*)",
+      "Bash(pnpm drizzle-kit generate:*)",
+      "Bash(PYTHONPATH=/home/dev/projects/SmartSpecPro/python-backend python3:*)"
     ]
   }
 }
