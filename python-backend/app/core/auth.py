@@ -144,30 +144,33 @@ async def get_current_user(
             )
 
     # Get user_id from token (JWT Manager uses 'sub')
+    # Also support 'openId' from Node.js SDK session tokens
     user_id_str = payload.get("sub")
-    if not user_id_str:
+    open_id = payload.get("openId")
+
+    if not user_id_str and not open_id:
         # Fallback to old format
         user_id_str = payload.get("user_id")
 
-    if not user_id_str:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Try to find user by openId first (Node.js SDK session tokens)
+    user = None
+    if open_id:
+        from app.models.user import User
+        result = await db.execute(select(User).where(User.openId == open_id))
+        user = result.scalar_one_or_none()
 
-    try:
-        user_id = int(user_id_str)
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user ID in token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # Get user from database
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # If not found by openId, try by user_id
+    if not user and user_id_str:
+        try:
+            user_id = int(user_id_str)
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user ID in token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     if user is None:
         logger.warning("token_user_not_found", user_id=user_id)
