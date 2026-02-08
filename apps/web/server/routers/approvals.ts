@@ -55,8 +55,8 @@ export const approvalsRouter = router({
   getPending: protectedProcedure
     .input(
       z.object({
-        limit: z.number().min(1).max(100).default(20),
-        offset: z.number().min(0).default(0),
+        limit: z.number().min(1).max(100).optional().default(20),
+        offset: z.number().min(0).optional().default(0),
       })
     )
     .query(async ({ input, ctx }) => {
@@ -109,8 +109,8 @@ export const approvalsRouter = router({
   list: protectedProcedure
     .input(
       z.object({
-        limit: z.number().min(1).max(100).default(20),
-        offset: z.number().min(0).default(0),
+        limit: z.number().min(1).max(100).optional().default(20),
+        offset: z.number().min(0).optional().default(0),
         status: ApprovalStatus.optional(),
         requestType: ApprovalType.optional(),
       })
