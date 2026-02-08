@@ -81,37 +81,44 @@ export default function Workflows() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+      {/* Header - Sticky with Backdrop Blur */}
+      <header className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
+                size="sm"
                 onClick={() => setLocation('/dashboard')}
-                className="flex items-center gap-2"
               >
-                <Home className="h-5 w-5" />
-                Dashboard
+                <Home className="h-4 w-4 mr-1" />
+                Back
               </Button>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                  <GitBranch className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">Workflows</h1>
+                  <p className="text-xs text-muted-foreground">Create and manage automated workflows</p>
+                </div>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <GitBranch className="h-8 w-8" />
-              Workflows
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Create and manage automated workflows
-            </p>
+            <Button
+              size="sm"
+              onClick={() => setLocation('/workflows/editor')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              New Workflow
+            </Button>
           </div>
-          <Button
-            onClick={() => setLocation('/workflows/editor')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Plus className="h-5 w-5" />
-            New Workflow
-          </Button>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
 
         {/* Search and Filter Bar */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
@@ -185,6 +192,85 @@ export default function Workflows() {
                 New Workflow
               </Button>
             )}
+          </div>
+        )}
+
+        {/* Example Workflows Section */}
+        {workflows.length === 0 && !searchQuery && statusFilter === 'all' && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <GitBranch className="h-5 w-5" />
+              Example Workflow Templates
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Social Media Post Creator Template */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-blue-100 dark:border-blue-900">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                      <GitBranch className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        Social Media Post Creator
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Generate social media post with image
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span>Input → LLM (Generate Caption) → Generate Image → Output</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
+                    <span>4 nodes • Linear workflow</span>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setLocation('/workflows/editor?template=social-media-post')}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Use This Template
+                </Button>
+              </div>
+
+              {/* Content Summarizer Template */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-purple-100 dark:border-purple-900">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                      <GitBranch className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        Content Summarizer
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Summarize long content with conditional formatting
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                    <span>Input → LLM (Summarize) → Conditional → Format → Output</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
+                    <span>5 nodes • Conditional logic</span>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setLocation('/workflows/editor?template=content-summarizer')}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  Use This Template
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
