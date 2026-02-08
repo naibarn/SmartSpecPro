@@ -37,6 +37,7 @@ class TestPhase2AdvancedNodes:
         # Phase 2.3 nodes
         assert "webhook_trigger" in type_names
         assert "schedule_trigger" in type_names
+        assert "queue_trigger" in type_names  # Redis Streams trigger
         assert "event_trigger" in type_names
         assert "file_upload_trigger" in type_names
 
@@ -47,17 +48,17 @@ class TestPhase2AdvancedNodes:
         assert "error_trigger" in type_names
 
     def test_total_node_count(self):
-        """Test that we now have 21 total nodes (7 original + 14 new)."""
+        """Test that we now have 22 total nodes (7 original + 15 new)."""
         registry = NodeRegistry.get_instance()
         all_types = registry.get_all_node_types()
 
         # Phase 1: 7 nodes
-        # Phase 2.1: 3 nodes
-        # Phase 2.2: 3 nodes
-        # Phase 2.3: 4 nodes
-        # Phase 2.4: 4 nodes
-        # Total: 21 nodes
-        assert len(all_types) == 21
+        # Phase 2.1: 3 nodes (manual_trigger, form_input, workflow_response)
+        # Phase 2.2: 3 nodes (set_variable, merge_data, code_runner)
+        # Phase 2.3: 5 nodes (webhook, schedule, queue, event, file_upload triggers)
+        # Phase 2.4: 4 nodes (switch, wait, webhook_response, error_trigger)
+        # Total: 22 nodes
+        assert len(all_types) == 22
 
 
 @pytest.mark.asyncio
