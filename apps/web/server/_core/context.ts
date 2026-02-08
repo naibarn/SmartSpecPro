@@ -3,6 +3,8 @@ import type { User } from "../../drizzle/schema";
 import type { TenantRequest } from "./tenant";
 import { sdk } from "./sdk";
 import { debugLog } from "./logger";
+import { COOKIE_NAME } from "@shared/const";
+import { parse as parseCookieHeader } from "cookie";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -22,10 +24,20 @@ export async function createContext(
   let user: User | null = null;
   let userToken: string | null = null;
 
-  // Extract bearer token from Authorization header
+  // Extract bearer token from Authorization header OR session cookie
   const authHeader = opts.req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     userToken = authHeader.substring(7);
+  } else {
+    // If no Authorization header, try to extract session cookie
+    const cookieHeader = opts.req.headers.cookie;
+    if (cookieHeader) {
+      const cookies = parseCookieHeader(cookieHeader);
+      const sessionCookie = cookies[COOKIE_NAME];
+      if (sessionCookie) {
+        userToken = sessionCookie;
+      }
+    }
   }
 
   try {
