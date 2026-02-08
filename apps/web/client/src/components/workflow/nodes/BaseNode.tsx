@@ -49,7 +49,7 @@ export function BaseNode({ data, selected }: NodeProps<WorkflowNodeData>) {
   return (
     <div
       className={`
-        relative min-w-[200px] rounded-lg border-2 p-4
+        relative min-w-[160px] rounded-lg border-2 p-3
         ${colors.bg} ${colors.border}
         ${selected ? "ring-2 ring-blue-500 ring-offset-2" : ""}
         shadow-md hover:shadow-lg transition-shadow
@@ -71,9 +71,9 @@ export function BaseNode({ data, selected }: NodeProps<WorkflowNodeData>) {
               style={{
                 top: `${yOffset * 100}%`,
                 background: "#fff",
-                border: `3px solid var(--tw-color)`,
-                width: "12px",
-                height: "12px",
+                border: `2px solid var(--tw-color)`,
+                width: "10px",
+                height: "10px",
               }}
               className={colors.border}
               title={`${input.display_name} (${input.data_type})`}
@@ -95,9 +95,9 @@ export function BaseNode({ data, selected }: NodeProps<WorkflowNodeData>) {
             style={{
               top: `${yOffset * 100}%`,
               background: "#fff",
-              border: `3px solid var(--tw-color)`,
-              width: "12px",
-              height: "12px",
+              border: `2px solid var(--tw-color)`,
+              width: "10px",
+              height: "10px",
             }}
             className={colors.border}
             title={`${output.display_name} (${output.data_type})`}
@@ -106,17 +106,17 @@ export function BaseNode({ data, selected }: NodeProps<WorkflowNodeData>) {
       })}
 
       {/* Node Header */}
-      <div className="flex items-center gap-2 mb-2">
-        <IconComponent className={`w-5 h-5 ${colors.text}`} />
-        <div className={`font-bold ${colors.text}`}>{data.label}</div>
+      <div className="flex items-center gap-2 mb-1.5">
+        <IconComponent className={`w-4 h-4 ${colors.text}`} />
+        <div className={`font-semibold text-sm ${colors.text}`}>{data.label}</div>
       </div>
 
       {/* Node Type Badge */}
-      <div className="text-xs text-gray-500 mb-2">{nodeTypeDef.display_name}</div>
+      <div className="text-xs text-gray-500 mb-1.5">{nodeTypeDef.display_name}</div>
 
       {/* Config Summary */}
       {configuredCount > 0 && (
-        <div className="mt-2 pt-2 border-t border-gray-300">
+        <div className="mt-1.5 pt-1.5 border-t border-gray-300">
           <div className="text-xs text-gray-600">
             {configuredCount} {configuredCount === 1 ? "field" : "fields"} configured
           </div>

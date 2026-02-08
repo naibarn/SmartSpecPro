@@ -8,8 +8,8 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { db } from "@/server/db";
-import { workflows } from "@/server/db/schema";
+import { db } from "../db";
+import { workflows } from "@db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 // Python backend URL from environment (default to localhost:8000)
@@ -193,7 +193,7 @@ export const workflowRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const userId = ctx.user.id;
-        const tenantId = ctx.user.currentTenantId || null;
+        const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
 
         const conditions = [
           eq(workflows.userId, userId),
@@ -207,6 +207,7 @@ export const workflowRouter = router({
             name: workflows.name,
             description: workflows.description,
             status: workflows.status,
+            workflowJson: workflows.workflowJson,
             lastCompiledAt: workflows.lastCompiledAt,
             createdAt: workflows.createdAt,
             updatedAt: workflows.updatedAt,
@@ -379,19 +380,22 @@ export const workflowRouter = router({
 
         const data = await response.json();
 
+        // Section 14: Handle new errors/warnings response format
         if (!data.success) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: data.error || "Compilation failed",
+            message: data.errors?.join("; ") || data.error || "Compilation failed",
           });
         }
 
         console.log("[Workflow] Compilation successful", {
           userId: ctx.user.id,
           nodeCount: data.manifest?.nodes?.length || 0,
+          warnings: data.warnings?.length || 0,
         });
 
-        return data;
+        // Pass through warnings to frontend
+        return { ...data, warnings: data.warnings || [] };
       } catch (error: any) {
         console.error("[Workflow] Compilation error:", error.message);
         if (error instanceof TRPCError) throw error;
@@ -593,6 +597,187 @@ export const workflowRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to cancel workflow",
+        });
+      }
+    }),
+
+  /**
+   * Get all registered node types from Python backend registry
+   */
+  getNodeTypes: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      const response = await fetchPythonBackend(
+        "/api/v1/workflows/node-types",
+        { method: "GET" },
+        ctx.userToken
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          detail: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error.detail || "Failed to fetch node types",
+        });
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error: any) {
+      console.error("[Workflow] Get node types error:", error.message);
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to fetch node types",
+      });
+    }
+  }),
+
+  /**
+   * Resume a paused workflow (HITL response) - Section 14
+   */
+  resume: protectedProcedure
+    .input(
+      z.object({
+        executionId: z.string().regex(/^exec-[a-f0-9]{12}$/),
+        response: z.record(z.any()),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const response = await fetchPythonBackend(
+          `/api/v1/workflows/execute/${input.executionId}/resume`,
+          {
+            method: "POST",
+            body: JSON.stringify({ response: input.response }),
+          },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({
+            detail: `HTTP ${response.status}: ${response.statusText}`,
+          }));
+          const code =
+            response.status === 404
+              ? "NOT_FOUND"
+              : response.status === 409
+                ? "CONFLICT"
+                : "BAD_REQUEST";
+          throw new TRPCError({
+            code: code as any,
+            message: error.detail || "Failed to resume workflow",
+          });
+        }
+
+        const data = await response.json();
+        console.log("[Workflow] Resumed", {
+          userId: ctx.user.id,
+          executionId: input.executionId,
+        });
+        return data;
+      } catch (error: any) {
+        console.error("[Workflow] Resume error:", error.message);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to resume workflow",
+        });
+      }
+    }),
+
+  /**
+   * List Dead Letter Queue items - Section 14
+   */
+  listDLQ: protectedProcedure
+    .input(
+      z.object({
+        workflowId: z.string().optional(),
+        status: z.enum(["pending", "reprocessed", "discarded"]).optional(),
+        limit: z.number().min(1).max(200).optional().default(50),
+        offset: z.number().min(0).optional().default(0),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        const params = new URLSearchParams({
+          limit: input.limit.toString(),
+          offset: input.offset.toString(),
+          ...(input.workflowId && { workflow_id: input.workflowId }),
+          ...(input.status && { status: input.status }),
+        });
+
+        const response = await fetchPythonBackend(
+          `/api/v1/workflows/dlq?${params}`,
+          { method: "GET" },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Failed to fetch DLQ items",
+          });
+        }
+
+        return await response.json();
+      } catch (error: any) {
+        console.error("[Workflow] DLQ list error:", error.message);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to list DLQ items",
+        });
+      }
+    }),
+
+  /**
+   * Reprocess a DLQ item - Section 14
+   */
+  reprocessDLQ: protectedProcedure
+    .input(
+      z.object({
+        dlqId: z.string(),
+        overrideInput: z.record(z.any()).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const response = await fetchPythonBackend(
+          `/api/v1/workflows/dlq/${input.dlqId}/reprocess`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              override_input: input.overrideInput || null,
+            }),
+          },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({
+            detail: `HTTP ${response.status}: ${response.statusText}`,
+          }));
+          const code = response.status === 404 ? "NOT_FOUND" : "BAD_REQUEST";
+          throw new TRPCError({
+            code: code as any,
+            message: error.detail || "Failed to reprocess DLQ item",
+          });
+        }
+
+        const data = await response.json();
+        console.log("[Workflow] DLQ reprocessed", {
+          userId: ctx.user.id,
+          dlqId: input.dlqId,
+        });
+        return data;
+      } catch (error: any) {
+        console.error("[Workflow] DLQ reprocess error:", error.message);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to reprocess DLQ item",
         });
       }
     }),

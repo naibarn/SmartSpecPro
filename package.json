@@ -15,5 +15,10 @@
   "devDependencies": {
     "turbo": "^2.5.0",
     "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.10.0",
+    "d3-zoom": "^3.0.0",
+    "reactflow": "^11.11.4"
   }
 }

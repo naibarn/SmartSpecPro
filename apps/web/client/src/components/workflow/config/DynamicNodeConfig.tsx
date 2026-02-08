@@ -141,7 +141,13 @@ function FormField({ input, value, isConnected, onChange }: FormFieldProps) {
         <input
           type="number"
           value={value ?? ""}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
+          min={input.validation?.min != null ? Number(input.validation.min) : undefined}
+          max={input.validation?.max != null ? Number(input.validation.max) : undefined}
+          step={input.validation?.step != null ? Number(input.validation.step) : undefined}
+          onChange={(e) => {
+            const parsed = parseFloat(e.target.value);
+            onChange(Number.isNaN(parsed) ? undefined : parsed);
+          }}
           placeholder={input.placeholder}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -180,11 +186,14 @@ function FormField({ input, value, isConnected, onChange }: FormFieldProps) {
         <div className="space-y-2">
           <input
             type="range"
-            min={input.validation?.min || 0}
-            max={input.validation?.max || 100}
-            step={input.validation?.step || 1}
+            min={Number(input.validation?.min) || 0}
+            max={Number(input.validation?.max) || 100}
+            step={Number(input.validation?.step) || 1}
             value={value ?? (input.default || 0)}
-            onChange={(e) => onChange(parseFloat(e.target.value))}
+            onChange={(e) => {
+              const parsed = parseFloat(e.target.value);
+              if (!Number.isNaN(parsed)) onChange(parsed);
+            }}
             className="w-full"
           />
           <div className="text-sm text-gray-600 text-center">

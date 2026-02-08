@@ -268,7 +268,52 @@ class LangGraphRuntime:
             }
         }
 
+    async def reprocess_dlq_item(
+        self,
+        dlq_item_id: int,
+        node_id: str,
+        input_data: dict[str, Any],
+        execution_id: str,
+        tenant_id: str,
+        user_id: int,
+    ) -> None:
+        """Reprocess a DLQ item (stub -- fully implemented in Section 07).
+
+        Args:
+            dlq_item_id: DLQ record ID.
+            node_id: Node that failed.
+            input_data: Input data for retry.
+            execution_id: New execution ID for the retry.
+            tenant_id: Tenant ID.
+            user_id: User ID.
+        """
+        logger.warning(
+            "reprocess_dlq_item stub called (Section 07 not implemented)",
+            dlq_item_id=dlq_item_id,
+            node_id=node_id,
+            execution_id=execution_id,
+        )
+        # Section 07 will implement this to:
+        # 1. Create a minimal workflow with just the failed node
+        # 2. Execute it with the original/override input
+        # 3. Update DLQ status based on result
+
     @property
     def is_initialized(self) -> bool:
         """Whether the runtime has been initialized."""
         return self._initialized
+
+
+# ------------------------------------------------------------------
+# Singleton instance
+# ------------------------------------------------------------------
+
+_runtime_instance: LangGraphRuntime | None = None
+
+
+def get_langgraph_runtime() -> LangGraphRuntime:
+    """Get the singleton LangGraphRuntime instance."""
+    global _runtime_instance
+    if _runtime_instance is None:
+        _runtime_instance = LangGraphRuntime()
+    return _runtime_instance

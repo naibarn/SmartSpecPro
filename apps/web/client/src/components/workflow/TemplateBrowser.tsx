@@ -10,12 +10,12 @@ import { Search, Star, Download, Eye } from "lucide-react";
 export interface WorkflowTemplate {
   id: number;
   name: string;
-  description: string;
-  author: string;
-  category: string;
-  tags: string[];
-  rating: number;
-  downloadCount: number;
+  description: string | null;
+  author?: string;
+  category?: string;
+  tags?: string[];
+  rating?: number;
+  downloadCount?: number;
   thumbnailUrl?: string;
   workflowJson: {
     nodes: any[];
@@ -46,20 +46,20 @@ export function TemplateBrowser({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
 
-  // Extract unique categories
-  const categories = Array.from(new Set(templates.map((t) => t.category)));
+  // Extract unique categories (filter out undefined)
+  const categories = Array.from(new Set(templates.map((t) => t.category).filter(Boolean))) as string[];
 
   // Filter templates
   const filteredTemplates = templates.filter((template) => {
     const matchesSearch =
       searchQuery === "" ||
       template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      (template.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+      (template.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())) ?? false);
 
     const matchesCategory = !selectedCategory || template.category === selectedCategory;
 
-    return matchesSearch && matchesCategory && template.status === "published";
+    return matchesSearch && matchesCategory;
   });
 
   return (
@@ -153,17 +153,21 @@ export function TemplateBrowser({
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h3 className="font-bold text-lg">{selectedTemplate.name}</h3>
-              <p className="text-sm text-gray-600 mt-1">{selectedTemplate.description}</p>
+              <p className="text-sm text-gray-600 mt-1">{selectedTemplate.description || "No description"}</p>
               <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                <span>By {selectedTemplate.author}</span>
-                <span className="flex items-center gap-1">
-                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                  {selectedTemplate.rating.toFixed(1)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Download className="w-3 h-3" />
-                  {selectedTemplate.downloadCount}
-                </span>
+                {selectedTemplate.author && <span>By {selectedTemplate.author}</span>}
+                {selectedTemplate.rating != null && (
+                  <span className="flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    {selectedTemplate.rating.toFixed(1)}
+                  </span>
+                )}
+                {selectedTemplate.downloadCount != null && (
+                  <span className="flex items-center gap-1">
+                    <Download className="w-3 h-3" />
+                    {selectedTemplate.downloadCount}
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -220,30 +224,36 @@ function TemplateCard({ template, isSelected, onClick, onLoad }: TemplateCardPro
       {/* Content */}
       <div className="p-3 space-y-2">
         <h3 className="font-semibold text-sm line-clamp-1">{template.name}</h3>
-        <p className="text-xs text-gray-600 line-clamp-2">{template.description}</p>
+        <p className="text-xs text-gray-600 line-clamp-2">{template.description || "No description"}</p>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-1">
-          {template.tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        {template.tags && template.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {template.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
-          <span className="flex items-center gap-1">
-            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-            {template.rating.toFixed(1)}
-          </span>
-          <span className="flex items-center gap-1">
-            <Download className="w-3 h-3" />
-            {template.downloadCount}
-          </span>
+          {template.rating != null && (
+            <span className="flex items-center gap-1">
+              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+              {template.rating.toFixed(1)}
+            </span>
+          )}
+          {template.downloadCount != null && (
+            <span className="flex items-center gap-1">
+              <Download className="w-3 h-3" />
+              {template.downloadCount}
+            </span>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();

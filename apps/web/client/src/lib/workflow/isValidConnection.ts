@@ -7,7 +7,7 @@
 import type { Connection, Node } from "reactflow";
 import { useNodeRegistry } from "./useNodeRegistry";
 import { isCompatibleConnection } from "./dataTypes";
-import type { NodeTypeSpec } from "./types";
+import type { NodeTypeSpec } from "./useNodeRegistry";
 
 /**
  * Standalone validation function (non-hook).
