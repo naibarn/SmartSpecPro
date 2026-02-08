@@ -584,12 +584,8 @@ function FlowEditor() {
         setWorkflowName(template.name);
         setWorkflowDescription(template.description);
         setNodes(template.nodes);
-        // Ensure sourceHandle and targetHandle are undefined instead of null
-        const cleanedEdges = template.edges.map(edge => ({
-          ...edge,
-          sourceHandle: undefined,
-          targetHandle: undefined,
-        }));
+        // Remove sourceHandle and targetHandle properties entirely (don't set to undefined)
+        const cleanedEdges = template.edges.map(({ sourceHandle, targetHandle, ...edge }) => edge);
         setEdges(cleanedEdges);
       }
     }
