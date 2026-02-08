@@ -159,6 +159,8 @@ const exampleWorkflows = [
         id: 'e1',
         source: 'start',
         target: 'llm-1',
+        sourceHandle: null,
+        targetHandle: null,
         animated: true,
         style: { stroke: '#3b82f6', strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
@@ -167,6 +169,8 @@ const exampleWorkflows = [
         id: 'e2',
         source: 'llm-1',
         target: 'approval-1',
+        sourceHandle: null,
+        targetHandle: null,
         style: { stroke: '#3b82f6', strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
       },
@@ -174,6 +178,8 @@ const exampleWorkflows = [
         id: 'e3',
         source: 'approval-1',
         target: 'image-1',
+        sourceHandle: null,
+        targetHandle: null,
         style: { stroke: '#3b82f6', strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
       },
@@ -244,6 +250,8 @@ const exampleWorkflows = [
         id: 'e1',
         source: 'start',
         target: 'llm-summarize',
+        sourceHandle: null,
+        targetHandle: null,
         animated: true,
         style: { stroke: '#8b5cf6', strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#8b5cf6' }
@@ -252,6 +260,8 @@ const exampleWorkflows = [
         id: 'e2',
         source: 'llm-summarize',
         target: 'conditional-1',
+        sourceHandle: null,
+        targetHandle: null,
         style: { stroke: '#8b5cf6', strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#8b5cf6' }
       },
@@ -259,6 +269,8 @@ const exampleWorkflows = [
         id: 'e3',
         source: 'conditional-1',
         target: 'llm-short',
+        sourceHandle: null,
+        targetHandle: null,
         label: 'short',
         style: { stroke: '#10b981', strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' }
@@ -267,6 +279,8 @@ const exampleWorkflows = [
         id: 'e4',
         source: 'conditional-1',
         target: 'llm-long',
+        sourceHandle: null,
+        targetHandle: null,
         label: 'long',
         style: { stroke: '#f59e0b', strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#f59e0b' }
