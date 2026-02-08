@@ -32,6 +32,7 @@ import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/tel
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { initializeQueues } from "../services/llmQueue";
 import { PostgresAdapter } from "../services/postgresAdapter";
+import { getDb } from "../db";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
 export const dbAdapter = new PostgresAdapter();
@@ -41,6 +42,10 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.disable("x-powered-by");
+
+// Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For) from nginx
+// This is required for secure cookies to work behind HTTPS proxy
+app.set("trust proxy", true);
 
 
 // Trusted origin check (shared between CORS and CSRF middleware)
@@ -265,11 +270,14 @@ async function main() {
 
   // Initialize Telegram notification queue
   try {
-    await initializeTelegramQueue(db, {
-      host: process.env.REDIS_HOST || "localhost",
-      port: parseInt(process.env.REDIS_PORT || "6379"),
-      password: process.env.REDIS_PASSWORD,
-    });
+    const db = await getDb();
+    if (db) {
+      await initializeTelegramQueue(db, {
+        host: process.env.REDIS_HOST || "localhost",
+        port: parseInt(process.env.REDIS_PORT || "6379"),
+        password: process.env.REDIS_PASSWORD,
+      });
+    }
   } catch (error) {
     console.error("[Startup] Failed to initialize Telegram queue:", error);
   }
