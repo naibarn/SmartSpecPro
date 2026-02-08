@@ -13,6 +13,9 @@ export { GenerationProgress, useGenerationTasks } from "./media/GenerationProgre
 export { SchedulePanel } from "./SchedulePanel";
 export { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 
+// Workflow components
+export { JobCard } from "./JobCard";
+
 // Artifact components
 export { CodeArtifact, InlineCode } from "./artifacts/CodeArtifact";
 export { ArtifactPanel } from "./artifacts/ArtifactPanel";

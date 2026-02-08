@@ -14,6 +14,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { getResolvedMenuItems } from '@/hooks/useMenuItems';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
+import { JobCard } from '@/components/chat/JobCard';
 import {
   Sparkles,
   Image,
@@ -53,6 +54,7 @@ import {
   Loader2,
   BarChart3,
   MessagesSquare,
+  CheckCircle,
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -84,6 +86,21 @@ export default function Dashboard() {
     { limit: 5 },
     { enabled: isAuthenticated }
   );
+
+  // Fetch active workflows
+  const { data: activeWorkflows } = trpc.workflow.list.useQuery(
+    { limit: 5, status: 'running' },
+    { enabled: isAuthenticated }
+  );
+
+  // Fetch pending approvals
+  const { data: pendingApprovals } = trpc.approvals.getPending.useQuery(
+    { limit: 5 },
+    { enabled: isAuthenticated }
+  );
+
+  // Submit approval decision mutation
+  const submitDecisionMutation = trpc.approvals.submitDecision.useMutation();
 
   // Menu visibility (must be before any early return to satisfy Rules of Hooks)
   const platform = detectPlatform();
@@ -421,6 +438,134 @@ export default function Dashboard() {
                 <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </button>
             ))}
+          </div>
+        </motion.div>
+
+        {/* Workflow and Approvals Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
+        >
+          {/* Active Workflows Section */}
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-blue-500" />
+                Active Workflows
+              </h2>
+              {activeWorkflows?.workflows && activeWorkflows.workflows.length > 0 && (
+                <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-600">
+                  {activeWorkflows.workflows.length} running
+                </span>
+              )}
+            </div>
+
+            {activeWorkflows?.workflows && activeWorkflows.workflows.length > 0 ? (
+              <div className="space-y-3">
+                {activeWorkflows.workflows.map((workflow: any) => (
+                  <JobCard
+                    key={workflow.execution_id}
+                    executionId={workflow.execution_id}
+                    workflowName={workflow.workflow_name}
+                    initialStatus={workflow.status}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No active workflows</p>
+                <p className="text-sm mt-1">Start a workflow from chat or skills</p>
+              </div>
+            )}
+          </div>
+
+          {/* Pending Approvals Section */}
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-500" />
+                Pending Approvals
+              </h2>
+              {pendingApprovals?.requests && pendingApprovals.requests.length > 0 && (
+                <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-600">
+                  {pendingApprovals.requests.length} pending
+                </span>
+              )}
+            </div>
+
+            {pendingApprovals?.requests && pendingApprovals.requests.length > 0 ? (
+              <div className="space-y-3">
+                {pendingApprovals.requests.map((request: any) => (
+                  <div
+                    key={request.id}
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50/50 transition"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">
+                          {request.title}
+                        </p>
+                        {request.description && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {request.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            request.risk_level === 'high'
+                              ? 'bg-red-100 text-red-600'
+                              : 'bg-amber-100 text-amber-600'
+                          }`}>
+                            {request.request_type}
+                          </span>
+                          {request.expires_at && (
+                            <span className="text-xs text-gray-500">
+                              Expires: {new Date(request.expires_at).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          onClick={() => {
+                            submitDecisionMutation.mutate({
+                              requestId: request.id,
+                              decision: 'approved',
+                            });
+                          }}
+                          variant="default"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            submitDecisionMutation.mutate({
+                              requestId: request.id,
+                              decision: 'rejected',
+                            });
+                          }}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No pending approvals</p>
+                <p className="text-sm mt-1">All approval gates cleared</p>
+              </div>
+            )}
           </div>
         </motion.div>
 
