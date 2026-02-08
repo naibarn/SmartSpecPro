@@ -4,6 +4,15 @@ import {
   modelProviderMap,
   providerUsageLog,
   routingRules,
+  workflowExecutionStatusEnum,
+  dlqItemStatusEnum,
+  policyActionEnum,
+  workflowExecutions,
+  workflowDeadLetterQueue,
+  workflowCacheMetadata,
+  workflowAuditEvents,
+  workflowSecrets,
+  workflowPolicyRules,
 } from "../drizzle/schema";
 
 describe("llmProviders extended columns", () => {
@@ -72,5 +81,102 @@ describe("routingRules table", () => {
     expect(routingRules.maxFallbacks).toBeDefined();
     expect(routingRules.isActive).toBeDefined();
     expect(routingRules.createdAt).toBeDefined();
+  });
+});
+
+// Section 13: Workflow Engine Schema Tests
+describe("Section 13: Workflow Engine Schema", () => {
+  describe("Enums", () => {
+    it("workflowExecutionStatusEnum has correct values", () => {
+      expect(workflowExecutionStatusEnum.enumValues).toEqual([
+        "pending",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+        "interrupted",
+      ]);
+    });
+
+    it("dlqItemStatusEnum has correct values", () => {
+      expect(dlqItemStatusEnum.enumValues).toEqual([
+        "pending",
+        "reprocessing",
+        "resolved",
+        "discarded",
+      ]);
+    });
+
+    it("policyActionEnum has correct values", () => {
+      expect(policyActionEnum.enumValues).toEqual([
+        "allow",
+        "deny",
+        "require_approval",
+      ]);
+    });
+  });
+
+  describe("workflowExecutions table", () => {
+    it("has required columns", () => {
+      const columns = Object.keys(workflowExecutions);
+      expect(columns).toContain("id");
+      expect(columns).toContain("workflowId");
+      expect(columns).toContain("tenantId");
+      expect(columns).toContain("userId");
+      expect(columns).toContain("status");
+      expect(columns).toContain("threadId");
+      expect(columns).toContain("createdAt");
+    });
+  });
+
+  describe("workflowDeadLetterQueue table", () => {
+    it("has required columns", () => {
+      const columns = Object.keys(workflowDeadLetterQueue);
+      expect(columns).toContain("id");
+      expect(columns).toContain("workflowId");
+      expect(columns).toContain("inputData");
+      expect(columns).toContain("error");
+      expect(columns).toContain("status");
+    });
+  });
+
+  describe("workflowCacheMetadata table", () => {
+    it("has required columns", () => {
+      const columns = Object.keys(workflowCacheMetadata);
+      expect(columns).toContain("id");
+      expect(columns).toContain("cacheKey");
+      expect(columns).toContain("nodeType");
+      expect(columns).toContain("hitCount");
+    });
+  });
+
+  describe("workflowAuditEvents table", () => {
+    it("has required columns", () => {
+      const columns = Object.keys(workflowAuditEvents);
+      expect(columns).toContain("id");
+      expect(columns).toContain("workflowId");
+      expect(columns).toContain("eventType");
+      expect(columns).toContain("traceId");
+    });
+  });
+
+  describe("workflowSecrets table", () => {
+    it("has required columns", () => {
+      const columns = Object.keys(workflowSecrets);
+      expect(columns).toContain("id");
+      expect(columns).toContain("tenantId");
+      expect(columns).toContain("name");
+      expect(columns).toContain("encryptedValue");
+    });
+  });
+
+  describe("workflowPolicyRules table", () => {
+    it("has required columns", () => {
+      const columns = Object.keys(workflowPolicyRules);
+      expect(columns).toContain("id");
+      expect(columns).toContain("tenantId");
+      expect(columns).toContain("ruleType");
+      expect(columns).toContain("action");
+    });
   });
 });
