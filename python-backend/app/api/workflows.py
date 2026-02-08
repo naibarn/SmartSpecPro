@@ -401,6 +401,80 @@ async def estimate_cost(
     )
 
 
+@router.post("/webhook/{webhook_id}")
+async def receive_webhook(
+    webhook_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Webhook receiver endpoint for triggering workflows via HTTP.
+
+    This endpoint:
+    1. Receives webhook requests at a unique URL
+    2. Extracts request data (method, headers, query, body)
+    3. Looks up the workflow associated with this webhook_id
+    4. Injects webhook_request data into extra_data
+    5. Triggers workflow execution
+    6. Returns response (sync or async based on workflow config)
+
+    Note: This is a simplified implementation. Production version would include:
+    - webhooks table with webhook_id -> workflow_id mapping
+    - Authentication/authorization checks
+    - Rate limiting
+    - Signature verification (for GitHub, Stripe, etc.)
+    """
+    # Extract request data
+    method = request.method
+    headers = dict(request.headers)
+    query = dict(request.query_params)
+
+    # Parse request body
+    content_type = headers.get("content-type", "")
+    body = None
+    try:
+        if "application/json" in content_type:
+            body = await request.json()
+        else:
+            body_bytes = await request.body()
+            body = body_bytes.decode("utf-8") if body_bytes else ""
+    except Exception as e:
+        logger.warning("webhook_body_parse_failed", webhook_id=webhook_id, error=str(e))
+        body = ""
+
+    # Build webhook_request data to inject into workflow
+    webhook_request = {
+        "method": method,
+        "headers": headers,
+        "query": query,
+        "body": body,
+        "path": request.url.path,
+    }
+
+    logger.info(
+        "webhook_received",
+        webhook_id=webhook_id,
+        method=method,
+        content_type=content_type,
+        query_params=query,
+    )
+
+    # TODO: In production, look up webhook config from database
+    # For now, return a simple response acknowledging receipt
+    # A background task would:
+    # 1. Look up the workflow_id associated with webhook_id
+    # 2. Compile and execute the workflow with extra_data={"webhook_request": webhook_request}
+    # 3. Optionally wait for completion and return result
+
+    return {
+        "status": "received",
+        "webhookId": webhook_id,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "method": method,
+        "note": "Webhook received. Production implementation would trigger workflow execution.",
+    }
+
+
 @router.get("/execute/{execution_id}/stream")
 async def stream_workflow_execution(
     execution_id: str,
