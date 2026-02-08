@@ -177,11 +177,12 @@ def test_prompt_injection_detection():
         "edges": [],
     }
 
-    # Prompt injection should be logged as warning but not fail validation
+    # Prompt injection should now BLOCK validation (security fix)
     is_valid, error_message = validate_manifest(manifest_with_injection)
-    # Currently passes validation (warnings only)
-    # If this changes to fail validation, update the assertion
-    assert is_valid is True
+    # Changed to blocking validation
+    assert is_valid is False
+    assert error_message is not None
+    assert "Prompt injection patterns detected" in error_message
 
 
 @pytest.mark.unit

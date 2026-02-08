@@ -38,15 +38,67 @@ ALLOWED_TOOLS: set[str] = {
 
 # Disallowed tools that pose security risks
 DISALLOWED_TOOLS: set[str] = {
+    # Code execution
     "execute_code",
     "execute_shell",
     "import_module",
     "eval",
     "exec",
     "compile",
+    "__import__",
+    "exec_module",
+    "execfile",
+
+    # System commands
     "system",
     "popen",
-    "__import__",
+    "subprocess",
+    "os.system",
+    "os.exec",
+    "os.execl",
+    "os.execle",
+    "os.execlp",
+    "os.execlpe",
+    "os.execv",
+    "os.execve",
+    "os.execvp",
+    "os.execvpe",
+    "os.spawn",
+
+    # Built-in access
+    "__builtins__",
+    "globals",
+    "locals",
+    "vars",
+    "dir",
+    "getattr",
+    "setattr",
+    "delattr",
+    "hasattr",
+
+    # Interactive/input
+    "input",
+    "raw_input",
+    "breakpoint",
+
+    # Network (use approved HTTP client instead)
+    "socket",
+    "urllib",
+    "http",
+    "requests",
+    "telnetlib",
+    "ftplib",
+    "smtplib",
+
+    # File system (use sandboxed read_file/write_file)
+    "open",
+    "file",
+
+    # Serialization exploits
+    "pickle",
+    "marshal",
+    "shelve",
+    "dill",
 }
 
 

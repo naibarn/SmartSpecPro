@@ -28,6 +28,12 @@ from app.orchestrator.models import (
 from app.orchestrator.state_manager import state_manager
 from app.orchestrator.checkpoint_manager import checkpoint_manager
 from app.llm_proxy import llm_proxy, LLMRequest
+from app.services.budget import (
+    check_budget_before_step,
+    finalize_budget_after_step,
+    rollback_budget_reservation,
+    BudgetExceededError,
+)
 from app.core.checkpointer import CheckpointerFactory, get_checkpointer, close_checkpointer
 from app.services.memory_service import MemoryService, get_memory_service
 from app.models.semantic_memory import MemoryType, MemoryScope
@@ -1310,6 +1316,75 @@ class WorkflowOrchestrator:
             join_step=step_ids[max_parallel_idx + 1] if max_parallel_idx < len(steps) - 1 else "END"
         )
     
+    def _estimate_step_cost(self, step_config: Dict[str, Any]) -> int:
+        """
+        Estimate credit cost for a workflow step.
+
+        Args:
+            step_config: Step configuration
+
+        Returns:
+            Estimated cost in credits
+        """
+        step_type = step_config.get('type', 'llm')
+
+        # Base estimates by step type
+        if step_type == 'llm':
+            task_type = step_config.get('task_type', 'simple')
+            budget_priority = step_config.get('budget_priority', 'balanced')
+
+            # Estimate based on task complexity
+            base_cost = {
+                'simple': 10,
+                'complex': 50,
+                'code_generation': 100,
+                'analysis': 75,
+            }.get(task_type, 25)
+
+            # Adjust for quality tier
+            quality_multiplier = {
+                'economy': 0.5,
+                'balanced': 1.0,
+                'quality': 2.0,
+            }.get(budget_priority, 1.0)
+
+            return int(base_cost * quality_multiplier)
+
+        elif step_type == 'kilo_cli':
+            # Kilo steps are typically more expensive
+            return 200
+
+        elif step_type == 'custom':
+            # Custom steps - use configured cost or default
+            return step_config.get('estimated_cost', 50)
+
+        return 25  # Default fallback
+
+    def _calculate_actual_cost(self, step_output: Dict[str, Any]) -> int:
+        """
+        Calculate actual credit cost from step output.
+
+        Args:
+            step_output: Step execution output
+
+        Returns:
+            Actual cost in credits
+        """
+        # If step output contains cost, use it
+        if 'cost' in step_output:
+            cost_usd = step_output['cost']
+            # Convert USD to credits (e.g., 1 credit = $0.01)
+            return max(1, int(cost_usd * 100))
+
+        # If tokens_used is available, estimate from tokens
+        if 'tokens_used' in step_output:
+            tokens = step_output['tokens_used']
+            # Rough estimate: 1 credit per 1000 tokens
+            return max(1, int(tokens / 1000))
+
+        # Fallback: return the estimated cost
+        return 25
+
     async def _execute_step(
         self,
         execution_id: str,
@@ -1317,7 +1392,7 @@ class WorkflowOrchestrator:
         step_config: Dict[str, Any]
     ) -> dict:
         """Execute a single workflow step"""
-        
+
         step_name = step_config.get('name', step_id)
         step_description = step_config.get('description', '')
         step_type = step_config.get('type', 'llm')  # llm, kilo_cli, custom
@@ -1329,13 +1404,65 @@ class WorkflowOrchestrator:
             step_name=step_name,
             step_type=step_type
         )
-        
+
         # Add step to state
         state_manager.add_step(execution_id, step_id, step_name, step_description)
-        
+
         # Update step status to running
         state_manager.update_step_status(execution_id, step_id, ExecutionStatus.RUNNING)
-        
+
+        # Get user_id from step config (required for budget enforcement)
+        user_id = step_config.get('user_id')
+
+        # Estimate step cost
+        estimated_cost = self._estimate_step_cost(step_config)
+
+        # ==================== BUDGET ENFORCEMENT: PRE-STEP ====================
+        # Check budget before executing (if user_id and db_session available)
+        if user_id and self._db_session:
+            try:
+                await check_budget_before_step(
+                    session=self._db_session,
+                    user_id=user_id,
+                    execution_id=execution_id,
+                    step_id=step_id,
+                    estimated_cost_credits=estimated_cost,
+                )
+                logger.info(
+                    "budget_check_passed",
+                    execution_id=execution_id,
+                    step_id=step_id,
+                    estimated_cost=estimated_cost,
+                )
+            except BudgetExceededError as e:
+                logger.error(
+                    "workflow_halted_budget_exceeded",
+                    execution_id=execution_id,
+                    step_id=step_id,
+                    error=str(e),
+                )
+                # Update step status to failed
+                state_manager.update_step_status(
+                    execution_id,
+                    step_id,
+                    ExecutionStatus.FAILED,
+                    error=f"Budget exceeded: {str(e)}",
+                )
+                # Re-raise to halt workflow
+                raise
+        elif user_id and not self._db_session:
+            logger.warning(
+                "budget_check_skipped_no_session",
+                execution_id=execution_id,
+                step_id=step_id,
+            )
+        elif not user_id:
+            logger.warning(
+                "budget_check_skipped_no_user_id",
+                execution_id=execution_id,
+                step_id=step_id,
+            )
+
         try:
             # Execute based on step type
             if step_type == 'llm':
@@ -1347,6 +1474,37 @@ class WorkflowOrchestrator:
             else:
                 raise ValueError(f"Unknown step type: {step_type}")
             
+            # ==================== BUDGET ENFORCEMENT: POST-STEP SUCCESS ====================
+            # Calculate actual cost from output
+            actual_cost = self._calculate_actual_cost(output)
+
+            # Finalize budget (refund or charge difference)
+            if user_id and self._db_session:
+                try:
+                    await finalize_budget_after_step(
+                        session=self._db_session,
+                        user_id=user_id,
+                        execution_id=execution_id,
+                        estimated_cost=estimated_cost,
+                        actual_cost=actual_cost,
+                    )
+                    logger.info(
+                        "budget_finalized",
+                        execution_id=execution_id,
+                        step_id=step_id,
+                        estimated_cost=estimated_cost,
+                        actual_cost=actual_cost,
+                        difference=actual_cost - estimated_cost,
+                    )
+                except Exception as e:
+                    logger.error(
+                        "budget_finalization_failed",
+                        execution_id=execution_id,
+                        step_id=step_id,
+                        error=str(e),
+                    )
+                    # Don't halt workflow on finalization failure, just log
+
             # Update step status to completed
             state_manager.update_step_status(
                 execution_id,
@@ -1354,7 +1512,7 @@ class WorkflowOrchestrator:
                 ExecutionStatus.COMPLETED,
                 output=output
             )
-            
+
             # Create checkpoint after step completion
             state = state_manager.get_state(execution_id)
             checkpoint = checkpoint_manager.create_checkpoint(
@@ -1364,16 +1522,20 @@ class WorkflowOrchestrator:
                 step_name=step_name
             )
             state_manager.set_checkpoint(execution_id, checkpoint.checkpoint_id)
-            
+
             logger.info(
                 "Step completed",
                 execution_id=execution_id,
                 step_id=step_id,
                 checkpoint_id=checkpoint.checkpoint_id
             )
-            
+
             return {"step_id": step_id, "status": "completed", "output": output}
-        
+
+        except BudgetExceededError:
+            # Budget error already handled above, just re-raise
+            raise
+
         except Exception as e:
             logger.error(
                 "Step failed",
@@ -1382,14 +1544,39 @@ class WorkflowOrchestrator:
                 error=str(e),
                 exc_info=e
             )
-            
+
+            # ==================== BUDGET ENFORCEMENT: ROLLBACK ON FAILURE ====================
+            # Rollback budget reservation on step failure
+            if user_id and self._db_session:
+                try:
+                    await rollback_budget_reservation(
+                        session=self._db_session,
+                        user_id=user_id,
+                        execution_id=execution_id,
+                        reserved_credits=estimated_cost,
+                    )
+                    logger.info(
+                        "budget_rolled_back_after_failure",
+                        execution_id=execution_id,
+                        step_id=step_id,
+                        reserved_credits=estimated_cost,
+                    )
+                except Exception as rollback_error:
+                    logger.error(
+                        "budget_rollback_failed",
+                        execution_id=execution_id,
+                        step_id=step_id,
+                        error=str(rollback_error),
+                    )
+                    # Continue with step failure handling even if rollback fails
+
             state_manager.update_step_status(
                 execution_id,
                 step_id,
                 ExecutionStatus.FAILED,
                 error=str(e)
             )
-            
+
             raise
     
     async def _execute_llm_step(

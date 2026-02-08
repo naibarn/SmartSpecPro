@@ -5,8 +5,9 @@ Validates skill manifests for:
 2. Tool allowlist compliance
 3. Graph structure validity
 4. Circular dependency detection
-5. Prompt injection detection
-6. Unsafe expression detection
+5. Resource limits (DoS prevention)
+6. Prompt injection detection
+7. Unsafe expression detection
 """
 
 import json
@@ -200,6 +201,75 @@ def _check_unsafe_expressions(manifest: dict) -> list[str]:
     return errors
 
 
+def _check_resource_limits(manifest: dict) -> list[str]:
+    """Check resource limits to prevent denial of service.
+
+    Args:
+        manifest: The skill manifest dictionary
+
+    Returns:
+        List of errors about resource limit violations
+    """
+    errors = []
+    nodes = manifest.get("nodes", [])
+    edges = manifest.get("edges", [])
+
+    # Max nodes limit
+    if len(nodes) > 100:
+        errors.append(f"Too many nodes: {len(nodes)} (maximum 100 allowed)")
+
+    # Max edges limit
+    if len(edges) > 200:
+        errors.append(f"Too many edges: {len(edges)} (maximum 200 allowed)")
+
+    # Check loop nesting depth
+    loop_nodes = [n for n in nodes if n.get("type") == "loop"]
+    if len(loop_nodes) > 0:
+        # Build graph to check nesting
+        graph: dict[str, list[str]] = {node["id"]: [] for node in nodes}
+        for edge in edges:
+            from_node = edge.get("from")
+            to_node = edge.get("to")
+            if from_node and to_node:
+                graph[from_node].append(to_node)
+
+        # DFS to find maximum loop nesting depth
+        max_depth = _calculate_max_loop_nesting(graph, loop_nodes)
+        if max_depth > 3:
+            errors.append(f"Loop nesting too deep: {max_depth} levels (maximum 3 allowed)")
+
+    return errors
+
+
+def _calculate_max_loop_nesting(graph: dict[str, list[str]], loop_node_ids: list[dict]) -> int:
+    """Calculate maximum loop nesting depth via DFS."""
+    loop_ids = {n["id"] for n in loop_node_ids}
+
+    def dfs(node_id: str, current_depth: int) -> int:
+        is_loop = node_id in loop_ids
+        new_depth = current_depth + 1 if is_loop else current_depth
+        max_child_depth = new_depth
+
+        for child in graph.get(node_id, []):
+            child_depth = dfs(child, new_depth)
+            max_child_depth = max(max_child_depth, child_depth)
+
+        return max_child_depth
+
+    # Find root nodes (no incoming edges)
+    all_targets = set()
+    for targets in graph.values():
+        all_targets.update(targets)
+    roots = [n for n in graph.keys() if n not in all_targets]
+
+    max_depth = 0
+    for root in roots:
+        depth = dfs(root, 0)
+        max_depth = max(max_depth, depth)
+
+    return max_depth
+
+
 def _validate_graph_structure(nodes: list[dict], edges: list[dict]) -> list[str]:
     """Validate that all edge references point to valid nodes.
 
@@ -262,16 +332,20 @@ def validate_manifest(manifest: dict) -> tuple[bool, str | None]:
         if _has_circular_dependencies(nodes, edges):
             return False, "Circular dependency detected in workflow graph"
 
-        # Step 5: Prompt injection detection (warnings, not errors)
+        # Step 4.5: Resource limits validation
+        resource_errors = _check_resource_limits(manifest)
+        if resource_errors:
+            return False, f"Resource limit violations: {'; '.join(resource_errors)}"
+
+        # Step 5: Prompt injection detection (BLOCKING)
         injection_warnings = _check_prompt_injection(manifest)
         if injection_warnings:
-            logger.warning(
-                "potential_prompt_injection_detected",
+            logger.error(
+                "prompt_injection_detected_blocking",
                 manifest_name=manifest.get("name"),
-                warnings=injection_warnings,
+                patterns_found=injection_warnings,
             )
-            # Note: We log warnings but don't fail validation for prompt injection detection
-            # This is a heuristic check and may have false positives
+            return False, f"Prompt injection patterns detected (security risk): {'; '.join(injection_warnings)}"
 
         # Step 6: Unsafe expression detection
         unsafe_errors = _check_unsafe_expressions(manifest)
