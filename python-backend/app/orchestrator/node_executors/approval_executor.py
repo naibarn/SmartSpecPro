@@ -1,22 +1,36 @@
-"""Approval Gate node executor with database integration."""
-from typing import Any, Dict, Optional, List
-from datetime import datetime, timedelta
+"""Approval Gate node executor using LangGraph native interrupt().
+
+Replaces the previous auto-approve placeholder with a real HITL mechanism.
+When this executor runs, the graph pauses and waits for human input.
+"""
+
 import uuid
+from typing import Any, Dict
+
+import structlog
+from langgraph.types import interrupt
+
+from app.orchestrator.hitl import ApprovalType, InterruptPayload
 from app.orchestrator.node_executors.base import ExecutionContext, NodeExecutionData
 
-# TODO: Uncomment when ApprovalDBService is available
-# from app.services.approval_service import ApprovalDBService
+logger = structlog.get_logger()
+
+# Timeout bounds (minutes)
+MIN_TIMEOUT_MINUTES = 1
+MAX_TIMEOUT_MINUTES = 10080  # 7 days
 
 
 class ApprovalExecutor:
-    """
-    Executor for Approval Gate nodes.
+    """Executor for Approval Gate nodes using LangGraph interrupt().
 
-    Approval gates pause workflow execution and wait for human approval.
-    Supports:
-    - Multiple approvers (any one can approve/reject)
-    - Timeout with auto-reject
-    - Approval tracking in database
+    When executed, this node:
+    1. Builds an InterruptPayload from config
+    2. Calls interrupt(payload) which pauses the graph
+    3. LangGraph checkpoints the state to PostgreSQL
+    4. The StreamTranslator emits an approval_required SSE event
+    5. The graph remains paused until Command(resume=response) is called
+    6. On resume, interrupt() returns the response value
+    7. The executor formats the response as node output
     """
 
     async def execute(
@@ -24,34 +38,21 @@ class ApprovalExecutor:
         data: NodeExecutionData,
         context: ExecutionContext,
     ) -> Dict[str, Any]:
-        """
-        Execute approval gate.
-
-        This is a stateful executor that creates a pending approval record
-        and returns immediately. Workflow execution pauses until:
-        - An approver approves/rejects
-        - Timeout is reached
+        """Execute approval gate -- pauses graph via interrupt().
 
         Args:
-            data: Node execution data with inputs and config
-            context: Execution context with user_id, execution_id
+            data: Node execution data with config and inputs.
+            context: Execution context.
 
         Returns:
-            dict: Approval result
-                - approved: bool - Whether approved
-                - rejected: bool - Whether rejected
-                - approved_by: str - User ID who approved (if approved)
-                - rejected_by: str - User ID who rejected (if rejected)
-                - timeout: bool - Whether approval timed out
-                - data: Any - Input data passed through
+            Approval result dict after human response or timeout.
         """
         config = data.config
         inputs = data.inputs
 
-        # Get approvers list
-        approvers: List[str] = config.get("approvers", [])
+        # Validate approvers
+        approvers: list[str] = config.get("approvers", [])
         if not approvers:
-            # SECURITY: No approvers configured - reject by default
             return {
                 "approved": False,
                 "rejected": True,
@@ -60,84 +61,83 @@ class ApprovalExecutor:
                 "error": "No approvers configured. Approval gate requires at least one approver.",
             }
 
-        # Get timeout (in seconds), bounded between 60s and 7 days
-        MAX_TIMEOUT = 7 * 24 * 3600  # 7 days
-        MIN_TIMEOUT = 60  # 1 minute
-        timeout_seconds = max(MIN_TIMEOUT, min(int(config.get("timeout", 3600)), MAX_TIMEOUT))
-        timeout_at = datetime.utcnow() + timedelta(seconds=timeout_seconds)
+        # Build interrupt payload
+        timeout_minutes = max(
+            MIN_TIMEOUT_MINUTES,
+            min(int(config.get("timeout_minutes", 60)), MAX_TIMEOUT_MINUTES),
+        )
 
-        # Generate approval ID
         approval_id = f"approval-{uuid.uuid4().hex[:12]}"
 
-        # Create approval record in database
-        # TODO: Integrate with ApprovalDBService
-        # approval_service = ApprovalDBService()
-        # await approval_service.create_approval(
-        #     approval_id=approval_id,
-        #     execution_id=context.execution_id,
-        #     node_id=data.node_id,
-        #     approvers=approvers,
-        #     timeout_at=timeout_at,
-        #     data=inputs.get("data"),
-        #     status="pending",
-        # )
+        payload = InterruptPayload(
+            node_id=data.node_id,
+            message=config.get("message", "Approval required"),
+            approval_type=ApprovalType(config.get("approval_type", "approve_reject")),
+            options=config.get("options", []),
+            timeout_minutes=timeout_minutes,
+            required_approvers=max(1, int(config.get("required_approvers", 1))),
+            notification_channel=config.get("notification_channel"),
+            data=inputs.get("data"),
+            approval_id=approval_id,
+        )
 
-        # For now (without database integration):
-        # Check if this is a re-execution after approval decision
-        existing_decision = context.extra_data.get(f"approval_decision_{data.node_id}")
-        if existing_decision:
-            # Resume after approval
-            return existing_decision
+        logger.info(
+            "Approval gate: calling interrupt()",
+            node_id=data.node_id,
+            approval_id=approval_id,
+            timeout_minutes=timeout_minutes,
+            required_approvers=payload.required_approvers,
+        )
 
-        # First execution - create pending approval and pause
-        # In a real implementation, this would:
-        # 1. Save approval to database
-        # 2. Send notifications to approvers
-        # 3. Return a "paused" status that halts workflow
-        # 4. Background job monitors timeout
-        # 5. When approved/rejected, workflow resumes
+        # -- This is the key line --
+        # interrupt() pauses the graph and checkpoints state.
+        # When Command(resume=response) is called, interrupt() returns
+        # the response value and execution continues from this point.
+        response = interrupt(payload.to_dict())
 
-        # Temporary: Auto-approve after simulated delay
-        return {
-            "approved": True,  # TODO: Change to False and pause workflow
-            "rejected": False,
-            "approved_by": "auto-approved-dev",
-            "data": inputs.get("data"),
-            "approval_id": approval_id,
-            "timeout_at": timeout_at.isoformat(),
-            "note": "Auto-approved for development. TODO: Implement actual approval flow with database.",
-        }
+        # Execution resumes here after human response
+        logger.info(
+            "Approval gate: resumed after interrupt",
+            node_id=data.node_id,
+            approval_id=approval_id,
+            response_keys=list(response.keys()) if isinstance(response, dict) else None,
+        )
 
-    async def check_approval_status(
-        self,
-        approval_id: str,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Check status of a pending approval.
-
-        Args:
-            approval_id: Approval ID to check
-
-        Returns:
-            dict or None: Approval decision if completed, None if still pending
-        """
-        # TODO: Query database for approval status
-        # approval_service = ApprovalDBService()
-        # approval = await approval_service.get_approval(approval_id)
-        #
-        # if approval.status == "approved":
-        #     return {"approved": True, "approved_by": approval.approved_by}
-        # elif approval.status == "rejected":
-        #     return {"rejected": True, "rejected_by": approval.rejected_by}
-        # elif approval.status == "timeout":
-        #     return {"timeout": True}
-        # else:
-        #     return None  # Still pending
-        return None
+        # Format the response as node output
+        if isinstance(response, dict):
+            return {
+                "approved": response.get("approved", False),
+                "rejected": response.get("rejected", False),
+                "approved_by": response.get("approved_by"),
+                "rejected_by": response.get("rejected_by"),
+                "decision": response.get("decision"),
+                "input_value": response.get("input_value"),
+                "comment": response.get("comment"),
+                "timeout": response.get("timeout", False),
+                "data": inputs.get("data"),
+                "approval_id": approval_id,
+            }
+        else:
+            # Unexpected response format -- treat as rejection
+            logger.warning(
+                "Approval gate: unexpected response format",
+                node_id=data.node_id,
+                response_type=type(response).__name__,
+            )
+            return {
+                "approved": False,
+                "rejected": True,
+                "rejected_by": "system",
+                "data": inputs.get("data"),
+                "error": f"Unexpected response format: {type(response).__name__}",
+                "approval_id": approval_id,
+            }
 
 
-# For backward compatibility
-async def execute_approval(data: NodeExecutionData, context: ExecutionContext) -> Dict[str, Any]:
+# Backward compatibility
+async def execute_approval(
+    data: NodeExecutionData, context: ExecutionContext
+) -> Dict[str, Any]:
     """Legacy function wrapper for approval execution."""
     executor = ApprovalExecutor()
     return await executor.execute(data, context)
