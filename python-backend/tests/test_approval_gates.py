@@ -48,6 +48,28 @@ def test_approval_type_enum():
     assert ApprovalType.COST_THRESHOLD == "cost_threshold"
 
 
+@pytest.mark.unit
+def test_approval_db_service_can_be_imported():
+    """Test that ApprovalDBService can be imported"""
+    from app.services.approval_db_service import ApprovalDBService
+
+    assert ApprovalDBService is not None
+
+
+@pytest.mark.unit
+def test_approval_db_service_has_required_methods():
+    """Test that ApprovalDBService has required methods"""
+    from app.services.approval_db_service import ApprovalDBService
+
+    # Check that service has expected methods
+    assert hasattr(ApprovalDBService, '__init__')
+    assert hasattr(ApprovalDBService, 'create_request')
+    assert hasattr(ApprovalDBService, 'get_request')
+    assert hasattr(ApprovalDBService, 'list_pending_requests')
+    assert hasattr(ApprovalDBService, 'submit_decision')
+    assert hasattr(ApprovalDBService, 'cleanup_expired_requests')
+
+
 # Placeholder for future integration tests with full database
 @pytest.mark.skip(reason="Requires database refactoring of ApprovalService")
 class TestApprovalServiceDatabase:

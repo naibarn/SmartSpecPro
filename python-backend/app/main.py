@@ -129,12 +129,30 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("LLM Proxy initialization failed", error=str(e))
 
+    # Initialize PostgreSQL Checkpointer (for LangGraph workflow state persistence)
+    try:
+        from app.core.checkpointer import get_postgres_checkpointer
+
+        await get_postgres_checkpointer()
+        logger.info("PostgreSQL checkpointer initialized successfully")
+    except Exception as e:
+        logger.warning("PostgreSQL checkpointer initialization failed (workflows will use in-memory)", error=str(e))
+
     logger.info("Application startup complete")
 
     yield
 
     # Cleanup
     logger.info("Shutting down SmartSpec Pro Python Backend")
+
+    # Close checkpointer connection pool
+    try:
+        from app.core.checkpointer import cleanup_checkpointers
+
+        await cleanup_checkpointers()
+        logger.info("Checkpointer connection pool closed")
+    except Exception as e:
+        logger.warning("Checkpointer cleanup failed", error=str(e))
 
     # Close Redis connection
     try:

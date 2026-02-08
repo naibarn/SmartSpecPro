@@ -44,7 +44,7 @@ async def check_budget_before_step(
 
     # Fetch user's current credits with lock
     result = await session.execute(
-        select(User.credits_available)
+        select(User.credits)
         .where(User.id == user_id)
         .with_for_update()
     )
@@ -71,7 +71,7 @@ async def check_budget_before_step(
     await session.execute(
         update(User)
         .where(User.id == user_id)
-        .values(credits_available=User.credits_available - estimated_cost_credits)
+        .values(credits=User.credits - estimated_cost_credits)
     )
 
     await session.commit()
@@ -113,7 +113,7 @@ async def finalize_budget_after_step(
         await session.execute(
             update(User)
             .where(User.id == user_id)
-            .values(credits_available=User.credits_available - difference)
+            .values(credits=User.credits - difference)
         )
 
         log_msg = "credits_refunded" if difference < 0 else "extra_credits_deducted"
@@ -146,7 +146,7 @@ async def rollback_budget_reservation(
     await session.execute(
         update(User)
         .where(User.id == user_id)
-        .values(credits_available=User.credits_available + reserved_credits)
+        .values(credits=User.credits + reserved_credits)
     )
 
     await session.commit()

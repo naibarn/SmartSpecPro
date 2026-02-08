@@ -1,0 +1,151 @@
+{
+  "name": "video_ad_generator",
+  "version": "1.0.0",
+  "description": "Generate a promotional video ad from a text brief",
+  "author": "SmartSpecPro Team",
+  "tags": ["video", "marketing", "ai-generation"],
+  "estimated_cost_credits": 150,
+  "max_execution_time_minutes": 30,
+  "inputs": {
+    "brief": {
+      "type": "string",
+      "description": "Marketing brief describing the product and target audience"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 30,
+      "description": "Desired video duration in seconds"
+    }
+  },
+  "outputs": {
+    "video_url": {
+      "type": "string",
+      "description": "URL of the generated video"
+    },
+    "script": {
+      "type": "string",
+      "description": "Final approved script"
+    }
+  },
+  "nodes": [
+    {
+      "id": "parse_brief",
+      "type": "llm_call",
+      "label": "Parse Marketing Brief",
+      "config": {
+        "model": "gpt-4o",
+        "temperature": 0.3
+      },
+      "inputs": {
+        "prompt": "Extract key product features, target audience, and tone from: {{inputs.brief}}"
+      },
+      "outputs": {
+        "parsed_data": "json"
+      }
+    },
+    {
+      "id": "plan_script",
+      "type": "llm_call",
+      "label": "Generate Script",
+      "config": {
+        "model": "gpt-4o",
+        "temperature": 0.7
+      },
+      "inputs": {
+        "prompt": "Write a {{inputs.duration_seconds}}-second video script based on: {{parse_brief.parsed_data}}"
+      },
+      "outputs": {
+        "script": "text"
+      }
+    },
+    {
+      "id": "approve_script",
+      "type": "approval_gate",
+      "label": "Human Approval",
+      "config": {
+        "approval_type": "script_review",
+        "timeout_minutes": 60
+      },
+      "inputs": {
+        "content": "{{plan_script.script}}"
+      },
+      "outputs": {
+        "approved": "boolean",
+        "final_script": "text"
+      }
+    },
+    {
+      "id": "create_storyboard",
+      "type": "llm_call",
+      "label": "Create Storyboard",
+      "config": {
+        "model": "gpt-4o",
+        "temperature": 0.5
+      },
+      "inputs": {
+        "prompt": "Break this script into 5 visual scenes with image prompts: {{approve_script.final_script}}"
+      },
+      "outputs": {
+        "scenes": "json"
+      }
+    },
+    {
+      "id": "render_images",
+      "type": "parallel",
+      "label": "Generate Scene Images",
+      "config": {
+        "max_concurrent": 3
+      },
+      "inputs": {
+        "items": "{{create_storyboard.scenes}}"
+      },
+      "outputs": {
+        "image_urls": "array"
+      }
+    },
+    {
+      "id": "combine_final_video",
+      "type": "combine_videos",
+      "label": "Combine into Video",
+      "config": {
+        "fps": 24,
+        "transition": "crossfade"
+      },
+      "inputs": {
+        "images": "{{render_images.image_urls}}",
+        "duration": "{{inputs.duration_seconds}}"
+      },
+      "outputs": {
+        "video_url": "string"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "parse_brief",
+      "to": "plan_script",
+      "label": "Parsed data"
+    },
+    {
+      "from": "plan_script",
+      "to": "approve_script",
+      "label": "Draft script"
+    },
+    {
+      "from": "approve_script",
+      "to": "create_storyboard",
+      "condition": "approved == true",
+      "label": "Approved"
+    },
+    {
+      "from": "create_storyboard",
+      "to": "render_images",
+      "label": "Storyboard scenes"
+    },
+    {
+      "from": "render_images",
+      "to": "combine_final_video",
+      "label": "Scene images"
+    }
+  ]
+}
