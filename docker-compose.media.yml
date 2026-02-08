@@ -1,5 +1,3 @@
-version: '3.8'
-
 # SmartSpec Pro - Media Processing Stack
 # Isolated Celery workers for media generation (API) and video rendering (FFmpeg)
 # Resource limits prevent FFmpeg from overloading the host machine.

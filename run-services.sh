@@ -86,7 +86,7 @@ start_media_workers() {
     fi
 
     cd "$PROJECT_ROOT"
-    docker compose -f "$MEDIA_COMPOSE" up -d 2>&1
+    docker compose -f "$MEDIA_COMPOSE" up -d --remove-orphans > /dev/null 2>&1
 
     # Check containers started
     local running
@@ -101,7 +101,7 @@ start_media_workers() {
 stop_media_workers() {
     log_step "Stopping Docker media workers..."
     cd "$PROJECT_ROOT"
-    docker compose -f "$MEDIA_COMPOSE" down 2>&1 || true
+    docker compose -f "$MEDIA_COMPOSE" down --remove-orphans > /dev/null 2>&1 || true
     log_info "Docker media workers stopped"
 }
 
