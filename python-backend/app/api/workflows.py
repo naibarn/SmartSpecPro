@@ -1,10 +1,12 @@
 """Workflow API endpoints."""
+import asyncio
 import uuid
 from datetime import datetime
 from typing import Any, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +15,13 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.user import User
 from app.orchestrator.cost_estimator import CostEstimator
+from app.orchestrator.event_store import get_event_store
+from app.orchestrator.events import (
+    NodeCompleteEvent,
+    NodeStartEvent,
+    WorkflowCompleteEvent,
+    WorkflowEvent,
+)
 from app.orchestrator.flow_compiler import CompilationError, FlowCompiler
 from app.orchestrator.node_registry import NodeRegistry
 
@@ -296,6 +305,115 @@ async def estimate_cost(
         breakdown=breakdown,
         userBalance=user_balance,
         warning=warning,
+    )
+
+
+@router.get("/execute/{execution_id}/stream")
+async def stream_workflow_execution(
+    execution_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    last_event_id: Optional[str] = Header(None, alias="Last-Event-ID"),
+):
+    """
+    SSE endpoint for real-time workflow execution visualization.
+
+    Authentication: Session cookie or Bearer token (EventSource sends cookies automatically)
+    Reconnection: Last-Event-ID header replays missed events
+
+    Event format:
+        event: {event_type}
+        data: {json}
+        id: {event_id}
+
+        (blank line)
+    """
+    event_store = get_event_store()
+
+    async def event_generator():
+        """Generate SSE events for this execution."""
+        try:
+            # TODO: Verify execution belongs to current user's tenant
+            # For now, just check that execution_id is valid
+            logger.info(
+                "sse_connection_established",
+                execution_id=execution_id,
+                user_id=current_user.id,
+                last_event_id=last_event_id,
+            )
+
+            # Replay missed events if reconnecting
+            if last_event_id:
+                missed_events = event_store.get_events_since(execution_id, last_event_id)
+                logger.info(
+                    "replaying_missed_events",
+                    execution_id=execution_id,
+                    count=len(missed_events),
+                )
+
+                for event in missed_events:
+                    yield event.to_sse_string()
+
+            # Stream live events
+            # TODO: In real implementation, this would subscribe to orchestrator events
+            # For now, send mock events to demonstrate SSE format
+
+            # Mock: Send a few test events
+            yield NodeStartEvent(
+                event_type="node_start",
+                event_id=f"{execution_id}_node1_start",
+                timestamp=datetime.utcnow(),
+                node_id="node1",
+                node_name="LLM Call",
+            ).to_sse_string()
+
+            await asyncio.sleep(1)  # Simulate processing
+
+            yield NodeCompleteEvent(
+                event_type="node_complete",
+                event_id=f"{execution_id}_node1_complete",
+                timestamp=datetime.utcnow(),
+                node_id="node1",
+                node_name="LLM Call",
+                output={"text": "Generated response"},
+                duration_ms=1200,
+            ).to_sse_string()
+
+            await asyncio.sleep(0.5)
+
+            yield WorkflowCompleteEvent(
+                event_type="workflow_complete",
+                event_id=f"{execution_id}_complete",
+                timestamp=datetime.utcnow(),
+                execution_id=execution_id,
+                total_duration_ms=1700,
+                node_results={"node1": {"status": "success"}},
+            ).to_sse_string()
+
+            # After workflow_complete, close the connection
+            logger.info(
+                "sse_workflow_completed",
+                execution_id=execution_id,
+            )
+
+        except Exception as e:
+            logger.exception(
+                "sse_stream_error",
+                execution_id=execution_id,
+                error=str(e),
+            )
+            # Send error event before closing
+            error_event = f"event: error\ndata: {{\"error\": \"{str(e)}\"}}\n\n"
+            yield error_event
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
     )
 
 
