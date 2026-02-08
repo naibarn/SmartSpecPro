@@ -71,6 +71,8 @@ import BlogPost from "./pages/BlogPost";
 import DomainBlogAdmin from "./pages/DomainBlogAdmin";
 import UsageAnalytics from "./pages/UsageAnalytics";
 import TaskQueueMonitor from "./pages/TaskQueueMonitor";
+import Workflows from "./pages/Workflows";
+import WorkflowEditor from "./pages/WorkflowEditor";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -119,6 +121,9 @@ function Router() {
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/chat" component={Chat} />
+      <Route path="/workflows" component={Workflows} />
+      <Route path="/workflows/editor" component={WorkflowEditor} />
+      <Route path="/workflows/editor/:id" component={WorkflowEditor} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/generate/:type?" component={Generate} />
       <Route path="/media-studio" component={MediaStudio} />

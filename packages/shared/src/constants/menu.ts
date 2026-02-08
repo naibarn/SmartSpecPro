@@ -25,6 +25,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'chat',          label: 'Chat (LLM)',     labelTh: 'แชท AI',        icon: 'MessageSquare',   path: '/chat',           platforms: ['web', 'desktop'], group: 'main', sortOrder: 1 },
   { id: 'media',         label: 'Media Studio',   labelTh: 'สตูดิโอ',       icon: 'Sparkles',        path: '/media-studio',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 2 },
   { id: 'skills',        label: 'Skills',         labelTh: 'ทักษะ',         icon: 'Sparkles',        path: '/settings/skills', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3 },
+  { id: 'workflows',     label: 'Workflows',      labelTh: 'เวิร์กโฟลว์',    icon: 'GitBranch',       path: '/workflows',      platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.5 },
   { id: 'media-history', label: 'Media History',  labelTh: 'ประวัติมีเดีย',  icon: 'Clock',           path: '/media-history',  platforms: ['web', 'desktop'], group: 'main', sortOrder: 4 },
   { id: 'factory',       label: 'SaaS Factory',   labelTh: 'โรงงาน',        icon: 'Factory',         path: '/factory',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 5 },
   { id: 'terminal',      label: 'Terminal',        labelTh: 'เทอร์มินัล',    icon: 'Terminal',        path: '/terminal',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 6 },
