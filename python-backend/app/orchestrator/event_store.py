@@ -1,4 +1,17 @@
-"""Event store for SSE reconnection support."""
+"""Event store for SSE reconnection support.
+
+DEPRECATED: This module is deprecated and will be removed in a future release.
+Use app.orchestrator.ring_buffer.RingBufferStore instead.
+"""
+import warnings
+
+warnings.warn(
+    "event_store.EventStore is deprecated. Use ring_buffer.RingBufferStore instead. "
+    "This module will be removed after streaming tests pass.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
 from typing import Optional
