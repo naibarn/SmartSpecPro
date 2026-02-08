@@ -15,8 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.user import User
+from app.models.workflow import Workflow
 from app.models.workflow_execution import WorkflowExecution
 from app.models.workflow_dlq import WorkflowDeadLetterQueue
+from app.models.workflow_schedule import WorkflowSchedule
+from app.models.workflow_event_subscription import WorkflowEventSubscription
 from app.orchestrator.cost_estimator import CostEstimator
 from app.orchestrator.execution_registry import get_active_execution, register_execution
 from app.orchestrator.langgraph_runtime import get_langgraph_runtime
@@ -1053,14 +1056,36 @@ async def create_schedule(
             detail=f"Invalid timezone or cron calculation failed: {str(e)}",
         )
 
-    # TODO: Save to workflow_schedules table
-    # For now, return mock response
+    # Verify workflow exists and belongs to user's tenant
+    workflow_result = await db.execute(
+        select(Workflow).where(
+            Workflow.id == int(request.workflow_id),
+            Workflow.tenantId == current_user.currentTenantId,
+        )
+    )
+    workflow = workflow_result.scalar_one_or_none()
+    if not workflow:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Workflow {request.workflow_id} not found or access denied",
+        )
 
-    schedule_id = f"schedule-{uuid.uuid4().hex[:12]}"
+    # Create schedule in database
+    schedule = WorkflowSchedule(
+        workflowId=int(request.workflow_id),
+        nodeId=request.node_id,
+        cronExpression=request.cron_expression,
+        timezone=request.timezone,
+        nextRun=next_run,
+        isActive=request.is_active,
+    )
+    db.add(schedule)
+    await db.commit()
+    await db.refresh(schedule)
 
     logger.info(
         "schedule_created",
-        schedule_id=schedule_id,
+        schedule_id=schedule.id,
         workflow_id=request.workflow_id,
         cron=request.cron_expression,
         timezone=request.timezone,
@@ -1068,15 +1093,15 @@ async def create_schedule(
     )
 
     return ScheduleResponse(
-        id=schedule_id,
+        id=str(schedule.id),
         workflow_id=request.workflow_id,
-        node_id=request.node_id,
-        cron_expression=request.cron_expression,
-        timezone=request.timezone,
-        is_active=request.is_active,
-        next_run=next_run.isoformat(),
-        last_run=None,
-        created_at=datetime.utcnow().isoformat() + "Z",
+        node_id=schedule.nodeId,
+        cron_expression=schedule.cronExpression,
+        timezone=schedule.timezone,
+        is_active=schedule.isActive,
+        next_run=schedule.nextRun.isoformat() if schedule.nextRun else None,
+        last_run=schedule.lastRun.isoformat() if schedule.lastRun else None,
+        created_at=schedule.createdAt.isoformat(),
     )
 
 
@@ -1090,16 +1115,53 @@ async def list_schedules(
     """
     List all schedules for the current tenant.
     """
-    # TODO: Query workflow_schedules table filtered by tenant_id
-    # For now, return empty list
+    # Query schedules through workflow JOIN to filter by tenant
+    query = (
+        select(WorkflowSchedule)
+        .join(Workflow, WorkflowSchedule.workflowId == Workflow.id)
+        .where(Workflow.tenantId == current_user.currentTenantId)
+        .order_by(WorkflowSchedule.createdAt.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+    schedules = result.scalars().all()
+
+    # Get total count
+    count_query = (
+        select(func.count())
+        .select_from(WorkflowSchedule)
+        .join(Workflow, WorkflowSchedule.workflowId == Workflow.id)
+        .where(Workflow.tenantId == current_user.currentTenantId)
+    )
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
 
     logger.info(
         "schedules_list_requested",
         user_id=current_user.id,
         tenant_id=current_user.currentTenantId,
+        count=len(schedules),
     )
 
-    return ScheduleListResponse(items=[], total=0)
+    return ScheduleListResponse(
+        items=[
+            ScheduleResponse(
+                id=str(schedule.id),
+                workflow_id=str(schedule.workflowId),
+                node_id=schedule.nodeId,
+                cron_expression=schedule.cronExpression,
+                timezone=schedule.timezone,
+                is_active=schedule.isActive,
+                next_run=schedule.nextRun.isoformat() if schedule.nextRun else None,
+                last_run=schedule.lastRun.isoformat() if schedule.lastRun else None,
+                created_at=schedule.createdAt.isoformat(),
+            )
+            for schedule in schedules
+        ],
+        total=total,
+    )
 
 
 @router.delete("/schedules/{schedule_id}")
@@ -1111,7 +1173,27 @@ async def delete_schedule(
     """
     Delete a workflow schedule.
     """
-    # TODO: Delete from workflow_schedules table with tenant isolation
+    # Query schedule through workflow JOIN to ensure tenant isolation
+    query = (
+        select(WorkflowSchedule)
+        .join(Workflow, WorkflowSchedule.workflowId == Workflow.id)
+        .where(
+            WorkflowSchedule.id == int(schedule_id),
+            Workflow.tenantId == current_user.currentTenantId,
+        )
+    )
+
+    result = await db.execute(query)
+    schedule = result.scalar_one_or_none()
+
+    if not schedule:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Schedule {schedule_id} not found or access denied",
+        )
+
+    await db.delete(schedule)
+    await db.commit()
 
     logger.info(
         "schedule_deleted",
@@ -1189,26 +1271,48 @@ async def create_event_subscription(
             detail=f"Invalid event type. Must be one of: {', '.join(valid_event_types)}",
         )
 
-    # TODO: Save to workflow_event_subscriptions table
+    # Verify workflow exists and belongs to user's tenant
+    workflow_result = await db.execute(
+        select(Workflow).where(
+            Workflow.id == int(request.workflow_id),
+            Workflow.tenantId == current_user.currentTenantId,
+        )
+    )
+    workflow = workflow_result.scalar_one_or_none()
+    if not workflow:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Workflow {request.workflow_id} not found or access denied",
+        )
 
-    subscription_id = f"sub-{uuid.uuid4().hex[:12]}"
+    # Create event subscription in database
+    subscription = WorkflowEventSubscription(
+        workflowId=int(request.workflow_id),
+        nodeId=request.node_id,
+        eventType=request.event_type,
+        filterConditions=request.filter_conditions,
+        isActive=request.is_active,
+    )
+    db.add(subscription)
+    await db.commit()
+    await db.refresh(subscription)
 
     logger.info(
         "event_subscription_created",
-        subscription_id=subscription_id,
+        subscription_id=subscription.id,
         workflow_id=request.workflow_id,
         event_type=request.event_type,
         has_filter=bool(request.filter_conditions),
     )
 
     return EventSubscriptionResponse(
-        id=subscription_id,
+        id=str(subscription.id),
         workflow_id=request.workflow_id,
-        node_id=request.node_id,
-        event_type=request.event_type,
-        filter_conditions=request.filter_conditions,
-        is_active=request.is_active,
-        created_at=datetime.utcnow().isoformat() + "Z",
+        node_id=subscription.nodeId,
+        event_type=subscription.eventType,
+        filter_conditions=subscription.filterConditions,
+        is_active=subscription.isActive,
+        created_at=subscription.createdAt.isoformat(),
     )
 
 
@@ -1222,15 +1326,51 @@ async def list_event_subscriptions(
     """
     List all event subscriptions for the current tenant.
     """
-    # TODO: Query workflow_event_subscriptions table filtered by tenant_id
+    # Query subscriptions through workflow JOIN to filter by tenant
+    query = (
+        select(WorkflowEventSubscription)
+        .join(Workflow, WorkflowEventSubscription.workflowId == Workflow.id)
+        .where(Workflow.tenantId == current_user.currentTenantId)
+        .order_by(WorkflowEventSubscription.createdAt.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+    subscriptions = result.scalars().all()
+
+    # Get total count
+    count_query = (
+        select(func.count())
+        .select_from(WorkflowEventSubscription)
+        .join(Workflow, WorkflowEventSubscription.workflowId == Workflow.id)
+        .where(Workflow.tenantId == current_user.currentTenantId)
+    )
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
 
     logger.info(
         "event_subscriptions_list_requested",
         user_id=current_user.id,
         tenant_id=current_user.currentTenantId,
+        count=len(subscriptions),
     )
 
-    return EventSubscriptionListResponse(items=[], total=0)
+    return EventSubscriptionListResponse(
+        items=[
+            EventSubscriptionResponse(
+                id=str(sub.id),
+                workflow_id=str(sub.workflowId),
+                node_id=sub.nodeId,
+                event_type=sub.eventType,
+                filter_conditions=sub.filterConditions,
+                is_active=sub.isActive,
+                created_at=sub.createdAt.isoformat(),
+            )
+            for sub in subscriptions
+        ],
+        total=total,
+    )
 
 
 @router.delete("/event-subscriptions/{subscription_id}")
@@ -1242,7 +1382,27 @@ async def delete_event_subscription(
     """
     Delete an event subscription.
     """
-    # TODO: Delete from workflow_event_subscriptions table with tenant isolation
+    # Query subscription through workflow JOIN to ensure tenant isolation
+    query = (
+        select(WorkflowEventSubscription)
+        .join(Workflow, WorkflowEventSubscription.workflowId == Workflow.id)
+        .where(
+            WorkflowEventSubscription.id == int(subscription_id),
+            Workflow.tenantId == current_user.currentTenantId,
+        )
+    )
+
+    result = await db.execute(query)
+    subscription = result.scalar_one_or_none()
+
+    if not subscription:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Subscription {subscription_id} not found or access denied",
+        )
+
+    await db.delete(subscription)
+    await db.commit()
 
     logger.info(
         "event_subscription_deleted",
