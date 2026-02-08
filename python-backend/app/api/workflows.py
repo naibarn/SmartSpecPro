@@ -16,15 +16,11 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.user import User
 from app.orchestrator.cost_estimator import CostEstimator
-from app.orchestrator.event_store import get_event_store
-from app.orchestrator.events import (
-    NodeCompleteEvent,
-    NodeStartEvent,
-    WorkflowCompleteEvent,
-    WorkflowEvent,
-)
+from app.orchestrator.execution_registry import get_active_execution
 from app.orchestrator.flow_compiler import CompilationError, FlowCompiler
 from app.orchestrator.node_registry import NodeRegistry
+from app.orchestrator.ring_buffer import get_ring_buffer_store
+from app.orchestrator.stream_translator import StreamTranslator
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -329,38 +325,28 @@ async def stream_workflow_execution(
     """
     SSE endpoint for real-time workflow execution visualization.
 
+    Translates LangGraph astream_events into the existing frontend SSE protocol.
+    Supports reconnection via Last-Event-ID header or query param.
+
     Authentication: Session cookie or Bearer token (EventSource sends cookies automatically)
     Reconnection: Last-Event-ID via header or ?lastEventId= query param
-
-    Event format:
-        event: {event_type}
-        data: {json}
-        id: {event_id}
-
-        (blank line)
     """
     # Validate execution_id format (exec-{12 hex chars})
     EXECUTION_ID_PATTERN = re.compile(r"^exec-[a-f0-9]{12}$")
     if not execution_id or not EXECUTION_ID_PATTERN.match(execution_id):
         raise HTTPException(status_code=400, detail="Invalid execution_id format")
 
-    # Use query param as fallback for Last-Event-ID (EventSource doesn't support custom headers)
-    # Validate lastEventId format if provided
+    # Validate Last-Event-ID
     SAFE_EVENT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_\-]{1,200}$")
     effective_last_event_id = last_event_id or lastEventId
     if effective_last_event_id and not SAFE_EVENT_ID_PATTERN.match(effective_last_event_id):
-        effective_last_event_id = None  # Discard invalid event ID
+        effective_last_event_id = None
 
-    event_store = get_event_store()
+    ring_store = get_ring_buffer_store()
+    translator = StreamTranslator(execution_id)
 
     async def event_generator():
-        """Generate SSE events for this execution."""
         try:
-            # Verify execution belongs to current user's tenant
-            # TODO: When execution persistence is added, verify:
-            # execution = await db.get(execution_id)
-            # if execution.tenant_id != current_user.tenant_id:
-            #     raise HTTPException(403, "Access denied")
             logger.info(
                 "sse_connection_established",
                 execution_id=execution_id,
@@ -368,67 +354,46 @@ async def stream_workflow_execution(
                 last_event_id=effective_last_event_id,
             )
 
-            # Replay missed events if reconnecting
+            # Replay missed events on reconnection
             if effective_last_event_id:
-                missed_events = event_store.get_events_since(execution_id, effective_last_event_id)
-                logger.info(
-                    "replaying_missed_events",
-                    execution_id=execution_id,
-                    count=len(missed_events),
-                )
+                ring_buffer = ring_store.get(execution_id)
+                if ring_buffer:
+                    missed = ring_buffer.get_events_since(effective_last_event_id)
+                    logger.info("replaying_missed_events", count=len(missed))
+                    for evt in missed:
+                        yield evt.to_sse_string()
 
-                for event in missed_events:
-                    yield event.to_sse_string()
+            # Get the active compiled graph for this execution
+            active = get_active_execution(execution_id)
+            if not active:
+                import json
+                yield f'event: error\ndata: {json.dumps({"error": "Execution not found or already completed"})}\n\n'
+                return
 
-            # Stream live events
-            # TODO: In real implementation, this would subscribe to orchestrator events
-            # For now, send mock events to demonstrate SSE format
+            compiled_graph = active["graph"]
+            config = active["config"]
 
-            # Mock: Send a few test events
-            yield NodeStartEvent(
-                event_type="node_start",
-                event_id=f"{execution_id}_node1_start",
-                timestamp=datetime.utcnow(),
-                node_id="node1",
-                node_name="LLM Call",
-            ).to_sse_string()
+            # Stream LangGraph events and translate to SSE
+            async for event in compiled_graph.astream_events(
+                input=None,  # Already started, just subscribing to events
+                config=config,
+                version="v2",
+            ):
+                # Check if client disconnected
+                if await request.is_disconnected():
+                    logger.info("sse_client_disconnected", execution_id=execution_id)
+                    break
 
-            await asyncio.sleep(1)  # Simulate processing
+                sse_event = translator.translate_event(event)
+                if sse_event:
+                    yield sse_event.to_sse_string()
 
-            yield NodeCompleteEvent(
-                event_type="node_complete",
-                event_id=f"{execution_id}_node1_complete",
-                timestamp=datetime.utcnow(),
-                node_id="node1",
-                node_name="LLM Call",
-                output={"text": "Generated response"},
-                duration_ms=1200,
-            ).to_sse_string()
-
-            await asyncio.sleep(0.5)
-
-            yield WorkflowCompleteEvent(
-                event_type="workflow_complete",
-                event_id=f"{execution_id}_complete",
-                timestamp=datetime.utcnow(),
-                execution_id=execution_id,
-                total_duration_ms=1700,
-                node_results={"node1": {"status": "success"}},
-            ).to_sse_string()
-
-            # After workflow_complete, close the connection
-            logger.info(
-                "sse_workflow_completed",
-                execution_id=execution_id,
-            )
+                    # If workflow_complete, close the stream
+                    if sse_event.event_type == "workflow_complete":
+                        break
 
         except Exception as e:
-            logger.exception(
-                "sse_stream_error",
-                execution_id=execution_id,
-                error=str(e),
-            )
-            # Send error event before closing (don't leak internal error details)
+            logger.exception("sse_stream_error", execution_id=execution_id, error=str(e))
             import json
             safe_error = json.dumps({"error": "Internal execution error"})
             yield f"event: error\ndata: {safe_error}\n\n"
@@ -439,7 +404,7 @@ async def stream_workflow_execution(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Accel-Buffering": "no",
         },
     )
 

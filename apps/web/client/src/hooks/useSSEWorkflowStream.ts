@@ -37,12 +37,24 @@ export interface SSEWorkflowStreamState {
 }
 
 /**
+ * Safe JSON parse that returns null on failure instead of throwing.
+ */
+function safeJsonParse(data: string): any | null {
+  try {
+    return JSON.parse(data);
+  } catch {
+    console.error('Failed to parse SSE event data:', data);
+    return null;
+  }
+}
+
+/**
  * Hook to manage SSE connection for workflow execution streaming.
  *
  * Automatically:
  * - Connects to SSE endpoint when executionId changes
  * - Parses events and updates executionStore
- * - Handles reconnection with Last-Event-ID
+ * - Handles reconnection with Last-Event-ID via query param
  * - Cleans up on unmount
  *
  * @param options - Stream configuration
@@ -89,12 +101,10 @@ export function useSSEWorkflowStream(
     // Close existing connection
     disconnect();
 
-    // Build URL with Last-Event-ID if reconnecting
+    // Build URL with Last-Event-ID as query param (EventSource doesn't support custom headers)
     let url = `/api/v1/workflows/execute/${executionId}/stream`;
-    const headers: Record<string, string> = {};
-    
     if (lastEventIdRef.current) {
-      headers['Last-Event-ID'] = lastEventIdRef.current;
+      url += `?lastEventId=${encodeURIComponent(lastEventIdRef.current)}`;
     }
 
     const eventSource = new EventSource(url, {
@@ -103,7 +113,8 @@ export function useSSEWorkflowStream(
 
     // Node start event
     eventSource.addEventListener('node_start', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
+      const data = safeJsonParse(event.data);
+      if (!data) return;
       lastEventIdRef.current = data.event_id || event.lastEventId;
 
       updateNodeStatus(data.nodeId, {
@@ -123,7 +134,8 @@ export function useSSEWorkflowStream(
 
     // Node complete event
     eventSource.addEventListener('node_complete', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
+      const data = safeJsonParse(event.data);
+      if (!data) return;
       lastEventIdRef.current = data.event_id || event.lastEventId;
 
       updateNodeStatus(data.nodeId, {
@@ -146,7 +158,8 @@ export function useSSEWorkflowStream(
 
     // Node error event
     eventSource.addEventListener('node_error', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
+      const data = safeJsonParse(event.data);
+      if (!data) return;
       lastEventIdRef.current = data.event_id || event.lastEventId;
 
       updateNodeStatus(data.nodeId, {
@@ -166,15 +179,68 @@ export function useSSEWorkflowStream(
       });
     });
 
+    // Token streaming event (new - for real-time LLM output)
+    eventSource.addEventListener('token', (event: MessageEvent) => {
+      const data = safeJsonParse(event.data);
+      if (!data) return;
+      // Do NOT update lastEventIdRef for token events (too frequent, not needed for replay)
+
+      // Forward to execution store for real-time display
+      updateNodeStatus(data.nodeId, {
+        status: 'running',
+        // Append token to partial output
+        output: {
+          ...useExecutionStore.getState().nodeStatuses[data.nodeId]?.output,
+          _streaming: true,
+          _partialText: (useExecutionStore.getState().nodeStatuses[data.nodeId]?.output?._partialText || '') + data.token,
+        },
+      });
+    });
+
+    // Approval required event (new - for HITL)
+    eventSource.addEventListener('approval_required', (event: MessageEvent) => {
+      const data = safeJsonParse(event.data);
+      if (!data) return;
+      lastEventIdRef.current = data.event_id || event.lastEventId;
+
+      updateNodeStatus(data.nodeId, {
+        status: 'pending',
+      });
+
+      addLog({
+        id: data.event_id,
+        timestamp: Date.now(),
+        nodeId: data.nodeId,
+        nodeName: data.nodeId,
+        eventType: 'node_start',
+        status: 'pending',
+      });
+    });
+
+    // Progress event (new - for long-running nodes)
+    eventSource.addEventListener('progress', (event: MessageEvent) => {
+      const data = safeJsonParse(event.data);
+      if (!data) return;
+      // Progress events are informational, update node status with progress info
+      updateNodeStatus(data.nodeId, {
+        status: 'running',
+        output: {
+          ...useExecutionStore.getState().nodeStatuses[data.nodeId]?.output,
+          _progress: data.percent,
+          _progressMessage: data.message,
+        },
+      });
+    });
+
     // Workflow complete event
     eventSource.addEventListener('workflow_complete', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      lastEventIdRef.current = data.event_id || event.lastEventId;
+      const data = safeJsonParse(event.data);
+      lastEventIdRef.current = data?.event_id || event.lastEventId;
 
       completeExecution();
       disconnect();
       reconnectAttemptsRef.current = 0; // Reset on success
-      
+
       if (onWorkflowComplete) {
         onWorkflowComplete();
       }
@@ -182,15 +248,15 @@ export function useSSEWorkflowStream(
 
     // Workflow error event
     eventSource.addEventListener('workflow_error', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      lastEventIdRef.current = data.event_id || event.lastEventId;
+      const data = safeJsonParse(event.data);
+      lastEventIdRef.current = data?.event_id || event.lastEventId;
 
       completeExecution();
       disconnect();
       reconnectAttemptsRef.current = 0; // Reset on error
-      
+
       if (onWorkflowError) {
-        onWorkflowError(data.error || 'Unknown workflow error');
+        onWorkflowError(data?.error || 'Unknown workflow error');
       }
     });
 
