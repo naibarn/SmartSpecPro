@@ -44,6 +44,31 @@ export const templateStatusEnum = pgEnum("template_status", [
   "archived",
 ]);
 
+// Workflow execution status enum (Section 13)
+export const workflowExecutionStatusEnum = pgEnum("workflow_execution_status", [
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+  "interrupted",
+]);
+
+// DLQ item status enum (Section 13)
+export const dlqItemStatusEnum = pgEnum("dlq_item_status", [
+  "pending",
+  "reprocessing",
+  "resolved",
+  "discarded",
+]);
+
+// Policy action enum (Section 13)
+export const policyActionEnum = pgEnum("policy_action", [
+  "allow",
+  "deny",
+  "require_approval",
+]);
+
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
@@ -2239,3 +2264,409 @@ export const templateRatings = pgTable("template_ratings", {
 
 export type TemplateRating = typeof templateRatings.$inferSelect;
 export type InsertTemplateRating = typeof templateRatings.$inferInsert;
+
+/**
+ * Workflow Schedules — Cron-based workflow triggers
+ */
+export const workflowSchedules = pgTable("workflow_schedules", {
+  id: serial("id").primaryKey(),
+
+  /** Workflow to execute */
+  workflowId: integer("workflowId").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+
+  /** Trigger node ID within the workflow */
+  nodeId: varchar("nodeId", { length: 36 }).notNull(),
+
+  /** Cron expression (e.g., "0 9 * * 1" for Monday 9am) */
+  cronExpression: varchar("cronExpression", { length: 100 }).notNull(),
+
+  /** IANA timezone (e.g., "Asia/Bangkok", "UTC") */
+  timezone: varchar("timezone", { length: 50 }).default("UTC").notNull(),
+
+  /** Last execution timestamp */
+  lastRun: timestamp("lastRun", { withTimezone: true }),
+
+  /** Next scheduled execution timestamp */
+  nextRun: timestamp("nextRun", { withTimezone: true }).notNull(),
+
+  /** Whether schedule is active */
+  isActive: boolean("isActive").default(true).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("workflow_schedules_workflow_idx").on(t.workflowId),
+  index("workflow_schedules_next_run_idx").on(t.nextRun),
+  index("workflow_schedules_active_idx").on(t.isActive),
+]);
+
+export type WorkflowSchedule = typeof workflowSchedules.$inferSelect;
+export type InsertWorkflowSchedule = typeof workflowSchedules.$inferInsert;
+
+/**
+ * Webhook Calls — Webhook trigger history
+ */
+export const webhookCalls = pgTable("webhook_calls", {
+  id: serial("id").primaryKey(),
+
+  /** Workflow that was triggered */
+  workflowId: integer("workflowId").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+
+  /** Webhook trigger node ID */
+  nodeId: varchar("nodeId", { length: 36 }).notNull(),
+
+  /** HTTP method used */
+  requestMethod: varchar("requestMethod", { length: 10 }),
+
+  /** Request body (JSON) */
+  requestBody: json("requestBody").$type<Record<string, any>>(),
+
+  /** Request headers (JSON) */
+  requestHeaders: json("requestHeaders").$type<Record<string, any>>(),
+
+  /** Workflow execution ID (if triggered successfully) */
+  executionId: varchar("executionId", { length: 36 }),
+
+  /** Trigger status */
+  status: varchar("status", { length: 20 }),
+
+  /** Response sent back to caller */
+  response: json("response").$type<Record<string, any>>(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("webhook_calls_workflow_node_idx").on(t.workflowId, t.nodeId),
+  index("webhook_calls_execution_idx").on(t.executionId),
+  index("webhook_calls_created_idx").on(t.createdAt),
+]);
+
+export type WebhookCall = typeof webhookCalls.$inferSelect;
+export type InsertWebhookCall = typeof webhookCalls.$inferInsert;
+
+/**
+ * Workflow Event Subscriptions — Event-driven workflow triggers
+ */
+export const workflowEventSubscriptions = pgTable("workflow_event_subscriptions", {
+  id: serial("id").primaryKey(),
+
+  /** Workflow to execute when event occurs */
+  workflowId: integer("workflowId").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+
+  /** Event trigger node ID */
+  nodeId: varchar("nodeId", { length: 36 }).notNull(),
+
+  /** Event type to listen for (e.g., "user.created", "skill.completed") */
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+
+  /** Optional filter conditions (JSON) */
+  filterConditions: json("filterConditions").$type<Record<string, any>>(),
+
+  /** Whether subscription is active */
+  isActive: boolean("isActive").default(true).notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("workflow_event_subscriptions_workflow_idx").on(t.workflowId),
+  index("workflow_event_subscriptions_event_type_idx").on(t.eventType),
+  index("workflow_event_subscriptions_active_idx").on(t.isActive),
+]);
+
+export type WorkflowEventSubscription = typeof workflowEventSubscriptions.$inferSelect;
+export type InsertWorkflowEventSubscription = typeof workflowEventSubscriptions.$inferInsert;
+
+/**
+ * Workflow Executions — Individual workflow run tracking (Section 13)
+ * Each row represents one execution of a workflow (manual, scheduled, webhook, etc.)
+ *
+ * NOTE: LangGraph checkpoint tables (checkpoints, checkpoint_blobs, checkpoint_writes,
+ * checkpoint_migrations) are auto-created by AsyncPostgresSaver.setup() in the Python backend.
+ * Those tables are NOT managed by Drizzle. Do not add them here.
+ */
+export const workflowExecutions = pgTable("workflow_executions", {
+  id: serial("id").primaryKey(),
+
+  /** Workflow definition that was executed */
+  workflowId: integer("workflowId").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+
+  /** Tenant for multi-tenant isolation */
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** User who triggered the execution */
+  userId: integer("userId").notNull().references(() => users.id),
+
+  /** Execution status */
+  status: workflowExecutionStatusEnum("status").default("pending").notNull(),
+
+  /** Input data provided to the workflow trigger */
+  inputData: json("inputData").$type<Record<string, any>>(),
+
+  /** Final output data from the workflow (null if still running or failed) */
+  outputData: json("outputData").$type<Record<string, any>>(),
+
+  /** When execution started (null if still pending) */
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+
+  /** When execution completed/failed/cancelled */
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+
+  /** Error message if execution failed */
+  error: text("error"),
+
+  /** Number of nodes executed in this run */
+  nodeCount: integer("nodeCount").default(0).notNull(),
+
+  /** Total credits consumed by this execution */
+  creditsUsed: integer("creditsUsed").default(0).notNull(),
+
+  /** LangGraph thread ID for checkpoint correlation (format: "{tenantId}:{executionId}") */
+  threadId: varchar("threadId", { length: 128 }),
+
+  /** Trigger type that started this execution */
+  triggerType: varchar("triggerType", { length: 50 }),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("workflow_executions_workflow_idx").on(t.workflowId),
+  index("workflow_executions_tenant_idx").on(t.tenantId),
+  index("workflow_executions_user_idx").on(t.userId),
+  index("workflow_executions_status_idx").on(t.status),
+  index("workflow_executions_thread_idx").on(t.threadId),
+  index("workflow_executions_created_idx").on(t.createdAt),
+]);
+
+export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
+export type InsertWorkflowExecution = typeof workflowExecutions.$inferInsert;
+
+/**
+ * Workflow Dead Letter Queue — Failed items for reprocessing (Section 13)
+ * Items land here after exhausting retry attempts. Admins can inspect and reprocess.
+ */
+export const workflowDeadLetterQueue = pgTable("workflow_dead_letter_queue", {
+  id: serial("id").primaryKey(),
+
+  /** Workflow that generated this failure */
+  workflowId: integer("workflowId").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+
+  /** Execution run where the failure occurred */
+  executionId: integer("executionId").references(() => workflowExecutions.id, { onDelete: "set null" }),
+
+  /** Node that failed */
+  nodeId: varchar("nodeId", { length: 36 }).notNull(),
+
+  /** Node type for display/filtering */
+  nodeType: varchar("nodeType", { length: 100 }),
+
+  /** Input data that caused the failure */
+  inputData: json("inputData").$type<Record<string, any>>().notNull(),
+
+  /** Error message from the last failure */
+  error: text("error").notNull(),
+
+  /** Full error stack trace (for debugging) */
+  stackTrace: text("stackTrace"),
+
+  /** Number of retry attempts before DLQ */
+  retryCount: integer("retryCount").default(0).notNull(),
+
+  /** DLQ item status */
+  status: dlqItemStatusEnum("status").default("pending").notNull(),
+
+  /** Tenant isolation */
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** When the item was reprocessed (null if not yet) */
+  reprocessedAt: timestamp("reprocessedAt", { withTimezone: true }),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("dlq_workflow_idx").on(t.workflowId),
+  index("dlq_execution_idx").on(t.executionId),
+  index("dlq_status_idx").on(t.status),
+  index("dlq_tenant_idx").on(t.tenantId),
+  index("dlq_created_idx").on(t.createdAt),
+]);
+
+export type WorkflowDeadLetterQueueItem = typeof workflowDeadLetterQueue.$inferSelect;
+export type InsertWorkflowDeadLetterQueueItem = typeof workflowDeadLetterQueue.$inferInsert;
+
+/**
+ * Workflow Cache Metadata — Cache statistics and observability (Section 13)
+ * Actual cached values live in Redis. This table tracks hit/miss rates per cache key
+ * for monitoring, tuning TTLs, and identifying high-value cache entries.
+ */
+export const workflowCacheMetadata = pgTable("workflow_cache_metadata", {
+  id: serial("id").primaryKey(),
+
+  /** SHA-256 cache key */
+  cacheKey: varchar("cacheKey", { length: 64 }).notNull().unique(),
+
+  /** Node type that produced this cache entry (e.g., "http_request", "llm_call") */
+  nodeType: varchar("nodeType", { length: 100 }).notNull(),
+
+  /** Number of cache hits */
+  hitCount: integer("hitCount").default(0).notNull(),
+
+  /** Last time the cache was hit */
+  lastHitAt: timestamp("lastHitAt", { withTimezone: true }),
+
+  /** TTL in seconds configured for this cache entry */
+  ttlSeconds: integer("ttlSeconds").notNull(),
+
+  /** Size of cached value in bytes (for capacity planning) */
+  valueSizeBytes: integer("valueSizeBytes"),
+
+  /** Tenant isolation (null for shared/global cache entries) */
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("cache_metadata_node_type_idx").on(t.nodeType),
+  index("cache_metadata_tenant_idx").on(t.tenantId),
+  index("cache_metadata_last_hit_idx").on(t.lastHitAt),
+]);
+
+export type WorkflowCacheMetadata = typeof workflowCacheMetadata.$inferSelect;
+export type InsertWorkflowCacheMetadata = typeof workflowCacheMetadata.$inferInsert;
+
+/**
+ * Workflow Audit Events — Structured execution audit trail (Section 13)
+ * Records who did what, when, with what data for governance and debugging.
+ * Complements existing providerUsageLog (LLM-specific) and apiAuditEvents (media-specific).
+ */
+export const workflowAuditEvents = pgTable("workflow_audit_events", {
+  id: serial("id").primaryKey(),
+
+  /** Workflow definition */
+  workflowId: integer("workflowId").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+
+  /** Execution run (null for workflow-level events like deploy/publish) */
+  executionId: integer("executionId").references(() => workflowExecutions.id, { onDelete: "set null" }),
+
+  /** Node that generated the event (null for workflow-level events) */
+  nodeId: varchar("nodeId", { length: 36 }),
+
+  /** Event type (e.g., "node_start", "node_complete", "node_error", "approval_granted",
+   *  "approval_rejected", "secret_accessed", "policy_checked", "execution_start",
+   *  "execution_complete") */
+  eventType: varchar("eventType", { length: 50 }).notNull(),
+
+  /** Actor: user who triggered/approved/performed the action */
+  actorId: integer("actorId").references(() => users.id),
+
+  /** Event payload (structured JSON with event-type-specific fields) */
+  data: json("data").$type<Record<string, any>>(),
+
+  /** Tenant isolation */
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Trace ID for correlation with providerUsageLog and external systems */
+  traceId: varchar("traceId", { length: 64 }),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("audit_events_workflow_idx").on(t.workflowId),
+  index("audit_events_execution_idx").on(t.executionId),
+  index("audit_events_event_type_idx").on(t.eventType),
+  index("audit_events_tenant_idx").on(t.tenantId),
+  index("audit_events_actor_idx").on(t.actorId),
+  index("audit_events_trace_idx").on(t.traceId),
+  index("audit_events_created_idx").on(t.createdAt),
+]);
+
+export type WorkflowAuditEvent = typeof workflowAuditEvents.$inferSelect;
+export type InsertWorkflowAuditEvent = typeof workflowAuditEvents.$inferInsert;
+
+/**
+ * Workflow Secrets — Encrypted credential vault (Section 13)
+ * Stores encrypted API keys, tokens, and passwords for use by workflow nodes.
+ * Values are encrypted with AES-256-GCM using LLM_ENCRYPTION_KEY (same key as crypto.ts).
+ *
+ * SECURITY: Never log or expose decrypted values. Secret access is recorded in
+ * workflow_audit_events with eventType "secret_accessed".
+ */
+export const workflowSecrets = pgTable("workflow_secrets", {
+  id: serial("id").primaryKey(),
+
+  /** Tenant that owns this secret */
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Human-readable secret name (unique per tenant, e.g., "stripe_api_key", "github_token") */
+  name: varchar("name", { length: 255 }).notNull(),
+
+  /** AES-256-GCM encrypted value (format: "iv:authTag:ciphertext" hex) */
+  encryptedValue: text("encryptedValue").notNull(),
+
+  /** Vault backend used for this secret ("internal" = AES-256-GCM, future: "hashicorp", "aws_sm") */
+  vaultBackend: varchar("vaultBackend", { length: 50 }).default("internal").notNull(),
+
+  /** Optional description of what this secret is for */
+  description: text("description"),
+
+  /** User who created this secret */
+  createdBy: integer("createdBy").references(() => users.id),
+
+  /** User who last updated this secret */
+  updatedBy: integer("updatedBy").references(() => users.id),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("workflow_secrets_tenant_name_unique").on(t.tenantId, t.name),
+  index("workflow_secrets_tenant_idx").on(t.tenantId),
+]);
+
+export type WorkflowSecret = typeof workflowSecrets.$inferSelect;
+export type InsertWorkflowSecret = typeof workflowSecrets.$inferInsert;
+
+/**
+ * Workflow Policy Rules — Tenant-configurable governance policies (Section 13)
+ * Phase 2 placeholder: Schema defined now to avoid migration during Phase 2.
+ * Used by the Policy Gate node to enforce rules like:
+ *   - Budget caps per workflow/user
+ *   - Tool/API allowlists
+ *   - PII redaction requirements
+ *   - Required approval for destructive actions
+ */
+export const workflowPolicyRules = pgTable("workflow_policy_rules", {
+  id: serial("id").primaryKey(),
+
+  /** Tenant that owns this rule */
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Rule type (e.g., "budget_cap", "tool_allowlist", "pii_redaction", "action_approval") */
+  ruleType: varchar("ruleType", { length: 100 }).notNull(),
+
+  /** Condition expression (JSON) that triggers this rule */
+  condition: json("condition").$type<Record<string, any>>().notNull(),
+
+  /** Action to take when condition matches */
+  action: policyActionEnum("action").notNull(),
+
+  /** Priority (lower number = higher priority, evaluated in order) */
+  priority: integer("priority").default(100).notNull(),
+
+  /** Whether this rule is active */
+  enabled: boolean("enabled").default(true).notNull(),
+
+  /** Optional human-readable description of what this rule does */
+  description: text("description"),
+
+  /** Optional: restrict rule to specific workflow IDs (null = all workflows) */
+  workflowIds: json("workflowIds").$type<number[]>(),
+
+  /** User who created this rule */
+  createdBy: integer("createdBy").references(() => users.id),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("policy_rules_tenant_idx").on(t.tenantId),
+  index("policy_rules_type_idx").on(t.ruleType),
+  index("policy_rules_enabled_idx").on(t.enabled),
+  index("policy_rules_priority_idx").on(t.priority),
+]);
+
+export type WorkflowPolicyRule = typeof workflowPolicyRules.$inferSelect;
+export type InsertWorkflowPolicyRule = typeof workflowPolicyRules.$inferInsert;
