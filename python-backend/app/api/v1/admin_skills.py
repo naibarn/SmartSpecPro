@@ -6,6 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
+import json
+import yaml
+import structlog
 
 from app.core.auth import get_current_admin_user
 from app.services.kilo_skill_manager_v2 import (
@@ -15,6 +18,9 @@ from app.services.kilo_skill_manager_v2 import (
     SkillMode,
     SkillFormat,
 )
+from app.services.manifest_validator import validate_and_raise, ManifestValidationError
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/admin/skills", tags=["Admin - Skills"])
 
@@ -22,7 +28,73 @@ router = APIRouter(prefix="/admin/skills", tags=["Admin - Skills"])
 skill_manager = KiloSkillManager()
 
 
+# ==================== Helper Functions ====================
+
+
+def _extract_and_validate_manifest(content: str) -> None:
+    """
+    Extract manifest from skill content and validate it.
+
+    Args:
+        content: Skill content (may contain YAML frontmatter or JSON manifest)
+
+    Raises:
+        HTTPException: If manifest validation fails
+    """
+    manifest = None
+
+    # Try to extract manifest from YAML frontmatter
+    if content.startswith("---"):
+        try:
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                frontmatter = yaml.safe_load(parts[1])
+                if frontmatter and "manifest" in frontmatter:
+                    manifest = frontmatter["manifest"]
+        except yaml.YAMLError as e:
+            logger.warning("admin_skill_yaml_parse_failed", error=str(e))
+
+    # Try to parse content as JSON (in case entire content is a manifest)
+    if not manifest:
+        try:
+            parsed = json.loads(content)
+            # Check if it looks like a manifest (has required fields)
+            if isinstance(parsed, dict) and "nodes" in parsed and "edges" in parsed:
+                manifest = parsed
+        except (json.JSONDecodeError, ValueError):
+            # Content is not JSON - that's fine, skill might not have a manifest
+            pass
+
+    # If a manifest was found, validate it
+    if manifest:
+        try:
+            validate_and_raise(manifest)
+            logger.info(
+                "admin_skill_manifest_validated",
+                manifest_name=manifest.get("name"),
+                node_count=len(manifest.get("nodes", [])),
+                edge_count=len(manifest.get("edges", [])),
+            )
+        except ManifestValidationError as e:
+            logger.error(
+                "admin_skill_manifest_validation_failed",
+                error=str(e),
+                manifest_name=manifest.get("name") if isinstance(manifest, dict) else None,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Skill manifest validation failed: {str(e)}",
+            )
+        except Exception as e:
+            logger.error("admin_skill_manifest_validation_error", error=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to validate skill manifest: {str(e)}",
+            )
+
+
 # ==================== Request/Response Models ====================
+
 
 class SkillCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=64)
@@ -63,6 +135,7 @@ class SkillResponse(BaseModel):
 
 
 # ==================== Endpoints ====================
+
 
 @router.get("", response_model=List[SkillResponse])
 async def list_skills(
@@ -117,6 +190,9 @@ async def create_skill(
     Create a new global skill (admin only)
     """
     try:
+        # Validate manifest if present in skill content
+        _extract_and_validate_manifest(skill_data.content)
+
         # Create skill
         skill = Skill(
             name=skill_data.name,
@@ -233,6 +309,8 @@ async def update_skill(
         if skill_data.description is not None:
             skill.description = skill_data.description
         if skill_data.content is not None:
+            # Validate manifest if new content is provided
+            _extract_and_validate_manifest(skill_data.content)
             skill.content = skill_data.content
         if skill_data.tags is not None:
             skill.tags = skill_data.tags

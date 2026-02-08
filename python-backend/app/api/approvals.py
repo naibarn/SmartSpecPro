@@ -9,15 +9,25 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.auth import get_current_user
 from app.models.user import User
-from app.orchestrator.approval_gates.approval_service import (
-    ApprovalService,
-    get_approval_service,
-)
+from app.services.approval_db_service import ApprovalDBService
+from app.core.database import AsyncSessionLocal
 from app.multitenancy.tenant_context import get_current_tenant_id
 
 router = APIRouter(prefix="/api/v1/approvals")
+
+
+# ==========================================
+# Dependencies
+# ==========================================
+
+async def get_db_session():
+    """Database session dependency."""
+    async with AsyncSessionLocal() as session:
+        yield session
 
 
 # ==========================================
@@ -157,13 +167,15 @@ async def create_approval_request(
     data: ApprovalRequestCreate,
     current_user: User = Depends(get_current_user),
     tenant_id: Optional[str] = Depends(get_current_tenant_id),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Create a new approval request.
-    
+
     This is typically called by the system when an action requires approval.
     """
+    approval_service = ApprovalDBService(db)
+
     request = await approval_service.create_request(
         request_type=data.request_type,
         title=data.title,
@@ -178,13 +190,13 @@ async def create_approval_request(
         required_approvers=data.required_approvers,
         timeout_minutes=data.timeout_minutes,
     )
-    
+
     if not request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to create approval request",
         )
-    
+
     return request
 
 
@@ -197,13 +209,15 @@ async def list_approval_requests(
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     tenant_id: Optional[str] = Depends(get_current_tenant_id),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     List approval requests.
-    
+
     Returns requests that the current user can view or approve.
     """
+    approval_service = ApprovalDBService(db)
+
     requests = await approval_service.list_requests(
         tenant_id=tenant_id,
         status=status_filter.value if status_filter else None,
@@ -213,7 +227,7 @@ async def list_approval_requests(
         page=page,
         page_size=page_size,
     )
-    
+
     total = await approval_service.count_requests(
         tenant_id=tenant_id,
         status=status_filter.value if status_filter else None,
@@ -221,7 +235,7 @@ async def list_approval_requests(
         project_id=project_id,
         user_id=current_user.id,
     )
-    
+
     return ApprovalListResponse(
         requests=requests,
         total=total,
@@ -234,11 +248,13 @@ async def list_approval_requests(
 async def list_pending_approvals(
     current_user: User = Depends(get_current_user),
     tenant_id: Optional[str] = Depends(get_current_tenant_id),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     List pending approval requests that the current user can approve.
     """
+    approval_service = ApprovalDBService(db)
+
     requests = await approval_service.list_pending_for_user(
         user_id=current_user.id,
         tenant_id=tenant_id,
@@ -250,19 +266,21 @@ async def list_pending_approvals(
 async def get_approval_request(
     request_id: str,
     current_user: User = Depends(get_current_user),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Get approval request details.
     """
+    approval_service = ApprovalDBService(db)
+
     request = await approval_service.get_request(request_id)
-    
+
     if not request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Approval request not found",
         )
-    
+
     return request
 
 
@@ -271,23 +289,25 @@ async def respond_to_approval(
     request_id: str,
     data: ApprovalResponseCreate,
     current_user: User = Depends(get_current_user),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Respond to an approval request (approve or reject).
     """
+    approval_service = ApprovalDBService(db)
+
     # Check if user can approve
     can_approve = await approval_service.can_user_approve(
         request_id=request_id,
         user_id=current_user.id,
     )
-    
+
     if not can_approve:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to respond to this request",
         )
-    
+
     # Submit response
     request = await approval_service.submit_response(
         request_id=request_id,
@@ -295,13 +315,13 @@ async def respond_to_approval(
         decision=data.decision.value,
         comment=data.comment,
     )
-    
+
     if not request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to submit response. Request may already be resolved.",
         )
-    
+
     return request
 
 
@@ -309,33 +329,35 @@ async def respond_to_approval(
 async def cancel_approval_request(
     request_id: str,
     current_user: User = Depends(get_current_user),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Cancel an approval request.
-    
+
     Only the requester can cancel a pending request.
     """
+    approval_service = ApprovalDBService(db)
+
     request = await approval_service.get_request(request_id)
-    
+
     if not request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Approval request not found",
         )
-    
+
     if request.requester_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the requester can cancel the request",
         )
-    
+
     if request.status != "pending":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only pending requests can be cancelled",
         )
-    
+
     cancelled = await approval_service.cancel_request(request_id)
     return cancelled
 
@@ -344,11 +366,13 @@ async def cancel_approval_request(
 async def list_approval_responses(
     request_id: str,
     current_user: User = Depends(get_current_user),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     List responses for an approval request.
     """
+    approval_service = ApprovalDBService(db)
+
     responses = await approval_service.list_responses(request_id)
     return responses
 
@@ -362,13 +386,15 @@ async def create_approval_rule(
     data: ApprovalRuleCreate,
     current_user: User = Depends(get_current_user),
     tenant_id: Optional[str] = Depends(get_current_tenant_id),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Create an approval rule.
-    
+
     Rules define when approval is required and who can approve.
     """
+    approval_service = ApprovalDBService(db)
+
     rule = await approval_service.create_rule(
         name=data.name,
         description=data.description,
@@ -382,13 +408,13 @@ async def create_approval_rule(
         timeout_minutes=data.timeout_minutes,
         timeout_action=data.timeout_action,
     )
-    
+
     if not rule:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to create approval rule",
         )
-    
+
     return rule
 
 
@@ -399,11 +425,13 @@ async def list_approval_rules(
     is_active: bool = True,
     current_user: User = Depends(get_current_user),
     tenant_id: Optional[str] = Depends(get_current_tenant_id),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     List approval rules.
     """
+    approval_service = ApprovalDBService(db)
+
     rules = await approval_service.list_rules(
         tenant_id=tenant_id,
         project_id=project_id,
@@ -417,19 +445,21 @@ async def list_approval_rules(
 async def get_approval_rule(
     rule_id: str,
     current_user: User = Depends(get_current_user),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Get approval rule details.
     """
+    approval_service = ApprovalDBService(db)
+
     rule = await approval_service.get_rule(rule_id)
-    
+
     if not rule:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Approval rule not found",
         )
-    
+
     return rule
 
 
@@ -438,22 +468,24 @@ async def update_approval_rule(
     rule_id: str,
     data: ApprovalRuleCreate,
     current_user: User = Depends(get_current_user),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Update an approval rule.
     """
+    approval_service = ApprovalDBService(db)
+
     rule = await approval_service.update_rule(
         rule_id=rule_id,
         **data.model_dump(exclude_unset=True),
     )
-    
+
     if not rule:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Approval rule not found",
         )
-    
+
     return rule
 
 
@@ -461,11 +493,13 @@ async def update_approval_rule(
 async def delete_approval_rule(
     rule_id: str,
     current_user: User = Depends(get_current_user),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Delete an approval rule.
     """
+    approval_service = ApprovalDBService(db)
+
     await approval_service.delete_rule(rule_id)
 
 
@@ -474,17 +508,19 @@ async def toggle_approval_rule(
     rule_id: str,
     is_active: bool,
     current_user: User = Depends(get_current_user),
-    approval_service: ApprovalService = Depends(get_approval_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Enable or disable an approval rule.
     """
+    approval_service = ApprovalDBService(db)
+
     rule = await approval_service.toggle_rule(rule_id, is_active)
-    
+
     if not rule:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Approval rule not found",
         )
-    
+
     return rule

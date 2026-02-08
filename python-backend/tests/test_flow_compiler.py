@@ -91,3 +91,93 @@ def test_node_type_mapping():
     assert result["nodes"][0]["type"] == "generate_image"
     assert result["nodes"][1]["type"] == "generate_video"
     assert result["nodes"][2]["type"] == "combine_videos"
+
+
+@pytest.mark.unit
+def test_basic_validate_duplicate_node_ids():
+    """Test that _basic_validate detects duplicate node IDs."""
+    from app.orchestrator.flow_compiler import FlowCompiler, CompilationError
+
+    manifest = {
+        "name": "test",
+        "version": "1.0.0",
+        "nodes": [
+            {"id": "node1", "type": "llm_call"},
+            {"id": "node1", "type": "approval_gate"},  # Duplicate!
+        ],
+        "edges": [],
+    }
+
+    compiler = FlowCompiler()
+    with pytest.raises(CompilationError, match="Duplicate node IDs"):
+        compiler._basic_validate(manifest)
+
+
+@pytest.mark.unit
+def test_basic_validate_invalid_edge_source():
+    """Test that _basic_validate detects invalid edge source."""
+    from app.orchestrator.flow_compiler import FlowCompiler, CompilationError
+
+    manifest = {
+        "name": "test",
+        "version": "1.0.0",
+        "nodes": [
+            {"id": "node1", "type": "llm_call"},
+        ],
+        "edges": [
+            {"from": "nonexistent", "to": "node1"},
+        ],
+    }
+
+    compiler = FlowCompiler()
+    with pytest.raises(CompilationError, match="not found in nodes"):
+        compiler._basic_validate(manifest)
+
+
+@pytest.mark.unit
+def test_basic_validate_invalid_edge_target():
+    """Test that _basic_validate detects invalid edge target."""
+    from app.orchestrator.flow_compiler import FlowCompiler, CompilationError
+
+    manifest = {
+        "name": "test",
+        "version": "1.0.0",
+        "nodes": [
+            {"id": "node1", "type": "llm_call"},
+        ],
+        "edges": [
+            {"from": "node1", "to": "nonexistent"},
+        ],
+    }
+
+    compiler = FlowCompiler()
+    with pytest.raises(CompilationError, match="not found in nodes"):
+        compiler._basic_validate(manifest)
+
+
+@pytest.mark.unit
+def test_fallback_validation_when_manifest_validator_unavailable():
+    """Test that FlowCompiler falls back to basic validation if validator import fails."""
+    from app.orchestrator.flow_compiler import FlowCompiler
+    import sys
+
+    # Temporarily remove manifest_validator from sys.modules to simulate import failure
+    validator_module = sys.modules.get("app.services.manifest_validator")
+    if validator_module:
+        del sys.modules["app.services.manifest_validator"]
+
+    try:
+        compiler = FlowCompiler()
+        flow_json = {
+            "nodes": [{"id": "1", "type": "llm", "data": {}}],
+            "edges": [],
+        }
+
+        # Should succeed using _basic_validate fallback
+        manifest = compiler.compile(flow_json)
+        assert manifest["nodes"][0]["type"] == "llm_call"
+
+    finally:
+        # Restore module if it existed
+        if validator_module:
+            sys.modules["app.services.manifest_validator"] = validator_module

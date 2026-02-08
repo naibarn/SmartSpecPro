@@ -83,6 +83,10 @@ class ApprovalDBService:
         Returns:
             Created ApprovalRequest instance
         """
+        # Validate required tenant_id for security isolation
+        if not tenant_id:
+            raise ValueError("tenant_id is required for approval request creation")
+
         request_id = str(uuid4())
 
         # Create request instance
@@ -123,17 +127,20 @@ class ApprovalDBService:
 
         return request
 
-    async def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
+    async def get_request(self, request_id: str, tenant_id: Optional[str] = None) -> Optional[ApprovalRequest]:
         """
         Retrieve an approval request by ID.
 
         Args:
             request_id: UUID of the approval request
+            tenant_id: Optional tenant ID for security filtering
 
         Returns:
             ApprovalRequest instance or None if not found
         """
         stmt = select(ApprovalRequest).where(ApprovalRequest.id == request_id)
+        if tenant_id:
+            stmt = stmt.where(ApprovalRequest.tenant_id == tenant_id)
         result = await self.db.execute(stmt)
         request = result.scalar_one_or_none()
 
@@ -239,6 +246,7 @@ class ApprovalDBService:
         approver_id: int,
         decision: str,
         comment: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> ApprovalResponse:
         """
         Submit an approval decision (approved or rejected).
@@ -248,6 +256,7 @@ class ApprovalDBService:
             approver_id: User ID of the approver
             decision: Decision ("approved" or "rejected")
             comment: Optional comment explaining the decision
+            tenant_id: Optional tenant ID for security validation
 
         Returns:
             Created ApprovalResponse instance
@@ -255,8 +264,11 @@ class ApprovalDBService:
         Raises:
             ValueError: If request not found or not in PENDING status
         """
-        # Fetch the request
-        request = await self.get_request(request_id)
+        # Fetch the request with tenant validation
+        if tenant_id:
+            request = await self.get_request(request_id, tenant_id=tenant_id)
+        else:
+            request = await self.get_request(request_id)
         if not request:
             raise ValueError(f"Approval request {request_id} not found")
 
@@ -357,6 +369,7 @@ class ApprovalDBService:
         request_id: str,
         cancelled_by: int,
         reason: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> Optional[ApprovalRequest]:
         """
         Cancel a pending approval request.
@@ -365,11 +378,12 @@ class ApprovalDBService:
             request_id: UUID of the approval request
             cancelled_by: User ID who cancelled the request
             reason: Optional cancellation reason
+            tenant_id: Optional tenant ID for security validation
 
         Returns:
             Updated ApprovalRequest or None if not found
         """
-        request = await self.get_request(request_id)
+        request = await self.get_request(request_id, tenant_id=tenant_id)
         if not request:
             return None
 
