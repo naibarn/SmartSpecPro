@@ -483,6 +483,9 @@ function FlowEditor() {
   const inputNodes = filterNodes(getNodeTypesByCategory('inputs'));
   const outputNodes = filterNodes(getNodeTypesByCategory('outputs'));
   const dataNodes = filterNodes(getNodeTypesByCategory('data'));
+  const integrationNodes = filterNodes(getNodeTypesByCategory('integrations'));
+  const observabilityNodes = filterNodes(getNodeTypesByCategory('observability'));
+  const securityNodes = filterNodes(getNodeTypesByCategory('security'));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
@@ -924,6 +927,81 @@ function FlowEditor() {
                       </div>
                     )}
 
+                    {/* Integrations */}
+                    {integrationNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Integrations
+                        </h4>
+                        <div className="space-y-2">
+                          {integrationNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-orange-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Observability */}
+                    {observabilityNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Observability
+                        </h4>
+                        <div className="space-y-2">
+                          {observabilityNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-blue-600" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Security */}
+                    {securityNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Security
+                        </h4>
+                        <div className="space-y-2">
+                          {securityNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-red-600" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* No results message */}
                     {nodeSearchTerm &&
                      aiNodes.length === 0 &&
@@ -934,7 +1012,10 @@ function FlowEditor() {
                      triggerNodes.length === 0 &&
                      inputNodes.length === 0 &&
                      outputNodes.length === 0 &&
-                     dataNodes.length === 0 && (
+                     dataNodes.length === 0 &&
+                     integrationNodes.length === 0 &&
+                     observabilityNodes.length === 0 &&
+                     securityNodes.length === 0 && (
                       <div className="text-center py-8">
                         <svg
                           className="mx-auto h-12 w-12 text-gray-400"
