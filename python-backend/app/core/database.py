@@ -66,6 +66,14 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
+def get_db_context():
+    """
+    Context manager for getting async database session in background tasks.
+    Usage: async with get_db_context() as db: ...
+    """
+    return AsyncSessionLocal()
+
+
 async def init_db():
     """Initialize database - create all tables"""
     # Import all models here to ensure they are registered before create_all

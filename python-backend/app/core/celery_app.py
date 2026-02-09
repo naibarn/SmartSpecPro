@@ -52,6 +52,12 @@ celery_app.conf.update(
         # Periodic maintenance -> media queue (lightweight)
         "app.tasks.media_tasks.cleanup_expired_tasks": {"queue": "media"},
         "app.tasks.media_tasks.retry_failed_tasks": {"queue": "media"},
+        # Workflow tasks -> celery queue (lightweight, frequent)
+        "app.tasks.workflow_tasks.check_scheduled_workflows": {"queue": "celery"},
+        "app.tasks.workflow_tasks.process_system_event": {"queue": "celery"},
+        "app.tasks.workflow_tasks.process_queue_message": {"queue": "celery"},
+        "app.tasks.workflow_tasks.execute_webhook_workflow": {"queue": "celery"},
+        "app.tasks.workflow_tasks.execute_delayed_node": {"queue": "celery"},
     },
 )
 
@@ -64,6 +70,10 @@ celery_app.conf.beat_schedule = {
     "retry-failed-tasks": {
         "task": "app.tasks.media_tasks.retry_failed_tasks",
         "schedule": crontab(minute="*/15"),  # Every 15 minutes
+    },
+    "check-scheduled-workflows": {
+        "task": "app.tasks.workflow_tasks.check_scheduled_workflows",
+        "schedule": crontab(minute="*"),  # Every minute - check for due schedules
     },
 }
 
