@@ -440,7 +440,9 @@ class NodeRegistry:
                 ],
                 outputs=[
                     OutputSpec(name="imageUrl", display_name="Image URL", data_type="text"),
-                    OutputSpec(name="metadata", display_name="Generation Metadata", data_type="json"),
+                    OutputSpec(
+                        name="metadata", display_name="Generation Metadata", data_type="json"
+                    ),
                 ],
                 executor="app.orchestrator.node_executors.image_executor.ImageExecutor",
             )
@@ -528,7 +530,7 @@ class NodeRegistry:
                                 "label": "Field 1",
                                 "type": "text",
                                 "required": True,
-                                "placeholder": "Enter value"
+                                "placeholder": "Enter value",
                             }
                         ],
                         placeholder='[{"id":"field1","label":"Field 1","type":"text","required":true}]',
@@ -635,7 +637,7 @@ class NodeRegistry:
                         ui_type="json_editor",
                         required=True,
                         accepts_connection=True,
-                        placeholder='[{{node1.output}}, {{node2.output}}]',
+                        placeholder="[{{node1.output}}, {{node2.output}}]",
                     ),
                     InputSpec(
                         name="strategy",
@@ -703,6 +705,315 @@ class NodeRegistry:
                     OutputSpec(name="stdout", display_name="Standard Output", data_type="text"),
                 ],
                 executor="app.orchestrator.node_executors.data_executors.code_executor.CodeExecutor",
+            )
+        )
+
+        # 7. Map Array
+        self.register_node_type(
+            NodeTypeSpec(
+                type="map_array",
+                display_name="Map Array",
+                description="Transform each item in an array using field extraction, expressions, or custom code",
+                icon="list",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="inputArray",
+                        display_name="Input Array",
+                        data_type="array",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="{{previousNode.items}}",
+                    ),
+                    InputSpec(
+                        name="mapMode",
+                        display_name="Map Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="extract",
+                        options=[
+                            {"label": "Extract Field", "value": "extract"},
+                            {"label": "Transform Expression", "value": "transform"},
+                            {"label": "Custom Code", "value": "custom_code"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="field",
+                        display_name="Field Path",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="user.name",
+                    ),
+                    InputSpec(
+                        name="expression",
+                        display_name="Transform Expression",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="{{item.price}}",
+                    ),
+                    InputSpec(
+                        name="customCode",
+                        display_name="Custom Code",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="# 'item' and 'index' are available\nresult = item['price'] * 1.1",
+                    ),
+                    InputSpec(
+                        name="outputField",
+                        display_name="Output Field Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="transformedPrice",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="mapped", display_name="Mapped Items", data_type="array"),
+                    OutputSpec(name="mappedCount", display_name="Mapped Count", data_type="number"),
+                    OutputSpec(name="errors", display_name="Errors", data_type="array"),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.map_executor.MapExecutor",
+            )
+        )
+
+        # 8. Database Query
+        self.register_node_type(
+            NodeTypeSpec(
+                type="database_query",
+                display_name="Database Query",
+                description="Execute SQL queries against a PostgreSQL database",
+                icon="database",
+                color="teal",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="queryType",
+                        display_name="Query Type",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="select",
+                        options=[
+                            {"label": "SELECT (Read)", "value": "select"},
+                            {"label": "INSERT (Create)", "value": "insert"},
+                            {"label": "UPDATE (Modify)", "value": "update"},
+                            {"label": "DELETE (Remove)", "value": "delete"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="query",
+                        display_name="SQL Query",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder=(
+                            "SELECT * FROM users WHERE status = :status\n"
+                            "-- Use :param_name for parameters"
+                        ),
+                    ),
+                    InputSpec(
+                        name="parameters",
+                        display_name="Query Parameters",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        default={},
+                        placeholder='{"status": "active", "limit": 10}',
+                    ),
+                    InputSpec(
+                        name="database",
+                        display_name="Database",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="primary",
+                        options=[
+                            {"label": "Primary (Default)", "value": "primary"},
+                            {"label": "Secondary (Read Replica)", "value": "secondary"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="timeout",
+                        display_name="Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=30,
+                        validation={"min": 1, "max": 300},
+                    ),
+                    InputSpec(
+                        name="maxRows",
+                        display_name="Max Rows (SELECT only)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=1000,
+                        validation={"min": 1, "max": 10000},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="rows", display_name="Result Rows", data_type="array"),
+                    OutputSpec(
+                        name="affectedRows", display_name="Affected Rows", data_type="number"
+                    ),
+                    OutputSpec(
+                        name="lastInsertId", display_name="Last Insert ID", data_type="number"
+                    ),
+                    OutputSpec(
+                        name="executionTime", display_name="Execution Time (ms)", data_type="number"
+                    ),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.database_query_executor.DatabaseQueryExecutor",
+            )
+        )
+
+        # 9. Filter (Array Filtering)
+        self.register_node_type(
+            NodeTypeSpec(
+                type="filter",
+                display_name="Filter",
+                description="Filter array items based on conditions",
+                icon="filter",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="inputArray",
+                        display_name="Input Array",
+                        data_type="array",
+                        ui_type="json_editor",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Connect array data or enter {{nodeId.output}}...",
+                    ),
+                    InputSpec(
+                        name="filterMode",
+                        display_name="Filter Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="simple",
+                        options=[
+                            {"label": "Simple (field comparison)", "value": "simple"},
+                            {"label": "Expression", "value": "expression"},
+                            {"label": "Custom Code (Python)", "value": "custom_code"},
+                        ],
+                    ),
+                    # --- Simple mode fields ---
+                    InputSpec(
+                        name="field",
+                        display_name="Field Path",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="e.g., user.profile.age",
+                    ),
+                    InputSpec(
+                        name="operator",
+                        display_name="Operator",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="==",
+                        options=[
+                            {"label": "Equals (==)", "value": "=="},
+                            {"label": "Not Equals (!=)", "value": "!="},
+                            {"label": "Greater Than (>)", "value": ">"},
+                            {"label": "Less Than (<)", "value": "<"},
+                            {"label": "Greater or Equal (>=)", "value": ">="},
+                            {"label": "Less or Equal (<=)", "value": "<="},
+                            {"label": "Contains", "value": "contains"},
+                            {"label": "Starts With", "value": "startsWith"},
+                            {"label": "Ends With", "value": "endsWith"},
+                            {"label": "In List", "value": "in"},
+                            {"label": "Not In List", "value": "not_in"},
+                            {"label": "Exists (not null)", "value": "exists"},
+                            {"label": "Not Exists (null)", "value": "not_exists"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="value",
+                        display_name="Comparison Value",
+                        data_type="any",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Value to compare against...",
+                    ),
+                    # --- Expression mode field ---
+                    InputSpec(
+                        name="expression",
+                        display_name="Filter Expression",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="item.get('age', 0) > 18 and item.get('status') == 'active'",
+                    ),
+                    # --- Custom code mode field ---
+                    InputSpec(
+                        name="customCode",
+                        display_name="Filter Code (Python)",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="# 'item' is the current element\n# Set 'result' to True to keep the item\nresult = item.get('score', 0) > 80",
+                    ),
+                    # --- Shared options ---
+                    InputSpec(
+                        name="nullHandling",
+                        display_name="Null Value Handling",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="exclude",
+                        options=[
+                            {"label": "Exclude nulls (skip items)", "value": "exclude"},
+                            {"label": "Include nulls (keep items)", "value": "include"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="filtered", display_name="Filtered Items", data_type="array"),
+                    OutputSpec(
+                        name="filteredCount",
+                        display_name="Filtered Count",
+                        data_type="number",
+                    ),
+                    OutputSpec(
+                        name="originalCount",
+                        display_name="Original Count",
+                        data_type="number",
+                    ),
+                    OutputSpec(
+                        name="removedCount",
+                        display_name="Removed Count",
+                        data_type="number",
+                    ),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.filter_executor.FilterExecutor",
             )
         )
 
@@ -844,7 +1155,9 @@ class NodeRegistry:
                 ],
                 outputs=[
                     OutputSpec(name="messages", display_name="Messages", data_type="array"),
-                    OutputSpec(name="messageCount", display_name="Message Count", data_type="number"),
+                    OutputSpec(
+                        name="messageCount", display_name="Message Count", data_type="number"
+                    ),
                     OutputSpec(name="queueName", display_name="Queue Name", data_type="text"),
                     OutputSpec(name="consumedAt", display_name="Consumed At", data_type="text"),
                 ],
@@ -1030,6 +1343,302 @@ class NodeRegistry:
             )
         )
 
+        # Retry
+        self.register_node_type(
+            NodeTypeSpec(
+                type="retry",
+                display_name="Retry",
+                description="Automatically retry a failed operation with configurable backoff strategy",
+                icon="refresh-cw",
+                color="yellow",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="input",
+                        display_name="Input Data",
+                        data_type="any",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Data to pass to the retried operation...",
+                    ),
+                    InputSpec(
+                        name="maxAttempts",
+                        display_name="Max Attempts",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=3,
+                        validation={"min": 1, "max": 10},
+                    ),
+                    InputSpec(
+                        name="strategy",
+                        display_name="Backoff Strategy",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="exponential",
+                        options=[
+                            {"label": "Fixed Delay", "value": "fixed"},
+                            {"label": "Exponential Backoff", "value": "exponential"},
+                            {"label": "Linear Increase", "value": "linear"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="initialDelay",
+                        display_name="Initial Delay (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=1,
+                        validation={"min": 0.1, "max": 300},
+                    ),
+                    InputSpec(
+                        name="maxDelay",
+                        display_name="Max Delay (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=60,
+                        validation={"min": 1, "max": 600},
+                    ),
+                    InputSpec(
+                        name="backoffMultiplier",
+                        display_name="Backoff Multiplier",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=2,
+                        validation={"min": 1, "max": 10},
+                    ),
+                    InputSpec(
+                        name="retryOnErrors",
+                        display_name="Retry On Error Types",
+                        data_type="array",
+                        ui_type="multiselect",
+                        required=False,
+                        accepts_connection=False,
+                        default=["all"],
+                        options=[
+                            {"label": "All Errors", "value": "all"},
+                            {"label": "Timeout", "value": "timeout"},
+                            {"label": "Rate Limit", "value": "rate_limit"},
+                            {"label": "Server Error (5xx)", "value": "server_error"},
+                            {"label": "Connection Error", "value": "connection"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="stopOnSuccess",
+                        display_name="Stop on Success",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="output", display_name="Result", data_type="any"),
+                    OutputSpec(
+                        name="attemptNumber", display_name="Final Attempt", data_type="number"
+                    ),
+                    OutputSpec(
+                        name="totalRetries", display_name="Total Retries", data_type="number"
+                    ),
+                    OutputSpec(
+                        name="totalDelay", display_name="Total Delay (ms)", data_type="number"
+                    ),
+                    OutputSpec(name="lastError", display_name="Last Error", data_type="json"),
+                    OutputSpec(name="succeeded", display_name="Succeeded", data_type="boolean"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.retry_executor.RetryExecutor",
+            )
+        )
+
+        # Execution Timeout
+        self.register_node_type(
+            NodeTypeSpec(
+                type="execution_timeout",
+                display_name="Execution Timeout",
+                description="Enforce a time limit on upstream operations with configurable timeout behavior",
+                icon="timer",
+                color="red",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="input",
+                        display_name="Input Data",
+                        data_type="any",
+                        ui_type="json_editor",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Connect output from node to time-bound...",
+                    ),
+                    InputSpec(
+                        name="timeout",
+                        display_name="Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=True,
+                        accepts_connection=False,
+                        default=30,
+                        validation={"min": 1, "max": 3600},
+                    ),
+                    InputSpec(
+                        name="timeoutMode",
+                        display_name="Timeout Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="hard",
+                        options=[
+                            {"label": "Hard (kill immediately)", "value": "hard"},
+                            {"label": "Soft (allow cleanup)", "value": "soft"},
+                            {"label": "Fallback (return default value)", "value": "fallback"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="fallbackValue",
+                        display_name="Fallback Value",
+                        data_type="any",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=False,
+                        default=None,
+                        placeholder="Value to return if timeout occurs (fallback mode only)...",
+                    ),
+                    InputSpec(
+                        name="includeStackTrace",
+                        display_name="Include Stack Trace",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="result", display_name="Result", data_type="any"),
+                    OutputSpec(name="timedOut", display_name="Timed Out", data_type="boolean"),
+                    OutputSpec(
+                        name="executionTime",
+                        display_name="Execution Time (ms)",
+                        data_type="number",
+                    ),
+                    OutputSpec(name="error", display_name="Error Details", data_type="json"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.timeout_executor.TimeoutExecutor",
+            )
+        )
+
+        # Rate Limiter
+        self.register_node_type(
+            NodeTypeSpec(
+                type="rate_limiter",
+                display_name="Rate Limiter",
+                description="Throttle workflow execution rate using distributed Redis-based rate limiting",
+                icon="gauge",
+                color="red",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="algorithm",
+                        display_name="Algorithm",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="token_bucket",
+                        options=[
+                            {
+                                "label": "Token Bucket (smooth, allows bursts)",
+                                "value": "token_bucket",
+                            },
+                            {"label": "Fixed Window (simple counter)", "value": "fixed_window"},
+                            {
+                                "label": "Sliding Window (precise, higher Redis cost)",
+                                "value": "sliding_window",
+                            },
+                        ],
+                    ),
+                    InputSpec(
+                        name="maxRequests",
+                        display_name="Max Requests",
+                        data_type="number",
+                        ui_type="number",
+                        required=True,
+                        accepts_connection=True,
+                        default=60,
+                        validation={"min": 1, "max": 100000},
+                        placeholder="Number of requests allowed per window",
+                    ),
+                    InputSpec(
+                        name="windowSize",
+                        display_name="Window Size (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=True,
+                        accepts_connection=True,
+                        default=60,
+                        validation={"min": 1, "max": 86400},
+                        placeholder="Time window in seconds",
+                    ),
+                    InputSpec(
+                        name="rateLimitKey",
+                        display_name="Rate Limit Key",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        default="default",
+                        placeholder="Key for grouping (supports {{expressions}})",
+                    ),
+                    InputSpec(
+                        name="waitOnLimit",
+                        display_name="Wait When Limited",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=False,
+                    ),
+                    InputSpec(
+                        name="maxWaitTime",
+                        display_name="Max Wait Time (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=60,
+                        validation={"min": 1, "max": 300},
+                        placeholder="Maximum time to wait if rate limited",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="allowed", display_name="Allowed", data_type="boolean"),
+                    OutputSpec(
+                        name="remainingRequests",
+                        display_name="Remaining Requests",
+                        data_type="number",
+                    ),
+                    OutputSpec(
+                        name="resetTime", display_name="Reset Time (Unix)", data_type="number"
+                    ),
+                    OutputSpec(name="waited", display_name="Had to Wait", data_type="boolean"),
+                    OutputSpec(
+                        name="waitedTime", display_name="Wait Time (ms)", data_type="number"
+                    ),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.rate_limiter_executor.RateLimiterExecutor",
+            )
+        )
+
         # 15. Webhook Response
         self.register_node_type(
             NodeTypeSpec(
@@ -1074,6 +1683,89 @@ class NodeRegistry:
             )
         )
 
+        # ===== Send Notification =====
+
+        # Send Notification Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="send_notification",
+                display_name="Send Notification",
+                description="Send notifications via Email, SMS, Slack, Discord, or Telegram",
+                icon="bell",
+                color="indigo",
+                category="outputs",
+                inputs=[
+                    InputSpec(
+                        name="notificationType",
+                        display_name="Channel",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="email",
+                        options=[
+                            {"label": "Email", "value": "email"},
+                            {"label": "SMS", "value": "sms"},
+                            {"label": "Slack", "value": "slack"},
+                            {"label": "Discord", "value": "discord"},
+                            {"label": "Telegram", "value": "telegram"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="recipient",
+                        display_name="Recipient",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Email, phone, webhook URL, or chat ID...",
+                    ),
+                    InputSpec(
+                        name="subject",
+                        display_name="Subject",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Email subject line (email only)...",
+                    ),
+                    InputSpec(
+                        name="message",
+                        display_name="Message",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Notification message. Use {{nodeId.output}} for dynamic values...",
+                    ),
+                    InputSpec(
+                        name="attachments",
+                        display_name="Attachments",
+                        data_type="array",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='[{"filename": "report.pdf", "url": "https://..."}]',
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="messageId", display_name="Message ID", data_type="text"),
+                    OutputSpec(name="status", display_name="Status", data_type="text"),
+                    OutputSpec(
+                        name="deliveryTime",
+                        display_name="Delivery Time (ms)",
+                        data_type="number",
+                    ),
+                    OutputSpec(
+                        name="providerResponse",
+                        display_name="Provider Response",
+                        data_type="json",
+                    ),
+                ],
+                executor="app.orchestrator.node_executors.output_executors.notification_executor.NotificationExecutor",
+            )
+        )
+
         # 16. Error Trigger
         self.register_node_type(
             NodeTypeSpec(
@@ -1106,7 +1798,9 @@ class NodeRegistry:
                 ],
                 outputs=[
                     OutputSpec(name="error", display_name="Error Details", data_type="json"),
-                    OutputSpec(name="workflowId", display_name="Failed Workflow ID", data_type="text"),
+                    OutputSpec(
+                        name="workflowId", display_name="Failed Workflow ID", data_type="text"
+                    ),
                     OutputSpec(name="timestamp", display_name="Error Timestamp", data_type="text"),
                 ],
                 executor="app.orchestrator.node_executors.trigger_executors.error_trigger_executor.ErrorTriggerExecutor",
