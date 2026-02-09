@@ -747,12 +747,13 @@ async def get_workflow_report(
 
 
 @router.get("/node-types")
-async def get_node_types(
-    current_user: User = Depends(get_current_user),
-) -> dict:
+async def get_node_types() -> dict:
     """
-    Get all registered node types.
+    Get all registered node types (public endpoint - no auth required).
     Returns core nodes + skill nodes (skill nodes added in section-05).
+
+    NOTE: This endpoint is intentionally public as it only returns metadata
+    about available node types, not sensitive user data.
     """
     registry = NodeRegistry.get_instance()
     node_types = registry.get_all_node_types()
