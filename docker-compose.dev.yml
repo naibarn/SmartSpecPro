@@ -13,7 +13,7 @@ services:
     container_name: smartspec-postgres
     environment:
       POSTGRES_USER: smartspec
-      POSTGRES_PASSWORD: smartspec_dev
+      POSTGRES_PASSWORD: smartspec123
       POSTGRES_DB: smartspec
     ports:
       - "5432:5432"
@@ -53,7 +53,7 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-backend
     environment:
-      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@postgres:5432/smartspec
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -99,7 +99,7 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-celery-worker
     environment:
-      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@postgres:5432/smartspec
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -137,7 +137,7 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-celery-beat
     environment:
-      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@postgres:5432/smartspec
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -192,7 +192,7 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=7070
-      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@postgres:5432/smartspec
       - CONTROL_PLANE_API_KEY=dev_control_plane_api_key_change_in_production
       - JWT_SECRET=dev_jwt_secret_change_in_production_at_least_16_chars
       - JWT_ISSUER=smartspec-control-plane
@@ -238,7 +238,7 @@ services:
       - VITE_CONTROL_PLANE_URL=http://localhost:7070
       - VITE_WS_URL=ws://localhost:8001
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql://smartspec:smartspec123@postgres:5432/smartspec
       - OAUTH_SERVER_URL=http://python-backend:8000
       - JWT_SECRET=dev_jwt_secret_change_in_production_at_least_16_chars
     ports:
@@ -272,7 +272,7 @@ services:
     user: root
     environment:
       - OAUTH_SERVER_URL=http://python-backend:8000
-      - DATABASE_URL=postgresql://smartspec:smartspec_dev@postgres:5432/smartspec
+      - DATABASE_URL=postgresql://smartspec:smartspec123@postgres:5432/smartspec
       - NODE_ENV=development
       - PORT=3000
       - JWT_SECRET=dev_jwt_secret_change_in_production_at_least_16_chars

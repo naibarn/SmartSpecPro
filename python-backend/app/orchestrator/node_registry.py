@@ -1017,6 +1017,320 @@ class NodeRegistry:
             )
         )
 
+        # 10. Split (String/Array Splitting)
+        self.register_node_type(
+            NodeTypeSpec(
+                type="split",
+                display_name="Split",
+                description="Split strings by delimiter/regex or arrays into chunks",
+                icon="scissors",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="splitMode",
+                        display_name="Split Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="string_split",
+                        options=[
+                            {"label": "String Split (by delimiter)", "value": "string_split"},
+                            {"label": "Array Chunk (by size)", "value": "array_chunk"},
+                            {"label": "Regex Split (by pattern)", "value": "regex_split"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="input",
+                        display_name="Input",
+                        data_type="any",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Text to split or array to chunk (supports {{variable}})...",
+                    ),
+                    # --- string_split mode field ---
+                    InputSpec(
+                        name="delimiter",
+                        display_name="Delimiter",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        default=",",
+                        placeholder="e.g., , or ; or |",
+                    ),
+                    # --- regex_split mode field ---
+                    InputSpec(
+                        name="pattern",
+                        display_name="Regex Pattern",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder=r"e.g., [\s,;]+ or \d{4}-\d{2}-\d{2}",
+                    ),
+                    # --- array_chunk mode field ---
+                    InputSpec(
+                        name="chunkSize",
+                        display_name="Chunk Size",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=10,
+                        validation={"min": 1, "max": 10000},
+                    ),
+                    # --- Shared options ---
+                    InputSpec(
+                        name="maxSplits",
+                        display_name="Max Splits",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=0,
+                        validation={"min": 0, "max": 10000},
+                        placeholder="0 = unlimited",
+                    ),
+                    InputSpec(
+                        name="trimWhitespace",
+                        display_name="Trim Whitespace",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="parts", display_name="Parts", data_type="array"),
+                    OutputSpec(name="partCount", display_name="Part Count", data_type="number"),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.split_executor.SplitExecutor",
+            )
+        )
+
+        # 11. Batch Processor
+        self.register_node_type(
+            NodeTypeSpec(
+                type="batch",
+                display_name="Batch Processor",
+                description="Split an array into batches by size, time window, or field value",
+                icon="layers",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="inputArray",
+                        display_name="Input Array",
+                        data_type="array",
+                        ui_type="json_editor",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="{{previousNode.items}}",
+                    ),
+                    InputSpec(
+                        name="batchMode",
+                        display_name="Batch Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="size_based",
+                        options=[
+                            {"label": "Size-Based (fixed chunks)", "value": "size_based"},
+                            {"label": "Time-Based (time windows)", "value": "time_based"},
+                            {"label": "Field-Based (group by field)", "value": "field_based"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="batchSize",
+                        display_name="Batch Size",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=10,
+                        validation={"min": 1, "max": 5000},
+                    ),
+                    InputSpec(
+                        name="timeWindow",
+                        display_name="Time Window (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=60,
+                        validation={"min": 0.001, "max": 86400},
+                    ),
+                    InputSpec(
+                        name="groupByField",
+                        display_name="Group By Field",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="e.g., user.id or category",
+                    ),
+                    InputSpec(
+                        name="includeRemainder",
+                        display_name="Include Remainder",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="batches", display_name="Batches", data_type="array"),
+                    OutputSpec(name="batchCount", display_name="Batch Count", data_type="number"),
+                    OutputSpec(name="itemCount", display_name="Item Count", data_type="number"),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.batch_executor.BatchExecutor",
+            )
+        )
+
+        # 12. Transformer
+        self.register_node_type(
+            NodeTypeSpec(
+                type="transformer",
+                display_name="Transformer",
+                description="Transform data between formats (JSON, CSV, XML)",
+                icon="shuffle",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="input",
+                        display_name="Input Data",
+                        data_type="any",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Data to transform...",
+                    ),
+                    InputSpec(
+                        name="transformMode",
+                        display_name="Transform Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="json_to_csv",
+                        options=[
+                            {"label": "JSON to CSV", "value": "json_to_csv"},
+                            {"label": "CSV to JSON", "value": "csv_to_json"},
+                            {"label": "JSON to XML", "value": "json_to_xml"},
+                            {"label": "XML to JSON", "value": "xml_to_json"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="csvDelimiter",
+                        display_name="CSV Delimiter",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        default=",",
+                    ),
+                    InputSpec(
+                        name="xmlRootElement",
+                        display_name="XML Root Element",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        default="root",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="output", display_name="Transformed Output", data_type="any"),
+                    OutputSpec(name="format", display_name="Output Format", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.transformer_executor.TransformerExecutor",
+            )
+        )
+
+        # 13. Validator
+        self.register_node_type(
+            NodeTypeSpec(
+                type="validator",
+                display_name="Validator",
+                description="Validate data against schemas, patterns, or rules",
+                icon="check-circle",
+                color="green",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="input",
+                        display_name="Input Data",
+                        data_type="any",
+                        ui_type="json_editor",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Data to validate...",
+                    ),
+                    InputSpec(
+                        name="validationMode",
+                        display_name="Validation Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="json_schema",
+                        options=[
+                            {"label": "JSON Schema", "value": "json_schema"},
+                            {"label": "Regex Pattern", "value": "regex"},
+                            {"label": "Type Check", "value": "type"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="schema",
+                        display_name="JSON Schema",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder='{"type": "object", "properties": {...}}',
+                    ),
+                    InputSpec(
+                        name="pattern",
+                        display_name="Regex Pattern",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder=r"^[A-Z]{3}-\d{4}$",
+                    ),
+                    InputSpec(
+                        name="expectedType",
+                        display_name="Expected Type",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="string",
+                        options=[
+                            {"label": "String", "value": "string"},
+                            {"label": "Number", "value": "number"},
+                            {"label": "Boolean", "value": "boolean"},
+                            {"label": "Array", "value": "array"},
+                            {"label": "Object", "value": "object"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="isValid", display_name="Is Valid", data_type="boolean"),
+                    OutputSpec(name="errors", display_name="Validation Errors", data_type="array"),
+                    OutputSpec(name="validatedData", display_name="Validated Data", data_type="any"),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.validator_executor.ValidatorExecutor",
+            )
+        )
+
         # ===== PHASE 2.3: Advanced Triggers =====
 
         # 7. Webhook Trigger
@@ -1639,6 +1953,94 @@ class NodeRegistry:
             )
         )
 
+        # Circuit Breaker
+        self.register_node_type(
+            NodeTypeSpec(
+                type="circuit_breaker",
+                display_name="Circuit Breaker",
+                description="Prevent cascading failures with circuit breaker pattern",
+                icon="shield",
+                color="red",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="operationName",
+                        display_name="Operation Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="e.g., external_api_call",
+                    ),
+                    InputSpec(
+                        name="failureThreshold",
+                        display_name="Failure Threshold",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=5,
+                        validation={"min": 1, "max": 100},
+                    ),
+                    InputSpec(
+                        name="resetTimeout",
+                        display_name="Reset Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=60,
+                        validation={"min": 1, "max": 3600},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="circuitState", display_name="Circuit State", data_type="text"),
+                    OutputSpec(name="failureCount", display_name="Failure Count", data_type="number"),
+                    OutputSpec(name="allowed", display_name="Request Allowed", data_type="boolean"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.circuit_breaker_executor.CircuitBreakerExecutor",
+            )
+        )
+
+        # Idempotency Guard
+        self.register_node_type(
+            NodeTypeSpec(
+                type="idempotency",
+                display_name="Idempotency Guard",
+                description="Prevent duplicate execution using idempotency keys",
+                icon="fingerprint",
+                color="purple",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="idempotencyKey",
+                        display_name="Idempotency Key",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="{{request.id}} or {{sha256(request.body)}}",
+                    ),
+                    InputSpec(
+                        name="ttl",
+                        display_name="TTL (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=86400,
+                        validation={"min": 60, "max": 2592000},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="isDuplicate", display_name="Is Duplicate", data_type="boolean"),
+                    OutputSpec(name="fingerprint", display_name="Fingerprint", data_type="text"),
+                    OutputSpec(name="cachedResult", display_name="Cached Result", data_type="any"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.idempotency_executor.IdempotencyExecutor",
+            )
+        )
+
         # 15. Webhook Response
         self.register_node_type(
             NodeTypeSpec(
@@ -1927,5 +2329,326 @@ class NodeRegistry:
                     OutputSpec(name="error", display_name="Error", data_type="text"),
                 ],
                 executor="app.orchestrator.node_executors.io_executors.http_request_executor.HttpRequestExecutor",
+            )
+        )
+
+        # Storage Action (S3/R2/MinIO)
+        self.register_node_type(
+            NodeTypeSpec(
+                type="storage_action",
+                display_name="Storage Action",
+                description="Perform file operations on S3, R2, or MinIO storage",
+                icon="database",
+                color="blue",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="action",
+                        display_name="Action",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="upload",
+                        options=[
+                            {"label": "Upload", "value": "upload"},
+                            {"label": "Download", "value": "download"},
+                            {"label": "Delete", "value": "delete"},
+                            {"label": "List", "value": "list"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="provider",
+                        display_name="Storage Provider",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="s3",
+                        options=[
+                            {"label": "AWS S3", "value": "s3"},
+                            {"label": "Cloudflare R2", "value": "r2"},
+                            {"label": "MinIO", "value": "minio"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="bucket",
+                        display_name="Bucket Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="my-bucket",
+                    ),
+                    InputSpec(
+                        name="key",
+                        display_name="Object Key (Path)",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="folder/file.txt",
+                    ),
+                    InputSpec(
+                        name="data",
+                        display_name="Data (for upload)",
+                        data_type="any",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="File content or {{variable}}...",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="result", display_name="Result", data_type="any"),
+                    OutputSpec(name="url", display_name="URL", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.io_executors.storage_action_executor.StorageActionExecutor",
+            )
+        )
+
+        # Metrics Collector
+        self.register_node_type(
+            NodeTypeSpec(
+                type="metrics_collector",
+                display_name="Metrics Collector",
+                description="Collect and export metrics in Prometheus format",
+                icon="bar-chart",
+                color="green",
+                category="observability",
+                inputs=[
+                    InputSpec(
+                        name="metricType",
+                        display_name="Metric Type",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="counter",
+                        options=[
+                            {"label": "Counter", "value": "counter"},
+                            {"label": "Gauge", "value": "gauge"},
+                            {"label": "Histogram", "value": "histogram"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="metricName",
+                        display_name="Metric Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="workflow_executions_total",
+                    ),
+                    InputSpec(
+                        name="value",
+                        display_name="Value",
+                        data_type="number",
+                        ui_type="number",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="1 or {{duration}}",
+                    ),
+                    InputSpec(
+                        name="labels",
+                        display_name="Labels",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"status": "success", "node_type": "http_request"}',
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="recorded", display_name="Recorded", data_type="boolean"),
+                    OutputSpec(name="metricName", display_name="Metric Name", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.output_executors.metrics_collector_executor.MetricsCollectorExecutor",
+            )
+        )
+
+        # Secrets Vault
+        self.register_node_type(
+            NodeTypeSpec(
+                type="secrets_vault",
+                display_name="Secrets Vault",
+                description="Retrieve secrets from environment, database, or external vaults",
+                icon="lock",
+                color="purple",
+                category="security",
+                inputs=[
+                    InputSpec(
+                        name="secretName",
+                        display_name="Secret Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="API_KEY or {{variable}}",
+                    ),
+                    InputSpec(
+                        name="provider",
+                        display_name="Provider",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="environment",
+                        options=[
+                            {"label": "Environment Variables", "value": "environment"},
+                            {"label": "Database (Encrypted)", "value": "database"},
+                            {"label": "HashiCorp Vault", "value": "vault"},
+                            {"label": "AWS Secrets Manager", "value": "aws"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="path",
+                        display_name="Path/Namespace",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="secret/data/myapp",
+                    ),
+                    InputSpec(
+                        name="defaultValue",
+                        display_name="Default Value",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Fallback if secret not found",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="secretValue", display_name="Secret Value", data_type="text"),
+                    OutputSpec(name="found", display_name="Found", data_type="boolean"),
+                    OutputSpec(name="source", display_name="Source", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.security_executors.secrets_vault_executor.SecretsVaultExecutor",
+            )
+        )
+
+        # Dead Letter Queue
+        self.register_node_type(
+            NodeTypeSpec(
+                type="dead_letter_queue",
+                display_name="Dead Letter Queue",
+                description="Manage failed messages via Redis Streams DLQ",
+                icon="inbox",
+                color="red",
+                category="observability",
+                inputs=[
+                    InputSpec(
+                        name="operation",
+                        display_name="Operation",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="send_to_dlq",
+                        options=[
+                            {"label": "Send to DLQ", "value": "send_to_dlq"},
+                            {"label": "Read from DLQ", "value": "read_from_dlq"},
+                            {"label": "Delete from DLQ", "value": "delete_from_dlq"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="queueName",
+                        display_name="Queue Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="failed-api-calls",
+                    ),
+                    InputSpec(
+                        name="message",
+                        display_name="Message Data",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"error": "...", "payload": "..."}',
+                    ),
+                    InputSpec(
+                        name="messageId",
+                        display_name="Message ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="For delete operation",
+                    ),
+                    InputSpec(
+                        name="batchSize",
+                        display_name="Batch Size (for read)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=10,
+                        validation={"min": 1, "max": 100},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="messages", display_name="Messages", data_type="array"),
+                    OutputSpec(name="messageId", display_name="Message ID", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.dlq_executor.DLQExecutor",
+            )
+        )
+
+        # Run History (Checkpoint) - Stub for future implementation
+        self.register_node_type(
+            NodeTypeSpec(
+                type="run_history",
+                display_name="Run History",
+                description="Save or load workflow execution checkpoints (stub)",
+                icon="history",
+                color="blue",
+                category="observability",
+                inputs=[
+                    InputSpec(
+                        name="operation",
+                        display_name="Operation",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="save_checkpoint",
+                        options=[
+                            {"label": "Save Checkpoint", "value": "save_checkpoint"},
+                            {"label": "Load Checkpoint", "value": "load_checkpoint"},
+                            {"label": "List Checkpoints", "value": "list_checkpoints"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="checkpointName",
+                        display_name="Checkpoint Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="before_api_call",
+                    ),
+                    InputSpec(
+                        name="stateData",
+                        display_name="State Data",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Data to checkpoint...",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="checkpointId", display_name="Checkpoint ID", data_type="text"),
+                    OutputSpec(name="stateData", display_name="Loaded State", data_type="any"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.dlq_executor.DLQExecutor",  # Temporary stub
             )
         )
