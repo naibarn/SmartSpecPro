@@ -34,7 +34,7 @@ export interface NodeTypeSpec {
   description: string;
   icon: string;
   color: string;
-  category: "ai" | "flow_control" | "human" | "skills" | "media" | "triggers" | "inputs" | "outputs" | "data";
+  category: "ai" | "flow_control" | "human" | "skills" | "media" | "triggers" | "inputs" | "outputs" | "data" | "integrations";
   inputs: InputSpec[];
   outputs: OutputSpec[];
   executor: string;
