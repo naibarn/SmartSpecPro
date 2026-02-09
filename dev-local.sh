@@ -26,8 +26,8 @@ load_env() {
         set +a
     else
         echo -e "${YELLOW}[WARN]${NC} .env.local not found. Using default values."
-        export DATABASE_URL="postgresql://smartspec:smartspec_dev@localhost:5432/smartspec"
-        export DATABASE_URL_ASYNC="postgresql+asyncpg://smartspec:smartspec_dev@localhost:5432/smartspec"
+        export DATABASE_URL="postgresql://smartspec:smartspec123@localhost:5432/smartspec"
+        export DATABASE_URL_ASYNC="postgresql+asyncpg://smartspec:smartspec123@localhost:5432/smartspec"
         export REDIS_URL="redis://localhost:6379"
         export NODE_ENV="development"
     fi
@@ -228,7 +228,7 @@ cmd_web() {
 
     # Environment is already loaded from .env.local
     # Override only if needed (use sync driver for SmartSpecWeb)
-    export DATABASE_URL="${DATABASE_URL:-postgresql://smartspec:smartspec_dev@localhost:5432/smartspec}"
+    export DATABASE_URL="${DATABASE_URL:-postgresql://smartspec:smartspec123@localhost:5432/smartspec}"
     export NODE_ENV="${NODE_ENV:-development}"
     export PORT="${WEB_PORT:-3000}"
 
@@ -274,7 +274,7 @@ cmd_backend() {
 
     # Environment is already loaded from .env.local
     # Use async driver for Python backend
-    export DATABASE_URL="${DATABASE_URL_ASYNC:-postgresql+asyncpg://smartspec:smartspec_dev@localhost:5432/smartspec}"
+    export DATABASE_URL="${DATABASE_URL_ASYNC:-postgresql+asyncpg://smartspec:smartspec123@localhost:5432/smartspec}"
     export REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
     export CELERY_BROKER_URL="${CELERY_BROKER_URL:-redis://localhost:6379/0}"
     export CELERY_RESULT_BACKEND="${CELERY_RESULT_BACKEND:-redis://localhost:6379/0}"
@@ -305,7 +305,7 @@ cmd_celery() {
         source venv/bin/activate
     fi
 
-    export DATABASE_URL="postgresql+asyncpg://smartspec:smartspec_dev@localhost:5432/smartspec"
+    export DATABASE_URL="postgresql+asyncpg://smartspec:smartspec123@localhost:5432/smartspec"
     export CELERY_BROKER_URL="redis://localhost:6379/0"
     export CELERY_RESULT_BACKEND="redis://localhost:6379/0"
 

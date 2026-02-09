@@ -1,2 +1,7 @@
-"""Section 08: Security node executors stub."""
-# TODO: Implement pii_redact, secrets_vault, audit, rbac, etc.
+"""Security node executors -- secrets management, authentication, encryption."""
+
+from app.orchestrator.node_executors.security_executors.secrets_vault_executor import (
+    SecretsVaultExecutor,
+)
+
+__all__ = ["SecretsVaultExecutor"]
