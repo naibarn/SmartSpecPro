@@ -263,18 +263,117 @@ def process_queue_message(queue_name: str, messages: list[dict[str, Any]]):
 
 async def _process_queue_message_async(queue_name: str, messages: list[dict[str, Any]]):
     """Async implementation of queue message processing."""
-    # TODO: Query workflows with queue_trigger nodes matching this queue_name
-    # For now, this is a placeholder that logs the messages
-    logger.info(
-        "queue_messages_received",
-        queue_name=queue_name,
-        message_count=len(messages),
+    async with get_db_context() as db:
+        # Query all active workflows and find those with queue_trigger nodes for this queue
+        result = await db.execute(
+            select(Workflow).where(
+                Workflow.status == "active",
+            )
+        )
+        workflows = result.scalars().all()
+
+        logger.info(
+            "queue_messages_received",
+            queue_name=queue_name,
+            message_count=len(messages),
+            workflows_checked=len(workflows),
+        )
+
+        # Find workflows with matching queue_trigger nodes
+        matching_workflows = []
+        for workflow in workflows:
+            workflow_json = workflow.workflowJson
+            if not workflow_json or not isinstance(workflow_json, dict):
+                continue
+
+            nodes = workflow_json.get("nodes", [])
+            for node in nodes:
+                if node.get("type") == "queue_trigger":
+                    node_config = node.get("config", {})
+                    configured_queue = node_config.get("queueName", "")
+
+                    if configured_queue == queue_name:
+                        matching_workflows.append({
+                            "workflow": workflow,
+                            "node_id": node.get("id"),
+                        })
+                        break  # Only trigger once per workflow
+
+        logger.info(
+            "queue_workflows_matched",
+            queue_name=queue_name,
+            matched_count=len(matching_workflows),
+        )
+
+        # Execute each matching workflow
+        for match in matching_workflows:
+            workflow = match["workflow"]
+            node_id = match["node_id"]
+
+            try:
+                await _execute_queue_workflow(
+                    db=db,
+                    workflow=workflow,
+                    node_id=node_id,
+                    queue_name=queue_name,
+                    messages=messages,
+                )
+
+                logger.info(
+                    "queue_workflow_triggered",
+                    workflow_id=workflow.id,
+                    node_id=node_id,
+                    queue_name=queue_name,
+                    message_count=len(messages),
+                )
+
+            except Exception as e:
+                logger.exception(
+                    "queue_workflow_failed",
+                    workflow_id=workflow.id,
+                    node_id=node_id,
+                    queue_name=queue_name,
+                    error=str(e),
+                )
+                # Continue processing other workflows even if one fails
+                continue
+
+
+async def _execute_queue_workflow(
+    db: AsyncSession,
+    workflow: Workflow,
+    node_id: str,
+    queue_name: str,
+    messages: list[dict[str, Any]],
+):
+    """Execute a workflow triggered by a queue message."""
+    runtime = get_langgraph_runtime()
+
+    # Prepare trigger data with queue messages
+    queue_data = {
+        "queue_name": queue_name,
+        "messages": messages,
+        "consumed_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Compile and execute workflow
+    compiled_graph = await runtime.compile_workflow(
+        workflow_definition=workflow.workflowJson,
+        workflow_id=str(workflow.id),
     )
 
-    # In production, this would:
-    # 1. Query workflows with queue_trigger nodes for this queue
-    # 2. Execute each workflow with messages in extra_data
-    # 3. ACK messages after successful processing
+    execution_id = f"exec-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    config = {
+        "configurable": {
+            "thread_id": execution_id,
+        }
+    }
+
+    # Execute with queue message data in extra_data
+    await compiled_graph.ainvoke(
+        input={"queue_messages": queue_data},
+        config=config,
+    )
 
 
 @celery_app.task(name="app.tasks.workflow_tasks.execute_webhook_workflow")
