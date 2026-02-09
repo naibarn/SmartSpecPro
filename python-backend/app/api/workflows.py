@@ -462,20 +462,67 @@ async def receive_webhook(
         query_params=query,
     )
 
-    # TODO: In production, look up webhook config from database
-    # For now, return a simple response acknowledging receipt
-    # A background task would:
-    # 1. Look up the workflow_id associated with webhook_id
-    # 2. Compile and execute the workflow with extra_data={"webhook_request": webhook_request}
-    # 3. Optionally wait for completion and return result
+    # Parse webhook_id format: "workflow-{workflowId}-{nodeId}"
+    # In production, this would lookup from a webhooks table
+    try:
+        parts = webhook_id.split("-")
+        if len(parts) < 3 or parts[0] != "workflow":
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid webhook_id format. Expected: workflow-{workflowId}-{nodeId}",
+            )
 
-    return {
-        "status": "received",
-        "webhookId": webhook_id,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "method": method,
-        "note": "Webhook received. Production implementation would trigger workflow execution.",
-    }
+        workflow_id = parts[1]
+        node_id = "-".join(parts[2:])  # Support node IDs with hyphens
+
+        # Verify workflow exists and is active
+        result = await db.execute(
+            select(Workflow).where(
+                Workflow.id == int(workflow_id),
+                Workflow.status == "active",
+            )
+        )
+        workflow = result.scalar_one_or_none()
+
+        if not workflow:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Workflow {workflow_id} not found or inactive",
+            )
+
+        # Execute workflow asynchronously via Celery
+        from app.tasks.workflow_tasks import execute_webhook_workflow
+        task = execute_webhook_workflow.delay(
+            workflow_id=workflow_id,
+            node_id=node_id,
+            webhook_request=webhook_request,
+        )
+
+        logger.info(
+            "webhook_workflow_triggered",
+            webhook_id=webhook_id,
+            workflow_id=workflow_id,
+            node_id=node_id,
+            task_id=task.id,
+        )
+
+        return {
+            "status": "triggered",
+            "webhookId": webhook_id,
+            "workflowId": workflow_id,
+            "executionId": task.id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "message": "Workflow execution started",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("webhook_execution_failed", webhook_id=webhook_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Webhook execution failed: {str(e)}",
+        )
 
 
 @router.get("/execute/{execution_id}/stream")
