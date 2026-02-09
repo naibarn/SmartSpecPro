@@ -1806,3 +1806,126 @@ class NodeRegistry:
                 executor="app.orchestrator.node_executors.trigger_executors.error_trigger_executor.ErrorTriggerExecutor",
             )
         )
+
+        # ===== Core I/O Nodes =====
+
+        # HTTP Request
+        self.register_node_type(
+            NodeTypeSpec(
+                type="http_request",
+                display_name="HTTP Request",
+                description="Make an outbound HTTP request to an external API",
+                icon="globe",
+                color="blue",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="url",
+                        display_name="URL",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="https://api.example.com/data",
+                    ),
+                    InputSpec(
+                        name="method",
+                        display_name="Method",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="GET",
+                        options=[
+                            {"label": "GET", "value": "GET"},
+                            {"label": "POST", "value": "POST"},
+                            {"label": "PUT", "value": "PUT"},
+                            {"label": "DELETE", "value": "DELETE"},
+                            {"label": "PATCH", "value": "PATCH"},
+                            {"label": "HEAD", "value": "HEAD"},
+                            {"label": "OPTIONS", "value": "OPTIONS"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="headers",
+                        display_name="Headers",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"Content-Type": "application/json", "Authorization": "Bearer {{secrets.API_KEY}}"}',
+                    ),
+                    InputSpec(
+                        name="queryParams",
+                        display_name="Query Parameters",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"page": "1", "limit": "10"}',
+                    ),
+                    InputSpec(
+                        name="body",
+                        display_name="Request Body",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"key": "value"}',
+                    ),
+                    InputSpec(
+                        name="auth",
+                        display_name="Authentication",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder='{"type": "bearer", "token": "{{secrets.API_KEY}}"}',
+                    ),
+                    InputSpec(
+                        name="timeout",
+                        display_name="Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=30,
+                        validation={"min": 1, "max": 300},
+                    ),
+                    InputSpec(
+                        name="followRedirects",
+                        display_name="Follow Redirects",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                    InputSpec(
+                        name="validateSSL",
+                        display_name="Validate SSL",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(
+                        name="statusCode", display_name="Status Code", data_type="number"
+                    ),
+                    OutputSpec(name="body", display_name="Response Body", data_type="any"),
+                    OutputSpec(
+                        name="headers", display_name="Response Headers", data_type="json"
+                    ),
+                    OutputSpec(
+                        name="responseTime",
+                        display_name="Response Time (ms)",
+                        data_type="number",
+                    ),
+                    OutputSpec(name="error", display_name="Error", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.io_executors.http_request_executor.HttpRequestExecutor",
+            )
+        )
