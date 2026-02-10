@@ -271,12 +271,23 @@ class MediaTaskService:
         credits_balance: Optional[int] = None
     ) -> Optional[MediaTask]:
         """Update task by external provider task ID (e.g., Kie.ai callback)"""
+        if not external_task_id:
+            raise ValueError("external_task_id (provider_task_id) is required")
+
         task = await MediaTaskService.get_task_by_external_id(db, external_task_id)
         if not task:
             return None
 
         # Convert enum to string value for database storage
         status_value = status.value if isinstance(status, TaskStatus) else str(status)
+
+        # Idempotency guard: don't overwrite terminal states with another terminal update.
+        if task.status in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value]:
+            if task.status == status_value:
+                return task
+            # Preserve first terminal transition as source of truth.
+            return task
+
         task.status = status_value
 
         if result_url:

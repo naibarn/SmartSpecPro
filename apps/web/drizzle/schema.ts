@@ -62,6 +62,21 @@ export const dlqItemStatusEnum = pgEnum("dlq_item_status", [
   "discarded",
 ]);
 
+// Media callback reliability enums (Section 01)
+export const mediaCallbackEventStatusEnum = pgEnum("media_callback_event_status", [
+  "pending",
+  "processing",
+  "retry_pending",
+  "completed",
+  "failed",
+]);
+
+export const mediaCallbackDlqStatusEnum = pgEnum("media_callback_dlq_status", [
+  "pending",
+  "reprocessed",
+  "discarded",
+]);
+
 // Policy action enum (Section 13)
 export const policyActionEnum = pgEnum("policy_action", [
   "allow",
@@ -1326,6 +1341,59 @@ export const mediaModels = pgTable("media_models", {
 
 export type MediaModel = typeof mediaModels.$inferSelect;
 export type InsertMediaModel = typeof mediaModels.$inferInsert;
+
+/**
+ * Durable callback event log for media provider webhooks.
+ * Enables idempotent processing and retry scheduling.
+ */
+export const mediaCallbackEvents = pgTable("media_callback_events", {
+  id: serial("id").primaryKey(),
+  providerName: varchar("providerName", { length: 64 }).notNull().default("kie_ai"),
+  providerTaskId: varchar("providerTaskId", { length: 128 }),
+  eventFingerprint: varchar("eventFingerprint", { length: 64 }).notNull().unique(),
+  payload: json("payload").$type<Record<string, any>>().notNull().default({}),
+  normalizedStatus: varchar("normalizedStatus", { length: 32 }),
+  resultUrl: text("resultUrl"),
+  errorMessage: text("errorMessage"),
+  status: mediaCallbackEventStatusEnum("status").notNull().default("pending"),
+  attemptCount: integer("attemptCount").notNull().default(0),
+  maxAttempts: integer("maxAttempts").notNull().default(5),
+  nextRetryAt: timestamp("nextRetryAt", { withTimezone: true }),
+  processedAt: timestamp("processedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("media_callback_events_provider_task_idx").on(t.providerTaskId),
+  index("media_callback_events_status_retry_idx").on(t.status, t.nextRetryAt),
+  index("media_callback_events_provider_status_idx").on(t.providerTaskId, t.status),
+]);
+
+export type MediaCallbackEvent = typeof mediaCallbackEvents.$inferSelect;
+export type InsertMediaCallbackEvent = typeof mediaCallbackEvents.$inferInsert;
+
+/**
+ * Media callback dead-letter entries for terminal callback processing failures.
+ */
+export const mediaCallbackDlq = pgTable("media_callback_dlq", {
+  id: serial("id").primaryKey(),
+  eventId: integer("eventId").references(() => mediaCallbackEvents.id, { onDelete: "set null" }),
+  providerName: varchar("providerName", { length: 64 }).notNull().default("kie_ai"),
+  providerTaskId: varchar("providerTaskId", { length: 128 }),
+  eventFingerprint: varchar("eventFingerprint", { length: 64 }).notNull(),
+  payload: json("payload").$type<Record<string, any>>().notNull().default({}),
+  errorMessage: text("errorMessage").notNull(),
+  retryCount: integer("retryCount").notNull().default(0),
+  status: mediaCallbackDlqStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+}, (t) => [
+  index("media_callback_dlq_event_idx").on(t.eventId),
+  index("media_callback_dlq_provider_task_idx").on(t.providerTaskId),
+  index("media_callback_dlq_status_idx").on(t.status),
+]);
+
+export type MediaCallbackDlqItem = typeof mediaCallbackDlq.$inferSelect;
+export type InsertMediaCallbackDlqItem = typeof mediaCallbackDlq.$inferInsert;
 
 /**
  * Skill Category Enum

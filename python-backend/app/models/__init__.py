@@ -48,6 +48,12 @@ from .asset import Asset, AssetType, AssetStatus
 
 # Media Generation
 from .media_task import MediaTask, TaskStatus, MediaType
+from .media_callback_event import (
+    MediaCallbackEvent,
+    MediaCallbackDLQ,
+    CallbackEventStatus,
+    CallbackDLQStatus,
+)
 
 __all__ = [
     # Existing
@@ -108,4 +114,8 @@ __all__ = [
     "MediaTask",
     "TaskStatus",
     "MediaType",
+    "MediaCallbackEvent",
+    "MediaCallbackDLQ",
+    "CallbackEventStatus",
+    "CallbackDLQStatus",
 ]
