@@ -1,7 +1,8 @@
-import { and, eq, gt, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
+  libraryChunks,
   libraryItems,
   libraryLinks,
   libraryPermissions,
@@ -75,6 +76,56 @@ export interface LibraryItemDto {
 interface CreateLibraryItemResult {
   item: LibraryItemDto;
   idempotent: boolean;
+}
+
+export interface LibrarySearchFilters {
+  itemType?: string;
+  model?: string;
+  ownerUserId?: number;
+  tags?: string[];
+  status?: LibraryItemStatus;
+  fromDate?: Date;
+  toDate?: Date;
+}
+
+export interface LibrarySearchInput {
+  query?: string;
+  limit?: number;
+  offset?: number;
+  filters?: LibrarySearchFilters;
+}
+
+export interface LibrarySearchResultV1 {
+  item_id: number;
+  item_type: string;
+  title: string;
+  thumbnail_url: string | null;
+  status: string;
+  source: string;
+  provider_name: string | null;
+  model_name: string | null;
+  owner_user_id: number;
+  created_at: string;
+  updated_at: string;
+  combined_score: number;
+  keyword_score: number;
+  vector_score: number;
+  attach_payload: {
+    item_id: number;
+    item_type: string;
+    title: string;
+    source: string;
+  };
+}
+
+export interface LibrarySearchResponseV1 {
+  version: "library_search_v1";
+  query: string;
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  results: LibrarySearchResultV1[];
 }
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -175,6 +226,66 @@ export function normalizeLibraryMetadata(
   }
 
   return output;
+}
+
+function tokenize(value: string): string[] {
+  return value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1);
+}
+
+function computeTokenOverlapScore(queryTokens: string[], content: string): number {
+  if (!queryTokens.length) return 0;
+  const contentTokens = new Set(tokenize(content));
+  if (!contentTokens.size) return 0;
+
+  let hits = 0;
+  for (const token of queryTokens) {
+    if (contentTokens.has(token)) hits += 1;
+  }
+
+  return hits / queryTokens.length;
+}
+
+function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters): boolean {
+  if (!filters) return true;
+
+  if (filters.itemType && item.itemType !== filters.itemType) return false;
+  if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
+  if (filters.status && item.status !== filters.status) return false;
+  if (filters.fromDate && item.createdAt < filters.fromDate) return false;
+  if (filters.toDate && item.createdAt > filters.toDate) return false;
+
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  if (filters.model) {
+    const model = typeof metadata.model === "string" ? metadata.model : null;
+    const modelName = typeof metadata.model_name === "string" ? metadata.model_name : null;
+    if (model !== filters.model && modelName !== filters.model) return false;
+  }
+
+  if (filters.tags && filters.tags.length > 0) {
+    const metadataTags = Array.isArray(metadata.tags) ? metadata.tags.map((tag) => String(tag)) : [];
+    const tagsSet = new Set(metadataTags.map((tag) => tag.toLowerCase()));
+    const required = filters.tags.map((tag) => tag.toLowerCase());
+    if (!required.every((tag) => tagsSet.has(tag))) return false;
+  }
+
+  return true;
+}
+
+function hasActivePermissionForItem(
+  permissions: Array<{ libraryItemId: number; permissionLevel: string; expiresAt: Date | null }>,
+  itemId: number,
+): boolean {
+  const now = new Date();
+  return permissions.some((permission) => {
+    if (permission.libraryItemId !== itemId) return false;
+    if (!permission.permissionLevel) return false;
+    if (permission.expiresAt && permission.expiresAt <= now) return false;
+    return true;
+  });
 }
 
 async function getUserPermissionLevel(
@@ -458,4 +569,179 @@ export async function shareLibraryItem(
     });
 
   return true;
+}
+
+export async function searchLibraryItems(
+  input: LibrarySearchInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<LibrarySearchResponseV1> {
+  const db = await resolveDb(dbClient);
+
+  const limit = Math.min(Math.max(input.limit ?? 20, 1), 100);
+  const offset = Math.max(input.offset ?? 0, 0);
+  const query = (input.query ?? "").trim();
+  const queryTokens = tokenize(query);
+
+  const itemRows = await db
+    .select()
+    .from(libraryItems)
+    .where(and(eq(libraryItems.tenantId, actor.tenantId), isNull(libraryItems.deletedAt)))
+    .orderBy(desc(libraryItems.createdAt));
+
+  const filteredItems = itemRows.filter((item) => itemMatchesFilters(item, input.filters));
+  const itemIds = filteredItems.map((item) => item.id);
+
+  if (itemIds.length === 0) {
+    return {
+      version: "library_search_v1",
+      query,
+      total: 0,
+      limit,
+      offset,
+      has_more: false,
+      results: [],
+    };
+  }
+
+  const [chunkRows, permissionRows] = await Promise.all([
+    db
+      .select({
+        libraryItemId: libraryChunks.libraryItemId,
+        content: libraryChunks.content,
+        vectorRefId: libraryChunks.vectorRefId,
+      })
+      .from(libraryChunks)
+      .where(
+        and(
+          eq(libraryChunks.tenantId, actor.tenantId),
+          inArray(libraryChunks.libraryItemId, itemIds),
+        ),
+      ),
+    db
+      .select({
+        libraryItemId: libraryPermissions.libraryItemId,
+        permissionLevel: libraryPermissions.permissionLevel,
+        expiresAt: libraryPermissions.expiresAt,
+      })
+      .from(libraryPermissions)
+      .where(
+        and(
+          eq(libraryPermissions.tenantId, actor.tenantId),
+          eq(libraryPermissions.subjectType, "user"),
+          eq(libraryPermissions.subjectId, String(actor.userId)),
+          inArray(libraryPermissions.libraryItemId, itemIds),
+        ),
+      ),
+  ]);
+
+  const chunksByItem = new Map<number, Array<{ content: string; vectorRefId: string | null }>>();
+  for (const chunk of chunkRows) {
+    const list = chunksByItem.get(chunk.libraryItemId) ?? [];
+    list.push({
+      content: chunk.content,
+      vectorRefId: chunk.vectorRefId,
+    });
+    chunksByItem.set(chunk.libraryItemId, list);
+  }
+
+  const visibleScored = filteredItems
+    .filter((item) => {
+      const permissionLevel = hasActivePermissionForItem(permissionRows, item.id) ? "read" : null;
+      return canReadLibraryItem(item, actor, permissionLevel);
+    })
+    .map((item) => {
+      const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+      const chunks = chunksByItem.get(item.id) ?? [];
+
+      const itemText = [
+        item.title,
+        item.description ?? "",
+        JSON.stringify(metadata),
+      ].join(" ");
+
+      const keywordScore = query ? computeTokenOverlapScore(queryTokens, itemText) : 0;
+      const vectorScore = query
+        ? chunks
+            .filter((chunk) => Boolean(chunk.vectorRefId))
+            .reduce((maxScore, chunk) => {
+              const score = computeTokenOverlapScore(queryTokens, chunk.content);
+              return score > maxScore ? score : maxScore;
+            }, 0)
+        : 0;
+
+      const combinedScore = query
+        ? Number((0.45 * keywordScore + 0.55 * vectorScore).toFixed(6))
+        : 0;
+
+      const providerName = typeof metadata.provider_name === "string"
+        ? metadata.provider_name
+        : typeof metadata.provider === "string"
+          ? metadata.provider
+          : null;
+
+      const modelName = typeof metadata.model_name === "string"
+        ? metadata.model_name
+        : typeof metadata.model === "string"
+          ? metadata.model
+          : null;
+
+      return {
+        item,
+        keywordScore,
+        vectorScore,
+        combinedScore,
+        providerName,
+        modelName,
+      };
+    })
+    .filter((entry) => {
+      if (!query) return true;
+      return entry.keywordScore > 0 || entry.vectorScore > 0;
+    });
+
+  visibleScored.sort((a, b) => {
+    if (b.combinedScore !== a.combinedScore) return b.combinedScore - a.combinedScore;
+    if (b.keywordScore !== a.keywordScore) return b.keywordScore - a.keywordScore;
+    if (b.vectorScore !== a.vectorScore) return b.vectorScore - a.vectorScore;
+    if (b.item.createdAt.getTime() !== a.item.createdAt.getTime()) {
+      return b.item.createdAt.getTime() - a.item.createdAt.getTime();
+    }
+    return a.item.id - b.item.id;
+  });
+
+  const paged = visibleScored.slice(offset, offset + limit);
+  const results: LibrarySearchResultV1[] = paged.map((entry) => ({
+    item_id: entry.item.id,
+    item_type: entry.item.itemType,
+    title: entry.item.title,
+    thumbnail_url: entry.item.thumbnailUrl,
+    status: entry.item.status,
+    source: entry.item.source,
+    provider_name: entry.providerName,
+    model_name: entry.modelName,
+    owner_user_id: entry.item.ownerUserId,
+    created_at: entry.item.createdAt.toISOString(),
+    updated_at: entry.item.updatedAt.toISOString(),
+    combined_score: entry.combinedScore,
+    keyword_score: Number(entry.keywordScore.toFixed(6)),
+    vector_score: Number(entry.vectorScore.toFixed(6)),
+    attach_payload: {
+      item_id: entry.item.id,
+      item_type: entry.item.itemType,
+      title: entry.item.title,
+      source: entry.item.source,
+    },
+  }));
+
+  const total = visibleScored.length;
+  return {
+    version: "library_search_v1",
+    query,
+    total,
+    limit,
+    offset,
+    has_more: offset + results.length < total,
+    results,
+  };
 }

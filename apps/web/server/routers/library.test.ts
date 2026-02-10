@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockCreateLibraryItem,
   mockGetLibraryItemById,
+  mockSearchLibraryItems,
   mockUpdateLibraryItem,
   mockSoftDeleteLibraryItem,
   mockShareLibraryItem,
 } = vi.hoisted(() => ({
   mockCreateLibraryItem: vi.fn(),
   mockGetLibraryItemById: vi.fn(),
+  mockSearchLibraryItems: vi.fn(),
   mockUpdateLibraryItem: vi.fn(),
   mockSoftDeleteLibraryItem: vi.fn(),
   mockShareLibraryItem: vi.fn(),
@@ -17,6 +19,7 @@ const {
 vi.mock("../services/libraryService", () => ({
   createLibraryItem: mockCreateLibraryItem,
   getLibraryItemById: mockGetLibraryItemById,
+  searchLibraryItems: mockSearchLibraryItems,
   updateLibraryItem: mockUpdateLibraryItem,
   softDeleteLibraryItem: mockSoftDeleteLibraryItem,
   shareLibraryItem: mockShareLibraryItem,
@@ -86,6 +89,37 @@ describe("libraryRouter.createItem", () => {
         },
       }),
     ).rejects.toThrow("Tenant context is required");
+  });
+});
+
+describe("libraryRouter.search", () => {
+  it("returns library_search_v1 payload from service", async () => {
+    mockSearchLibraryItems.mockResolvedValue({
+      version: "library_search_v1",
+      query: "launch",
+      total: 1,
+      limit: 20,
+      offset: 0,
+      has_more: false,
+      results: [],
+    });
+
+    const fn = libraryRouter.search as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: 44 },
+        tenantId: null,
+      },
+      input: {
+        query: "launch",
+      },
+    });
+
+    expect(result.version).toBe("library_search_v1");
+    expect(mockSearchLibraryItems).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "launch" }),
+      expect.objectContaining({ userId: 9, tenantId: 44 }),
+    );
   });
 });
 
