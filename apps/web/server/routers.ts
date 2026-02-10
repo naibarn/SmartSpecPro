@@ -53,6 +53,7 @@ import { telegramRouter } from "./routers/telegram";
 import { workflowRouter } from "./routers/workflow";
 import { approvalsRouter } from "./routers/approvals";
 import { libraryRouter } from "./routers/library";
+import { libraryOpsRouter } from "./routers/libraryOps";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1205,6 +1206,9 @@ export const appRouter = router({
 
   // Library domain APIs
   library: libraryRouter,
+
+  // Library operations (admin)
+  libraryOps: libraryOpsRouter,
 
   // Skills management and prompt enhancement
   skills: skillsRouter,

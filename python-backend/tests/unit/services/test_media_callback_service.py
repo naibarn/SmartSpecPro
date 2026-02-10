@@ -11,6 +11,10 @@ from app.core.database import Base
 from app.models.media_task import MediaTask, MediaType, TaskStatus
 from app.models.media_callback_event import MediaCallbackDLQ, MediaCallbackEvent
 from app.models.user import User
+from app.services.library_observability import (
+    get_metric_count,
+    reset_library_observability_metrics,
+)
 from app.services.media_callback_service import process_kie_callback_payload, retry_due_callback_events
 from app.services.media_task_service import MediaTaskService
 
@@ -169,3 +173,46 @@ class TestMediaCallbackService:
         event = await callback_db.scalar(select(MediaCallbackEvent).order_by(MediaCallbackEvent.id.desc()))
         assert event is not None
         assert event.status == "failed"
+
+    @pytest.mark.asyncio
+    async def test_callback_metrics_emit_for_success_and_dlq_failure(self, callback_db):
+        reset_library_observability_metrics()
+
+        user = User(email="cb-metrics@example.com", password="hash", credits=100)
+        callback_db.add(user)
+        await callback_db.commit()
+        await callback_db.refresh(user)
+
+        task = await MediaTaskService.create_task(
+            callback_db,
+            user,
+            MediaType.VIDEO,
+            "veo-3-1",
+            "metrics callback task",
+        )
+        await MediaTaskService.update_task_status(
+            callback_db,
+            task.id,
+            TaskStatus.PROCESSING,
+            external_task_id="prov-task-metrics-1",
+        )
+
+        await process_kie_callback_payload(
+            callback_db,
+            {
+                "taskId": "prov-task-metrics-1",
+                "status": "completed",
+                "output": {"url": "https://cdn.example.com/video-ok.mp4"},
+            },
+        )
+
+        await process_kie_callback_payload(
+            callback_db,
+            {
+                "status": "failed",
+                "error": "missing task id",
+            },
+        )
+
+        assert get_metric_count("media.callback.processed_total") == 1
+        assert get_metric_count("media.callback.dlq_total") == 1

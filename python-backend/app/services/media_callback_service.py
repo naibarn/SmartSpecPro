@@ -18,6 +18,7 @@ from app.models.media_callback_event import (
     MediaCallbackEvent,
 )
 from app.models.media_task import TaskStatus
+from app.services.library_observability import emit_metric, log_observability_event
 from app.services.media_task_service import MediaTaskService
 
 logger = structlog.get_logger()
@@ -161,6 +162,7 @@ async def _insert_dlq_entry(db: AsyncSession, event: MediaCallbackEvent, error_m
     )
     db.add(entry)
     await db.commit()
+    emit_metric("media.callback.dlq_total", provider=event.provider_name)
 
 
 async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -> dict[str, Any]:
@@ -213,6 +215,19 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
             duplicate_terminal=task_terminal,
             target_status=target_status.value,
         )
+        emit_metric(
+            "media.callback.processed_total",
+            provider=event.provider_name,
+            normalized_status=normalized["normalized_status"],
+        )
+        log_observability_event(
+            "media_callback_processed_observed",
+            correlation_id=f"media-callback:{event.id}",
+            event_id=event.id,
+            provider_task_id=provider_task_id,
+            target_status=target_status.value,
+            duplicate_terminal=task_terminal,
+        )
         return {
             "event_id": event.id,
             "status": "completed",
@@ -240,6 +255,19 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
                 provider_task_id=event.provider_task_id,
                 error=err_msg,
             )
+            emit_metric(
+                "media.callback.failed_total",
+                provider=event.provider_name,
+                terminal=True,
+            )
+            log_observability_event(
+                "media_callback_failed_terminal_observed",
+                correlation_id=f"media-callback:{event.id}",
+                event_id=event.id,
+                provider_task_id=event.provider_task_id,
+                error=err_msg,
+                attempt_count=event.attempt_count,
+            )
             return {
                 "event_id": event.id,
                 "status": "failed_terminal",
@@ -262,6 +290,10 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
             delay_seconds=delay,
             error=err_msg,
         )
+        emit_metric(
+            "media.callback.retry_scheduled_total",
+            provider=event.provider_name,
+        )
         return {
             "event_id": event.id,
             "status": "retry_pending",
@@ -279,6 +311,13 @@ async def process_kie_callback_payload(
 ) -> dict[str, Any]:
     """Persist and process a Kie callback payload with idempotency."""
     normalized = _normalize_kie_callback_payload(payload)
+    log_observability_event(
+        "media_callback_payload_received",
+        provider="kie_ai",
+        provider_task_id=normalized.get("provider_task_id"),
+        normalized_status=normalized.get("normalized_status"),
+        payload=payload,
+    )
     fingerprint = _build_event_fingerprint("kie_ai", payload, normalized)
 
     event = await db.scalar(select(MediaCallbackEvent).where(MediaCallbackEvent.event_fingerprint == fingerprint))
@@ -343,6 +382,14 @@ async def retry_due_callback_events(db: AsyncSession, limit: int = 50) -> dict[s
         else:
             failed += 1
 
+    log_observability_event(
+        "media_callback_retry_batch_completed",
+        processed=processed,
+        completed=completed,
+        retry_pending=retry_pending,
+        failed=failed,
+        limit=limit,
+    )
     return {
         "processed": processed,
         "completed": completed,

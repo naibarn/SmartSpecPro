@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.vectordb import VectorCollection
 from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
 from app.services.embedding_service import EmbeddingService, get_embedding_service
+from app.services.library_observability import emit_metric, log_observability_event
 
 logger = structlog.get_logger()
 
@@ -236,6 +237,11 @@ async def enqueue_library_index_job(
         library_item_id=library_item_id,
         tenant_id=tenant_id,
     )
+    emit_metric(
+        "library.index.job.enqueued_total",
+        tenant_id=tenant_id,
+        job_type=job_type,
+    )
 
     return {
         "job_id": job.id,
@@ -347,6 +353,19 @@ async def process_library_index_job(
             chunk_count=len(chunks),
             attempt_count=job.attempt_count,
         )
+        emit_metric(
+            "library.index.job.completed_total",
+            tenant_id=job.tenant_id,
+            job_type=job.job_type,
+        )
+        log_observability_event(
+            "library_index_job_completed_observed",
+            correlation_id=f"library-index:{job.id}",
+            tenant_id=job.tenant_id,
+            library_item_id=job.library_item_id,
+            chunk_count=len(chunks),
+            attempt_count=job.attempt_count,
+        )
 
         return {
             "job_id": job.id,
@@ -376,6 +395,20 @@ async def process_library_index_job(
                 attempt_count=job.attempt_count,
                 error=error_message,
             )
+            emit_metric(
+                "library.index.job.failed_total",
+                tenant_id=job.tenant_id,
+                job_type=job.job_type,
+                terminal=True,
+            )
+            log_observability_event(
+                "library_index_job_failed_observed",
+                correlation_id=f"library-index:{job.id}",
+                tenant_id=job.tenant_id,
+                library_item_id=job.library_item_id,
+                attempt_count=job.attempt_count,
+                error=error_message,
+            )
             return {
                 "job_id": job.id,
                 "status": FAILED_STATUS,
@@ -396,6 +429,11 @@ async def process_library_index_job(
             attempt_count=job.attempt_count,
             delay_seconds=delay,
             error=error_message,
+        )
+        emit_metric(
+            "library.index.job.retry_scheduled_total",
+            tenant_id=job.tenant_id,
+            job_type=job.job_type,
         )
         return {
             "job_id": job.id,
@@ -465,4 +503,12 @@ async def retry_due_library_index_jobs(
         elif status == FAILED_STATUS:
             summary["failed"] += 1
 
+    log_observability_event(
+        "library_index_retry_batch_completed",
+        processed=summary["processed"],
+        completed=summary["completed"],
+        retry_pending=summary["retry_pending"],
+        failed=summary["failed"],
+        limit=limit,
+    )
     return summary
