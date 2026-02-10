@@ -8,6 +8,7 @@ from app.core.database import AsyncSessionLocal
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.models.user import User
 from app.services.media_task_service import MediaTaskService
+from app.services.media_callback_service import retry_due_callback_events
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
     ImageGenerationRequest,
@@ -634,6 +635,30 @@ def retry_failed_tasks():
 
     except Exception as e:
         logger.error("retry_failed_tasks_exception", error=str(e))
+        return {"status": "failed", "error": str(e)}
+
+
+async def _retry_media_callback_events_async():
+    """Retry due durable callback events from retry queue."""
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await retry_due_callback_events(db, limit=100)
+            logger.info("retry_media_callback_events_completed", **result)
+            return {"status": "success", **result}
+        except Exception as e:
+            logger.error("retry_media_callback_events_failed", error=str(e))
+            raise
+
+
+@celery_app.task
+def retry_media_callback_events():
+    """Periodic retry for callback events in retry_pending status."""
+    logger.info("retry_media_callback_events_started")
+    try:
+        result = _run_async(_retry_media_callback_events_async())
+        return result
+    except Exception as e:
+        logger.error("retry_media_callback_events_exception", error=str(e))
         return {"status": "failed", "error": str(e)}
 
 

@@ -19,6 +19,10 @@ from app.core.auth import get_current_user
 from app.models.user import User
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.services.media_task_service import MediaTaskService
+from app.services.media_callback_service import (
+    get_latest_callback_event_by_provider_task_id,
+    process_kie_callback_payload,
+)
 
 # Import Celery tasks
 try:
@@ -35,6 +39,12 @@ except ImportError:
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+def _is_persistent_callback_pipeline_enabled() -> bool:
+    """Feature flag for durable callback pipeline rollout."""
+    raw = str(os.getenv("MEDIA_CALLBACK_PERSISTENT_PIPELINE_ENABLED", "true")).strip().lower()
+    return raw not in {"0", "false", "no", "off"}
 
 
 # ==================== Request/Response Models ====================
@@ -660,7 +670,7 @@ async def fetch_task_result(
     if not external_task_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No external task ID found. This task may not have been submitted to Kie.ai."
+            detail="Missing provider_task_id for this task. Result queries require provider_task_id."
         )
 
     # Initialize Kie.ai client
@@ -1267,14 +1277,38 @@ async def kie_ai_callback(
             logger.warning("kie_ai_callback_no_webhook_secret_configured")
             body = await request.json()
         logger.info("kie_ai_callback_received", body=body)
-
         task_id = body.get("taskId") or body.get("task_id")
+
+        # Durable pipeline: persist callback event first, then process idempotently.
+        if _is_persistent_callback_pipeline_enabled():
+            try:
+                result = await process_kie_callback_payload(db, body)
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "success": result.get("status") in {"completed", "retry_pending"},
+                        "message": "Callback persisted and processed",
+                        "event_id": result.get("event_id"),
+                        "status": result.get("status"),
+                        "duplicate": result.get("duplicate", False),
+                        "provider_task_id": result.get("provider_task_id"),
+                        "error": result.get("error"),
+                    },
+                )
+            except Exception as persistent_err:
+                # Transition-safe fallback while rolling out durable callback pipeline.
+                logger.error(
+                    "kie_ai_persistent_callback_pipeline_error",
+                    error=str(persistent_err),
+                    task_id=task_id,
+                )
+
+        # Legacy fallback path (feature-flagged off durable pipeline).
         status_str = str(body.get("status", "")).lower()
         data = body.get("data", {}) if isinstance(body.get("data"), dict) else {}
         output = body.get("output", {})
         error = body.get("error")
 
-        # Some Kie callbacks (e.g., Veo) use data.successFlag/data.response instead of status/output.
         if not status_str:
             success_flag = data.get("successFlag")
             if success_flag in (1, True):
@@ -1292,32 +1326,25 @@ async def kie_ai_callback(
 
         if not task_id:
             logger.warning("kie_ai_callback_missing_task_id", body=body)
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "error": "Missing taskId"}
-            )
+            return JSONResponse(status_code=400, content={"success": False, "error": "Missing taskId"})
 
-        # Extract result URL from various possible locations in the output
         result_url = None
         if isinstance(output, dict):
             result_url = (
-                output.get("url") or
-                output.get("image_url") or
-                output.get("video_url") or
-                output.get("audio_url")
+                output.get("url")
+                or output.get("image_url")
+                or output.get("video_url")
+                or output.get("audio_url")
             )
-            # Also check for urls array
             if not result_url and "urls" in output:
                 urls = output.get("urls", [])
                 if urls:
                     result_url = urls[0] if isinstance(urls[0], str) else urls[0].get("url")
-            # Veo format: resultUrls array
             if not result_url and "resultUrls" in output:
                 result_urls = output.get("resultUrls", [])
                 if result_urls:
                     result_url = result_urls[0] if isinstance(result_urls[0], str) else result_urls[0].get("url")
 
-        # Store the callback data for the task
         callback_data = {
             "task_id": task_id,
             "status": status_str,
@@ -1327,7 +1354,6 @@ async def kie_ai_callback(
         }
         store_pending_callback(task_id, callback_data)
 
-        # Try to update the task in database if it exists
         try:
             if status_str == "completed" and result_url:
                 await MediaTaskService.update_task_by_external_id(
@@ -1335,25 +1361,19 @@ async def kie_ai_callback(
                     task_id,
                     TaskStatus.COMPLETED,
                     result_url=result_url,
-                    result_data={"output": output}
+                    result_data={"output": output},
                 )
-                logger.info("kie_ai_task_completed", task_id=task_id, result_url=result_url)
             elif status_str == "failed":
                 await MediaTaskService.update_task_by_external_id(
                     db,
                     task_id,
                     TaskStatus.FAILED,
-                    error_message=error or "Task failed"
+                    error_message=error or "Task failed",
                 )
-                logger.warning("kie_ai_task_failed", task_id=task_id, error=error)
         except Exception as e:
-            # Task might not exist in our database (created directly via API)
             logger.warning("kie_ai_callback_db_update_failed", task_id=task_id, error=str(e))
 
-        return JSONResponse(
-            status_code=200,
-            content={"success": True, "message": "Callback processed"}
-        )
+        return JSONResponse(status_code=200, content={"success": True, "message": "Callback processed (legacy mode)"})
 
     except Exception as e:
         logger.error("kie_ai_callback_error", error=str(e))
@@ -1387,12 +1407,16 @@ async def get_callback_status(
     # Check database for task status
     task = await MediaTaskService.get_task(db, task_id, current_user.id)
     if task:
+        callback_event = await get_latest_callback_event_by_provider_task_id(db, task.task_id or "")
         return {
-            "received": task.status in [TaskStatus.COMPLETED, TaskStatus.FAILED],
+            "received": task.status in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value],
             "task_id": task_id,
-            "status": task.status.value,
+            "status": task.status,
             "result_url": task.result_url,
-            "error": task.error_message
+            "error": task.error_message,
+            "callback_event_status": callback_event.status if callback_event else None,
+            "callback_event_attempts": callback_event.attempt_count if callback_event else None,
+            "provider_task_id": task.task_id,
         }
 
     return {"received": False, "task_id": task_id}

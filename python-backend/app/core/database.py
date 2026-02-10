@@ -86,7 +86,7 @@ async def init_db():
         # Phase 3 models
         tenant, rbac, approval, vault_model, vector_store,
         # Media and assets
-        asset, media_task,
+        asset, media_task, media_callback_event,
         # Notifications and preferences
         notification, user_preferences, custom_skill_prompt
     )
