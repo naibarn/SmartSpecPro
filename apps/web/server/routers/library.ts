@@ -5,6 +5,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import {
   createLibraryItem,
   getLibraryItemById,
+  searchLibraryItems,
   shareLibraryItem,
   softDeleteLibraryItem,
   updateLibraryItem,
@@ -21,6 +22,16 @@ const sourceLinkSchema = z.object({
   providerTaskId: z.string().min(1).max(128).optional(),
 });
 
+const searchFilterSchema = z.object({
+  itemType: z.string().min(1).max(32).optional(),
+  model: z.string().min(1).max(128).optional(),
+  ownerUserId: z.number().int().positive().optional(),
+  tags: z.array(z.string().min(1).max(64)).max(20).optional(),
+  status: itemStatusSchema.optional(),
+  fromDate: z.coerce.date().optional(),
+  toDate: z.coerce.date().optional(),
+}).optional();
+
 function resolveTenantId(ctx: { tenantId: number | null; user: { currentTenantId?: number | null } }): number {
   const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
   if (tenantId === null || tenantId === undefined) {
@@ -34,6 +45,34 @@ function resolveTenantId(ctx: { tenantId: number | null; user: { currentTenantId
 }
 
 export const libraryRouter = router({
+  search: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().max(1000).optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+        offset: z.number().int().min(0).optional(),
+        filters: searchFilterSchema,
+      }).optional(),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantId(ctx);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId,
+        role: ctx.user.role,
+      };
+
+      return searchLibraryItems(
+        {
+          query: input?.query,
+          limit: input?.limit,
+          offset: input?.offset,
+          filters: input?.filters,
+        },
+        actor,
+      );
+    }),
+
   createItem: protectedProcedure
     .input(
       z.object({
