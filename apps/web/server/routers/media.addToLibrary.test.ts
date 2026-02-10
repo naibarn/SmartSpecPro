@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockAddMediaTaskToLibrary } = vi.hoisted(() => ({
+const { mockAddMediaTaskToLibrary, mockAuditLog } = vi.hoisted(() => ({
   mockAddMediaTaskToLibrary: vi.fn(),
+  mockAuditLog: vi.fn(),
 }));
 
 vi.mock("../services/mediaLibraryService", () => ({
   addMediaTaskToLibrary: mockAddMediaTaskToLibrary,
+}));
+
+vi.mock("../services/auditLogger", () => ({
+  auditLogger: {
+    log: mockAuditLog,
+  },
 }));
 
 vi.mock("../services/mediaGenerationService", () => ({
@@ -71,6 +78,8 @@ import { mediaRouter } from "./media";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete process.env.LIBRARY_ENABLED;
+  delete process.env.LIBRARY_ENABLED_TENANTS;
 });
 
 describe("mediaRouter.addTaskToLibrary", () => {
@@ -99,6 +108,12 @@ describe("mediaRouter.addTaskToLibrary", () => {
       expect.objectContaining({ mediaTaskId: "task-123", userToken: "token-abc" }),
       expect.objectContaining({ userId: 9, tenantId: 44 }),
     );
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "library_mutation",
+        endpoint: "media.addTaskToLibrary",
+      }),
+    );
   });
 
   it("rejects add-to-library when tenant context is missing", async () => {
@@ -114,5 +129,21 @@ describe("mediaRouter.addTaskToLibrary", () => {
         input: { taskId: "task-123" },
       }),
     ).rejects.toThrow("Tenant context is required");
+  });
+
+  it("rejects add-to-library when library feature is disabled", async () => {
+    process.env.LIBRARY_ENABLED = "false";
+    const fn = mediaRouter.addTaskToLibrary as Function;
+
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 9, role: "user", currentTenantId: 44 },
+          userToken: "token-abc",
+          tenantId: null,
+        },
+        input: { taskId: "task-123" },
+      }),
+    ).rejects.toThrow("Library feature is disabled");
   });
 });

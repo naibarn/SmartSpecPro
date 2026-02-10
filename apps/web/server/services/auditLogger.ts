@@ -21,6 +21,8 @@ export type AuditEventType =
   | "llm_stream_end"
   | "media_request"
   | "media_response"
+  | "library_mutation"
+  | "rollout_gate"
   | "skill_detect"
   | "skill_execute"
   | "error";

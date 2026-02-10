@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { adminProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+import { auditLogger } from "../services/auditLogger";
+import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import {
   createLibraryOpsRepository,
   getLibraryOpsSummary,
@@ -11,7 +13,12 @@ import {
 } from "../services/libraryOpsService";
 
 export const libraryOpsRouter = router({
-  getSummary: adminProcedure.query(async () => {
+  getSummary: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+    if (!isLibraryEnabledForTenant(tenantId)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
+    }
+
     const db = await getDb();
     if (!db) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
@@ -25,7 +32,12 @@ export const libraryOpsRouter = router({
         id: z.number().int().positive(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+      if (!isLibraryEnabledForTenant(tenantId)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
+      }
+
       const db = await getDb();
       if (!db) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
@@ -39,6 +51,15 @@ export const libraryOpsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "DLQ entry not found" });
       }
 
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "libraryOps.reprocessCallbackDlq",
+        requestType: "mutation",
+        requestPayload: { dlqId: input.id, tenantId },
+        responsePayload: result,
+      });
+
       return result;
     }),
 
@@ -49,13 +70,30 @@ export const libraryOpsRouter = router({
         limit: z.number().int().min(1).max(500).default(100),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+      if (!isLibraryEnabledForTenant(tenantId)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
+      }
+
       const db = await getDb();
       if (!db) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       }
 
-      return retryFailedLibraryIndexJobs(db, input);
+      const result = await retryFailedLibraryIndexJobs(db, input);
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "libraryOps.retryFailedIndexJobs",
+        requestType: "mutation",
+        requestPayload: {
+          limit: input.limit,
+          requestedCount: input.jobIds?.length ?? 0,
+          tenantId,
+        },
+        responsePayload: result,
+      });
+      return result;
     }),
 });
-

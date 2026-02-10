@@ -7,6 +7,7 @@ const {
   mockUpdateLibraryItem,
   mockSoftDeleteLibraryItem,
   mockShareLibraryItem,
+  mockAuditLog,
 } = vi.hoisted(() => ({
   mockCreateLibraryItem: vi.fn(),
   mockGetLibraryItemById: vi.fn(),
@@ -14,6 +15,7 @@ const {
   mockUpdateLibraryItem: vi.fn(),
   mockSoftDeleteLibraryItem: vi.fn(),
   mockShareLibraryItem: vi.fn(),
+  mockAuditLog: vi.fn(),
 }));
 
 vi.mock("../services/libraryService", () => ({
@@ -23,6 +25,12 @@ vi.mock("../services/libraryService", () => ({
   updateLibraryItem: mockUpdateLibraryItem,
   softDeleteLibraryItem: mockSoftDeleteLibraryItem,
   shareLibraryItem: mockShareLibraryItem,
+}));
+
+vi.mock("../services/auditLogger", () => ({
+  auditLogger: {
+    log: mockAuditLog,
+  },
 }));
 
 vi.mock("../_core/trpc", () => {
@@ -45,6 +53,8 @@ import { libraryRouter } from "./library";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete process.env.LIBRARY_ENABLED;
+  delete process.env.LIBRARY_ENABLED_TENANTS;
 });
 
 describe("libraryRouter.createItem", () => {
@@ -71,6 +81,12 @@ describe("libraryRouter.createItem", () => {
       expect.objectContaining({ title: "Demo" }),
       expect.objectContaining({ userId: 9, tenantId: 44 }),
     );
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "library_mutation",
+        endpoint: "library.createItem",
+      }),
+    );
   });
 
   it("rejects missing tenant context", async () => {
@@ -89,6 +105,25 @@ describe("libraryRouter.createItem", () => {
         },
       }),
     ).rejects.toThrow("Tenant context is required");
+  });
+
+  it("rejects when library feature is disabled", async () => {
+    process.env.LIBRARY_ENABLED = "false";
+    const fn = libraryRouter.createItem as Function;
+
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 9, role: "user", currentTenantId: 44 },
+          tenantId: null,
+        },
+        input: {
+          itemType: "image",
+          source: "media_history",
+          title: "Demo",
+        },
+      }),
+    ).rejects.toThrow("Library feature is disabled");
   });
 });
 

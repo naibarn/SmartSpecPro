@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../_core/trpc";
+import { auditLogger } from "../services/auditLogger";
+import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import {
   createLibraryItem,
   getLibraryItemById,
@@ -44,6 +46,15 @@ function resolveTenantId(ctx: { tenantId: number | null; user: { currentTenantId
   return tenantId;
 }
 
+function assertLibraryEnabled(tenantId: number): void {
+  if (!isLibraryEnabledForTenant(tenantId)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Library feature is disabled for this tenant",
+    });
+  }
+}
+
 export const libraryRouter = router({
   search: protectedProcedure
     .input(
@@ -56,6 +67,7 @@ export const libraryRouter = router({
     )
     .query(async ({ input, ctx }) => {
       const tenantId = resolveTenantId(ctx);
+      assertLibraryEnabled(tenantId);
       const actor = {
         userId: ctx.user.id,
         tenantId,
@@ -90,19 +102,39 @@ export const libraryRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantId(ctx);
+      assertLibraryEnabled(tenantId);
       const actor = {
         userId: ctx.user.id,
         tenantId,
         role: ctx.user.role,
       };
 
-      return createLibraryItem(input, actor);
+      const result = await createLibraryItem(input, actor);
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.createItem",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId,
+          itemType: input.itemType,
+          source: input.source,
+          visibility: input.visibility ?? "private",
+        },
+        responsePayload: {
+          itemId: result.item?.id ?? null,
+          idempotent: result.idempotent,
+        },
+      });
+
+      return result;
     }),
 
   getItem: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input, ctx }) => {
       const tenantId = resolveTenantId(ctx);
+      assertLibraryEnabled(tenantId);
       const actor = {
         userId: ctx.user.id,
         tenantId,
@@ -135,6 +167,7 @@ export const libraryRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantId(ctx);
+      assertLibraryEnabled(tenantId);
       const actor = {
         userId: ctx.user.id,
         tenantId,
@@ -151,6 +184,22 @@ export const libraryRouter = router({
         });
       }
 
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.updateItem",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId,
+          itemId: id,
+          fields: Object.keys(payload),
+        },
+        responsePayload: {
+          itemId: item.id,
+          status: item.status,
+        },
+      });
+
       return item;
     }),
 
@@ -158,6 +207,7 @@ export const libraryRouter = router({
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantId(ctx);
+      assertLibraryEnabled(tenantId);
       const actor = {
         userId: ctx.user.id,
         tenantId,
@@ -171,6 +221,20 @@ export const libraryRouter = router({
           message: "Library item not found",
         });
       }
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.deleteItem",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId,
+          itemId: input.id,
+        },
+        responsePayload: {
+          success: true,
+        },
+      });
 
       return { success: true };
     }),
@@ -187,6 +251,7 @@ export const libraryRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantId(ctx);
+      assertLibraryEnabled(tenantId);
       const actor = {
         userId: ctx.user.id,
         tenantId,
@@ -200,6 +265,23 @@ export const libraryRouter = router({
           message: "Library item not found",
         });
       }
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.shareItem",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId,
+          itemId: input.itemId,
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+          permissionLevel: input.permissionLevel,
+        },
+        responsePayload: {
+          success: true,
+        },
+      });
 
       return { success: true };
     }),

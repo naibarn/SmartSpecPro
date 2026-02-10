@@ -21,7 +21,9 @@ import { deductCredits, hasEnoughCredits, refundCredits } from "../services/cred
 import { calculateCreditCost, type UserSelections } from "../services/pricingCalculator";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
+import { auditLogger } from "../services/auditLogger";
 import { addMediaTaskToLibrary } from "../services/mediaLibraryService";
+import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { getDb } from "../db";
 import { mediaModels } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -659,6 +661,12 @@ export const mediaRouter = router({
           message: "Tenant context is required for add-to-library",
         });
       }
+      if (!isLibraryEnabledForTenant(tenantId)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Library feature is disabled for this tenant",
+        });
+      }
 
       try {
         const userToken = getUserToken(ctx);
@@ -675,6 +683,22 @@ export const mediaRouter = router({
             role: ctx.user.role,
           },
         );
+        auditLogger.log({
+          eventType: "library_mutation",
+          userId: ctx.user.id,
+          endpoint: "media.addTaskToLibrary",
+          requestType: "mutation",
+          requestPayload: {
+            tenantId,
+            taskId: input.taskId,
+            visibility: input.visibility ?? "private",
+          },
+          responsePayload: {
+            itemId: result.itemId,
+            created: result.created,
+            indexJobId: result.indexJob?.jobId ?? null,
+          },
+        });
         return result;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to add media task to library";
