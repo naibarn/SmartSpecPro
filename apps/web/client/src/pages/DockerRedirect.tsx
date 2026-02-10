@@ -21,8 +21,8 @@ export default function DockerRedirect() {
     const hostname = window.location.hostname;
     let dockerUrl: string;
 
-    if (hostname === 'smartspec.pro') {
-      dockerUrl = 'https://docker.smartspec.pro/token-exchange';
+    if (hostname === 'smartaihub.app' || hostname === 'smartspec.pro') {
+      dockerUrl = 'https://docker.smartaihub.app/token-exchange';
     } else if (hostname === 'smartspec.local') {
       dockerUrl = 'https://docker.smartspec.local/token-exchange';
     } else {

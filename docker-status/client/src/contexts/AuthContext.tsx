@@ -107,8 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Redirect to main site after logout
       const hostname = window.location.hostname;
       let mainSiteUrl: string;
-      if (hostname === 'docker.smartspec.pro') {
-        mainSiteUrl = 'https://smartspec.pro';
+      if (hostname === 'docker.smartaihub.app') {
+        mainSiteUrl = 'https://smartaihub.app';
       } else if (hostname === 'docker.smartspec.local') {
         mainSiteUrl = 'https://smartspec.local';
       } else if (hostname === 'docker.localhost') {

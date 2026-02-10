@@ -3,7 +3,7 @@
 # Resource limits prevent FFmpeg from overloading the host machine.
 #
 # REQUIRES: Main stack running first (docker-compose.yml)
-#   to provide: postgres, redis on smartspecpro_default network
+#   to provide: postgres, redis on smartspec-network network
 #
 # Usage:
 #   docker compose -f docker-compose.media.yml up -d
@@ -34,7 +34,7 @@ services:
       - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
       - REDIS_URL=redis://smartspec-redis:6379/0
-      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@smartspec-postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - MEDIA_STORAGE_PATH=/app/media_storage
       # API keys inherited from env_file
     extra_hosts:
@@ -58,7 +58,7 @@ services:
       retries: 3
     restart: unless-stopped
     networks:
-      - smartspecpro_default
+      - smartspec-network
 
   # ============================================
   # CELERY VIDEO WORKER
@@ -80,7 +80,7 @@ services:
       - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
       - REDIS_URL=redis://smartspec-redis:6379/0
-      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@smartspec-postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - MEDIA_STORAGE_PATH=/app/media_storage
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -103,7 +103,7 @@ services:
       retries: 3
     restart: unless-stopped
     networks:
-      - smartspecpro_default
+      - smartspec-network
 
   # ============================================
   # CELERY BEAT (Periodic Task Scheduler)
@@ -120,7 +120,7 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
-      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec_dev@smartspec-postgres:5432/smartspec
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
     volumes:
       - ./python-backend:/app
     deploy:
@@ -130,7 +130,7 @@ services:
           memory: 256M
     restart: unless-stopped
     networks:
-      - smartspecpro_default
+      - smartspec-network
 
   # ============================================
   # FLOWER (Celery Monitoring Dashboard)
@@ -163,8 +163,8 @@ services:
       retries: 3
     restart: unless-stopped
     networks:
-      - smartspecpro_default
+      - smartspec-network
 
 networks:
-  smartspecpro_default:
+  smartspec-network:
     external: true

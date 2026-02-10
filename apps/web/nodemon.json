@@ -1,0 +1,18 @@
+{
+  "watch": ["server"],
+  "ext": "ts,js,json",
+  "ignore": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "node_modules",
+    "dist",
+    "logs",
+    "uploads"
+  ],
+  "exec": "NODE_ENV=development tsx server/_core/index.ts",
+  "delay": 2000,
+  "signal": "SIGTERM",
+  "restartable": "rs",
+  "verbose": false,
+  "killTimeout": 10000
+}

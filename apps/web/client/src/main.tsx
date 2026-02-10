@@ -12,14 +12,59 @@ import "./index.css";
 const queryClient = new QueryClient();
 
 let isRedirectingToLogin = false;
+let authRecheckInFlight: Promise<boolean> | null = null;
+let lastUnauthorizedAt = 0;
 
-const redirectToLoginIfUnauthorized = (error: unknown) => {
+const hasActiveSession = async (): Promise<boolean> => {
+  if (typeof window === "undefined") return false;
+  if (authRecheckInFlight) return authRecheckInFlight;
+
+  authRecheckInFlight = (async () => {
+    try {
+      const response = await globalThis.fetch("/trpc/auth.me", {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!response.ok) return false;
+
+      const payload = await response.json();
+      const user = payload?.result?.data?.json;
+      return Boolean(user?.id);
+    } catch {
+      return false;
+    } finally {
+      authRecheckInFlight = null;
+    }
+  })();
+
+  return authRecheckInFlight;
+};
+
+const redirectToLoginIfUnauthorized = async (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
   if (isRedirectingToLogin) return;
 
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
+  const now = Date.now();
+  if (now - lastUnauthorizedAt < 1000) return;
+  lastUnauthorizedAt = now;
+
+  const isUnauthorized =
+    error.message === UNAUTHED_ERR_MSG || error.data?.code === "UNAUTHORIZED";
   if (!isUnauthorized) return;
+
+  // Avoid hard redirect on transient API/network blips.
+  const sessionAlive = await hasActiveSession();
+  if (sessionAlive) return;
+
+  // One quick retry to avoid false logout when backend is briefly unavailable.
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const sessionAliveRetry = await hasActiveSession();
+  if (sessionAliveRetry) return;
+
+  const loginUrl = getLoginUrl();
+  const loginPath = new URL(loginUrl, window.location.origin).pathname;
+  if (window.location.pathname === loginPath) return;
 
   isRedirectingToLogin = true;
   toast.error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่", {
@@ -28,14 +73,14 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   });
 
   setTimeout(() => {
-    window.location.href = getLoginUrl();
+    window.location.href = loginUrl;
   }, 1500);
 };
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
+    void redirectToLoginIfUnauthorized(error);
     console.error("[API Query Error]", error);
   }
 });
@@ -43,7 +88,7 @@ queryClient.getQueryCache().subscribe(event => {
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
+    void redirectToLoginIfUnauthorized(error);
     console.error("[API Mutation Error]", error);
   }
 });

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/output.schema.json",
+  "title": "StoryboardToVideoPromptsOutput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "storyboardText",
+    "videoPrompts"
+  ],
+  "properties": {
+    "storyboardText": {
+      "type": "string",
+      "description": "Storyboard แบบข้อความปกติ (ห้ามอยู่ใน code block)"
+    },
+    "videoPrompts": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Prompt สำหรับ GEN VIDEO & AUDIO แยกตามฉาก",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sceneNumber",
+          "durationSeconds",
+          "prompt"
+        ],
+        "properties": {
+          "sceneNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 15
+          },
+          "speaker": {
+            "type": "string"
+          },
+          "dialogue": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "บล็อก prompt แบบพร้อมคัดลอกไปใช้"
+          }
+        }
+      }
+    }
+  }
+}

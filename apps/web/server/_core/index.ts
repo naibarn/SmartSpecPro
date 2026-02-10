@@ -64,6 +64,37 @@ function isAllowedOrigin(origin: string | undefined): boolean {
   );
 }
 
+function isPrivateOrLocalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (
+    host === "localhost" ||
+    host === "host.docker.internal" ||
+    host.endsWith(".local") ||
+    host === "::1"
+  ) {
+    return true;
+  }
+
+  // IPv4 literal checks
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const a = Number(ipv4[1]);
+    const b = Number(ipv4[2]);
+    if (a === 127 || a === 10 || a === 0) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    return false;
+  }
+
+  // Basic IPv6 local/private checks
+  if (host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80")) {
+    return true;
+  }
+
+  return false;
+}
+
 // CORS for cross-domain access (Docker Status, etc.)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -118,6 +149,15 @@ app.use(tenantMiddleware);
 const csrfCheck = (req: any, res: any, next: any) => {
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
 
+  // Allow provider webhooks to pass through even when they include third-party Origin.
+  // These are server-to-server callbacks and are validated by provider-specific logic.
+  if (
+    req.path === "/v1/media/callback/kie-ai" ||
+    req.originalUrl === "/api/v1/media/callback/kie-ai"
+  ) {
+    return next();
+  }
+
   const origin = req.headers.origin;
   // Allow requests with no Origin header (same-origin, server-to-server, curl)
   if (!origin) return next();
@@ -147,6 +187,51 @@ if (useLocalStorage()) {
 registerLLMRoutes(app);
 registerMCPRoutes(app);
 registerMediaJobRoutes(app);
+
+// Proxy remote images through same-origin endpoint so browser canvas operations
+// (split/crop preview) work even when source host doesn't expose CORS headers.
+app.get("/api/media/image-proxy", async (req, res) => {
+  const raw = typeof req.query.url === "string" ? req.query.url.trim() : "";
+  if (!raw) {
+    return res.status(400).json({ error: "Missing url query parameter" });
+  }
+
+  let target: URL;
+  try {
+    target = new URL(raw);
+  } catch {
+    return res.status(400).json({ error: "Invalid URL" });
+  }
+
+  if (!["http:", "https:"].includes(target.protocol)) {
+    return res.status(400).json({ error: "Unsupported URL protocol" });
+  }
+
+  if (isPrivateOrLocalHost(target.hostname)) {
+    return res.status(400).json({ error: "Blocked URL host" });
+  }
+
+  try {
+    const upstream = await fetch(target.toString(), { redirect: "follow" });
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: `Upstream fetch failed (${upstream.status})` });
+    }
+
+    const contentType = upstream.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) {
+      return res.status(415).json({ error: "Upstream content is not an image" });
+    }
+
+    const bytes = Buffer.from(await upstream.arrayBuffer());
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    return res.status(200).send(bytes);
+  } catch (error) {
+    debugError("ImageProxy", `Failed to proxy ${target.toString()}`, error);
+    return res.status(502).json({ error: "Failed to fetch source image" });
+  }
+});
 
 // Device auth routes (for desktop app)
 registerDeviceAuthRoutes(app);

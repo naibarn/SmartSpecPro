@@ -17,7 +17,7 @@ from redis.asyncio import Redis
 
 from app.core.database import get_db
 from app.core.redis_client import get_redis
-from app.core.smartspecweb_crypto import decrypt
+from app.core.smartspecweb_crypto import decrypt_smartspecweb as decrypt
 
 router = APIRouter()
 

@@ -16,14 +16,14 @@ services:
     environment:
       POSTGRES_USER: smartspec
       POSTGRES_PASSWORD: smartspec123
-      POSTGRES_DB: smartspecpro
+      POSTGRES_DB: smartspec
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./python-backend/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U smartspec -d smartspecpro"]
+      test: ["CMD-SHELL", "pg_isready -U smartspec -d smartspec"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,6 +60,7 @@ services:
 volumes:
   postgres_data:
     driver: local
+    name: smartspec_postgres_data
   redis_data:
     driver: local
   chroma_data:

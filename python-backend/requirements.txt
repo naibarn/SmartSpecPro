@@ -130,3 +130,17 @@ tenacity>=8.2.0
 
 # Workspace & Docker
 docker>=7.0.0
+
+# ==========================================
+# Phase 2: Workflow Nodes (Missing Nodes)
+# ==========================================
+
+# Code execution sandbox
+RestrictedPython>=8.1
+
+# Cron scheduling
+croniter>=2.0.0
+
+# Data transformation (transformer node)
+xmltodict>=0.13.0
+defusedxml>=0.7.1

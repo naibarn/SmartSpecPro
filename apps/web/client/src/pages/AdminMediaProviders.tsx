@@ -145,6 +145,11 @@ export default function AdminMediaProviders() {
     priority: 0,
   });
 
+  const suggestedKieCallbackUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/v1/media/callback/kie-ai`
+      : "/api/v1/media/callback/kie-ai";
+
   // Check auth
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "admin")) {
@@ -221,7 +226,7 @@ export default function AdminMediaProviders() {
       description: template.description,
       providerType: template.providerType,
       baseUrl: template.baseUrl,
-      callbackUrl: "",
+      callbackUrl: template.providerName === "kie_ai" ? suggestedKieCallbackUrl : "",
       apiKey: "",
       defaultModel: template.defaultModel,
       isEnabled: false,
@@ -593,6 +598,8 @@ export default function AdminMediaProviders() {
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               isNew={true}
+              providerName={selectedTemplate.providerName}
+              suggestedKieCallbackUrl={suggestedKieCallbackUrl}
             />
           )}
 
@@ -647,6 +654,8 @@ export default function AdminMediaProviders() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             isNew={false}
+            providerName={editingProvider?.providerName}
+            suggestedKieCallbackUrl={suggestedKieCallbackUrl}
           />
 
           <DialogFooter>
@@ -729,6 +738,8 @@ function ProviderForm({
   activeTab,
   setActiveTab,
   isNew,
+  providerName,
+  suggestedKieCallbackUrl,
 }: {
   formData: any;
   setFormData: (data: any) => void;
@@ -743,7 +754,30 @@ function ProviderForm({
   activeTab: string;
   setActiveTab: (tab: string) => void;
   isNew: boolean;
+  providerName?: string | null;
+  suggestedKieCallbackUrl: string;
 }) {
+  const [copiedCallback, setCopiedCallback] = useState(false);
+  const isKieAiProvider = (providerName || "").toLowerCase() === "kie_ai";
+  const isLocalCallbackSuggestion =
+    suggestedKieCallbackUrl.includes("localhost") ||
+    suggestedKieCallbackUrl.includes("127.0.0.1");
+
+  const handleUseSuggestedCallback = () => {
+    setFormData({ ...formData, callbackUrl: suggestedKieCallbackUrl });
+  };
+
+  const handleCopySuggestedCallback = async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(suggestedKieCallbackUrl);
+      setCopiedCallback(true);
+      setTimeout(() => setCopiedCallback(false), 1500);
+    } catch {
+      // Ignore clipboard errors (e.g., insecure context).
+    }
+  };
+
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-2">
@@ -808,11 +842,55 @@ function ProviderForm({
               id="callbackUrl"
               value={formData.callbackUrl}
               onChange={(e) => setFormData({ ...formData, callbackUrl: e.target.value })}
-              placeholder="https://your-tunnel.trycloudflare.com/api/media/callback"
+              placeholder={
+                isKieAiProvider
+                  ? suggestedKieCallbackUrl
+                  : "https://your-domain.com/api/v1/media/callback"
+              }
             />
-            <p className="text-xs text-muted-foreground">
-              Required for async providers like Kie.ai. Use cloudflared tunnel for local development.
-            </p>
+            {isKieAiProvider ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Recommended Kie.ai callback URL: <code>{suggestedKieCallbackUrl}</code>
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUseSuggestedCallback}
+                  >
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    Use Suggested URL
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopySuggestedCallback}
+                  >
+                    {copiedCallback ? (
+                      <Check className="mr-2 h-3.5 w-3.5 text-green-600" />
+                    ) : (
+                      <Copy className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    {copiedCallback ? "Copied" : "Copy URL"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Set this URL in Kie.ai webhook settings to receive completion callbacks immediately.
+                </p>
+                {isLocalCallbackSuggestion && (
+                  <p className="text-xs text-amber-600">
+                    Current URL is local-only. Use a public HTTPS tunnel/domain so Kie.ai can reach your callback.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Required for async providers. Use a public HTTPS URL (e.g., cloudflared tunnel in local dev).
+              </p>
+            )}
           </div>
 
           <div className="grid gap-2">

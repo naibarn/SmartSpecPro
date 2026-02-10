@@ -108,6 +108,7 @@ interface FormData {
   priority: number;
   // API Config (configJson)
   apiEndpoint: string;
+  apiQueryEndpoint: string;
   apiPayloadFormat: string;
   kieModelId: string;
   pricingFormula: string;
@@ -132,6 +133,7 @@ const DEFAULT_FORM_DATA: FormData = {
   isEnabled: true,
   priority: 99,
   apiEndpoint: "/api/v1/jobs/createTask",
+  apiQueryEndpoint: "",
   apiPayloadFormat: "market",
   kieModelId: "",
   pricingFormula: "flat",
@@ -259,6 +261,7 @@ export default function AdminMediaModels() {
       isEnabled: model.isEnabled,
       priority: model.priority,
       apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
+      apiQueryEndpoint: cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
       apiPayloadFormat: cfg.apiPayloadFormat || "market",
       kieModelId: cfg.kieModelId || "",
       pricingFormula: cfg.pricingFormula || "flat",
@@ -291,6 +294,7 @@ export default function AdminMediaModels() {
       isEnabled: false, // Start disabled for safety
       priority: model.priority,
       apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
+      apiQueryEndpoint: cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
       apiPayloadFormat: cfg.apiPayloadFormat || "market",
       kieModelId: cfg.kieModelId || "",
       pricingFormula: cfg.pricingFormula || "flat",
@@ -366,6 +370,7 @@ export default function AdminMediaModels() {
 
     const configJson: Record<string, any> = {
       apiEndpoint: formData.apiEndpoint,
+      apiQueryEndpoint: formData.apiQueryEndpoint || undefined,
       apiPayloadFormat: formData.apiPayloadFormat,
       kieModelId: formData.kieModelId || undefined,
       pricingFormula: formData.pricingFormula,
@@ -1052,40 +1057,41 @@ function ModelForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="apiEndpoint">API Endpoint</Label>
-              <Select
+              <Input
+                id="apiEndpoint"
                 value={formData.apiEndpoint}
-                onValueChange={(value) => setFormData({ ...formData, apiEndpoint: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="/api/v1/jobs/createTask">Market Unified</SelectItem>
-                  <SelectItem value="/api/v1/veo/generate">Veo Native</SelectItem>
-                  <SelectItem value="/api/v1/runway/generate">Runway Native</SelectItem>
-                  <SelectItem value="/api/v1/generate">Suno Native</SelectItem>
-                  <SelectItem value="/api/v1/audio/speech">ElevenLabs</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={(e) => setFormData({ ...formData, apiEndpoint: e.target.value })}
+                placeholder="e.g., /api/v1/veo/generate"
+              />
+              <p className="text-xs text-muted-foreground">
+                Full endpoint path from provider API documentation
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="apiPayloadFormat">Payload Format</Label>
-              <Select
+              <Input
+                id="apiPayloadFormat"
                 value={formData.apiPayloadFormat}
-                onValueChange={(value) => setFormData({ ...formData, apiPayloadFormat: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="market">Market</SelectItem>
-                  <SelectItem value="veo">Veo</SelectItem>
-                  <SelectItem value="runway">Runway</SelectItem>
-                  <SelectItem value="suno">Suno</SelectItem>
-                  <SelectItem value="elevenlabs">ElevenLabs</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={(e) => setFormData({ ...formData, apiPayloadFormat: e.target.value })}
+                placeholder="e.g., veo, market, runway"
+              />
+              <p className="text-xs text-muted-foreground">
+                Payload structure identifier for backend
+              </p>
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="apiQueryEndpoint">Query Endpoint (Status/Result)</Label>
+            <Input
+              id="apiQueryEndpoint"
+              value={formData.apiQueryEndpoint}
+              onChange={(e) => setFormData({ ...formData, apiQueryEndpoint: e.target.value })}
+              placeholder="e.g., /api/v1/veo/record-info?taskId={task_id}"
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional per-model endpoint used for Fetch Result. Supports {"{task_id}"} placeholder.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

@@ -155,7 +155,6 @@ async def get_current_user(
     # Try to find user by openId first (Node.js SDK session tokens)
     user = None
     if open_id:
-        from app.models.user import User
         result = await db.execute(select(User).where(User.openId == open_id))
         user = result.scalar_one_or_none()
 

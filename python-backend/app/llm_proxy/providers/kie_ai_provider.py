@@ -5,6 +5,7 @@ import asyncio
 import time
 import structlog
 from typing import Dict, Any, Optional
+from urllib.parse import urlparse
 
 logger = structlog.get_logger()
 
@@ -78,7 +79,8 @@ class KieAIProvider:
         self.base_url = self.base_url.rstrip("/")
         # Callback URL for async task completion notifications
         self.callback_url = callback_url
-        self.client = httpx.AsyncClient(timeout=300.0)
+        # Increased timeout to 600s to handle longer generation times
+        self.client = httpx.AsyncClient(timeout=600.0)
 
         if callback_url:
             logger.info("kie_ai_callback_configured", callback_url=callback_url)
@@ -136,13 +138,20 @@ class KieAIProvider:
         logger.info("kie_ai_create_task", model=model, input_keys=list(input_params.keys()))
         return await self._make_request("POST", "jobs/createTask", data=payload)
 
-    async def get_task_status(self, task_id: str) -> Dict:
+    async def get_task_status(
+        self,
+        task_id: str,
+        preferred_status_endpoint: Optional[str] = None,
+        extra_status_endpoints: Optional[list[str]] = None,
+    ) -> Dict:
         """
         Get the status of a task using Kie.ai endpoints
 
         Tries multiple endpoints:
-        1. GET /api/v1/jobs/recordInfo?taskId={task_id} (new API)
-        2. GET /api/v1/jobs/status/{task_id} (legacy API)
+        1. Model-specific endpoint from DB config (if provided)
+        2. GET /api/v1/jobs/recordInfo?taskId={task_id} (new API)
+        3. GET /api/v1/veo/record-info?taskId={task_id} (Veo models)
+        4. GET /api/v1/jobs/status/{task_id} (legacy API)
 
         Args:
             task_id: The task ID returned from create_task
@@ -150,32 +159,163 @@ class KieAIProvider:
         Returns:
             Task status response with 'state' or 'status' field
         """
-        # Try recordInfo endpoint first (newer API)
-        try:
-            response = await self._make_request("GET", f"jobs/recordInfo?taskId={task_id}")
-            logger.info("kie_ai_recordInfo_response", task_id=task_id, keys=list(response.keys()),
-                       data_type=type(response.get("data")).__name__ if response.get("data") else None)
-            return response
-        except Exception as e:
-            logger.warning("kie_ai_recordInfo_failed", task_id=task_id, error=str(e))
+        def _normalize_status_endpoint(raw_endpoint: str) -> Optional[str]:
+            """Normalize custom status endpoint into a base_url-relative path."""
+            if not raw_endpoint:
+                return None
 
-        # Fallback to status endpoint (legacy API)
-        try:
-            response = await self._make_request("GET", f"jobs/status/{task_id}")
-            # Normalize legacy format to match recordInfo format
-            if "status" in response and "state" not in response:
-                status = response.get("status", "").lower()
-                if status == "completed":
-                    response["state"] = "success"
-                elif status == "failed":
-                    response["state"] = "fail"
-                else:
-                    response["state"] = status
-            logger.info("kie_ai_status_response", task_id=task_id, keys=list(response.keys()))
-            return response
-        except Exception as e:
-            logger.error("kie_ai_status_failed", task_id=task_id, error=str(e))
-            raise
+            endpoint = str(raw_endpoint).strip()
+            if not endpoint:
+                return None
+
+            # Support placeholders
+            endpoint = endpoint.replace("{task_id}", task_id)
+            endpoint = endpoint.replace("{taskId}", task_id)
+            endpoint = endpoint.replace("{id}", task_id)
+
+            # Convert absolute URL to relative path when possible
+            if endpoint.startswith("http://") or endpoint.startswith("https://"):
+                parsed = urlparse(endpoint)
+                base_parsed = urlparse(self.base_url)
+                if parsed.netloc and parsed.netloc != base_parsed.netloc:
+                    logger.warning(
+                        "kie_ai_status_endpoint_domain_mismatch",
+                        endpoint=endpoint,
+                        base_url=self.base_url,
+                    )
+                endpoint = parsed.path or ""
+                if parsed.query:
+                    endpoint = f"{endpoint}?{parsed.query}"
+
+            # Strip API prefix if present (base_url already includes /api/v1)
+            if endpoint.startswith("/api/v1/"):
+                endpoint = endpoint[len("/api/v1/"):]
+            elif endpoint.startswith("api/v1/"):
+                endpoint = endpoint[len("api/v1/"):]
+
+            endpoint = endpoint.lstrip("/")
+            if not endpoint:
+                return None
+
+            # If endpoint doesn't include task identifier, append taskId query for common record/query routes
+            has_task_ref = (
+                task_id in endpoint
+                or "taskId=" in endpoint
+                or "task_id=" in endpoint
+                or "/status/" in endpoint
+                or "/record/" in endpoint
+            )
+            if not has_task_ref and any(k in endpoint for k in ("recordInfo", "record-info", "queryTask", "query-task")):
+                endpoint = f"{endpoint}&taskId={task_id}" if "?" in endpoint else f"{endpoint}?taskId={task_id}"
+
+            return endpoint
+
+        def _has_useful_data(resp: Dict) -> bool:
+            if not isinstance(resp, dict):
+                return False
+            data = resp.get("data")
+            if isinstance(data, dict):
+                if any(k in data for k in (
+                    "state", "status", "resultJson", "resultUrls", "taskResult",
+                    "response", "successFlag", "errorCode", "errorMessage", "completeTime"
+                )):
+                    return True
+            # Legacy/top-level shapes
+            if any(k in resp for k in ("state", "status", "output", "url")):
+                return True
+            return False
+
+        endpoints: list[tuple[str, str]] = []
+
+        # 1) Per-model status endpoint (from media_models configJson)
+        if preferred_status_endpoint:
+            normalized = _normalize_status_endpoint(preferred_status_endpoint)
+            if normalized:
+                endpoints.append(("preferred_status", normalized))
+
+        # 2) Additional fallback endpoints from caller (optional)
+        if extra_status_endpoints:
+            for extra in extra_status_endpoints:
+                normalized = _normalize_status_endpoint(extra)
+                if normalized:
+                    endpoints.append(("extra_status", normalized))
+
+        # 3) Built-in fallbacks (for generic models and legacy records)
+        endpoints.extend([
+            ("recordInfo", f"jobs/recordInfo?taskId={task_id}"),
+            ("veo_record_info", f"veo/record-info?taskId={task_id}"),
+            ("legacy_status", f"jobs/status/{task_id}"),
+        ])
+
+        # De-duplicate endpoints while preserving order
+        deduped: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for label, endpoint in endpoints:
+            if endpoint in seen:
+                continue
+            seen.add(endpoint)
+            deduped.append((label, endpoint))
+        endpoints = deduped
+
+        last_response: Optional[Dict] = None
+        last_error: Optional[Exception] = None
+
+        for label, endpoint in endpoints:
+            try:
+                response = await self._make_request("GET", endpoint)
+
+                # Normalize legacy format to match recordInfo format
+                if "status" in response and "state" not in response:
+                    status = str(response.get("status", "")).lower()
+                    if status == "completed":
+                        response["state"] = "success"
+                    elif status == "failed":
+                        response["state"] = "fail"
+                    else:
+                        response["state"] = status
+
+                code = response.get("code")
+                data_type = type(response.get("data")).__name__ if response.get("data") is not None else None
+                logger.info(
+                    "kie_ai_status_endpoint_response",
+                    task_id=task_id,
+                    endpoint_label=label,
+                    endpoint=endpoint,
+                    code=code,
+                    keys=list(response.keys()) if isinstance(response, dict) else None,
+                    data_type=data_type,
+                )
+
+                last_response = response
+
+                # Prefer first response that contains meaningful status/result payload.
+                if _has_useful_data(response):
+                    return response
+
+                logger.warning(
+                    "kie_ai_status_endpoint_unusable_response",
+                    task_id=task_id,
+                    endpoint_label=label,
+                    endpoint=endpoint,
+                    code=code,
+                    msg=response.get("msg") if isinstance(response, dict) else None,
+                )
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "kie_ai_status_endpoint_failed",
+                    task_id=task_id,
+                    endpoint_label=label,
+                    endpoint=endpoint,
+                    error=str(e),
+                )
+
+        # Return the last non-exception response for caller-side diagnostics.
+        if last_response is not None:
+            return last_response
+
+        logger.error("kie_ai_status_failed", task_id=task_id, error=str(last_error) if last_error else "unknown")
+        raise last_error or RuntimeError("Failed to fetch task status from all endpoints")
 
     async def wait_for_task(self, task_id: str, poll_interval: float = 2.0, max_wait: float = 300.0) -> Dict:
         """
@@ -487,7 +627,7 @@ class KieAIProvider:
             payload = {"prompt": prompt, **input_params}
             if callback_url:
                 payload["callBackUrl"] = callback_url
-            result = await self._make_request("POST", api_endpoint.lstrip("/api/v1/"), data=payload)
+            result = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
         else:
             # Default: use Market Unified createTask endpoint
             result = await self.create_task(api_model, input_params, callback_url)
@@ -537,6 +677,7 @@ class KieAIProvider:
         # Check for per-model API config from configJson
         api_config = kwargs.pop("api_config", None)
         extra_params = kwargs.pop("extra_params", None)
+        wait_for_completion = kwargs.pop("wait_for_completion", True)
 
         # Determine API model name
         if api_config and api_config.get("kie_model_id"):
@@ -585,33 +726,59 @@ class KieAIProvider:
                 payload["model"] = api_config["kie_model_id"]
             if callback_url:
                 payload["callBackUrl"] = callback_url
-            result = await self._make_request("POST", api_endpoint.lstrip("/api/v1/"), data=payload)
+            result = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
+            logger.info("kie_ai_custom_endpoint_response", endpoint=api_endpoint, result_keys=list(result.keys()) if isinstance(result, dict) else "not_dict", result_type=type(result).__name__)
+
+            # Log full response for Veo to debug task ID extraction
+            if "veo" in api_endpoint.lower():
+                import json as _json
+                logger.warning("VEO_RESPONSE_DEBUG", endpoint=api_endpoint, full_response=_json.dumps(result, indent=2, default=str))
         else:
             result = await self.create_task(api_model, input_params, callback_url)
 
         # Extract taskId from nested response
+        # Try multiple possible locations for task ID
         task_id = (
             result.get("taskId") or
             result.get("task_id") or
             (result.get("data") or {}).get("taskId") or
-            (result.get("data") or {}).get("task_id")
+            (result.get("data") or {}).get("task_id") or
+            (result.get("data") or {}).get("recordId") or  # Veo may use recordId
+            result.get("recordId")
         )
 
-        if not callback_url and task_id:
-            # Videos take longer, increase poll interval
-            return await self.wait_for_task(task_id, poll_interval=5.0, max_wait=600.0)
+        logger.info("kie_ai_video_task_id_extracted", task_id=task_id, has_callback=bool(callback_url), will_poll=bool(wait_for_completion and not callback_url and task_id), wait_for_completion=bool(wait_for_completion), result_structure={
+            "has_taskId": "taskId" in result,
+            "has_task_id": "task_id" in result,
+            "has_recordId": "recordId" in result,
+            "has_data": "data" in result,
+            "data_keys": list(result.get("data", {}).keys()) if isinstance(result.get("data"), dict) else None
+        })
 
-        # With callback URL, return task info immediately
-        if callback_url and task_id:
-            logger.info("kie_ai_video_task_created_with_callback", task_id=task_id, callback_url=callback_url)
-            return {
-                "id": task_id,
-                "status": "processing",
-                "data": [],
-                "message": "Video task created. Result will be delivered via callback URL."
-            }
+        if not task_id:
+            logger.error("kie_ai_no_task_id", result=result)
+            raise Exception(f"Kie.ai did not return a task ID: {result}")
 
-        return result
+        # Poll only in explicit wait mode.
+        # For async queue flows, return immediately after task submission.
+        if wait_for_completion and not callback_url:
+            logger.info("kie_ai_video_polling_started", task_id=task_id, max_wait=1200.0)
+            return await self.wait_for_task(task_id, poll_interval=5.0, max_wait=1200.0)
+
+        logger.info(
+            "kie_ai_video_task_created_async",
+            task_id=task_id,
+            has_callback=bool(callback_url),
+            wait_for_completion=bool(wait_for_completion),
+            callback_url=callback_url
+        )
+        return {
+            "id": task_id,
+            "status": "processing",
+            "data": [],
+            "created": int(time.time()),
+            "message": "Video task created. Result will be delivered via callback URL."
+        }
 
     async def generate_audio(self, model: str, text: str, **kwargs) -> Dict:
         """
@@ -655,20 +822,24 @@ class KieAIProvider:
             (result.get("data") or {}).get("task_id")
         )
 
-        if not callback_url and task_id:
+        if not task_id:
+            logger.error("kie_ai_no_task_id", result=result)
+            raise Exception(f"Kie.ai did not return a task ID: {result}")
+
+        # If no callback URL, poll for result (synchronous wait)
+        if not callback_url:
+            logger.info("kie_ai_audio_polling_mode", task_id=task_id)
             return await self.wait_for_task(task_id)
 
-        # With callback URL, return task info immediately
-        if callback_url and task_id:
-            logger.info("kie_ai_audio_task_created_with_callback", task_id=task_id, callback_url=callback_url)
-            return {
-                "id": task_id,
-                "status": "processing",
-                "data": [],
-                "message": "Audio task created. Result will be delivered via callback URL."
-            }
-
-        return result
+        # With callback URL, return task info immediately (async mode)
+        logger.info("kie_ai_audio_task_created_with_callback", task_id=task_id, callback_url=callback_url)
+        return {
+            "id": task_id,
+            "status": "processing",
+            "data": [],
+            "created": int(time.time()),
+            "message": "Audio task created. Result will be delivered via callback URL."
+        }
 
     async def upload_reference_image(self, file_path: str) -> Dict:
         """Upload a reference image for image-to-image generation"""
