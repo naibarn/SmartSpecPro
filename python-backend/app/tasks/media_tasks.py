@@ -9,6 +9,10 @@ from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.models.user import User
 from app.services.media_task_service import MediaTaskService
 from app.services.media_callback_service import retry_due_callback_events
+from app.services.library_indexing_service import (
+    process_library_index_job,
+    retry_due_library_index_jobs,
+)
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
     ImageGenerationRequest,
@@ -659,6 +663,52 @@ def retry_media_callback_events():
         return result
     except Exception as e:
         logger.error("retry_media_callback_events_exception", error=str(e))
+        return {"status": "failed", "error": str(e)}
+
+
+async def _process_library_index_job_async(job_id: int):
+    """Async worker entrypoint for a single library index job."""
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await process_library_index_job(db, job_id)
+            logger.info("process_library_index_job_completed", **result)
+            return {"status": "success", **result}
+        except Exception as e:
+            logger.error("process_library_index_job_failed", job_id=job_id, error=str(e))
+            raise
+
+
+@celery_app.task
+def process_library_index_job_task(job_id: int):
+    """Queue worker task for extract/chunk/embed/upsert pipeline."""
+    logger.info("process_library_index_job_started", job_id=job_id)
+    try:
+        return _run_async(_process_library_index_job_async(job_id))
+    except Exception as e:
+        logger.error("process_library_index_job_exception", job_id=job_id, error=str(e))
+        return {"status": "failed", "error": str(e), "job_id": job_id}
+
+
+async def _retry_library_index_jobs_async():
+    """Retry due library index jobs in retry_pending/pending state."""
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await retry_due_library_index_jobs(db, limit=100)
+            logger.info("retry_library_index_jobs_completed", **result)
+            return {"status": "success", **result}
+        except Exception as e:
+            logger.error("retry_library_index_jobs_failed", error=str(e))
+            raise
+
+
+@celery_app.task
+def retry_library_index_jobs():
+    """Periodic retry for library index jobs due for execution."""
+    logger.info("retry_library_index_jobs_started")
+    try:
+        return _run_async(_retry_library_index_jobs_async())
+    except Exception as e:
+        logger.error("retry_library_index_jobs_exception", error=str(e))
         return {"status": "failed", "error": str(e)}
 
 

@@ -4,40 +4,70 @@
 
 Build asynchronous library indexing pipeline for extract/chunk/embed/upsert with retryable state transitions.
 
-## Scope
+## Implemented Scope
 
-- Index job enqueue and worker pickup.
-- Content extraction and chunk generation.
-- Embedding generation and vector upsert adapter.
-- Job status persistence with retries and failure diagnostics.
+- Added Python indexing service with deterministic state machine:
+  - enqueue index job
+  - process single job (extract -> chunk -> embed -> vector upsert)
+  - retry due jobs
+- Added text extraction from library item core fields and metadata sources.
+- Added deterministic chunking with token-count metadata and overlap.
+- Integrated embedding generation through existing embedding service abstraction.
+- Added vector upsert adapter using `VectorCollection` with stable vector IDs.
+- Added Celery tasks for single-job processing and periodic retry processing.
+- Added Celery route + beat schedule wiring for retry loop.
 
-## Primary Files
+## Actual Files Added
 
-- `python-backend/app/services/` (new indexing services)
-- `python-backend/app/tasks/` (new/extended Celery tasks)
-- `python-backend/app/core/vectordb.py` and embedding service integrations
+- `python-backend/app/services/library_indexing_service.py`
+- `python-backend/tests/unit/services/test_library_indexing_service.py`
+- `specs/reviews/section-04-review.md`
+- `specs/reviews/section-04-interview.md`
 
-## Implementation Steps
+## Actual Files Modified
 
-1. Add index job processor entrypoint with deterministic state machine.
-2. Implement text extraction sources for media metadata (prompt/description/transcript/OCR placeholders).
-3. Implement chunking rules and token count tracking.
-4. Integrate embedding provider through existing embedding service abstraction.
-5. Implement vector upsert adapter and chunk-to-vector linkage persistence.
-6. Add retry logic and terminal failure capture in `library_index_jobs`.
+- `python-backend/app/tasks/media_tasks.py`
+- `python-backend/app/core/celery_app.py`
 
-## Test-First Checklist
+## Key Implementation Notes
 
-- Test: enqueue creates a `queued` index job and worker transitions to `processing`.
-- Test: successful pipeline persists chunks and marks item/job indexed.
-- Test: transient failures retry and increment attempt count.
-- Test: terminal failures preserve actionable `last_error` metadata.
+1. Job state transitions:
+- `pending -> processing -> completed`
+- transient errors: `processing -> retry_pending` with exponential backoff.
+- terminal errors (`ValueError` or max-attempt reached): `processing -> failed`.
 
-## Verification
+2. Item/chunk persistence behavior:
+- Item status set to `indexing` at enqueue, then `ready` on completion.
+- Re-index path clears existing `library_chunks` rows and rewrites chunk/vector mapping.
+- `vector_ref_id` uses stable IDs: `lib:{tenant_id}:{item_id}:{chunk_index}`.
 
-- Run Python unit/integration tests for indexing pipeline and job state transitions.
+3. Retry loop:
+- Due jobs include `pending` jobs with due `run_at` and `retry_pending` jobs with due `next_retry_at`.
+- Periodic Celery beat task executes every minute.
 
-## Exit Criteria
+4. Observability:
+- Structured logs added for enqueue/completion/retry/terminal-failure events.
 
-- Indexing pipeline is asynchronous, retryable, and observable.
-- Indexed assets produce queryable chunk/vector records.
+## Tests Added (TDD)
+
+- enqueue + successful pipeline persists chunks and completes state transitions
+- transient failure schedules retry and increments attempt count
+- terminal failure preserves actionable `last_error` metadata
+
+Run commands used:
+- `cd python-backend && uv run pytest -o addopts='' tests/unit/services/test_library_indexing_service.py -q`
+- `cd python-backend && uv run pytest -o addopts='' tests/unit/services/test_media_callback_service.py tests/unit/models/test_library_models.py tests/unit/services/test_library_indexing_service.py -q`
+
+Results:
+- 3 passed (section tests)
+- 10 passed (section + regression subset)
+
+## Deviations from Initial Plan
+
+1. Worker tasks were added under `media_tasks.py` (extended existing task module) instead of creating a separate new task module.
+- Rationale: keeps queue/retry orchestration in the current media pipeline task entrypoint where related periodic jobs already exist.
+
+## Remaining Follow-ups
+
+- Add integration test against real Chroma persistence path (current tests use injected vector upsert adapter).
+- Add API trigger endpoint wiring (Section 05/06) so new jobs are enqueued from user-facing flows.
