@@ -21,6 +21,7 @@ import { deductCredits, hasEnoughCredits, refundCredits } from "../services/cred
 import { calculateCreditCost, type UserSelections } from "../services/pricingCalculator";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
+import { addMediaTaskToLibrary } from "../services/mediaLibraryService";
 import { getDb } from "../db";
 import { mediaModels } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -638,6 +639,52 @@ export const mediaRouter = router({
           code: "NOT_FOUND",
           message: error instanceof Error ? error.message : "Task not found",
         });
+      }
+    }),
+
+  // Add completed media task result into library + enqueue indexing
+  addTaskToLibrary: protectedProcedure
+    .input(
+      z.object({
+        taskId: z.string().min(1),
+        title: z.string().min(1).max(255).optional(),
+        visibility: z.enum(["private", "team", "public"]).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+      if (tenantId === null || tenantId === undefined) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Tenant context is required for add-to-library",
+        });
+      }
+
+      try {
+        const userToken = getUserToken(ctx);
+        const result = await addMediaTaskToLibrary(
+          {
+            mediaTaskId: input.taskId,
+            userToken,
+            title: input.title,
+            visibility: input.visibility,
+          },
+          {
+            userId: ctx.user.id,
+            tenantId,
+            role: ctx.user.role,
+          },
+        );
+        return result;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to add media task to library";
+        if (message.includes("Only completed media tasks")) {
+          throw new TRPCError({ code: "BAD_REQUEST", message });
+        }
+        if (message.includes("not found")) {
+          throw new TRPCError({ code: "NOT_FOUND", message });
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }
     }),
 

@@ -3,6 +3,7 @@ import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   libraryChunks,
+  libraryIndexJobs,
   libraryItems,
   libraryLinks,
   libraryPermissions,
@@ -569,6 +570,73 @@ export async function shareLibraryItem(
     });
 
   return true;
+}
+
+export async function enqueueLibraryIndexJob(
+  input: { libraryItemId: number; tenantId: number; jobType?: string },
+  dbClient?: DbClient,
+): Promise<{ jobId: number; status: string; created: boolean }> {
+  const db = await resolveDb(dbClient);
+  const jobType = input.jobType ?? "initial_index";
+
+  const existing = await db
+    .select({
+      id: libraryIndexJobs.id,
+      status: libraryIndexJobs.status,
+    })
+    .from(libraryIndexJobs)
+    .where(
+      and(
+        eq(libraryIndexJobs.libraryItemId, input.libraryItemId),
+        eq(libraryIndexJobs.tenantId, input.tenantId),
+        eq(libraryIndexJobs.jobType, jobType),
+        inArray(libraryIndexJobs.status, ["pending", "processing", "retry_pending"]),
+      ),
+    )
+    .limit(1);
+
+  if (existing[0]) {
+    return {
+      jobId: existing[0].id,
+      status: existing[0].status,
+      created: false,
+    };
+  }
+
+  const inserted = await db
+    .insert(libraryIndexJobs)
+    .values({
+      tenantId: input.tenantId,
+      libraryItemId: input.libraryItemId,
+      jobType,
+      status: "pending",
+      attemptCount: 0,
+      maxAttempts: 5,
+      runAt: new Date(),
+    })
+    .returning({
+      id: libraryIndexJobs.id,
+      status: libraryIndexJobs.status,
+    });
+
+  const created = inserted[0];
+  if (!created) {
+    throw new Error("Failed to enqueue library index job");
+  }
+
+  await db
+    .update(libraryItems)
+    .set({
+      status: "indexing",
+      updatedAt: new Date(),
+    })
+    .where(and(eq(libraryItems.id, input.libraryItemId), eq(libraryItems.tenantId, input.tenantId)));
+
+  return {
+    jobId: created.id,
+    status: created.status,
+    created: true,
+  };
 }
 
 export async function searchLibraryItems(
