@@ -15,11 +15,208 @@ from app.llm_proxy.models import (
     AudioGenerationRequest,
 )
 from datetime import datetime, timedelta
-from sqlalchemy import select
+from sqlalchemy import select, text
+from typing import Any, Optional
 import structlog
 import asyncio
+import json
 
 logger = structlog.get_logger()
+
+
+def _run_async(coro):
+    """
+    Safely run async coroutine in Celery worker context.
+    Reuses the existing event loop if available, or creates a persistent one.
+
+    This prevents "Event loop is closed" errors that occur when using asyncio.run()
+    repeatedly in Celery workers. asyncio.run() creates and closes loops, which
+    causes state corruption. This function maintains a persistent loop for the
+    worker process lifetime.
+    """
+    try:
+        # Check if we're already in an async context
+        loop = asyncio.get_running_loop()
+        # If we're here, we're already in async context - this shouldn't happen in Celery
+        # but handle it gracefully
+        raise RuntimeError("Already in async context - cannot run nested async")
+    except RuntimeError:
+        # No running loop - this is expected in Celery workers
+        pass
+
+    try:
+        # Try to get the existing event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            # Loop was closed (e.g., by previous asyncio.run() call)
+            # Create a new one and set it as the current loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        # No event loop exists at all - create one
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    # Run the coroutine to completion WITHOUT closing the loop
+    # The loop will persist for subsequent tasks in this worker process
+    return loop.run_until_complete(coro)
+
+
+def _extract_model_query_endpoint(config_json: Any) -> Optional[str]:
+    """Extract model-specific status/query endpoint from configJson."""
+    if not config_json:
+        return None
+
+    cfg = config_json
+    if isinstance(cfg, str):
+        try:
+            cfg = json.loads(cfg)
+        except json.JSONDecodeError:
+            return None
+
+    if not isinstance(cfg, dict):
+        return None
+
+    endpoint = (
+        cfg.get("apiQueryEndpoint")
+        or cfg.get("queryEndpoint")
+        or cfg.get("statusEndpoint")
+        or cfg.get("apiStatusEndpoint")
+    )
+    if isinstance(endpoint, str) and endpoint.strip():
+        return endpoint.strip()
+    return None
+
+
+def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
+    """Normalize provider state to one of: success, fail, processing, unknown."""
+    if not isinstance(status_response, dict):
+        return "unknown", ""
+
+    data = status_response.get("data", {})
+    if not isinstance(data, dict):
+        data = {}
+
+    success_flag = data.get("successFlag")
+    if success_flag in (1, True):
+        return "success", "successflag"
+    if success_flag in (0, False):
+        error_code = data.get("errorCode")
+        error_message = data.get("errorMessage")
+        if error_code or error_message:
+            return "fail", "successflag_error"
+        return "processing", "successflag_pending"
+
+    raw_state = str(
+        status_response.get("state", "")
+        or data.get("state", "")
+        or status_response.get("status", "")
+        or data.get("status", "")
+    ).strip().lower()
+
+    if raw_state in {"success", "completed", "complete", "done", "finished", "finish"}:
+        return "success", raw_state
+    if raw_state in {"fail", "failed", "error", "cancelled", "canceled"}:
+        return "fail", raw_state
+    if raw_state in {"pending", "processing", "running", "created", "queued", "queueing", "in_progress", "in-progress"}:
+        return "processing", raw_state
+    if raw_state:
+        return "unknown", raw_state
+
+    code = status_response.get("code")
+    if isinstance(code, int) and code != 200:
+        msg = str(status_response.get("msg") or status_response.get("message") or "").lower()
+        if any(x in msg for x in ("null", "not found", "not success", "processing", "pending")):
+            return "processing", msg or f"code_{code}"
+        return "fail", msg or f"code_{code}"
+
+    return "unknown", ""
+
+
+def _extract_url_from_value(value: Any) -> Optional[str]:
+    """Extract a media URL from common provider response value shapes."""
+    if isinstance(value, str) and value.startswith("http"):
+        return value
+
+    if isinstance(value, dict):
+        for key in ("url", "image_url", "video_url", "audio_url", "imageUrl", "videoUrl", "audioUrl", "result_url"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.startswith("http"):
+                return candidate
+
+    return None
+
+
+def _extract_first_kie_result_url(status_response: dict) -> Optional[str]:
+    """Extract the first result URL from known Kie response shapes."""
+    if not isinstance(status_response, dict):
+        return None
+
+    data = status_response.get("data", {})
+    if not isinstance(data, dict):
+        data = {}
+
+    result_json = data.get("resultJson")
+    if isinstance(result_json, str):
+        try:
+            result_json = json.loads(result_json)
+        except json.JSONDecodeError:
+            result_json = {}
+    if isinstance(result_json, dict):
+        result_urls = result_json.get("resultUrls")
+        if isinstance(result_urls, list):
+            for item in result_urls:
+                url = _extract_url_from_value(item)
+                if url:
+                    return url
+        url = _extract_url_from_value(result_json)
+        if url:
+            return url
+
+    task_result = data.get("taskResult")
+    if isinstance(task_result, dict):
+        for key in ("images", "videos", "audios", "files", "outputs", "resultUrls"):
+            items = task_result.get(key)
+            if isinstance(items, list):
+                for item in items:
+                    url = _extract_url_from_value(item)
+                    if url:
+                        return url
+            elif items is not None:
+                url = _extract_url_from_value(items)
+                if url:
+                    return url
+        url = _extract_url_from_value(task_result)
+        if url:
+            return url
+
+    provider_response = data.get("response")
+    if isinstance(provider_response, dict):
+        result_urls = provider_response.get("resultUrls") or provider_response.get("urls")
+        if isinstance(result_urls, list):
+            for item in result_urls:
+                url = _extract_url_from_value(item)
+                if url:
+                    return url
+        url = _extract_url_from_value(provider_response)
+        if url:
+            return url
+
+    output = data.get("output")
+    if isinstance(output, list):
+        for item in output:
+            url = _extract_url_from_value(item)
+            if url:
+                return url
+    elif output is not None:
+        url = _extract_url_from_value(output)
+        if url:
+            return url
+
+    url = _extract_url_from_value(data)
+    if url:
+        return url
+    return _extract_url_from_value(status_response)
 
 
 async def _send_failure_notifications(task_id: str, user_id: str, media_type: str, error: str):
@@ -114,7 +311,7 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
     logger.info("generate_image_task_started", task_id=task_id, user_id=user_id)
 
     try:
-        result = asyncio.run(_generate_image_async(task_id, user_id, request_data))
+        result = _run_async(_generate_image_async(task_id, user_id, request_data))
         return result
 
     except Exception as e:
@@ -125,7 +322,7 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
             raise self.retry(exc=e, countdown=60)  # Retry after 1 minute
 
         # Max retries exhausted — notify user + admins
-        asyncio.run(_send_failure_notifications(task_id, user_id, "image", str(e)))
+        _run_async(_send_failure_notifications(task_id, user_id, "image", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
@@ -155,18 +352,30 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
 
             request = VideoGenerationRequest(**request_data)
             gateway = LLMGateway(db)
-            response = await gateway.generate_video(request, user)
+            # Async queue mode: submit to provider quickly and avoid blocking worker on long polling.
+            response = await gateway.generate_video(request, user, wait_for_completion=False)
 
-            task.status = TaskStatus.COMPLETED
-            task.result_url = response.data[0].get("url") if response.data else None
-            task.result_data = {"response": response.dict()}
+            external_task_id = response.id or None
+            if external_task_id:
+                task.task_id = external_task_id
+
+            task.result_data = {"submission": response.dict()}
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
-            task.completed_at = datetime.utcnow()
-            await db.commit()
 
-            logger.info("generate_video_task_completed", task_id=task_id)
-            return {"status": "completed", "task_id": task_id, "result_url": task.result_url}
+            # If provider returns a ready URL immediately, finish now. Otherwise stay processing.
+            immediate_url = response.data[0].get("url") if response.data else None
+            if immediate_url:
+                task.status = TaskStatus.COMPLETED
+                task.result_url = immediate_url
+                task.completed_at = datetime.utcnow()
+                await db.commit()
+                logger.info("generate_video_task_completed_immediate", task_id=task_id, external_task_id=external_task_id)
+                return {"status": "completed", "task_id": task_id, "external_task_id": external_task_id, "result_url": task.result_url}
+
+            await db.commit()
+            logger.info("generate_video_task_submitted", task_id=task_id, external_task_id=external_task_id)
+            return {"status": "submitted", "task_id": task_id, "external_task_id": external_task_id}
 
         except Exception as e:
             logger.error("generate_video_task_failed", task_id=task_id, error=str(e))
@@ -190,7 +399,7 @@ def generate_video_task(self, task_id: str, user_id: str, request_data: dict):
     logger.info("generate_video_task_started", task_id=task_id, user_id=user_id)
 
     try:
-        result = asyncio.run(_generate_video_async(task_id, user_id, request_data))
+        result = _run_async(_generate_video_async(task_id, user_id, request_data))
         return result
 
     except Exception as e:
@@ -200,7 +409,7 @@ def generate_video_task(self, task_id: str, user_id: str, request_data: dict):
             raise self.retry(exc=e, countdown=120)  # Retry after 2 minutes
 
         # Max retries exhausted — notify user + admins
-        asyncio.run(_send_failure_notifications(task_id, user_id, "video", str(e)))
+        _run_async(_send_failure_notifications(task_id, user_id, "video", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
@@ -265,7 +474,7 @@ def generate_audio_task(self, task_id: str, user_id: str, request_data: dict):
     logger.info("generate_audio_task_started", task_id=task_id, user_id=user_id)
 
     try:
-        result = asyncio.run(_generate_audio_async(task_id, user_id, request_data))
+        result = _run_async(_generate_audio_async(task_id, user_id, request_data))
         return result
 
     except Exception as e:
@@ -275,7 +484,7 @@ def generate_audio_task(self, task_id: str, user_id: str, request_data: dict):
             raise self.retry(exc=e, countdown=60)
 
         # Max retries exhausted — notify user + admins
-        asyncio.run(_send_failure_notifications(task_id, user_id, "audio", str(e)))
+        _run_async(_send_failure_notifications(task_id, user_id, "audio", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
@@ -356,7 +565,7 @@ def cleanup_expired_tasks():
     logger.info("cleanup_expired_tasks_started")
 
     try:
-        result = asyncio.run(_cleanup_expired_tasks_async())
+        result = _run_async(_cleanup_expired_tasks_async())
         return result
 
     except Exception as e:
@@ -420,9 +629,205 @@ def retry_failed_tasks():
     logger.info("retry_failed_tasks_started")
 
     try:
-        result = asyncio.run(_retry_failed_tasks_async())
+        result = _run_async(_retry_failed_tasks_async())
         return result
 
     except Exception as e:
         logger.error("retry_failed_tasks_exception", error=str(e))
+        return {"status": "failed", "error": str(e)}
+
+
+async def _recover_stuck_tasks_async():
+    """
+    Find and recover tasks stuck in 'processing' status
+    This handles tasks that were interrupted by worker restarts or timeouts
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            from datetime import timezone
+
+            # Poll tasks that have been processing for at least a short period.
+            # This keeps status fresh even when provider callbacks are unavailable.
+            cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=2)
+
+            result = await db.execute(
+                select(MediaTask).filter(
+                    MediaTask.status == TaskStatus.PROCESSING,
+                    MediaTask.started_at < cutoff_time,
+                    MediaTask.task_id.isnot(None)  # Must have external task_id
+                ).limit(20)
+            )
+            stuck_tasks = result.scalars().all()
+
+            if not stuck_tasks:
+                logger.info("recover_stuck_tasks_none_found")
+                return {"status": "success", "recovered_count": 0}
+
+            logger.info("recover_stuck_tasks_found", count=len(stuck_tasks))
+
+            recovered_count = 0
+            failed_count = 0
+
+            for task in stuck_tasks:
+                try:
+                    # Poll Kie.ai for actual status
+                    logger.info(
+                        "recover_stuck_task_polling",
+                        task_id=task.id,
+                        external_task_id=task.task_id,
+                        stuck_since=task.started_at.isoformat() if task.started_at else None
+                    )
+
+                    # Get Kie.ai provider config from shared media_providers table
+                    from app.services.media_provider_service import get_media_provider_key
+                    provider_config = await get_media_provider_key("kie_ai")
+                    if not provider_config or not provider_config.get("apiKey"):
+                        logger.warning("recover_stuck_task_provider_not_configured", task_id=task.id)
+                        continue
+
+                    from app.llm_proxy.providers.kie_ai_provider import KieAIProvider
+                    provider = KieAIProvider(
+                        api_key=provider_config["apiKey"],
+                        base_url=provider_config.get("baseUrl") or "https://api.kie.ai/api/v1",
+                        callback_url=provider_config.get("callbackUrl"),
+                    )
+
+                    preferred_query_endpoint = None
+
+                    task_parameters = task.parameters
+                    if isinstance(task_parameters, str):
+                        try:
+                            task_parameters = json.loads(task_parameters)
+                        except json.JSONDecodeError:
+                            task_parameters = {}
+
+                    if isinstance(task_parameters, dict):
+                        api_cfg = task_parameters.get("api_config")
+                        if isinstance(api_cfg, dict):
+                            preferred_query_endpoint = (
+                                api_cfg.get("query_endpoint")
+                                or api_cfg.get("status_endpoint")
+                                or api_cfg.get("api_query_endpoint")
+                                or api_cfg.get("api_status_endpoint")
+                            )
+
+                    if not preferred_query_endpoint and task.model:
+                        try:
+                            model_result = await db.execute(
+                                text('SELECT "configJson" FROM media_models WHERE "modelId" = :model_id LIMIT 1'),
+                                {"model_id": task.model}
+                            )
+                            model_row = model_result.fetchone()
+                            if model_row:
+                                preferred_query_endpoint = _extract_model_query_endpoint(model_row[0])
+                        except Exception as lookup_error:
+                            logger.warning(
+                                "recover_stuck_task_query_endpoint_lookup_failed",
+                                task_id=task.id,
+                                model=task.model,
+                                error=str(lookup_error),
+                            )
+
+                    # Poll for current status (single check, no wait)
+                    status_response = await provider.get_task_status(
+                        task.task_id,
+                        preferred_status_endpoint=preferred_query_endpoint,
+                    )
+                    task_state, raw_state = _normalize_kie_task_state(status_response)
+
+                    logger.info(
+                        "recover_stuck_task_status",
+                        task_id=task.id,
+                        task_state=task_state,
+                        raw_state=raw_state,
+                        preferred_query_endpoint=preferred_query_endpoint,
+                    )
+
+                    if task_state == "success":
+                        result_url = _extract_first_kie_result_url(status_response)
+                        if result_url:
+                            task.status = TaskStatus.COMPLETED
+                            task.result_url = result_url
+                            task.result_data = status_response
+                            task.completed_at = datetime.now(timezone.utc)
+                            recovered_count += 1
+                            logger.info("recover_stuck_task_completed", task_id=task.id, result_url=result_url)
+                        else:
+                            logger.warning(
+                                "recover_stuck_task_success_without_result_url",
+                                task_id=task.id,
+                                external_task_id=task.task_id,
+                            )
+
+                    elif task_state == "fail":
+                        # Task failed on provider side
+                        data = status_response.get("data", {}) if isinstance(status_response, dict) else {}
+                        error_msg = (
+                            status_response.get("msg")
+                            or status_response.get("message")
+                            or data.get("error")
+                            or data.get("errorMessage")
+                            or "Unknown error from provider"
+                        )
+                        task.status = TaskStatus.FAILED
+                        task.error_message = f"Provider failed: {error_msg}"
+                        task.result_data = status_response
+                        task.completed_at = datetime.now(timezone.utc)
+                        failed_count += 1
+                        logger.warning("recover_stuck_task_failed", task_id=task.id, error=error_msg)
+
+                    else:
+                        # Still processing or unknown: keep task as-is and retry on next cycle.
+                        logger.info(
+                            "recover_stuck_task_still_processing",
+                            task_id=task.id,
+                            task_state=task_state,
+                            raw_state=raw_state,
+                        )
+
+                except Exception as task_error:
+                    logger.error(
+                        "recover_stuck_task_error",
+                        task_id=task.id,
+                        error=str(task_error)
+                    )
+                    # Don't mark as failed yet - will retry on next recovery cycle
+                    continue
+
+            await db.commit()
+
+            logger.info(
+                "recover_stuck_tasks_completed",
+                recovered_count=recovered_count,
+                failed_count=failed_count,
+                total_processed=len(stuck_tasks)
+            )
+
+            return {
+                "status": "success",
+                "recovered_count": recovered_count,
+                "failed_count": failed_count,
+                "total_processed": len(stuck_tasks)
+            }
+
+        except Exception as e:
+            logger.error("recover_stuck_tasks_failed", error=str(e))
+            raise
+
+
+@celery_app.task
+def recover_stuck_tasks():
+    """
+    Periodic task to recover tasks stuck in 'processing' status
+    Handles cases where worker restarts interrupted polling
+    Runs every 2 minutes (see celery beat schedule)
+    """
+    logger.info("recover_stuck_tasks_started")
+
+    try:
+        result = _run_async(_recover_stuck_tasks_async())
+        return result
+
+    except Exception as e:
+        logger.error("recover_stuck_tasks_exception", error=str(e))
         return {"status": "failed", "error": str(e)}

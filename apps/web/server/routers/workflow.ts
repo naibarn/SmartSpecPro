@@ -55,6 +55,7 @@ export const workflowRouter = router({
         id: z.number().optional(),
         name: z.string().min(1, "Workflow name is required"),
         description: z.string().optional(),
+        defaultModel: z.string().optional(),
         workflowJson: z.object({
           nodes: z.array(z.any()),
           edges: z.array(z.any()),
@@ -73,6 +74,7 @@ export const workflowRouter = router({
             .set({
               name: input.name,
               description: input.description || null,
+              defaultModel: input.defaultModel || null,
               workflowJson: input.workflowJson,
               updatedAt: new Date(),
             })
@@ -105,6 +107,7 @@ export const workflowRouter = router({
             .values({
               name: input.name,
               description: input.description || null,
+              defaultModel: input.defaultModel || null,
               workflowJson: input.workflowJson,
               userId,
               tenantId,

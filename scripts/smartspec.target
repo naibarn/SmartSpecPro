@@ -1,0 +1,8 @@
+[Unit]
+Description=SmartSpecPro Application Stack
+Documentation=https://github.com/smartspecpro/smartspec
+After=network.target docker.service
+Requires=docker.service
+
+[Install]
+WantedBy=multi-user.target

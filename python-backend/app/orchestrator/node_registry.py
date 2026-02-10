@@ -2408,6 +2408,85 @@ class NodeRegistry:
             )
         )
 
+        # MCP (Model Context Protocol) Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="mcp_connector",
+                display_name="MCP Connector",
+                description="Connect to MCP servers to access external resources and tools",
+                icon="plug",
+                color="orange",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="mcp_server_url",
+                        display_name="MCP Server URL",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="http://localhost:3000 or https://api.example.com/mcp",
+                    ),
+                    InputSpec(
+                        name="method",
+                        display_name="Method",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="read_resource",
+                        options=[
+                            {"label": "Read Resource", "value": "read_resource"},
+                            {"label": "List Resources", "value": "list_resources"},
+                            {"label": "Call Tool", "value": "call_tool"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="resource_uri",
+                        display_name="Resource URI",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="file:///path/to/file or db://table/row",
+                    ),
+                    InputSpec(
+                        name="tool_name",
+                        display_name="Tool Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="get_weather (for call_tool method)",
+                    ),
+                    InputSpec(
+                        name="parameters",
+                        display_name="Parameters",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"city": "Bangkok", "units": "metric"}',
+                    ),
+                    InputSpec(
+                        name="timeout",
+                        display_name="Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=30,
+                        validation={"min": 1, "max": 300},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="data", display_name="Data", data_type="any"),
+                    OutputSpec(name="metadata", display_name="Metadata", data_type="json"),
+                ],
+                executor="app.orchestrator.node_executors.integration_executors.mcp_executor.MCPExecutor",
+            )
+        )
+
         # Metrics Collector
         self.register_node_type(
             NodeTypeSpec(

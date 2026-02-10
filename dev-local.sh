@@ -237,7 +237,9 @@ cmd_web() {
 
     # Run from workspace directory
     cd "$WEB_DIR"
-    "$NPM_CMD" run dev
+    # Use no-watch mode for stability in long-running screen sessions.
+    # This prevents periodic restarts when file watchers detect incidental changes.
+    "$NPM_CMD" run dev:no-watch
 }
 
 cmd_backend() {

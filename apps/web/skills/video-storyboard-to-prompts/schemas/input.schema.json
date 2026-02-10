@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/input.schema.json",
+  "title": "StoryboardToVideoPromptsInput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "userIdea",
+    "dialogueLanguage",
+    "style"
+  ],
+  "properties": {
+    "userIdea": {
+      "type": "string",
+      "minLength": 5,
+      "description": "ไอเดียคลิป: คลิปเกี่ยวกับอะไร/ประเด็นหลัก/สิ่งที่อยากให้เกิดขึ้น"
+    },
+    "dialogueLanguage": {
+      "type": "string",
+      "description": "ภาษาของบทพูด (dialogue) ที่ตัวละครพูด",
+      "default": "en",
+      "enum": [
+        "th",
+        "en",
+        "mixed"
+      ]
+    },
+    "style": {
+      "type": "string",
+      "description": "สไตล์ภาพ/งาน 3D/2D ที่ต้องการ (ระบุให้ชัดเจน)",
+      "default": "Realistic",
+      "enum": [
+        "Pixar 3D Animated",
+        "3D Animated",
+        "Chibi",
+        "Realistic",
+        "Anime",
+        "Cartoon",
+        "Claymation",
+        "Stop Motion",
+        "Comic",
+        "Cinematic",
+        "Cyberpunk",
+        "Minimalist"
+      ]
+    },
+    "targetDurationSeconds": {
+      "type": "integer",
+      "minimum": 40,
+      "maximum": 120,
+      "default": 64,
+      "description": "ความยาวรวมของเรื่อง (วินาที) 40–120"
+    },
+    "sceneCount": {
+      "type": "integer",
+      "minimum": 3,
+      "maximum": 12,
+      "default": 8,
+      "description": "จำนวนฉาก (ปกติ 8 ฉากตามตัวอย่าง)"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "enum": [
+        "9:16",
+        "16:9",
+        "1:1"
+      ],
+      "default": "9:16",
+      "description": "อัตราส่วนวิดีโอ (TikTok/Reels แนะนำ 9:16)"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "tiktok",
+        "reels",
+        "shorts",
+        "facebook",
+        "youtube"
+      ],
+      "default": "tiktok"
+    },
+    "viralStrategy": {
+      "type": "string",
+      "description": "แนวทางไวรัลที่อยากให้ใช้",
+      "enum": [
+        "Pattern Interrupt",
+        "Reali-TEA",
+        "Curiosity Detours",
+        "Shoppertainment",
+        "Educational",
+        "Comedy"
+      ],
+      "default": "Pattern Interrupt"
+    },
+    "tone": {
+      "type": "string",
+      "description": "โทนการเล่าเรื่อง/คาแรกเตอร์",
+      "enum": [
+        "funny",
+        "dramatic",
+        "heartwarming",
+        "nagging",
+        "serious",
+        "soft-sell",
+        "hype",
+        "geek"
+      ],
+      "default": "funny"
+    },
+    "backgroundMode": {
+      "type": "string",
+      "description": "โหมดพื้นหลังของวิดีโอ: ฉากปกติ หรือ green screen",
+      "default": "normal",
+      "enum": [
+        "normal",
+        "green_screen"
+      ]
+    },
+    "includeTextOverlays": {
+      "type": "boolean",
+      "description": "แสดงข้อความบนจอ (text overlay) หรือไม่เท่านั้น ไม่กระทบเสียงพูดของตัวละคร",
+      "default": false
+    },
+    "characters": {
+      "type": "array",
+      "description": "ตัวละครหลัก (ถ้าไม่ระบุ agent จะสร้างให้เหมาะกับไอเดีย)",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "description": "เช่น hero/villain/narrator(ไม่แนะนำ)/seller/parent"
+          },
+          "personality": {
+            "type": "string",
+            "description": "นิสัย/คาแรกเตอร์สั้นๆ"
+          },
+          "voice": {
+            "type": "string",
+            "description": "โทนเสียง เช่น high/low/soft/raspy"
+          }
+        }
+      },
+      "default": []
+    },
+    "setting": {
+      "type": "string",
+      "description": "สถานที่/บรรยากาศหลักของเรื่อง (ถ้าไม่ระบุ agent จะเลือกให้)",
+      "default": ""
+    },
+    "product": {
+      "type": "object",
+      "description": "ข้อมูลสินค้า (ถ้าเป็นคลิปขาย/ป้ายยา)",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "keyBenefits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "ctaText": {
+          "type": "string",
+          "description": "ข้อความ Call-to-action เช่น กดตะกร้า/ลิงก์"
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ข้อกำกับการสร้างวิดีโอ/เสียง",
+      "properties": {
+        "noSubtitles": {
+          "type": "boolean",
+          "default": true
+        },
+        "noOnScreenText": {
+          "type": "boolean",
+          "default": true
+        },
+        "noNarrator": {
+          "type": "boolean",
+          "default": true
+        },
+        "allowSfx": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "default": {
+        "noSubtitles": true,
+        "noOnScreenText": true,
+        "noNarrator": true,
+        "allowSfx": true
+      }
+    }
+  }
+}

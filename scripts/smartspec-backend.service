@@ -1,0 +1,32 @@
+[Unit]
+Description=SmartSpecPro Python Backend
+Documentation=https://github.com/smartspecpro/smartspec
+After=docker.service smartspec-infra.service
+Requires=smartspec-infra.service
+PartOf=smartspec.target
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro/python-backend
+
+# Environment
+Environment="PATH=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=-/home/dev/projects/SmartSpecPro/python-backend/.env
+
+# Start backend
+ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Restart policy
+Restart=always
+RestartSec=5s
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-backend
+
+[Install]
+WantedBy=smartspec.target

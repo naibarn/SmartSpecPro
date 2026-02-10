@@ -126,7 +126,7 @@ export const skillDetectionLimiter = createRateLimiter("skill-detection", {
 
 export const skillExecutionLimiter = createRateLimiter("skill-execution", {
   windowMs: 60000, // 1 minute
-  maxRequests: 10, // 10 executions per minute
+  maxRequests: 15, // 15 executions per minute
   blockDurationMs: 60000, // Block for 1 minute if exceeded
 });
 

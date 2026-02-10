@@ -59,7 +59,7 @@ services:
 
 volumes:
   postgres_data:
-    external: true
+    driver: local
     name: smartspec_postgres_data
   redis_data:
     driver: local

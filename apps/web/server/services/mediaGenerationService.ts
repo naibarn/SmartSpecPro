@@ -204,6 +204,7 @@ export interface MediaGenerationResponse {
 export interface MediaTask {
   id: string;
   taskId?: string; // External provider task ID (e.g., Kie.ai)
+  celeryTaskId?: string; // Internal Celery task UUID for tracking/monitoring
   userId: string;
   mediaType: MediaType;
   status: TaskStatus;
@@ -650,26 +651,53 @@ export class MediaGenerationService {
       payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl, publicUrl);
     }
 
+    // Add apiConfig for model-specific endpoints and payload formats (e.g., Veo 3)
+    if ((request as any).apiConfig) {
+      payload.api_config = (request as any).apiConfig;
+    }
+
+    // Add extraParams for additional model-specific parameters
+    if ((request as any).extraParams) {
+      payload.extra_params = (request as any).extraParams;
+    }
+
+    console.log('[MediaGeneration] generateVideoAsync called with:', {
+      model: modelId,
+      provider,
+      baseUrl: this.baseUrl,
+      payloadKeys: Object.keys(payload),
+    });
+
     try {
       const task = await scheduleMediaWithLimiter(provider, "video" as RateLimiterMediaType, async () => {
-        const response = await fetch(`${this.baseUrl}/api/v1/media/async/video`, {
+        const url = `${this.baseUrl}/api/v1/media/async/video`;
+        console.log('[MediaGeneration] Making POST request to:', url);
+        console.log('[MediaGeneration] Payload:', JSON.stringify(payload, null, 2));
+
+        const response = await fetch(url, {
           method: "POST",
           headers: this.getHeaders(userToken),
           body: JSON.stringify(payload),
         });
 
+        console.log('[MediaGeneration] Response status:', response.status);
+
         if (!response.ok) {
           const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+          console.error('[MediaGeneration] Error response:', error);
           throw new Error(error.detail || `Async video generation failed: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log('[MediaGeneration] Success response data:', data);
         return this.mapTask(data);
       });
 
+      console.log('[MediaGeneration] Task created and mapped:', task);
       recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, true, 0);
       return task;
     } catch (error) {
+      console.error('[MediaGeneration] Error in generateVideoAsync:', error);
       recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, false, 0);
       throw error;
     }

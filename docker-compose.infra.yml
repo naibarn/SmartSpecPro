@@ -23,6 +23,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - smartspec-network    # For all services (media workers, nginx)
 
   # ============================================
   # Redis Cache
@@ -40,6 +42,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - smartspec-network    # For all services (media workers, nginx)
 
   # ============================================
   # ChromaDB (Vector Database) - Optional
@@ -65,3 +69,7 @@ volumes:
     name: smartspec_redis_data
   chroma_data:
     name: smartspec_chroma_data
+
+networks:
+  smartspec-network:
+    external: true           # Use existing network created by media stack

@@ -71,6 +71,7 @@ import {
   Mic,
   Grid2X2,
   Scissors,
+  Crop,
   AlertCircle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -85,9 +86,15 @@ import {
   detectGrid,
   splitImage,
   createSplitPreview,
+  cropImageToAspect,
+  getCropRect,
+  loadImage,
   downloadSplitImage,
   downloadAllSplitImages,
+  downloadCroppedImage,
+  COMMON_CROP_RATIOS,
   type SplitResult,
+  type CropResult,
   type DetectedGrid,
 } from "@/lib/imageGridSplitter";
 
@@ -362,6 +369,12 @@ export default function MediaStudio() {
   const [imageTabPrompt, setImageTabPrompt] = useState<string | null>(null);
   const [videoTabPrompt, setVideoTabPrompt] = useState<string | null>(null);
 
+  // Video output type (Multi Shot vs Multi Video) - persisted in localStorage
+  const [videoOutputType, setVideoOutputType] = useState<"multi-shot" | "multi-video">(() => {
+    const saved = localStorage.getItem("smartspec_video_output_type");
+    return (saved === "multi-shot" || saved === "multi-video") ? saved : "multi-shot";
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Ref to track current prompt textarea value (for reliable history storage)
@@ -434,6 +447,18 @@ export default function MediaStudio() {
   const [splitPreviewUrl, setSplitPreviewUrl] = useState<string | null>(null);
   const [splitResults, setSplitResults] = useState<SplitResult[]>([]);
   const [isSplitting, setIsSplitting] = useState(false);
+  const [imageEditorMode, setImageEditorMode] = useState<"split" | "crop">("split");
+  const [cropAspectRatio, setCropAspectRatio] = useState("1:1");
+  const [cropResult, setCropResult] = useState<CropResult | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropFocus, setCropFocus] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
+  const [cropScale, setCropScale] = useState(1);
+  const [cropSourceSize, setCropSourceSize] = useState<{ width: number; height: number } | null>(null);
+  const [cropDisplayRect, setCropDisplayRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const cropPreviewContainerRef = useRef<HTMLDivElement | null>(null);
+  const cropPreviewImageRef = useRef<HTMLImageElement | null>(null);
+  const cropDragStartRef = useRef<{ clientX: number; clientY: number; focusX: number; focusY: number } | null>(null);
   const [detectedGrid, setDetectedGrid] = useState<DetectedGrid | null>(null);
   const [isDetectingGrid, setIsDetectingGrid] = useState(false);
 
@@ -467,11 +492,18 @@ export default function MediaStudio() {
     }));
   }, [userVisibleSkillsRaw]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
-  const { data: mediaHistory } = trpc.media.listTasks.useQuery({
-    limit: 50,
-    mediaType: activeTab,
-    daysAgo: 7
-  });
+  const { data: mediaHistory } = trpc.media.listTasks.useQuery(
+    {
+      limit: 50,
+      mediaType: activeTab,
+      daysAgo: 12,
+    },
+    {
+      // Keep history live so completed provider tasks appear without manual refresh.
+      refetchInterval: 15000,
+      refetchOnWindowFocus: true,
+    }
+  );
 
   // Query for skill input schema (for dynamic form)
   const { data: skillSchemaData } = trpc.skills.getInputSchema.useQuery(
@@ -577,6 +609,11 @@ export default function MediaStudio() {
   useEffect(() => {
     localStorage.setItem("smartspec_duration_video", tabStates.video.duration.toString());
   }, [tabStates.video.duration]);
+
+  // Save video output type to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem("smartspec_video_output_type", videoOutputType);
+  }, [videoOutputType]);
 
   // Smart skill selection: localStorage > priority > type match > first enabled
   useEffect(() => {
@@ -839,35 +876,117 @@ export default function MediaStudio() {
         // Use executeCustomSkill for custom skills like viral-talking-objects
         // This sends the skill's content as system prompt to the LLM
         // Works in both Basic Mode (userIdea only) and Advanced Mode (with form values)
+        const hasUsableSkillValue = (value: unknown): boolean => {
+          if (value === undefined || value === null) return false;
+          if (typeof value === "string") {
+            const trimmed = value.trim();
+            return trimmed !== "" && trimmed !== ".";
+          }
+          if (Array.isArray(value)) return value.length > 0;
+          if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0;
+          return true; // booleans and numbers are always meaningful
+        };
+
         const mappedValues: Record<string, any> = {};
+        const outputMapping = skillSchema?.outputMapping || {};
 
         if (useAdvancedMode && skillSchema) {
           // Advanced Mode: map form values to API parameters
-          const outputMapping = skillSchema.outputMapping || {};
           Object.entries(dynamicFormValues).forEach(([key, value]) => {
             const mappedKey = outputMapping[key] || key;
-            if (value !== undefined && value !== "" && value !== null) {
+            if (hasUsableSkillValue(value)) {
               mappedValues[mappedKey] = value;
             }
           });
         }
 
-        // Add the user's prompt/idea (works for both Basic and Advanced Mode)
-        if (userIdea) {
-          mappedValues.userIdea = userIdea;
-          // In Basic Mode, also pass as 'topic' since many skills expect this field
-          if (!useAdvancedMode) {
+        // Apply default values from UI schema fields dynamically
+        // Works for ANY skill - reads defaults from schema sections/fields
+        // IMPORTANT: Apply in BOTH Basic and Advanced Mode!
+        if (skillSchema?.sections) {
+          skillSchema.sections.forEach((section: any) => {
+            section.fields?.forEach((field: any) => {
+              const mappedKey = outputMapping[field.id] || field.id;
+              // Apply default if field is missing or empty
+              if (field.default !== undefined &&
+                  !hasUsableSkillValue(mappedValues[mappedKey])) {
+                mappedValues[mappedKey] = field.default;
+              }
+            });
+          });
+        }
+
+        // Flexible prompt field handling - accepts multiple similar field names
+        // Always combines Basic Mode prompt with Advanced Mode field value
+        const PROMPT_FIELD_NAMES = [
+          'userIdea', 'UserIdea', 'Prompt', 'PromptIdea', 'Concept', 'ConceptIdea',
+          'ConceptPrompt', 'concept', 'conceptIdea', 'conceptPrompt', 'story',
+          'storyIdea', 'storyConcept', 'StoryIdea', 'StoryConcept', 'idea',
+          'mainIdea', 'mainConcept', 'theme', 'Topic', 'topic', 'prompt'
+        ];
+
+        // Find which prompt field exists in the schema (case-insensitive)
+        let promptField: { outputKey: string } | null = null;
+        if (skillSchema?.sections) {
+          for (const section of skillSchema.sections) {
+            if (section.fields) {
+              for (const field of section.fields) {
+                if (PROMPT_FIELD_NAMES.some(name => name.toLowerCase() === field.id.toLowerCase())) {
+                  promptField = {
+                    outputKey: outputMapping[field.id] || field.id,
+                  };
+                  break;
+                }
+              }
+              if (promptField) break;
+            }
+          }
+        }
+
+        // Always combine Basic Mode prompt with Advanced Mode field value
+        if (promptField && userIdea) {
+          const advancedModeValue = mappedValues[promptField.outputKey];
+          if (hasUsableSkillValue(advancedModeValue)) {
+            // Both Basic and Advanced filled: combine them
+            mappedValues[promptField.outputKey] = `${userIdea}\n\n${advancedModeValue}`;
+          } else {
+            // Only Basic Mode prompt provided
+            mappedValues[promptField.outputKey] = userIdea;
+          }
+        }
+
+        // In Basic Mode, set default values and additional fields
+        if (!useAdvancedMode) {
+          if (userIdea) {
+            // Ensure the prompt field is set even when schema is missing
+            if (promptField) {
+              if (!hasUsableSkillValue(mappedValues[promptField.outputKey])) {
+                mappedValues[promptField.outputKey] = userIdea;
+              }
+            } else {
+              mappedValues.userIdea = mappedValues.userIdea || userIdea;
+              mappedValues.request = mappedValues.request || userIdea;
+              mappedValues.prompt = mappedValues.prompt || userIdea;
+            }
             mappedValues.topic = userIdea;
-            // In Basic Mode, also pass default language settings
-            // This ensures skills know to use English output format by default
+          }
+          // Set default language settings for Basic Mode
+          if (!hasUsableSkillValue(mappedValues.promptLanguage)) {
             mappedValues.promptLanguage = "en";
+          }
+          if (!hasUsableSkillValue(mappedValues.dialogueLanguage)) {
             mappedValues.dialogueLanguage = "en";
           }
         }
 
+        // Remove null/empty placeholder values before sending to skill execution
+        const sanitizedInputs = Object.fromEntries(
+          Object.entries(mappedValues).filter(([, value]) => hasUsableSkillValue(value))
+        );
+
         const result = await executeCustomSkillMutation.mutateAsync({
           skillId: selectedSkillId,
-          userInputs: mappedValues,
+          userInputs: sanitizedInputs,
           model: selectedLlmModel || undefined,
           referenceImages: referenceImages.map(r => r.url),
         });
@@ -1037,8 +1156,30 @@ export default function MediaStudio() {
   // Get current skill info
   const currentSkill = skillsList?.find(s => s.id === selectedSkillId);
 
+  // Parse multi-prompt format (PROMPT 1 (X seconds): ... PROMPT 2 (X seconds): ...)
+  const parseMultiPrompts = (text: string): string[] => {
+    const prompts: string[] = [];
+    // Split by PROMPT pattern (e.g., "PROMPT 1 (8 seconds):", "PROMPT 2 (8 seconds):")
+    const parts = text.split(/PROMPT\s+\d+\s*\([^)]+\):/i);
+
+    // Skip first part (usually empty or header text)
+    for (let i = 1; i < parts.length; i++) {
+      const promptText = parts[i].trim();
+      if (promptText) {
+        prompts.push(promptText);
+      }
+    }
+
+    return prompts;
+  };
+
   // Generate media with loop for multiple images
   const handleGenerate = async () => {
+    console.log('========== [handleGenerate] START ==========');
+    console.log('[handleGenerate] activeTab:', activeTab);
+    console.log('[handleGenerate] selectedModel:', selectedModel);
+    console.log('[handleGenerate] videoOutputType:', videoOutputType);
+
     // IMPORTANT: Read current textarea value directly from ref to ensure we capture
     // any edits made after Auto Prompt, regardless of React state timing
     const currentTextareaValue = promptTextareaRef.current?.value ?? "";
@@ -1051,13 +1192,37 @@ export default function MediaStudio() {
 
     // Prefer textarea ref value (most current) over state (may be stale)
     const finalPrompt = currentTextareaValue.trim() || stateBasedPrompt;
+    console.log('[handleGenerate] finalPrompt length:', finalPrompt?.length || 0);
+    console.log('[handleGenerate] finalPrompt preview:', finalPrompt?.substring(0, 100));
 
     if (!finalPrompt?.trim()) {
+      console.log('[handleGenerate] ERROR: No prompt provided, exiting');
       return;
     }
 
-    // Determine how many images to generate
-    const imageCount = activeTab === "image" ? numImages : 1;
+    // Check if Multi Video mode for video tab
+    const isMultiVideo = activeTab === "video" && videoOutputType === "multi-video";
+    console.log('[Generate] Active tab:', activeTab);
+    console.log('[Generate] Video output type:', videoOutputType);
+    console.log('[Generate] Is Multi Video:', isMultiVideo);
+
+    // Parse prompts if Multi Video mode
+    let promptsToGenerate: string[] = [finalPrompt];
+    if (isMultiVideo) {
+      const parsed = parseMultiPrompts(finalPrompt);
+      console.log('[Multi Video] Parsed prompts count:', parsed.length);
+      if (parsed.length > 0) {
+        promptsToGenerate = parsed;
+        console.log(`[Multi Video] Using ${parsed.length} prompts`);
+        toast.info(`Multi Video Mode: Generating ${parsed.length} separate videos`, { duration: 3000 });
+      } else {
+        toast.warning("No multiple prompts detected. Generating single video.", { duration: 3000 });
+      }
+    }
+
+    // Determine how many items to generate
+    const imageCount = isMultiVideo ? promptsToGenerate.length : (activeTab === "image" ? numImages : 1);
+    console.log('[Generate] Image/Video count to generate:', imageCount);
 
     // Initialize generation tasks for progressive preview
     const initialTasks: GenerationTask[] = Array.from({ length: imageCount }, (_, i) => ({
@@ -1074,10 +1239,11 @@ export default function MediaStudio() {
       : activeTab === "video"
       ? "video-generation"
       : "audio-generation";
-    const isPromptSkill = currentSkill?.type === "prompt-enhancement" ||
-                          currentSkill?.type === "prompt_enhancement" ||
-                          currentSkill?.type === "image-video-generation";
-    const skillId = (!selectedSkillId || isPromptSkill) ? mediaTypeFallback : selectedSkillId;
+
+    // Use selectedSkillId if available, otherwise fall back to media type
+    // The backend will check the skill's category to determine if it can generate media
+    const skillId = selectedSkillId || mediaTypeFallback;
+    console.log('[Generate] Using skillId:', skillId, '(selectedSkillId:', selectedSkillId, ', fallback:', mediaTypeFallback, ')');
 
     // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
     const currentAspectRatio = aspectRatio;
@@ -1096,6 +1262,7 @@ export default function MediaStudio() {
     if (modelConfig) {
       // Populate apiConfig from configJson
       if (modelConfig.apiEndpoint) apiConfig.endpoint = modelConfig.apiEndpoint;
+      if (modelConfig.apiQueryEndpoint) apiConfig.query_endpoint = modelConfig.apiQueryEndpoint;
       if (modelConfig.apiPayloadFormat) apiConfig.payload_format = modelConfig.apiPayloadFormat;
       if (modelConfig.kieModelId) apiConfig.kie_model_id = modelConfig.kieModelId;
 
@@ -1127,10 +1294,17 @@ export default function MediaStudio() {
         prev.map((t, idx) => idx === i ? { ...t, status: 'generating' as const } : t)
       );
 
+      // Get the appropriate prompt for this iteration
+      const currentPrompt = isMultiVideo ? promptsToGenerate[i] : finalPrompt;
+      console.log(`[Generate] Iteration ${i + 1}/${imageCount}, Prompt length:`, currentPrompt.length);
+      console.log(`[Generate] SkillId:`, skillId);
+      console.log(`[Generate] Model:`, selectedModel);
+      console.log(`[Generate] Duration:`, activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined);
+
       try {
-        const result = await executeSkillMutation.mutateAsync({
+        const apiParams = {
           skillId,
-          prompt: finalPrompt,
+          prompt: currentPrompt,
           model: selectedModel,
           aspectRatio: finalAspectRatio,
           numImages: 1, // Always 1 per call for progressive loading
@@ -1140,7 +1314,14 @@ export default function MediaStudio() {
           ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
           ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
           ...(modelInputValues.resolution ? { resolution: modelInputValues.resolution } : {}),
-        } as any);
+        } as any;
+        console.log(`[Generate] Full API params for iteration ${i + 1}:`, JSON.stringify(apiParams, null, 2));
+
+        const result = await executeSkillMutation.mutateAsync(apiParams);
+        console.log(`[Generate] Result for iteration ${i + 1}:`, result.success ? 'SUCCESS' : 'FAILED');
+        if (!result.success) {
+          console.error(`[Generate] Error details:`, result.error);
+        }
 
         if (result.success) {
           const url = result.resultUrl || result.resultUrls?.[0];
@@ -1155,7 +1336,7 @@ export default function MediaStudio() {
               id: `${Date.now()}-${Math.random()}`,
               type: activeTab,
               url,
-              prompt: finalPrompt,
+              prompt: currentPrompt, // Use the current prompt (for multi-video, this is the individual prompt)
               model: selectedModel,
               createdAt: new Date().toISOString(),
               creditsUsed: result.creditsUsed,
@@ -1173,11 +1354,11 @@ export default function MediaStudio() {
               detectGrid(url).then((detected) => {
                 if (detected && detected.confidence >= 0.7) {
                   toast.info(
-                    `Grid detected! Click the grid icon to split into ${detected.rows * detected.cols} images.`,
+                    `Grid detected! Open Image Tools to split or crop (${detected.rows * detected.cols} cells).`,
                     {
                       duration: 5000,
                       action: {
-                        label: "Split Now",
+                        label: "Open Tools",
                         onClick: () => openSplitDialog(url),
                       },
                     }
@@ -1195,15 +1376,20 @@ export default function MediaStudio() {
           );
         }
       } catch (error: any) {
-        console.error(`Generation ${i + 1} error:`, error);
+        console.error(`[Generate] Exception in iteration ${i + 1}:`, error);
+        console.error(`[Generate] Error message:`, error?.message);
+        console.error(`[Generate] Error stack:`, error?.stack);
+        console.error(`[Generate] Full error object:`, JSON.stringify(error, null, 2));
         setGenerationTasks(prev =>
           prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: error?.message || 'Unknown error' } : t)
         );
       }
 
       // Add delay between generations (except for last one)
+      // Longer delay for multi-video mode to avoid API rate limiting
       if (i < imageCount - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const delayMs = isMultiVideo ? 2500 : 1000;
+        await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
 
@@ -1267,34 +1453,140 @@ export default function MediaStudio() {
     }
   };
 
-  // Open split dialog with auto-detection
-  const openSplitDialog = async (imageUrl: string) => {
-    setSplitImageUrl(imageUrl);
+  const extractTaskResultUrl = (task: any): string | null => {
+    if (typeof task?.resultUrl === "string" && task.resultUrl.startsWith("http")) {
+      return task.resultUrl;
+    }
+
+    const fromValue = (value: any): string | null => {
+      if (!value) return null;
+      if (typeof value === "string" && value.startsWith("http")) return value;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          const found = fromValue(item);
+          if (found) return found;
+        }
+      }
+      if (typeof value === "object") {
+        const directKeys = [
+          "url",
+          "video_url",
+          "image_url",
+          "audio_url",
+          "videoUrl",
+          "imageUrl",
+          "audioUrl",
+          "result_url",
+        ];
+        for (const key of directKeys) {
+          const candidate = value[key];
+          if (typeof candidate === "string" && candidate.startsWith("http")) {
+            return candidate;
+          }
+        }
+      }
+      return null;
+    };
+
+    const resultData = task?.resultData;
+    if (!resultData || typeof resultData !== "object") return null;
+    let parsedResultJson: any = null;
+    if (typeof resultData.resultJson === "string") {
+      try {
+        parsedResultJson = JSON.parse(resultData.resultJson);
+      } catch {
+        parsedResultJson = null;
+      }
+    }
+
+    // Most common provider response shapes
+    const candidates = [
+      resultData,
+      resultData.kie_ai_response,
+      resultData.response,
+      resultData.data,
+      resultData.data?.response,
+      resultData.data?.taskResult,
+      resultData.taskResult,
+      resultData.resultJson,
+      parsedResultJson,
+      resultData.output,
+    ];
+
+    for (const candidate of candidates) {
+      const found = fromValue(candidate);
+      if (found) return found;
+    }
+
+    return null;
+  };
+
+  const toCanvasSafeImageUrl = (imageUrl: string): string => {
+    if (!imageUrl) return imageUrl;
+    if (
+      imageUrl.startsWith("data:") ||
+      imageUrl.startsWith("blob:") ||
+      imageUrl.startsWith("/api/media/image-proxy?")
+    ) {
+      return imageUrl;
+    }
+
+    try {
+      const parsed = new URL(imageUrl, window.location.origin);
+      if (parsed.origin === window.location.origin) {
+        return parsed.toString();
+      }
+      return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
+    } catch {
+      return imageUrl;
+    }
+  };
+
+  // Open image tools dialog with auto-detection
+  const openSplitDialog = async (imageUrl: string, mode: "split" | "crop" = "split") => {
+    const sourceUrl = toCanvasSafeImageUrl(imageUrl);
+    setSplitImageUrl(sourceUrl);
     setSplitResults([]);
     setSplitPreviewUrl(null);
+    setImageEditorMode(mode);
+    setCropAspectRatio("1:1");
+    setCropResult(null);
+    setCropFocus({ x: 0.5, y: 0.5 });
+    setCropScale(1);
+    setCropSourceSize(null);
+    setCropDisplayRect(null);
+    setIsDraggingCrop(false);
+    cropDragStartRef.current = null;
     setShowSplitDialog(true);
 
     // Auto-detect grid
     setIsDetectingGrid(true);
     try {
-      const detected = await detectGrid(imageUrl);
+      const detected = await detectGrid(sourceUrl);
       if (detected) {
         setDetectedGrid(detected);
         setSplitGridRows(detected.rows);
         setSplitGridCols(detected.cols);
         // Generate preview with detected grid
-        const preview = await createSplitPreview(imageUrl, detected.rows, detected.cols);
+        const preview = await createSplitPreview(sourceUrl, detected.rows, detected.cols);
         setSplitPreviewUrl(preview);
       } else {
         setDetectedGrid(null);
         // Default to 2x2
         setSplitGridRows(2);
         setSplitGridCols(2);
-        const preview = await createSplitPreview(imageUrl, 2, 2);
+        const preview = await createSplitPreview(sourceUrl, 2, 2);
         setSplitPreviewUrl(preview);
       }
+
+      const sourceImg = await loadImage(sourceUrl);
+      setCropSourceSize({
+        width: sourceImg.naturalWidth,
+        height: sourceImg.naturalHeight,
+      });
     } catch (error) {
-      console.error("Grid detection failed:", error);
+      console.error("Image tools initialization failed:", error);
+      toast.error("Cannot process this image (source may block cross-origin access). Try Download then Upload.");
       setDetectedGrid(null);
     } finally {
       setIsDetectingGrid(false);
@@ -1315,6 +1607,117 @@ export default function MediaStudio() {
     }
   };
 
+  // Update crop preview when aspect ratio changes
+  const updateCropPreview = (aspectRatio: string) => {
+    setCropAspectRatio(aspectRatio);
+    setCropResult(null);
+  };
+
+  const updateCropDisplayRectFromDom = useCallback(() => {
+    const containerEl = cropPreviewContainerRef.current;
+    const imageEl = cropPreviewImageRef.current;
+    if (!containerEl || !imageEl) return;
+
+    const containerRect = containerEl.getBoundingClientRect();
+    const imageRect = imageEl.getBoundingClientRect();
+    if (imageRect.width <= 0 || imageRect.height <= 0) return;
+
+    setCropDisplayRect({
+      left: imageRect.left - containerRect.left,
+      top: imageRect.top - containerRect.top,
+      width: imageRect.width,
+      height: imageRect.height,
+    });
+  }, []);
+
+  const cropSelectionRect = useMemo(() => {
+    if (!cropSourceSize || !cropDisplayRect) return null;
+    const srcRect = getCropRect(
+      cropSourceSize.width,
+      cropSourceSize.height,
+      cropAspectRatio,
+      { focusX: cropFocus.x, focusY: cropFocus.y, scale: cropScale }
+    );
+
+    const sx = cropDisplayRect.width / cropSourceSize.width;
+    const sy = cropDisplayRect.height / cropSourceSize.height;
+
+    return {
+      left: cropDisplayRect.left + srcRect.x * sx,
+      top: cropDisplayRect.top + srcRect.y * sy,
+      width: srcRect.width * sx,
+      height: srcRect.height * sy,
+    };
+  }, [cropSourceSize, cropDisplayRect, cropAspectRatio, cropFocus.x, cropFocus.y, cropScale]);
+
+  const handleCropSelectionMouseDown = (event: any) => {
+    if (!cropDisplayRect) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingCrop(true);
+    cropDragStartRef.current = {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      focusX: cropFocus.x,
+      focusY: cropFocus.y,
+    };
+  };
+
+  useEffect(() => {
+    if (!showSplitDialog || imageEditorMode !== "crop") return;
+
+    const syncRect = () => updateCropDisplayRectFromDom();
+    // Let browser finish layout/paint first
+    const timer = window.setTimeout(syncRect, 0);
+    window.addEventListener("resize", syncRect);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", syncRect);
+    };
+  }, [showSplitDialog, imageEditorMode, splitImageUrl, cropAspectRatio, updateCropDisplayRectFromDom]);
+
+  useEffect(() => {
+    if (!isDraggingCrop || !cropDisplayRect) return;
+
+    const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+    const onMove = (event: MouseEvent) => {
+      const start = cropDragStartRef.current;
+      if (!start) return;
+
+      const dx = event.clientX - start.clientX;
+      const dy = event.clientY - start.clientY;
+
+      const nextX = clamp01(start.focusX + dx / cropDisplayRect.width);
+      const nextY = clamp01(start.focusY + dy / cropDisplayRect.height);
+      setCropFocus({ x: nextX, y: nextY });
+      setCropResult(null);
+    };
+
+    const onUp = () => {
+      setIsDraggingCrop(false);
+      cropDragStartRef.current = null;
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isDraggingCrop, cropDisplayRect]);
+
+  const handleCropPreviewWheel = (event: any) => {
+    if (imageEditorMode !== "crop") return;
+    event.preventDefault();
+    const step = event.deltaY > 0 ? -0.03 : 0.03;
+    setCropScale((prev) => {
+      const next = Math.min(1, Math.max(0.2, prev + step));
+      return next;
+    });
+    setCropResult(null);
+  };
+
   // Execute the split
   const executeSplit = async () => {
     if (!splitImageUrl) return;
@@ -1331,6 +1734,28 @@ export default function MediaStudio() {
     }
   };
 
+  // Execute center crop by selected aspect ratio
+  const executeCrop = async () => {
+    if (!splitImageUrl) return;
+    setIsCropping(true);
+    try {
+      const result = await cropImageToAspect(
+        splitImageUrl,
+        cropAspectRatio,
+        "image/jpeg",
+        0.92,
+        { focusX: cropFocus.x, focusY: cropFocus.y, scale: cropScale }
+      );
+      setCropResult(result);
+      toast.success(`Cropped to ${cropAspectRatio} (${result.width}x${result.height})`);
+    } catch (error) {
+      console.error("Crop failed:", error);
+      toast.error("Failed to crop image");
+    } finally {
+      setIsCropping(false);
+    }
+  };
+
   // Download a single split image
   const handleDownloadSplit = (result: SplitResult) => {
     downloadSplitImage(result, `split-image`);
@@ -1341,6 +1766,12 @@ export default function MediaStudio() {
     if (splitResults.length === 0) return;
     toast.info(`Downloading ${splitResults.length} images...`);
     await downloadAllSplitImages(splitResults, `split-image`);
+  };
+
+  // Download cropped image
+  const handleDownloadCrop = () => {
+    if (!cropResult) return;
+    downloadCroppedImage(cropResult, "cropped-image");
   };
 
   // Add split image as reference
@@ -1363,6 +1794,30 @@ export default function MediaStudio() {
       toast.success("Added as reference image");
     } catch (error) {
       console.error("Failed to upload split image:", error);
+      toast.error("Failed to add as reference");
+    }
+  };
+
+  // Add cropped image as reference
+  const addCropAsReference = async () => {
+    if (!cropResult) return;
+    if (referenceImages.length >= maxReferenceImages) {
+      toast.error(`Maximum ${maxReferenceImages} reference images`);
+      return;
+    }
+    try {
+      const uploadResult = await uploadMutation.mutateAsync({
+        fileName: `crop-${cropAspectRatio.replace(":", "x")}.jpg`,
+        fileType: "image/jpeg",
+        fileBase64: cropResult.dataUrl,
+      });
+      setReferenceImages((prev) => [
+        ...prev,
+        { url: uploadResult.url, name: `Crop ${cropAspectRatio}` },
+      ]);
+      toast.success("Added cropped image as reference");
+    } catch (error) {
+      console.error("Failed to upload cropped image:", error);
       toast.error("Failed to add as reference");
     }
   };
@@ -1514,16 +1969,25 @@ export default function MediaStudio() {
           <div className="lg:col-span-2 space-y-4">
             {/* Media Type Tabs */}
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MediaType)}>
-              <TabsList className="w-full">
-                <TabsTrigger value="image" className="flex-1 gap-2">
+              <TabsList className="w-full bg-muted/50 p-1">
+                <TabsTrigger
+                  value="image"
+                  className="flex-1 gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                >
                   <Image className="h-4 w-4" />
                   Image
                 </TabsTrigger>
-                <TabsTrigger value="video" className="flex-1 gap-2">
+                <TabsTrigger
+                  value="video"
+                  className="flex-1 gap-2 data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                >
                   <Video className="h-4 w-4" />
                   Video
                 </TabsTrigger>
-                <TabsTrigger value="audio" className="flex-1 gap-2">
+                <TabsTrigger
+                  value="audio"
+                  className="flex-1 gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                >
                   <Music className="h-4 w-4" />
                   Audio
                 </TabsTrigger>
@@ -2127,6 +2591,27 @@ export default function MediaStudio() {
                     </DialogContent>
                   </Dialog>
                 </div>
+                )}
+
+                {/* Video Output Type (Multi Shot vs Multi Video) - for video tab only */}
+                {activeTab === "video" && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">
+                      Output Type
+                    </label>
+                    <Select
+                      value={videoOutputType}
+                      onValueChange={(v: "multi-shot" | "multi-video") => setVideoOutputType(v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="multi-shot">Multi Shot (single video, multiple scenes)</SelectItem>
+                        <SelectItem value="multi-video">Multi Video (separate videos per scene)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
 
@@ -2829,19 +3314,34 @@ export default function MediaStudio() {
                     Download
                   </Button>
                   {activeTab === "image" && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            onClick={() => openSplitDialog(previewUrl)}
-                          >
-                            <Grid2X2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Split Grid Image</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              onClick={() => openSplitDialog(previewUrl, "split")}
+                            >
+                              <Grid2X2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Split Grid</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              onClick={() => openSplitDialog(previewUrl, "crop")}
+                            >
+                              <Crop className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Crop by Ratio</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </>
                   )}
                   <Button
                     variant="outline"
@@ -2861,50 +3361,58 @@ export default function MediaStudio() {
                   History Gallery
                 </h3>
                 <Badge variant="outline" className="text-xs">
-                  Drag to use as reference
+                  {activeTab === "image" ? "Drag to use as reference" : "Click to preview"}
                 </Badge>
               </div>
 
               <ScrollArea className="h-[350px] pr-3">
-                {/* Image Grid for completed tasks */}
+                {/* Completed tasks grid */}
                 <div className="grid grid-cols-3 gap-2 mb-4 pb-2">
                   {mediaHistory?.tasks
-                    ?.filter((task) => task.status === "completed" && task.resultUrl && task.mediaType === "image")
-                    .map((task) => (
+                    ?.filter((task) => task.status === "completed" && !!extractTaskResultUrl(task))
+                    .map((task) => {
+                      const resultUrl = extractTaskResultUrl(task);
+                      if (!resultUrl) return null;
+                      return (
                       <div
                         key={task.id}
-                        className="relative group cursor-grab active:cursor-grabbing"
-                        draggable
-                        onDragStart={(e) => handleHistoryDragStart(e, task.resultUrl!)}
-                        onClick={() => setPreviewUrl(task.resultUrl!)}
+                        className={cn(
+                          "relative group",
+                          task.mediaType === "image" ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                        )}
+                        draggable={task.mediaType === "image"}
+                        onDragStart={task.mediaType === "image" ? (e) => handleHistoryDragStart(e, resultUrl) : undefined}
+                        onClick={() => setPreviewUrl(resultUrl)}
                       >
-                        <img
-                          src={task.resultUrl}
-                          alt={task.prompt?.slice(0, 30)}
-                          className="w-full aspect-square object-cover rounded-lg border hover:border-purple-400 transition-colors"
-                        />
+                        {task.mediaType === "video" ? (
+                          <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
+                            <video
+                              src={resultUrl}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="rounded-full bg-black/50 p-2">
+                                <Play className="h-4 w-4 text-white" />
+                              </div>
+                            </div>
+                          </div>
+                        ) : task.mediaType === "audio" ? (
+                          <div className="w-full aspect-square rounded-lg border border-orange-200 bg-orange-50 hover:border-orange-400 transition-colors flex items-center justify-center">
+                            <Music className="h-8 w-8 text-orange-500" />
+                          </div>
+                        ) : (
+                          <img
+                            src={resultUrl}
+                            alt={task.prompt?.slice(0, 30)}
+                            className="w-full aspect-square object-cover rounded-lg border hover:border-purple-400 transition-colors"
+                          />
+                        )}
                         {/* Hover overlay */}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center gap-1">
-                          {/* Expand/View button */}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-white hover:bg-white/20"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openLightbox(task.resultUrl!, task.prompt || "", task.model, task.createdAt);
-                                  }}
-                                >
-                                  <Maximize2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>View & Copy Prompt</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          {referenceImages.length < maxReferenceImages && (
+                          {task.mediaType === "image" && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -2914,13 +3422,73 @@ export default function MediaStudio() {
                                     className="h-7 w-7 text-white hover:bg-white/20"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      addHistoryAsReference(task);
+                                      openLightbox(resultUrl, task.prompt || "", task.model, task.createdAt);
+                                    }}
+                                  >
+                                    <Maximize2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>View & Copy Prompt</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {task.mediaType === "image" && referenceImages.length < maxReferenceImages && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-white hover:bg-white/20"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addHistoryAsReference({ id: task.id, resultUrl });
                                     }}
                                   >
                                     <ImagePlus className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Use as reference</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {task.mediaType === "image" && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-white hover:bg-white/20"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openSplitDialog(resultUrl);
+                                    }}
+                                  >
+                                    <Grid2X2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Split Grid</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {task.mediaType === "image" && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-white hover:bg-white/20"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openSplitDialog(resultUrl, "crop");
+                                    }}
+                                  >
+                                    <Crop className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Crop by Ratio</TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           )}
@@ -2933,25 +3501,8 @@ export default function MediaStudio() {
                                   className="h-7 w-7 text-white hover:bg-white/20"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    openSplitDialog(task.resultUrl!);
-                                  }}
-                                >
-                                  <Grid2X2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Split Grid</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-white hover:bg-white/20"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    downloadMedia(task.resultUrl!, `${task.id}.png`);
+                                    const ext = task.mediaType === "image" ? "png" : task.mediaType === "video" ? "mp4" : "mp3";
+                                    downloadMedia(resultUrl, `${task.id}.${ext}`);
                                   }}
                                 >
                                   <Download className="h-4 w-4" />
@@ -2962,7 +3513,8 @@ export default function MediaStudio() {
                           </TooltipProvider>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                 </div>
 
                 {/* Pending/Processing Tasks - Only show failed tasks from current session */}
@@ -3018,7 +3570,11 @@ export default function MediaStudio() {
 
                 {(!mediaHistory?.tasks || mediaHistory.tasks.length === 0) && (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    No history yet. Generate some images!
+                    {activeTab === "video"
+                      ? "No history yet. Generate some videos!"
+                      : activeTab === "audio"
+                      ? "No history yet. Generate some audio!"
+                      : "No history yet. Generate some images!"}
                   </p>
                 )}
               </ScrollArea>
@@ -3119,45 +3675,85 @@ export default function MediaStudio() {
         </DialogContent>
       </Dialog>
 
-      {/* Grid Split Dialog */}
+      {/* Image Tools Dialog (Split + Crop) */}
       <Dialog open={showSplitDialog} onOpenChange={setShowSplitDialog}>
-        <DialogContent className="!max-w-[900px] !w-[90vw] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="!max-w-[96vw] !w-[96vw] max-h-[94vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Scissors className="h-5 w-5" />
-              Split Grid Image
+              Image Split & Crop Tools
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex gap-6">
-            {/* Left: Preview - Fixed width */}
-            <div className="w-[350px] shrink-0 space-y-3">
-              <label className="text-sm font-medium">Preview</label>
-              <div className="w-[350px] h-[350px] bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                {isDetectingGrid ? (
-                  <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Detecting grid...</p>
-                  </div>
-                ) : splitPreviewUrl ? (
-                  <img
-                    src={splitPreviewUrl}
-                    alt="Split preview"
-                    className="max-w-full max-h-full object-contain"
-                  />
+          <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-6">
+            {/* Left: Preview */}
+            <div className="min-w-0 space-y-3">
+              <label className="text-base font-semibold">Preview</label>
+              <div
+                ref={cropPreviewContainerRef}
+                className="w-full h-[60vh] min-h-[460px] max-h-[720px] bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center relative"
+                onWheel={handleCropPreviewWheel}
+              >
+                {imageEditorMode === "split" ? (
+                  isDetectingGrid ? (
+                    <div className="text-center">
+                      <Loader2 className="h-10 w-10 animate-spin text-purple-500 mx-auto mb-2" />
+                      <p className="text-base text-muted-foreground">Detecting grid...</p>
+                    </div>
+                  ) : splitPreviewUrl ? (
+                    <img src={splitPreviewUrl} alt="Split preview" className="max-w-full max-h-full object-contain" />
+                  ) : splitImageUrl ? (
+                    <img src={splitImageUrl} alt="Original" className="max-w-full max-h-full object-contain" />
+                  ) : (
+                    <p className="text-base text-muted-foreground">No image selected</p>
+                  )
                 ) : splitImageUrl ? (
-                  <img
-                    src={splitImageUrl}
-                    alt="Original"
-                    className="max-w-full max-h-full object-contain"
-                  />
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <img
+                      ref={cropPreviewImageRef}
+                      src={splitImageUrl}
+                      alt="Crop source"
+                      className="max-w-full max-h-full object-contain select-none"
+                      onLoad={() => updateCropDisplayRectFromDom()}
+                      draggable={false}
+                    />
+
+                    {cropSelectionRect && (
+                      <div className="absolute inset-0 pointer-events-none">
+                        <div
+                          className="absolute border-2 border-white rounded-md pointer-events-auto cursor-move"
+                          style={{
+                            left: `${cropSelectionRect.left}px`,
+                            top: `${cropSelectionRect.top}px`,
+                            width: `${cropSelectionRect.width}px`,
+                            height: `${cropSelectionRect.height}px`,
+                            boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)",
+                          }}
+                          onMouseDown={handleCropSelectionMouseDown}
+                        >
+                          <div className="absolute top-2 left-2 bg-black/65 text-white text-sm font-semibold px-2 py-1 rounded">
+                            {cropAspectRatio} • {Math.round(cropScale * 100)}% • Drag to move
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {isCropping && (
+                      <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                        <div className="bg-black/70 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-base">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Cropping...
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No image selected</p>
+                  <p className="text-base text-muted-foreground">No image selected</p>
                 )}
               </div>
 
-              {detectedGrid && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+              {imageEditorMode === "split" && detectedGrid && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-base">
                   <div className="flex items-center gap-2 text-green-700">
                     <Check className="h-4 w-4" />
                     <span>
@@ -3169,170 +3765,333 @@ export default function MediaStudio() {
               )}
             </div>
 
-            {/* Right: Controls - Fixed width */}
-            <div className="w-[450px] shrink-0 space-y-4">
-              {/* Aspect Ratio Guide */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                <p className="font-medium text-blue-800 mb-2">Recommended Grid Sizes by Aspect Ratio</p>
-                <div className="grid grid-cols-4 gap-2 text-blue-700 text-xs">
-                  <div>
-                    <p className="font-medium">16:9</p>
-                    <p>2x4, 2x5</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">9:16</p>
-                    <p>4x2, 5x2</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">1:1</p>
-                    <p>2x2, 3x3</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">4:3</p>
-                    <p>2x3, 3x4</p>
-                  </div>
-                </div>
+            {/* Right: Controls */}
+            <div className="w-full xl:max-w-[560px] space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={imageEditorMode === "split" ? "default" : "outline"}
+                  onClick={() => setImageEditorMode("split")}
+                  className="gap-2"
+                >
+                  <Scissors className="h-4 w-4" />
+                  Split Grid
+                </Button>
+                <Button
+                  variant={imageEditorMode === "crop" ? "default" : "outline"}
+                  onClick={() => {
+                    setImageEditorMode("crop");
+                    if (splitImageUrl) {
+                      void updateCropPreview(cropAspectRatio);
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  <Crop className="h-4 w-4" />
+                  Crop Ratio
+                </Button>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Grid Size</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {COMMON_GRIDS.map((grid) => (
-                    <Button
-                      key={`${grid.rows}x${grid.cols}`}
-                      variant={splitGridRows === grid.rows && splitGridCols === grid.cols ? "default" : "outline"}
-                      size="sm"
-                      className="text-[11px] h-8 px-2"
-                      onClick={() => updateSplitPreview(grid.rows, grid.cols)}
-                    >
-                      {grid.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              {imageEditorMode === "split" && (
+                <>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                    <p className="font-medium text-blue-800 mb-2">Recommended Grid Sizes by Aspect Ratio</p>
+                    <div className="grid grid-cols-4 gap-2 text-blue-700 text-xs">
+                      <div>
+                        <p className="font-medium">16:9</p>
+                        <p>2x4, 2x5</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">9:16</p>
+                        <p>4x2, 5x2</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">1:1</p>
+                        <p>2x2, 3x3</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">4:3</p>
+                        <p>2x3, 3x4</p>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Custom grid input */}
-              <div className="flex items-center gap-3">
-                <div className="w-20">
-                  <label className="text-xs text-muted-foreground mb-1 block">Rows</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={splitGridRows}
-                    onChange={(e) => {
-                      const rows = Math.min(10, Math.max(1, parseInt(e.target.value) || 1));
-                      updateSplitPreview(rows, splitGridCols);
-                    }}
-                    className="h-9"
-                  />
-                </div>
-                <span className="text-muted-foreground pt-5">×</span>
-                <div className="w-20">
-                  <label className="text-xs text-muted-foreground mb-1 block">Cols</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={splitGridCols}
-                    onChange={(e) => {
-                      const cols = Math.min(10, Math.max(1, parseInt(e.target.value) || 1));
-                      updateSplitPreview(splitGridRows, cols);
-                    }}
-                    className="h-9"
-                  />
-                </div>
-                <div className="flex-1 pt-5">
-                  <Button
-                    className="w-full"
-                    onClick={executeSplit}
-                    disabled={isSplitting || !splitImageUrl}
-                  >
-                    {isSplitting ? (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Grid Size</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {COMMON_GRIDS.map((grid) => (
+                        <Button
+                          key={`${grid.rows}x${grid.cols}`}
+                          variant={splitGridRows === grid.rows && splitGridCols === grid.cols ? "default" : "outline"}
+                          size="sm"
+                          className="text-[11px] h-8 px-2"
+                          onClick={() => updateSplitPreview(grid.rows, grid.cols)}
+                        >
+                          {grid.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-20">
+                      <label className="text-xs text-muted-foreground mb-1 block">Rows</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={splitGridRows}
+                        onChange={(e) => {
+                          const rows = Math.min(10, Math.max(1, parseInt(e.target.value) || 1));
+                          updateSplitPreview(rows, splitGridCols);
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                    <span className="text-muted-foreground pt-5">x</span>
+                    <div className="w-20">
+                      <label className="text-xs text-muted-foreground mb-1 block">Cols</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={splitGridCols}
+                        onChange={(e) => {
+                          const cols = Math.min(10, Math.max(1, parseInt(e.target.value) || 1));
+                          updateSplitPreview(splitGridRows, cols);
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="flex-1 pt-5">
+                      <Button className="w-full" onClick={executeSplit} disabled={isSplitting || !splitImageUrl}>
+                        {isSplitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Splitting...
+                          </>
+                        ) : (
+                          <>
+                            <Scissors className="h-4 w-4 mr-2" />
+                            Split ({splitGridRows * splitGridCols})
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {splitResults.length > 0 && (
+                    <div className="space-y-3 border-t pt-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Results ({splitResults.length} images)</label>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={addAllSplitsToVideoReference}>
+                            <Video className="h-4 w-4 mr-1" />
+                            Add to Video Reference
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={handleDownloadAllSplits}>
+                            <Download className="h-4 w-4 mr-1" />
+                            Download All
+                          </Button>
+                        </div>
+                      </div>
+                      <ScrollArea className="h-[180px]">
+                        <div className="grid grid-cols-5 gap-2 pr-2">
+                          {splitResults.map((result) => (
+                            <div
+                              key={result.index}
+                              className="relative group aspect-square rounded-lg overflow-hidden border hover:border-purple-400 transition-colors"
+                            >
+                              <img src={result.dataUrl} alt={`Split ${result.index + 1}`} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7 text-white hover:bg-white/20"
+                                        onClick={() => handleDownloadSplit(result)}
+                                      >
+                                        <Download className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Download</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                {referenceImages.length < maxReferenceImages && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7 text-white hover:bg-white/20"
+                                          onClick={() => addSplitAsReference(result)}
+                                        >
+                                          <ImagePlus className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Use as Reference</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                              <div className="absolute bottom-0 right-0 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded-tl">
+                                {result.index + 1}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {imageEditorMode === "crop" && (
+                <>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-base">
+                    <p className="font-semibold text-emerald-800">Crop by popular aspect ratios.</p>
+                    <p className="text-emerald-700 text-sm mt-1">Drag crop frame to move, and adjust Crop Size or mouse wheel to resize the selected area.</p>
+                    <p className="text-emerald-700 text-sm">Ratios: 1:1, 9:16, 16:9, 3:4, 4:3, 4:5, 5:4.</p>
+                  </div>
+
+                  <div>
+                    <label className="text-base font-semibold mb-2 block">Aspect Ratio</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {COMMON_CROP_RATIOS.map((ratio) => (
+                        <Button
+                          key={ratio.value}
+                          variant={cropAspectRatio === ratio.value ? "default" : "outline"}
+                          size="sm"
+                          className="h-9 text-sm font-semibold"
+                          onClick={() => {
+                            void updateCropPreview(ratio.value);
+                          }}
+                        >
+                          {ratio.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-lg border p-3">
+                    <div>
+                      <div className="flex items-center justify-between text-sm font-medium mb-1">
+                        <span>Crop Size</span>
+                        <span>{Math.round(cropScale * 100)}%</span>
+                      </div>
+                      <Input
+                        type="range"
+                        min={20}
+                        max={100}
+                        value={Math.round(cropScale * 100)}
+                        onChange={(e) => {
+                          const scale = Number(e.target.value) / 100;
+                          setCropScale(scale);
+                          setCropResult(null);
+                        }}
+                        className="h-9"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Smaller value = crop only a smaller area. You can also use mouse wheel on preview.
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-sm font-medium mb-1">
+                        <span>Horizontal</span>
+                        <span>{Math.round(cropFocus.x * 100)}%</span>
+                      </div>
+                      <Input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={Math.round(cropFocus.x * 100)}
+                        onChange={(e) => {
+                          const x = Number(e.target.value) / 100;
+                          setCropFocus((prev) => ({ ...prev, x }));
+                          setCropResult(null);
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-sm font-medium mb-1">
+                        <span>Vertical</span>
+                        <span>{Math.round(cropFocus.y * 100)}%</span>
+                      </div>
+                      <Input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={Math.round(cropFocus.y * 100)}
+                        onChange={(e) => {
+                          const y = Number(e.target.value) / 100;
+                          setCropFocus((prev) => ({ ...prev, y }));
+                          setCropResult(null);
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+
+                  <Button className="w-full" onClick={executeCrop} disabled={isCropping || !splitImageUrl}>
+                    {isCropping ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Splitting...
+                        Cropping...
                       </>
                     ) : (
                       <>
-                        <Scissors className="h-4 w-4 mr-2" />
-                        Split ({splitGridRows * splitGridCols})
+                        <Crop className="h-4 w-4 mr-2" />
+                        Crop ({cropAspectRatio})
                       </>
                     )}
                   </Button>
-                </div>
-              </div>
 
-              {/* Split Results */}
-              {splitResults.length > 0 && (
-                <div className="space-y-3 border-t pt-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Results ({splitResults.length} images)</label>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={addAllSplitsToVideoReference}>
-                        <Video className="h-4 w-4 mr-1" />
-                        Add to Video Reference
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={handleDownloadAllSplits}>
-                        <Download className="h-4 w-4 mr-1" />
-                        Download All
-                      </Button>
-                    </div>
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleDownloadCrop}
+                      disabled={!cropResult}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Cropped
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      {cropResult
+                        ? "Saved to your browser default Downloads folder."
+                        : "Click Crop first, then Download will be available."}
+                    </p>
                   </div>
-                  <ScrollArea className="h-[180px]">
-                    <div className="grid grid-cols-5 gap-2 pr-2">
-                      {splitResults.map((result) => (
-                        <div
-                          key={result.index}
-                          className="relative group aspect-square rounded-lg overflow-hidden border hover:border-purple-400 transition-colors"
-                        >
-                          <img
-                            src={result.dataUrl}
-                            alt={`Split ${result.index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-white hover:bg-white/20"
-                                    onClick={() => handleDownloadSplit(result)}
-                                  >
-                                    <Download className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Download</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            {referenceImages.length < maxReferenceImages && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7 text-white hover:bg-white/20"
-                                      onClick={() => addSplitAsReference(result)}
-                                    >
-                                      <ImagePlus className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Use as Reference</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                          </div>
-                          <div className="absolute bottom-0 right-0 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded-tl">
-                            {result.index + 1}
-                          </div>
-                        </div>
-                      ))}
+
+                  {cropResult && (
+                    <div className="space-y-3 border-t pt-4">
+                      <div className="text-base">
+                        <p className="font-semibold">Cropped Result</p>
+                        <p className="text-muted-foreground text-sm">
+                          {cropResult.width}x{cropResult.height} ({cropResult.ratio})
+                        </p>
+                      </div>
+                      <div className="rounded-lg border bg-muted/20 p-2">
+                        <img
+                          src={cropResult.dataUrl}
+                          alt="Cropped result preview"
+                          className="w-full max-h-[240px] object-contain rounded"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        {referenceImages.length < maxReferenceImages && (
+                          <Button variant="outline" size="sm" onClick={addCropAsReference}>
+                            <ImagePlus className="h-4 w-4 mr-1" />
+                            Use as Reference
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </ScrollArea>
-                </div>
+                  )}
+                </>
               )}
             </div>
           </div>
