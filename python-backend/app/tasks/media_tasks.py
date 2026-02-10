@@ -13,6 +13,7 @@ from app.services.library_indexing_service import (
     process_library_index_job,
     retry_due_library_index_jobs,
 )
+from app.services.library_backfill_service import run_library_backfill_batch
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
     ImageGenerationRequest,
@@ -709,6 +710,74 @@ def retry_library_index_jobs():
         return _run_async(_retry_library_index_jobs_async())
     except Exception as e:
         logger.error("retry_library_index_jobs_exception", error=str(e))
+        return {"status": "failed", "error": str(e)}
+
+
+async def _run_library_backfill_batch_async(
+    *,
+    tenant_id: int | None,
+    cursor: int,
+    batch_size: int,
+    dry_run: bool,
+    paused: bool,
+    max_enqueue: int,
+):
+    """Run one operator-controlled backfill batch for library indexing."""
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await run_library_backfill_batch(
+                db,
+                tenant_id=tenant_id,
+                cursor=cursor,
+                batch_size=batch_size,
+                dry_run=dry_run,
+                paused=paused,
+                max_enqueue=max_enqueue,
+            )
+            logger.info("library_backfill_batch_task_completed", **result)
+            return {"status": "success", **result}
+        except Exception as e:
+            logger.error(
+                "library_backfill_batch_task_failed",
+                tenant_id=tenant_id,
+                cursor=cursor,
+                error=str(e),
+            )
+            raise
+
+
+@celery_app.task
+def run_library_backfill_batch_task(
+    tenant_id: int | None = None,
+    cursor: int = 0,
+    batch_size: int = 100,
+    dry_run: bool = True,
+    paused: bool = False,
+    max_enqueue: int = 25,
+):
+    """Operator-triggered backfill batch with dry-run/pause/resume controls."""
+    logger.info(
+        "library_backfill_batch_task_started",
+        tenant_id=tenant_id,
+        cursor=cursor,
+        batch_size=batch_size,
+        dry_run=dry_run,
+        paused=paused,
+        max_enqueue=max_enqueue,
+    )
+    try:
+        return _run_async(
+            _run_library_backfill_batch_async(
+                tenant_id=tenant_id,
+                cursor=cursor,
+                batch_size=batch_size,
+                dry_run=dry_run,
+                paused=paused,
+                max_enqueue=max_enqueue,
+            )
+        )
+    except Exception as e:
+        logger.error("library_backfill_batch_task_exception", error=str(e))
         return {"status": "failed", "error": str(e)}
 
 

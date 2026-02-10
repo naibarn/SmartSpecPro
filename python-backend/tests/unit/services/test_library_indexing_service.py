@@ -15,6 +15,10 @@ from app.services.library_indexing_service import (
     process_library_index_job,
     retry_due_library_index_jobs,
 )
+from app.services.library_observability import (
+    get_metric_count,
+    reset_library_observability_metrics,
+)
 
 
 class FakeEmbeddingService:
@@ -226,3 +230,44 @@ class TestLibraryIndexingService:
         refreshed_item = await indexing_db.scalar(select(LibraryItem).where(LibraryItem.id == item.id))
         assert refreshed_item is not None
         assert refreshed_item.status == "failed"
+
+    @pytest.mark.asyncio
+    async def test_indexing_metrics_emit_for_success_and_failure(self, indexing_db):
+        reset_library_observability_metrics()
+
+        success_item = await _create_library_item(
+            indexing_db,
+            tenant_id=304,
+            title="Metrics success",
+            metadata={"prompt": "index me"},
+        )
+        fail_item = await _create_library_item(
+            indexing_db,
+            tenant_id=304,
+            title="   ",
+            metadata={},
+        )
+        fail_item.description = None
+        await indexing_db.commit()
+
+        success_job = await enqueue_library_index_job(indexing_db, success_item.id, tenant_id=success_item.tenant_id)
+        fail_job = await enqueue_library_index_job(indexing_db, fail_item.id, tenant_id=fail_item.tenant_id)
+
+        await process_library_index_job(
+            indexing_db,
+            success_job["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda tenant_id, item_id, chunks, embeddings: [
+                f"vec:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks
+            ],
+        )
+        await process_library_index_job(
+            indexing_db,
+            fail_job["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda **_kwargs: [],
+        )
+
+        assert get_metric_count("library.index.job.enqueued_total") == 2
+        assert get_metric_count("library.index.job.completed_total") == 1
+        assert get_metric_count("library.index.job.failed_total") == 1
