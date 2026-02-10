@@ -52,6 +52,7 @@ import { videoEditorProjectsRouter } from "./routers/videoEditorProjects";
 import { telegramRouter } from "./routers/telegram";
 import { workflowRouter } from "./routers/workflow";
 import { approvalsRouter } from "./routers/approvals";
+import { libraryRouter } from "./routers/library";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1201,6 +1202,9 @@ export const appRouter = router({
 
   // Media generation (image, video, audio via Python backend)
   media: mediaRouter,
+
+  // Library domain APIs
+  library: libraryRouter,
 
   // Skills management and prompt enhancement
   skills: skillsRouter,
