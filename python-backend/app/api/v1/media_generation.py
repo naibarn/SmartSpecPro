@@ -6,6 +6,7 @@ from typing import List, Optional, Any
 from pydantic import BaseModel
 import structlog
 import os
+import json
 
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
@@ -95,6 +96,177 @@ class ModelsListResponse(BaseModel):
     """Response model for models list"""
     models: List[ModelInfo]
     total: int
+
+
+def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
+    """
+    Normalize Kie task state to one of: success, fail, processing, unknown.
+    Returns (normalized_state, raw_state).
+    """
+    if not isinstance(status_response, dict):
+        return "unknown", ""
+
+    data = status_response.get("data", {})
+    if not isinstance(data, dict):
+        data = {}
+
+    # Veo-style response can report completion via successFlag without state/status fields.
+    success_flag = data.get("successFlag")
+    if success_flag in (1, True):
+        return "success", "successflag"
+    if success_flag in (0, False):
+        error_code = data.get("errorCode")
+        error_message = data.get("errorMessage")
+        if error_code or error_message:
+            return "fail", "successflag_error"
+        return "processing", "successflag_pending"
+
+    raw_state = str(
+        status_response.get("state", "")
+        or data.get("state", "")
+        or status_response.get("status", "")
+        or data.get("status", "")
+    ).strip().lower()
+
+    if raw_state in {"success", "completed", "complete", "done", "finished", "finish"}:
+        return "success", raw_state
+    if raw_state in {"fail", "failed", "error", "cancelled", "canceled"}:
+        return "fail", raw_state
+    if raw_state in {"pending", "processing", "running", "created", "queued", "queueing", "in_progress", "in-progress"}:
+        return "processing", raw_state
+    if raw_state:
+        return "unknown", raw_state
+
+    # Some Kie endpoints return only code/msg when record is not ready/not found on that route.
+    code = status_response.get("code")
+    if isinstance(code, int) and code != 200:
+        msg = str(status_response.get("msg") or status_response.get("message") or "").lower()
+        # Keep this as processing so caller can retry or use alternative route.
+        if any(x in msg for x in ("null", "not found", "not success", "processing", "pending")):
+            return "processing", msg or f"code_{code}"
+        return "fail", msg or f"code_{code}"
+
+    return "unknown", ""
+
+
+def _extract_url_from_value(value: Any) -> Optional[str]:
+    """Extract a media URL from common Kie response value shapes."""
+    if isinstance(value, str) and value.startswith("http"):
+        return value
+
+    if isinstance(value, dict):
+        for key in ("url", "image_url", "video_url", "audio_url", "imageUrl", "videoUrl", "audioUrl", "result_url"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.startswith("http"):
+                return candidate
+
+    return None
+
+
+def _extract_first_kie_result_url(status_response: dict) -> Optional[str]:
+    """
+    Extract first result URL from Kie response.
+    Handles resultJson, taskResult.images/videos/audios, output, and direct URL fields.
+    """
+    if not isinstance(status_response, dict):
+        return None
+
+    data = status_response.get("data", {})
+    if not isinstance(data, dict):
+        data = {}
+
+    # 1) resultJson can be JSON string or dict
+    result_json = data.get("resultJson")
+    if isinstance(result_json, str):
+        try:
+            result_json = json.loads(result_json)
+        except json.JSONDecodeError:
+            result_json = {}
+    if isinstance(result_json, dict):
+        result_urls = result_json.get("resultUrls")
+        if isinstance(result_urls, list):
+            for item in result_urls:
+                url = _extract_url_from_value(item)
+                if url:
+                    return url
+        url = _extract_url_from_value(result_json)
+        if url:
+            return url
+
+    # 2) taskResult often contains images/videos/audios arrays
+    task_result = data.get("taskResult")
+    if isinstance(task_result, dict):
+        for key in ("images", "videos", "audios", "files", "outputs", "resultUrls"):
+            items = task_result.get(key)
+            if isinstance(items, list):
+                for item in items:
+                    url = _extract_url_from_value(item)
+                    if url:
+                        return url
+            elif items is not None:
+                url = _extract_url_from_value(items)
+                if url:
+                    return url
+        url = _extract_url_from_value(task_result)
+        if url:
+            return url
+
+    # 3) Veo-style payload often puts outputs under data.response.resultUrls
+    provider_response = data.get("response")
+    if isinstance(provider_response, dict):
+        result_urls = provider_response.get("resultUrls") or provider_response.get("urls")
+        if isinstance(result_urls, list):
+            for item in result_urls:
+                url = _extract_url_from_value(item)
+                if url:
+                    return url
+        url = _extract_url_from_value(provider_response)
+        if url:
+            return url
+
+    # 4) output can be dict/list/string
+    output = data.get("output")
+    if isinstance(output, list):
+        for item in output:
+            url = _extract_url_from_value(item)
+            if url:
+                return url
+    elif output is not None:
+        url = _extract_url_from_value(output)
+        if url:
+            return url
+
+    # 5) direct fields in data, then top-level
+    url = _extract_url_from_value(data)
+    if url:
+        return url
+    return _extract_url_from_value(status_response)
+
+
+def _extract_model_query_endpoint(config_json: Any) -> Optional[str]:
+    """Extract model-specific status/query endpoint from configJson."""
+    if not config_json:
+        return None
+
+    cfg = config_json
+    if isinstance(cfg, str):
+        try:
+            cfg = json.loads(cfg)
+        except json.JSONDecodeError:
+            return None
+
+    if not isinstance(cfg, dict):
+        return None
+
+    endpoint = (
+        cfg.get("apiQueryEndpoint")
+        or cfg.get("queryEndpoint")
+        or cfg.get("statusEndpoint")
+        or cfg.get("apiStatusEndpoint")
+    )
+    if isinstance(endpoint, str) and endpoint.strip():
+        return endpoint.strip()
+    return None
 
 @router.post("/image", response_model=ImageGenerationResponse)
 async def generate_image_endpoint(
@@ -502,52 +674,52 @@ async def fetch_task_result(
         )
 
     try:
-        # Fetch status from Kie.ai
-        status_response = await kie_client.get_task_status(external_task_id)
-        logger.info("fetch_task_status_response", task_id=task_id, external_task_id=external_task_id, response=status_response)
+        # Resolve model-specific query endpoint from:
+        # 1) task.parameters.api_config.query_endpoint (if request carried it)
+        # 2) media_models.configJson.* (admin-configured per model)
+        preferred_query_endpoint = None
 
-        # Check task state
-        task_state = (
-            status_response.get("state", "").lower() or
-            status_response.get("data", {}).get("state", "").lower() or
-            status_response.get("status", "").lower()
+        if isinstance(task.parameters, dict):
+            api_cfg = task.parameters.get("api_config")
+            if isinstance(api_cfg, dict):
+                preferred_query_endpoint = (
+                    api_cfg.get("query_endpoint")
+                    or api_cfg.get("status_endpoint")
+                    or api_cfg.get("api_query_endpoint")
+                    or api_cfg.get("api_status_endpoint")
+                )
+
+        if not preferred_query_endpoint and task.model:
+            try:
+                model_result = await db.execute(
+                    text('SELECT "configJson" FROM media_models WHERE "modelId" = :model_id LIMIT 1'),
+                    {"model_id": task.model}
+                )
+                model_row = model_result.fetchone()
+                if model_row:
+                    preferred_query_endpoint = _extract_model_query_endpoint(model_row[0])
+            except Exception as e:
+                logger.warning("model_query_endpoint_lookup_failed", model=task.model, error=str(e))
+
+        # Fetch status from Kie.ai
+        status_response = await kie_client.get_task_status(
+            external_task_id,
+            preferred_status_endpoint=preferred_query_endpoint,
         )
+        logger.info(
+            "fetch_task_status_response",
+            task_id=task_id,
+            external_task_id=external_task_id,
+            preferred_query_endpoint=preferred_query_endpoint,
+            response=status_response,
+        )
+
+        # Normalize task state from multiple possible Kie formats
+        task_state, raw_state = _normalize_kie_task_state(status_response)
 
         if task_state == "success":
             # Extract result URL from response
-            data = status_response.get("data", {})
-            result_url = None
-
-            # First, check resultJson (Kie.ai format) - it's a JSON string that needs parsing
-            result_json_str = data.get("resultJson")
-            if result_json_str:
-                try:
-                    import json
-                    result_json = json.loads(result_json_str)
-                    # Check for resultUrls array
-                    if result_json.get("resultUrls") and len(result_json["resultUrls"]) > 0:
-                        result_url = result_json["resultUrls"][0]
-                    elif result_json.get("url"):
-                        result_url = result_json["url"]
-                    logger.info("parsed_result_json", result_json=result_json, result_url=result_url)
-                except json.JSONDecodeError as e:
-                    logger.warning("failed_to_parse_result_json", error=str(e), result_json_str=result_json_str)
-
-            # Fallback to other possible locations
-            if not result_url:
-                result_url = (
-                    data.get("output", {}).get("image_url") or
-                    data.get("output", {}).get("video_url") or
-                    data.get("output", {}).get("audio_url") or
-                    data.get("imageUrl") or
-                    data.get("videoUrl") or
-                    data.get("audioUrl") or
-                    data.get("url")
-                )
-
-            # Also check for array of results
-            if not result_url and isinstance(data.get("output"), list) and len(data.get("output", [])) > 0:
-                result_url = data["output"][0].get("url")
+            result_url = _extract_first_kie_result_url(status_response)
 
             if result_url:
                 # Look up actual credit cost from media_models table
@@ -583,7 +755,8 @@ async def fetch_task_result(
                     "success": True,
                     "message": "Task completed, result fetched",
                     "task": TaskResponse(**updated_task.to_dict()),
-                    "fetched": True
+                    "fetched": True,
+                    "kie_state": raw_state or task_state,
                 }
             else:
                 return {
@@ -591,7 +764,8 @@ async def fetch_task_result(
                     "message": "Task completed but no result URL found in response",
                     "task": TaskResponse(**task.to_dict()),
                     "fetched": False,
-                    "kie_response": status_response
+                    "kie_response": status_response,
+                    "kie_state": raw_state or task_state,
                 }
 
         elif task_state == "fail":
@@ -611,16 +785,17 @@ async def fetch_task_result(
                 "success": False,
                 "message": f"Task failed: {error_msg}",
                 "task": TaskResponse(**updated_task.to_dict()),
-                "fetched": True
+                "fetched": True,
+                "kie_state": raw_state or task_state,
             }
         else:
-            # Still processing
+            # Still processing or unknown state
             return {
                 "success": True,
-                "message": f"Task still in progress (state: {task_state})",
+                "message": f"Task still in progress (state: {raw_state or task_state or 'unknown'})",
                 "task": TaskResponse(**task.to_dict()),
                 "fetched": False,
-                "kie_state": task_state
+                "kie_state": raw_state or task_state or "unknown",
             }
 
     except Exception as e:
@@ -938,9 +1113,13 @@ async def generate_image_async(
     )
 
     # Submit to Celery
-    generate_image_task.delay(task.id, current_user.id, request.dict())
+    celery_task = generate_image_task.delay(task.id, current_user.id, request.dict())
 
-    logger.info("async_image_task_submitted", task_id=task.id, user_id=current_user.id)
+    # Store Celery task ID for tracking/monitoring
+    task.celery_task_id = celery_task.id
+    await db.commit()
+
+    logger.info("async_image_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
     return TaskResponse(**task.to_dict())
 
 
@@ -969,9 +1148,22 @@ async def generate_video_async(
         request.dict(exclude={'model', 'prompt'})
     )
 
-    generate_video_task.delay(task.id, current_user.id, request.dict())
+    try:
+        celery_task = generate_video_task.delay(task.id, current_user.id, request.dict())
+        logger.info("async_video_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
 
-    logger.info("async_video_task_submitted", task_id=task.id, user_id=current_user.id)
+        # Store Celery task ID for tracking/monitoring
+        task.celery_task_id = celery_task.id
+        # task_id will be set by the Celery worker after getting response from provider
+        # Do NOT overwrite it here with Celery task ID
+        await db.commit()
+    except Exception as e:
+        logger.error("celery_task_submission_failed", task_id=task.id, error=str(e), error_type=type(e).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to submit task to queue: {str(e)}"
+        )
+
     return TaskResponse(**task.to_dict())
 
 
@@ -1000,9 +1192,13 @@ async def generate_audio_async(
         request.dict(exclude={'model', 'text'})
     )
 
-    generate_audio_task.delay(task.id, current_user.id, request.dict())
+    celery_task = generate_audio_task.delay(task.id, current_user.id, request.dict())
 
-    logger.info("async_audio_task_submitted", task_id=task.id, user_id=current_user.id)
+    # Store Celery task ID for tracking/monitoring
+    task.celery_task_id = celery_task.id
+    await db.commit()
+
+    logger.info("async_audio_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
     return TaskResponse(**task.to_dict())
 
 
@@ -1073,9 +1269,26 @@ async def kie_ai_callback(
         logger.info("kie_ai_callback_received", body=body)
 
         task_id = body.get("taskId") or body.get("task_id")
-        status_str = body.get("status", "").lower()
+        status_str = str(body.get("status", "")).lower()
+        data = body.get("data", {}) if isinstance(body.get("data"), dict) else {}
         output = body.get("output", {})
         error = body.get("error")
+
+        # Some Kie callbacks (e.g., Veo) use data.successFlag/data.response instead of status/output.
+        if not status_str:
+            success_flag = data.get("successFlag")
+            if success_flag in (1, True):
+                status_str = "completed"
+            elif success_flag in (0, False):
+                status_str = "failed"
+            elif data:
+                status_str = "processing"
+
+        if (not output or not isinstance(output, dict)) and isinstance(data.get("response"), dict):
+            output = data.get("response")
+
+        if not error and isinstance(data, dict):
+            error = data.get("errorMessage") or data.get("msg")
 
         if not task_id:
             logger.warning("kie_ai_callback_missing_task_id", body=body)
@@ -1098,6 +1311,11 @@ async def kie_ai_callback(
                 urls = output.get("urls", [])
                 if urls:
                     result_url = urls[0] if isinstance(urls[0], str) else urls[0].get("url")
+            # Veo format: resultUrls array
+            if not result_url and "resultUrls" in output:
+                result_urls = output.get("resultUrls", [])
+                if result_urls:
+                    result_url = result_urls[0] if isinstance(result_urls[0], str) else result_urls[0].get("url")
 
         # Store the callback data for the task
         callback_data = {
@@ -1217,4 +1435,3 @@ async def clear_provider_cache(
         "success": True,
         "message": "Provider cache cleared. Next request will use updated settings."
     }
-

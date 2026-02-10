@@ -2091,6 +2091,9 @@ export const workflows = pgTable("workflows", {
   /** Workflow description */
   description: text("description"),
 
+  /** Default LLM model to use for this workflow */
+  defaultModel: varchar("defaultModel", { length: 255 }),
+
   /** ReactFlow state: {nodes: [], edges: [], viewport: {}} */
   workflowJson: json("workflowJson").$type<{
     nodes: Array<{

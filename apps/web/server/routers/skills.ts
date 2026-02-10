@@ -603,6 +603,104 @@ function convertPropertyToField(key: string, prop: any, isRequired: boolean): Sc
   }
 }
 
+/**
+ * Substitute template variables in a prompt template
+ * Replaces {variableName} with actual values from userInputs
+ */
+function substituteTemplateVariables(template: string, userInputs: Record<string, any>): string {
+  return template.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (_match, variableName: string) => {
+    const value = userInputs[variableName];
+    return value !== undefined && value !== null ? String(value) : "";
+  });
+}
+
+function hasUsableInputValue(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed !== "" && trimmed !== ".";
+  }
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0;
+  return true; // booleans and numbers are meaningful
+}
+
+function sanitizeUserInputs(userInputs: Record<string, any>): Record<string, any> {
+  return Object.fromEntries(
+    Object.entries(userInputs || {}).filter(([, value]) => hasUsableInputValue(value))
+  );
+}
+
+function extractDefaultsFromSchema(schema: any): Record<string, any> {
+  const defaults: Record<string, any> = {};
+  if (!schema || typeof schema !== "object") return defaults;
+
+  // Custom UI schema format
+  if (Array.isArray(schema.sections)) {
+    for (const section of schema.sections) {
+      if (!Array.isArray(section?.fields)) continue;
+      for (const field of section.fields) {
+        if (field?.id && field.default !== undefined && hasUsableInputValue(field.default)) {
+          defaults[field.id] = field.default;
+        }
+      }
+    }
+  }
+
+  // Standard JSON schema format
+  if (schema.properties && typeof schema.properties === "object") {
+    for (const [key, prop] of Object.entries(schema.properties) as [string, any][]) {
+      if (prop?.default !== undefined && hasUsableInputValue(prop.default)) {
+        defaults[key] = prop.default;
+      }
+    }
+  }
+
+  return defaults;
+}
+
+function loadSkillInputDefaults(skillSlug: string, folderPath?: string | null): Record<string, any> {
+  const schemaPaths: string[] = [];
+
+  if (folderPath) {
+    schemaPaths.push(
+      path.resolve(process.cwd(), folderPath, "schemas", "ui.schema.json"),
+      path.resolve(process.cwd(), folderPath, "schemas", "input.schema.json"),
+      path.resolve(process.cwd(), "..", folderPath, "schemas", "ui.schema.json"),
+      path.resolve(process.cwd(), "..", folderPath, "schemas", "input.schema.json"),
+    );
+  }
+
+  const slugVariants = [
+    skillSlug,
+    skillSlug.replace(/-/g, "_"),
+    skillSlug.replace(/_/g, "-"),
+  ];
+
+  for (const slug of slugVariants) {
+    schemaPaths.push(
+      path.resolve(SKILLS_DIR, slug, "schemas", "ui.schema.json"),
+      path.resolve(SKILLS_DIR, slug, "schemas", "input.schema.json"),
+      path.resolve(process.cwd(), "..", "skills", slug, "schemas", "ui.schema.json"),
+      path.resolve(process.cwd(), "..", "skills", slug, "schemas", "input.schema.json"),
+      path.resolve(process.cwd(), "skills", slug, "schemas", "ui.schema.json"),
+      path.resolve(process.cwd(), "skills", slug, "schemas", "input.schema.json"),
+    );
+  }
+
+  for (const schemaPath of schemaPaths) {
+    if (!fs.existsSync(schemaPath)) continue;
+    try {
+      const schema = JSON.parse(fs.readFileSync(schemaPath, "utf-8"));
+      return extractDefaultsFromSchema(schema);
+    } catch (error) {
+      console.warn(`[Skills] Failed to parse schema defaults at ${schemaPath}:`, error);
+    }
+  }
+
+  return {};
+}
+
 // ==================== Router ====================
 
 export const skillsRouter = router({
@@ -1297,6 +1395,7 @@ export const skillsRouter = router({
           name: skills.name,
           skillContent: skills.skillContent,
           systemPrompt: skills.systemPrompt,
+          folderPath: skills.folderPath,
         })
         .from(skills)
         .where(eq(skills.slug, input.skillId))
@@ -1309,8 +1408,30 @@ export const skillsRouter = router({
         });
       }
 
-      // Use skillContent or systemPrompt as the system prompt
-      const systemPrompt = skill.skillContent || skill.systemPrompt;
+      // Try to load prompt template from prompts/ directory first
+      let systemPrompt = skill.skillContent || skill.systemPrompt;
+
+      if (skill.folderPath) {
+        // Check for prompt template files in prompts/ directory
+        const possiblePromptPaths = [
+          path.resolve(process.cwd(), skill.folderPath, 'prompts', 'storyboard.prompt.md'),
+          path.resolve(process.cwd(), skill.folderPath, 'prompts', 'prompt.md'),
+          path.resolve(process.cwd(), skill.folderPath, 'prompts', `${skill.slug}.prompt.md`),
+        ];
+
+        for (const promptPath of possiblePromptPaths) {
+          if (fs.existsSync(promptPath)) {
+            try {
+              systemPrompt = fs.readFileSync(promptPath, 'utf-8');
+              console.log(`[Skills] Loaded prompt template from: ${promptPath}`);
+              break;
+            } catch (error) {
+              console.warn(`[Skills] Failed to read prompt template at ${promptPath}:`, error);
+            }
+          }
+        }
+      }
+
       if (!systemPrompt) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1318,32 +1439,29 @@ export const skillsRouter = router({
         });
       }
 
-      // DEBUG: Log first 500 chars of skill content to verify it has the correct language template
-      console.log(`[Skills] Executing skill '${input.skillId}' with content preview:`);
-      console.log(`[Skills]   First 500 chars: ${systemPrompt.slice(0, 500).replace(/\n/g, '\\n')}`);
+      // Merge user inputs with schema defaults, and drop null/empty placeholders
+      const sanitizedUserInputs = sanitizeUserInputs(input.userInputs);
+      const schemaDefaults = loadSkillInputDefaults(skill.slug, skill.folderPath);
+      const mergedUserInputs = {
+        ...schemaDefaults,
+        ...sanitizedUserInputs,
+      };
 
-      // DEBUG: Check if the new language-aware sections are present
-      const hasEnglishTemplate = systemPrompt.includes('promptLanguage=en') && systemPrompt.includes('**Character:**');
-      const hasThaiTemplate = systemPrompt.includes('promptLanguage=th') && systemPrompt.includes('**ตัวละคร:**');
-      console.log(`[Skills]   Has English template: ${hasEnglishTemplate}, Has Thai template: ${hasThaiTemplate}`);
+      // Substitute template variables with actual values
+      systemPrompt = substituteTemplateVariables(systemPrompt, mergedUserInputs);
 
-      // Build user prompt from form inputs
-      let userPrompt = "## User Inputs\n\n";
-      for (const [key, value] of Object.entries(input.userInputs)) {
-        if (value !== undefined && value !== null && value !== "") {
-          userPrompt += `**${key}:** ${value}\n`;
-        }
-      }
+      // DEBUG: Log substitution results
+      console.log(`[Skills] Executing skill '${input.skillId}'`);
+      console.log(`[Skills]   User inputs: ${JSON.stringify(mergedUserInputs)}`);
+      console.log(`[Skills]   System prompt (after substitution, first 500 chars): ${systemPrompt.slice(0, 500).replace(/\n/g, '\\n')}`);
 
-      // DEBUG: Log userInputs to verify promptLanguage is being passed
-      console.log(`[Skills]   User inputs: ${JSON.stringify(input.userInputs)}`);
-      console.log(`[Skills]   promptLanguage value: ${input.userInputs.promptLanguage || '(not set - defaults to en)'}`)
-      userPrompt += "\n## Task\n\nPlease execute the skill based on the inputs above and generate the output as specified in the skill instructions.";
+      // Build user prompt - simpler now since template variables are already substituted
+      let userPrompt = "Please execute the skill based on the inputs provided in the system prompt template and generate the output as specified.";
 
       try {
         const visionModel = input.model || "openai/gpt-4o";
 
-        // Call LLM with skill content as system prompt
+        // Call LLM with substituted system prompt
         const result = await callLLMWithVision(
           systemPrompt,
           userPrompt,

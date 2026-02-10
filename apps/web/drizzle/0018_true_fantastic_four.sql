@@ -1,0 +1,1 @@
+ALTER TABLE "workflows" ADD COLUMN "defaultModel" varchar(255);

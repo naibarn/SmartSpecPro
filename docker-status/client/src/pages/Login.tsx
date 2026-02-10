@@ -35,8 +35,8 @@ export default function Login() {
 
   // Determine the main site URL based on current hostname
   let mainSiteUrl: string;
-  if (hostname === 'docker.smartspec.pro') {
-    mainSiteUrl = 'https://smartspec.pro';
+  if (hostname === 'docker.smartaihub.app') {
+    mainSiteUrl = 'https://smartaihub.app';
   } else if (hostname === 'docker.smartspec.local') {
     mainSiteUrl = 'https://smartspec.local';
   } else if (hostname === 'docker.localhost') {

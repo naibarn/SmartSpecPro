@@ -17,6 +17,25 @@ export interface SplitResult {
   dataUrl: string;
 }
 
+export interface CropRatio {
+  value: string;
+  label: string;
+}
+
+export interface CropResult {
+  blob: Blob;
+  dataUrl: string;
+  width: number;
+  height: number;
+  ratio: string;
+}
+
+export interface CropOptions {
+  focusX?: number; // 0..1 (left..right), default 0.5
+  focusY?: number; // 0..1 (top..bottom), default 0.5
+  scale?: number; // 0.1..1 (crop area size), default 1
+}
+
 export interface DetectedGrid {
   rows: number;
   cols: number;
@@ -40,6 +59,16 @@ export const COMMON_GRIDS: GridDimension[] = [
   { rows: 4, cols: 4, label: "4x4 (16 images)" },
 ];
 
+export const COMMON_CROP_RATIOS: CropRatio[] = [
+  { value: "1:1", label: "1:1" },
+  { value: "9:16", label: "9:16" },
+  { value: "16:9", label: "16:9" },
+  { value: "3:4", label: "3:4" },
+  { value: "4:3", label: "4:3" },
+  { value: "4:5", label: "4:5" },
+  { value: "5:4", label: "5:4" },
+];
+
 /**
  * Load an image from URL and return as HTMLImageElement
  * Handles CORS issues by trying different loading strategies
@@ -59,12 +88,8 @@ export async function loadImage(url: string): Promise<HTMLImageElement> {
     img.onload = () => resolve(img);
 
     img.onerror = () => {
-      // If CORS failed, try without crossOrigin as fallback
-      if (!isLocalUrl && img.crossOrigin) {
-        const retryImg = new Image();
-        retryImg.onload = () => resolve(retryImg);
-        retryImg.onerror = () => reject(new Error("Failed to load image"));
-        retryImg.src = url;
+      if (!isLocalUrl) {
+        reject(new Error("Failed to load image (CORS blocked or unreachable source)"));
       } else {
         reject(new Error("Failed to load image"));
       }
@@ -253,8 +278,8 @@ export async function createSplitPreview(
 
   // Draw cell numbers - larger and more visible
   const minDimension = Math.min(cellWidth, cellHeight);
-  const fontSize = Math.max(minDimension / 2.5, 32); // Larger font, minimum 32px
-  const circleRadius = Math.max(minDimension / 3.5, 24); // Larger circle, minimum 24px
+  const fontSize = Math.max(minDimension / 2.0, 44); // Very large font for better readability
+  const circleRadius = Math.max(minDimension / 3.0, 30); // Larger circle for label clarity
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -318,4 +343,172 @@ export async function downloadAllSplitImages(
     // Small delay to prevent browser blocking multiple downloads
     await new Promise((r) => setTimeout(r, 200));
   }
+}
+
+function parseAspectRatio(aspectRatio: string): { width: number; height: number } {
+  const parts = String(aspectRatio).split(":").map((v) => Number(v));
+  if (parts.length !== 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1]) || parts[0] <= 0 || parts[1] <= 0) {
+    return { width: 1, height: 1 };
+  }
+  return { width: parts[0], height: parts[1] };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+export function getCropRect(
+  imageWidth: number,
+  imageHeight: number,
+  aspectRatio: string,
+  options: CropOptions = {}
+): { x: number; y: number; width: number; height: number } {
+  const ratio = parseAspectRatio(aspectRatio);
+  const targetAspect = ratio.width / ratio.height;
+  const imageAspect = imageWidth / imageHeight;
+
+  let cropWidth = imageWidth;
+  let cropHeight = imageHeight;
+
+  if (imageAspect > targetAspect) {
+    cropHeight = imageHeight;
+    cropWidth = Math.round(cropHeight * targetAspect);
+  } else {
+    cropWidth = imageWidth;
+    cropHeight = Math.round(cropWidth / targetAspect);
+  }
+
+  // Allow smaller crop window at fixed aspect ratio
+  const safeScale = clamp(options.scale ?? 1, 0.1, 1);
+  cropWidth = Math.max(1, Math.round(cropWidth * safeScale));
+  cropHeight = Math.max(1, Math.round(cropHeight * safeScale));
+
+  const maxX = Math.max(0, imageWidth - cropWidth);
+  const maxY = Math.max(0, imageHeight - cropHeight);
+  const safeFocusX = clamp(options.focusX ?? 0.5, 0, 1);
+  const safeFocusY = clamp(options.focusY ?? 0.5, 0, 1);
+
+  const centerX = safeFocusX * imageWidth;
+  const centerY = safeFocusY * imageHeight;
+
+  const x = Math.round(clamp(centerX - cropWidth / 2, 0, maxX));
+  const y = Math.round(clamp(centerY - cropHeight / 2, 0, maxY));
+
+  return { x, y, width: cropWidth, height: cropHeight };
+}
+
+export async function createCropPreview(
+  imageUrl: string,
+  aspectRatio: string,
+  options: CropOptions = {}
+): Promise<string> {
+  const img = await loadImage(imageUrl);
+  const width = img.naturalWidth;
+  const height = img.naturalHeight;
+  const crop = getCropRect(width, height, aspectRatio, options);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to get canvas context");
+
+  ctx.drawImage(img, 0, 0, width, height);
+
+  // Darken areas outside crop frame
+  ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(
+    img,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height
+  );
+
+  // Crop border
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.lineWidth = Math.max(2, Math.round(Math.min(width, height) * 0.004));
+  ctx.strokeRect(crop.x, crop.y, crop.width, crop.height);
+
+  // Ratio badge
+  const badgePaddingX = 10;
+  const badgePaddingY = 6;
+  const fontSize = Math.max(12, Math.round(Math.min(width, height) * 0.025));
+  ctx.font = `bold ${fontSize}px sans-serif`;
+  const text = `Crop ${aspectRatio}`;
+  const textWidth = ctx.measureText(text).width;
+  const badgeX = crop.x + 8;
+  const badgeY = crop.y + 8;
+  const badgeW = textWidth + badgePaddingX * 2;
+  const badgeH = fontSize + badgePaddingY * 2;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+  ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+  ctx.fillStyle = "white";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, badgeX + badgePaddingX, badgeY + badgeH / 2);
+
+  return canvas.toDataURL("image/png");
+}
+
+export async function cropImageToAspect(
+  imageUrl: string,
+  aspectRatio: string,
+  outputFormat: "image/png" | "image/jpeg" = "image/jpeg",
+  quality: number = 0.92,
+  options: CropOptions = {}
+): Promise<CropResult> {
+  const img = await loadImage(imageUrl);
+  const width = img.naturalWidth;
+  const height = img.naturalHeight;
+  const crop = getCropRect(width, height, aspectRatio, options);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to get canvas context");
+
+  ctx.drawImage(
+    img,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("Failed to create blob"))),
+      outputFormat,
+      quality
+    );
+  });
+
+  return {
+    blob,
+    dataUrl: canvas.toDataURL(outputFormat, quality),
+    width: crop.width,
+    height: crop.height,
+    ratio: aspectRatio,
+  };
+}
+
+export function downloadCroppedImage(result: CropResult, baseFilename: string): void {
+  const link = document.createElement("a");
+  link.href = result.dataUrl;
+  link.download = `${baseFilename}_${result.ratio.replace(":", "x")}.jpg`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }

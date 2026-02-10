@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -59,6 +60,7 @@ type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled
 interface MediaTask {
   id: string;
   taskId?: string; // External provider task ID (e.g., Kie.ai)
+  celeryTaskId?: string; // Internal Celery task UUID for tracking/monitoring
   mediaType: MediaType;
   status: TaskStatus;
   model: string;
@@ -84,6 +86,26 @@ const mediaTypeConfig: Record<MediaType, { label: string; icon: React.ElementTyp
   audio: { label: 'Audio', icon: Music, color: 'text-green-600' },
 };
 
+const fallbackStatusConfig = {
+  label: 'Unknown',
+  color: 'bg-gray-100 text-gray-800',
+  icon: AlertCircle,
+};
+
+const fallbackMediaTypeConfig = {
+  label: 'Unknown',
+  icon: FileImage,
+  color: 'text-gray-500',
+};
+
+function getStatusMeta(status: string | undefined) {
+  return statusConfig[status as TaskStatus] || fallbackStatusConfig;
+}
+
+function getMediaTypeMeta(mediaType: string | undefined) {
+  return mediaTypeConfig[mediaType as MediaType] || fallbackMediaTypeConfig;
+}
+
 export default function MediaHistory() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -92,6 +114,7 @@ export default function MediaHistory() {
   const [selectedTask, setSelectedTask] = useState<MediaTask | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isFetchingResult, setIsFetchingResult] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
 
   // Fetch tasks from API - only last 12 days
   const {
@@ -150,6 +173,52 @@ export default function MediaHistory() {
   const handleDeleteTask = async (taskId: string) => {
     if (confirm('Are you sure you want to delete this task?')) {
       await deleteTaskMutation.mutateAsync({ taskId });
+    }
+  };
+
+  // Handle checkbox selection
+  const handleSelectTask = (taskId: string, checked: boolean) => {
+    setSelectedTaskIds(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(taskId);
+      } else {
+        newSet.delete(taskId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle select all checkbox
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedTaskIds(new Set(tasks.map(t => t.id)));
+    } else {
+      setSelectedTaskIds(new Set());
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    const count = selectedTaskIds.size;
+    if (count === 0) return;
+
+    if (confirm(`Are you sure you want to delete ${count} selected task${count > 1 ? 's' : ''}?`)) {
+      toast.promise(
+        Promise.all(
+          Array.from(selectedTaskIds).map(taskId =>
+            deleteTaskMutation.mutateAsync({ taskId })
+          )
+        ),
+        {
+          loading: `Deleting ${count} task${count > 1 ? 's' : ''}...`,
+          success: () => {
+            setSelectedTaskIds(new Set());
+            return `Successfully deleted ${count} task${count > 1 ? 's' : ''}`;
+          },
+          error: 'Failed to delete some tasks',
+        }
+      );
     }
   };
 
@@ -222,6 +291,10 @@ export default function MediaHistory() {
   const tasks: MediaTask[] = tasksData?.tasks || [];
   const totalTasks = tasksData?.total || 0;
 
+  // Check if all visible tasks are selected
+  const allSelected = tasks.length > 0 && tasks.every(task => selectedTaskIds.has(task.id));
+  const someSelected = selectedTaskIds.size > 0 && !allSelected;
+
   // Calculate stats
   const completedCount = tasks.filter((t) => t.status === 'completed').length;
   const pendingCount = tasks.filter((t) => t.status === 'pending' || t.status === 'processing').length;
@@ -259,20 +332,57 @@ export default function MediaHistory() {
     },
   ];
 
-  // Format date for display
+  // Format date for display - show both relative and absolute time
+  // Automatically converts UTC to local timezone
+  // Safe date parsing helper
+  const safeParseDate = (dateStr: string | null | undefined): Date | null => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      // Check if date is valid
+      if (isNaN(d.getTime())) return null;
+      return d;
+    } catch {
+      return null;
+    }
+  };
+
   const formatDate = (date: string) => {
-    const d = new Date(date);
+    const d = safeParseDate(date);
+    if (!d) {
+      return {
+        relative: 'Unknown',
+        absolute: 'Invalid date',
+      };
+    }
+
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString();
+    let relative = '';
+    if (diffMins < 1) relative = 'Just now';
+    else if (diffMins < 60) relative = `${diffMins}m ago`;
+    else if (diffHours < 24) relative = `${diffHours}h ago`;
+    else if (diffDays < 7) relative = `${diffDays}d ago`;
+    else relative = d.toLocaleDateString();
+
+    // Return both for display (relative shown, absolute in title)
+    // toLocaleString() automatically uses browser's local timezone
+    return {
+      relative,
+      absolute: d.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false, // Use 24-hour format
+      }),
+    };
   };
 
   const handleViewDetails = async (task: MediaTask) => {
@@ -307,6 +417,41 @@ export default function MediaHistory() {
   const handleDownload = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
+
+  // Background fallback polling:
+  // if provider callback/worker update is delayed, periodically refresh one pending task.
+  useEffect(() => {
+    const hasPendingTasks = tasks.some(
+      (task) =>
+        !!task.taskId &&
+        !task.resultUrl &&
+        (task.status === 'processing' || task.status === 'pending')
+    );
+
+    if (!hasPendingTasks) return;
+
+    const tick = async () => {
+      if (document.visibilityState !== 'visible' || fetchResultMutation.isPending) return;
+      const nextTask = tasks.find(
+        (task) =>
+          !!task.taskId &&
+          !task.resultUrl &&
+          (task.status === 'processing' || task.status === 'pending')
+      );
+      if (!nextTask) return;
+      try {
+        await fetchResultMutation.mutateAsync({ taskId: nextTask.id });
+      } catch (error) {
+        console.error('Background fetch task result failed:', error);
+      }
+    };
+
+    void tick();
+    const interval = window.setInterval(() => {
+      void tick();
+    }, 15000);
+    return () => window.clearInterval(interval);
+  }, [tasks, fetchResultMutation.isPending, fetchResultMutation.mutateAsync]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
@@ -355,18 +500,21 @@ export default function MediaHistory() {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
         >
-          {stats.map((stat, index) => (
+          {stats.map((stat, index) => {
+            const StatIcon = stat.icon || FileImage;
+            return (
             <div
               key={index}
               className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-6 shadow-lg shadow-purple-500/5"
             >
               <div className={`w-12 h-12 rounded-xl ${stat.bgColor} flex items-center justify-center mb-4`}>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                <StatIcon className={`w-6 h-6 ${stat.color}`} />
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
               <div className="text-sm text-gray-500">{stat.label}</div>
             </div>
-          ))}
+            );
+          })}
         </motion.div>
 
         {/* Data Retention Notice */}
@@ -442,8 +590,26 @@ export default function MediaHistory() {
               </Select>
             </div>
 
-            <div className="ml-auto text-sm text-gray-500">
-              Showing {tasks.length} of {totalTasks} tasks
+            <div className="ml-auto flex items-center gap-4">
+              {selectedTaskIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={deleteTaskMutation.isPending}
+                  className="gap-2"
+                >
+                  {deleteTaskMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Delete {selectedTaskIds.size} selected
+                </Button>
+              )}
+              <div className="text-sm text-gray-500">
+                Showing {tasks.length} of {totalTasks} tasks
+              </div>
             </div>
           </div>
         </motion.div>
@@ -473,11 +639,20 @@ export default function MediaHistory() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50/50">
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all tasks"
+                      className={someSelected ? 'data-[state=checked]:bg-purple-500' : ''}
+                    />
+                  </TableHead>
                   <TableHead className="w-[80px]">Preview</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead className="max-w-[200px]">Prompt</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>External ID</TableHead>
                   <TableHead>Credits</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -485,13 +660,20 @@ export default function MediaHistory() {
               </TableHeader>
               <TableBody>
                 {tasks.map((task) => {
-                  const typeConfig = mediaTypeConfig[task.mediaType];
-                  const status = statusConfig[task.status];
-                  const StatusIcon = status.icon;
-                  const TypeIcon = typeConfig.icon;
+                  const typeConfig = getMediaTypeMeta(task.mediaType);
+                  const status = getStatusMeta(task.status);
+                  const StatusIcon = status?.icon || AlertCircle;
+                  const TypeIcon = typeConfig?.icon || FileImage;
 
                   return (
                     <TableRow key={task.id} className="hover:bg-gray-50/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedTaskIds.has(task.id)}
+                          onCheckedChange={(checked) => handleSelectTask(task.id, checked === true)}
+                          aria-label={`Select task ${task.id}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         {task.status === 'completed' && task.resultUrl ? (
                           task.mediaType === 'image' ? (
@@ -541,6 +723,15 @@ export default function MediaHistory() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        {task.taskId ? (
+                          <span className="font-mono text-xs text-gray-600" title={task.taskId}>
+                            {task.taskId.substring(0, 8)}...
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {task.creditsUsed ? (
                           <span className="flex items-center gap-1 text-sm">
                             <Zap className="w-3 h-3 text-yellow-500" />
@@ -550,8 +741,30 @@ export default function MediaHistory() {
                           <span className="text-gray-400">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-gray-500">
-                        {formatDate(task.createdAt)}
+                      <TableCell className="text-sm text-gray-500" title={formatDate(task.createdAt).relative}>
+                        {(() => {
+                          const date = safeParseDate(task.createdAt);
+                          if (!date) {
+                            return <span className="text-gray-400">Invalid date</span>;
+                          }
+                          return (
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {date.toLocaleDateString(undefined, {
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {date.toLocaleTimeString(undefined, {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: false
+                                })}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -627,10 +840,11 @@ export default function MediaHistory() {
               {selectedTask && (
                 <>
                   {(() => {
-                    const TypeIcon = mediaTypeConfig[selectedTask.mediaType].icon;
-                    return <TypeIcon className={`w-5 h-5 ${mediaTypeConfig[selectedTask.mediaType].color}`} />;
+                    const typeMeta = getMediaTypeMeta(selectedTask.mediaType);
+                    const TypeIcon = typeMeta?.icon || FileImage;
+                    return <TypeIcon className={`w-5 h-5 ${typeMeta.color}`} />;
                   })()}
-                  {mediaTypeConfig[selectedTask.mediaType].label} Generation Details
+                  {getMediaTypeMeta(selectedTask.mediaType).label} Generation Details
                 </>
               )}
             </DialogTitle>
@@ -703,8 +917,8 @@ export default function MediaHistory() {
                 )}
                 <div>
                   <span className="text-sm text-gray-500">Status</span>
-                  <Badge className={`mt-1 gap-1 ${statusConfig[selectedTask.status].color}`}>
-                    {statusConfig[selectedTask.status].label}
+                  <Badge className={`mt-1 gap-1 ${getStatusMeta(selectedTask.status).color}`}>
+                    {getStatusMeta(selectedTask.status).label}
                   </Badge>
                 </div>
                 <div>
@@ -730,14 +944,40 @@ export default function MediaHistory() {
                 )}
                 <div>
                   <span className="text-sm text-gray-500">Created</span>
-                  <p className="text-sm">{new Date(selectedTask.createdAt).toLocaleString()}</p>
+                  <p className="text-sm font-medium">
+                    {new Date(selectedTask.createdAt).toLocaleString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: false,
+                    })}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">{formatDate(selectedTask.createdAt).relative}</p>
                 </div>
-                {selectedTask.completedAt && (
-                  <div>
-                    <span className="text-sm text-gray-500">Completed</span>
-                    <p className="text-sm">{new Date(selectedTask.completedAt).toLocaleString()}</p>
-                  </div>
-                )}
+                {selectedTask.completedAt && (() => {
+                  const completedDate = safeParseDate(selectedTask.completedAt);
+                  if (!completedDate) return null;
+                  return (
+                    <div>
+                      <span className="text-sm text-gray-500">Completed</span>
+                      <p className="text-sm font-medium">
+                        {completedDate.toLocaleString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: false,
+                        })}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(selectedTask.completedAt).relative}</p>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Actions */}

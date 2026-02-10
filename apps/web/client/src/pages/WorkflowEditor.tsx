@@ -65,6 +65,9 @@ import { CostEstimation } from '@/components/workflow/execution/CostEstimation';
 // Step 10: Import TemplateBrowser
 import { TemplateBrowser } from '@/components/workflow/TemplateBrowser';
 
+// Import LLM Model Selector
+import LLMModelSelector, { type LLMModel } from '@/components/workflow/LLMModelSelector';
+
 // Node data structure for registry-driven nodes
 interface WorkflowNodeData {
   nodeType: string;  // Logical type from registry (e.g., 'llm_call', 'rag_query')
@@ -82,6 +85,7 @@ function FlowEditor() {
   const [workflowId, setWorkflowId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState('');
   const [workflowDescription, setWorkflowDescription] = useState('');
+  const [defaultModel, setDefaultModel] = useState<string>('');
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -112,6 +116,19 @@ function FlowEditor() {
   // Get current user for credit balance
   const { data: user } = (trpc as any).auth.me.useQuery();
 
+  // Fetch available LLM models
+  const { data: availableModelsData, isLoading: modelsLoading } = (trpc as any).multiProvider.getAvailableModelsWithProviders.useQuery();
+
+  // Transform models data for selector
+  const llmModels: LLMModel[] = useMemo(() => {
+    if (!availableModelsData) return [];
+    return Object.values(availableModelsData).map((modelData: any) => ({
+      modelId: modelData.modelId,
+      modelName: modelData.modelName,
+      providers: modelData.providers || [],
+    }));
+  }, [availableModelsData]);
+
   // tRPC mutations
   const compileMutation = (trpc as any).workflow.compile.useMutation();
   const executeMutation = (trpc as any).workflow.execute.useMutation();
@@ -137,6 +154,7 @@ function FlowEditor() {
       const workflow = loadWorkflowQuery.data;
       setWorkflowName(workflow.name || '');
       setWorkflowDescription(workflow.description || '');
+      setDefaultModel(workflow.defaultModel || '');
       if (workflow.workflowJson) {
         setNodes(workflow.workflowJson.nodes || []);
         setEdges(workflow.workflowJson.edges || []);
@@ -281,6 +299,7 @@ function FlowEditor() {
         id: workflowId || undefined,
         name: workflowName || 'Untitled Workflow',
         description: workflowDescription,
+        defaultModel: defaultModel || undefined,
         workflowJson: { nodes, edges },
       });
 
@@ -619,7 +638,7 @@ function FlowEditor() {
                   />
                 </div>
 
-                <div>
+                <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Description
                   </label>
@@ -630,6 +649,23 @@ function FlowEditor() {
                     rows={3}
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Default LLM Model
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Optional)</span>
+                  </label>
+                  <LLMModelSelector
+                    models={llmModels}
+                    selectedModelId={defaultModel}
+                    onSelect={setDefaultModel}
+                    isLoading={modelsLoading}
+                    placeholder="Select default model for this workflow..."
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Choose which LLM model to use when executing this workflow
+                  </p>
                 </div>
               </div>
 

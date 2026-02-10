@@ -1,0 +1,48 @@
+[Unit]
+Description=SmartSpecPro Application Services
+Documentation=https://github.com/smartspecpro/smartspec
+After=docker.service
+Requires=docker.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro
+
+# Wait for Docker to be fully ready
+ExecStartPre=/bin/sleep 5
+ExecStartPre=/usr/bin/docker info
+
+# Ensure network exists
+ExecStartPre=-/usr/bin/docker network create smartspec-network
+ExecStartPre=-/usr/bin/docker network create smartspecpro_default
+
+# Start all services using the service manager
+ExecStart=/home/dev/projects/SmartSpecPro/run-services.sh start
+
+# Stop services gracefully
+ExecStop=/home/dev/projects/SmartSpecPro/run-services.sh stop
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+
+# Environment
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="HOME=/home/dev"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec
+
+# Security
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
