@@ -1396,6 +1396,137 @@ export type MediaCallbackDlqItem = typeof mediaCallbackDlq.$inferSelect;
 export type InsertMediaCallbackDlqItem = typeof mediaCallbackDlq.$inferInsert;
 
 /**
+ * Unified library schema (Section 02)
+ * Shared for media/document assets and RAG indexing lifecycle.
+ */
+export const libraryItemStatusEnum = pgEnum("library_item_status", [
+  "draft",
+  "ready",
+  "indexing",
+  "archived",
+  "failed",
+]);
+
+export const libraryVisibilityEnum = pgEnum("library_visibility", [
+  "private",
+  "team",
+  "public",
+]);
+
+export const libraryIndexJobStatusEnum = pgEnum("library_index_job_status", [
+  "pending",
+  "processing",
+  "retry_pending",
+  "completed",
+  "failed",
+]);
+
+export const libraryItems = pgTable("library_items", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  itemType: varchar("item_type", { length: 32 }).notNull(),
+  source: varchar("source", { length: 64 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: libraryItemStatusEnum("status").notNull().default("ready"),
+  visibility: libraryVisibilityEnum("visibility").notNull().default("private"),
+  metadata: json("metadata").$type<Record<string, any>>().notNull().default({}),
+  sourceUrl: text("source_url"),
+  thumbnailUrl: text("thumbnail_url"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_items_tenant_visibility_status_idx").on(t.tenantId, t.visibility, t.status),
+  index("library_items_tenant_owner_status_idx").on(t.tenantId, t.ownerUserId, t.status),
+  index("library_items_source_item_type_idx").on(t.source, t.itemType),
+  index("library_items_deleted_at_idx").on(t.deletedAt),
+]);
+
+export type LibraryItem = typeof libraryItems.$inferSelect;
+export type InsertLibraryItem = typeof libraryItems.$inferInsert;
+
+export const libraryLinks = pgTable("library_links", {
+  id: serial("id").primaryKey(),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  linkType: varchar("link_type", { length: 64 }).notNull(),
+  linkId: varchar("link_id", { length: 128 }).notNull(),
+  providerTaskId: varchar("provider_task_id", { length: 128 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("library_links_source_unique").on(t.linkType, t.linkId),
+  index("library_links_item_type_idx").on(t.libraryItemId, t.linkType),
+  index("library_links_provider_task_idx").on(t.providerTaskId),
+]);
+
+export type LibraryLink = typeof libraryLinks.$inferSelect;
+export type InsertLibraryLink = typeof libraryLinks.$inferInsert;
+
+export const libraryChunks = pgTable("library_chunks", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  contentType: varchar("content_type", { length: 32 }).notNull().default("text"),
+  tokenCount: integer("token_count"),
+  vectorRefId: varchar("vector_ref_id", { length: 128 }),
+  metadata: json("metadata").$type<Record<string, any>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("library_chunks_item_chunk_index_unique").on(t.libraryItemId, t.chunkIndex),
+  index("library_chunks_tenant_content_type_idx").on(t.tenantId, t.contentType),
+  index("library_chunks_vector_ref_idx").on(t.vectorRefId),
+]);
+
+export type LibraryChunk = typeof libraryChunks.$inferSelect;
+export type InsertLibraryChunk = typeof libraryChunks.$inferInsert;
+
+export const libraryPermissions = pgTable("library_permissions", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  subjectType: varchar("subject_type", { length: 32 }).notNull(),
+  subjectId: varchar("subject_id", { length: 64 }).notNull(),
+  permissionLevel: varchar("permission_level", { length: 32 }).notNull().default("read"),
+  grantedByUserId: integer("granted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("library_permissions_subject_unique").on(t.libraryItemId, t.subjectType, t.subjectId),
+  index("library_permissions_tenant_subject_idx").on(t.tenantId, t.subjectType, t.subjectId),
+]);
+
+export type LibraryPermission = typeof libraryPermissions.$inferSelect;
+export type InsertLibraryPermission = typeof libraryPermissions.$inferInsert;
+
+export const libraryIndexJobs = pgTable("library_index_jobs", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  jobType: varchar("job_type", { length: 64 }).notNull(),
+  status: libraryIndexJobStatusEnum("status").notNull().default("pending"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(5),
+  runAt: timestamp("run_at", { withTimezone: true }).defaultNow().notNull(),
+  nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_index_jobs_tenant_status_run_at_idx").on(t.tenantId, t.status, t.runAt),
+  index("library_index_jobs_status_retry_idx").on(t.status, t.nextRetryAt),
+  index("library_index_jobs_item_status_idx").on(t.libraryItemId, t.status),
+]);
+
+export type LibraryIndexJob = typeof libraryIndexJobs.$inferSelect;
+export type InsertLibraryIndexJob = typeof libraryIndexJobs.$inferInsert;
+
+/**
  * Skill Category Enum
  * Categorizes skills for filtering and organization
  */

@@ -54,6 +54,13 @@ from .media_callback_event import (
     CallbackEventStatus,
     CallbackDLQStatus,
 )
+from .library import (
+    LibraryItem,
+    LibraryLink,
+    LibraryChunk,
+    LibraryPermission,
+    LibraryIndexJob,
+)
 
 __all__ = [
     # Existing
@@ -118,4 +125,10 @@ __all__ = [
     "MediaCallbackDLQ",
     "CallbackEventStatus",
     "CallbackDLQStatus",
+    # Library/RAG
+    "LibraryItem",
+    "LibraryLink",
+    "LibraryChunk",
+    "LibraryPermission",
+    "LibraryIndexJob",
 ]

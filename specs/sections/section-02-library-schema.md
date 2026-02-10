@@ -4,41 +4,72 @@
 
 Introduce the relational data model required for a unified media/document library and indexing job lifecycle.
 
-## Scope
+## Implemented Scope
 
-- Create core library tables and indexes.
-- Align schema ownership and Python model compatibility.
-- Add migration-safe backfill scaffolding.
+- Added new SQLAlchemy models for core library entities:
+  - `library_items`
+  - `library_links`
+  - `library_chunks`
+  - `library_permissions`
+  - `library_index_jobs`
+- Added relational constraints and indexes for tenant/visibility/status, source-link uniqueness, chunk ordering, ACL lookup, and index-job retry scanning.
+- Added Drizzle schema definitions aligned to Python models, including enum-backed status/visibility fields.
+- Added additive Drizzle migration SQL for Section 02 tables and indexes.
+- Added Python compatibility notes documenting cross-runtime schema mapping and reserved-name handling.
 
-## Primary Files
+## Actual Files Added
 
+- `python-backend/app/models/library.py`
+- `python-backend/tests/unit/models/test_library_models.py`
+- `apps/web/drizzle/0019_unified_library_schema.sql`
+- `python-backend/migrations/003_library_schema_compat_20260210.md`
+- `specs/reviews/section-02-review.md`
+- `specs/reviews/section-02-interview.md`
+
+## Actual Files Modified
+
+- `python-backend/app/models/__init__.py`
+- `python-backend/app/core/database.py`
 - `apps/web/drizzle/schema.ts`
-- `apps/web/drizzle/*.sql` (new migration files)
-- `python-backend/app/models/` (new SQLAlchemy models aligned to schema)
+- `apps/web/drizzle/meta/_journal.json`
 
-## Implementation Steps
+## Key Implementation Notes
 
-1. Add `library_items` with tenant/user/source/type/status/visibility metadata fields.
-2. Add `library_links` for source lineage and uniqueness constraints.
-3. Add `library_chunks` for indexed chunk metadata and vector reference IDs.
-4. Add `library_permissions` (or equivalent ACL extension table).
-5. Add `library_index_jobs` with retryable state and scheduling fields.
-6. Add indexes for tenant + visibility + status query performance.
-7. Create migration notes for Python service compatibility.
+1. SQLAlchemy reserved-name compatibility:
+- Database columns named `metadata` are mapped in Python as `metadata_json`.
+- Constructor aliases were added so model creation can still accept `metadata=...` inputs.
 
-## Test-First Checklist
+2. Schema/index strategy:
+- `library_items` now includes composite indexes supporting tenant-scoped listing by visibility/status.
+- `library_links` enforces dedupe with unique `(link_type, link_id)` source mapping.
+- `library_chunks` enforces deterministic ordering via unique `(library_item_id, chunk_index)`.
+- `library_index_jobs` includes retry/queue indexes on `(status, next_retry_at)` and `(tenant_id, status, run_at)`.
 
-- Test: all new tables created with expected constraints/indexes.
-- Test: soft delete and status transitions on `library_items`.
-- Test: source link deduplication and lookup integrity.
-- Test: index-job attempt and retry fields update correctly.
+3. Cross-runtime contract:
+- Drizzle migration remains source-of-truth for relational DDL.
+- Python `init_db()` now imports `app.models.library` to create these tables in local/bootstrap setups.
 
-## Verification
+## Tests Added/Updated (TDD)
 
-- Run schema migration and smoke query checks.
-- Run Python model initialization against migrated schema.
+- `test_library_tables_created`
+- `test_library_item_soft_delete_and_status_transition`
+- `test_library_link_unique_constraint`
+- `test_index_job_attempt_tracking`
 
-## Exit Criteria
+Run commands used:
+- `cd python-backend && uv run pytest -o addopts='' tests/unit/models/test_library_models.py -q`
+- `cd python-backend && uv run pytest -o addopts='' tests/unit/services/test_media_callback_service.py tests/unit/models/test_library_models.py -q`
 
-- Core library schema exists and supports add/index/search workflows.
-- Schema contract is consumable by both Node and Python runtimes.
+Results:
+- 4 passed (section-only)
+- 7 passed (section + previous reliability regression subset)
+
+## Deviations from Initial Plan
+
+1. Did not generate Drizzle `meta/*_snapshot.json` in this section.
+- Rationale: migration SQL and journal update are complete for runtime migration; snapshot generation can be done during dedicated migration-tooling pass.
+
+## Remaining Follow-ups
+
+- Run migration apply test against a real Postgres instance (not SQLite) before enabling `library_enabled` in shared environments.
+- Add integration tests that exercise these tables through library service APIs once Section 03 is implemented.
