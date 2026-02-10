@@ -58,6 +58,14 @@ import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 import { toast } from "sonner";
 import { FallbackConsent } from "./FallbackConsent";
 import { formatModelCost, getCheapestProvider, type AvailableModel, type ModelProvider } from "@/lib/modelPricing";
+import {
+  appendLibraryContextToMessage,
+  isChatLibrarySourcePickerEnabled,
+  toAttachableLibrarySources,
+  toggleLibrarySourceSelection,
+  type ChatLibraryAttachPayload,
+  type ChatLibrarySearchResultLike,
+} from "@/lib/chatLibrary";
 
 // Debounce hook for skill detection
 function useDebounce<T>(value: T, delay: number): T {
@@ -170,6 +178,10 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
+  const [librarySearchQuery, setLibrarySearchQuery] = useState("");
+  const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
+  const [selectedLibrarySources, setSelectedLibrarySources] = useState<ChatLibraryAttachPayload[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
@@ -181,6 +193,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const topRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
+  const librarySourcePickerEnabled = isChatLibrarySourcePickerEnabled(
+    import.meta.env.VITE_LIBRARY_CHAT_SOURCE_PICKER_ENABLED,
+  );
 
   // Fetch conversation details
   const { data: conversation } = trpc.chat.getConversation.useQuery(
@@ -204,6 +219,29 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const { data: multiProviderModels } = trpc.multiProvider.getAvailableModelsWithProviders.useQuery(
     undefined,
     { staleTime: 60_000 }
+  );
+  const {
+    data: librarySearchData,
+    isLoading: isLibrarySearchLoading,
+    error: librarySearchError,
+  } = trpc.library.search.useQuery(
+    {
+      query: debouncedLibrarySearchQuery || undefined,
+      limit: 20,
+    },
+    {
+      enabled:
+        librarySourcePickerEnabled &&
+        libraryPickerOpen &&
+        debouncedLibrarySearchQuery.trim().length > 0,
+    },
+  );
+  const attachableLibrarySources = useMemo(
+    () =>
+      toAttachableLibrarySources(
+        (librarySearchData?.results || []) as ChatLibrarySearchResultLike[],
+      ),
+    [librarySearchData?.results],
   );
 
   // Current selected model (use conversation model, localStorage fallback, or first available)
@@ -237,6 +275,13 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       localStorage.setItem("smartspec_lastModel", selectedModel);
     }
   }, [selectedModel]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedLibrarySearchQuery(librarySearchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [librarySearchQuery]);
 
   // Mutations
   const uploadMutation = trpc.ai.upload.useMutation();
@@ -585,6 +630,10 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
   const removeAttachment = (key: string) => {
     setAttachments((prev) => prev.filter((a) => a.key !== key));
+  };
+
+  const toggleLibrarySource = (item: ChatLibraryAttachPayload) => {
+    setSelectedLibrarySources((prev) => toggleLibrarySourceSelection(prev, item));
   };
 
   // Extract text from content that may be JSON multipart array
@@ -1028,9 +1077,13 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const onSend = async () => {
     if (isStreaming || !conversationId) return;
     const text = input.trim();
-    if (!text && attachments.length === 0) return;
+    if (!text && attachments.length === 0 && selectedLibrarySources.length === 0) return;
 
-    const content = buildUserContent(text, attachments);
+    const textWithLibraryContext = appendLibraryContextToMessage(
+      text,
+      selectedLibrarySources,
+    );
+    const content = buildUserContent(textWithLibraryContext, attachments);
 
     // Save user message
     const userMessage = await sendMessageMutation.mutateAsync({
@@ -1061,11 +1114,12 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
     setInput("");
     setAttachments([]);
+    setSelectedLibrarySources([]);
     setDetectedSkill(null);
     scrollToBottom();
 
     // Auto-generate title for new conversations
-    if (messages.length === 0 && onTitleUpdate) {
+    if (messages.length === 0 && onTitleUpdate && text) {
       const title = text.substring(0, 50) + (text.length > 50 ? "..." : "");
       onTitleUpdate(title);
     }
@@ -1289,7 +1343,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       const generatedContent = await streamResponse({
         id: userMessage.id,
         role: "user",
-        content: typeof content === "string" ? content : text,
+        content: typeof content === "string" ? content : textWithLibraryContext,
         createdAt: new Date(userMessage.createdAt),
       }, currentSkillId);
 
@@ -2227,6 +2281,24 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         )}
 
         {/* Attachment Previews */}
+        {selectedLibrarySources.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {selectedLibrarySources.map((item) => (
+              <Badge key={item.item_id} variant="secondary" className="gap-2 pr-1">
+                <Search className="h-3 w-3" />
+                {item.title}
+                <button
+                  className="rounded-full p-0.5 hover:bg-black/10"
+                  onClick={() => toggleLibrarySource(item)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Attachment Previews */}
         {attachments.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
             {attachments.map((a) => (
@@ -2276,6 +2348,85 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 <p>Attach image or file</p>
               </TooltipContent>
             </Tooltip>
+
+            {librarySourcePickerEnabled && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setLibraryPickerOpen(true)}
+                      disabled={isStreaming}
+                      className="shrink-0 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Search Library Source</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <CommandDialog
+                  open={libraryPickerOpen}
+                  onOpenChange={setLibraryPickerOpen}
+                  title="Search Library Sources"
+                  description="Attach ready library items as chat context"
+                >
+                  <CommandInput
+                    value={librarySearchQuery}
+                    onValueChange={setLibrarySearchQuery}
+                    placeholder="Search library..."
+                  />
+                  <CommandList className="max-h-[60vh]">
+                    {librarySearchError ? (
+                      <div className="px-3 py-2 text-sm text-red-600">
+                        Library search unavailable. Chat can continue without it.
+                      </div>
+                    ) : debouncedLibrarySearchQuery.trim().length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Type to search ready library items.
+                      </div>
+                    ) : isLibrarySearchLoading ? (
+                      <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Searching...
+                      </div>
+                    ) : attachableLibrarySources.length === 0 ? (
+                      <CommandEmpty>No ready library items found.</CommandEmpty>
+                    ) : (
+                      <CommandGroup heading="Ready Library Items">
+                        {attachableLibrarySources.map((item) => {
+                          const isSelected = selectedLibrarySources.some(
+                            (selected) => selected.item_id === item.item_id,
+                          );
+                          return (
+                            <CommandItem
+                              key={item.item_id}
+                              value={`${item.title} ${item.item_type} ${item.source}`}
+                              onSelect={() => toggleLibrarySource(item)}
+                              className="flex items-center gap-2"
+                            >
+                              <Check
+                                className={cn(
+                                  "h-3.5 w-3.5 shrink-0",
+                                  isSelected ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              <span className="flex-1 truncate">{item.title}</span>
+                              <Badge variant="outline" className="text-[10px]">
+                                {item.item_type}
+                              </Badge>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </CommandDialog>
+              </>
+            )}
 
             {/* Generate Image Button - hidden on mobile */}
             <Tooltip>
@@ -2393,7 +2544,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           </Button>
           <Button
             onClick={onSend}
-            disabled={isStreaming || uploadMutation.isPending || (!input.trim() && attachments.length === 0) || !!fallbackRequest}
+            disabled={isStreaming || uploadMutation.isPending || (!input.trim() && attachments.length === 0 && selectedLibrarySources.length === 0) || !!fallbackRequest}
           >
             {isStreaming ? (
               <Loader2 className="h-4 w-4 animate-spin" />
