@@ -273,7 +273,8 @@
       "WebFetch(domain:gramio.dev)",
       "WebFetch(domain:postly.ai)",
       "WebFetch(domain:dexatel.com)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(git merge:*)"
     ]
   }
 }
