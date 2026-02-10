@@ -78,7 +78,18 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import ModelSelectorDialog from "@/components/media/ModelSelectorDialog";
+import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
+import {
+  buildTaskLibraryErrorState,
+  buildTaskLibraryStateFromAddResult,
+  getAddToLibraryErrorMessage,
+  getAddToLibrarySuccessMessage,
+  getLibraryStatusMeta as getLibraryItemStatusMeta,
+  isMediaTaskEligibleForLibraryAdd,
+  type LibrarySearchResultItem,
+  type TaskLibraryUIState,
+} from "@/lib/libraryUi";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
 import {
@@ -388,6 +399,10 @@ export default function MediaStudio() {
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([]);
   // Track session start time to filter out old failed tasks from History Gallery
   const [sessionStartTime] = useState<Date>(() => new Date());
+  const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
+  const [librarySearchQuery, setLibrarySearchQuery] = useState("");
+  const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
+  const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
 
   // Dialog states (global)
   const [showStyleDialog, setShowStyleDialog] = useState(false);
@@ -492,7 +507,7 @@ export default function MediaStudio() {
     }));
   }, [userVisibleSkillsRaw]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
-  const { data: mediaHistory } = trpc.media.listTasks.useQuery(
+  const { data: mediaHistory, refetch: refetchMediaHistory } = trpc.media.listTasks.useQuery(
     {
       limit: 50,
       mediaType: activeTab,
@@ -504,6 +519,30 @@ export default function MediaStudio() {
       refetchOnWindowFocus: true,
     }
   );
+  const trpcUtils = trpc.useUtils();
+  const addTaskToLibraryMutation = trpc.media.addTaskToLibrary.useMutation();
+  const {
+    data: librarySearchData,
+    isLoading: isLibrarySearchLoading,
+    error: librarySearchError,
+  } = trpc.library.search.useQuery(
+    {
+      query: debouncedLibrarySearchQuery || undefined,
+      limit: 12,
+      filters: activeTab ? { itemType: activeTab } : undefined,
+    },
+    {
+      enabled: debouncedLibrarySearchQuery.trim().length > 0,
+    },
+  );
+  const librarySearchResults = (librarySearchData?.results || []) as LibrarySearchResultItem[];
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedLibrarySearchQuery(librarySearchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [librarySearchQuery]);
 
   // Query for skill input schema (for dynamic form)
   const { data: skillSchemaData } = trpc.skills.getInputSchema.useQuery(
@@ -533,6 +572,10 @@ export default function MediaStudio() {
       setLocation("/login");
     }
   }, [isLoading, isAuthenticated, setLocation]);
+
+  useEffect(() => {
+    setSelectedLibraryItemId(null);
+  }, [activeTab]);
 
   // Set model from localStorage or default when models load
   useEffect(() => {
@@ -780,6 +823,94 @@ export default function MediaStudio() {
     }
     setReferenceImages(prev => [...prev, { url: task.resultUrl!, name: `history-${task.id}` }]);
   };
+
+  const refreshLibraryStatus = useCallback(
+    async (taskId: string, itemId: number) => {
+      try {
+        const item = await trpcUtils.library.getItem.fetch({ id: itemId });
+        setTaskLibraryState((prev) => ({
+          ...prev,
+          [taskId]: {
+            ...(prev[taskId] || { action: "added" as const }),
+            action: "added",
+            itemId,
+            status: item.status,
+          },
+        }));
+      } catch {
+        // Keep optimistic status if fetch fails.
+      }
+    },
+    [trpcUtils.library.getItem],
+  );
+
+  const handleAddHistoryTaskToLibrary = async (task: {
+    id: string;
+    status?: string;
+    resultUrl?: string;
+  }) => {
+    if (!isMediaTaskEligibleForLibraryAdd(task)) {
+      toast.error("Only completed tasks with results can be added to library.");
+      return;
+    }
+
+    setTaskLibraryState((prev) => ({
+      ...prev,
+      [task.id]: {
+        ...(prev[task.id] || { action: "idle" as const }),
+        action: "adding",
+        status: "indexing",
+      },
+    }));
+
+    try {
+      const result = await addTaskToLibraryMutation.mutateAsync({ taskId: task.id });
+      const nextState = buildTaskLibraryStateFromAddResult(result);
+      setTaskLibraryState((prev) => ({
+        ...prev,
+        [task.id]: nextState,
+      }));
+      toast.success(getAddToLibrarySuccessMessage(result));
+      await refetchMediaHistory();
+      await refreshLibraryStatus(task.id, result.itemId);
+    } catch (error) {
+      const errorState = buildTaskLibraryErrorState(error);
+      setTaskLibraryState((prev) => ({
+        ...prev,
+        [task.id]: errorState,
+      }));
+      toast.error(getAddToLibraryErrorMessage(error));
+    }
+  };
+
+  const handleLibraryResultSelect = useCallback((item: LibrarySearchResultItem) => {
+    setSelectedLibraryItemId(item.item_id);
+    if (item.thumbnail_url) {
+      setPreviewUrl(item.thumbnail_url);
+    }
+    if (item.status.toLowerCase() !== "ready") {
+      toast.info(`Selected "${item.title}" (${item.status})`);
+      return;
+    }
+    toast.success(`Selected "${item.title}" from library`);
+  }, []);
+
+  useEffect(() => {
+    const tracking = Object.entries(taskLibraryState).filter(
+      ([, state]) => state.action === "added" && state.itemId && state.status === "indexing",
+    );
+    if (tracking.length === 0) return;
+
+    const timer = window.setInterval(() => {
+      tracking.forEach(([taskId, state]) => {
+        if (state.itemId) {
+          void refreshLibraryStatus(taskId, state.itemId);
+        }
+      });
+    }, 15000);
+
+    return () => window.clearInterval(timer);
+  }, [taskLibraryState, refreshLibraryStatus]);
 
   // Drag & drop handlers for reference images
   const handleDragOver = (e: React.DragEvent) => {
@@ -3353,6 +3484,16 @@ export default function MediaStudio() {
               )}
             </div>
 
+            <LibrarySearchPanel
+              query={librarySearchQuery}
+              onQueryChange={setLibrarySearchQuery}
+              isLoading={isLibrarySearchLoading}
+              results={librarySearchResults}
+              errorMessage={librarySearchError?.message}
+              selectedItemId={selectedLibraryItemId}
+              onSelect={handleLibraryResultSelect}
+            />
+
             {/* History Gallery - Draggable Images */}
             <div className="pt-4">
               <div className="flex items-center justify-between mb-3">
@@ -3373,6 +3514,13 @@ export default function MediaStudio() {
                     .map((task) => {
                       const resultUrl = extractTaskResultUrl(task);
                       if (!resultUrl) return null;
+                      const canAddToLibrary = isMediaTaskEligibleForLibraryAdd({
+                        id: task.id,
+                        status: task.status,
+                        resultUrl,
+                      });
+                      const libraryState = taskLibraryState[task.id];
+                      const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
                       return (
                       <div
                         key={task.id}
@@ -3384,6 +3532,11 @@ export default function MediaStudio() {
                         onDragStart={task.mediaType === "image" ? (e) => handleHistoryDragStart(e, resultUrl) : undefined}
                         onClick={() => setPreviewUrl(resultUrl)}
                       >
+                        {canAddToLibrary && (
+                          <Badge className={`absolute left-1 top-1 z-10 ${libraryState?.action === "adding" ? "bg-amber-100 text-amber-800" : libraryStatusMeta.className}`}>
+                            {libraryState?.action === "adding" ? "Adding" : libraryStatusMeta.label}
+                          </Badge>
+                        )}
                         {task.mediaType === "video" ? (
                           <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
                             <video
@@ -3492,6 +3645,37 @@ export default function MediaStudio() {
                               </Tooltip>
                             </TooltipProvider>
                           )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-white hover:bg-white/20"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleAddHistoryTaskToLibrary({
+                                      id: task.id,
+                                      status: task.status,
+                                      resultUrl,
+                                    });
+                                  }}
+                                  disabled={libraryState?.action === "adding"}
+                                >
+                                  {libraryState?.action === "adding" ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : libraryState?.action === "added" ? (
+                                    <CheckCircle className="h-4 w-4" />
+                                  ) : (
+                                    <ImagePlus className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {libraryStatusMeta.retryable ? "Retry add to library" : "Add to library"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>

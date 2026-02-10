@@ -3,7 +3,7 @@
  * View and manage media generation tasks
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,6 +53,15 @@ import {
   Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  buildTaskLibraryErrorState,
+  buildTaskLibraryStateFromAddResult,
+  getAddToLibraryErrorMessage,
+  getAddToLibrarySuccessMessage,
+  getLibraryStatusMeta as getLibraryItemStatusMeta,
+  isMediaTaskEligibleForLibraryAdd,
+  type TaskLibraryUIState,
+} from '@/lib/libraryUi';
 
 type MediaType = 'image' | 'video' | 'audio';
 type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
@@ -115,6 +124,8 @@ export default function MediaHistory() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isFetchingResult, setIsFetchingResult] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
+  const trpcUtils = trpc.useUtils();
 
   // Fetch tasks from API - only last 12 days
   const {
@@ -156,6 +167,7 @@ export default function MediaHistory() {
 
   // Mutation for importing file from URL to storage
   const importFromUrlMutation = trpc.gallery.importFromUrl.useMutation();
+  const addToLibraryMutation = trpc.media.addTaskToLibrary.useMutation();
 
   // Mutation for adding to gallery (admin only)
   const addToGalleryMutation = trpc.gallery.create.useMutation({
@@ -332,6 +344,9 @@ export default function MediaHistory() {
     },
   ];
 
+  const selectedTaskLibraryState = selectedTask ? taskLibraryState[selectedTask.id] : undefined;
+  const selectedTaskLibraryMeta = getLibraryItemStatusMeta(selectedTaskLibraryState?.status);
+
   // Format date for display - show both relative and absolute time
   // Automatically converts UTC to local timezone
   // Safe date parsing helper
@@ -418,6 +433,61 @@ export default function MediaHistory() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const refreshLibraryStatus = useCallback(
+    async (taskId: string, itemId: number) => {
+      try {
+        const item = await trpcUtils.library.getItem.fetch({ id: itemId });
+        setTaskLibraryState((prev) => ({
+          ...prev,
+          [taskId]: {
+            ...(prev[taskId] || { action: 'added' as const }),
+            action: 'added',
+            itemId,
+            status: item.status,
+          },
+        }));
+      } catch {
+        // Keep current optimistic state; retry in next interval.
+      }
+    },
+    [trpcUtils.library.getItem],
+  );
+
+  const handleAddToLibrary = async (task: MediaTask) => {
+    if (!isMediaTaskEligibleForLibraryAdd(task)) {
+      toast.error('Only completed tasks with results can be added to library.');
+      return;
+    }
+
+    setTaskLibraryState((prev) => ({
+      ...prev,
+      [task.id]: {
+        ...(prev[task.id] || { action: 'idle' as const }),
+        action: 'adding',
+        status: 'indexing',
+      },
+    }));
+
+    try {
+      const result = await addToLibraryMutation.mutateAsync({ taskId: task.id });
+      const nextState = buildTaskLibraryStateFromAddResult(result);
+      setTaskLibraryState((prev) => ({
+        ...prev,
+        [task.id]: nextState,
+      }));
+      toast.success(getAddToLibrarySuccessMessage(result));
+      await refetch();
+      await refreshLibraryStatus(task.id, result.itemId);
+    } catch (error) {
+      const errorState = buildTaskLibraryErrorState(error);
+      setTaskLibraryState((prev) => ({
+        ...prev,
+        [task.id]: errorState,
+      }));
+      toast.error(getAddToLibraryErrorMessage(error));
+    }
+  };
+
   // Background fallback polling:
   // if provider callback/worker update is delayed, periodically refresh one pending task.
   useEffect(() => {
@@ -452,6 +522,23 @@ export default function MediaHistory() {
     }, 15000);
     return () => window.clearInterval(interval);
   }, [tasks, fetchResultMutation.isPending, fetchResultMutation.mutateAsync]);
+
+  useEffect(() => {
+    const tracking = Object.entries(taskLibraryState).filter(
+      ([, state]) => state.action === 'added' && state.itemId && state.status === 'indexing',
+    );
+    if (tracking.length === 0) return;
+
+    const timer = window.setInterval(() => {
+      tracking.forEach(([taskId, state]) => {
+        if (state.itemId) {
+          void refreshLibraryStatus(taskId, state.itemId);
+        }
+      });
+    }, 15000);
+
+    return () => window.clearInterval(timer);
+  }, [taskLibraryState, refreshLibraryStatus]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
@@ -654,6 +741,7 @@ export default function MediaHistory() {
                   <TableHead>Status</TableHead>
                   <TableHead>External ID</TableHead>
                   <TableHead>Credits</TableHead>
+                  <TableHead>Library</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -664,6 +752,9 @@ export default function MediaHistory() {
                   const status = getStatusMeta(task.status);
                   const StatusIcon = status?.icon || AlertCircle;
                   const TypeIcon = typeConfig?.icon || FileImage;
+                  const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
+                  const libraryState = taskLibraryState[task.id];
+                  const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
 
                   return (
                     <TableRow key={task.id} className="hover:bg-gray-50/50">
@@ -741,6 +832,27 @@ export default function MediaHistory() {
                           <span className="text-gray-400">-</span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {canAddToLibrary ? (
+                          libraryState?.action === 'adding' ? (
+                            <Badge className="gap-1 bg-amber-100 text-amber-800">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Adding
+                            </Badge>
+                          ) : libraryState?.action === 'error' ? (
+                            <Badge className="gap-1 bg-red-100 text-red-700">
+                              <AlertCircle className="w-3 h-3" />
+                              Failed
+                            </Badge>
+                          ) : (
+                            <Badge className={libraryStatusMeta.className}>
+                              {libraryStatusMeta.label}
+                            </Badge>
+                          )
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm text-gray-500" title={formatDate(task.createdAt).relative}>
                         {(() => {
                           const date = safeParseDate(task.createdAt);
@@ -778,6 +890,24 @@ export default function MediaHistory() {
                           </Button>
                           {task.status === 'completed' && task.resultUrl && (
                             <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleAddToLibrary(task)}
+                                disabled={libraryState?.action === 'adding'}
+                                className={`h-8 px-2 ${libraryState?.action === 'added' ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50' : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'}`}
+                                title={libraryStatusMeta.retryable ? 'Retry add to library' : 'Add to library'}
+                              >
+                                {libraryState?.action === 'adding' ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : libraryState?.action === 'added' ? (
+                                  <CheckCircle className="w-4 h-4" />
+                                ) : libraryState?.action === 'error' ? (
+                                  <AlertCircle className="w-4 h-4" />
+                                ) : (
+                                  <ImagePlus className="w-4 h-4" />
+                                )}
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -922,6 +1052,28 @@ export default function MediaHistory() {
                   </Badge>
                 </div>
                 <div>
+                  <span className="text-sm text-gray-500">Library</span>
+                  {isMediaTaskEligibleForLibraryAdd(selectedTask) ? (
+                    selectedTaskLibraryState?.action === 'adding' ? (
+                      <Badge className="mt-1 gap-1 bg-amber-100 text-amber-800">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Adding
+                      </Badge>
+                    ) : selectedTaskLibraryState?.action === 'error' ? (
+                      <Badge className="mt-1 gap-1 bg-red-100 text-red-700">
+                        <AlertCircle className="w-3 h-3" />
+                        Failed
+                      </Badge>
+                    ) : (
+                      <Badge className={`mt-1 ${selectedTaskLibraryMeta.className}`}>
+                        {selectedTaskLibraryMeta.label}
+                      </Badge>
+                    )
+                  ) : (
+                    <p className="text-sm text-gray-400">Not eligible</p>
+                  )}
+                </div>
+                <div>
                   <span className="text-sm text-gray-500">Model</span>
                   <p className="font-mono text-sm">{selectedTask.model}</p>
                 </div>
@@ -983,6 +1135,21 @@ export default function MediaHistory() {
               {/* Actions */}
               {selectedTask.status === 'completed' && selectedTask.resultUrl && (
                 <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleAddToLibrary(selectedTask)}
+                    disabled={selectedTaskLibraryState?.action === 'adding'}
+                    className="gap-2"
+                  >
+                    {selectedTaskLibraryState?.action === 'adding' ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : selectedTaskLibraryState?.action === 'added' ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <ImagePlus className="w-4 h-4" />
+                    )}
+                    {selectedTaskLibraryState?.action === 'added' ? 'In Library' : 'Add to Library'}
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => handleDownload(selectedTask.resultUrl!)}
