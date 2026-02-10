@@ -1,0 +1,33 @@
+[Unit]
+Description=SmartSpecPro Docker Status UI
+Documentation=https://github.com/smartspecpro/smartspec
+After=smartspec-backend.service
+Requires=smartspec-backend.service
+PartOf=smartspec.target
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro/docker-status
+
+# Environment
+Environment="PATH=/home/dev/.nvm/versions/node/v24.13.0/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=development"
+Environment="PORT=3001"
+EnvironmentFile=-/home/dev/projects/SmartSpecPro/docker-status/.env
+
+# Start docker-status app
+ExecStart=/home/dev/.nvm/versions/node/v24.13.0/bin/npm run dev
+
+# Restart policy
+Restart=always
+RestartSec=5s
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-docker-status
+
+[Install]
+WantedBy=smartspec.target

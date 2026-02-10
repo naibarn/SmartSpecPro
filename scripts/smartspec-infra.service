@@ -1,0 +1,55 @@
+[Unit]
+Description=SmartSpecPro Infrastructure (PostgreSQL, Redis, Nginx)
+Documentation=https://github.com/smartspecpro/smartspec
+After=docker.service
+Requires=docker.service
+PartOf=smartspec.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro
+
+# Wait for Docker to be fully ready
+ExecStartPre=/bin/sleep 5
+ExecStartPre=/usr/bin/docker info
+
+# Create network if not exists
+ExecStartPre=-/usr/bin/docker network create smartspec-network
+
+# Start infrastructure
+ExecStart=/usr/bin/docker compose -p smartspecpro -f /home/dev/projects/SmartSpecPro/docker-compose.infra.yml up -d
+
+# Start Nginx
+ExecStartPost=/bin/bash -c ' \
+  if ! docker ps --format "{{.Names}}" | grep -q "^smartspec-nginx-dev$"; then \
+    docker run -d \
+      --name smartspec-nginx-dev \
+      --network smartspec-network \
+      --add-host=host.docker.internal:host-gateway \
+      -p 80:80 \
+      -p 443:443 \
+      -v /home/dev/projects/SmartSpecPro/nginx/conf.d:/etc/nginx/conf.d:ro \
+      -v /home/dev/projects/SmartSpecPro/nginx/ssl:/etc/nginx/ssl:ro \
+      --restart unless-stopped \
+      nginx:alpine; \
+  fi'
+
+# Start media workers
+ExecStartPost=/usr/bin/docker compose -p smartspecpro -f /home/dev/projects/SmartSpecPro/docker-compose.media.yml up -d
+
+# Stop services
+ExecStop=/usr/bin/docker compose -p smartspecpro -f /home/dev/projects/SmartSpecPro/docker-compose.media.yml down
+ExecStop=/bin/bash -c 'docker stop smartspec-nginx-dev 2>/dev/null || true'
+ExecStop=/bin/bash -c 'docker rm smartspec-nginx-dev 2>/dev/null || true'
+ExecStop=/usr/bin/docker compose -p smartspecpro -f /home/dev/projects/SmartSpecPro/docker-compose.infra.yml down
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-infra
+
+[Install]
+WantedBy=smartspec.target

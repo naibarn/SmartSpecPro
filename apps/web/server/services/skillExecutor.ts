@@ -25,7 +25,8 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW = 60_000; // 1 minute
 const RATE_LIMITS: Record<string, number> = {
   "image-generation": 10,
-  "video-generation": 5,
+  // Allow longer multi-video storyboards while keeping a per-minute guardrail.
+  "video-generation": 15,
   "audio-generation": 10,
 };
 const DEFAULT_RATE_LIMIT = 20;
@@ -90,6 +91,14 @@ export async function executeSkill(
   userId: number,
   userToken: string
 ): Promise<SkillExecutionResult> {
+  console.log(`[SkillExecutor] Executing skill:`, {
+    id: skill.id,
+    name: skill.name,
+    type: skill.type,
+    userId,
+    prompt: params.prompt?.substring(0, 100),
+  });
+
   // Rate limit check
   if (!checkRateLimit(userId, skill.type)) {
     return {
@@ -102,12 +111,19 @@ export async function executeSkill(
 
   switch (skill.type) {
     case "image-generation":
+      console.log(`[SkillExecutor] Routing to executeImageGeneration`);
       return executeImageGeneration(skill, params, userId, userToken);
 
     case "video-generation":
+      console.log(`[SkillExecutor] Routing to executeVideoGeneration`);
+      return executeVideoGeneration(skill, params, userId, userToken);
+
+    case "image-video-generation":
+      console.log(`[SkillExecutor] Skill type is image-video-generation, routing to video generation`);
       return executeVideoGeneration(skill, params, userId, userToken);
 
     default:
+      console.error(`[SkillExecutor] Unknown skill type '${skill.type}' for skill '${skill.id}'`);
       return {
         success: false,
         skillId: skill.id,
@@ -172,11 +188,12 @@ async function executeImageGeneration(
   }
 
   try {
-    // Build apiConfig from params (client already built from configJson) or from model's configJson
-    const apiConfig: Record<string, string> = params.apiConfig ? { ...params.apiConfig } : {};
+    // Build apiConfig from model's configJson (database is source of truth)
+    const apiConfig: Record<string, string> = {};
     const configJson = modelMeta.configJson;
-    if (configJson && !apiConfig.kie_model_id) {
+    if (configJson) {
       if (configJson.apiEndpoint) apiConfig.endpoint = configJson.apiEndpoint;
+      if (configJson.apiQueryEndpoint) apiConfig.query_endpoint = configJson.apiQueryEndpoint;
       if (configJson.apiPayloadFormat) apiConfig.payload_format = configJson.apiPayloadFormat;
       if (configJson.kieModelId) apiConfig.kie_model_id = configJson.kieModelId;
     }
@@ -280,16 +297,26 @@ async function executeVideoGeneration(
   }
 
   try {
-    // Build apiConfig from params or model's configJson
-    const apiConfig: Record<string, string> = params.apiConfig ? { ...params.apiConfig } : {};
+    // Build apiConfig from model's configJson (database is source of truth)
+    const apiConfig: Record<string, string> = {};
     const configJson = modelMeta.configJson;
-    if (configJson && !apiConfig.kie_model_id) {
+    if (configJson) {
       if (configJson.apiEndpoint) apiConfig.endpoint = configJson.apiEndpoint;
+      if (configJson.apiQueryEndpoint) apiConfig.query_endpoint = configJson.apiQueryEndpoint;
       if (configJson.apiPayloadFormat) apiConfig.payload_format = configJson.apiPayloadFormat;
       if (configJson.kieModelId) apiConfig.kie_model_id = configJson.kieModelId;
     }
 
     // Generate video asynchronously — forward all params including extraParams
+    console.log('[executeVideoGeneration] Preparing to call generateVideoAsync with:', {
+      model,
+      duration,
+      aspectRatio: params.aspectRatio,
+      promptLength: params.prompt?.length,
+      hasApiConfig: Object.keys(apiConfig).length > 0,
+      hasExtraParams: !!(params.extraParams && Object.keys(params.extraParams).length > 0),
+    });
+
     const task = await mediaGenerationService.generateVideoAsync(
       {
         prompt: params.prompt,
@@ -305,6 +332,11 @@ async function executeVideoGeneration(
       userToken
     );
 
+    console.log('[executeVideoGeneration] Task created successfully:', {
+      taskId: task.id,
+      status: task.status,
+    });
+
     return {
       success: true,
       skillId: skill.id,
@@ -315,6 +347,11 @@ async function executeVideoGeneration(
       creditsUsed: creditCost, // Credits will be deducted by backend when task completes
     };
   } catch (error) {
+    console.error('[executeVideoGeneration] Error during video generation:', error);
+    console.error('[executeVideoGeneration] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return {
       success: false,
       skillId: skill.id,
@@ -448,5 +485,11 @@ export function estimateSkillCost(
  */
 export function canAutoExecute(skill: SkillDefinition): boolean {
   // Media generation skills can be auto-executed
-  return ["image-generation", "video-generation", "audio-generation"].includes(skill.type);
+  // Including image-video-generation which can generate both images and videos
+  return [
+    "image-generation",
+    "video-generation",
+    "audio-generation",
+    "image-video-generation"
+  ].includes(skill.type);
 }

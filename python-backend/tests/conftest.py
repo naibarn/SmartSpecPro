@@ -19,17 +19,22 @@ from sqlalchemy.pool import StaticPool
 # Import Base first
 from app.core.database import Base, get_db
 
-# Import all models to ensure they are registered with Base.metadata
+# Import only models without JSONB (for SQLite compatibility in tests)
 from app.models.user import User
-from app.models.audit_log import AuditLog
-from app.models.credit import CreditTransaction, SystemConfig
+from app.models.tenant import Tenant
+from app.models.workflow import Workflow
+from app.models.workflow_schedule import WorkflowSchedule
+from app.models.workflow_event_subscription import WorkflowEventSubscription
 from app.models.api_key import APIKey, APIKeyUsage
 from app.models.oauth import OAuthConnection
 from app.models.password_reset import PasswordResetToken
-from app.models.payment import PaymentTransaction
-from app.models.refund import Refund
 from app.models.support_ticket import SupportTicket, TicketMessage
 from app.models.execution import ExecutionModel, CheckpointModel, ExecutionStatus
+
+# Skip importing models with JSONB for SQLite compatibility:
+# - credit, credits (JSONB columns)
+# - webhook, user_preferences (JSONB columns)
+# - audit_log, payment, refund (may have JSONB)
 
 from app.main import app
 from app.core.config import settings
@@ -84,6 +89,12 @@ async def test_db() -> AsyncGenerator[AsyncSession, None]:
     await engine.dispose()
 
 
+@pytest.fixture
+async def db_session(test_db: AsyncSession) -> AsyncSession:
+    """Alias for test_db fixture for compatibility."""
+    return test_db
+
+
 @pytest.fixture(scope="function")
 def client(test_db: AsyncSession) -> TestClient:
     """Create a test client with the test database."""
@@ -102,7 +113,45 @@ def client(test_db: AsyncSession) -> TestClient:
 
 
 @pytest.fixture
-async def test_user(test_db: AsyncSession) -> User:
+async def test_tenant(test_db: AsyncSession):
+    """Create a test tenant."""
+    from app.models.tenant import Tenant
+    import uuid
+
+    tenant = Tenant(
+        id=str(uuid.uuid4()),
+        name="Test Tenant",
+        slug="test-tenant",
+        status="active",
+        plan="professional",
+    )
+    test_db.add(tenant)
+    await test_db.commit()
+    await test_db.refresh(tenant)
+    return tenant
+
+
+@pytest.fixture
+async def other_tenant(test_db: AsyncSession):
+    """Create another test tenant for isolation testing."""
+    from app.models.tenant import Tenant
+    import uuid
+
+    tenant = Tenant(
+        id=str(uuid.uuid4()),
+        name="Other Tenant",
+        slug="other-tenant",
+        status="active",
+        plan="free",
+    )
+    test_db.add(tenant)
+    await test_db.commit()
+    await test_db.refresh(tenant)
+    return tenant
+
+
+@pytest.fixture
+async def test_user(test_db: AsyncSession, test_tenant) -> User:
     """Create a test user for authentication tests."""
     user = User(
         email="test@example.com",
@@ -111,6 +160,7 @@ async def test_user(test_db: AsyncSession) -> User:
         credits_balance=100000,
         is_active=True,
         email_verified=True,
+        currentTenantId=test_tenant.id,
     )
 
     test_db.add(user)

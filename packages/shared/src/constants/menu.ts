@@ -43,7 +43,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-queues-llm',     label: 'LLM Monitor',       icon: 'Brain',       path: '/admin/queues/llm',         platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.6 },
   { id: 'admin-queues-media',   label: 'Media Monitor',     icon: 'PlayCircle',  path: '/admin/queues/media',       platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.7 },
   { id: 'admin-task-queue',     label: 'Task Queue',        labelTh: 'คิวงาน',  icon: 'ListChecks', path: '/tasks',                    platforms: ['web', 'desktop'], group: 'main', sortOrder: 9.6 },
-  { id: 'admin-docker',         label: 'Docker Status',     icon: 'Activity',    path: 'http://docker.smartspec.pro', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 22, external: true },
+  { id: 'admin-docker',         label: 'Docker Status',     icon: 'Activity',    path: 'https://docker.smartaihub.app', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 22, external: true },
   { id: 'admin-users',          label: 'Users',             icon: 'Users',       path: '/admin/users',              platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 23 },
   { id: 'admin-packages',       label: 'Packages',          icon: 'Package',     path: '/admin/packages',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 24 },
   { id: 'admin-providers',      label: 'LLM Providers',     icon: 'Brain',       path: '/admin/llm-providers',      platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 25 },

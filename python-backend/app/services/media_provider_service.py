@@ -163,6 +163,7 @@ async def initialize_kie_ai_client():
         KieAIProvider instance or None if not configured
     """
     from app.llm_proxy.providers import KieAIProvider
+    from app.core.config import settings
 
     provider_config = await get_media_provider_key("kie_ai")
 
@@ -172,7 +173,7 @@ async def initialize_kie_ai_client():
 
     api_key = provider_config["apiKey"]
     base_url = provider_config.get("baseUrl") or "https://api.kie.ai/api/v1"
-    callback_url = provider_config.get("callbackUrl")
+    callback_url = provider_config.get("callbackUrl") or settings.KIE_AI_CALLBACK_URL or None
 
     try:
         client = KieAIProvider(

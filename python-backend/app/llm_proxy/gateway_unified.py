@@ -342,7 +342,8 @@ class LLMGateway:
     async def generate_video(
         self,
         request: VideoGenerationRequest,
-        user: User
+        user: User,
+        wait_for_completion: bool = True,
     ) -> VideoGenerationResponse:
         """
         Generate video with credit checking.
@@ -365,14 +366,20 @@ class LLMGateway:
                 )
 
         try:
-            # For synchronous generation, always use polling mode (not callback mode)
+            provider_kwargs = request.dict(exclude_unset=True, exclude={
+                "model", "prompt", "user", "reference_video_url", "reference_image_urls"
+            })
+
+            if wait_for_completion:
+                # Synchronous mode: block until result is ready.
+                provider_kwargs["callback_url"] = ""  # Explicitly disable callback and use polling.
+            # Async mode: do not force callback_url; provider config callback can be used if present.
+
             video_data = await self.unified_client.kie_ai_client.generate_video(
                 model=request.model,
                 prompt=request.prompt,
-                callback_url="",  # Force polling mode
-                **request.dict(exclude_unset=True, exclude={
-                    "model", "prompt", "user", "reference_video_url", "reference_image_urls"
-                })
+                wait_for_completion=wait_for_completion,
+                **provider_kwargs
             )
             response = VideoGenerationResponse(
                 id=video_data.get("id", ""),

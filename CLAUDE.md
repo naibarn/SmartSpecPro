@@ -20,6 +20,56 @@ SmartSpecPro/
 └── planning/           # Feature planning docs
 ```
 
+## ⚠️ CRITICAL DEPLOYMENT RULES — MANDATORY
+
+**NEVER violate these rules. They are based on user's explicit requirements to prevent recurring production issues.**
+
+### Domain and Access Rules
+
+**PRODUCTION DOMAIN (ONLY):**
+- ✅ **https://smartaihub.app** — This is the ONLY allowed production domain
+- ❌ **NEVER use:** smartspec.pro, smartspec.local, smarthubai.app, or any other domain
+
+**Server Environment:**
+- This is a **remote server** with **NO browser, NO UI** — accessible via **SSH ONLY**
+- Developers access the application **ONLY through the domain** https://smartaihub.app
+- **localhost access is NOT available** to end users (only for internal service communication)
+
+**Service Access:**
+- Backend API (internal): http://localhost:8000
+- Web App (internal): http://localhost:3000
+- **Public access (ONLY):** https://smartaihub.app (proxied through Nginx)
+
+**Nginx Requirement:**
+- Nginx reverse proxy **MUST be running** for domain access to work
+- Nginx is automatically managed by `./run-services.sh`
+- Container name: `smartspec-nginx-dev`
+- Config: `nginx/conf.d/dev-host.conf`
+
+### Service Startup Rules
+
+**ALWAYS use the service manager:**
+```bash
+./run-services.sh start    # Start all services (includes nginx)
+./run-services.sh status   # Check all services
+./run-services.sh restart  # Restart all services
+```
+
+**NEVER start services manually** — this causes incomplete startup and domain access failures.
+
+**Sequential Startup Order:**
+1. Infrastructure (PostgreSQL, Redis)
+2. Nginx reverse proxy
+3. Validate infrastructure (health checks)
+4. Python Backend (with health check)
+5. Web Application
+6. Celery Workers
+
+**Validation After ANY Config Change:**
+```bash
+./scripts/validate-all-configs.sh  # Run this after modifying ANY config file
+```
+
 ## Quick Reference Commands
 
 ### Root-level

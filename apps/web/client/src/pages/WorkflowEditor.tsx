@@ -1,6 +1,12 @@
 /**
- * Workflow Editor - Visual Flow Builder
- * Create and edit workflows using ReactFlow visual editor
+ * Workflow Editor - Visual Flow Builder (Registry-Driven Architecture)
+ *
+ * This is the fully integrated workflow editor using:
+ * - Registry-driven node definitions (backend as source of truth)
+ * - Dynamic form generation from InputSpec
+ * - Real-time execution visualization with SSE
+ * - Cost estimation and credit management
+ * - Template marketplace
  */
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
@@ -15,14 +21,15 @@ import ReactFlow, {
   Background,
   BackgroundVariant,
   MarkerType,
-  Handle,
-  Position,
+  useViewport,
   type Node,
   type Edge,
   type Connection,
   type NodeTypes,
+  type ReactFlowInstance,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc';
 import {
@@ -31,618 +38,189 @@ import {
   Play,
   ArrowLeft,
   Plus,
-  Settings,
-  Code,
-  Zap,
-  MessageSquare,
-  CheckCircle,
-  Repeat,
-  GitMerge,
-  Home,
   X,
   AlertCircle,
-  CheckCircle2,
   Loader2,
   FileJson,
+  Wrench,
+  ShoppingBag,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
-// Node type definitions
-interface NodeData {
+// Step 1: Import BaseNode and registry hook
+import { BaseNode } from '@/components/workflow/nodes/BaseNode';
+import { useNodeRegistry } from '@/lib/workflow/useNodeRegistry';
+import { isValidConnection as createIsValidConnection } from '@/lib/workflow/isValidConnection';
+
+// Step 4: Import DynamicNodeConfig
+import { DynamicNodeConfig } from '@/components/workflow/config/DynamicNodeConfig';
+
+// Step 6: Import Execution components
+import { useExecutionStore } from '@/stores/executionStore';
+import { ExecutionOverlay } from '@/components/workflow/execution/ExecutionOverlay';
+import { ExecutionLogPanel } from '@/components/workflow/execution/ExecutionLogPanel';
+import { CostEstimation } from '@/components/workflow/execution/CostEstimation';
+
+// Step 10: Import TemplateBrowser
+import { TemplateBrowser } from '@/components/workflow/TemplateBrowser';
+
+// Import LLM Model Selector
+import LLMModelSelector, { type LLMModel } from '@/components/workflow/LLMModelSelector';
+
+// Node data structure for registry-driven nodes
+interface WorkflowNodeData {
+  nodeType: string;  // Logical type from registry (e.g., 'llm_call', 'rag_query')
   label: string;
-  icon: any;
-  color: string;
-  config?: {
-    model?: string;
-    prompt?: string;
-    temperature?: number;
-    maxTokens?: number;
-    approvers?: string[];
-    timeout?: number;
-    condition?: string;
-    maxIterations?: number;
-    imageModel?: string;
-    imagePrompt?: string;
-  };
+  config: Record<string, unknown>;
 }
 
-// Custom Node Component
-function CustomNode({ data, selected }: { data: NodeData; selected: boolean }) {
-  const Icon = data.icon;
-  return (
-    <>
-      {/* Input Handle - where edges can connect TO this node */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
-      />
-
-      <div
-        className={`px-4 py-3 rounded-lg border-2 shadow-lg bg-white dark:bg-gray-800 min-w-[180px] transition-all ${
-          selected
-            ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-800'
-            : `border-${data.color}-400 dark:border-${data.color}-600`
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <Icon className={`h-5 w-5 text-${data.color}-600 dark:text-${data.color}-400`} />
-          <div className="font-medium text-gray-900 dark:text-white">{data.label}</div>
-        </div>
-        {data.config && Object.keys(data.config).length > 0 && (
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            <Settings className="h-3 w-3 inline mr-1" />
-            Configured
-          </div>
-        )}
-      </div>
-
-      {/* Output Handle - where edges can connect FROM this node */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
-      />
-    </>
-  );
-}
-
+// Step 1: Single node type for all workflow nodes
 const nodeTypes: NodeTypes = {
-  custom: CustomNode,
+  workflow: BaseNode,
 };
-
-// Example workflows
-const exampleWorkflows = [
-  {
-    id: 'social-media-post',
-    name: 'Social Media Post Creator',
-    description: 'Generate social media post with image',
-    nodes: [
-      {
-        id: 'start',
-        type: 'custom',
-        position: { x: 100, y: 50 },
-        data: {
-          label: 'Start',
-          icon: Play,
-          color: 'green',
-        },
-      },
-      {
-        id: 'llm-1',
-        type: 'custom',
-        position: { x: 100, y: 150 },
-        data: {
-          label: 'Generate Caption',
-          icon: MessageSquare,
-          color: 'blue',
-          config: {
-            model: 'gpt-4',
-            prompt: 'Create an engaging social media caption',
-            temperature: 0.7,
-            maxTokens: 150,
-          },
-        },
-      },
-      {
-        id: 'approval-1',
-        type: 'custom',
-        position: { x: 100, y: 280 },
-        data: {
-          label: 'Review Caption',
-          icon: CheckCircle,
-          color: 'yellow',
-          config: {
-            approvers: ['admin'],
-            timeout: 30,
-          },
-        },
-      },
-      {
-        id: 'image-1',
-        type: 'custom',
-        position: { x: 100, y: 410 },
-        data: {
-          label: 'Generate Image',
-          icon: Zap,
-          color: 'pink',
-          config: {
-            imageModel: 'dall-e-3',
-            imagePrompt: 'Based on the caption',
-          },
-        },
-      },
-    ],
-    edges: [
-      {
-        id: 'e1',
-        type: 'smoothstep',
-        source: 'start',
-        target: 'llm-1',
-        animated: true,
-        style: { stroke: '#3b82f6', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
-      },
-      {
-        id: 'e2',
-        type: 'smoothstep',
-        source: 'llm-1',
-        target: 'approval-1',
-        style: { stroke: '#3b82f6', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
-      },
-      {
-        id: 'e3',
-        type: 'smoothstep',
-        source: 'approval-1',
-        target: 'image-1',
-        style: { stroke: '#3b82f6', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
-      },
-    ],
-  },
-  {
-    id: 'content-summarizer',
-    name: 'Content Summarizer',
-    description: 'Summarize long content with conditional formatting',
-    nodes: [
-      {
-        id: 'start',
-        type: 'custom',
-        position: { x: 250, y: 50 },
-        data: { label: 'Start', icon: Play, color: 'green' },
-      },
-      {
-        id: 'llm-summarize',
-        type: 'custom',
-        position: { x: 250, y: 150 },
-        data: {
-          label: 'Summarize Content',
-          icon: MessageSquare,
-          color: 'blue',
-          config: {
-            model: 'gpt-4',
-            prompt: 'Summarize the following content',
-            temperature: 0.3,
-          },
-        },
-      },
-      {
-        id: 'conditional-1',
-        type: 'custom',
-        position: { x: 250, y: 280 },
-        data: {
-          label: 'Check Length',
-          icon: GitMerge,
-          color: 'purple',
-          config: {
-            condition: 'length > 500',
-          },
-        },
-      },
-      {
-        id: 'llm-short',
-        type: 'custom',
-        position: { x: 100, y: 410 },
-        data: {
-          label: 'Short Format',
-          icon: MessageSquare,
-          color: 'blue',
-        },
-      },
-      {
-        id: 'llm-long',
-        type: 'custom',
-        position: { x: 400, y: 410 },
-        data: {
-          label: 'Long Format',
-          icon: MessageSquare,
-          color: 'blue',
-        },
-      },
-    ],
-    edges: [
-      {
-        id: 'e1',
-        type: 'smoothstep',
-        source: 'start',
-        target: 'llm-summarize',
-        animated: true,
-        style: { stroke: '#8b5cf6', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#8b5cf6' }
-      },
-      {
-        id: 'e2',
-        type: 'smoothstep',
-        source: 'llm-summarize',
-        target: 'conditional-1',
-        style: { stroke: '#8b5cf6', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#8b5cf6' }
-      },
-      {
-        id: 'e3',
-        type: 'smoothstep',
-        source: 'conditional-1',
-        target: 'llm-short',
-        label: 'short',
-        style: { stroke: '#10b981', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' }
-      },
-      {
-        id: 'e4',
-        type: 'smoothstep',
-        source: 'conditional-1',
-        target: 'llm-long',
-        label: 'long',
-        style: { stroke: '#f59e0b', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#f59e0b' }
-      },
-    ],
-  },
-];
-
-// Node Configuration Panel Component
-function NodeConfigPanel({
-  node,
-  onClose,
-  onSave,
-}: {
-  node: Node<NodeData> | null;
-  onClose: () => void;
-  onSave: (config: any) => void;
-}) {
-  const [config, setConfig] = useState(node?.data?.config || {});
-
-  if (!node) return null;
-
-  const handleSave = () => {
-    onSave(config);
-    onClose();
-  };
-
-  const nodeType = node.id.split('-')[0];
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Configure: {node.data.label}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="p-4 space-y-4">
-          {/* LLM Node Configuration */}
-          {nodeType === 'llm' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Model
-                </label>
-                <select
-                  value={config.model || 'gpt-4'}
-                  onChange={(e) => setConfig({ ...config, model: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                  <option value="claude-3-opus">Claude 3 Opus</option>
-                  <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Prompt
-                </label>
-                <textarea
-                  value={config.prompt || ''}
-                  onChange={(e) => setConfig({ ...config, prompt: e.target.value })}
-                  rows={4}
-                  placeholder="Enter your prompt..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Temperature: {config.temperature || 0.7}
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={config.temperature || 0.7}
-                  onChange={(e) =>
-                    setConfig({ ...config, temperature: parseFloat(e.target.value) })
-                  }
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Max Tokens
-                </label>
-                <input
-                  type="number"
-                  value={config.maxTokens || 2000}
-                  onChange={(e) =>
-                    setConfig({ ...config, maxTokens: parseInt(e.target.value) })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Approval Gate Configuration */}
-          {nodeType === 'approval' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Approvers (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={(config.approvers || []).join(', ')}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      approvers: e.target.value.split(',').map((s) => s.trim()),
-                    })
-                  }
-                  placeholder="admin, manager, reviewer"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Timeout (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={config.timeout || 30}
-                  onChange={(e) =>
-                    setConfig({ ...config, timeout: parseInt(e.target.value) })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Conditional Configuration */}
-          {nodeType === 'conditional' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Condition Expression
-              </label>
-              <input
-                type="text"
-                value={config.condition || ''}
-                onChange={(e) => setConfig({ ...config, condition: e.target.value })}
-                placeholder="e.g., output.length > 100"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Use 'output' to reference previous step output
-              </p>
-            </div>
-          )}
-
-          {/* Loop Configuration */}
-          {nodeType === 'loop' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Max Iterations
-              </label>
-              <input
-                type="number"
-                value={config.maxIterations || 10}
-                onChange={(e) =>
-                  setConfig({ ...config, maxIterations: parseInt(e.target.value) })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-          )}
-
-          {/* Generate Image Configuration */}
-          {nodeType === 'generate' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Image Model
-                </label>
-                <select
-                  value={config.imageModel || 'dall-e-3'}
-                  onChange={(e) => setConfig({ ...config, imageModel: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="dall-e-3">DALL-E 3</option>
-                  <option value="stable-diffusion">Stable Diffusion</option>
-                  <option value="midjourney">Midjourney</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Image Prompt
-                </label>
-                <textarea
-                  value={config.imagePrompt || ''}
-                  onChange={(e) => setConfig({ ...config, imagePrompt: e.target.value })}
-                  rows={3}
-                  placeholder="Describe the image to generate..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">
-            Save Configuration
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Validation functions
-function validateWorkflow(nodes: Node[], edges: Edge[]): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  // Check for at least one node
-  if (nodes.length === 0) {
-    errors.push('Workflow must have at least one node');
-  }
-
-  // Check for start node
-  const hasStartNode = nodes.some((n) => n.id === 'start' || n.id.startsWith('start'));
-  if (!hasStartNode) {
-    errors.push('Workflow must have a start node');
-  }
-
-  // Check for cycles (simple check)
-  const adjacencyList = new Map<string, string[]>();
-  edges.forEach((edge) => {
-    if (!adjacencyList.has(edge.source)) {
-      adjacencyList.set(edge.source, []);
-    }
-    adjacencyList.get(edge.source)!.push(edge.target);
-  });
-
-  // Check for disconnected nodes
-  const connectedNodes = new Set<string>();
-  edges.forEach((edge) => {
-    connectedNodes.add(edge.source);
-    connectedNodes.add(edge.target);
-  });
-
-  const disconnectedNodes = nodes.filter(
-    (n) => n.id !== 'start' && !connectedNodes.has(n.id)
-  );
-  if (disconnectedNodes.length > 0) {
-    errors.push(
-      `Disconnected nodes: ${disconnectedNodes.map((n) => n.data.label).join(', ')}`
-    );
-  }
-
-  // Check node configurations
-  nodes.forEach((node) => {
-    const nodeType = node.id.split('-')[0];
-    if (nodeType === 'llm' && (!node.data.config?.model || !node.data.config?.prompt)) {
-      errors.push(`LLM node "${node.data.label}" missing configuration`);
-    }
-    if (
-      nodeType === 'approval' &&
-      (!node.data.config?.approvers || node.data.config.approvers.length === 0)
-    ) {
-      errors.push(`Approval node "${node.data.label}" missing approvers`);
-    }
-  });
-
-  return { valid: errors.length === 0, errors };
-}
 
 function FlowEditor() {
   const [, setLocation] = useLocation();
+  const [workflowId, setWorkflowId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState('');
   const [workflowDescription, setWorkflowDescription] = useState('');
-  const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>([
-    {
-      id: 'start',
-      type: 'custom',
-      position: { x: 250, y: 50 },
-      data: { label: 'Start', icon: Play, color: 'green' },
-    },
-  ]);
+  const [defaultModel, setDefaultModel] = useState<string>('');
+  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
-  const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
-  const [showConfig, setShowConfig] = useState(false);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
+  const [compiledManifest, setCompiledManifest] = useState<any>(null);
+  const viewport = useViewport();
+
+  // Step 2: Use node registry instead of hardcoded options
+  const { nodeTypes: registryNodeTypes, isLoading: registryLoading, getNodeTypesByCategory } = useNodeRegistry();
+
+  // Step 6: Execution store
+  const {
+    isExecuting,
+    executionId,
+    nodeStatuses,
+    logs,
+    startExecution,
+    updateNodeStatus,
+    addLog,
+    completeExecution,
+    resetExecution,
+  } = useExecutionStore();
+
+  // Get current user for credit balance
+  const { data: user } = (trpc as any).auth.me.useQuery();
+
+  // Fetch available LLM models
+  const { data: availableModelsData, isLoading: modelsLoading } = (trpc as any).multiProvider.getAvailableModelsWithProviders.useQuery();
+
+  // Transform models data for selector
+  const llmModels: LLMModel[] = useMemo(() => {
+    if (!availableModelsData) return [];
+    return Object.values(availableModelsData).map((modelData: any) => ({
+      modelId: modelData.modelId,
+      modelName: modelData.modelName,
+      providers: modelData.providers || [],
+    }));
+  }, [availableModelsData]);
 
   // tRPC mutations
-  const compileMutation = trpc.workflow.compile.useMutation();
-  const executeMutation = trpc.workflow.execute.useMutation();
+  const compileMutation = (trpc as any).workflow.compile.useMutation();
+  const executeMutation = (trpc as any).workflow.execute.useMutation();
+  const saveWorkflowMutation = (trpc as any).workflow.save.useMutation();
+  const loadWorkflowQuery = (trpc as any).workflow.load.useQuery(
+    { id: workflowId! },
+    { enabled: !!workflowId }
+  );
+  const templatesQuery = (trpc as any).workflow.listSaved.useQuery({});
 
-  // Load template from URL parameter
+  // Load workflow from URL parameter
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const templateId = urlParams.get('template');
+    const idFromUrl = urlParams.get('id');
+    if (idFromUrl) {
+      setWorkflowId(idFromUrl);
+    }
+  }, []);
 
-    if (templateId) {
-      const template = exampleWorkflows.find(w => w.id === templateId);
-      if (template) {
-        setWorkflowName(template.name);
-        setWorkflowDescription(template.description);
-        setNodes(template.nodes);
-
-        // Clean edges - ensure no sourceHandle/targetHandle properties
-        const cleanedEdges = template.edges.map((edge) => {
-          const { sourceHandle, targetHandle, ...rest } = edge as any;
-          return {
-            ...rest,
-            // Explicitly ensure these are not present
-            type: rest.type || 'smoothstep',
-          };
-        });
-
-        console.log('Loading template edges:', cleanedEdges);
-        setEdges(cleanedEdges);
+  // Load workflow data when query returns
+  useEffect(() => {
+    if (loadWorkflowQuery.data) {
+      const workflow = loadWorkflowQuery.data;
+      setWorkflowName(workflow.name || '');
+      setWorkflowDescription(workflow.description || '');
+      setDefaultModel(workflow.defaultModel || '');
+      if (workflow.workflowJson) {
+        setNodes(workflow.workflowJson.nodes || []);
+        setEdges(workflow.workflowJson.edges || []);
       }
     }
-  }, []); // Run only once on mount
+  }, [loadWorkflowQuery.data, setNodes, setEdges]);
 
-  const nodeTypeOptions = [
-    { id: 'llm', label: 'LLM Call', icon: MessageSquare, color: 'blue' },
-    { id: 'approval', label: 'Approval Gate', icon: CheckCircle, color: 'yellow' },
-    { id: 'conditional', label: 'Conditional', icon: GitMerge, color: 'purple' },
-    { id: 'loop', label: 'Loop', icon: Repeat, color: 'green' },
-    { id: 'generate', label: 'Generate Image', icon: Zap, color: 'pink' },
-  ];
+  // Selected node
+  const selectedNode = nodes.find(n => n.id === selectedNodeId);
+
+  // Step 4: Compute connections for selected node
+  const connections = useMemo(() => {
+    if (!selectedNode) return {};
+    return edges.reduce((acc, edge) => {
+      if (edge.target === selectedNode.id && edge.targetHandle) {
+        acc[edge.targetHandle] = true;
+      }
+      return acc;
+    }, {} as Record<string, boolean>);
+  }, [selectedNode, edges]);
+
+  // Step 5: Port type validation
+  const isValidConnection = useCallback(
+    (connection: Connection) => {
+      if (!registryNodeTypes) return true;
+      return createIsValidConnection(connection, nodes, registryNodeTypes);
+    },
+    [nodes, registryNodeTypes]
+  );
+
+  // Step 3: Node creation handler
+  const onAddNode = useCallback(
+    (nodeType: string) => {
+      const spec = registryNodeTypes?.find(t => t.type === nodeType);
+      if (!spec) return;
+
+      const position = reactFlowInstance
+        ? reactFlowInstance.project({ x: 250, y: 250 })
+        : { x: 250, y: 250 };
+
+      const newNode: Node<WorkflowNodeData> = {
+        id: `${nodeType}-${Date.now()}`,
+        type: 'workflow',  // Always use 'workflow' type
+        data: {
+          nodeType,  // Logical type from registry
+          label: spec.display_name,
+          config: {},  // Empty config, filled via DynamicNodeConfig
+        },
+        position,
+      };
+
+      setNodes((nodes: Node<WorkflowNodeData>[]) => [...nodes, newNode]);
+    },
+    [registryNodeTypes, reactFlowInstance, setNodes]
+  );
 
   const onConnect = useCallback(
     (params: Connection) => {
-      // Remove sourceHandle and targetHandle to prevent ReactFlow errors
-      const { sourceHandle, targetHandle, ...cleanParams } = params as any;
       const newEdge = {
-        ...cleanParams,
+        ...params,
         type: 'smoothstep',
+        animated: false,
+        style: { stroke: '#3b82f6', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
       };
-      setEdges((eds) => addEdge(newEdge, eds));
+      setEdges((eds: Edge[]) => addEdge(newEdge, eds));
     },
     [setEdges]
   );
@@ -658,31 +236,12 @@ function FlowEditor() {
 
       if (!reactFlowInstance || !reactFlowWrapper.current) return;
 
-      const type = event.dataTransfer.getData('application/reactflow');
-      if (!type) return;
+      const nodeType = event.dataTransfer.getData('application/reactflow');
+      if (!nodeType) return;
 
-      const nodeData = nodeTypeOptions.find((n) => n.id === type);
-      if (!nodeData) return;
-
-      const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
-
-      const newNode: Node<NodeData> = {
-        id: `${type}-${Date.now()}`,
-        type: 'custom',
-        position,
-        data: {
-          label: nodeData.label,
-          icon: nodeData.icon,
-          color: nodeData.color,
-        },
-      };
-
-      setNodes((nds) => nds.concat(newNode));
+      onAddNode(nodeType);
     },
-    [reactFlowInstance, nodeTypeOptions, setNodes]
+    [reactFlowInstance, onAddNode]
   );
 
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
@@ -690,52 +249,30 @@ function FlowEditor() {
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const onNodeClick = useCallback((_: any, node: Node<NodeData>) => {
-    if (node.id !== 'start') {
-      setSelectedNode(node);
-      setShowConfig(true);
-    }
+  const onNodeClick = useCallback((_: any, node: Node<WorkflowNodeData>) => {
+    setSelectedNodeId(node.id);
   }, []);
 
-  const handleSaveConfig = (config: any) => {
-    if (!selectedNode) return;
-    setNodes((nds) =>
-      nds.map((n) => (n.id === selectedNode.id ? { ...n, data: { ...n.data, config } } : n))
-    );
-  };
+  const handleConfigChange = useCallback(
+    (newConfig: Record<string, unknown>) => {
+      if (!selectedNodeId) return;
+      setNodes((nodes: Node<WorkflowNodeData>[]) =>
+        nodes.map((n: Node<WorkflowNodeData>) =>
+          n.id === selectedNodeId
+            ? { ...n, data: { ...n.data, config: newConfig } }
+            : n
+        )
+      );
+    },
+    [selectedNodeId, setNodes]
+  );
 
-  const loadExample = (exampleId: string) => {
-    const example = exampleWorkflows.find((w) => w.id === exampleId);
-    if (!example) return;
-
-    setWorkflowName(example.name);
-    setWorkflowDescription(example.description);
-    setNodes(example.nodes as Node<NodeData>[]);
-    setEdges(example.edges);
-  };
-
-  const handleSave = async () => {
-    // Validate workflow
-    const validation = validateWorkflow(nodes, edges);
-    setValidationErrors(validation.errors);
-
-    if (!validation.valid) {
-      return;
-    }
-
+  // Step 7: Compile workflow
+  const handleCompile = async () => {
     try {
       const result = await compileMutation.mutateAsync({
-        nodes: nodes.map((n) => ({
-          id: n.id,
-          type: n.id.split('-')[0],
-          position: n.position,
-          data: n.data,
-        })),
-        edges: edges.map((e) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-        })),
+        nodes,
+        edges,
         metadata: {
           name: workflowName || 'Untitled Workflow',
           description: workflowDescription,
@@ -744,51 +281,234 @@ function FlowEditor() {
       });
 
       if (result.success) {
-        alert('Workflow compiled and saved successfully!');
+        setCompiledManifest(result.manifest);
+        setValidationErrors([]);
+        toast.success('Workflow compiled successfully!');
       } else {
-        alert(`Compilation failed: ${result.error}`);
+        setValidationErrors(result.errors || [result.error || 'Unknown error']);
       }
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      setValidationErrors([error.message || 'Compilation failed']);
     }
   };
 
-  const handleRun = async () => {
-    // Validate before running
-    const validation = validateWorkflow(nodes, edges);
-    if (!validation.valid) {
-      setValidationErrors(validation.errors);
+  // Step 9: Save workflow
+  const handleSave = async () => {
+    try {
+      const result = await saveWorkflowMutation.mutateAsync({
+        id: workflowId || undefined,
+        name: workflowName || 'Untitled Workflow',
+        description: workflowDescription,
+        defaultModel: defaultModel || undefined,
+        workflowJson: { nodes, edges },
+      });
+
+      setWorkflowId(result.id);
+      toast.success('Workflow saved successfully!');
+    } catch (error: any) {
+      toast.error(`Save failed: ${error.message}`);
+    }
+  };
+
+  // SSE EventSource ref for cleanup
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Cleanup EventSource on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Safe JSON parse helper
+  const safeJsonParse = (data: string): any | null => {
+    try {
+      return JSON.parse(data);
+    } catch {
+      console.error('Failed to parse SSE event data:', data);
+      return null;
+    }
+  };
+
+  // Step 8: Execute workflow with SSE
+  const handleExecute = async () => {
+    if (!compiledManifest) {
+      toast.error('Please compile workflow first');
       return;
     }
 
     try {
+      // Start execution
       const result = await executeMutation.mutateAsync({
-        manifest: {
-          nodes: nodes.map((n) => ({
-            id: n.id,
-            type: n.id.split('-')[0],
-            data: n.data,
-          })),
-          edges: edges.map((e) => ({
-            source: e.source,
-            target: e.target,
-          })),
+        id: workflowId,
+        workflowJson: {
+          nodes,
+          edges,
+          _compiledMetadata: compiledManifest,
         },
-        inputs: {},
       });
 
-      if (result.execution_id) {
-        alert(`Workflow started! Execution ID: ${result.execution_id}`);
-        setLocation('/workflows');
+      // Initialize execution store
+      startExecution(result.executionId);
+
+      // Close existing EventSource if any
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
       }
+
+      // Connect to SSE stream
+      const eventSource = new EventSource(
+        `/api/v1/workflows/execute/${encodeURIComponent(result.executionId)}/stream`,
+        { withCredentials: true }
+      );
+      eventSourceRef.current = eventSource;
+
+      eventSource.addEventListener('node_start', (event: MessageEvent) => {
+        const data = safeJsonParse(event.data);
+        if (!data) return;
+        updateNodeStatus(data.nodeId, {
+          status: 'running',
+          startTime: Date.now(),
+        });
+        addLog({
+          id: data.event_id,
+          timestamp: Date.now(),
+          nodeId: data.nodeId,
+          nodeName: data.nodeName || data.nodeId,
+          eventType: 'node_start',
+          status: 'running',
+        });
+      });
+
+      eventSource.addEventListener('node_complete', (event: MessageEvent) => {
+        const data = safeJsonParse(event.data);
+        if (!data) return;
+        updateNodeStatus(data.nodeId, {
+          status: 'success',
+          endTime: Date.now(),
+          output: data.output,
+        });
+        addLog({
+          id: data.event_id,
+          timestamp: Date.now(),
+          nodeId: data.nodeId,
+          nodeName: data.nodeName || data.nodeId,
+          eventType: 'node_complete',
+          status: 'success',
+          duration: data.durationMs,
+          output: data.output,
+        });
+      });
+
+      eventSource.addEventListener('node_error', (event: MessageEvent) => {
+        const data = safeJsonParse(event.data);
+        if (!data) return;
+        updateNodeStatus(data.nodeId, {
+          status: 'failed',
+          endTime: Date.now(),
+          error: data.error,
+        });
+        addLog({
+          id: data.event_id,
+          timestamp: Date.now(),
+          nodeId: data.nodeId,
+          nodeName: data.nodeName || data.nodeId,
+          eventType: 'node_error',
+          status: 'failed',
+          error: data.error,
+        });
+      });
+
+      eventSource.addEventListener('workflow_complete', (event: MessageEvent) => {
+        completeExecution();
+        eventSource.close();
+        eventSourceRef.current = null;
+      });
+
+      eventSource.addEventListener('workflow_error', (event: MessageEvent) => {
+        const data = safeJsonParse(event.data);
+        completeExecution();
+        eventSource.close();
+        eventSourceRef.current = null;
+        const errorMsg = data?.error || 'Unknown workflow error';
+        setValidationErrors([`Workflow failed: ${errorMsg}`]);
+      });
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        eventSourceRef.current = null;
+        completeExecution();
+        setValidationErrors(['Execution stream connection lost']);
+      };
     } catch (error: any) {
-      alert(`Execution failed: ${error.message}`);
+      if (error.message?.includes('402') || error.message?.includes('Insufficient')) {
+        setValidationErrors(['Insufficient credits to run workflow']);
+      } else {
+        setValidationErrors([`Execution failed: ${error.message}`]);
+      }
     }
   };
 
+  // Step 10: Template browser handlers
+  const handleLoadTemplate = useCallback(
+    (template: any) => {
+      // Validate template structure before loading
+      const wf = template?.workflowJson;
+      if (!wf || typeof wf !== 'object') {
+        setValidationErrors(['Invalid template: missing workflow data']);
+        return;
+      }
+      const templateNodes = Array.isArray(wf.nodes) ? wf.nodes : [];
+      const templateEdges = Array.isArray(wf.edges) ? wf.edges : [];
+      if (templateNodes.length > 500) {
+        setValidationErrors(['Template too large: maximum 500 nodes allowed']);
+        return;
+      }
+
+      setNodes(templateNodes);
+      setEdges(templateEdges);
+      setWorkflowName(String(template.name || ''));
+      setWorkflowDescription(String(template.description || ''));
+      setShowTemplateBrowser(false);
+      setWorkflowId(null); // Clear ID so it saves as new workflow
+    },
+    [setNodes, setEdges]
+  );
+
+  // Node search/filter
+  const [nodeSearchTerm, setNodeSearchTerm] = useState('');
+
+  // Filter function
+  const filterNodes = (nodes: typeof registryNodeTypes) => {
+    if (!nodeSearchTerm.trim()) return nodes;
+    const search = nodeSearchTerm.toLowerCase();
+    return nodes.filter(node =>
+      node.display_name.toLowerCase().includes(search) ||
+      node.type.toLowerCase().includes(search) ||
+      node.description.toLowerCase().includes(search)
+    );
+  };
+
+  // Categorize nodes for sidebar (with search filter)
+  const aiNodes = filterNodes(getNodeTypesByCategory('ai'));
+  const flowNodes = filterNodes(getNodeTypesByCategory('flow_control'));
+  const humanNodes = filterNodes(getNodeTypesByCategory('human'));
+  const mediaNodes = filterNodes(getNodeTypesByCategory('media'));
+  const skillNodes = filterNodes(getNodeTypesByCategory('skills'));
+  const triggerNodes = filterNodes(getNodeTypesByCategory('triggers'));
+  const inputNodes = filterNodes(getNodeTypesByCategory('inputs'));
+  const outputNodes = filterNodes(getNodeTypesByCategory('outputs'));
+  const dataNodes = filterNodes(getNodeTypesByCategory('data'));
+  const integrationNodes = filterNodes(getNodeTypesByCategory('integrations'));
+  const observabilityNodes = filterNodes(getNodeTypesByCategory('observability'));
+  const securityNodes = filterNodes(getNodeTypesByCategory('security'));
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
-      {/* Header - Sticky with Backdrop Blur */}
+      {/* Header */}
       <header className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
@@ -807,7 +527,9 @@ function FlowEditor() {
                 </div>
                 <div>
                   <h1 className="text-lg font-bold">{workflowName || 'New Workflow'}</h1>
-                  <p className="text-xs text-muted-foreground">Visual workflow builder</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isExecuting ? `Executing... (${executionId})` : 'Visual workflow builder'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -816,10 +538,23 @@ function FlowEditor() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleSave}
-                disabled={compileMutation.isPending}
+                onClick={handleCompile}
+                disabled={compileMutation.isPending || isExecuting}
               >
                 {compileMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Wrench className="h-4 w-4 mr-1" />
+                )}
+                Compile
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSave}
+                disabled={saveWorkflowMutation.isPending || isExecuting}
+              >
+                {saveWorkflowMutation.isPending ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                 ) : (
                   <Save className="h-4 w-4 mr-1" />
@@ -828,16 +563,16 @@ function FlowEditor() {
               </Button>
               <Button
                 size="sm"
-                onClick={handleRun}
-                disabled={executeMutation.isPending}
+                onClick={handleExecute}
+                disabled={executeMutation.isPending || isExecuting || !compiledManifest}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {executeMutation.isPending ? (
+                {isExecuting ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                 ) : (
                   <Play className="h-4 w-4 mr-1" />
                 )}
-                Run
+                {isExecuting ? 'Running...' : 'Run'}
               </Button>
             </div>
           </div>
@@ -872,129 +607,507 @@ function FlowEditor() {
       )}
 
       <div className="flex h-[calc(100vh-80px)]">
-        {/* Sidebar */}
+        {/* Left Sidebar - Node Palette */}
         <div className={`${sidebarCollapsed ? 'w-12' : 'w-80'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto transition-all duration-300 relative`}>
-          {/* Collapse Toggle Button */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {sidebarCollapsed ? (
-              <ArrowLeft className="h-4 w-4 rotate-180" />
+              <ChevronRight className="h-4 w-4" />
             ) : (
-              <ArrowLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" />
             )}
           </button>
 
           {!sidebarCollapsed && (
             <>
-          {/* Workflow Info */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Workflow Name
-              </label>
-              <input
-                type="text"
-                value={workflowName}
-                onChange={(e) => setWorkflowName(e.target.value)}
-                placeholder="e.g., Social Media Post Creator"
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
+              {/* Workflow Info */}
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Workflow Name
+                  </label>
+                  <input
+                    type="text"
+                    value={workflowName}
+                    onChange={(e) => setWorkflowName(e.target.value)}
+                    placeholder="e.g., Social Media Post Creator"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Description
-              </label>
-              <textarea
-                value={workflowDescription}
-                onChange={(e) => setWorkflowDescription(e.target.value)}
-                placeholder="Describe what this workflow does..."
-                rows={3}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={workflowDescription}
+                    onChange={(e) => setWorkflowDescription(e.target.value)}
+                    placeholder="Describe what this workflow does..."
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
 
-          {/* Example Workflows */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              <FileJson className="h-4 w-4" />
-              Example Workflows
-            </h3>
-            <div className="space-y-2">
-              {exampleWorkflows.map((example) => (
-                <button
-                  key={example.id}
-                  onClick={() => loadExample(example.id)}
-                  className="w-full text-left px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {example.name}
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    {example.description}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Node Palette */}
-          <div className="p-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Node Palette
-            </h3>
-            <div className="space-y-2">
-              {nodeTypeOptions.map((node) => {
-                const Icon = node.icon;
-                return (
-                  <div
-                    key={node.id}
-                    draggable
-                    onDragStart={(e) => onDragStart(e, node.id)}
-                    className={`cursor-grab active:cursor-grabbing flex items-center gap-3 px-3 py-2 rounded-lg border-2 border-${node.color}-200 dark:border-${node.color}-800 bg-${node.color}-50 dark:bg-${node.color}-900/20 hover:bg-${node.color}-100 dark:hover:bg-${node.color}-900/30 transition-colors`}
-                  >
-                    <Icon className={`h-5 w-5 text-${node.color}-600 dark:text-${node.color}-400`} />
-                    <span className={`text-sm font-medium text-${node.color}-900 dark:text-${node.color}-100`}>
-                      {node.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
-                How to Use:
-              </h4>
-              <ol className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                <li>1. Drag nodes to canvas</li>
-                <li>2. Connect nodes by dragging</li>
-                <li>3. Click node to configure</li>
-                <li>4. Save and test</li>
-              </ol>
-            </div>
-          </div>
-
-          {/* JSON Viewer */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <details className="group">
-              <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2">
-                <Code className="h-4 w-4" />
-                View JSON
-              </summary>
-              <div className="mt-3">
-                <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-3 rounded-lg overflow-auto max-h-64">
-                  {JSON.stringify({ nodes, edges }, null, 2)}
-                </pre>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Default LLM Model
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Optional)</span>
+                  </label>
+                  <LLMModelSelector
+                    models={llmModels}
+                    selectedModelId={defaultModel}
+                    onSelect={setDefaultModel}
+                    isLoading={modelsLoading}
+                    placeholder="Select default model for this workflow..."
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Choose which LLM model to use when executing this workflow
+                  </p>
+                </div>
               </div>
-            </details>
-          </div>
-          </>
+
+              {/* Template Browser Button */}
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <Button
+                  onClick={() => setShowTemplateBrowser(true)}
+                  variant="outline"
+                  className="w-full"
+                  size="sm"
+                >
+                  <ShoppingBag className="h-4 w-4 mr-2" />
+                  Browse Templates
+                </Button>
+              </div>
+
+              {/* Node Palette - Step 2: Registry-driven */}
+              <div className="p-4">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Node Palette
+                </h3>
+
+                {/* Search/Filter Input */}
+                <div className="mb-3 relative">
+                  <input
+                    type="text"
+                    value={nodeSearchTerm}
+                    onChange={(e) => setNodeSearchTerm(e.target.value)}
+                    placeholder="Search nodes..."
+                    className="w-full px-3 py-2 pl-9 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <svg
+                    className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  {nodeSearchTerm && (
+                    <button
+                      onClick={() => setNodeSearchTerm('')}
+                      className="absolute right-2 top-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                      aria-label="Clear search"
+                    >
+                      <svg
+                        className="h-4 w-4 text-gray-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                {registryLoading ? (
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Loading nodes...</div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* AI Nodes */}
+                    {aiNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          AI Nodes
+                        </h4>
+                        <div className="space-y-2">
+                          {aiNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-blue-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Flow Control */}
+                    {flowNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Flow Control
+                        </h4>
+                        <div className="space-y-2">
+                          {flowNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-purple-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Human Tasks */}
+                    {humanNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Human Tasks
+                        </h4>
+                        <div className="space-y-2">
+                          {humanNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Media */}
+                    {mediaNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Media Generation
+                        </h4>
+                        <div className="space-y-2">
+                          {mediaNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-pink-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Skills */}
+                    {skillNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Skills
+                        </h4>
+                        <div className="space-y-2">
+                          {skillNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-green-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Triggers */}
+                    {triggerNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Triggers
+                        </h4>
+                        <div className="space-y-2">
+                          {triggerNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Inputs */}
+                    {inputNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Inputs
+                        </h4>
+                        <div className="space-y-2">
+                          {inputNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-cyan-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Outputs */}
+                    {outputNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Outputs
+                        </h4>
+                        <div className="space-y-2">
+                          {outputNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-teal-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Data */}
+                    {dataNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Data
+                        </h4>
+                        <div className="space-y-2">
+                          {dataNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-amber-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Integrations */}
+                    {integrationNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Integrations
+                        </h4>
+                        <div className="space-y-2">
+                          {integrationNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-orange-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Observability */}
+                    {observabilityNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Observability
+                        </h4>
+                        <div className="space-y-2">
+                          {observabilityNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-blue-600" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Security */}
+                    {securityNodes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                          Security
+                        </h4>
+                        <div className="space-y-2">
+                          {securityNodes.map((node) => (
+                            <div
+                              key={node.type}
+                              draggable
+                              onDragStart={(e) => onDragStart(e, node.type)}
+                              onClick={() => onAddNode(node.type)}
+                              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-red-600" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {node.display_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No results message */}
+                    {nodeSearchTerm &&
+                     aiNodes.length === 0 &&
+                     flowNodes.length === 0 &&
+                     humanNodes.length === 0 &&
+                     mediaNodes.length === 0 &&
+                     skillNodes.length === 0 &&
+                     triggerNodes.length === 0 &&
+                     inputNodes.length === 0 &&
+                     outputNodes.length === 0 &&
+                     dataNodes.length === 0 &&
+                     integrationNodes.length === 0 &&
+                     observabilityNodes.length === 0 &&
+                     securityNodes.length === 0 && (
+                      <div className="text-center py-8">
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                          No nodes found for "{nodeSearchTerm}"
+                        </p>
+                        <button
+                          onClick={() => setNodeSearchTerm('')}
+                          className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          Clear search
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                    How to Use:
+                  </h4>
+                  <ol className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    <li>1. Drag or click nodes to add to canvas</li>
+                    <li>2. Connect nodes by dragging handles</li>
+                    <li>3. Click node to configure</li>
+                    <li>4. Compile, save, and run</li>
+                  </ol>
+                </div>
+              </div>
+
+              {/* JSON Viewer */}
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                <details className="group">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2">
+                    <FileJson className="h-4 w-4" />
+                    View JSON
+                  </summary>
+                  <div className="mt-3">
+                    <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-3 rounded-lg overflow-auto max-h-64">
+                      {JSON.stringify({ nodes, edges }, null, 2)}
+                    </pre>
+                  </div>
+                </details>
+              </div>
+            </>
           )}
         </div>
 
@@ -1011,6 +1124,7 @@ function FlowEditor() {
             onDragOver={onDragOver}
             onNodeClick={onNodeClick}
             nodeTypes={nodeTypes}
+            isValidConnection={isValidConnection}
             defaultEdgeOptions={{
               type: 'smoothstep',
               animated: false,
@@ -1023,34 +1137,110 @@ function FlowEditor() {
             <Controls className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600" />
             <MiniMap
               className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600"
-              nodeColor={(node) => {
-                const color = node.data?.color || 'gray';
-                const colorMap: Record<string, string> = {
-                  blue: '#3b82f6',
-                  yellow: '#eab308',
-                  purple: '#a855f7',
-                  green: '#22c55e',
-                  pink: '#ec4899',
-                  gray: '#6b7280',
-                };
-                return colorMap[color] || '#6b7280';
-              }}
+              nodeColor={() => '#3b82f6'}
             />
             <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+
+            {/* Step 6: Execution Overlays */}
+            {isExecuting && nodes.map((node) => {
+              const status = nodeStatuses[node.id];
+              if (!status) return null;
+
+              // Transform node position to viewport coordinates (accounting for zoom/pan)
+              const x = node.position.x * viewport.zoom + viewport.x;
+              const y = node.position.y * viewport.zoom + viewport.y;
+
+              return (
+                <div
+                  key={`overlay-${node.id}`}
+                  style={{
+                    position: 'absolute',
+                    left: x,
+                    top: y,
+                    transform: `scale(${viewport.zoom})`,
+                    transformOrigin: 'top left',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <ExecutionOverlay
+                    nodeId={node.id}
+                    status={status.status}
+                  />
+                </div>
+              );
+            })}
           </ReactFlow>
         </div>
+
+        {/* Right Sidebar - Config Panel */}
+        {selectedNode && (
+          <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between z-10">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                Configure Node
+              </h3>
+              <button
+                onClick={() => setSelectedNodeId(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4">
+              {/* Step 4: Dynamic Node Config */}
+              <DynamicNodeConfig
+                nodeId={selectedNode.id}
+                nodeType={selectedNode.data.nodeType}
+                config={selectedNode.data.config}
+                connections={connections}
+                onConfigChange={handleConfigChange}
+              />
+
+              {/* Step 6: Cost Estimation (when not executing) */}
+              {!isExecuting && user && (
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <CostEstimation
+                    nodes={nodes}
+                    edges={edges}
+                    userBalance={user.creditBalance || 0}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Node Configuration Panel */}
-      {showConfig && (
-        <NodeConfigPanel
-          node={selectedNode}
-          onClose={() => {
-            setShowConfig(false);
-            setSelectedNode(null);
-          }}
-          onSave={handleSaveConfig}
-        />
+      {/* Step 6: Execution Log Panel (bottom drawer when executing) */}
+      {isExecuting && (
+        <div className="fixed bottom-0 left-0 right-0 h-64 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-20 overflow-y-auto">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              Execution Log
+            </h3>
+            <button
+              onClick={resetExecution}
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            >
+              Close
+            </button>
+          </div>
+          <ExecutionLogPanel />
+        </div>
+      )}
+
+      {/* Step 10: Template Browser Modal */}
+      {showTemplateBrowser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+            <TemplateBrowser
+              templates={templatesQuery.data || []}
+              onLoadTemplate={handleLoadTemplate}
+              onClose={() => setShowTemplateBrowser(false)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, adminProcedure } from "./_core/trpc";
+import { publicProcedure, router, adminProcedure, protectedProcedure } from "./_core/trpc";
 import {
   listContainers,
   getContainerLogs,
@@ -177,6 +177,32 @@ export const appRouter = router({
   auth: router({
     // Check current user session (shared with SmartSpec Web)
     me: publicProcedure.query(opts => opts.ctx.user),
+    // Generate access token for cross-domain auth bootstrap
+    generateAccessToken: protectedProcedure.mutation(async ({ ctx }) => {
+      const user = ctx.user;
+      if (!user || user.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+
+      const { sdk } = await import("./_core/sdk");
+      const accessToken = await sdk.createSessionToken(
+        user.openId || user.email || String(user.id),
+        {
+          expiresInMs: 1000 * 60 * 60 * 24, // 24 hours
+          name: user.name || user.email || "User",
+        }
+      );
+
+      return {
+        accessToken,
+        user: {
+          id: user.id,
+          email: user.email || "",
+          name: user.name || user.email?.split("@")[0] || "User",
+          role: user.role,
+        },
+      };
+    }),
     // Logout - clears session cookie
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
