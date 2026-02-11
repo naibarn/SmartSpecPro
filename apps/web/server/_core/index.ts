@@ -32,6 +32,7 @@ import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/tel
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { initializeQueues } from "../services/llmQueue";
 import { PostgresAdapter } from "../services/postgresAdapter";
+import { getUploadStaticHeaders } from "../services/uploadContentSafety";
 import { getDb } from "../db";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
@@ -180,6 +181,12 @@ if (useLocalStorage()) {
   app.use('/uploads', express.static(uploadsDir, {
     maxAge: '1d',
     etag: true,
+    setHeaders: (res, filePath) => {
+      const extraHeaders = getUploadStaticHeaders(filePath);
+      for (const [key, value] of Object.entries(extraHeaders)) {
+        res.setHeader(key, value);
+      }
+    },
   }));
 }
 

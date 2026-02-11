@@ -17,12 +17,21 @@ vi.mock("../db", () => ({
   getDb: mockGetDb,
 }));
 
+const { mockStoragePut } = vi.hoisted(() => ({
+  mockStoragePut: vi.fn(),
+}));
+
+vi.mock("../storage", () => ({
+  storagePut: mockStoragePut,
+}));
+
 import {
   LibraryUrlValidationError,
   canReadLibraryItem,
   createLibraryItem,
   getLibraryItemById,
   normalizeLibraryMetadata,
+  uploadLibraryFile,
   updateLibraryItem,
 } from "./libraryService";
 
@@ -300,5 +309,28 @@ describe("tenant boundaries", () => {
     } satisfies Partial<LibraryUrlValidationError>);
 
     expect(mockDb.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("uploadLibraryFile", () => {
+  it("rejects unsafe svg payload before persisting", async () => {
+    const unsafeSvg = Buffer.from(`<svg><script>alert(1)</script></svg>`, "utf8").toString("base64");
+    await expect(
+      uploadLibraryFile(
+        {
+          fileName: "unsafe.svg",
+          fileType: "image/svg+xml",
+          fileBase64: unsafeSvg,
+        },
+        {
+          userId: 9,
+          tenantId: 44,
+          role: "user",
+        },
+      ),
+    ).rejects.toThrow("Unsafe SVG content is not allowed");
+
+    expect(mockStoragePut).not.toHaveBeenCalled();
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 });

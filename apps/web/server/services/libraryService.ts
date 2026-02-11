@@ -7,6 +7,7 @@ import {
   validateLibraryUrl,
   type LibraryUrlRejectReason,
 } from "./libraryUrlPolicy";
+import { isSvgUpload, sanitizeUploadedSvg } from "./uploadContentSafety";
 import {
   libraryChunks,
   libraryIndexJobs,
@@ -765,7 +766,7 @@ export async function uploadLibraryFile(
   const b64 = input.fileBase64.includes(",")
     ? input.fileBase64.split(",", 2)[1]
     : input.fileBase64;
-  const fileBuffer = Buffer.from(b64, "base64");
+  let fileBuffer = Buffer.from(b64, "base64");
 
   if (!fileBuffer.length) {
     throw new Error("Uploaded file is empty");
@@ -773,6 +774,15 @@ export async function uploadLibraryFile(
 
   if (fileBuffer.length > MAX_LIBRARY_UPLOAD_BYTES) {
     throw new Error("File too large (max 30MB)");
+  }
+
+  const svgUpload = isSvgUpload(fileType, ext);
+  if (svgUpload) {
+    const sanitized = sanitizeUploadedSvg(fileBuffer);
+    if (!sanitized.safe) {
+      throw new Error("Unsafe SVG content is not allowed");
+    }
+    fileBuffer = sanitized.sanitizedBuffer;
   }
 
   const fileId = crypto.randomUUID().replace(/-/g, "");
@@ -794,6 +804,7 @@ export async function uploadLibraryFile(
         extension: ext || null,
         file_size_bytes: fileBuffer.length,
         source_type: "document_upload",
+        svg_sanitized: svgUpload || undefined,
       },
       sourceUrl: storage.url,
       thumbnailUrl: inferredItemType === "image" ? storage.url : null,
