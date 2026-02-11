@@ -39,3 +39,18 @@ Migrate existing `library_items.source_url` and `thumbnail_url` data to comply w
 ## Notes / Risks
 - Large tenant tables may need batching/throttling.
 - Run dry-run in staging with sampled production-like data before enforcement.
+
+## As-Built Update
+- Actual files changed:
+  - `apps/web/server/services/libraryUrlMigrationService.ts` (new)
+  - `apps/web/server/services/libraryUrlMigrationService.test.ts` (new)
+  - `apps/web/scripts/migrate-library-urls.ts` (new)
+- Deviations from plan:
+  - Script-level tests were skipped; service-level tests cover migration logic directly.
+- Tests added/updated:
+  - `apps/web/server/services/libraryUrlMigrationService.test.ts`
+- Test run:
+  - `bash -lc 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh" && cd /home/dev/projects/SmartSpecPro/apps/web && npm test -- server/services/libraryUrlPolicy.test.ts server/services/libraryUrlMigrationService.test.ts'`
+  - Result: pass (12/12)
+- Follow-ups:
+  - Execute script in staging with production-like dataset before applying normalization/enforcement in production.
