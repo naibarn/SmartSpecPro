@@ -56,6 +56,7 @@ import Generate from "./pages/Generate";
 import MediaStudio from "./pages/MediaStudio";
 import Credits from "./pages/Credits";
 import MediaHistory from "./pages/MediaHistory";
+import DocumentManagement from "./pages/DocumentManagement";
 import Settings from "./pages/Settings";
 import SkillBrowser from "./pages/SkillBrowser";
 import DockerRedirect from "./pages/DockerRedirect";
@@ -131,6 +132,7 @@ function Router() {
       <Route path="/usage" component={UsageAnalytics} />
       <Route path="/tasks" component={TaskQueueMonitor} />
       <Route path="/media-history" component={MediaHistory} />
+      <Route path="/document-management" component={DocumentManagement} />
       <Route path="/settings" component={Settings} />
       <Route path="/settings/skills" component={SkillBrowser} />
       <Route path="/profile" component={Profile} />
