@@ -26,6 +26,11 @@ export interface ReprocessDlqResult {
   eventMovedToRetry: boolean;
 }
 
+export interface LibraryOpsScopeInput {
+  tenantId?: string | null;
+  includeGlobalCallbackMetrics?: boolean;
+}
+
 export function createLibraryOpsRepository(db: DrizzleDB): LibraryOpsRepository {
   return {
     getDlqEntryById: async (id) => {
@@ -108,16 +113,22 @@ export async function retryFailedLibraryIndexJobs(
   input: {
     jobIds?: number[];
     limit?: number;
+    tenantId?: string | null;
   },
 ): Promise<{ retried: number; jobIds: number[] }> {
   const limit = Math.min(Math.max(input.limit ?? 100, 1), 500);
+  const tenantId = input.tenantId ? String(input.tenantId).trim() : null;
 
   let targetIds = (input.jobIds ?? []).filter((id) => Number.isInteger(id) && id > 0);
   if (!targetIds.length) {
+    const failedWhere = [eq(libraryIndexJobs.status, "failed")];
+    if (tenantId) {
+      failedWhere.push(eq(libraryIndexJobs.tenantId, tenantId));
+    }
     const rows = await db
-      .select({ id: libraryIndexJobs.id })
+      .select({ id: libraryIndexJobs.id, tenantId: libraryIndexJobs.tenantId })
       .from(libraryIndexJobs)
-      .where(eq(libraryIndexJobs.status, "failed"))
+      .where(and(...failedWhere))
       .orderBy(asc(libraryIndexJobs.id))
       .limit(limit);
     targetIds = rows.map((row) => row.id);
@@ -125,11 +136,37 @@ export async function retryFailedLibraryIndexJobs(
     targetIds = targetIds.slice(0, limit);
   }
 
+  if (targetIds.length) {
+    const scopedWhere = [
+      inArray(libraryIndexJobs.id, targetIds),
+      eq(libraryIndexJobs.status, "failed"),
+    ];
+    if (tenantId) {
+      scopedWhere.push(eq(libraryIndexJobs.tenantId, tenantId));
+    }
+
+    const scopedRows = await db
+      .select({ id: libraryIndexJobs.id })
+      .from(libraryIndexJobs)
+      .where(and(...scopedWhere))
+      .limit(limit);
+
+    targetIds = scopedRows.map((row) => row.id);
+  }
+
   if (!targetIds.length) {
     return { retried: 0, jobIds: [] };
   }
 
   const now = new Date();
+  const updateWhere = [
+    inArray(libraryIndexJobs.id, targetIds),
+    eq(libraryIndexJobs.status, "failed"),
+  ];
+  if (tenantId) {
+    updateWhere.push(eq(libraryIndexJobs.tenantId, tenantId));
+  }
+
   const updated = await db
     .update(libraryIndexJobs)
     .set({
@@ -139,10 +176,7 @@ export async function retryFailedLibraryIndexJobs(
       updatedAt: now,
     })
     .where(
-      and(
-        inArray(libraryIndexJobs.id, targetIds),
-        eq(libraryIndexJobs.status, "failed"),
-      ),
+      and(...updateWhere),
     )
     .returning({ id: libraryIndexJobs.id });
 
@@ -157,26 +191,54 @@ export async function getLibraryOpsSummary(db: DrizzleDB): Promise<{
   callbackRetryPending: number;
   indexRetryPending: number;
   indexFailed: number;
+}>;
+export async function getLibraryOpsSummary(
+  db: DrizzleDB,
+  scope?: LibraryOpsScopeInput,
+): Promise<{
+  callbackDlqPending: number;
+  callbackRetryPending: number;
+  indexRetryPending: number;
+  indexFailed: number;
 }> {
-  const [dlqPending] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(mediaCallbackDlq)
-    .where(eq(mediaCallbackDlq.status, "pending"));
+  const tenantId = scope?.tenantId ? String(scope.tenantId).trim() : null;
+  const includeGlobalCallbackMetrics = Boolean(scope?.includeGlobalCallbackMetrics);
 
-  const [callbackRetryPending] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(mediaCallbackEvents)
-    .where(eq(mediaCallbackEvents.status, "retry_pending"));
+  const [dlqPending] = includeGlobalCallbackMetrics
+    ? await db
+      .select({ count: sql<number>`count(*)` })
+      .from(mediaCallbackDlq)
+      .where(eq(mediaCallbackDlq.status, "pending"))
+      .limit(1)
+    : [{ count: 0 }];
 
+  const [callbackRetryPending] = includeGlobalCallbackMetrics
+    ? await db
+      .select({ count: sql<number>`count(*)` })
+      .from(mediaCallbackEvents)
+      .where(eq(mediaCallbackEvents.status, "retry_pending"))
+      .limit(1)
+    : [{ count: 0 }];
+
+  const indexRetryWhere = [eq(libraryIndexJobs.status, "retry_pending")];
+  if (tenantId) {
+    indexRetryWhere.push(eq(libraryIndexJobs.tenantId, tenantId));
+  }
   const [indexRetryPending] = await db
     .select({ count: sql<number>`count(*)` })
     .from(libraryIndexJobs)
-    .where(eq(libraryIndexJobs.status, "retry_pending"));
+    .where(and(...indexRetryWhere))
+    .limit(1);
 
+  const indexFailedWhere = [eq(libraryIndexJobs.status, "failed")];
+  if (tenantId) {
+    indexFailedWhere.push(eq(libraryIndexJobs.tenantId, tenantId));
+  }
   const [indexFailed] = await db
     .select({ count: sql<number>`count(*)` })
     .from(libraryIndexJobs)
-    .where(eq(libraryIndexJobs.status, "failed"));
+    .where(and(...indexFailedWhere))
+    .limit(1);
 
   return {
     callbackDlqPending: Number(dlqPending?.count || 0),
@@ -185,4 +247,3 @@ export async function getLibraryOpsSummary(db: DrizzleDB): Promise<{
     indexFailed: Number(indexFailed?.count || 0),
   };
 }
-

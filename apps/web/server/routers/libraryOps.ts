@@ -13,28 +13,61 @@ import {
   retryFailedLibraryIndexJobs,
 } from "../services/libraryOpsService";
 
-export const libraryOpsRouter = router({
-  getSummary: adminProcedure.query(async ({ ctx }) => {
-    const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
-    if (!isLibraryEnabledForTenant(tenantId)) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
-    }
+const libraryOpsScopeSchema = z.enum(["tenant", "global"]);
 
-    const db = await getDb();
-    if (!db) {
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-    }
-    return getLibraryOpsSummary(db);
-  }),
+function isGlobalOpsRole(role: unknown): boolean {
+  return role === "admin" || role === "super_admin";
+}
+
+export const libraryOpsRouter = router({
+  getSummary: adminProcedure
+    .input(
+      z.object({
+        scope: libraryOpsScopeSchema.default("tenant").optional(),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const scope = input?.scope ?? "tenant";
+      const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
+      if (scope === "tenant" && (tenantId === null || tenantId === undefined)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant scope is required for library ops summary" });
+      }
+      if (scope === "global" && !isGlobalOpsRole(ctx.user.role)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Global library ops require elevated role" });
+      }
+      if (!isLibraryEnabledForTenant(tenantId)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
+      }
+
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      }
+      return getLibraryOpsSummary(db, {
+        tenantId: scope === "tenant" ? String(tenantId) : null,
+        includeGlobalCallbackMetrics: scope === "global",
+      });
+    }),
 
   reprocessCallbackDlq: adminProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
+        scope: libraryOpsScopeSchema.default("tenant").optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      const scope = input.scope ?? "tenant";
       const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
+      if (scope !== "global") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "DLQ reprocess requires explicit global scope until tenant attribution is complete",
+        });
+      }
+      if (!isGlobalOpsRole(ctx.user.role)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Global library ops require elevated role" });
+      }
       if (!isLibraryEnabledForTenant(tenantId)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
       }
@@ -57,7 +90,7 @@ export const libraryOpsRouter = router({
         userId: ctx.user.id,
         endpoint: "libraryOps.reprocessCallbackDlq",
         requestType: "mutation",
-        requestPayload: { dlqId: input.id, tenantId },
+        requestPayload: { dlqId: input.id, tenantId, operationScope: "global" },
         responsePayload: result,
       });
 
@@ -69,10 +102,18 @@ export const libraryOpsRouter = router({
       z.object({
         jobIds: z.array(z.number().int().positive()).max(500).optional(),
         limit: z.number().int().min(1).max(500).default(100),
+        scope: libraryOpsScopeSchema.default("tenant").optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      const scope = input.scope ?? "tenant";
       const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
+      if (scope === "tenant" && (tenantId === null || tenantId === undefined)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant scope is required for retry operations" });
+      }
+      if (scope === "global" && !isGlobalOpsRole(ctx.user.role)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Global library ops require elevated role" });
+      }
       if (!isLibraryEnabledForTenant(tenantId)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
       }
@@ -82,7 +123,11 @@ export const libraryOpsRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       }
 
-      const result = await retryFailedLibraryIndexJobs(db, input);
+      const result = await retryFailedLibraryIndexJobs(db, {
+        jobIds: input.jobIds,
+        limit: input.limit,
+        tenantId: scope === "tenant" ? String(tenantId) : null,
+      });
       auditLogger.log({
         eventType: "library_mutation",
         userId: ctx.user.id,
@@ -92,6 +137,7 @@ export const libraryOpsRouter = router({
           limit: input.limit,
           requestedCount: input.jobIds?.length ?? 0,
           tenantId,
+          operationScope: scope,
         },
         responsePayload: result,
       });
