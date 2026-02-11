@@ -159,7 +159,7 @@
 
 ## Section 11 - rag-document-management-uiux
 
-- Commit: `<pending>`
+- Commit: `646c007`
 - Plan: `section-11-rag-document-management-uiux.md`
 - Test commands:
   - `cd apps/web && npm run test -- server/services/libraryDocumentManagementService.test.ts server/services/libraryService.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts server/routers/media.addToLibrary.test.ts client/src/lib/documentManagementUi.test.ts`
