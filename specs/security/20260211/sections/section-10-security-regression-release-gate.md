@@ -38,3 +38,18 @@ Finalize test coverage and release criteria to ensure hardening is complete and 
 
 ## Notes / Risks
 - Keep test runtime manageable by grouping focused suites and one integration pass.
+
+## As-Built (Implemented)
+- Added focused security regression + compatibility smoke tests:
+  - `apps/web/server/services/securityRegressionReleaseGate.test.ts`
+  - `apps/web/client/src/lib/securityCompatibility.test.ts`
+- Added release/migration verification artifacts:
+  - `specs/security/20260211/release-gate-checklist.md`
+  - `specs/security/20260211/migration-verification-report.md`
+
+## Deviations From Plan
+- Rather than introducing a heavy new end-to-end harness, section-level regression checks were consolidated into focused smoke suites and explicit release-gate command lists.
+
+## Test Evidence
+- `bash -lc 'export NVM_DIR=\"$HOME/.nvm\" && [ -s \"$NVM_DIR/nvm.sh\" ] && source \"$NVM_DIR/nvm.sh\" && cd apps/web && npm test -- server/services/securityRegressionReleaseGate.test.ts client/src/lib/securityCompatibility.test.ts server/services/libraryUrlPolicy.test.ts server/services/uploadContentSafety.test.ts server/services/libraryFeatureFlags.test.ts server/services/libraryOpsService.test.ts server/routers/libraryOps.test.ts server/services/libraryOpsTenantAttributionService.test.ts server/services/imageProxySafety.test.ts client/src/lib/previewHostSafety.test.ts client/src/lib/documentManagementUi.test.ts'`
+- Result: pass
