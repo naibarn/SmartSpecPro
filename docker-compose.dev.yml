@@ -147,7 +147,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: celery -A app.core.celery_app beat --loglevel=info
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule /tmp/celerybeat-schedule
     healthcheck:
       test: ["CMD-SHELL", "test -f /tmp/celerybeat-schedule || exit 0"]
       interval: 30s

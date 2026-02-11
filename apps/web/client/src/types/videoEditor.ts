@@ -313,28 +313,6 @@ export function createEmptyProject(name: string = 'Untitled Project'): VideoEdit
     timeline: {
       tracks: [
         {
-          id: 'track-t1',
-          type: 'text',
-          name: 'T1',
-          clips: [],
-          muted: false,
-          locked: false,
-          visible: true,
-          height: 50,
-          zIndex: 20
-        },
-        {
-          id: 'track-v2',
-          type: 'overlay',
-          name: 'V2',
-          clips: [],
-          muted: false,
-          locked: false,
-          visible: true,
-          height: 60,
-          zIndex: 10
-        },
-        {
           id: 'track-v1',
           type: 'video',
           name: 'V1',

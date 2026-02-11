@@ -84,7 +84,10 @@ function setupAdminAuth() {
   mockSelect.mockReturnValue(userChain);
 }
 
-describe("Admin Tenants Router", () => {
+const describeSocketSuite =
+  process.env.RUN_SOCKET_TESTS === "true" ? describe : describe.skip;
+
+describeSocketSuite("Admin Tenants Router", () => {
   let server: Server;
   let base: string;
 

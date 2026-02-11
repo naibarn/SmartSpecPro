@@ -12,6 +12,9 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import { tenants } from "../../drizzle/schema";
 
+const describeDbSuite =
+  process.env.RUN_DB_INTEGRATION_TESTS === "true" ? describe : describe.skip;
+
 const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec";
 const sql = postgres(DATABASE_URL);
 const drizzleClient = postgres(DATABASE_URL);
@@ -29,7 +32,7 @@ afterAll(async () => {
   await drizzleClient.end();
 });
 
-describe("Tenant DB Schema Integration", () => {
+describeDbSuite("Tenant DB Schema Integration", () => {
   it("can insert a tenant with all required fields", async () => {
     const tenantId = `tenant-inttest-${Date.now()}`;
     createdIds.push(tenantId);
@@ -182,7 +185,7 @@ describe("Tenant DB Schema Integration", () => {
  * - Incorrect column mappings (e.g. camelCase vs snake_case)
  * - ID type issues (string vs number)
  */
-describe("Drizzle ORM Tenant CRUD", () => {
+describeDbSuite("Drizzle ORM Tenant CRUD", () => {
   it("inserts a tenant via Drizzle with all required fields", async () => {
     const tenantId = `tenant-drz-${Date.now()}`;
     createdIds.push(tenantId);

@@ -235,12 +235,26 @@ describe("getProviderHealth", () => {
 });
 
 describe("getAvailableModelsWithProviders", () => {
+  function mockAvailableModelsQueries(mappedRows: any[], providerRows: any[]) {
+    const mappedOrderByMock = vi.fn().mockResolvedValue(mappedRows);
+    const mappedWhereMock = vi.fn().mockReturnValue({ orderBy: mappedOrderByMock });
+    const mappedJoinMock = vi.fn().mockReturnValue({ where: mappedWhereMock });
+    const mappedFromMock = vi.fn().mockReturnValue({ innerJoin: mappedJoinMock });
+
+    const providerWhereMock = vi.fn().mockResolvedValue(providerRows);
+    const providerFromMock = vi.fn().mockReturnValue({ where: providerWhereMock });
+
+    mockDbSelect
+      .mockImplementationOnce(() => ({ from: mappedFromMock }))
+      .mockImplementationOnce(() => ({ from: providerFromMock }));
+  }
+
   it("returns models grouped with providers", async () => {
     const rows = [
       { modelId: "gpt-4o", modelName: "GPT-4o", providerId: 1, providerName: "OpenRouter", providerModelId: "openai/gpt-4o", pricingInput: "2.50", pricingOutput: "10.00", isFree: false, isEnabled: true, contextLength: 128000 },
       { modelId: "kimi-k2.5", modelName: "Kimi K2.5", providerId: 2, providerName: "Zen", providerModelId: "kimi-k2.5", pricingInput: "0", pricingOutput: "0", isFree: true, isEnabled: true, contextLength: 128000 },
     ];
-    mockSelectChain(rows);
+    mockAvailableModelsQueries(rows, []);
 
     const fn = multiProviderRouter.getAvailableModelsWithProviders as Function;
     const result = await fn({ ctx: { user: { id: 1 } } });
@@ -252,7 +266,7 @@ describe("getAvailableModelsWithProviders", () => {
 
   it("excludes disabled models", async () => {
     // The query already filters by isEnabled, so this tests the WHERE clause
-    mockSelectChain([]);
+    mockAvailableModelsQueries([], []);
 
     const fn = multiProviderRouter.getAvailableModelsWithProviders as Function;
     const result = await fn({ ctx: { user: { id: 1 } } });
