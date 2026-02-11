@@ -122,7 +122,7 @@ Each section file must be **completely self-contained**. The implementer should 
 If sections aren't being written:
 
 1. **Check sections dir:** `ls {planning_dir}/sections/` - see what was written
-2. **Check tracking files:** `ls ~/.claude/section-writer-agents/` (should be empty after cleanup)
+2. **Check tracking files:** `ls ~/.codex/section-writer-agents/` (should be empty after cleanup)
 3. **Check prompt files:** `{planning_dir}/sections/.prompts/` - review what was sent to subagent
 4. **Check subagent output:** The Task tool response contains the subagent's JSON output for manual fallback
 

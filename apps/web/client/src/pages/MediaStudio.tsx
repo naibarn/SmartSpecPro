@@ -44,6 +44,8 @@ import {
   Download,
   Clock,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   RefreshCw,
   X,
   Upload,
@@ -73,6 +75,7 @@ import {
   Scissors,
   Crop,
   AlertCircle,
+  Library,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -395,6 +398,7 @@ export default function MediaStudio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMedia, setGeneratedMedia] = useState<GeneratedMedia[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
   // Track multiple generation tasks for progressive preview (when count > 1)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([]);
   // Track session start time to filter out old failed tasks from History Gallery
@@ -885,8 +889,9 @@ export default function MediaStudio() {
 
   const handleLibraryResultSelect = useCallback((item: LibrarySearchResultItem) => {
     setSelectedLibraryItemId(item.item_id);
-    if (item.thumbnail_url) {
-      setPreviewUrl(item.thumbnail_url);
+    const previewSource = item.thumbnail_url || item.source_url;
+    if (previewSource) {
+      setPreviewUrl(previewSource);
     }
     if (item.status.toLowerCase() !== "ready") {
       toast.info(`Selected "${item.title}" (${item.status})`);
@@ -3295,15 +3300,41 @@ export default function MediaStudio() {
 
           {/* Right Panel - Preview */}
           <div className="space-y-4">
-            <div className="bg-white/70 backdrop-blur rounded-xl border p-4 sticky top-24 z-10">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                Preview
-                {isGenerating && generationTasks.length > 1 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {generationTasks.filter(t => t.status === 'completed').length}/{generationTasks.length}
-                  </Badge>
-                )}
-              </h3>
+            <div className={cn(
+              "bg-white/70 backdrop-blur rounded-xl border sticky top-24 z-10",
+              isPreviewCollapsed ? "p-3" : "p-4",
+            )}>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="font-semibold flex items-center gap-2">
+                  Preview
+                  {isGenerating && generationTasks.length > 1 && !isPreviewCollapsed && (
+                    <Badge variant="secondary" className="text-xs">
+                      {generationTasks.filter(t => t.status === 'completed').length}/{generationTasks.length}
+                    </Badge>
+                  )}
+                </h3>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => setIsPreviewCollapsed((prev) => !prev)}
+                  title={isPreviewCollapsed ? "Expand preview" : "Collapse preview"}
+                >
+                  {isPreviewCollapsed ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              {isPreviewCollapsed ? (
+                <p className="text-xs text-muted-foreground">
+                  Preview collapsed. Expand to view latest media.
+                </p>
+              ) : (
+                <>
 
               {/* Progressive Grid Preview for multiple images */}
               {generationTasks.length > 1 && (isGenerating || generationTasks.some(t => t.status !== 'queued')) ? (
@@ -3482,6 +3513,8 @@ export default function MediaStudio() {
                   </Button>
                 </div>
               )}
+                </>
+              )}
             </div>
 
             <LibrarySearchPanel
@@ -3525,7 +3558,7 @@ export default function MediaStudio() {
                       <div
                         key={task.id}
                         className={cn(
-                          "relative group",
+                          "relative",
                           task.mediaType === "image" ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                         )}
                         draggable={task.mediaType === "image"}
@@ -3533,9 +3566,49 @@ export default function MediaStudio() {
                         onClick={() => setPreviewUrl(resultUrl)}
                       >
                         {canAddToLibrary && (
-                          <Badge className={`absolute left-1 top-1 z-10 ${libraryState?.action === "adding" ? "bg-amber-100 text-amber-800" : libraryStatusMeta.className}`}>
-                            {libraryState?.action === "adding" ? "Adding" : libraryStatusMeta.label}
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="secondary"
+                                  className={cn(
+                                    "absolute left-1 top-1 z-10 h-7 w-7 rounded-full border shadow-sm",
+                                    libraryState?.action === "adding" && "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-100",
+                                    libraryState?.action === "added" && "border-emerald-300 bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
+                                    libraryState?.action === "error" && "border-red-300 bg-red-100 text-red-700 hover:bg-red-100",
+                                    !libraryState?.action && "border-slate-300 bg-white/95 text-slate-700 hover:bg-white",
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleAddHistoryTaskToLibrary({
+                                      id: task.id,
+                                      status: task.status,
+                                      resultUrl,
+                                    });
+                                  }}
+                                  disabled={libraryState?.action === "adding" || libraryState?.action === "added"}
+                                >
+                                  {libraryState?.action === "adding" ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : libraryState?.action === "added" ? (
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Library className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {libraryState?.action === "adding"
+                                  ? "Adding to library..."
+                                  : libraryState?.action === "added"
+                                    ? "Added to library"
+                                    : libraryStatusMeta.retryable
+                                      ? "Retry add to library"
+                                      : "Add to library"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                         {task.mediaType === "video" ? (
                           <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
@@ -3563,8 +3636,7 @@ export default function MediaStudio() {
                             className="w-full aspect-square object-cover rounded-lg border hover:border-purple-400 transition-colors"
                           />
                         )}
-                        {/* Hover overlay */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center gap-1">
+                        <div className="mt-1 flex items-center justify-center gap-1.5 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
                           {task.mediaType === "image" && (
                             <TooltipProvider>
                               <Tooltip>
@@ -3572,13 +3644,13 @@ export default function MediaStudio() {
                                   <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-7 w-7 text-white hover:bg-white/20"
+                                    className="h-9 w-9 rounded-lg"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       openLightbox(resultUrl, task.prompt || "", task.model, task.createdAt);
                                     }}
                                   >
-                                    <Maximize2 className="h-4 w-4" />
+                                    <Maximize2 className="h-5 w-5" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>View & Copy Prompt</TooltipContent>
@@ -3592,13 +3664,13 @@ export default function MediaStudio() {
                                   <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-7 w-7 text-white hover:bg-white/20"
+                                    className="h-9 w-9 rounded-lg"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       addHistoryAsReference({ id: task.id, resultUrl });
                                     }}
                                   >
-                                    <ImagePlus className="h-4 w-4" />
+                                    <ImagePlus className="h-5 w-5" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Use as reference</TooltipContent>
@@ -3612,13 +3684,13 @@ export default function MediaStudio() {
                                   <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-7 w-7 text-white hover:bg-white/20"
+                                    className="h-9 w-9 rounded-lg"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       openSplitDialog(resultUrl);
                                     }}
                                   >
-                                    <Grid2X2 className="h-4 w-4" />
+                                    <Grid2X2 className="h-5 w-5" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Split Grid</TooltipContent>
@@ -3632,13 +3704,13 @@ export default function MediaStudio() {
                                   <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-7 w-7 text-white hover:bg-white/20"
+                                    className="h-9 w-9 rounded-lg"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       openSplitDialog(resultUrl, "crop");
                                     }}
                                   >
-                                    <Crop className="h-4 w-4" />
+                                    <Crop className="h-5 w-5" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Crop by Ratio</TooltipContent>
@@ -3651,45 +3723,14 @@ export default function MediaStudio() {
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="h-7 w-7 text-white hover:bg-white/20"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    void handleAddHistoryTaskToLibrary({
-                                      id: task.id,
-                                      status: task.status,
-                                      resultUrl,
-                                    });
-                                  }}
-                                  disabled={libraryState?.action === "adding"}
-                                >
-                                  {libraryState?.action === "adding" ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : libraryState?.action === "added" ? (
-                                    <CheckCircle className="h-4 w-4" />
-                                  ) : (
-                                    <ImagePlus className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {libraryStatusMeta.retryable ? "Retry add to library" : "Add to library"}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-white hover:bg-white/20"
+                                  className="h-9 w-9 rounded-lg"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const ext = task.mediaType === "image" ? "png" : task.mediaType === "video" ? "mp4" : "mp3";
                                     downloadMedia(resultUrl, `${task.id}.${ext}`);
                                   }}
                                 >
-                                  <Download className="h-4 w-4" />
+                                  <Download className="h-5 w-5" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>Download</TooltipContent>

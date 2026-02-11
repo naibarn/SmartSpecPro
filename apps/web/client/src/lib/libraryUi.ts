@@ -28,6 +28,7 @@ export interface LibrarySearchResultItem {
   item_id: number;
   item_type: string;
   title: string;
+  source_url: string | null;
   thumbnail_url: string | null;
   status: string;
   source: string;

@@ -914,30 +914,10 @@ export default function DocumentManagement() {
             </div>
           )}
 
-          {isEditorPanelCollapsed ? (
-            <section className="flex items-start xl:shrink-0">
-              <div className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full"
-                  onClick={() => setIsEditorPanelCollapsed(false)}
-                  title="Expand editor panel"
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <div className="rounded bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
-                  {openEditorTabs.length}
-                  {" "}
-                  tabs
-                </div>
-              </div>
-            </section>
-          ) : (
+          {!isEditorPanelCollapsed ? (
             <section
               ref={editorWorkspaceRef}
-              className="min-w-0 flex-1 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md"
+              className="min-w-0 flex-1 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-200"
             >
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -1090,17 +1070,31 @@ export default function DocumentManagement() {
               ) : null}
             </div>
             </section>
-          )}
+          ) : null}
 
           {isMarkdownPreviewPanelOpen ? (
             <aside className={`space-y-3 rounded-3xl border border-slate-200/80 bg-white p-3 shadow-md ${
-              isEditorPanelCollapsed ? "xl:min-w-0 xl:flex-1" : "xl:w-[430px] xl:shrink-0"
+              isEditorPanelCollapsed ? "xl:min-w-0 xl:basis-0 xl:flex-1" : "xl:w-[430px] xl:shrink-0"
             }`}>
               <div className="flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-base font-semibold text-slate-900">Markdown Preview</div>
-                  <div className="text-xs text-muted-foreground">
-                    Live preview for active `.md` document
+                <div className="flex items-center gap-2">
+                  {isEditorPanelCollapsed ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full border border-slate-200 bg-white"
+                      onClick={() => setIsEditorPanelCollapsed(false)}
+                      title="Expand editor panel"
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                  <div>
+                    <div className="text-base font-semibold text-slate-900">Markdown Preview</div>
+                    <div className="text-xs text-muted-foreground">
+                      Live preview for active `.md` document
+                    </div>
                   </div>
                 </div>
                 <Button

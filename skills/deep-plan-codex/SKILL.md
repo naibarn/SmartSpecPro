@@ -2,12 +2,12 @@
 name: deep-plan-codex
 description: Creates detailed, sectionized, TDD-oriented implementation plans in Codex using a file-based workflow (no Claude TaskList dependency). Use when planning complex features that need thorough pre-implementation analysis.
 license: MIT
-compatibility: Requires uv (Python 3.11+). Optional Gemini/OpenAI credentials for external review.
+compatibility: Requires uv (Python 3.11+). Review runs automatically: external LLM when credentials are available, otherwise self-review fallback.
 ---
 
 # Deep Planning Skill (Codex)
 
-Codex-adapted workflow: Research -> Interview -> External Review -> TDD Plan -> Section Split.
+Codex-adapted workflow: Research -> Interview -> Automated Review -> TDD Plan -> Section Split.
 
 This skill is a conversion of `deep-plan` to run without Claude-only task features.
 
@@ -23,7 +23,7 @@ Print this banner first:
 ═══════════════════════════════════════════════════════════════
 DEEP-PLAN (CODEX): AI-Assisted Implementation Planning
 ═══════════════════════════════════════════════════════════════
-Research -> Interview -> External LLM Review -> TDD Plan
+Research -> Interview -> Automated Review -> TDD Plan
 ```
 
 Then find and run validator:
@@ -39,7 +39,7 @@ Parse JSON output and store:
 - `openai_auth`
 - `valid`, `errors`, `warnings`
 
-### 2) Handle Environment Errors
+### 2) Handle Environment Errors and Resolve Review Mode
 
 If `valid == false`:
 - show errors to user
@@ -47,12 +47,10 @@ If `valid == false`:
   - `uv not installed`
   - plugin root cannot be resolved
 
-If errors are only missing LLM credentials, ask user directly with numbered options:
-1. `Self-review only (Recommended)` -> `review_mode=self_review`
-2. `Exit to configure LLMs`
-3. `Skip external review` -> `review_mode=skip`
-
-If LLM credentials exist and are valid, use `review_mode=external_llm`.
+Review is mandatory and automatic:
+- If any external review credential is available (`gemini_auth` or `openai_auth`), set `review_mode=external_llm`.
+- If external credentials are missing/invalid, set `review_mode=self_review` automatically.
+- Do not ask user to choose between external vs self review.
 
 ### 3) Validate Spec File Input
 
@@ -88,6 +86,7 @@ Parse JSON output:
 - `mode` (`new` or `resume`)
 - `resume_from_step`
 - `message`
+- `files_found`
 
 If `success == false`, show error and stop.
 
@@ -100,19 +99,137 @@ Mode: {mode}
 
 If `mode == "resume"`, continue from `resume_from_step`.
 
+Persist selected review mode:
+- Write `<planning_dir>/review-mode.md` with chosen mode and reason.
+
+Artifact naming compatibility:
+- Canonical artifacts use neutral names (`research-notes.md`, `interview-notes.md`, `implementation-spec.md`, `implementation-plan.md`, etc.).
+- If session output reports pre-existing legacy-named artifacts in `files_found`, treat them as valid equivalents.
+- When updating existing plans, continue editing the artifact set already present in that planning directory to avoid split histories.
+
+### 4.1) Existing Plan Detection and Planning Intent (Required on Resume/Existing Plan)
+
+Detect existing planning artifacts in `<planning_dir>`:
+- `implementation-plan.md`
+- `implementation-plan-tdd.md`
+- `sections/index.md`
+
+If any exist (or `mode == "resume"`), ask user what to do:
+1. `Resume from current progress`
+2. `Improve existing plan (Recommended when requirements changed)`
+3. `Rebuild plan from spec (archive old plan files first)`
+
+Write selection to:
+- `<planning_dir>/planning-intent.md`
+
+Use values:
+- `resume_progress`
+- `improve_existing_plan`
+- `rebuild_from_spec`
+
+If `planning_intent == improve_existing_plan`:
+- run a fresh interview round focused on deltas and unresolved decisions
+- allow user to answer previous questions again (full or delta scope)
+- write transcript to `<planning_dir>/interview-refresh.md`
+- merge/append into `<planning_dir>/interview-notes.md` with clear timestamps
+- regenerate downstream artifacts from step 10 onward (`implementation-spec.md`, `implementation-plan.md`, reviews, TDD plan, sections)
+
+If `planning_intent == rebuild_from_spec`:
+- archive existing plan artifacts into `<planning_dir>/archive/<timestamp>/`
+- restart generation from step 6 with current spec and latest interview answers
+
+### 5) Decision Style Handshake (Required)
+
+Before running step 6+, ask user for decision style preference:
+
+1. `Ask me on every multi-option decision`
+2. `Smart auto-decide (Recommended)`
+3. `Auto-decide by default, ask only for critical risk`
+
+Store as `decision_mode` for this run and write:
+- `<planning_dir>/decision-mode.md`
+
+Use values:
+- `ask_every_choice`
+- `smart_auto`
+- `auto_by_default`
+
 ## Workflow
 
 All generated files are saved in `planning_dir`.
 
-### 6) Research Decision
+## Decision Policy (Applies to All Steps)
+
+Whenever a step has multiple valid implementation options:
+
+1) Evaluate option impact first:
+- `high-impact`: architecture, data model, migration/destructive behavior, security posture changes, major UX behavior changes, large scope/cost changes.
+- `low-impact`: formatting, ordering, naming, minor reversible process choices.
+
+2) Apply `decision_mode`:
+- `ask_every_choice`:
+  - always ask user with numbered options.
+- `smart_auto`:
+  - ask user for `high-impact` options.
+  - auto-decide `low-impact` options with concise rationale.
+- `auto_by_default`:
+  - auto-decide both low/high impact.
+  - ask user only if destructive/irreversible risk is present or confidence is low.
+
+3) Always log decisions:
+- Write/update `<planning_dir>/decision-log.md` with:
+  - step
+  - options considered
+  - decision taken
+  - mode used (`asked` or `auto`)
+  - rationale
+
+4) Adaptive preference:
+- If user repeatedly responds with quick numeric confirmations, bias toward more automation within current mode.
+- If user requests more control/detail, bias toward more prompts.
+- User can override anytime with:
+  - `ask mode`
+  - `smart auto`
+  - `auto mode`
+
+## Parallel Execution Policy (Codex)
+
+Use `multi_tool_use.parallel` automatically when operations are independent and low-risk.
+
+### A) Auto-Parallel (use `multi_tool_use.parallel`)
+- Read-only repository discovery:
+  - file listing, text search, reading docs/code, git read-only inspection.
+- Independent analysis checks that do not mutate shared state.
+- Running multiple web searches in parallel when web research is selected.
+
+### B) Do NOT Parallelize (run sequentially)
+- Any file writes/edits.
+- Planning artifacts generation and updates (`*.md` planning artifacts, `sections/*.md`).
+- Git write operations (`add`, `commit`, `merge`, branch changes).
+- DB/schema operations or migration commands.
+- Any operation where ordering affects correctness.
+
+### C) Risk Rule
+- If uncertain whether tasks are independent, treat as risky and run sequentially.
+- If parallel execution causes contention or inconsistent findings, rerun sequentially and log rationale in `<planning_dir>/decision-log.md`.
+
+### 6) Research Decision (Mandatory Baseline)
 
 Read `references/research-protocol.md`.
 
-Decide with user:
-- codebase research?
-- web research?
-- both?
-- include testing coverage analysis (always yes)
+Planning must always perform research before plan writing.
+
+Mandatory baseline research:
+- codebase structure and architecture patterns
+- affected modules/services and integration touchpoints
+- testing setup and current coverage in impacted areas
+- schema/table dependencies and data flow for impacted features
+- existing tenant/security constraints in touched paths
+
+Additional research (decision policy applies):
+- targeted web research for uncertain standards, security hardening, migration patterns, or framework best practices
+
+If the user requests fast-track planning, keep baseline research mandatory and reduce only optional web research scope.
 
 ### 7) Execute Research
 
@@ -123,8 +240,13 @@ If codebase research selected:
 If web research selected:
 - run web research and summarize sources
 
+Execution guidance:
+- Use `multi_tool_use.parallel` for independent read-only tasks.
+- Keep all file writes sequential and centralized in parent flow.
+- If research signals migration or data-risk, explicitly flag this in research output.
+
 Write combined output to:
-- `<planning_dir>/claude-research.md`
+- `<planning_dir>/research-notes.md`
 
 ### 8) Detailed Interview
 
@@ -132,19 +254,27 @@ Read `references/interview-protocol.md`.
 
 Run Q&A in main thread. Keep questions concrete and implementation-oriented.
 
+If `planning_intent == improve_existing_plan`:
+- include change-focused questions first (what changed, what failed, what is missing)
+- ask whether user wants to re-answer prior key questions:
+  1. `Re-answer key questions fully`
+  2. `Answer only changed parts`
+  3. `No re-answer, keep previous answers`
+- reflect this choice in interview transcript and decision log
+
 ### 9) Save Interview Transcript
 
 Write:
-- `<planning_dir>/claude-interview.md`
+- `<planning_dir>/interview-notes.md`
 
 ### 10) Write Initial Spec
 
 Synthesize into:
-- `<planning_dir>/claude-spec.md`
+- `<planning_dir>/implementation-spec.md`
 
 Use:
 - original input spec file
-- `claude-research.md` (if created)
+- `research-notes.md` (if created)
 - interview answers
 
 ### 11) Generate Implementation Plan
@@ -152,20 +282,65 @@ Use:
 Read `references/plan-writing.md`.
 
 Write:
-- `<planning_dir>/claude-plan.md`
+- `<planning_dir>/implementation-plan.md`
 
 Hard constraints:
 - prose only
 - no full function/class implementations
 
-### 12) Context Check (Pre-External Review)
+Required risk and safety content in `implementation-plan.md`:
+- Impact map for existing features likely to regress.
+- Regression prevention strategy (tests, canary/rollout, monitoring, ownership).
+- Data safety strategy for any DB-impacting change:
+  - explicit risk classification (`none` / `low` / `high`).
+  - pre-migration backup plan when risk is not `none`.
+  - restore/rollback runbook with trigger conditions and verification.
+  - non-destructive migration-first approach (`expand -> migrate/backfill -> contract`).
+  - automated migration/backfill steps and post-migration consistency checks.
+- Compatibility notes so existing functionality continues working unless explicitly changed.
+- If no DB risk exists, plan must state why backup/restore is not required for this scope.
+
+### 11.1) Plan Quality Uplift Checkpoint (Required)
+
+Immediately after creating `implementation-plan.md`, run a quality-uplift pass.
+
+Create:
+- `<planning_dir>/plan-uplift.md`
+
+Uplift checklist:
+- missing edge cases or failure-mode handling
+- unclear acceptance criteria or weak verification scope
+- rollout/rollback gaps
+- migration/backfill/data integrity gaps
+- security hardening and tenant-isolation gaps
+- backward-compatibility and regression-risk gaps
+- observability/monitoring/alerting gaps
+
+For each uplift item include:
+- severity (`high` / `medium` / `low`)
+- impact (`high-impact` / `low-impact`)
+- rationale
+- concrete plan delta to apply
+
+Then present uplift items to user and ask whether to apply:
+1. `Apply all recommended uplifts`
+2. `Select uplifts to apply`
+3. `Keep current plan`
+
+Write decision and applied changes to:
+- `<planning_dir>/plan-uplift-decisions.md`
+
+If user accepts any item, update:
+- `<planning_dir>/implementation-plan.md`
+
+### 12) Context Check (Pre-Automated Review)
 
 Run:
 
 ```bash
 uv run {plugin_root}/scripts/checks/check-context-decision.py \
   --planning-dir "<planning_dir>" \
-  --upcoming-operation "External LLM Review"
+  --upcoming-operation "Automated Review"
 ```
 
 If response action is `prompt`, ask user:
@@ -174,7 +349,7 @@ If response action is `prompt`, ask user:
 
 If user chooses clear/re-run, stop here.
 
-### 13) External Review
+### 13) Automated Review (Always Required)
 
 Read `references/external-review.md`.
 
@@ -185,26 +360,45 @@ Follow `review_mode`:
     uv run {plugin_root}/scripts/llm_clients/review.py --planning-dir "<planning_dir>" --iteration 1
     ```
   - collect files in `<planning_dir>/reviews/`
+  - if external review execution fails or produces no usable review file, fallback immediately to `self_review`
 - `self_review`:
   - produce `<planning_dir>/reviews/iteration-1-self-review.md`
-- `skip`:
-  - skip to step 16
+
+After review generation, always produce:
+- `<planning_dir>/reviews/iteration-1-summary.md`
+
+Summary requirements:
+- list concrete improvements (severity: `high` / `medium` / `low`)
+- include rationale and affected area
+- include recommended action
+- mark each item as `high-impact` or `low-impact` for decision handling
 
 ### 14) Integrate Review Feedback
 
 Create:
-- `<planning_dir>/claude-integration-notes.md`
+- `<planning_dir>/integration-notes.md`
+- `<planning_dir>/review-actions.md`
 
 Document:
 - accepted suggestions and rationale
 - rejected suggestions and rationale
 
+For each review improvement item, apply decision handling via `decision_mode`:
+- `ask_every_choice`: ask user for every item.
+- `smart_auto`: ask user for `high-impact` items, auto-decide `low-impact` items with rationale.
+- `auto_by_default`: auto-decide all items unless destructive/irreversible risk exists.
+
+Always present review improvement summary to user before proceeding, including:
+- what was auto-applied
+- what needs user decision
+- what was deferred and why
+
 Update:
-- `<planning_dir>/claude-plan.md`
+- `<planning_dir>/implementation-plan.md`
 
 ### 15) User Review Checkpoint
 
-Ask user to review `claude-plan.md` and confirm:
+Ask user to review `implementation-plan.md` and confirm:
 - `Done reviewing`
 
 Wait for confirmation before continuing.
@@ -214,7 +408,7 @@ Wait for confirmation before continuing.
 Read `references/tdd-approach.md`.
 
 Create:
-- `<planning_dir>/claude-plan-tdd.md`
+- `<planning_dir>/implementation-plan-tdd.md`
 
 Mirror plan structure with test stubs and verification criteria.
 
@@ -277,8 +471,10 @@ List generated files and next steps.
 When resuming:
 1. Load `deep_plan_config.json` from planning directory
 2. Re-check generated files and infer current step
-3. Continue from the earliest missing prerequisite step
-4. If prerequisites are missing but downstream files exist, regenerate downstream files
+3. Check `<planning_dir>/planning-intent.md` if present; otherwise ask planning intent again when existing plan artifacts are found
+4. Continue from the earliest missing prerequisite step
+5. If prerequisites are missing but downstream files exist, regenerate downstream files
+6. If intent is `improve_existing_plan`, re-run interview refresh and regenerate from step 10 onward
 
 Priority reference files:
 - `references/research-protocol.md`

@@ -136,6 +136,11 @@ const defaultFormData: FormData = {
 
 const ITEMS_PER_PAGE = 12;
 
+function isImagePreviewUrl(url?: string | null): boolean {
+  if (!url) return false;
+  return /\.(png|jpe?g|gif|webp|avif|svg|bmp)([?#].*)?$/i.test(url);
+}
+
 export default function AdminGallery() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -822,7 +827,14 @@ export default function AdminGallery() {
               </div>
             ) : items && items.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {items.map((item) => (
+                {items.map((item) => {
+                  const videoPoster = isImagePreviewUrl(item.thumbnailUrl)
+                    ? item.thumbnailUrl || undefined
+                    : isImagePreviewUrl(item.fileUrl)
+                      ? item.fileUrl || undefined
+                      : undefined;
+
+                  return (
                   <Card
                     key={item.id}
                     className={`group overflow-hidden cursor-pointer transition-all ${
@@ -834,7 +846,30 @@ export default function AdminGallery() {
                     onDrop={() => handleDrop(item.id)}
                   >
                     <div className="relative aspect-video bg-gray-100">
-                      {item.thumbnailUrl || item.fileUrl ? (
+                      {item.type === "video" ? (
+                        item.fileUrl ? (
+                          <video
+                            src={item.fileUrl}
+                            poster={videoPoster}
+                            className="w-full h-full object-cover"
+                            preload="auto"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                          />
+                        ) : item.thumbnailUrl ? (
+                          <img
+                            src={item.thumbnailUrl}
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            {getTypeIcon(item.type)}
+                          </div>
+                        )
+                      ) : item.thumbnailUrl || item.fileUrl ? (
                         <img
                           src={item.thumbnailUrl || item.fileUrl || ""}
                           alt={item.title}
@@ -995,7 +1030,8 @@ export default function AdminGallery() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <Card className="p-12">
@@ -1180,11 +1216,19 @@ export default function AdminGallery() {
               </div>
               {formData.fileUrl && (
                 <div className="mt-2">
-                  <img
-                    src={formData.fileUrl}
-                    alt="Preview"
-                    className="max-h-32 rounded-lg object-cover"
-                  />
+                  {formData.type === "video" ? (
+                    <video
+                      src={formData.fileUrl}
+                      controls
+                      className="max-h-48 w-full rounded-lg object-cover bg-black"
+                    />
+                  ) : (
+                    <img
+                      src={formData.fileUrl}
+                      alt="Preview"
+                      className="max-h-32 rounded-lg object-cover"
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -1218,6 +1262,15 @@ export default function AdminGallery() {
                   <Upload className="w-4 h-4" />
                 </Button>
               </div>
+              {formData.thumbnailUrl && (
+                <div className="mt-2">
+                  <img
+                    src={formData.thumbnailUrl}
+                    alt="Thumbnail preview"
+                    className="max-h-24 rounded-lg object-cover"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Duration (for videos) */}

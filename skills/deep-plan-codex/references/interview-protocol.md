@@ -1,12 +1,12 @@
 # Interview Protocol
 
-The interview runs directly in this skill (not subagent) because `AskUserQuestion` only works in main conversation context.
+The interview runs directly in this skill in the main conversation.
 
 ## Context
 
 The interview should be informed by:
 - **Initial spec** (always available from `initial_file`)
-- **Research findings** (if step 7 produced `claude-research.md`)
+- **Research findings** (if step 7 produced `research-notes.md`)
 
 If research was done, use it to:
 - Skip questions already answered by research
@@ -22,11 +22,30 @@ If research was done, use it to:
 
 ## Technique
 
-- Use AskUserQuestion with focused questions (2-4 per round)
+- Ask focused questions in normal chat (2-4 per round)
 - Ask open-ended questions, not yes/no
 - Don't ask obvious questions already in spec
 - Dig deeper when answers reveal complexity
 - Summarize periodically to confirm understanding
+
+## Improvement Mode (Existing Plan Refresh)
+
+When improving an existing plan, run a refresh interview before regenerating plan artifacts.
+
+Required refresh flow:
+1. Ask what changed since the last plan (scope, constraints, timeline, risk tolerance).
+2. Ask what was missing or weak in the previous plan.
+3. Ask whether to re-answer prior key questions:
+   - `Re-answer key questions fully`
+   - `Answer only changed parts`
+   - `Keep previous answers`
+4. Capture decisions and rationale for each changed area.
+
+Save refresh transcript to:
+- `<planning_dir>/interview-refresh.md`
+
+Then merge/append into:
+- `<planning_dir>/interview-notes.md`
 
 ## Example Questions
 
@@ -53,7 +72,7 @@ If the user is predominantly answering with 'I don't know' or 'Up to you' to mos
 
 ## Saving the Transcript
 
-After the interview, save the full Q&A to `<planning_dir>/claude-interview.md`:
+After the interview, save the full Q&A to `<planning_dir>/interview-notes.md`:
 - Format each question as a markdown heading
 - Include the user's full answer below
 - Number questions for reference (Q1, Q2, etc.)
