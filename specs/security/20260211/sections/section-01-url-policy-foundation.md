@@ -41,3 +41,17 @@ Build a shared, server-side URL policy module that becomes the single source of 
 ## Notes / Risks
 - Keep compatibility: valid external `https://` image URLs must remain accepted.
 - Do not silently mutate unsafe URLs; reject with explicit reason.
+
+## As-Built Update
+- Actual files changed:
+  - `apps/web/server/services/libraryUrlPolicy.ts` (new)
+  - `apps/web/server/services/libraryUrlPolicy.test.ts` (new)
+- Deviations from plan:
+  - `urlHostSafety.ts` was not split out yet; host safety is currently encapsulated in `libraryUrlPolicy.ts`.
+- Tests added/updated:
+  - `apps/web/server/services/libraryUrlPolicy.test.ts`
+- Test run:
+  - `bash -lc 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh" && cd /home/dev/projects/SmartSpecPro/apps/web && npm test -- server/services/libraryUrlPolicy.test.ts'`
+  - Result: pass (8/8)
+- Follow-ups:
+  - Wire policy into library/media mutation paths in Section 03.
