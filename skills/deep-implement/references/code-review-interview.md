@@ -30,13 +30,15 @@ Defer as follow-up when:
 
 ## User Prompt Style
 
-Use a concise numbered question in chat:
+Use a concise non-nested prompt in chat with item IDs:
 
 ```text
-Section NN review found 2 decision items:
-1) <decision A>
-2) <decision B>
-Reply with choices (e.g., 1A, 2B) or say "auto" to let me choose safest defaults.
+Section NN review decision items:
+- A: <decision A>
+- B: <decision B>
+Reply with choices like:
+- A=<your choice>, B=<your choice>
+or `auto` to let me apply safest defaults.
 ```
 
 ## Transcript Artifact

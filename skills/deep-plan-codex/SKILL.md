@@ -114,10 +114,12 @@ Detect existing planning artifacts in `<planning_dir>`:
 - `implementation-plan-tdd.md`
 - `sections/index.md`
 
-If any exist (or `mode == "resume"`), ask user what to do:
-1. `Resume from current progress`
-2. `Improve existing plan (Recommended when requirements changed)`
-3. `Rebuild plan from spec (archive old plan files first)`
+If any exist (or `mode == "resume"`), resolve planning intent:
+- If `<planning_dir>/planning-intent.md` already exists and user did not request changing it this turn, reuse it and do not ask again.
+- Otherwise ask user with a single-choice prompt:
+  - `resume_progress` = Resume from current progress
+  - `improve_existing_plan` = Improve existing plan (Recommended when requirements changed)
+  - `rebuild_from_spec` = Rebuild plan from spec (archive old plan files first)
 
 Write selection to:
 - `<planning_dir>/planning-intent.md`
@@ -140,11 +142,12 @@ If `planning_intent == rebuild_from_spec`:
 
 ### 5) Decision Style Handshake (Required)
 
-Before running step 6+, ask user for decision style preference:
-
-1. `Ask me on every multi-option decision`
-2. `Smart auto-decide (Recommended)`
-3. `Auto-decide by default, ask only for critical risk`
+Before running step 6+, resolve decision style:
+- If `<planning_dir>/decision-mode.md` exists and user did not request changing mode this turn, reuse it and do not ask again.
+- Otherwise ask user with a single-choice prompt:
+  - `ask_every_choice` = Ask on every multi-option decision
+  - `smart_auto` = Smart auto-decide (Recommended)
+  - `auto_by_default` = Auto-decide by default, ask only for critical risk
 
 Store as `decision_mode` for this run and write:
 - `<planning_dir>/decision-mode.md`
@@ -191,6 +194,42 @@ Whenever a step has multiple valid implementation options:
   - `ask mode`
   - `smart auto`
   - `auto mode`
+
+## Question UX Rules (Required)
+
+When asking users for decisions or interview refresh input:
+- Ask one compact prompt at a time for related fields (avoid multi-message repetition).
+- Never use nested numbered option lists (this causes confusing duplicate numbering).
+- Prefer option codes/keywords (`full`, `delta`, `keep`, `all`) over sub-numbering.
+- Reuse previously answered values from planning files; do not ask the same field twice unless user asked to revise it.
+- If some fields are already known, ask only unresolved fields.
+- For improvement mode, use a single response template in one message.
+
+## Two-Stage Question Flow (Required)
+
+Use strictly separated questioning phases:
+
+### Stage A: Early Intake (Before rewriting plan artifacts)
+- Goal: collect only inputs needed to update scope/direction.
+- Ask in step-by-step order:
+  1. `answer_mode` (`full` | `delta` | `keep`)
+  2. `changes` (what changed from current plan)
+  3. `gaps` (what is missing/weak)
+  4. `focus` (`security` | `migration` | `tests` | `all`)
+- Do not ask recommendation/application decisions in Stage A.
+
+### Stage B: Late Uplift Decisions (After writing `implementation-plan.md`)
+- Goal: present recommended improvements and let user decide adoption.
+- Ask only after `plan-uplift.md` exists.
+- Present a concise recommended list first, then ask decision:
+  - apply all
+  - select items
+  - keep current plan
+- If `decision_mode` is auto-capable, auto-apply low-impact items and ask only high-impact items.
+
+Transition rule:
+- Complete Stage A intake before plan rewrite.
+- Complete Stage B decisions before proceeding to review integration.
 
 ## Parallel Execution Policy (Codex)
 
@@ -256,10 +295,11 @@ Run Q&A in main thread. Keep questions concrete and implementation-oriented.
 
 If `planning_intent == improve_existing_plan`:
 - include change-focused questions first (what changed, what failed, what is missing)
-- ask whether user wants to re-answer prior key questions:
-  1. `Re-answer key questions fully`
-  2. `Answer only changed parts`
-  3. `No re-answer, keep previous answers`
+- run Stage A intake prompt (single message) using this template:
+  - `answer_mode`: `full` | `delta` | `keep`
+  - `changes`: `<what changed>`
+  - `gaps`: `<what is missing/weak>`
+  - `focus`: `security` | `migration` | `tests` | `all`
 - reflect this choice in interview transcript and decision log
 
 ### 9) Save Interview Transcript
@@ -326,6 +366,11 @@ Then present uplift items to user and ask whether to apply:
 1. `Apply all recommended uplifts`
 2. `Select uplifts to apply`
 3. `Keep current plan`
+
+This is Stage B question flow:
+- show recommended uplift items first (short list)
+- then ask the single adoption decision
+- only ask follow-up selection details if user chose option 2
 
 Write decision and applied changes to:
 - `<planning_dir>/plan-uplift-decisions.md`

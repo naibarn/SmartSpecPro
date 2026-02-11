@@ -98,11 +98,12 @@ When uncertain, ask user once and store the chosen command in session notes.
 
 ### 6) Decision Style Handshake (Required)
 
-Before entering the implementation loop, ask user for decision style preference:
-
-1. `Ask me on every multi-option decision`
-2. `Smart auto-decide (Recommended)`
-3. `Auto-decide by default, ask only for critical risk`
+Before entering the implementation loop, resolve decision style:
+- If `<planning_dir>/decision-mode.md` exists and user did not request changing mode this turn, reuse it and do not ask again.
+- Otherwise ask user with a single-choice prompt:
+  - `ask_every_choice` = Ask on every multi-option decision
+  - `smart_auto` = Smart auto-decide (Recommended)
+  - `auto_by_default` = Auto-decide by default, ask only for critical risk
 
 Store as `decision_mode` for this run and write:
 - `<planning_dir>/decision-mode.md`
@@ -150,6 +151,35 @@ Whenever there are multiple valid implementation options:
 
 5) Safety prompts:
 - Context/compaction checkpoints defined by workflow remain mandatory.
+
+## Question UX Rules (Required)
+
+When asking users for decisions:
+- Ask one compact prompt at a time for related fields.
+- Avoid nested numbered option lists; use short option codes/keywords.
+- Reuse known answers from planning artifacts (especially `decision-mode.md`) and do not ask the same field twice unless user asks to revise it.
+- If some fields are already known, ask only unresolved fields.
+
+## Two-Stage Question Flow (Required)
+
+Use strictly separated question phases:
+
+### Stage A: Execution Decisions (Early/Mid Workflow)
+- Decision mode selection (or reuse existing mode)
+- Repeated test-failure branching
+- Context-check continuation decisions
+- Pre-commit hook triage decisions
+
+### Stage B: Post-Implementation Hardening Decisions (Late Workflow)
+- Only after `implementation-security-review.md` exists
+- Present hardening recommendations, then ask one adoption choice:
+  - `plan_now` (create focused hardening plan)
+  - `fix_now` (implement critical/high now)
+  - `defer` (record and continue)
+
+Transition rule:
+- Do not ask Stage B decisions during Stage A.
+- Complete Stage B decision before closing final summary.
 
 ## Parallel Execution Policy (Codex)
 
@@ -227,9 +257,9 @@ Keep scope strictly within section objective.
 5. Run quick regression subset for touched area.
 
 If tests fail repeatedly (3 focused attempts), stop and ask user whether to:
-1. continue debugging,
-2. skip section,
-3. pause workflow.
+- `debug` = continue debugging
+- `skip` = skip current section
+- `pause` = pause workflow
 
 Decision handling for repeated failures must follow `decision_mode`:
 - `ask_every_choice`: always ask.
@@ -296,8 +326,8 @@ Append per section:
 ### Step 9: Context Check (Every 2 Sections)
 
 After sections 02, 04, 06, ... prompt user:
-1. Continue now
-2. `/clear` and resume from progress file
+- `continue` = continue now
+- `clear` = `/clear` and resume from progress file
 
 If user chooses clear, stop cleanly.
 
@@ -338,21 +368,21 @@ Format findings by severity (`critical`, `high`, `medium`, `low`) with:
 
 After producing `implementation-security-review.md`, always ask user immediately:
 
-1. `Create improvement plan now (Recommended)`
-2. `Implement critical/high fixes now without new planning`
-3. `Defer improvements and continue`
+- `plan_now` = Create improvement plan now (Recommended)
+- `fix_now` = Implement critical/high fixes now without new planning
+- `defer` = Defer improvements and continue
 
 Record user choice in:
 - `<planning_dir>/implementation-summary.md`
 
-If user chooses (1):
+If user chooses `plan_now`:
 - Generate a focused follow-up plan file:
   - `<planning_dir>/implementation-hardening-plan.md`
 
-If user chooses (2):
+If user chooses `fix_now`:
 - Prioritize only `critical`/`high` findings first, then re-run tests and update summary.
 
-If user chooses (3):
+If user chooses `defer`:
 - Keep deferred findings explicitly listed in summary with rationale.
 
 ---
