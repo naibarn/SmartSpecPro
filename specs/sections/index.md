@@ -14,6 +14,7 @@ section-07-media-studio-history-ui
 section-08-chat-library-integration
 section-09-observability-backfill-ops
 section-10-rollout-security-hardening
+section-11-rag-document-management-uiux
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -32,6 +33,7 @@ END_MANIFEST -->
 | section-08-chat-library-integration | 03, 05 | 10 | Yes |
 | section-09-observability-backfill-ops | 01, 04 | 10 | Yes |
 | section-10-rollout-security-hardening | 07, 08, 09 | - | No |
+| section-11-rag-document-management-uiux | 03, 05, 10 | - | No |
 
 ## Execution Order
 
@@ -41,6 +43,7 @@ END_MANIFEST -->
 4. `section-05-hybrid-search-api`, `section-06-media-add-to-library`
 5. `section-07-media-studio-history-ui`, `section-08-chat-library-integration`, `section-09-observability-backfill-ops`
 6. `section-10-rollout-security-hardening`
+7. `section-11-rag-document-management-uiux`
 
 ## Section Summaries
 
@@ -73,3 +76,6 @@ Adds metrics/logging/dashboard primitives and backfill controls (dry-run, thrott
 
 ### section-10-rollout-security-hardening
 Finalizes feature-flag rollout logic, quantitative release gates, and security/audit hardening.
+
+### section-11-rag-document-management-uiux
+Adds Dashboard entry + full Document Management UX for personal/shared RAG files, multi-format preview (with MD-first editor), and fast search/sort behavior.

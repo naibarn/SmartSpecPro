@@ -42,7 +42,7 @@ async def backfill_db():
     await engine.dispose()
 
 
-async def _seed_item(db: AsyncSession, tenant_id: int, suffix: int) -> LibraryItem:
+async def _seed_item(db: AsyncSession, tenant_id: str, suffix: int) -> LibraryItem:
     user = User(email=f"backfill-{tenant_id}-{suffix}@example.com", password="hash", credits=100)
     db.add(user)
     await db.commit()
@@ -72,11 +72,11 @@ class TestLibraryBackfillService:
     @pytest.mark.asyncio
     async def test_backfill_dry_run_reports_work_without_writes(self, backfill_db):
         for i in range(3):
-            await _seed_item(backfill_db, tenant_id=401, suffix=i)
+            await _seed_item(backfill_db, tenant_id="tenant-401", suffix=i)
 
         result = await run_library_backfill_batch(
             backfill_db,
-            tenant_id=401,
+            tenant_id="tenant-401",
             cursor=0,
             batch_size=2,
             dry_run=True,
@@ -95,11 +95,11 @@ class TestLibraryBackfillService:
     @pytest.mark.asyncio
     async def test_backfill_pause_resume_preserves_cursor_without_duplicates(self, backfill_db):
         for i in range(4):
-            await _seed_item(backfill_db, tenant_id=402, suffix=i)
+            await _seed_item(backfill_db, tenant_id="tenant-402", suffix=i)
 
         first = await run_library_backfill_batch(
             backfill_db,
-            tenant_id=402,
+            tenant_id="tenant-402",
             cursor=0,
             batch_size=2,
             dry_run=False,
@@ -112,7 +112,7 @@ class TestLibraryBackfillService:
 
         paused = await run_library_backfill_batch(
             backfill_db,
-            tenant_id=402,
+            tenant_id="tenant-402",
             cursor=first["next_cursor"],
             batch_size=2,
             dry_run=False,
@@ -126,7 +126,7 @@ class TestLibraryBackfillService:
 
         resumed = await run_library_backfill_batch(
             backfill_db,
-            tenant_id=402,
+            tenant_id="tenant-402",
             cursor=first["next_cursor"],
             batch_size=2,
             dry_run=False,
@@ -137,7 +137,7 @@ class TestLibraryBackfillService:
 
         restarted = await run_library_backfill_batch(
             backfill_db,
-            tenant_id=402,
+            tenant_id="tenant-402",
             cursor=0,
             batch_size=10,
             dry_run=False,
@@ -148,4 +148,3 @@ class TestLibraryBackfillService:
 
         job_count = await backfill_db.scalar(select(func.count()).select_from(LibraryIndexJob))
         assert job_count == 4
-

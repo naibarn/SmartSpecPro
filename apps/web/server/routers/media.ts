@@ -24,8 +24,9 @@ import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { auditLogger } from "../services/auditLogger";
 import { addMediaTaskToLibrary } from "../services/mediaLibraryService";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
+import { resolveTenantId } from "../services/tenantContext";
 import { getDb } from "../db";
-import { mediaModels } from "../../drizzle/schema";
+import { mediaModels, users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 // Helper to create secure token for Python backend (fallback)
@@ -41,6 +42,31 @@ function createMediaToken(userId: number): string {
 // Get user token - prefer session token from context, fallback to creating new one
 function getUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
   return ctx.userToken || createMediaToken(ctx.user.id);
+}
+
+async function resolveLibraryTenantIdForMedia(
+  ctx: { tenantId: unknown; user: { id: number; currentTenantId?: unknown } },
+): Promise<number | string | null> {
+  let tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
+  if (typeof tenantId === "string") {
+    try {
+      const db = await getDb();
+      if (db) {
+        const rows = await db
+          .select({ currentTenantId: users.currentTenantId })
+          .from(users)
+          .where(eq(users.id, ctx.user.id))
+          .limit(1);
+        const fallbackTenantId = resolveTenantId(null, rows[0]?.currentTenantId);
+        if (typeof fallbackTenantId === "number") {
+          tenantId = fallbackTenantId;
+        }
+      }
+    } catch {
+      // Keep original tenant when lookup is unavailable.
+    }
+  }
+  return tenantId;
 }
 
 /**
@@ -654,7 +680,7 @@ export const mediaRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+      const tenantId = await resolveLibraryTenantIdForMedia(ctx);
       if (tenantId === null || tenantId === undefined) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -679,7 +705,7 @@ export const mediaRouter = router({
           },
           {
             userId: ctx.user.id,
-            tenantId,
+            tenantId: tenantId as any,
             role: ctx.user.role,
           },
         );
@@ -701,7 +727,11 @@ export const mediaRouter = router({
         });
         return result;
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to add media task to library";
+        const rootCause =
+          error instanceof Error && error.cause instanceof Error
+            ? error.cause.message
+            : null;
+        const message = rootCause || (error instanceof Error ? error.message : "Failed to add media task to library");
         if (message.includes("Only completed media tasks")) {
           throw new TRPCError({ code: "BAD_REQUEST", message });
         }

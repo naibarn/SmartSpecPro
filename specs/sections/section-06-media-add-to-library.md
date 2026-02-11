@@ -22,6 +22,7 @@ Integrate media task assets into the library domain via explicit Add-to-Library 
 - `apps/web/server/services/mediaLibraryService.ts`
 - `apps/web/server/services/mediaLibraryService.test.ts`
 - `apps/web/server/routers/media.addToLibrary.test.ts`
+- `apps/web/server/services/tenantContext.ts`
 - `specs/reviews/section-06-review.md`
 - `specs/reviews/section-06-interview.md`
 
@@ -76,3 +77,18 @@ Result:
 
 - Wire `autoAddMediaTaskToLibrary` to completion event path once rollout gating is finalized.
 - Add integration test with real Python task endpoint + DB transaction fixtures.
+
+## Post-implementation Hotfix
+
+- Applied DB hotfix migration `apps/web/drizzle/0020_library_tenant_id_varchar.sql` to align all library tenant columns with tenant domain IDs:
+  - `library_items.tenant_id`
+  - `library_chunks.tenant_id`
+  - `library_permissions.tenant_id`
+  - `library_index_jobs.tenant_id`
+- Restored tenant foreign keys from each library table to `tenants(id)` after type alignment.
+- Updated library domain code (`apps/web/server/services/libraryService.ts`) to normalize tenant IDs as string values for all DB reads/writes.
+- Updated Python library models/services to use string tenant IDs for indexing/backfill compatibility.
+- Adjusted tenant resolution precedence in `tenantContext` to prefer request tenant context first, then user profile fallback.
+- Added router regression tests to lock priority behavior:
+  - `apps/web/server/routers/media.addToLibrary.test.ts`
+  - `apps/web/server/routers/library.test.ts`

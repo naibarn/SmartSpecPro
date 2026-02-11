@@ -156,6 +156,23 @@ This plan defines a phased implementation to introduce a unified library + RAG l
 - Add source picker for library search.
 - Support attach-to-context for chosen library item.
 
+### 9.4 RAG Document Management
+- Add direct Dashboard entry to `Document Management`.
+- Provide three user-facing scopes:
+  - My Library (personal files)
+  - Shared With Me (direct share)
+  - Shared Groups (group/role share)
+- Add multi-format preview surface for common document/media file types with safe fallback flow.
+- Add Markdown-first in-app editor:
+  - edit/save `.md`
+  - persist back to RAG storage
+  - enqueue re-index and show indexing status in UI
+- Add fast search/sort interactions:
+  - keyword search with debounce
+  - newest-first default ordering
+  - type/owner/share/status/date filters
+  - stable pagination and URL-state persistence
+
 ## 10. Backfill Controls and Operational Safety
 
 - Tenant-scoped batch processing with configurable batch size.
@@ -236,3 +253,21 @@ MVP is complete when:
 - Callback/manual fetch dependence is reduced by durable retry/reconcile flow.
 - Operational telemetry and reprocessing capabilities exist for indexing and callback failures.
 - Quantitative reliability gates in section 11.3 are met.
+
+## 17. UI/UX Extension - Document Management (Post-MVP track)
+
+### 17.1 Navigation and IA
+- Dashboard includes a primary navigation entry to Document Management.
+- Information architecture separates personal, direct-shared, and group-shared content clearly.
+
+### 17.2 Preview and Editing
+- Preview supports high-frequency file types used in RAG workflows.
+- Markdown editor includes save lifecycle + conflict handling and explicit index-state feedback.
+
+### 17.3 Performance Expectations
+- Search interaction target is near-instant perceived response for small/medium libraries.
+- List rendering uses virtualization/lazy preview to keep UX responsive on large datasets.
+
+### 17.4 Security and Sharing UX
+- Visibility of actions is permission-driven (no UI affordance for unauthorized mutation).
+- Share provenance is explicit per item to avoid confusion between personal/direct/group sources.

@@ -70,7 +70,7 @@ class TestLibraryModels:
         await library_db.refresh(user)
 
         item = LibraryItem(
-            tenant_id=101,
+            tenant_id="tenant-101",
             owner_user_id=user.id,
             item_type="image",
             source="media_history",
@@ -102,7 +102,7 @@ class TestLibraryModels:
         await library_db.refresh(user)
 
         item = LibraryItem(
-            tenant_id=102,
+            tenant_id="tenant-102",
             owner_user_id=user.id,
             item_type="video",
             source="media_studio",
@@ -144,7 +144,7 @@ class TestLibraryModels:
         await library_db.refresh(user)
 
         item = LibraryItem(
-            tenant_id=103,
+            tenant_id="tenant-103",
             owner_user_id=user.id,
             item_type="document",
             source="upload",

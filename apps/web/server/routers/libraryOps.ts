@@ -5,6 +5,7 @@ import { adminProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { auditLogger } from "../services/auditLogger";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
+import { resolveTenantId } from "../services/tenantContext";
 import {
   createLibraryOpsRepository,
   getLibraryOpsSummary,
@@ -14,7 +15,7 @@ import {
 
 export const libraryOpsRouter = router({
   getSummary: adminProcedure.query(async ({ ctx }) => {
-    const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+    const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
     if (!isLibraryEnabledForTenant(tenantId)) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
     }
@@ -33,7 +34,7 @@ export const libraryOpsRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+      const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
       if (!isLibraryEnabledForTenant(tenantId)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
       }
@@ -71,7 +72,7 @@ export const libraryOpsRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+      const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
       if (!isLibraryEnabledForTenant(tenantId)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Library feature is disabled for this tenant" });
       }

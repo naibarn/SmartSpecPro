@@ -56,6 +56,11 @@ This file mirrors `claude-plan.md` and defines tests to write before implementat
 - Test (UI): Media Studio Search Library panel displays ready/indexing/failed states.
 - Test (UI): Media History can add item and reflects already-added state.
 - Test (UI): Chat source picker can search and attach selected library item to context.
+- Test (UI): Dashboard has direct navigation entry to Document Management.
+- Test (UI): Document Management correctly separates My Library, Shared With Me, and Shared Groups.
+- Test (UI): Multi-format preview supports common types and falls back safely when unsupported.
+- Test (UI): Markdown editor save updates content and triggers indexing status transitions.
+- Test (UI): Default sort is newest first; keyword search and filters remain stable during pagination.
 
 ## 10. Backfill Controls and Operational Safety
 
@@ -95,3 +100,10 @@ This file mirrors `claude-plan.md` and defines tests to write before implementat
 
 - Test: SLO and reliability gate metrics are queryable and meet thresholds in staging observation window.
 - Test: no critical P0/P1 failures remain in callback/index/search workflow during rollout validation.
+
+## 17. UI/UX Extension - Document Management (Post-MVP track)
+
+- Test: permission-driven UI hides unauthorized edit/share/delete actions.
+- Test: share provenance labels (owner/direct/group) are accurate for every listed file.
+- Test: markdown save conflict returns actionable UI state without silent overwrite.
+- Test: re-index enqueue after markdown save is idempotent per content version.

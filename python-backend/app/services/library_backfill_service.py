@@ -21,7 +21,7 @@ ACTIVE_JOB_STATUSES = (PENDING_STATUS, PROCESSING_STATUS, RETRY_PENDING_STATUS)
 ELIGIBLE_ITEM_STATUSES = ("ready", "failed", "indexing")
 
 
-def _candidate_query(*, tenant_id: int | None, cursor: int):
+def _candidate_query(*, tenant_id: str | None, cursor: int):
     has_chunks = exists(
         select(LibraryChunk.id).where(LibraryChunk.library_item_id == LibraryItem.id)
     )
@@ -51,7 +51,7 @@ def _candidate_query(*, tenant_id: int | None, cursor: int):
     )
 
 
-async def _count_candidates(db: AsyncSession, *, tenant_id: int | None, cursor: int) -> int:
+async def _count_candidates(db: AsyncSession, *, tenant_id: str | None, cursor: int) -> int:
     query = _candidate_query(tenant_id=tenant_id, cursor=cursor).subquery()
     count = await db.scalar(select(func.count()).select_from(query))
     return int(count or 0)
@@ -60,7 +60,7 @@ async def _count_candidates(db: AsyncSession, *, tenant_id: int | None, cursor: 
 async def run_library_backfill_batch(
     db: AsyncSession,
     *,
-    tenant_id: int | None = None,
+    tenant_id: str | None = None,
     cursor: int = 0,
     batch_size: int = 100,
     dry_run: bool = True,
@@ -172,4 +172,3 @@ async def run_library_backfill_batch(
         "created_job_ids": created_job_ids,
         "enqueue_attempted": enqueue_attempted,
     }
-
