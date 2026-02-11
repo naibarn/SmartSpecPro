@@ -30,3 +30,17 @@ Enforce deny-by-default behavior when tenant context is missing in allowlist mod
 
 ## Notes / Risks
 - Ensure numeric/string tenant id normalization remains compatible.
+
+## As-Built Update
+- Actual files changed:
+  - `apps/web/server/services/libraryFeatureFlags.ts`
+  - `apps/web/server/services/libraryFeatureFlags.test.ts` (new)
+- Deviations from plan:
+  - Router test files were not modified because existing router coverage remained valid after service-level gating change.
+- Tests added/updated:
+  - `apps/web/server/services/libraryFeatureFlags.test.ts`
+- Test run:
+  - `bash -lc 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh" && cd /home/dev/projects/SmartSpecPro/apps/web && npm test -- server/services/libraryFeatureFlags.test.ts server/routers/library.test.ts server/routers/media.addToLibrary.test.ts'`
+  - Result: pass (26/26)
+- Follow-ups:
+  - Add explicit `libraryOps` router tests for allowlist-deny behavior when tenant context is missing/invalid.

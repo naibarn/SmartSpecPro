@@ -22,8 +22,15 @@
   - Policy enforcement for media add-to-library is achieved through shared `createLibraryItem` validation, so `mediaLibraryService.ts` was not directly modified.
 
 ## Section section-04-active-content-upload-protection
-- Commit: pending
+- Commit: `f4abd54`
 - Test command: `bash -lc "cd apps/web && npm test -- server/services/uploadContentSafety.test.ts server/services/libraryUrlPolicy.test.ts server/services/libraryService.test.ts server/services/mediaLibraryService.test.ts server/routers/library.test.ts server/routers/media.addToLibrary.test.ts"`
 - Pass/fail summary: pass (51/51)
 - Notable deviations:
   - Static middleware behavior is validated through `uploadContentSafety` helper tests instead of direct express route tests.
+
+## Section section-05-tenant-feature-gating
+- Commit: pending
+- Test command: `bash -lc "cd apps/web && npm test -- server/services/libraryFeatureFlags.test.ts server/routers/library.test.ts server/routers/media.addToLibrary.test.ts"`
+- Pass/fail summary: pass (26/26)
+- Notable deviations:
+  - Router files did not require direct changes; service-level gating behavior is covered and router regressions were validated by existing tests.

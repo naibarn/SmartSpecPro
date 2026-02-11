@@ -38,7 +38,7 @@ export function isLibraryEnabledForTenant(tenantId: unknown): boolean {
 
   const normalized = normalizeTenantIdValue(tenantId);
 
-  // Admin/global operations may not carry explicit tenant context.
-  if (!normalized) return true;
+  // In allowlist mode, missing tenant context must fail closed.
+  if (!normalized) return false;
   return allowlist.has(normalized);
 }
