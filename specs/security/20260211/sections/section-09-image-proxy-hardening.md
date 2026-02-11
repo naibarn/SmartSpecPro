@@ -35,3 +35,17 @@ Harden `/api/media/image-proxy` against SSRF/resource abuse without breaking val
 
 ## Notes / Risks
 - Ensure fetch implementation supports timeout and response size interruption cleanly.
+
+## As-Built (Implemented)
+- Added dedicated image proxy hardening service:
+  - `apps/web/server/services/imageProxySafety.ts`
+  - `apps/web/server/services/imageProxySafety.test.ts`
+- Updated proxy endpoint to use centralized hardening logic:
+  - `apps/web/server/_core/index.ts`
+
+## Deviations From Plan
+- Redirect-aware validation and payload/timeout protections were implemented in a service abstraction rather than inline in route code to keep route responses stable and tests deterministic.
+
+## Test Evidence
+- `bash -lc 'export NVM_DIR=\"$HOME/.nvm\" && [ -s \"$NVM_DIR/nvm.sh\" ] && source \"$NVM_DIR/nvm.sh\" && cd apps/web && npm test -- server/services/imageProxySafety.test.ts server/services/libraryUrlPolicy.test.ts'`
+- Result: pass (16 tests)
