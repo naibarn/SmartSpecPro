@@ -70,7 +70,7 @@ describe("searchLibraryItems", () => {
         status: "ready",
         visibility: "private",
         metadata: { provider: "kie_ai", model: "veo-3-1" },
-        sourceUrl: null,
+        sourceUrl: "https://cdn.example.com/demo.mp4",
         thumbnailUrl: null,
         deletedAt: null,
         createdAt: new Date(baseDate.getTime() + 2_000),
@@ -127,6 +127,7 @@ describe("searchLibraryItems", () => {
     expect(response.results.map((r) => r.item_id)).toEqual([3, 2, 1]);
     expect(response.results[0].combined_score).toBeGreaterThan(response.results[1].combined_score);
     expect(response.results[1].combined_score).toBeGreaterThan(response.results[2].combined_score);
+    expect(response.results.find((r) => r.item_id === 2)?.source_url).toBe("https://cdn.example.com/demo.mp4");
   });
 
   it("enforces tenant/ACL visibility and prevents private leakage", async () => {

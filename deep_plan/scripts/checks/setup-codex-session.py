@@ -18,15 +18,36 @@ from lib.config import ConfigError, get_or_create_session_config, save_session_c
 from lib.sections import check_section_progress
 
 
+ARTIFACT_CANDIDATES = {
+    "research": ["research-notes.md", "claude-research.md"],
+    "interview": ["interview-notes.md", "claude-interview.md"],
+    "spec": ["implementation-spec.md", "claude-spec.md"],
+    "plan": ["implementation-plan.md", "claude-plan.md"],
+    "integration_notes": ["integration-notes.md", "claude-integration-notes.md"],
+    "plan_tdd": ["implementation-plan-tdd.md", "claude-plan-tdd.md"],
+}
+
+
+def _artifact_exists(planning_dir: Path, key: str) -> bool:
+    return any((planning_dir / name).exists() for name in ARTIFACT_CANDIDATES[key])
+
+
+def _artifact_label(planning_dir: Path, key: str) -> str:
+    for name in ARTIFACT_CANDIDATES[key]:
+        if (planning_dir / name).exists():
+            return name
+    return ARTIFACT_CANDIDATES[key][0]
+
+
 def scan_planning_files(planning_dir: Path) -> dict:
     """Scan planning directory for existing workflow files."""
     files = {
-        "research": (planning_dir / "claude-research.md").exists(),
-        "interview": (planning_dir / "claude-interview.md").exists(),
-        "spec": (planning_dir / "claude-spec.md").exists(),
-        "plan": (planning_dir / "claude-plan.md").exists(),
-        "integration_notes": (planning_dir / "claude-integration-notes.md").exists(),
-        "plan_tdd": (planning_dir / "claude-plan-tdd.md").exists(),
+        "research": _artifact_exists(planning_dir, "research"),
+        "interview": _artifact_exists(planning_dir, "interview"),
+        "spec": _artifact_exists(planning_dir, "spec"),
+        "plan": _artifact_exists(planning_dir, "plan"),
+        "integration_notes": _artifact_exists(planning_dir, "integration_notes"),
+        "plan_tdd": _artifact_exists(planning_dir, "plan_tdd"),
         "reviews": [],
         "sections": [],
         "sections_index": False,
@@ -53,7 +74,7 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
     """
     if files["sections_index"]:
         if not files["plan_tdd"]:
-            return 16, "MISSING PREREQUISITE: claude-plan-tdd.md - overwrite sections after step 16"
+            return 16, "MISSING PREREQUISITE: implementation-plan-tdd.md - overwrite sections after step 16"
 
         section_state = section_progress["state"]
         if section_state == "complete":
@@ -65,7 +86,7 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
 
     if files["sections"]:
         if not files["plan_tdd"]:
-            return 16, "MISSING PREREQUISITE: claude-plan-tdd.md - overwrite sections after step 16"
+            return 16, "MISSING PREREQUISITE: implementation-plan-tdd.md - overwrite sections after step 16"
         return 18, "section files exist but index missing"
 
     if files["plan_tdd"]:
@@ -73,22 +94,22 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
 
     if files["integration_notes"]:
         if not files["plan"]:
-            return 11, "MISSING PREREQUISITE: claude-plan.md - overwrite integration notes after step 11"
+            return 11, "MISSING PREREQUISITE: implementation-plan.md - overwrite integration notes after step 11"
         return 15, "feedback integrated"
 
     if files["reviews"]:
         if not files["plan"]:
-            return 11, "MISSING PREREQUISITE: claude-plan.md - overwrite reviews after step 11"
+            return 11, "MISSING PREREQUISITE: implementation-plan.md - overwrite reviews after step 11"
         return 14, "external review complete"
 
     if files["plan"]:
         if not files["spec"]:
-            return 10, "MISSING PREREQUISITE: claude-spec.md - overwrite plan after step 10"
+            return 10, "MISSING PREREQUISITE: implementation-spec.md - overwrite plan after step 10"
         return 12, "implementation plan complete"
 
     if files["spec"]:
         if not files["interview"]:
-            return 9, "MISSING PREREQUISITE: claude-interview.md - overwrite spec after step 9"
+            return 9, "MISSING PREREQUISITE: interview-notes.md - overwrite spec after step 9"
         return 11, "spec complete"
 
     if files["interview"]:
@@ -102,18 +123,19 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
 
 def build_files_summary(files: dict, section_progress: dict) -> list[str]:
     summary: list[str] = []
+    planning_dir = Path(section_progress["planning_dir"])
     if files["research"]:
-        summary.append("claude-research.md")
+        summary.append(_artifact_label(planning_dir, "research"))
     if files["interview"]:
-        summary.append("claude-interview.md")
+        summary.append(_artifact_label(planning_dir, "interview"))
     if files["spec"]:
-        summary.append("claude-spec.md")
+        summary.append(_artifact_label(planning_dir, "spec"))
     if files["plan"]:
-        summary.append("claude-plan.md")
+        summary.append(_artifact_label(planning_dir, "plan"))
     if files["integration_notes"]:
-        summary.append("claude-integration-notes.md")
+        summary.append(_artifact_label(planning_dir, "integration_notes"))
     if files["plan_tdd"]:
-        summary.append("claude-plan-tdd.md")
+        summary.append(_artifact_label(planning_dir, "plan_tdd"))
     if files["reviews"]:
         summary.append(f"reviews/ ({len(files['reviews'])} files)")
     if files["sections"] or files["sections_index"]:
@@ -180,6 +202,7 @@ def main() -> int:
 
     files = scan_planning_files(planning_dir)
     section_progress = check_section_progress(planning_dir)
+    section_progress["planning_dir"] = str(planning_dir)
     resume_step, message = infer_resume_step(files, section_progress)
 
     mode = "resume" if build_files_summary(files, section_progress) else "new"

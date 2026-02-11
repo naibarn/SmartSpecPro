@@ -19,8 +19,8 @@ For each `section-NN-*` in manifest order:
 
 Read:
 - `sections/section-NN-*.md`
-- relevant entries in `claude-plan.md`
-- matching test intent in `claude-plan-tdd.md`
+- relevant entries in `implementation-plan.md`
+- matching test intent in `implementation-plan-tdd.md`
 
 Extract:
 - required behavior

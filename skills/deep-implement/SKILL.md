@@ -58,9 +58,15 @@ Stop and wait for re-invocation.
 Given `<sections_dir>`:
 - `planning_dir = parent of sections_dir`
 - expect files:
-  - `<planning_dir>/claude-plan.md`
-  - `<planning_dir>/claude-plan-tdd.md`
+  - `<planning_dir>/implementation-plan.md`
+  - `<planning_dir>/implementation-plan-tdd.md`
   - `<sections_dir>/index.md`
+
+Compatibility resolution:
+- If canonical filenames are missing, detect existing plan artifacts in `planning_dir`:
+  - plan artifact: first match of `*plan.md` (excluding `*plan-tdd.md`)
+  - TDD artifact: first match of `*plan-tdd.md`
+- Use the detected pair consistently for reads/updates in this run.
 
 Read `index.md` manifest and determine:
 - ordered section list
@@ -90,7 +96,105 @@ If missing, infer from repository:
 
 When uncertain, ask user once and store the chosen command in session notes.
 
+### 6) Decision Style Handshake (Required)
+
+Before entering the implementation loop, ask user for decision style preference:
+
+1. `Ask me on every multi-option decision`
+2. `Smart auto-decide (Recommended)`
+3. `Auto-decide by default, ask only for critical risk`
+
+Store as `decision_mode` for this run and write:
+- `<planning_dir>/decision-mode.md`
+
+Use values:
+- `ask_every_choice`
+- `smart_auto`
+- `auto_by_default`
+
 ---
+
+## Decision Policy (Applies to All Steps)
+
+Whenever there are multiple valid implementation options:
+
+1) Evaluate impact:
+- `high-impact`: skipping sections, scope changes, schema/migration changes, disabling/weakening tests, changing commit strategy, security-sensitive tradeoffs.
+- `low-impact`: naming/order/style choices, minor reversible workflow details.
+
+2) Apply `decision_mode`:
+- `ask_every_choice`:
+  - always ask user with numbered options.
+- `smart_auto`:
+  - ask user for `high-impact` decisions.
+  - auto-decide `low-impact` decisions with concise rationale.
+- `auto_by_default`:
+  - auto-decide both low/high impact.
+  - ask user only for destructive/irreversible risk or low-confidence decisions.
+
+3) Always log decisions:
+- Write/update `<planning_dir>/implementation-decision-log.md`:
+  - section or step
+  - options considered
+  - decision taken
+  - mode used (`asked` or `auto`)
+  - rationale
+
+4) Adaptive preference:
+- If user repeatedly replies with quick numeric confirmations, bias toward more automation within current mode.
+- If user requests more control/detail, bias toward more prompts.
+- User can override anytime with:
+  - `ask mode`
+  - `smart auto`
+  - `auto mode`
+
+5) Safety prompts:
+- Context/compaction checkpoints defined by workflow remain mandatory.
+
+## Parallel Execution Policy (Codex)
+
+Use `multi_tool_use.parallel` automatically when tasks are independent and low-risk.
+
+### A) Auto-Parallel (use `multi_tool_use.parallel`)
+- Safe read-only discovery:
+  - listing files/dirs, reading files, searching text, checking git status/history.
+- Independent analysis checks that do not mutate shared state.
+- Multiple file reads in different paths for context gathering.
+
+### B) Do NOT Parallelize (run sequentially)
+- Any file edits that may touch overlapping files.
+- Database/schema migrations and data backfills.
+- Test runs likely to contend for same environment/resources.
+- Git write operations (`add`, `commit`, `merge`, branch changes).
+- Service start/stop/restart operations.
+- Any step with non-trivial rollback risk.
+
+### C) Risk Rule
+- If uncertain whether tasks are independent, treat as risky and run sequentially.
+- If parallel execution fails due to race/contention, retry sequentially and log the change.
+
+## Blocked Task Queue Policy
+
+When a task cannot proceed because of dependency/blocker, do not drop it. Record and revisit it.
+
+### Tracking File
+- Write/update: `<planning_dir>/implementation-blocked-tasks.md`
+
+### Required fields per blocked task
+- `task_id` (stable short id)
+- `section`
+- `task`
+- `blocked_by`
+- `unblock_condition`
+- `status` (`blocked` | `ready` | `done` | `dropped-with-rationale`)
+- `owner_step` (where to retry)
+- `notes`
+
+### Execution rule
+1. Before starting a new section, scan blocked tasks and execute any `ready` tasks first.
+2. After major milestones in a section (tests green, review fixes, pre-commit), re-check blocked tasks.
+3. Before finalizing workflow, blocked queue must have no remaining `blocked`/`ready` items unless explicitly approved by user.
+4. If any blocked task is intentionally dropped, record `dropped-with-rationale` and user approval reference.
 
 ## Implementation Loop (Per Section)
 
@@ -102,8 +206,8 @@ For each incomplete `section-NN-*`:
 
 Read:
 - `<sections_dir>/section-NN-*.md`
-- relevant plan context from `<planning_dir>/claude-plan.md`
-- matching TDD expectations in `<planning_dir>/claude-plan-tdd.md`
+- relevant plan context from `<planning_dir>/implementation-plan.md`
+- matching TDD expectations in `<planning_dir>/implementation-plan-tdd.md`
 
 ### Step 2: Plan Minimal Slice
 
@@ -126,6 +230,11 @@ If tests fail repeatedly (3 focused attempts), stop and ask user whether to:
 1. continue debugging,
 2. skip section,
 3. pause workflow.
+
+Decision handling for repeated failures must follow `decision_mode`:
+- `ask_every_choice`: always ask.
+- `smart_auto`: ask before skip/pause; may auto-continue debugging with rationale.
+- `auto_by_default`: auto-decide unless destructive/irreversible risk is present.
 
 ### Step 4: Section Review
 
@@ -174,6 +283,7 @@ If pre-commit hooks modify files, re-stage and retry commit.
 
 Write/update:
 - `<planning_dir>/implementation-progress.md`
+- `<planning_dir>/implementation-blocked-tasks.md` (if any blocked tasks exist)
 
 Append per section:
 - section name
@@ -181,6 +291,7 @@ Append per section:
 - test command used
 - pass/fail summary
 - notable deviations
+- blocked tasks resolved/remaining summary
 
 ### Step 9: Context Check (Every 2 Sections)
 
@@ -197,13 +308,52 @@ If user chooses clear, stop cleanly.
 After all sections complete:
 
 1. Run full agreed test command (or best available comprehensive suite).
-2. Write final report:
+2. Run mandatory post-implementation security re-review.
+3. Write final report:
    - `<planning_dir>/implementation-summary.md`
-3. Include:
+4. Include:
    - implemented sections
    - commit list
    - remaining risks / deferred items
    - suggested next implementation steps
+
+### Mandatory Post-Implementation Security Re-Review
+
+Always perform a fresh review after implementation to find:
+- security vulnerabilities or regressions
+- data/tenant isolation risks
+- auth/authorization gaps
+- unsafe input/output handling
+- high-value hardening opportunities not yet implemented
+
+Write findings to:
+- `<planning_dir>/implementation-security-review.md`
+
+Format findings by severity (`critical`, `high`, `medium`, `low`) with:
+- file/path references
+- risk statement
+- recommended fix direction
+
+### Mandatory User Prompt After Re-Review
+
+After producing `implementation-security-review.md`, always ask user immediately:
+
+1. `Create improvement plan now (Recommended)`
+2. `Implement critical/high fixes now without new planning`
+3. `Defer improvements and continue`
+
+Record user choice in:
+- `<planning_dir>/implementation-summary.md`
+
+If user chooses (1):
+- Generate a focused follow-up plan file:
+  - `<planning_dir>/implementation-hardening-plan.md`
+
+If user chooses (2):
+- Prioritize only `critical`/`high` findings first, then re-run tests and update summary.
+
+If user chooses (3):
+- Keep deferred findings explicitly listed in summary with rationale.
 
 ---
 

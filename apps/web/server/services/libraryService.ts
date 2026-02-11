@@ -120,6 +120,7 @@ export interface LibrarySearchResultV1 {
   item_id: number;
   item_type: string;
   title: string;
+  source_url: string | null;
   thumbnail_url: string | null;
   status: string;
   source: string;
@@ -1465,6 +1466,7 @@ export async function searchLibraryItems(
     item_id: entry.item.id,
     item_type: entry.item.itemType,
     title: entry.item.title,
+    source_url: entry.item.sourceUrl,
     thumbnail_url: entry.item.thumbnailUrl,
     status: entry.item.status,
     source: entry.item.source,

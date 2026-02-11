@@ -14,10 +14,29 @@ This document defines the research decision and execution flow for steps 6-7 of 
 │                                                             │
 │  Step 7: Execute research (parallel if both selected)       │
 │    - Subagents return results                               │
-│    - Main Claude combines and writes claude-research.md     │
+│    - Main planner agent combines and writes research-notes.md     │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Codex Execution Rules (Takes Precedence)
+
+This reference may include legacy examples using `Task`/`AskUserQuestion`.
+When running in Codex, apply these rules first:
+
+- Ask users via normal chat with numbered options (no Claude-only tools).
+- Use direct repository inspection commands for codebase research.
+- Use web search tools for external research when needed.
+- Use `multi_tool_use.parallel` for independent read-only research operations.
+- Keep write operations sequential (only parent flow writes `research-notes.md`).
+
+Minimum research is mandatory before plan writing:
+- architecture and code pattern scan
+- impacted module/test coverage scan
+- schema/data dependency scan for impacted areas
+- tenant/security boundary scan for impacted areas
 
 ---
 
@@ -45,7 +64,7 @@ If the spec is vague with no clear technologies, fall back to generic options:
 
 ### 6.2 Ask About Codebase Research
 
-Use AskUserQuestion to determine if there's existing code to analyze:
+Ask user directly (normal chat) to determine if there's existing code to analyze:
 
 ```
 question: "Is there existing code I should research first?"
@@ -78,17 +97,16 @@ options:
 
 If user selects "Other", follow up with a free-text question to get their custom topics.
 
-### 6.4 Handle "No Research" Case
+### 6.4 Handle "Minimal Research" Case
 
-If user selects:
-- "No existing code" AND
-- No web research topics
+Do not skip step 7 entirely.
 
-Then skip step 7 entirely. But still ask about testing preferences for new projects:
-- What testing framework to use (or recommend based on language/framework)
-- Any testing conventions to follow
+If user declines optional web research, still complete mandatory baseline research and write findings to `research-notes.md`.
 
-Note these preferences in `claude-research.md`.
+For new projects with no existing code:
+- research target stack conventions and testing approach
+- identify expected data/migration risks before implementation planning
+- document assumptions explicitly in `research-notes.md`
 
 ---
 
@@ -100,7 +118,7 @@ Note these preferences in `claude-research.md`.
 
 1. **Avoids race conditions** - Parallel subagents writing to the same file would overwrite each other
 2. **Context isolation** - Subagents keep verbose output in their own context, returning only summaries
-3. **Parent control** - Main Claude decides final structure and handles file operations
+3. **Parent control** - Main planner agent decides final structure and handles file operations
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -108,9 +126,9 @@ Note these preferences in `claude-research.md`.
 │                                                             │
 │  Task 1: Explore ──────────┐                                │
 │    (returns codebase       │                                │
-│     findings as markdown)  ├──→ Main Claude combines       │
+│     findings as markdown)  ├──→ Main planner agent combines       │
 │                            │    and writes single          │
-│  Task 2: web-search ───────┘    claude-research.md         │
+│  Task 2: web-search ───────┘    research-notes.md         │
 │    (returns best practices                                  │
 │     findings as markdown)                                   │
 │                                                             │
@@ -119,65 +137,41 @@ Note these preferences in `claude-research.md`.
 
 ### 7.1 Codebase Research (if selected)
 
-Launch Task tool with `subagent_type=Explore`:
+Run repository discovery directly (prefer parallel read-only calls) and gather:
+- project structure and architecture
+- existing implementation patterns/conventions
+- dependencies and usage patterns
+- testing setup and test execution commands
+- affected modules/services and tenant/security boundaries
 
-```
-Task tool:
-  subagent_type: Explore
-  description: "Research codebase patterns"
-  prompt: |
-    Research this codebase to understand:
-    - Project structure and architecture
-    - Existing patterns and conventions
-    - Dependencies and how they're used
-    - Testing setup (framework, patterns, utilities, how tests are run)
-
-    Focus areas from user: {user_specified_areas_if_any}
-
-    Return your findings as markdown. Structure it however makes sense for what you find.
-
-    DO NOT write to any files. Return your findings in your response.
-```
+Return findings to parent flow, then parent writes `research-notes.md`.
 
 ### 7.2 Web Research (if topics selected)
 
-Launch Task tool with `subagent_type=web-search-researcher`:
+Use web search/fetch tools and gather authoritative references for selected topics.
+For each topic:
+1. find authoritative sources (official docs, standards, respected technical sources)
+2. cross-validate key recommendations
+3. capture concise recommendations with URLs
+4. flag version/date sensitivity where relevant
 
-```
-Task tool:
-  subagent_type: web-search-researcher
-  description: "Research best practices"
-  prompt: |
-    Research current best practices for the following topics:
-    {selected_topics_list}
-
-    For each topic:
-    1. Use WebSearch to find authoritative sources (official docs, respected blogs, recent articles)
-    2. Use WebFetch on promising results to extract specific recommendations
-    3. Cross-validate information across sources
-    4. Synthesize findings with clear recommendations
-
-    Return your findings as markdown. Structure it however makes sense.
-    Always cite sources with URLs.
-
-    DO NOT write to any files. Return your findings in your response.
-```
+Return findings to parent flow, then parent writes `research-notes.md`.
 
 ### 7.3 Parallel Execution
 
-If both codebase and web research are needed, launch **both Task tools in a single message**. This enables parallel execution.
+If both codebase and web research are needed, run both in one `multi_tool_use.parallel` request when they are independent.
 
 ```
-# Single message with multiple tool calls:
-[Task tool call 1: Explore subagent]
-[Task tool call 2: web-search-researcher subagent]
+# Single parallel request with independent read-only calls:
+# - repository discovery calls
+# - web search/fetch calls
 ```
 
 Wait for both to complete, then proceed to combining results.
 
 ### 7.4 Combine Results and Write File
 
-After collecting results from all subagents, combine them into `<planning_dir>/claude-research.md`.
+After collecting results from all subagents, combine them into `<planning_dir>/research-notes.md`.
 
 Structure the file however makes sense for the findings. The goal is to capture useful research that will inform the implementation plan - there's no required format.
 
@@ -225,12 +219,12 @@ Q2: Should I research best practices for any of these topics?
     ✗ "Redis session storage patterns"
 ```
 
-**Step 7 - Claude launches parallel tasks:**
+**Step 7 - Claude launches parallel research:**
 ```
 # Single message:
-Task(subagent_type=Explore, prompt="Research codebase...")
-Task(subagent_type=web-search-researcher, prompt="Research OAuth2, JWT...")
+[Parallel read-only repo discovery calls]
+[Parallel web search/fetch calls]
 ```
 
 **Step 7 - After both complete:**
-Main Claude combines both results and writes single `claude-research.md`.
+Main planner agent combines both results and writes single `research-notes.md`.

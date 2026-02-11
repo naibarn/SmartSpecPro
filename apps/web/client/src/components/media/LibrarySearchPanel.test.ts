@@ -49,6 +49,7 @@ describe("LibrarySearchPanel", () => {
             item_id: 1,
             item_type: "image",
             title: "Hero image",
+            source_url: "https://cdn.example.com/hero.png",
             thumbnail_url: null,
             status: "indexing",
             source: "media_task",
@@ -59,6 +60,7 @@ describe("LibrarySearchPanel", () => {
             item_id: 2,
             item_type: "video",
             title: "Launch scene",
+            source_url: "https://cdn.example.com/launch.mp4",
             thumbnail_url: null,
             status: "failed",
             source: "media_task",
@@ -74,5 +76,45 @@ describe("LibrarySearchPanel", () => {
     expect(html).toContain("Indexing");
     expect(html).toContain("Failed");
     expect(html).toContain("Retry from Media History");
+  });
+
+  it("renders thumbnail previews for image and video search results", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(LibrarySearchPanel, {
+        query: "lion",
+        onQueryChange: vi.fn(),
+        isLoading: false,
+        selectedItemId: null,
+        onSelect: vi.fn(),
+        results: [
+          {
+            item_id: 10,
+            item_type: "image",
+            title: "Lion image",
+            source_url: "https://cdn.example.com/lion-full.png",
+            thumbnail_url: "https://cdn.example.com/lion-thumb.png",
+            status: "ready",
+            source: "media_task",
+            provider_name: "kie.ai",
+            model_name: "z-image",
+          },
+          {
+            item_id: 11,
+            item_type: "video",
+            title: "Lion video",
+            source_url: "https://cdn.example.com/lion.mp4",
+            thumbnail_url: null,
+            status: "ready",
+            source: "media_task",
+            provider_name: "kie.ai",
+            model_name: "veo-3",
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('src="https://cdn.example.com/lion-thumb.png"');
+    expect(html).toContain('src="https://cdn.example.com/lion.mp4"');
+    expect(html).toContain("<video");
   });
 });

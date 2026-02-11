@@ -27,11 +27,18 @@ from lib.prompts import load_prompts, format_prompt
 
 
 def load_plan(planning_dir: Path) -> str:
-    """Load claude-plan.md from planning directory."""
-    plan_file = planning_dir / "claude-plan.md"
-    if not plan_file.exists():
-        raise FileNotFoundError(f"Required file not found: {plan_file}")
-    return plan_file.read_text()
+    """Load implementation plan from planning directory.
+
+    Prefers neutral artifact naming and falls back to legacy naming.
+    """
+    plan_candidates = ["implementation-plan.md", "claude-plan.md"]
+    for name in plan_candidates:
+        plan_file = planning_dir / name
+        if plan_file.exists():
+            return plan_file.read_text()
+    raise FileNotFoundError(
+        f"Required file not found: expected one of {', '.join(plan_candidates)} in {planning_dir}"
+    )
 
 
 def call_with_retry(func, config):

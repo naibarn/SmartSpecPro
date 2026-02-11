@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Loader2, Search } from "lucide-react";
+import { FileImage, FileText, Film, Loader2, Search } from "lucide-react";
 
 import type { LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
@@ -28,6 +28,57 @@ export default function LibrarySearchPanel({
   selectedItemId,
   onSelect,
 }: LibrarySearchPanelProps) {
+  const renderItemPreview = (item: LibrarySearchResultItem) => {
+    const itemType = item.item_type.toLowerCase();
+    const thumbnailUrl = item.thumbnail_url?.trim() || null;
+    const sourceUrl = item.source_url?.trim() || null;
+    const previewUrl = thumbnailUrl || sourceUrl;
+
+    if (itemType === "image" && previewUrl) {
+      return (
+        <img
+          src={previewUrl}
+          alt={item.title}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      );
+    }
+
+    if (itemType === "video") {
+      if (thumbnailUrl) {
+        return (
+          <img
+            src={thumbnailUrl}
+            alt={item.title}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        );
+      }
+      if (sourceUrl) {
+        return (
+          <video
+            src={sourceUrl}
+            className="h-full w-full object-cover"
+            preload="metadata"
+            muted
+            playsInline
+          />
+        );
+      }
+    }
+
+    if (itemType === "image") {
+      return <FileImage className="h-5 w-5 text-muted-foreground" />;
+    }
+    if (itemType === "video") {
+      return <Film className="h-5 w-5 text-muted-foreground" />;
+    }
+
+    return <FileText className="h-5 w-5 text-muted-foreground" />;
+  };
+
   return (
     <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -79,13 +130,18 @@ export default function LibrarySearchPanel({
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate" title={item.title}>
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {item.item_type} • {item.model_name || item.source}
-                      </p>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <div className="h-12 w-16 shrink-0 overflow-hidden rounded-md border bg-slate-50 flex items-center justify-center">
+                        {renderItemPreview(item)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate" title={item.title}>
+                          {item.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {item.item_type} • {item.model_name || item.source}
+                        </p>
+                      </div>
                     </div>
                     <Badge className={status.className}>{status.label}</Badge>
                   </div>
