@@ -1,38 +1,29 @@
-# Self Review - Iteration 1
+# Self Review - Iteration 1 (Post-Uplift)
 
-**Mode:** self_review  
-**Generated:** 2026-02-11
+## Scope Reviewed
+- `implementation-spec.md`
+- `implementation-plan.md`
+- `implementation-plan-tdd.md`
+- Stage A delta input (`tenant attribution strictness`) and Stage B uplift application (`apply_all`)
 
-## Summary
-The plan is directionally correct and aligned with the security findings, but it needs stronger implementation precision in four areas: URL policy contract, active-content handling details, tenant-scope migration strategy for ops data, and verification/rollback discipline.
+## Findings (Ordered by Severity)
 
-## Strengths
-- Captures all 5 core findings from the source spec.
-- Preserves external image compatibility as a hard constraint.
-- Separates policy hardening, tenant safety, and test hardening into independent workstreams.
+### 1) Medium - Quarantine lifecycle controls were not explicit enough
+- Area: tenant attribution cutover operations
+- Risk: unresolved rows can accumulate without bounded retention and operational ownership.
+- Recommendation: add retention + purge/archive policy and alert thresholds.
 
-## Critical Gaps to Address
-1. URL policy lacks explicit allow/deny matrix by context
-- Current plan states intent but not a concrete matrix for `sourceUrl`, `thumbnailUrl`, preview/open contexts.
-- Risk: inconsistent behavior across endpoints and regressions in external image support.
+### 2) Low - Observability gate needed explicit pre-release verification line item
+- Area: release gate criteria
+- Risk: metrics may exist but not be reviewed before rollout.
+- Recommendation: add release gate criterion for quarantine growth/retention alert verification.
 
-2. Active-content strategy is not explicit on response behavior
-- Need concrete serving behavior for uploaded active-content assets (attachment vs isolated domain) and content-type/disposition rules.
-- Risk: partial mitigation that still allows browser execution in edge cases.
+### 3) Low - TDD observability scope needed retention/alert tests
+- Area: `implementation-plan-tdd.md` workstream 8
+- Risk: operational controls might be planned but untested.
+- Recommendation: add tests for retention purge job and growth alert threshold behavior.
 
-3. Tenant-ops hardening needs phased data model plan
-- Callback tables currently lack tenant id; plan mentions options but not execution path.
-- Risk: stalled implementation or partially scoped ops with false security confidence.
-
-4. Test strategy lacks required command ownership and release gate
-- No explicit mapping for where tests live and what must pass before deploy.
-- Risk: security fixes ship without stable regression protection.
-
-## Recommended Improvements
-- Add URL policy matrix section with canonical examples (allowed vs blocked) and error semantics.
-- Add explicit active-content response-control design.
-- Define tenant-ops migration phases with temporary safeguards if schema migration cannot be immediate.
-- Add release verification checklist + rollback strategy.
-
-## Decision
-Proceed after integrating the above improvements into `claude-plan.md`.
+## Overall Assessment
+- Core security direction is materially improved and now aligns with strict tenant attribution requirements.
+- No new critical blockers identified in the planning artifacts.
+- Remaining improvements are low-to-medium operational hardening details and are appropriate to auto-apply under `smart_auto` because they are low-impact to architecture behavior.

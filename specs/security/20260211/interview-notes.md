@@ -31,3 +31,21 @@ Interview mode: asynchronous planning interview from spec + repo context.
 ## Assumptions Logged
 - No additional stakeholder input beyond `spec.md` was provided during this interview round.
 - This transcript captures implementation assumptions inferred from the spec and current code behavior.
+
+---
+
+## Refresh Round (2026-02-11, improve_existing_plan)
+
+### Intake
+- answer_mode: `delta`
+- changes: `เพิ่มเงื่อนไข tenant attribution ให้เข้มขึ้น`
+- gaps: `-`
+- focus: `all`
+
+### Clarified Delta Interpretation
+- Tenant attribution hardening must move from "preferred where possible" to "required by default" for tenant-facing operations.
+- Callback/DLQ and operational event records should carry `tenant_id` as first-class attribution with strict write-time enforcement.
+- Global fallback behavior in tenant-admin pathways should be removed after migration, with explicit super-admin-only routes for intentionally global operations.
+
+### Notes
+- Existing constraints remain: preserve external `https://` image functionality and avoid regressions in preview/editor/library user flows.

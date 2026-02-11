@@ -7,6 +7,7 @@ Implement security hardening for library/document/media preview surfaces without
 - Preserve safe external image behavior.
 - Enforce security at server trust boundaries (mutation + proxy + file serving).
 - Avoid cross-tenant side effects for ops in tenant-admin context.
+- Enforce strict tenant attribution for operational entities after migration cutover (no tenant-admin global fallback).
 - Ship with security regression tests before release.
 
 ## Workstream 1: Shared URL Policy Contract
@@ -90,14 +91,39 @@ Harden allowlist behavior.
 - For callback tables lacking tenant field, enforce restricted pathway:
   - explicit elevated role requirement for global actions
   - explicit audit markers that operation is global-scoped
+  - tenant-admin routes deny operations when tenant scope cannot be established
 
 ### Phase 2 (Schema evolution)
-- Add tenant attribution to callback event/DLQ records.
-- Backfill safely from linked entities when possible.
-- Remove or minimize global fallback paths once tenant attribution exists.
+- Add required tenant attribution to callback event/DLQ records (`tenant_id` required for tenant-facing ops).
+- Backfill safely from linked entities when possible, with reconciliation report for unresolved rows.
+- Quarantine unresolved rows from tenant-admin retries/reprocess until attributed.
+- Remove global fallback paths from tenant-admin operations once cutover is complete.
+- Keep intentionally global operations only on explicit super-admin routes with mandatory audit fields.
+
+### Phase 2 implementation mechanics (required)
+- DB migration must follow phased constraint enforcement:
+  1. add nullable `tenant_id` + supporting index
+  2. backfill in batches
+  3. run reconciliation validation queries
+  4. enforce `NOT NULL`/FK constraints for tenant-facing rows
+- Backfill execution must be idempotent and lock-protected:
+  - migration advisory lock (or equivalent)
+  - rerunnable batch cursoring/checkpoints
+  - safe resume after interruption
+- Quarantine playbook must be explicit:
+  - unresolved rows moved/marked for quarantine queue
+  - excluded from tenant-admin operations by default
+  - ownership + SLA for remediation documented
+
+### API contract split (required)
+- Separate service/router contracts for:
+  - tenant-admin operations (strict tenant scope only)
+  - super-admin global operations (explicit endpoint + elevated role + audit fields)
+- Remove mixed behavior in a single endpoint to reduce privilege ambiguity.
 
 ### Delivery requirement
 - Phase 2 is required in this implementation cycle (not deferred).
+- Phase 2 cutover requires explicit readiness checklist: migration complete, reconciliation report reviewed, tenant-admin fallback removed.
 
 ## Workstream 5: Safer Office Preview Decision Logic
 Tighten preview host checks before forwarding URLs to external office viewer.
@@ -129,6 +155,7 @@ Add tests across server + UI utility boundaries.
 - Upload behavior tests for active-content response handling
 - Feature-flag tests for missing tenant in allowlist mode
 - Ops service/router tests for tenant scoping and global-action restrictions
+- Tenant attribution cutover tests (deny on missing tenant attribution in tenant-admin paths)
 - Office preview host classification tests
 - Image proxy tests for timeout/size/redirect/content-type/host-blocking
 
@@ -141,6 +168,27 @@ Add tests across server + UI utility boundaries.
 - Active-content execution path blocked.
 - Missing tenant denied in allowlist mode.
 - Cross-tenant ops side effects prevented in tenant-admin mode.
+- Tenant-admin retry/reprocess denies rows lacking tenant attribution after cutover.
+
+## Workstream 8: Security Observability and Canary Release Checks
+Add production-grade observability and rollout checks for attribution hardening.
+
+### Observability baseline
+- Emit structured events/metrics for:
+  - missing-attribution deny decisions
+  - cross-tenant deny decisions
+  - quarantine queue size and remediation latency
+  - explicit global-route invocations (super-admin only)
+- Define quarantine retention and purge policy:
+  - retention window for unresolved rows and audit records
+  - scheduled purge/archive process with compliance-safe audit trail
+  - alert thresholds for abnormal quarantine growth
+
+### Canary checks
+- Add pre-release and canary smoke checks for representative tenants:
+  - tenant-admin retries succeed only for same-tenant attributed rows
+  - unresolved rows remain blocked/quarantined
+  - super-admin global route remains explicit and audited
 
 ## Execution Order
 1. Implement shared URL policy contract.
@@ -150,9 +198,11 @@ Add tests across server + UI utility boundaries.
 5. Fix tenant allowlist missing-context behavior.
 6. Implement tenant-ops phase 1 safeguards.
 7. Implement tenant-ops phase 2 schema evolution and backfill.
-8. Harden office preview host logic.
-9. Harden image proxy runtime controls.
-10. Add full security regression tests.
+8. Execute tenant attribution cutover checklist and disable tenant-admin global fallback.
+9. Harden office preview host logic.
+10. Harden image proxy runtime controls.
+11. Add full security regression tests.
+12. Run observability + canary checks and capture rollout evidence.
 
 ## Verification and Release Gate
 Release only when all are true:
@@ -162,11 +212,17 @@ Release only when all are true:
 - Audit logs show expected blocked/denied events for security negatives.
 - Legacy URL migration report is complete and post-migration verification passes.
 - Tenant-ops Phase 2 migration/backfill is complete and validated.
+- Tenant attribution reconciliation report has no unresolved rows in tenant-admin scope (or unresolved rows are quarantined with explicit sign-off).
+- Tenant-admin operational paths confirmed to have no global fallback.
+- Observability dashboard/metrics for attribution enforcement are active and reviewed.
+- Canary validation report passes for representative tenants before full rollout.
+- Quarantine growth/retention alerts are configured and verified in pre-release checks.
 
 ## Rollback Strategy
 - Keep hardening changes behind granular toggles where practical (policy strictness, ops global restrictions).
 - If production regressions appear, rollback by feature toggle or revert scoped module changes while preserving logging for forensic review.
 - Document exact rollback path in release notes before deploy.
+- For DB constraints, rollback plan must be phased (disable strict reads -> relax constraint -> restore from snapshot if needed).
 
 ## Out of Scope
 - Full media platform redesign.
