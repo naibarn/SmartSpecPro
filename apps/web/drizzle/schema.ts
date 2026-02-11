@@ -1423,7 +1423,7 @@ export const libraryIndexJobStatusEnum = pgEnum("library_index_job_status", [
 
 export const libraryItems = pgTable("library_items", {
   id: serial("id").primaryKey(),
-  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   itemType: varchar("item_type", { length: 32 }).notNull(),
   source: varchar("source", { length: 64 }).notNull(),
@@ -1465,7 +1465,7 @@ export type InsertLibraryLink = typeof libraryLinks.$inferInsert;
 
 export const libraryChunks = pgTable("library_chunks", {
   id: serial("id").primaryKey(),
-  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
   chunkIndex: integer("chunk_index").notNull(),
   content: text("content").notNull(),
@@ -1485,7 +1485,7 @@ export type InsertLibraryChunk = typeof libraryChunks.$inferInsert;
 
 export const libraryPermissions = pgTable("library_permissions", {
   id: serial("id").primaryKey(),
-  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
   subjectType: varchar("subject_type", { length: 32 }).notNull(),
   subjectId: varchar("subject_id", { length: 64 }).notNull(),
@@ -1504,7 +1504,7 @@ export type InsertLibraryPermission = typeof libraryPermissions.$inferInsert;
 
 export const libraryIndexJobs = pgTable("library_index_jobs", {
   id: serial("id").primaryKey(),
-  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
   jobType: varchar("job_type", { length: 64 }).notNull(),
   status: libraryIndexJobStatusEnum("status").notNull().default("pending"),

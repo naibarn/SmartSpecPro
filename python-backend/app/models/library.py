@@ -23,7 +23,7 @@ class LibraryItem(Base):
     __tablename__ = "library_items"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(String(36), nullable=False, index=True)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     item_type = Column(String(32), nullable=False, index=True)
@@ -87,7 +87,7 @@ class LibraryChunk(Base):
     __tablename__ = "library_chunks"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(String(36), nullable=False, index=True)
     library_item_id = Column(
         Integer,
         ForeignKey("library_items.id", ondelete="CASCADE"),
@@ -122,7 +122,7 @@ class LibraryPermission(Base):
     __tablename__ = "library_permissions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(String(36), nullable=False, index=True)
     library_item_id = Column(
         Integer,
         ForeignKey("library_items.id", ondelete="CASCADE"),
@@ -156,7 +156,7 @@ class LibraryIndexJob(Base):
     __tablename__ = "library_index_jobs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(String(36), nullable=False, index=True)
     library_item_id = Column(
         Integer,
         ForeignKey("library_items.id", ondelete="CASCADE"),

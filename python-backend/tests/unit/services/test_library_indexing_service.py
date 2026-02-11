@@ -57,7 +57,7 @@ async def indexing_db():
     await engine.dispose()
 
 
-async def _create_library_item(db: AsyncSession, tenant_id: int, title: str, metadata=None):
+async def _create_library_item(db: AsyncSession, tenant_id: str, title: str, metadata=None):
     user = User(email=f"lib-index-{tenant_id}-{title}@example.com", password="hash", credits=100)
     db.add(user)
     await db.commit()
@@ -86,7 +86,7 @@ class TestLibraryIndexingService:
     async def test_enqueue_and_success_pipeline_persists_chunks(self, indexing_db):
         item = await _create_library_item(
             indexing_db,
-            tenant_id=301,
+            tenant_id="tenant-301",
             title="Launch Checklist",
             metadata={"prompt": "Generate launch checklist", "tags": ["ops", "release"]},
         )
@@ -110,7 +110,7 @@ class TestLibraryIndexingService:
         assert item.status == "indexing"
 
         def fake_upsert(*, tenant_id, item_id, chunks, embeddings):
-            assert tenant_id == 301
+            assert tenant_id == "tenant-301"
             assert item_id > 0
             assert len(chunks) == len(embeddings)
             return [f"vec:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks]
@@ -151,7 +151,7 @@ class TestLibraryIndexingService:
     async def test_transient_failure_retries_and_increments_attempt_count(self, indexing_db):
         item = await _create_library_item(
             indexing_db,
-            tenant_id=302,
+            tenant_id="tenant-302",
             title="Retryable item",
             metadata={"prompt": "retry me"},
         )
@@ -202,7 +202,7 @@ class TestLibraryIndexingService:
     async def test_terminal_failure_preserves_last_error_metadata(self, indexing_db):
         item = await _create_library_item(
             indexing_db,
-            tenant_id=303,
+            tenant_id="tenant-303",
             title="   ",
             metadata={},
         )
@@ -237,13 +237,13 @@ class TestLibraryIndexingService:
 
         success_item = await _create_library_item(
             indexing_db,
-            tenant_id=304,
+            tenant_id="tenant-304",
             title="Metrics success",
             metadata={"prompt": "index me"},
         )
         fail_item = await _create_library_item(
             indexing_db,
-            tenant_id=304,
+            tenant_id="tenant-304",
             title="   ",
             metadata={},
         )

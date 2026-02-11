@@ -6,7 +6,6 @@
     "ralph-loop@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
-    "deep-plan@piercelamb-plugins": true,
     "deep-project@piercelamb-plugins": true,
     "deep-implement@piercelamb-plugins": true,
     "developer-essentials@claude-code-workflows": true,

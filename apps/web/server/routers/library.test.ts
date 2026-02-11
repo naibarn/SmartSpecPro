@@ -7,6 +7,7 @@ const {
   mockListLibraryDocuments,
   mockSaveLibraryMarkdown,
   mockSearchLibraryItems,
+  mockUploadLibraryFile,
   mockUpdateLibraryItem,
   mockSoftDeleteLibraryItem,
   mockShareLibraryItem,
@@ -18,6 +19,7 @@ const {
   mockListLibraryDocuments: vi.fn(),
   mockSaveLibraryMarkdown: vi.fn(),
   mockSearchLibraryItems: vi.fn(),
+  mockUploadLibraryFile: vi.fn(),
   mockUpdateLibraryItem: vi.fn(),
   mockSoftDeleteLibraryItem: vi.fn(),
   mockShareLibraryItem: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("../services/libraryService", () => ({
   listLibraryDocuments: mockListLibraryDocuments,
   saveLibraryMarkdown: mockSaveLibraryMarkdown,
   searchLibraryItems: mockSearchLibraryItems,
+  uploadLibraryFile: mockUploadLibraryFile,
   updateLibraryItem: mockUpdateLibraryItem,
   softDeleteLibraryItem: mockSoftDeleteLibraryItem,
   shareLibraryItem: mockShareLibraryItem,
@@ -267,6 +270,54 @@ describe("libraryRouter.listDocuments", () => {
     expect(result.scope).toBe("my_library");
     expect(mockListLibraryDocuments).toHaveBeenCalledWith(
       expect.objectContaining({ scope: "my_library" }),
+      expect.objectContaining({ userId: 9, tenantId: 44 }),
+    );
+  });
+});
+
+describe("libraryRouter.uploadFile", () => {
+  it("uploads supported file and creates indexing item", async () => {
+    mockUploadLibraryFile.mockResolvedValue({
+      item: {
+        id: 901,
+        tenantId: "44",
+        ownerUserId: 9,
+        itemType: "image",
+        source: "document_upload",
+        title: "hero.png",
+        description: null,
+        status: "indexing",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: "/uploads/test.png",
+        thumbnailUrl: "/uploads/test.png",
+        deletedAt: null,
+        createdAt: new Date("2026-02-11T00:00:00.000Z"),
+        updatedAt: new Date("2026-02-11T00:00:00.000Z"),
+      },
+      indexJob: {
+        jobId: 8001,
+        status: "pending",
+        created: true,
+      },
+    });
+
+    const fn = libraryRouter.uploadFile as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: 44 },
+        tenantId: null,
+      },
+      input: {
+        fileName: "hero.png",
+        fileType: "image/png",
+        fileBase64: "data:image/png;base64,aGVsbG8=",
+      },
+    });
+
+    expect(result.item.id).toBe(901);
+    expect(mockUploadLibraryFile).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: "hero.png", fileType: "image/png" }),
       expect.objectContaining({ userId: 9, tenantId: 44 }),
     );
   });

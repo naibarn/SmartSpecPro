@@ -1,6 +1,8 @@
+import crypto from "crypto";
 import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 
 import { getDb } from "../db";
+import { storagePut } from "../storage";
 import {
   libraryChunks,
   libraryIndexJobs,
@@ -95,6 +97,23 @@ export interface LibrarySearchInput {
   limit?: number;
   offset?: number;
   filters?: LibrarySearchFilters;
+}
+
+export interface UploadLibraryFileInput {
+  fileName: string;
+  fileType: string;
+  fileBase64: string;
+  title?: string;
+  visibility?: LibraryVisibility;
+}
+
+export interface UploadLibraryFileResult {
+  item: LibraryItemDto;
+  indexJob: {
+    jobId: number;
+    status: string;
+    created: boolean;
+  };
 }
 
 export interface LibrarySearchResultV1 {
@@ -241,6 +260,78 @@ async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
   }
 
   return db;
+}
+
+const MAX_LIBRARY_UPLOAD_BYTES = 30 * 1024 * 1024;
+const ALLOWED_LIBRARY_UPLOAD_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp",
+  "mp4", "webm", "mov", "avi", "mkv",
+  "mp3", "wav", "m4a", "ogg", "aac",
+  "pdf",
+  "txt", "md", "markdown", "csv", "json", "html", "htm", "xml",
+  "doc", "docx", "ppt", "pptx", "xls", "xlsx",
+]);
+
+const ALLOWED_LIBRARY_UPLOAD_MIME_PREFIXES = [
+  "image/",
+  "video/",
+  "audio/",
+  "text/",
+];
+
+const ALLOWED_LIBRARY_UPLOAD_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/json",
+  "application/xml",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
+
+function extractFileExtension(fileName: string): string {
+  const ext = fileName.split(".").pop() || "";
+  return ext.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+}
+
+function inferLibraryItemType(fileType: string, extension: string): string {
+  const normalizedFileType = fileType.toLowerCase();
+
+  if (normalizedFileType.startsWith("image/")) return "image";
+  if (normalizedFileType.startsWith("video/")) return "video";
+  if (normalizedFileType.startsWith("audio/")) return "audio";
+  if (extension === "md" || extension === "markdown") return "md";
+  if (
+    extension === "pdf" ||
+    extension === "doc" ||
+    extension === "docx" ||
+    extension === "ppt" ||
+    extension === "pptx" ||
+    extension === "xls" ||
+    extension === "xlsx"
+  ) {
+    return "document";
+  }
+  if (
+    normalizedFileType.startsWith("text/") ||
+    extension === "txt" ||
+    extension === "csv" ||
+    extension === "json" ||
+    extension === "xml" ||
+    extension === "html" ||
+    extension === "htm"
+  ) {
+    return "text";
+  }
+  return "file";
+}
+
+function isAllowedLibraryUploadMime(fileType: string): boolean {
+  const normalizedFileType = fileType.toLowerCase();
+  if (ALLOWED_LIBRARY_UPLOAD_MIME_TYPES.has(normalizedFileType)) return true;
+  return ALLOWED_LIBRARY_UPLOAD_MIME_PREFIXES.some((prefix) => normalizedFileType.startsWith(prefix));
 }
 
 function normalizeTagList(value: unknown): string[] {
@@ -526,6 +617,7 @@ export async function createLibraryItem(
 ): Promise<CreateLibraryItemResult> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const now = new Date();
 
   if (input.sourceLink) {
     const existing = await db
@@ -570,6 +662,8 @@ export async function createLibraryItem(
       metadata: normalizeLibraryMetadata(input.metadata),
       sourceUrl: input.sourceUrl ?? null,
       thumbnailUrl: input.thumbnailUrl ?? null,
+      createdAt: now,
+      updatedAt: now,
     })
     .returning();
 
@@ -579,6 +673,7 @@ export async function createLibraryItem(
   }
 
   if (input.sourceLink) {
+    const linkCreatedAt = new Date();
     await db
       .insert(libraryLinks)
       .values({
@@ -586,6 +681,7 @@ export async function createLibraryItem(
         linkType: input.sourceLink.linkType,
         linkId: input.sourceLink.linkId,
         providerTaskId: input.sourceLink.providerTaskId ?? null,
+        createdAt: linkCreatedAt,
       })
       .onConflictDoNothing();
   }
@@ -593,6 +689,88 @@ export async function createLibraryItem(
   return {
     item: toLibraryItemDto(created),
     idempotent: false,
+  };
+}
+
+export async function uploadLibraryFile(
+  input: UploadLibraryFileInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<UploadLibraryFileResult> {
+  const db = await resolveDb(dbClient);
+  const tenantId = normalizeLibraryTenantId(actor.tenantId);
+  const fileName = input.fileName.trim();
+  const fileType = (input.fileType || "application/octet-stream").trim().toLowerCase();
+
+  if (!fileName) {
+    throw new Error("File name is required");
+  }
+
+  const ext = extractFileExtension(fileName);
+  if (!isAllowedLibraryUploadMime(fileType) && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)) {
+    throw new Error("File type is not supported for library upload");
+  }
+
+  if (ext && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)) {
+    throw new Error(`File extension .${ext} is not allowed`);
+  }
+
+  const b64 = input.fileBase64.includes(",")
+    ? input.fileBase64.split(",", 2)[1]
+    : input.fileBase64;
+  const fileBuffer = Buffer.from(b64, "base64");
+
+  if (!fileBuffer.length) {
+    throw new Error("Uploaded file is empty");
+  }
+
+  if (fileBuffer.length > MAX_LIBRARY_UPLOAD_BYTES) {
+    throw new Error("File too large (max 30MB)");
+  }
+
+  const fileId = crypto.randomUUID().replace(/-/g, "");
+  const key = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
+  const storage = await storagePut(key, fileBuffer, fileType);
+
+  const inferredItemType = inferLibraryItemType(fileType, ext);
+  const created = await createLibraryItem(
+    {
+      itemType: inferredItemType,
+      source: "document_upload",
+      title: input.title?.trim() || fileName,
+      description: null,
+      status: "indexing",
+      visibility: input.visibility ?? "private",
+      metadata: {
+        file_name: fileName,
+        file_type: fileType,
+        extension: ext || null,
+        file_size_bytes: fileBuffer.length,
+        source_type: "document_upload",
+      },
+      sourceUrl: storage.url,
+      thumbnailUrl: inferredItemType === "image" ? storage.url : null,
+      sourceLink: {
+        linkType: "upload_key",
+        linkId: storage.key,
+      },
+    },
+    actor,
+    db,
+  );
+
+  const indexJob = await enqueueLibraryIndexJob(
+    {
+      libraryItemId: created.item.id,
+      tenantId,
+      jobType: "initial_index",
+    },
+    db,
+  );
+
+  return {
+    item: created.item,
+    indexJob,
   };
 }
 
@@ -710,6 +888,7 @@ export async function shareLibraryItem(
     return false;
   }
 
+  const now = new Date();
   await db
     .insert(libraryPermissions)
     .values({
@@ -720,6 +899,8 @@ export async function shareLibraryItem(
       permissionLevel: input.permissionLevel,
       grantedByUserId: actor.userId,
       expiresAt: input.expiresAt ?? null,
+      createdAt: now,
+      updatedAt: now,
     })
     .onConflictDoUpdate({
       target: [libraryPermissions.libraryItemId, libraryPermissions.subjectType, libraryPermissions.subjectId],
@@ -766,6 +947,7 @@ export async function enqueueLibraryIndexJob(
     };
   }
 
+  const now = new Date();
   const inserted = await db
     .insert(libraryIndexJobs)
     .values({
@@ -775,7 +957,9 @@ export async function enqueueLibraryIndexJob(
       status: "pending",
       attemptCount: 0,
       maxAttempts: 5,
-      runAt: new Date(),
+      runAt: now,
+      createdAt: now,
+      updatedAt: now,
     })
     .returning({
       id: libraryIndexJobs.id,
@@ -1062,6 +1246,7 @@ export async function saveLibraryMarkdown(
   }
 
   const normalizedContent = input.content.replace(/\r\n/g, "\n");
+  const now = new Date();
 
   await db
     .insert(libraryChunks)
@@ -1076,6 +1261,7 @@ export async function saveLibraryMarkdown(
       metadata: {
         source: "document_management_editor",
       },
+      createdAt: now,
     })
     .onConflictDoUpdate({
       target: [libraryChunks.libraryItemId, libraryChunks.chunkIndex],
@@ -1096,9 +1282,9 @@ export async function saveLibraryMarkdown(
       status: "indexing",
       metadata: normalizeLibraryMetadata({
         ...(existing.metadata as Record<string, unknown>),
-        markdown_last_saved_at: new Date().toISOString(),
+        markdown_last_saved_at: now.toISOString(),
       }),
-      updatedAt: new Date(),
+      updatedAt: now,
     })
     .where(and(eq(libraryItems.id, existing.id), eq(libraryItems.tenantId, actorTenantId)))
     .returning();

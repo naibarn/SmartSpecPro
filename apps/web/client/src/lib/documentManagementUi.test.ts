@@ -14,14 +14,23 @@ describe("documentManagementUi", () => {
     expect(parsed).toEqual({
       scope: "shared_groups",
       sort: "created_desc",
+      viewMode: "library",
       query: "guide",
       itemType: "md",
       status: "ready",
+      docId: undefined,
     });
 
     expect(
       buildDocumentQueryString(parsed),
     ).toBe("scope=shared_groups&sort=created_desc&q=guide&type=md&status=ready");
+  });
+
+  it("supports editor mode with selected doc id in query", () => {
+    const parsed = parseDocumentQueryState("?mode=editor&doc=42");
+    expect(parsed.viewMode).toBe("editor");
+    expect(parsed.docId).toBe(42);
+    expect(buildDocumentQueryString(parsed)).toBe("scope=my_library&sort=updated_desc&mode=editor&doc=42");
   });
 
   it("detects markdown files from metadata and source URL", () => {
@@ -49,6 +58,14 @@ describe("documentManagementUi", () => {
         metadata: {},
       } as any),
     ).toBe("image");
+
+    expect(
+      resolveDocumentPreviewType({
+        item_type: "document",
+        source_url: "https://example.com/a.docx",
+        metadata: {},
+      } as any),
+    ).toBe("office");
 
     expect(
       resolveDocumentPreviewType({

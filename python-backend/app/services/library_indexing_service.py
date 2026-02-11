@@ -29,7 +29,7 @@ class VectorUpsertFn(Protocol):
     def __call__(
         self,
         *,
-        tenant_id: int,
+        tenant_id: str,
         item_id: int,
         chunks: list[dict[str, Any]],
         embeddings: list[list[float]],
@@ -140,7 +140,7 @@ def chunk_text_content(text: str, max_chars: int = 500, overlap_chars: int = 80)
 
 def _default_vector_upsert(
     *,
-    tenant_id: int,
+    tenant_id: str,
     item_id: int,
     chunks: list[dict[str, Any]],
     embeddings: list[list[float]],
@@ -178,7 +178,7 @@ async def enqueue_library_index_job(
     db: AsyncSession,
     library_item_id: int,
     *,
-    tenant_id: int,
+    tenant_id: str,
     job_type: str = "initial_index",
     run_at: Optional[datetime] = None,
 ) -> dict[str, Any]:

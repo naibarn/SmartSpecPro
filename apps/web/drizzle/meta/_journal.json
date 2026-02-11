@@ -141,6 +141,13 @@
       "when": 1770769800000,
       "tag": "0019_unified_library_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1770792000000,
+      "tag": "0020_library_tenant_id_varchar",
+      "breakpoints": true
     }
   ]
 }

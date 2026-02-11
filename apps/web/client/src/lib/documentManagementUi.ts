@@ -2,6 +2,7 @@ export const DOCUMENT_MANAGEMENT_ROUTE = "/document-management";
 
 export type DocumentScopeTab = "my_library" | "shared_with_me" | "shared_groups";
 export type DocumentSortOrder = "updated_desc" | "created_desc";
+export type DocumentViewMode = "library" | "editor";
 export type DocumentAccessSource = "owner" | "shared_direct" | "shared_group";
 export type DocumentPreviewType =
   | "markdown"
@@ -9,6 +10,7 @@ export type DocumentPreviewType =
   | "video"
   | "audio"
   | "pdf"
+  | "office"
   | "text"
   | "json"
   | "html"
@@ -20,6 +22,7 @@ export interface DocumentLibraryItem {
   title: string;
   source: string;
   source_url: string | null;
+  thumbnail_url?: string | null;
   metadata?: Record<string, unknown>;
   access_source: DocumentAccessSource;
   status: "draft" | "ready" | "indexing" | "archived" | "failed";
@@ -30,14 +33,17 @@ export interface DocumentLibraryItem {
 export interface DocumentQueryState {
   scope: DocumentScopeTab;
   sort: DocumentSortOrder;
+  viewMode: DocumentViewMode;
   query: string;
   itemType?: string;
   status?: string;
+  docId?: number;
 }
 
 export const DEFAULT_DOCUMENT_QUERY_STATE: DocumentQueryState = {
   scope: "my_library",
   sort: "updated_desc",
+  viewMode: "library",
   query: "",
 };
 
@@ -45,16 +51,22 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
   const params = new URLSearchParams(search);
   const scope = params.get("scope");
   const sort = params.get("sort");
+  const mode = params.get("mode");
+  const docIdRaw = params.get("doc");
   const query = params.get("q") || "";
   const itemType = params.get("type") || undefined;
   const status = params.get("status") || undefined;
+  const docIdParsed = docIdRaw ? Number.parseInt(docIdRaw, 10) : NaN;
+  const docId = Number.isFinite(docIdParsed) && docIdParsed > 0 ? docIdParsed : undefined;
 
   return {
     scope: scope === "shared_with_me" || scope === "shared_groups" ? scope : "my_library",
     sort: sort === "created_desc" ? "created_desc" : "updated_desc",
+    viewMode: mode === "editor" ? "editor" : "library",
     query,
     itemType,
     status,
+    docId,
   };
 }
 
@@ -62,6 +74,12 @@ export function buildDocumentQueryString(state: DocumentQueryState): string {
   const params = new URLSearchParams();
   params.set("scope", state.scope);
   params.set("sort", state.sort);
+  if (state.viewMode === "editor") {
+    params.set("mode", "editor");
+  }
+  if (state.docId && Number.isFinite(state.docId) && state.docId > 0) {
+    params.set("doc", String(state.docId));
+  }
   if (state.query.trim()) {
     params.set("q", state.query.trim());
   }
@@ -123,6 +141,7 @@ export function resolveDocumentPreviewType(
   if (["mp4", "webm", "mov", "mkv", "avi", "video"].includes(ext)) return "video";
   if (["mp3", "wav", "ogg", "m4a", "audio"].includes(ext)) return "audio";
   if (ext === "pdf") return "pdf";
+  if (["doc", "docx", "ppt", "pptx", "xls", "xlsx", "odt", "ods", "odp"].includes(ext)) return "office";
   if (["txt", "csv", "log", "text"].includes(ext)) return "text";
   if (ext === "json") return "json";
   if (["html", "htm"].includes(ext)) return "html";

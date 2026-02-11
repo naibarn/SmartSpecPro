@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentManagementUi";
-import { ExternalLink } from "lucide-react";
+import { Check, ExternalLink, Pencil, X } from "lucide-react";
 import MarkdownFileEditor from "./MarkdownFileEditor";
 
 interface DocumentPreviewPanelProps {
@@ -12,8 +14,17 @@ interface DocumentPreviewPanelProps {
   markdownUpdatedAt?: string;
   markdownError?: string;
   isMarkdownSaving?: boolean;
+  markdownFullHeight?: boolean;
+  markdownEditorOnly?: boolean;
+  isRenamingTitle?: boolean;
+  markdownImageItems?: Array<{
+    id: number;
+    title: string;
+    source_url: string | null;
+  }>;
   onMarkdownChange?: (value: string) => void;
   onMarkdownSave?: () => void;
+  onRenameTitle?: (title: string) => Promise<void> | void;
 }
 
 export default function DocumentPreviewPanel({
@@ -24,9 +35,71 @@ export default function DocumentPreviewPanel({
   markdownUpdatedAt,
   markdownError,
   isMarkdownSaving,
+  markdownFullHeight,
+  markdownEditorOnly,
+  isRenamingTitle,
+  markdownImageItems,
   onMarkdownChange,
   onMarkdownSave,
+  onRenameTitle,
 }: DocumentPreviewPanelProps) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [previewLoadError, setPreviewLoadError] = useState<string | null>(null);
+  const [pdfObjectUrl, setPdfObjectUrl] = useState<string | null>(null);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
+
+  useEffect(() => {
+    setTitleDraft(item?.title || "");
+    setIsEditingTitle(false);
+  }, [item?.id, item?.title]);
+
+  useEffect(() => {
+    setPreviewLoadError(null);
+  }, [item?.id, item?.source_url, previewType]);
+
+  useEffect(() => {
+    if (previewType !== "pdf" || !item?.source_url) {
+      setPdfObjectUrl(null);
+      setIsPdfLoading(false);
+      return;
+    }
+
+    let revokedUrl: string | null = null;
+    let cancelled = false;
+    const controller = new AbortController();
+    setIsPdfLoading(true);
+
+    fetch(item.source_url, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Unable to load PDF (${response.status})`);
+        }
+        const blob = await response.blob();
+        if (cancelled) return;
+        revokedUrl = URL.createObjectURL(blob);
+        setPdfObjectUrl(revokedUrl);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPdfObjectUrl(null);
+        setPreviewLoadError("PDF preview could not be loaded. Try Open file.");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsPdfLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (revokedUrl) {
+        URL.revokeObjectURL(revokedUrl);
+      }
+    };
+  }, [previewType, item?.id, item?.source_url]);
+
   if (!item) {
     return (
       <div className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">
@@ -36,27 +109,129 @@ export default function DocumentPreviewPanel({
   }
 
   const sourceUrl = item.source_url;
+  const canRename = Boolean(onRenameTitle);
+  const normalizedTitle = titleDraft.trim();
+  const absoluteSourceUrl = sourceUrl
+    ? sourceUrl.startsWith("/") && typeof window !== "undefined"
+      ? `${window.location.origin}${sourceUrl}`
+      : sourceUrl
+    : null;
+  const sourceHost = absoluteSourceUrl
+    ? (() => {
+      try {
+        return new URL(absoluteSourceUrl).hostname.toLowerCase();
+      } catch {
+        return null;
+      }
+    })()
+    : null;
+  const isLocalOnlyHost = Boolean(
+    sourceHost &&
+      (sourceHost === "localhost" ||
+        sourceHost === "127.0.0.1" ||
+        sourceHost === "0.0.0.0" ||
+        sourceHost.endsWith(".local")),
+  );
+  const officeViewerUrl = absoluteSourceUrl
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absoluteSourceUrl)}`
+    : null;
+  const canUseOfficeViewer = Boolean(officeViewerUrl && !isLocalOnlyHost);
 
   return (
-    <div className="space-y-4 rounded-lg border bg-background p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="truncate text-lg font-semibold" title={item.title}>
-            {item.title}
-          </h2>
-          <div className="mt-1 flex flex-wrap gap-2">
-            <Badge variant="outline">{item.item_type}</Badge>
-            <Badge variant="outline">{item.status}</Badge>
+    <div className="space-y-4 rounded-xl border bg-background/90 p-4 shadow-sm">
+      <div className="rounded-lg border bg-gradient-to-r from-slate-50 via-sky-50 to-cyan-50 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {isEditingTitle ? (
+              <div className="space-y-2">
+                <Input
+                  value={titleDraft}
+                  onChange={(event) => setTitleDraft(event.target.value)}
+                  maxLength={255}
+                  autoFocus
+                  onKeyDown={async (event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      if (!canRename || !normalizedTitle || normalizedTitle === item.title) {
+                        setIsEditingTitle(false);
+                        return;
+                      }
+                      await onRenameTitle?.(normalizedTitle);
+                      setIsEditingTitle(false);
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setTitleDraft(item.title);
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  placeholder="Document title"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={async () => {
+                      if (!canRename || !normalizedTitle || normalizedTitle === item.title) {
+                        setIsEditingTitle(false);
+                        return;
+                      }
+                      await onRenameTitle?.(normalizedTitle);
+                      setIsEditingTitle(false);
+                    }}
+                    disabled={!normalizedTitle || isRenamingTitle}
+                  >
+                    <Check className="mr-1 h-4 w-4" />
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setTitleDraft(item.title);
+                      setIsEditingTitle(false);
+                    }}
+                    disabled={isRenamingTitle}
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <h2 className="truncate text-lg font-semibold" title={item.title}>
+                  {item.title}
+                </h2>
+                {canRename ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => setIsEditingTitle(true)}
+                    title="Rename document"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Badge variant="secondary" className="bg-white/70">{item.item_type}</Badge>
+              <Badge variant="outline">{item.status}</Badge>
+            </div>
           </div>
+          {sourceUrl ? (
+            <Button asChild size="sm" variant="outline">
+              <a href={sourceUrl} target="_blank" rel="noreferrer">
+                <ExternalLink className="mr-1 h-4 w-4" />
+                Open file
+              </a>
+            </Button>
+          ) : null}
         </div>
-        {sourceUrl ? (
-          <Button asChild size="sm" variant="outline">
-            <a href={sourceUrl} target="_blank" rel="noreferrer">
-              <ExternalLink className="mr-1 h-4 w-4" />
-              Open file
-            </a>
-          </Button>
-        ) : null}
       </div>
 
       {previewType === "markdown" ? (
@@ -67,45 +242,112 @@ export default function DocumentPreviewPanel({
           updatedAt={markdownUpdatedAt}
           isSaving={isMarkdownSaving}
           errorMessage={markdownError}
+          fullHeight={markdownFullHeight}
+          editorOnly={markdownEditorOnly}
+          imageLibraryItems={markdownImageItems}
         />
       ) : null}
 
       {previewType === "image" && sourceUrl ? (
-        <img
-          src={sourceUrl}
-          alt={item.title}
-          className="max-h-[60vh] w-full rounded-md border object-contain"
-        />
+        <div className="space-y-2 rounded-xl border bg-gradient-to-br from-slate-100 via-slate-50 to-sky-100 p-3 shadow-inner">
+          <img
+            src={sourceUrl}
+            alt={item.title}
+            className="max-h-[70vh] w-full rounded-lg border border-white/80 bg-white object-contain shadow-sm"
+            onError={() => setPreviewLoadError("Image preview failed to load. Try Open file.")}
+          />
+          {previewLoadError ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {previewLoadError}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {previewType === "video" && sourceUrl ? (
-        <video src={sourceUrl} controls className="max-h-[60vh] w-full rounded-md border" />
+        <div className="space-y-2 rounded-xl border bg-gradient-to-br from-slate-100 via-slate-50 to-cyan-100 p-3 shadow-inner">
+          <video
+            src={sourceUrl}
+            controls
+            className="max-h-[70vh] w-full rounded-lg border border-white/80 bg-black shadow-sm"
+            onError={() => setPreviewLoadError("Video preview failed to load. Try Open file.")}
+          />
+          {previewLoadError ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {previewLoadError}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {previewType === "audio" && sourceUrl ? (
-        <audio src={sourceUrl} controls className="w-full" />
+        <div className="rounded-xl border bg-gradient-to-r from-slate-50 to-sky-50 p-4">
+          <audio src={sourceUrl} controls className="w-full" />
+        </div>
       ) : null}
 
       {previewType === "pdf" && sourceUrl ? (
-        <iframe
-          title={`preview-${item.id}`}
-          src={sourceUrl}
-          className="h-[60vh] w-full rounded-md border"
-        />
+        <div className="space-y-2 rounded-xl border bg-slate-50 p-2 shadow-inner">
+          {isPdfLoading ? (
+            <div className="flex h-[70vh] items-center justify-center rounded-lg border bg-white text-sm text-muted-foreground">
+              Loading PDF preview...
+            </div>
+          ) : (
+            <iframe
+              title={`preview-${item.id}`}
+              src={pdfObjectUrl || sourceUrl}
+              className="h-[70vh] w-full rounded-lg border bg-white"
+              onError={() => setPreviewLoadError("PDF preview failed to load. Try Open file.")}
+            />
+          )}
+          {previewLoadError ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {previewLoadError}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {previewType === "office" && sourceUrl ? (
+        <div className="space-y-2 rounded-xl border bg-slate-50 p-2 shadow-inner">
+          {canUseOfficeViewer && officeViewerUrl ? (
+            <>
+              <iframe
+                title={`office-preview-${item.id}`}
+                src={officeViewerUrl}
+                className="h-[70vh] w-full rounded-lg border bg-white"
+                onError={() => setPreviewLoadError("Office preview failed to load. Try Open file.")}
+              />
+              <div className="px-2 pb-1 text-xs text-muted-foreground">
+                Office preview uses Microsoft online viewer. If it cannot render this URL, use Open file.
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg border border-dashed bg-white px-4 py-6 text-sm text-muted-foreground">
+              Office preview is limited in this environment. Use Open file for full document access.
+            </div>
+          )}
+          {previewLoadError ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {previewLoadError}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {previewType !== "markdown" &&
       previewType !== "image" &&
       previewType !== "video" &&
       previewType !== "audio" &&
-      previewType !== "pdf" ? (
+      previewType !== "pdf" &&
+      previewType !== "office" ? (
         <div className="space-y-3">
           {previewText ? (
-            <pre className="max-h-[60vh] overflow-auto rounded-md border bg-slate-50 p-3 text-xs">
+            <pre className="max-h-[70vh] overflow-auto rounded-lg border bg-slate-50/80 p-3 text-xs shadow-inner">
               {previewText}
             </pre>
           ) : (
-            <div className="rounded-md border bg-slate-50 p-4 text-sm text-muted-foreground">
+            <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">
               Preview is not available for this file type in-browser. Use Open file instead.
             </div>
           )}
