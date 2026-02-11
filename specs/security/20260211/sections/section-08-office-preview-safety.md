@@ -30,3 +30,17 @@ Prevent forwarding private/internal URLs to external office viewer while preserv
 
 ## Notes / Risks
 - Keep logic aligned with server-side host safety where possible.
+
+## As-Built (Implemented)
+- Added centralized office preview host-safety utility:
+  - `apps/web/client/src/lib/previewHostSafety.ts`
+  - `apps/web/client/src/lib/previewHostSafety.test.ts`
+- Replaced ad-hoc host checks in preview component:
+  - `apps/web/client/src/components/library/DocumentPreviewPanel.tsx`
+
+## Deviations From Plan
+- Fallback behavior is validated at utility level (decision + message contract) instead of component rendering tests.
+
+## Test Evidence
+- `bash -lc 'export NVM_DIR=\"$HOME/.nvm\" && [ -s \"$NVM_DIR/nvm.sh\" ] && source \"$NVM_DIR/nvm.sh\" && cd apps/web && npm test -- client/src/lib/previewHostSafety.test.ts client/src/lib/documentManagementUi.test.ts'`
+- Result: pass (10 tests)

@@ -43,9 +43,16 @@
   - Elevated global-role check currently allows both `admin` and `super_admin` for explicit global ops.
 
 ## Section section-07-library-ops-tenant-attribution-phase2
-- Commit: pending
+- Commit: `d28f958`
 - Test command: `bash -lc "cd apps/web && npm test -- server/services/libraryOpsService.test.ts server/routers/libraryOps.test.ts server/services/libraryOpsTenantAttributionService.test.ts"`
 - Pass/fail summary: pass (19/19)
 - Notable deviations:
   - Backfill shipped as reusable service + report output rather than script-only one-off execution.
   - Callback table mapping aligned to existing snake_case DB columns for compatibility.
+
+## Section section-08-office-preview-safety
+- Commit: pending
+- Test command: `bash -lc "cd apps/web && npm test -- client/src/lib/previewHostSafety.test.ts client/src/lib/documentManagementUi.test.ts"`
+- Pass/fail summary: pass (10/10)
+- Notable deviations:
+  - Fallback behavior was validated through utility decision/message contract tests instead of component rendering tests.
