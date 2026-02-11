@@ -35,3 +35,21 @@ Block executable behavior from uploaded active-content while preserving preview 
 ## Notes / Risks
 - Avoid over-blocking legitimate SVG assets.
 - Sanitization rules must be explicit and test-driven.
+
+## As-Built Update
+- Actual files changed:
+  - `apps/web/server/services/uploadContentSafety.ts` (new)
+  - `apps/web/server/services/uploadContentSafety.test.ts` (new)
+  - `apps/web/server/services/libraryService.ts`
+  - `apps/web/server/services/libraryService.test.ts`
+  - `apps/web/server/_core/index.ts`
+- Deviations from plan:
+  - Route-level static middleware behavior is validated through the extracted `getUploadStaticHeaders` helper unit tests rather than direct express route tests.
+- Tests added/updated:
+  - `apps/web/server/services/uploadContentSafety.test.ts`
+  - `apps/web/server/services/libraryService.test.ts`
+- Test run:
+  - `bash -lc 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh" && cd /home/dev/projects/SmartSpecPro/apps/web && npm test -- server/services/uploadContentSafety.test.ts server/services/libraryUrlPolicy.test.ts server/services/libraryService.test.ts server/services/mediaLibraryService.test.ts server/routers/library.test.ts server/routers/media.addToLibrary.test.ts'`
+  - Result: pass (51/51)
+- Follow-ups:
+  - Consider extending SVG sanitization policy with parser-based allowlists for richer SVG support while preserving safety constraints.
