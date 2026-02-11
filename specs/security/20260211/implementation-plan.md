@@ -146,7 +146,83 @@ Keep proxy available but safer.
 ### Compatibility
 - Media Studio and preview flows using external `https://` images remain functional.
 
-## Workstream 7: Security Regression Test Plan
+## Workstream 7: Upload Malware Scanning and Quarantine
+Add malware/content scanning for uploaded files while keeping external URL-based image workflows unchanged.
+
+### Required behavior
+- Run malware scan on uploaded assets before marking item as ready.
+- Quarantine or block files flagged as malicious/suspicious.
+- Provide deterministic user-facing status (`scanning`, `quarantined`, `rejected`, `ready`).
+- Keep external `https://` image links unaffected (scan applies to uploaded file pipeline only).
+
+### Operational behavior
+- Log scan verdict, engine version/signature timestamp, and decision source.
+- Provide operator remediation flow for false positives with explicit audit trail.
+- Fail closed when scanner is unavailable beyond retry threshold.
+
+## Workstream 8: Object-Level Authorization Hardening (Library and Sharing)
+Enforce strict per-item authorization for read/write/share/rename/delete paths.
+
+### Required behavior
+- Verify actor permission at object level for every file operation.
+- Enforce separation of access models:
+  - owner access
+  - direct user share
+  - group share
+- Deny by default on ambiguous ownership/share state.
+
+### Integration points
+- Document open/read APIs
+- rename/update metadata APIs
+- delete APIs
+- share/unshare APIs
+- background mutation endpoints touching library items
+
+## Workstream 9: Preview Sandbox and CSP Hardening
+Harden preview rendering surface (especially markdown and office/embed paths) without breaking safe external image rendering.
+
+### Required behavior
+- Apply strict Content Security Policy for document/markdown preview surfaces.
+- Apply sandbox restrictions to iframe-based preview where used.
+- Keep external image rendering enabled through controlled CSP allowances (`img-src` compatible with public `https://` and required data forms).
+- Block active script execution and plugin/object embedding in preview contexts.
+
+### Compatibility constraint
+- Markdown/image preview must still render external `https://` image URLs.
+
+## Workstream 10: Abuse Protection and Rate Limiting
+Protect high-risk endpoints against brute-force/resource-abuse patterns.
+
+### Required behavior
+- Apply tenant/user/IP-aware rate limits to:
+  - upload endpoints
+  - `/api/media/image-proxy`
+  - ops retry/reprocess endpoints
+- Add burst + sustained limits with clear retry/error messaging.
+- Add circuit-breaker style safeguards for repeated failures.
+
+## Workstream 11: DB-Level Tenant Guardrails
+Add database-level protections to reduce reliance on app-layer checks only.
+
+### Required behavior
+- Add foreign keys/indexes/check constraints that enforce tenant ownership relationships where applicable.
+- Add write-path guardrails (constraint/trigger/policy approach) preventing cross-tenant references.
+- Validate guard behavior with representative cross-tenant negative scenarios.
+
+### Safety constraints
+- Roll out in phased mode with compatibility checks.
+- Keep rollback path explicit for each schema constraint change.
+
+## Workstream 12: Backup/Restore Drill as Mandatory Release Gate
+Require proven recovery procedure for migrations and security cutovers.
+
+### Required behavior
+- Execute backup before destructive/constraint-tightening migrations.
+- Run restore drill in staging/pre-prod with production-like dataset sample.
+- Validate restored data integrity (row counts/checksums/key sample queries).
+- Produce signed migration + restore evidence artifact.
+
+## Workstream 13: Security Regression Test Plan
 Add tests across server + UI utility boundaries.
 
 ### Test ownership map
@@ -158,6 +234,12 @@ Add tests across server + UI utility boundaries.
 - Tenant attribution cutover tests (deny on missing tenant attribution in tenant-admin paths)
 - Office preview host classification tests
 - Image proxy tests for timeout/size/redirect/content-type/host-blocking
+- Upload malware scanning lifecycle tests
+- Object-level authorization/IDOR prevention tests
+- CSP/sandbox preview policy tests
+- Rate limit and abuse-protection behavior tests
+- DB tenant guardrail constraint tests
+- Backup/restore drill verification tests
 
 ### Required positive regressions
 - External `https://` image URL still accepted and previewable.
@@ -169,8 +251,11 @@ Add tests across server + UI utility boundaries.
 - Missing tenant denied in allowlist mode.
 - Cross-tenant ops side effects prevented in tenant-admin mode.
 - Tenant-admin retry/reprocess denies rows lacking tenant attribution after cutover.
+- Cross-tenant read/write/share attempts denied at object boundary.
+- Malicious upload is quarantined and never served as ready.
+- Preview context blocks active script execution under CSP/sandbox policy.
 
-## Workstream 8: Security Observability and Canary Release Checks
+## Workstream 14: Security Observability and Canary Release Checks
 Add production-grade observability and rollout checks for attribution hardening.
 
 ### Observability baseline
@@ -201,8 +286,14 @@ Add production-grade observability and rollout checks for attribution hardening.
 8. Execute tenant attribution cutover checklist and disable tenant-admin global fallback.
 9. Harden office preview host logic.
 10. Harden image proxy runtime controls.
-11. Add full security regression tests.
-12. Run observability + canary checks and capture rollout evidence.
+11. Add upload malware scanning and quarantine workflow.
+12. Enforce object-level authorization for all library operations.
+13. Harden preview CSP/sandbox controls with external image compatibility retained.
+14. Add rate limiting and abuse safeguards for high-risk endpoints.
+15. Roll out DB-level tenant guardrails in phased migration.
+16. Execute backup + restore drill and capture recovery evidence.
+17. Add full security regression tests.
+18. Run observability + canary checks and capture rollout evidence.
 
 ## Verification and Release Gate
 Release only when all are true:
@@ -217,6 +308,12 @@ Release only when all are true:
 - Observability dashboard/metrics for attribution enforcement are active and reviewed.
 - Canary validation report passes for representative tenants before full rollout.
 - Quarantine growth/retention alerts are configured and verified in pre-release checks.
+- Malware scanning path validates malicious uploads are quarantined and non-executable.
+- Object-level authorization tests confirm no IDOR/cross-tenant file access.
+- Preview CSP/sandbox policy verified while external image URL rendering remains functional.
+- Rate limits verified for upload/proxy/ops endpoints with safe fallback behavior.
+- DB-level tenant guardrails validated by negative cross-tenant constraint tests.
+- Backup/restore drill report is complete with integrity verification evidence.
 
 ## Rollback Strategy
 - Keep hardening changes behind granular toggles where practical (policy strictness, ops global restrictions).
