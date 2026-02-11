@@ -177,6 +177,35 @@ describe("addMediaTaskToLibrary", () => {
       ),
     ).rejects.toThrow("Media task not found");
   });
+
+  it("propagates URL validation failures from library item creation", async () => {
+    mockGetTask.mockResolvedValue({
+      id: "task-3",
+      taskId: "provider-3",
+      userId: "9",
+      mediaType: "image",
+      status: "completed",
+      model: "veo-3-1",
+      prompt: "Unsafe source",
+      resultUrl: "javascript:alert(1)",
+      createdAt: "2026-02-10T00:00:00.000Z",
+      updatedAt: "2026-02-10T00:00:00.000Z",
+    });
+
+    const error = new Error("Invalid sourceUrl: URL scheme javascript: is not allowed");
+    error.name = "LibraryUrlValidationError";
+    mockCreateLibraryItem.mockRejectedValue(error);
+
+    await expect(
+      addMediaTaskToLibrary(
+        { mediaTaskId: "task-3", userToken: "token-abc" },
+        { userId: 9, tenantId: 44, role: "user" },
+      ),
+    ).rejects.toMatchObject({
+      name: "LibraryUrlValidationError",
+      message: "Invalid sourceUrl: URL scheme javascript: is not allowed",
+    });
+  });
 });
 
 describe("autoAddMediaTaskToLibrary", () => {

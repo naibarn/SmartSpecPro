@@ -106,6 +106,21 @@ function assertLibraryEnabled(tenantId: TenantIdValue): void {
   }
 }
 
+function toClientLibraryMutationError(error: unknown): TRPCError | null {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+
+  if (error.name === "LibraryUrlValidationError") {
+    return new TRPCError({
+      code: "BAD_REQUEST",
+      message: (error as any).clientMessage || error.message || "Invalid library URL",
+    });
+  }
+
+  return null;
+}
+
 export const libraryRouter = router({
   search: protectedProcedure
     .input(
@@ -311,25 +326,33 @@ export const libraryRouter = router({
         role: ctx.user.role,
       };
 
-      const result = await createLibraryItem(input, actor);
-      auditLogger.log({
-        eventType: "library_mutation",
-        userId: ctx.user.id,
-        endpoint: "library.createItem",
-        requestType: "mutation",
-        requestPayload: {
-          tenantId: tenantIdResolved,
-          itemType: input.itemType,
-          source: input.source,
-          visibility: input.visibility ?? "private",
-        },
-        responsePayload: {
-          itemId: result.item?.id ?? null,
-          idempotent: result.idempotent,
-        },
-      });
+      try {
+        const result = await createLibraryItem(input, actor);
+        auditLogger.log({
+          eventType: "library_mutation",
+          userId: ctx.user.id,
+          endpoint: "library.createItem",
+          requestType: "mutation",
+          requestPayload: {
+            tenantId: tenantIdResolved,
+            itemType: input.itemType,
+            source: input.source,
+            visibility: input.visibility ?? "private",
+          },
+          responsePayload: {
+            itemId: result.item?.id ?? null,
+            idempotent: result.idempotent,
+          },
+        });
 
-      return result;
+        return result;
+      } catch (error) {
+        const clientError = toClientLibraryMutationError(error);
+        if (clientError) {
+          throw clientError;
+        }
+        throw error;
+      }
     }),
 
   getItem: protectedProcedure
@@ -376,33 +399,41 @@ export const libraryRouter = router({
         role: ctx.user.role,
       };
 
-      const { id, ...payload } = input;
-      const item = await updateLibraryItem(id, payload, actor);
+      try {
+        const { id, ...payload } = input;
+        const item = await updateLibraryItem(id, payload, actor);
 
-      if (!item) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Library item not found",
+        if (!item) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Library item not found",
+          });
+        }
+
+        auditLogger.log({
+          eventType: "library_mutation",
+          userId: ctx.user.id,
+          endpoint: "library.updateItem",
+          requestType: "mutation",
+          requestPayload: {
+            tenantId: tenantIdResolved,
+            itemId: id,
+            fields: Object.keys(payload),
+          },
+          responsePayload: {
+            itemId: item.id,
+            status: item.status,
+          },
         });
+
+        return item;
+      } catch (error) {
+        const clientError = toClientLibraryMutationError(error);
+        if (clientError) {
+          throw clientError;
+        }
+        throw error;
       }
-
-      auditLogger.log({
-        eventType: "library_mutation",
-        userId: ctx.user.id,
-        endpoint: "library.updateItem",
-        requestType: "mutation",
-        requestPayload: {
-          tenantId: tenantIdResolved,
-          itemId: id,
-          fields: Object.keys(payload),
-        },
-        responsePayload: {
-          itemId: item.id,
-          status: item.status,
-        },
-      });
-
-      return item;
     }),
 
   deleteItem: protectedProcedure

@@ -218,4 +218,22 @@ describe("mediaRouter.addTaskToLibrary", () => {
       }),
     ).rejects.toThrow("Library feature is disabled");
   });
+
+  it("maps URL validation failures to BAD_REQUEST", async () => {
+    const validationError = new Error("Invalid sourceUrl: URL scheme javascript: is not allowed");
+    validationError.name = "LibraryUrlValidationError";
+    mockAddMediaTaskToLibrary.mockRejectedValue(validationError);
+
+    const fn = mediaRouter.addTaskToLibrary as Function;
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 9, role: "user", currentTenantId: 44 },
+          userToken: "token-abc",
+          tenantId: null,
+        },
+        input: { taskId: "task-123" },
+      }),
+    ).rejects.toThrow("Invalid sourceUrl: URL scheme javascript: is not allowed");
+  });
 });

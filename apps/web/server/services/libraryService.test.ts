@@ -18,6 +18,7 @@ vi.mock("../db", () => ({
 }));
 
 import {
+  LibraryUrlValidationError,
   canReadLibraryItem,
   createLibraryItem,
   getLibraryItemById,
@@ -128,6 +129,83 @@ describe("createLibraryItem", () => {
     expect(result.item.id).toBe(77);
     expect(mockDb.insert).not.toHaveBeenCalled();
   });
+
+  it("rejects unsafe sourceUrl with deterministic validation error", async () => {
+    await expect(
+      createLibraryItem(
+        {
+          itemType: "image",
+          source: "media_history",
+          title: "Unsafe",
+          sourceUrl: "javascript:alert(1)",
+        },
+        {
+          userId: 42,
+          tenantId: 5,
+          role: "user",
+        },
+      ),
+    ).rejects.toMatchObject({
+      name: "LibraryUrlValidationError",
+      field: "sourceUrl",
+      reason: "blocked_scheme",
+      message: "Invalid sourceUrl: URL scheme javascript: is not allowed",
+    } satisfies Partial<LibraryUrlValidationError>);
+
+    expect(mockDb.insert).not.toHaveBeenCalled();
+  });
+
+  it("persists normalized sourceUrl and thumbnailUrl values", async () => {
+    const now = new Date("2026-02-10T00:00:00.000Z");
+    const valuesMock = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([
+        {
+          id: 88,
+          tenantId: "5",
+          ownerUserId: 42,
+          itemType: "image",
+          source: "media_history",
+          title: "Normalized",
+          description: null,
+          status: "ready",
+          visibility: "private",
+          metadata: {},
+          sourceUrl: "https://cdn.example.com/a.png",
+          thumbnailUrl: "/uploads/thumb.png",
+          deletedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]),
+    });
+    mockDb.insert.mockReturnValueOnce({
+      values: valuesMock,
+    });
+
+    const result = await createLibraryItem(
+      {
+        itemType: "image",
+        source: "media_history",
+        title: "Normalized",
+        sourceUrl: " https://cdn.example.com/a.png ",
+        thumbnailUrl: " /uploads/thumb.png ",
+      },
+      {
+        userId: 42,
+        tenantId: 5,
+        role: "user",
+      },
+    );
+
+    expect(result.item.sourceUrl).toBe("https://cdn.example.com/a.png");
+    expect(result.item.thumbnailUrl).toBe("/uploads/thumb.png");
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceUrl: "https://cdn.example.com/a.png",
+        thumbnailUrl: "/uploads/thumb.png",
+      }),
+    );
+  });
 });
 
 describe("tenant boundaries", () => {
@@ -178,6 +256,49 @@ describe("tenant boundaries", () => {
     );
 
     expect(result).toBeNull();
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsafe thumbnailUrl updates before DB write", async () => {
+    const now = new Date("2026-02-10T00:00:00.000Z");
+    const existingItem = {
+      id: 19,
+      tenantId: 7,
+      ownerUserId: 10,
+      itemType: "video",
+      source: "media_studio",
+      title: "Before",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {},
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([existingItem]))
+      .mockReturnValueOnce(makeSelectChain([{ permissionLevel: "owner" }]));
+
+    await expect(
+      updateLibraryItem(
+        19,
+        { thumbnailUrl: "file:///etc/passwd" },
+        {
+          userId: 10,
+          tenantId: 7,
+          role: "user",
+        },
+      ),
+    ).rejects.toMatchObject({
+      name: "LibraryUrlValidationError",
+      field: "thumbnailUrl",
+      reason: "blocked_scheme",
+    } satisfies Partial<LibraryUrlValidationError>);
+
     expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
