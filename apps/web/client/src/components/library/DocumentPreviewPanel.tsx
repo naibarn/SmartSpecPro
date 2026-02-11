@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentManagementUi";
+import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { Check, ExternalLink, Pencil, X } from "lucide-react";
 import MarkdownFileEditor from "./MarkdownFileEditor";
 
@@ -111,31 +112,15 @@ export default function DocumentPreviewPanel({
   const sourceUrl = item.source_url;
   const canRename = Boolean(onRenameTitle);
   const normalizedTitle = titleDraft.trim();
-  const absoluteSourceUrl = sourceUrl
-    ? sourceUrl.startsWith("/") && typeof window !== "undefined"
-      ? `${window.location.origin}${sourceUrl}`
-      : sourceUrl
+  const officePreviewDecision = previewType === "office" && sourceUrl
+    ? getOfficePreviewDecision(sourceUrl, {
+      origin: typeof window !== "undefined" ? window.location.origin : undefined,
+    })
     : null;
-  const sourceHost = absoluteSourceUrl
-    ? (() => {
-      try {
-        return new URL(absoluteSourceUrl).hostname.toLowerCase();
-      } catch {
-        return null;
-      }
-    })()
-    : null;
-  const isLocalOnlyHost = Boolean(
-    sourceHost &&
-      (sourceHost === "localhost" ||
-        sourceHost === "127.0.0.1" ||
-        sourceHost === "0.0.0.0" ||
-        sourceHost.endsWith(".local")),
-  );
-  const officeViewerUrl = absoluteSourceUrl
-    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absoluteSourceUrl)}`
-    : null;
-  const canUseOfficeViewer = Boolean(officeViewerUrl && !isLocalOnlyHost);
+  const officeViewerUrl = officePreviewDecision?.viewerUrl ?? null;
+  const canUseOfficeViewer = Boolean(officePreviewDecision?.canEmbed && officeViewerUrl);
+  const officeFallbackMessage = officePreviewDecision?.message
+    || "Office preview is limited in this environment. Use Open file for full document access.";
 
   return (
     <div className="space-y-4 rounded-xl border bg-background/90 p-4 shadow-sm">
@@ -324,7 +309,7 @@ export default function DocumentPreviewPanel({
             </>
           ) : (
             <div className="rounded-lg border border-dashed bg-white px-4 py-6 text-sm text-muted-foreground">
-              Office preview is limited in this environment. Use Open file for full document access.
+              {officeFallbackMessage}
             </div>
           )}
           {previewLoadError ? (
