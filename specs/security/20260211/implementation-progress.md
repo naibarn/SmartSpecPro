@@ -65,7 +65,7 @@
   - Hardening controls were centralized in `imageProxySafety` service for deterministic route behavior and isolated tests.
 
 ## Section section-10-security-regression-release-gate
-- Commit: pending
+- Commit: `fdb2a11`
 - Test command: `bash -lc "cd apps/web && npm test -- server/services/securityRegressionReleaseGate.test.ts client/src/lib/securityCompatibility.test.ts server/services/libraryUrlPolicy.test.ts server/services/uploadContentSafety.test.ts server/services/libraryFeatureFlags.test.ts server/services/libraryOpsService.test.ts server/routers/libraryOps.test.ts server/services/libraryOpsTenantAttributionService.test.ts server/services/imageProxySafety.test.ts client/src/lib/previewHostSafety.test.ts client/src/lib/documentManagementUi.test.ts"`
 - Pass/fail summary: pass (66/66)
 - Notable deviations:
