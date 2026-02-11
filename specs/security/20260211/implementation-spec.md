@@ -45,7 +45,16 @@ Library ops endpoints and services must avoid cross-tenant exposure/actions in t
 
 Requirements:
 - Summary/retry/reprocess operations must be scoped by tenant where tenant identity exists in data.
-- Any intentionally global operation must be explicit and role-gated.
+- Any intentionally global operation must be explicit, separately routed, and role-gated.
+- Tenant-admin pathways must not silently fall back to global scope.
+
+### FR-4.1: Strict tenant attribution enforcement
+Tenant attribution must be enforced at write and query boundaries for operational entities used by library ops.
+
+Requirements:
+- Callback event/DLQ records used by retry/reprocess must include `tenant_id`.
+- New writes for these entities must reject missing tenant attribution unless on explicit super-admin global routes.
+- Backfill must attribute historical rows where derivable; unresolved rows must be quarantined and excluded from tenant-admin operations.
 
 ### FR-5: Safer office/external preview decisions
 Office viewer embedding must not forward private/internal/local targets.
@@ -69,6 +78,7 @@ Requirements:
   - Library/media search thumbnails
 - Security failures should return clear, actionable errors.
 - Changes should be observable via logs/metrics for denied requests and blocked unsafe inputs.
+- Tenant attribution cutover must include canary-safe rollout validation before full release.
 
 ## 5) Testing Requirements
 Add security regression tests covering both positive and negative scenarios.
@@ -83,9 +93,12 @@ Negative tests (must fail/deny):
 - Allowlist mode denies missing tenant context.
 - Tenant-scoped ops do not process cross-tenant targets.
 - Office preview blocks private/internal host targets.
+- Tenant-admin operations do not use global fallback when tenant attribution is missing.
+- Observability + canary checks for attribution hardening pass before rollout.
 
 ## 6) Acceptance Criteria
 - Unsafe URL and active-content vectors are blocked by policy.
 - External image URL behavior is preserved across target UI paths.
 - No cross-tenant side effects from library ops in tenant-admin mode.
+- Tenant attribution is required on operational entities used by tenant-admin retry/reprocess flows (or operations are denied/quarantined).
 - New security/regression tests are added and passing.

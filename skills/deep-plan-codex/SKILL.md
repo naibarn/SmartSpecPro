@@ -105,7 +105,15 @@ Persist selected review mode:
 Artifact naming compatibility:
 - Canonical artifacts use neutral names (`research-notes.md`, `interview-notes.md`, `implementation-spec.md`, `implementation-plan.md`, etc.).
 - If session output reports pre-existing legacy-named artifacts in `files_found`, treat them as valid equivalents.
-- When updating existing plans, continue editing the artifact set already present in that planning directory to avoid split histories.
+- On resume with legacy-only artifacts, canonicalize to neutral names first:
+  - `claude-research.md` -> `research-notes.md`
+  - `claude-interview.md` -> `interview-notes.md`
+  - `claude-spec.md` -> `implementation-spec.md`
+  - `claude-plan.md` -> `implementation-plan.md`
+  - `claude-plan-tdd.md` -> `implementation-plan-tdd.md`
+  - `claude-integration-notes.md` -> `integration-notes.md`
+- Update intra-plan references after canonicalization so generated outputs keep using neutral names.
+- Keep backward compatibility in tooling by accepting both name sets for discovery/resume.
 
 ### 4.1) Existing Plan Detection and Planning Intent (Required on Resume/Existing Plan)
 

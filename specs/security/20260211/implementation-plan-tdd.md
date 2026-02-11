@@ -1,6 +1,6 @@
 # TDD Plan - Security Hardening (Library / Document Management / Admin Gallery)
 
-This document mirrors `claude-plan.md` and defines tests to add/write first before implementation.
+This document mirrors `implementation-plan.md` and defines tests to add/write first before implementation.
 
 ## Objective
 Validate that security hardening blocks unsafe behavior while preserving existing external image workflows.
@@ -73,10 +73,18 @@ Validate that security hardening blocks unsafe behavior while preserving existin
 - Test: backfill infers tenant attribution from linked entities when possible.
 - Test: post-backfill ops queries are tenant-scoped for callback tables.
 - Test: cross-tenant callback retries/reprocesses are blocked.
+- Test: tenant-admin retry/reprocess denies records without tenant attribution after cutover.
+- Test: unresolved backfill rows are quarantined and excluded from tenant-admin operation sets.
+- Test: intentionally global retry/reprocess routes require super-admin role and emit mandatory global audit markers.
+- Test: phased DB constraint rollout enforces `NOT NULL`/FK only after successful backfill validation.
+- Test: backfill is idempotent and lock-protected (second run produces no duplicate mutation).
+- Test: interrupted backfill resumes from checkpoint without reprocessing completed batches.
 
 ### Verification criteria
 - Cross-tenant side effects are prevented in tenant-admin mode.
 - Phase 2 is complete in this cycle, not deferred.
+- Tenant-admin operational flow has no global fallback post-cutover.
+- DB constraint cutover is verifiably safe and rollback-capable.
 
 ## Workstream 5: Safer Office Preview Decision Logic
 
@@ -109,11 +117,28 @@ Validate that security hardening blocks unsafe behavior while preserving existin
 - Test: active-content upload path blocks inline execution behavior.
 - Test: allowlist missing-tenant condition is denied.
 - Test: tenant ops guard prevents cross-tenant action.
+- Test: tenant-admin and super-admin global routes use separate contracts and permission checks.
 
 ### Verification criteria
 - Security negative tests pass.
 - Compatibility positive tests pass.
 - Baseline library/document/media test subsets remain green.
+
+## Workstream 8: Observability + Canary Validation
+
+### Test stubs (write first)
+- Test: denied missing-attribution operations emit expected structured audit event/metric.
+- Test: cross-tenant deny path emits expected audit event/metric.
+- Test: quarantine queue metrics update when unresolved rows are marked/excluded.
+- Test: super-admin global route invocation emits explicit global-operation audit fields.
+- Test: canary smoke check for representative tenant passes before rollout gate.
+- Test: quarantine retention policy and purge/archive job execute with auditable records.
+- Test: quarantine growth alert triggers when threshold is exceeded.
+
+### Verification criteria
+- Observability signals exist for all critical deny/cutover paths.
+- Canary validation protects full rollout from hidden fallback regressions.
+- Quarantine retention/purge and alerting controls are validated.
 
 ## Execution Order (TDD)
 1. Add URL policy tests.
@@ -123,8 +148,9 @@ Validate that security hardening blocks unsafe behavior while preserving existin
 5. Add ops phase 1 + phase 2 tenant-scope tests.
 6. Add office preview host-classification tests.
 7. Add proxy hardening tests.
-8. Add end-to-end security regression + compatibility tests.
-9. Implement corresponding production changes in small increments until all tests pass.
+8. Add security regression + compatibility tests.
+9. Add observability + canary validation tests.
+10. Implement corresponding production changes in small increments until all tests pass.
 
 ## Release Gate (TDD Validation)
 - New security tests pass.
@@ -132,3 +158,4 @@ Validate that security hardening blocks unsafe behavior while preserving existin
 - Migration verification tests and reports complete.
 - Tenant attribution phase 2 tests pass.
 - External image compatibility tests pass.
+- Observability and canary validation tests pass.
