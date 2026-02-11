@@ -212,6 +212,28 @@ describe("libraryRouter.createItem", () => {
       }),
     ).rejects.toThrow("Library feature is disabled");
   });
+
+  it("maps URL validation error to client-safe bad request", async () => {
+    const error = new Error("Invalid sourceUrl: URL scheme javascript: is not allowed");
+    error.name = "LibraryUrlValidationError";
+    mockCreateLibraryItem.mockRejectedValue(error);
+
+    const fn = libraryRouter.createItem as Function;
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 9, role: "user", currentTenantId: 44 },
+          tenantId: null,
+        },
+        input: {
+          itemType: "image",
+          source: "media_history",
+          title: "Demo",
+          sourceUrl: "javascript:alert(1)",
+        },
+      }),
+    ).rejects.toThrow("Invalid sourceUrl: URL scheme javascript: is not allowed");
+  });
 });
 
 describe("libraryRouter.search", () => {
@@ -413,6 +435,28 @@ describe("libraryRouter.getItem", () => {
         input: { id: 123 },
       }),
     ).rejects.toThrow("Library item not found");
+  });
+});
+
+describe("libraryRouter.updateItem", () => {
+  it("maps URL validation error to client-safe bad request", async () => {
+    const error = new Error("Invalid thumbnailUrl: URL scheme file: is not allowed");
+    error.name = "LibraryUrlValidationError";
+    mockUpdateLibraryItem.mockRejectedValue(error);
+
+    const fn = libraryRouter.updateItem as Function;
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 4, role: "user", currentTenantId: 2 },
+          tenantId: 2,
+        },
+        input: {
+          id: 123,
+          thumbnailUrl: "file:///etc/passwd",
+        },
+      }),
+    ).rejects.toThrow("Invalid thumbnailUrl: URL scheme file: is not allowed");
   });
 });
 

@@ -69,6 +69,10 @@ async function resolveLibraryTenantIdForMedia(
   return tenantId;
 }
 
+function isLibraryUrlValidationError(error: unknown): boolean {
+  return error instanceof Error && error.name === "LibraryUrlValidationError";
+}
+
 /**
  * Look up a media model from the DB to get its configJson (pricingTiers).
  * Falls back to the hardcoded MEDIA_MODELS if DB lookup fails.
@@ -732,6 +736,9 @@ export const mediaRouter = router({
             ? error.cause.message
             : null;
         const message = rootCause || (error instanceof Error ? error.message : "Failed to add media task to library");
+        if (isLibraryUrlValidationError(error)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message });
+        }
         if (message.includes("Only completed media tasks")) {
           throw new TRPCError({ code: "BAD_REQUEST", message });
         }

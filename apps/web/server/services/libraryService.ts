@@ -4,6 +4,10 @@ import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { getDb } from "../db";
 import { storagePut } from "../storage";
 import {
+  validateLibraryUrl,
+  type LibraryUrlRejectReason,
+} from "./libraryUrlPolicy";
+import {
   libraryChunks,
   libraryIndexJobs,
   libraryItems,
@@ -80,6 +84,24 @@ export interface LibraryItemDto {
 interface CreateLibraryItemResult {
   item: LibraryItemDto;
   idempotent: boolean;
+}
+
+export class LibraryUrlValidationError extends Error {
+  readonly field: "sourceUrl" | "thumbnailUrl";
+  readonly reason: LibraryUrlRejectReason;
+  readonly clientMessage: string;
+
+  constructor(
+    field: "sourceUrl" | "thumbnailUrl",
+    reason: LibraryUrlRejectReason,
+    clientMessage: string,
+  ) {
+    super(clientMessage);
+    this.name = "LibraryUrlValidationError";
+    this.field = field;
+    this.reason = reason;
+    this.clientMessage = clientMessage;
+  }
 }
 
 export interface LibrarySearchFilters {
@@ -228,6 +250,27 @@ function normalizeLibraryTenantId(tenantId: LibraryTenantId): string {
     throw new Error("Invalid tenant ID");
   }
   return normalized;
+}
+
+function validateLibraryItemUrlField(
+  field: "sourceUrl" | "thumbnailUrl",
+  value: string | null | undefined,
+): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const context = field === "sourceUrl" ? "library_source_url" : "library_thumbnail_url";
+  const result = validateLibraryUrl(value, context);
+  if (!result.ok) {
+    throw new LibraryUrlValidationError(
+      field,
+      result.reason,
+      `Invalid ${field}: ${result.message}`,
+    );
+  }
+
+  return result.normalizedUrl;
 }
 
 function toLibraryItemDto(row: LibraryItemRow): LibraryItemDto {
@@ -620,6 +663,9 @@ export async function createLibraryItem(
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
   const now = new Date();
 
+  const validatedSourceUrl = validateLibraryItemUrlField("sourceUrl", input.sourceUrl);
+  const validatedThumbnailUrl = validateLibraryItemUrlField("thumbnailUrl", input.thumbnailUrl);
+
   if (input.sourceLink) {
     const existing = await db
       .select({
@@ -661,8 +707,8 @@ export async function createLibraryItem(
       status: input.status ?? "ready",
       visibility: input.visibility ?? "private",
       metadata: normalizeLibraryMetadata(input.metadata),
-      sourceUrl: input.sourceUrl ?? null,
-      thumbnailUrl: input.thumbnailUrl ?? null,
+      sourceUrl: validatedSourceUrl,
+      thumbnailUrl: validatedThumbnailUrl,
       createdAt: now,
       updatedAt: now,
     })
@@ -824,8 +870,16 @@ export async function updateLibraryItem(
   if (input.status !== undefined) updatePayload.status = input.status;
   if (input.visibility !== undefined) updatePayload.visibility = input.visibility;
   if (input.metadata !== undefined) updatePayload.metadata = normalizeLibraryMetadata(input.metadata);
-  if (input.sourceUrl !== undefined) updatePayload.sourceUrl = input.sourceUrl;
-  if (input.thumbnailUrl !== undefined) updatePayload.thumbnailUrl = input.thumbnailUrl;
+  if (input.sourceUrl !== undefined) {
+    updatePayload.sourceUrl = input.sourceUrl === null
+      ? null
+      : validateLibraryItemUrlField("sourceUrl", input.sourceUrl);
+  }
+  if (input.thumbnailUrl !== undefined) {
+    updatePayload.thumbnailUrl = input.thumbnailUrl === null
+      ? null
+      : validateLibraryItemUrlField("thumbnailUrl", input.thumbnailUrl);
+  }
 
   const updated = await db
     .update(libraryItems)

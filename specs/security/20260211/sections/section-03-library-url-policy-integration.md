@@ -37,3 +37,25 @@ Apply the URL policy to all relevant write paths so unsafe URLs cannot enter lib
 ## Notes / Risks
 - Keep error text stable enough for frontend UX handling.
 - Avoid duplicate validation logic between route and service layers.
+
+## As-Built Update
+- Actual files changed:
+  - `apps/web/server/services/libraryService.ts`
+  - `apps/web/server/routers/library.ts`
+  - `apps/web/server/routers/media.ts`
+  - `apps/web/server/services/libraryService.test.ts`
+  - `apps/web/server/services/mediaLibraryService.test.ts`
+  - `apps/web/server/routers/library.test.ts`
+  - `apps/web/server/routers/media.addToLibrary.test.ts`
+- Deviations from plan:
+  - Policy validation is centralized in `libraryService` and enforced for media add-to-library through shared service usage; `mediaLibraryService.ts` itself did not require code changes.
+- Tests added/updated:
+  - `apps/web/server/services/libraryService.test.ts`
+  - `apps/web/server/services/mediaLibraryService.test.ts`
+  - `apps/web/server/routers/library.test.ts`
+  - `apps/web/server/routers/media.addToLibrary.test.ts`
+- Test run:
+  - `bash -lc 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh" && cd /home/dev/projects/SmartSpecPro/apps/web && npm test -- server/services/libraryUrlPolicy.test.ts server/services/libraryService.test.ts server/services/mediaLibraryService.test.ts server/routers/library.test.ts server/routers/media.addToLibrary.test.ts'`
+  - Result: pass (43/43)
+- Follow-ups:
+  - Consider mapping `reason` codes into audit payloads in mutation paths for stronger security analytics.
