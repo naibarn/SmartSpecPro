@@ -51,8 +51,15 @@
   - Callback table mapping aligned to existing snake_case DB columns for compatibility.
 
 ## Section section-08-office-preview-safety
-- Commit: pending
+- Commit: `5b25a85`
 - Test command: `bash -lc "cd apps/web && npm test -- client/src/lib/previewHostSafety.test.ts client/src/lib/documentManagementUi.test.ts"`
 - Pass/fail summary: pass (10/10)
 - Notable deviations:
   - Fallback behavior was validated through utility decision/message contract tests instead of component rendering tests.
+
+## Section section-09-image-proxy-hardening
+- Commit: pending
+- Test command: `bash -lc "cd apps/web && npm test -- server/services/imageProxySafety.test.ts server/services/libraryUrlPolicy.test.ts"`
+- Pass/fail summary: pass (16/16)
+- Notable deviations:
+  - Hardening controls were centralized in `imageProxySafety` service for deterministic route behavior and isolated tests.
