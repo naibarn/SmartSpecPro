@@ -94,8 +94,8 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.waitForCompletion("j1");
-    await vi.advanceTimersByTimeAsync(1100);
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
+    await vi.advanceTimersByTimeAsync(3100);
     const result = await promise;
     expect(result.status).toBe("done");
   });
@@ -114,8 +114,8 @@ describe("MediaJobClient", () => {
     const promise = client.waitForCompletion("j1");
     // Attach rejection assertion before advancing timers to prevent unhandled rejection
     const assertion = expect(promise).rejects.toThrow(/FFmpeg failed/i);
-    await vi.advanceTimersByTimeAsync(1100);
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
+    await vi.advanceTimersByTimeAsync(3100);
     await assertion;
   });
 
@@ -130,9 +130,9 @@ describe("MediaJobClient", () => {
     const promise = client.waitForCompletion("j1", (p) =>
       progressCalls.push(p),
     );
-    await vi.advanceTimersByTimeAsync(1100);
-    await vi.advanceTimersByTimeAsync(1100);
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
+    await vi.advanceTimersByTimeAsync(3100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
     expect(progressCalls.length).toBeGreaterThanOrEqual(2);
   });
@@ -148,7 +148,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.probe("file:///test.mp4");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     expect(mockAdapter.submitJobCalls).toHaveLength(1);
@@ -173,7 +173,7 @@ describe("MediaJobClient", () => {
     };
 
     const promise = client.renderMp4(timeline, "/tmp/out.mp4");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -188,7 +188,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.getWaveformPeaks("file:///test.wav", 50);
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -206,7 +206,7 @@ describe("MediaJobClient", () => {
       thresholdDb: -35,
       minSilenceMs: 800,
     });
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -221,7 +221,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.detectDeadAir("file:///test.wav");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -239,7 +239,7 @@ describe("MediaJobClient", () => {
       { startMs: 5000, endMs: 7000 },
     ];
     const promise = client.cutDeadAir("file:///test.mp4", segments, "remove");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -255,7 +255,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.cutDeadAir("file:///test.mp4", []);
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -268,7 +268,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.getThumbnails("file:///test.mp4", 3000);
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -284,7 +284,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.getThumbnails("file:///test.mp4");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -297,7 +297,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.extractSubtitles("file:///test.mp4", "vtt");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -311,7 +311,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.extractSubtitles("file:///test.mp4");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -330,7 +330,7 @@ describe("MediaJobClient", () => {
     ];
 
     const promise = client.concat(clips, "concat_reencode");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -387,7 +387,7 @@ describe("MediaJobClient", () => {
       bitrate: 8000,
       audioBitrate: 256,
     });
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];
@@ -402,7 +402,7 @@ describe("MediaJobClient", () => {
     ]);
 
     const promise = client.getWaveformPeaks("file:///test.wav");
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(3100);
     await promise;
 
     const spec = mockAdapter.submitJobCalls[0];

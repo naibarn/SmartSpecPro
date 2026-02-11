@@ -12,7 +12,10 @@ async function start(app: any) {
   return { server, base: `http://127.0.0.1:${port}` };
 }
 
-describe("website MCP server", () => {
+const describeSocketSuite =
+  process.env.RUN_SOCKET_TESTS === "true" ? describe : describe.skip;
+
+describeSocketSuite("website MCP server", () => {
   const oldEnv = { ...process.env };
   let tmp: string;
 

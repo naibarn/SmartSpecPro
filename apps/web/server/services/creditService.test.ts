@@ -149,7 +149,9 @@ describe("deductCreditsForModel", () => {
       const tx = {
         update: vi.fn().mockReturnValue({
           set: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue(undefined),
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ newBalance: 92 }]),
+            }),
           }),
         }),
         insert: vi.fn().mockReturnValue({

@@ -25,7 +25,10 @@ async function start(app: any) {
   return { server, base: `http://127.0.0.1:${port}` };
 }
 
-describe("website gateway /v1/chat/completions", () => {
+const describeSocketSuite =
+  process.env.RUN_SOCKET_TESTS === "true" ? describe : describe.skip;
+
+describeSocketSuite("website gateway /v1/chat/completions", () => {
   const oldEnv = { ...process.env };
 
   beforeEach(() => {

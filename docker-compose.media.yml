@@ -114,7 +114,7 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-celery-beat
-    command: celery -A app.core.celery_app beat --loglevel=info
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule /tmp/celerybeat-schedule
     env_file:
       - ./python-backend/.env
     environment:
