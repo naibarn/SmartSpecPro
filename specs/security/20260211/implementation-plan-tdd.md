@@ -108,7 +108,81 @@ Validate that security hardening blocks unsafe behavior while preserving existin
 ### Verification criteria
 - Proxy remains functional for valid external images while hardening controls are active.
 
-## Workstream 7: Security Regression Test Plan
+## Workstream 7: Upload Malware Scanning and Quarantine
+
+### Test stubs (write first)
+- Test: uploaded file enters `scanning` state before availability.
+- Test: malicious verdict moves file to `quarantined` and blocks open/preview/download paths.
+- Test: clean verdict transitions file to `ready`.
+- Test: scanner timeout/unavailable state fails closed after retry policy.
+- Test: external `https://` image link workflow is unaffected by upload scanning controls.
+
+### Verification criteria
+- Malicious uploads are never exposed as ready content.
+- Scan lifecycle and audit records are deterministic and test-covered.
+
+## Workstream 8: Object-Level Authorization Hardening (Library and Sharing)
+
+### Test stubs (write first)
+- Test: owner can open/update/rename/delete owned item.
+- Test: shared user can open according to granted permission but cannot exceed scope.
+- Test: group member access follows group share role.
+- Test: unauthorized actor receives deny on read/write/share/delete (IDOR negative tests).
+- Test: cross-tenant actor cannot access item even with guessed ID.
+
+### Verification criteria
+- Every object operation enforces explicit authorization decision.
+- IDOR/cross-tenant access attempts are consistently denied.
+
+## Workstream 9: Preview Sandbox and CSP Hardening
+
+### Test stubs (write first)
+- Test: markdown/preview response emits expected CSP headers.
+- Test: iframe preview uses expected sandbox restrictions.
+- Test: active script/object/embed payloads are blocked in preview context.
+- Test: external `https://` images still render under configured CSP.
+
+### Verification criteria
+- Preview sandbox/CSP controls are active and verifiable.
+- Security controls do not regress required external image rendering.
+
+## Workstream 10: Abuse Protection and Rate Limiting
+
+### Test stubs (write first)
+- Test: upload endpoint enforces burst and sustained rate limits.
+- Test: image-proxy endpoint enforces rate limits and returns deterministic retry message.
+- Test: ops retry/reprocess endpoint enforces role-aware rate limits.
+- Test: limit counters reset/decay per policy window.
+
+### Verification criteria
+- High-risk endpoints are protected against repeated abuse.
+- Legitimate traffic remains functional within configured thresholds.
+
+## Workstream 11: DB-Level Tenant Guardrails
+
+### Test stubs (write first)
+- Test: cross-tenant foreign-key/reference write fails at DB boundary.
+- Test: valid same-tenant writes succeed after guardrail rollout.
+- Test: phased constraint rollout preserves compatibility before strict enforcement.
+- Test: rollback path for guardrail migration restores expected write behavior.
+
+### Verification criteria
+- DB enforces tenant integrity independent of app-layer regressions.
+- Constraint rollout and rollback behaviors are test-validated.
+
+## Workstream 12: Backup/Restore Drill as Mandatory Release Gate
+
+### Test stubs (write first)
+- Test: pre-migration backup artifact is generated and checksum-verified.
+- Test: restore drill recreates dataset with expected row counts/checkpoints.
+- Test: post-restore validation queries match baseline integrity expectations.
+- Test: release gate fails when backup/restore evidence is missing.
+
+### Verification criteria
+- Recovery readiness is proven, not assumed.
+- Release cannot proceed without backup/restore evidence.
+
+## Workstream 13: Security Regression Test Plan
 
 ### Test stubs (write first)
 - Test: document preview still displays external `https://` image sources.
@@ -118,13 +192,19 @@ Validate that security hardening blocks unsafe behavior while preserving existin
 - Test: allowlist missing-tenant condition is denied.
 - Test: tenant ops guard prevents cross-tenant action.
 - Test: tenant-admin and super-admin global routes use separate contracts and permission checks.
+- Test: malware-scanned malicious upload never becomes previewable.
+- Test: object-level access checks deny unauthorized open/rename/delete/share.
+- Test: preview CSP/sandbox blocks script payload while external image rendering still works.
+- Test: rate limit controls throttle abuse patterns with deterministic errors.
+- Test: DB tenant guardrails reject cross-tenant relation writes.
+- Test: release gate fails without backup/restore drill evidence.
 
 ### Verification criteria
 - Security negative tests pass.
 - Compatibility positive tests pass.
 - Baseline library/document/media test subsets remain green.
 
-## Workstream 8: Observability + Canary Validation
+## Workstream 14: Observability + Canary Validation
 
 ### Test stubs (write first)
 - Test: denied missing-attribution operations emit expected structured audit event/metric.
@@ -148,9 +228,15 @@ Validate that security hardening blocks unsafe behavior while preserving existin
 5. Add ops phase 1 + phase 2 tenant-scope tests.
 6. Add office preview host-classification tests.
 7. Add proxy hardening tests.
-8. Add security regression + compatibility tests.
-9. Add observability + canary validation tests.
-10. Implement corresponding production changes in small increments until all tests pass.
+8. Add malware scanning lifecycle tests.
+9. Add object-level authorization/IDOR tests.
+10. Add preview CSP/sandbox tests.
+11. Add rate limiting tests.
+12. Add DB tenant guardrail tests.
+13. Add backup/restore gate tests.
+14. Add security regression + compatibility tests.
+15. Add observability + canary validation tests.
+16. Implement corresponding production changes in small increments until all tests pass.
 
 ## Release Gate (TDD Validation)
 - New security tests pass.
@@ -159,3 +245,9 @@ Validate that security hardening blocks unsafe behavior while preserving existin
 - Tenant attribution phase 2 tests pass.
 - External image compatibility tests pass.
 - Observability and canary validation tests pass.
+- Malware scanning and quarantine tests pass.
+- Object-level authorization (including IDOR negatives) tests pass.
+- CSP/sandbox preview tests pass without external-image regression.
+- Rate limiting tests pass for upload/proxy/ops endpoints.
+- DB tenant guardrail constraint tests pass.
+- Backup/restore drill evidence validation tests pass.
