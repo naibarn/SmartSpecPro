@@ -45,7 +45,6 @@ export const libraryOpsRouter = router({
       }
       return getLibraryOpsSummary(db, {
         tenantId: scope === "tenant" ? String(tenantId) : null,
-        includeGlobalCallbackMetrics: scope === "global",
       });
     }),
 
@@ -59,13 +58,13 @@ export const libraryOpsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const scope = input.scope ?? "tenant";
       const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
-      if (scope !== "global") {
+      if (scope === "tenant" && (tenantId === null || tenantId === undefined)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "DLQ reprocess requires explicit global scope until tenant attribution is complete",
+          message: "Tenant scope is required for DLQ reprocess",
         });
       }
-      if (!isGlobalOpsRole(ctx.user.role)) {
+      if (scope === "global" && !isGlobalOpsRole(ctx.user.role)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Global library ops require elevated role" });
       }
       if (!isLibraryEnabledForTenant(tenantId)) {
@@ -80,6 +79,9 @@ export const libraryOpsRouter = router({
       const result = await reprocessCallbackDlqEntry(
         createLibraryOpsRepository(db),
         input.id,
+        {
+          tenantId: scope === "tenant" ? String(tenantId) : null,
+        },
       );
       if (!result.success && result.status === "not_found") {
         throw new TRPCError({ code: "NOT_FOUND", message: "DLQ entry not found" });
@@ -90,7 +92,7 @@ export const libraryOpsRouter = router({
         userId: ctx.user.id,
         endpoint: "libraryOps.reprocessCallbackDlq",
         requestType: "mutation",
-        requestPayload: { dlqId: input.id, tenantId, operationScope: "global" },
+        requestPayload: { dlqId: input.id, tenantId, operationScope: scope },
         responsePayload: result,
       });
 

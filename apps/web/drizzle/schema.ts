@@ -1348,24 +1348,26 @@ export type InsertMediaModel = typeof mediaModels.$inferInsert;
  */
 export const mediaCallbackEvents = pgTable("media_callback_events", {
   id: serial("id").primaryKey(),
-  providerName: varchar("providerName", { length: 64 }).notNull().default("kie_ai"),
-  providerTaskId: varchar("providerTaskId", { length: 128 }),
-  eventFingerprint: varchar("eventFingerprint", { length: 64 }).notNull().unique(),
+  tenantId: varchar("tenant_id", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  providerName: varchar("provider_name", { length: 64 }).notNull().default("kie_ai"),
+  providerTaskId: varchar("provider_task_id", { length: 128 }),
+  eventFingerprint: varchar("event_fingerprint", { length: 64 }).notNull().unique(),
   payload: json("payload").$type<Record<string, any>>().notNull().default({}),
-  normalizedStatus: varchar("normalizedStatus", { length: 32 }),
-  resultUrl: text("resultUrl"),
-  errorMessage: text("errorMessage"),
+  normalizedStatus: varchar("normalized_status", { length: 32 }),
+  resultUrl: text("result_url"),
+  errorMessage: text("error_message"),
   status: mediaCallbackEventStatusEnum("status").notNull().default("pending"),
-  attemptCount: integer("attemptCount").notNull().default(0),
-  maxAttempts: integer("maxAttempts").notNull().default(5),
-  nextRetryAt: timestamp("nextRetryAt", { withTimezone: true }),
-  processedAt: timestamp("processedAt", { withTimezone: true }),
-  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(5),
+  nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("media_callback_events_provider_task_idx").on(t.providerTaskId),
   index("media_callback_events_status_retry_idx").on(t.status, t.nextRetryAt),
   index("media_callback_events_provider_status_idx").on(t.providerTaskId, t.status),
+  index("media_callback_events_tenant_status_retry_idx").on(t.tenantId, t.status, t.nextRetryAt),
 ]);
 
 export type MediaCallbackEvent = typeof mediaCallbackEvents.$inferSelect;
@@ -1376,20 +1378,22 @@ export type InsertMediaCallbackEvent = typeof mediaCallbackEvents.$inferInsert;
  */
 export const mediaCallbackDlq = pgTable("media_callback_dlq", {
   id: serial("id").primaryKey(),
-  eventId: integer("eventId").references(() => mediaCallbackEvents.id, { onDelete: "set null" }),
-  providerName: varchar("providerName", { length: 64 }).notNull().default("kie_ai"),
-  providerTaskId: varchar("providerTaskId", { length: 128 }),
-  eventFingerprint: varchar("eventFingerprint", { length: 64 }).notNull(),
+  eventId: integer("event_id").references(() => mediaCallbackEvents.id, { onDelete: "set null" }),
+  tenantId: varchar("tenant_id", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  providerName: varchar("provider_name", { length: 64 }).notNull().default("kie_ai"),
+  providerTaskId: varchar("provider_task_id", { length: 128 }),
+  eventFingerprint: varchar("event_fingerprint", { length: 64 }).notNull(),
   payload: json("payload").$type<Record<string, any>>().notNull().default({}),
-  errorMessage: text("errorMessage").notNull(),
-  retryCount: integer("retryCount").notNull().default(0),
+  errorMessage: text("error_message").notNull(),
+  retryCount: integer("retry_count").notNull().default(0),
   status: mediaCallbackDlqStatusEnum("status").notNull().default("pending"),
-  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
 }, (t) => [
   index("media_callback_dlq_event_idx").on(t.eventId),
   index("media_callback_dlq_provider_task_idx").on(t.providerTaskId),
   index("media_callback_dlq_status_idx").on(t.status),
+  index("media_callback_dlq_tenant_status_idx").on(t.tenantId, t.status),
 ]);
 
 export type MediaCallbackDlqItem = typeof mediaCallbackDlq.$inferSelect;

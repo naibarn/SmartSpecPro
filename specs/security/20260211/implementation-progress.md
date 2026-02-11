@@ -36,8 +36,16 @@
   - Router files did not require direct changes; service-level gating behavior is covered and router regressions were validated by existing tests.
 
 ## Section section-06-library-ops-tenant-scope-phase1
-- Commit: pending
+- Commit: `b7e64f7`
 - Test command: `bash -lc "cd apps/web && npm test -- server/services/libraryFeatureFlags.test.ts server/services/libraryOpsService.test.ts server/routers/libraryOps.test.ts"`
 - Pass/fail summary: pass (18/18)
 - Notable deviations:
   - Elevated global-role check currently allows both `admin` and `super_admin` for explicit global ops.
+
+## Section section-07-library-ops-tenant-attribution-phase2
+- Commit: pending
+- Test command: `bash -lc "cd apps/web && npm test -- server/services/libraryOpsService.test.ts server/routers/libraryOps.test.ts server/services/libraryOpsTenantAttributionService.test.ts"`
+- Pass/fail summary: pass (19/19)
+- Notable deviations:
+  - Backfill shipped as reusable service + report output rather than script-only one-off execution.
+  - Callback table mapping aligned to existing snake_case DB columns for compatibility.
