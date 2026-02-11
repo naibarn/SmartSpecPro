@@ -10,13 +10,18 @@ import {
 export interface LibraryOpsDlqEntry {
   id: number;
   eventId: number | null;
+  tenantId: string | null;
   status: "pending" | "reprocessed" | "discarded";
 }
 
+export interface LibraryOpsTenantScope {
+  tenantId?: string | null;
+}
+
 export interface LibraryOpsRepository {
-  getDlqEntryById(id: number): Promise<LibraryOpsDlqEntry | null>;
-  markDlqEntryReprocessed(id: number, resolvedAt: Date): Promise<void>;
-  moveEventToRetryPending(eventId: number, retryAt: Date): Promise<void>;
+  getDlqEntryById(id: number, scope?: LibraryOpsTenantScope): Promise<LibraryOpsDlqEntry | null>;
+  markDlqEntryReprocessed(id: number, resolvedAt: Date, scope?: LibraryOpsTenantScope): Promise<void>;
+  moveEventToRetryPending(eventId: number, retryAt: Date, scope?: LibraryOpsTenantScope): Promise<void>;
 }
 
 export interface ReprocessDlqResult {
@@ -28,35 +33,60 @@ export interface ReprocessDlqResult {
 
 export interface LibraryOpsScopeInput {
   tenantId?: string | null;
-  includeGlobalCallbackMetrics?: boolean;
+}
+
+function normalizeTenantId(scope?: LibraryOpsTenantScope): string | null {
+  const tenantId = scope?.tenantId;
+  if (tenantId === null || tenantId === undefined) return null;
+  const normalized = String(tenantId).trim();
+  return normalized.length ? normalized : null;
 }
 
 export function createLibraryOpsRepository(db: DrizzleDB): LibraryOpsRepository {
   return {
-    getDlqEntryById: async (id) => {
+    getDlqEntryById: async (id, scope) => {
+      const tenantId = normalizeTenantId(scope);
+      const where = [eq(mediaCallbackDlq.id, id)];
+      if (tenantId) {
+        where.push(eq(mediaCallbackDlq.tenantId, tenantId));
+      }
+
       const rows = await db
         .select({
           id: mediaCallbackDlq.id,
           eventId: mediaCallbackDlq.eventId,
+          tenantId: mediaCallbackDlq.tenantId,
           status: mediaCallbackDlq.status,
         })
         .from(mediaCallbackDlq)
-        .where(eq(mediaCallbackDlq.id, id))
+        .where(and(...where))
         .limit(1);
 
       if (!rows.length) return null;
       return rows[0];
     },
-    markDlqEntryReprocessed: async (id, resolvedAt) => {
+    markDlqEntryReprocessed: async (id, resolvedAt, scope) => {
+      const tenantId = normalizeTenantId(scope);
+      const where = [eq(mediaCallbackDlq.id, id)];
+      if (tenantId) {
+        where.push(eq(mediaCallbackDlq.tenantId, tenantId));
+      }
+
       await db
         .update(mediaCallbackDlq)
         .set({
           status: "reprocessed",
           resolvedAt,
         })
-        .where(eq(mediaCallbackDlq.id, id));
+        .where(and(...where));
     },
-    moveEventToRetryPending: async (eventId, retryAt) => {
+    moveEventToRetryPending: async (eventId, retryAt, scope) => {
+      const tenantId = normalizeTenantId(scope);
+      const where = [eq(mediaCallbackEvents.id, eventId)];
+      if (tenantId) {
+        where.push(eq(mediaCallbackEvents.tenantId, tenantId));
+      }
+
       await db
         .update(mediaCallbackEvents)
         .set({
@@ -65,7 +95,7 @@ export function createLibraryOpsRepository(db: DrizzleDB): LibraryOpsRepository 
           errorMessage: null,
           updatedAt: retryAt,
         })
-        .where(eq(mediaCallbackEvents.id, eventId));
+        .where(and(...where));
     },
   };
 }
@@ -73,8 +103,13 @@ export function createLibraryOpsRepository(db: DrizzleDB): LibraryOpsRepository 
 export async function reprocessCallbackDlqEntry(
   repo: LibraryOpsRepository,
   dlqId: number,
+  scope?: LibraryOpsTenantScope,
 ): Promise<ReprocessDlqResult> {
-  const entry = await repo.getDlqEntryById(dlqId);
+  const normalizedScope: LibraryOpsTenantScope = {
+    tenantId: normalizeTenantId(scope),
+  };
+
+  const entry = await repo.getDlqEntryById(dlqId, normalizedScope);
   if (!entry) {
     return {
       success: false,
@@ -94,10 +129,10 @@ export async function reprocessCallbackDlqEntry(
   }
 
   const now = new Date();
-  await repo.markDlqEntryReprocessed(dlqId, now);
+  await repo.markDlqEntryReprocessed(dlqId, now, normalizedScope);
 
   if (entry.eventId) {
-    await repo.moveEventToRetryPending(entry.eventId, now);
+    await repo.moveEventToRetryPending(entry.eventId, now, normalizedScope);
   }
 
   return {
@@ -202,23 +237,26 @@ export async function getLibraryOpsSummary(
   indexFailed: number;
 }> {
   const tenantId = scope?.tenantId ? String(scope.tenantId).trim() : null;
-  const includeGlobalCallbackMetrics = Boolean(scope?.includeGlobalCallbackMetrics);
 
-  const [dlqPending] = includeGlobalCallbackMetrics
-    ? await db
-      .select({ count: sql<number>`count(*)` })
-      .from(mediaCallbackDlq)
-      .where(eq(mediaCallbackDlq.status, "pending"))
-      .limit(1)
-    : [{ count: 0 }];
+  const dlqWhere = [eq(mediaCallbackDlq.status, "pending")];
+  if (tenantId) {
+    dlqWhere.push(eq(mediaCallbackDlq.tenantId, tenantId));
+  }
+  const [dlqPending] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(mediaCallbackDlq)
+    .where(and(...dlqWhere))
+    .limit(1);
 
-  const [callbackRetryPending] = includeGlobalCallbackMetrics
-    ? await db
-      .select({ count: sql<number>`count(*)` })
-      .from(mediaCallbackEvents)
-      .where(eq(mediaCallbackEvents.status, "retry_pending"))
-      .limit(1)
-    : [{ count: 0 }];
+  const callbackRetryWhere = [eq(mediaCallbackEvents.status, "retry_pending")];
+  if (tenantId) {
+    callbackRetryWhere.push(eq(mediaCallbackEvents.tenantId, tenantId));
+  }
+  const [callbackRetryPending] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(mediaCallbackEvents)
+    .where(and(...callbackRetryWhere))
+    .limit(1);
 
   const indexRetryWhere = [eq(libraryIndexJobs.status, "retry_pending")];
   if (tenantId) {

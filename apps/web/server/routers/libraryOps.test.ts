@@ -87,7 +87,6 @@ describe("libraryOpsRouter.getSummary", () => {
       expect.anything(),
       expect.objectContaining({
         tenantId: "44",
-        includeGlobalCallbackMetrics: false,
       }),
     );
   });
@@ -109,12 +108,12 @@ describe("libraryOpsRouter.getSummary", () => {
 });
 
 describe("libraryOpsRouter.reprocessCallbackDlq", () => {
-  it("rejects tenant scope because callback rows are global in phase 1", async () => {
+  it("rejects tenant scope when tenant context is missing", async () => {
     const fn = libraryOpsRouter.reprocessCallbackDlq as Function;
     await expect(
       fn({
         ctx: {
-          user: { id: 1, role: "admin", currentTenantId: 44 },
+          user: { id: 1, role: "admin", currentTenantId: null },
           tenantId: null,
         },
         input: {
@@ -122,7 +121,39 @@ describe("libraryOpsRouter.reprocessCallbackDlq", () => {
           scope: "tenant",
         },
       }),
-    ).rejects.toThrow("DLQ reprocess requires explicit global scope");
+    ).rejects.toThrow("Tenant scope is required for DLQ reprocess");
+  });
+
+  it("passes tenant id to reprocess service in tenant scope", async () => {
+    mockReprocessCallbackDlqEntry.mockResolvedValue({
+      success: true,
+      status: "reprocessed",
+      dlqId: 10,
+      eventMovedToRetry: true,
+    });
+
+    const fn = libraryOpsRouter.reprocessCallbackDlq as Function;
+    await fn({
+      ctx: {
+        user: { id: 1, role: "admin", currentTenantId: 44 },
+        tenantId: null,
+      },
+      input: {
+        id: 10,
+        scope: "tenant",
+      },
+    });
+
+    expect(mockReprocessCallbackDlqEntry).toHaveBeenCalledWith(
+      expect.anything(),
+      10,
+      expect.objectContaining({ tenantId: "44" }),
+    );
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestPayload: expect.objectContaining({ operationScope: "tenant" }),
+      }),
+    );
   });
 
   it("allows explicit global reprocess and emits global scope audit marker", async () => {
@@ -145,7 +176,11 @@ describe("libraryOpsRouter.reprocessCallbackDlq", () => {
       },
     });
 
-    expect(mockReprocessCallbackDlqEntry).toHaveBeenCalled();
+    expect(mockReprocessCallbackDlqEntry).toHaveBeenCalledWith(
+      expect.anything(),
+      10,
+      expect.objectContaining({ tenantId: null }),
+    );
     expect(mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: "libraryOps.reprocessCallbackDlq",
