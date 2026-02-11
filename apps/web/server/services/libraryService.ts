@@ -12,10 +12,11 @@ import {
 export type LibraryPermissionLevel = "read" | "write" | "owner";
 export type LibraryVisibility = "private" | "team" | "public";
 export type LibraryItemStatus = "draft" | "ready" | "indexing" | "archived" | "failed";
+export type LibraryTenantId = string | number;
 
 export interface LibraryActor {
   userId: number;
-  tenantId: number;
+  tenantId: LibraryTenantId;
   role?: string | null;
 }
 
@@ -58,7 +59,7 @@ export interface ShareLibraryItemInput {
 
 export interface LibraryItemDto {
   id: number;
-  tenantId: number;
+  tenantId: string;
   ownerUserId: number;
   itemType: string;
   source: string;
@@ -129,8 +130,85 @@ export interface LibrarySearchResponseV1 {
   results: LibrarySearchResultV1[];
 }
 
+export type LibraryDocumentScope = "all" | "my_library" | "shared_with_me" | "shared_groups";
+export type LibraryDocumentSort = "updated_desc" | "created_desc";
+export type LibraryDocumentAccessSource = "owner" | "shared_direct" | "shared_group";
+
+export interface LibraryDocumentFilters {
+  itemType?: string;
+  ownerUserId?: number;
+  status?: LibraryItemStatus;
+  fromDate?: Date;
+  toDate?: Date;
+}
+
+export interface LibraryDocumentListInput {
+  query?: string;
+  scope?: LibraryDocumentScope;
+  sort?: LibraryDocumentSort;
+  limit?: number;
+  offset?: number;
+  filters?: LibraryDocumentFilters;
+}
+
+export interface LibraryDocumentListItem {
+  id: number;
+  item_type: string;
+  source: string;
+  title: string;
+  description: string | null;
+  status: LibraryItemStatus;
+  visibility: LibraryVisibility;
+  source_url: string | null;
+  thumbnail_url: string | null;
+  owner_user_id: number;
+  metadata: Record<string, unknown>;
+  access_source: LibraryDocumentAccessSource;
+  permission_level: LibraryPermissionLevel;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LibraryDocumentListResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  scope: LibraryDocumentScope;
+  results: LibraryDocumentListItem[];
+}
+
+export interface LibraryMarkdownContentResult {
+  item_id: number;
+  content: string;
+  updated_at: string;
+}
+
+export interface SaveLibraryMarkdownInput {
+  itemId: number;
+  content: string;
+  expectedUpdatedAt?: Date;
+}
+
+export interface SaveLibraryMarkdownResult {
+  item: LibraryItemDto;
+  indexJob: {
+    jobId: number;
+    status: string;
+    created: boolean;
+  };
+}
+
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type LibraryItemRow = typeof libraryItems.$inferSelect;
+
+function normalizeLibraryTenantId(tenantId: LibraryTenantId): string {
+  const normalized = String(tenantId).trim();
+  if (!normalized) {
+    throw new Error("Invalid tenant ID");
+  }
+  return normalized;
+}
 
 function toLibraryItemDto(row: LibraryItemRow): LibraryItemDto {
   return {
@@ -276,17 +354,88 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
   return true;
 }
 
-function hasActivePermissionForItem(
-  permissions: Array<{ libraryItemId: number; permissionLevel: string; expiresAt: Date | null }>,
+interface LibraryPermissionRow {
+  libraryItemId: number;
+  subjectType: string;
+  subjectId: string;
+  permissionLevel: string;
+  expiresAt: Date | null;
+}
+
+function rankPermissionLevel(permissionLevel: string | null | undefined): number {
+  switch (permissionLevel) {
+    case "owner":
+      return 3;
+    case "write":
+      return 2;
+    case "read":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function selectHighestPermissionLevel(permissionLevels: string[]): LibraryPermissionLevel | null {
+  let highest: LibraryPermissionLevel | null = null;
+  let highestRank = 0;
+
+  for (const permissionLevel of permissionLevels) {
+    const rank = rankPermissionLevel(permissionLevel);
+    if (rank > highestRank) {
+      highestRank = rank;
+      highest = permissionLevel as LibraryPermissionLevel;
+    }
+  }
+
+  return highest;
+}
+
+function getPermissionLevelForItem(
+  permissions: LibraryPermissionRow[],
   itemId: number,
-): boolean {
+  actor: LibraryActor,
+): {
+  effectivePermissionLevel: LibraryPermissionLevel | null;
+  hasDirectShare: boolean;
+  hasGroupShare: boolean;
+} {
   const now = new Date();
-  return permissions.some((permission) => {
+  const relevant = permissions.filter((permission) => {
     if (permission.libraryItemId !== itemId) return false;
-    if (!permission.permissionLevel) return false;
     if (permission.expiresAt && permission.expiresAt <= now) return false;
     return true;
   });
+
+  if (!relevant.length) {
+    return {
+      effectivePermissionLevel: null,
+      hasDirectShare: false,
+      hasGroupShare: false,
+    };
+  }
+
+  const directMatches = relevant.filter(
+    (permission) =>
+      permission.subjectType === "user" &&
+      permission.subjectId === String(actor.userId),
+  );
+  const groupMatches = relevant.filter(
+    (permission) =>
+      permission.subjectType === "tenant_role" &&
+      Boolean(actor.role) &&
+      permission.subjectId === actor.role,
+  );
+
+  const highest = selectHighestPermissionLevel([
+    ...directMatches.map((permission) => permission.permissionLevel),
+    ...groupMatches.map((permission) => permission.permissionLevel),
+  ]);
+
+  return {
+    effectivePermissionLevel: highest,
+    hasDirectShare: directMatches.length > 0,
+    hasGroupShare: groupMatches.length > 0,
+  };
 }
 
 async function getUserPermissionLevel(
@@ -294,28 +443,35 @@ async function getUserPermissionLevel(
   itemId: number,
   actor: LibraryActor,
 ): Promise<LibraryPermissionLevel | null> {
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
   const rows = await db
     .select({
+      subjectType: libraryPermissions.subjectType,
+      subjectId: libraryPermissions.subjectId,
       permissionLevel: libraryPermissions.permissionLevel,
+      expiresAt: libraryPermissions.expiresAt,
     })
     .from(libraryPermissions)
     .where(
       and(
         eq(libraryPermissions.libraryItemId, itemId),
-        eq(libraryPermissions.tenantId, actor.tenantId),
-        eq(libraryPermissions.subjectType, "user"),
-        eq(libraryPermissions.subjectId, String(actor.userId)),
+        eq(libraryPermissions.tenantId, actorTenantId),
+        or(
+          and(
+            eq(libraryPermissions.subjectType, "user"),
+            eq(libraryPermissions.subjectId, String(actor.userId)),
+          ),
+          and(
+            eq(libraryPermissions.subjectType, "tenant_role"),
+            eq(libraryPermissions.subjectId, actor.role || ""),
+          ),
+        ),
         or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
       ),
     )
-    .limit(1);
+    .limit(50);
 
-  const permission = rows[0]?.permissionLevel;
-  if (permission === "read" || permission === "write" || permission === "owner") {
-    return permission;
-  }
-
-  return null;
+  return selectHighestPermissionLevel(rows.map((row) => row.permissionLevel));
 }
 
 export function canReadLibraryItem(
@@ -323,7 +479,7 @@ export function canReadLibraryItem(
   actor: LibraryActor,
   permissionLevel: LibraryPermissionLevel | null,
 ): boolean {
-  if (item.tenantId !== actor.tenantId) return false;
+  if (normalizeLibraryTenantId(item.tenantId) !== normalizeLibraryTenantId(actor.tenantId)) return false;
   if (actor.role === "admin") return true;
   if (item.ownerUserId === actor.userId) return true;
   if (item.visibility === "public") return true;
@@ -336,7 +492,7 @@ export function canManageLibraryItem(
   actor: LibraryActor,
   permissionLevel: LibraryPermissionLevel | null,
 ): boolean {
-  if (item.tenantId !== actor.tenantId) return false;
+  if (normalizeLibraryTenantId(item.tenantId) !== normalizeLibraryTenantId(actor.tenantId)) return false;
   if (actor.role === "admin") return true;
   if (item.ownerUserId === actor.userId) return true;
   return permissionLevel === "write" || permissionLevel === "owner";
@@ -345,15 +501,16 @@ export function canManageLibraryItem(
 async function getLibraryItemRowById(
   db: DbClient,
   itemId: number,
-  tenantId: number,
+  tenantId: LibraryTenantId,
 ): Promise<LibraryItemRow | null> {
+  const normalizedTenantId = normalizeLibraryTenantId(tenantId);
   const rows = await db
     .select()
     .from(libraryItems)
     .where(
       and(
         eq(libraryItems.id, itemId),
-        eq(libraryItems.tenantId, tenantId),
+        eq(libraryItems.tenantId, normalizedTenantId),
         isNull(libraryItems.deletedAt),
       ),
     )
@@ -368,6 +525,7 @@ export async function createLibraryItem(
   dbClient?: DbClient,
 ): Promise<CreateLibraryItemResult> {
   const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
 
   if (input.sourceLink) {
     const existing = await db
@@ -387,7 +545,7 @@ export async function createLibraryItem(
 
     const found = existing[0]?.item;
     if (found) {
-      if (found.tenantId !== actor.tenantId) {
+      if (normalizeLibraryTenantId(found.tenantId) !== actorTenantId) {
         throw new Error("Source link already belongs to another tenant");
       }
 
@@ -401,7 +559,7 @@ export async function createLibraryItem(
   const inserted = await db
     .insert(libraryItems)
     .values({
-      tenantId: actor.tenantId,
+      tenantId: actorTenantId,
       ownerUserId: actor.userId,
       itemType: input.itemType,
       source: input.source,
@@ -444,7 +602,8 @@ export async function getLibraryItemById(
   dbClient?: DbClient,
 ): Promise<LibraryItemDto | null> {
   const db = await resolveDb(dbClient);
-  const item = await getLibraryItemRowById(db, itemId, actor.tenantId);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const item = await getLibraryItemRowById(db, itemId, actorTenantId);
 
   if (!item) {
     return null;
@@ -465,7 +624,8 @@ export async function updateLibraryItem(
   dbClient?: DbClient,
 ): Promise<LibraryItemDto | null> {
   const db = await resolveDb(dbClient);
-  const existing = await getLibraryItemRowById(db, itemId, actor.tenantId);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const existing = await getLibraryItemRowById(db, itemId, actorTenantId);
 
   if (!existing) {
     return null;
@@ -491,7 +651,7 @@ export async function updateLibraryItem(
   const updated = await db
     .update(libraryItems)
     .set(updatePayload)
-    .where(and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actor.tenantId)))
+    .where(and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actorTenantId)))
     .returning();
 
   if (!updated[0]) {
@@ -507,7 +667,8 @@ export async function softDeleteLibraryItem(
   dbClient?: DbClient,
 ): Promise<boolean> {
   const db = await resolveDb(dbClient);
-  const existing = await getLibraryItemRowById(db, itemId, actor.tenantId);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const existing = await getLibraryItemRowById(db, itemId, actorTenantId);
 
   if (!existing) {
     return false;
@@ -525,7 +686,7 @@ export async function softDeleteLibraryItem(
       status: "archived",
       updatedAt: new Date(),
     })
-    .where(and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actor.tenantId)))
+    .where(and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actorTenantId)))
     .returning({ id: libraryItems.id });
 
   return Boolean(deleted[0]?.id);
@@ -537,7 +698,8 @@ export async function shareLibraryItem(
   dbClient?: DbClient,
 ): Promise<boolean> {
   const db = await resolveDb(dbClient);
-  const existing = await getLibraryItemRowById(db, input.itemId, actor.tenantId);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const existing = await getLibraryItemRowById(db, input.itemId, actorTenantId);
 
   if (!existing) {
     return false;
@@ -551,7 +713,7 @@ export async function shareLibraryItem(
   await db
     .insert(libraryPermissions)
     .values({
-      tenantId: actor.tenantId,
+      tenantId: actorTenantId,
       libraryItemId: input.itemId,
       subjectType: input.subjectType,
       subjectId: input.subjectId,
@@ -573,11 +735,12 @@ export async function shareLibraryItem(
 }
 
 export async function enqueueLibraryIndexJob(
-  input: { libraryItemId: number; tenantId: number; jobType?: string },
+  input: { libraryItemId: number; tenantId: LibraryTenantId; jobType?: string },
   dbClient?: DbClient,
 ): Promise<{ jobId: number; status: string; created: boolean }> {
   const db = await resolveDb(dbClient);
   const jobType = input.jobType ?? "initial_index";
+  const tenantId = normalizeLibraryTenantId(input.tenantId);
 
   const existing = await db
     .select({
@@ -588,7 +751,7 @@ export async function enqueueLibraryIndexJob(
     .where(
       and(
         eq(libraryIndexJobs.libraryItemId, input.libraryItemId),
-        eq(libraryIndexJobs.tenantId, input.tenantId),
+        eq(libraryIndexJobs.tenantId, tenantId),
         eq(libraryIndexJobs.jobType, jobType),
         inArray(libraryIndexJobs.status, ["pending", "processing", "retry_pending"]),
       ),
@@ -606,7 +769,7 @@ export async function enqueueLibraryIndexJob(
   const inserted = await db
     .insert(libraryIndexJobs)
     .values({
-      tenantId: input.tenantId,
+      tenantId,
       libraryItemId: input.libraryItemId,
       jobType,
       status: "pending",
@@ -630,12 +793,333 @@ export async function enqueueLibraryIndexJob(
       status: "indexing",
       updatedAt: new Date(),
     })
-    .where(and(eq(libraryItems.id, input.libraryItemId), eq(libraryItems.tenantId, input.tenantId)));
+    .where(and(eq(libraryItems.id, input.libraryItemId), eq(libraryItems.tenantId, tenantId)));
 
   return {
     jobId: created.id,
     status: created.status,
     created: true,
+  };
+}
+
+function getDocumentAccessSource(
+  item: Pick<LibraryItemRow, "ownerUserId" | "visibility">,
+  actor: LibraryActor,
+  permissionInfo: {
+    hasDirectShare: boolean;
+    hasGroupShare: boolean;
+  },
+): LibraryDocumentAccessSource {
+  if (item.ownerUserId === actor.userId) {
+    return "owner";
+  }
+
+  if (permissionInfo.hasDirectShare) {
+    return "shared_direct";
+  }
+
+  if (permissionInfo.hasGroupShare || item.visibility === "team" || item.visibility === "public") {
+    return "shared_group";
+  }
+
+  return "shared_group";
+}
+
+function matchesDocumentScope(
+  scope: LibraryDocumentScope,
+  accessSource: LibraryDocumentAccessSource,
+): boolean {
+  if (scope === "all") return true;
+  if (scope === "my_library") return accessSource === "owner";
+  if (scope === "shared_with_me") return accessSource === "shared_direct";
+  if (scope === "shared_groups") return accessSource === "shared_group";
+  return true;
+}
+
+function itemMatchesDocumentFilters(
+  item: LibraryItemRow,
+  filters?: LibraryDocumentFilters,
+): boolean {
+  if (!filters) return true;
+
+  if (filters.itemType && item.itemType !== filters.itemType) return false;
+  if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
+  if (filters.status && item.status !== filters.status) return false;
+  if (filters.fromDate && item.createdAt < filters.fromDate) return false;
+  if (filters.toDate && item.createdAt > filters.toDate) return false;
+  return true;
+}
+
+function itemMatchesDocumentQuery(item: LibraryItemRow, query: string): boolean {
+  if (!query) return true;
+  const normalizedQuery = query.toLowerCase();
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const haystack = [
+    item.title,
+    item.description || "",
+    item.itemType,
+    item.source,
+    JSON.stringify(metadata),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(normalizedQuery);
+}
+
+export class LibraryMarkdownVersionConflictError extends Error {
+  readonly currentUpdatedAt: Date;
+
+  constructor(currentUpdatedAt: Date) {
+    super("Library markdown version conflict");
+    this.name = "LibraryMarkdownVersionConflictError";
+    this.currentUpdatedAt = currentUpdatedAt;
+  }
+}
+
+export async function listLibraryDocuments(
+  input: LibraryDocumentListInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<LibraryDocumentListResponse> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  const scope = input.scope ?? "all";
+  const sort = input.sort ?? "updated_desc";
+  const limit = Math.min(Math.max(input.limit ?? 30, 1), 100);
+  const offset = Math.max(input.offset ?? 0, 0);
+  const query = (input.query ?? "").trim();
+
+  const itemRows = await db
+    .select()
+    .from(libraryItems)
+    .where(and(eq(libraryItems.tenantId, actorTenantId), isNull(libraryItems.deletedAt)))
+    .orderBy(desc(libraryItems.updatedAt), desc(libraryItems.createdAt), desc(libraryItems.id));
+
+  if (!itemRows.length) {
+    return {
+      total: 0,
+      limit,
+      offset,
+      has_more: false,
+      scope,
+      results: [],
+    };
+  }
+
+  const itemIds = itemRows.map((item) => item.id);
+  const permissionRows: LibraryPermissionRow[] = await db
+    .select({
+      libraryItemId: libraryPermissions.libraryItemId,
+      subjectType: libraryPermissions.subjectType,
+      subjectId: libraryPermissions.subjectId,
+      permissionLevel: libraryPermissions.permissionLevel,
+      expiresAt: libraryPermissions.expiresAt,
+    })
+    .from(libraryPermissions)
+    .where(
+      and(
+        eq(libraryPermissions.tenantId, actorTenantId),
+        inArray(libraryPermissions.libraryItemId, itemIds),
+        or(
+          and(
+            eq(libraryPermissions.subjectType, "user"),
+            eq(libraryPermissions.subjectId, String(actor.userId)),
+          ),
+          and(
+            eq(libraryPermissions.subjectType, "tenant_role"),
+            eq(libraryPermissions.subjectId, actor.role || ""),
+          ),
+        ),
+        or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
+      ),
+    );
+
+  const visible = itemRows
+    .filter((item) => itemMatchesDocumentFilters(item, input.filters))
+    .filter((item) => itemMatchesDocumentQuery(item, query))
+    .map((item) => {
+      const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor);
+      if (!canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel)) {
+        return null;
+      }
+
+      const accessSource = getDocumentAccessSource(item, actor, permissionInfo);
+      if (!matchesDocumentScope(scope, accessSource)) {
+        return null;
+      }
+
+      const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+      return {
+        id: item.id,
+        item_type: item.itemType,
+        source: item.source,
+        title: item.title,
+        description: item.description,
+        status: item.status,
+        visibility: item.visibility,
+        source_url: item.sourceUrl,
+        thumbnail_url: item.thumbnailUrl,
+        owner_user_id: item.ownerUserId,
+        metadata,
+        access_source: accessSource,
+        permission_level: item.ownerUserId === actor.userId
+          ? "owner"
+          : permissionInfo.effectivePermissionLevel ?? "read",
+        created_at: item.createdAt.toISOString(),
+        updated_at: item.updatedAt.toISOString(),
+      } satisfies LibraryDocumentListItem;
+    })
+    .filter((item): item is LibraryDocumentListItem => item !== null);
+
+  visible.sort((a, b) => {
+    if (sort === "created_desc") {
+      const createdDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (createdDiff !== 0) return createdDiff;
+      return b.id - a.id;
+    }
+
+    const updatedDiff = new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    if (updatedDiff !== 0) return updatedDiff;
+    const createdDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (createdDiff !== 0) return createdDiff;
+    return b.id - a.id;
+  });
+
+  const paged = visible.slice(offset, offset + limit);
+  return {
+    total: visible.length,
+    limit,
+    offset,
+    has_more: offset + paged.length < visible.length,
+    scope,
+    results: paged,
+  };
+}
+
+export async function getLibraryMarkdownContent(
+  itemId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<LibraryMarkdownContentResult | null> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const item = await getLibraryItemRowById(db, itemId, actorTenantId);
+
+  if (!item) {
+    return null;
+  }
+
+  const permissionLevel = await getUserPermissionLevel(db, item.id, actor);
+  if (!canReadLibraryItem(item, actor, permissionLevel)) {
+    return null;
+  }
+
+  const rows = await db
+    .select({
+      content: libraryChunks.content,
+    })
+    .from(libraryChunks)
+    .where(
+      and(
+        eq(libraryChunks.tenantId, actorTenantId),
+        eq(libraryChunks.libraryItemId, item.id),
+        eq(libraryChunks.chunkIndex, 0),
+      ),
+    )
+    .limit(1);
+
+  return {
+    item_id: item.id,
+    content: rows[0]?.content ?? "",
+    updated_at: item.updatedAt.toISOString(),
+  };
+}
+
+export async function saveLibraryMarkdown(
+  input: SaveLibraryMarkdownInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<SaveLibraryMarkdownResult | null> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const existing = await getLibraryItemRowById(db, input.itemId, actorTenantId);
+  if (!existing) {
+    return null;
+  }
+
+  const permissionLevel = await getUserPermissionLevel(db, existing.id, actor);
+  if (!canManageLibraryItem(existing, actor, permissionLevel)) {
+    return null;
+  }
+
+  if (input.expectedUpdatedAt) {
+    const expectedUpdatedAt = input.expectedUpdatedAt.getTime();
+    if (existing.updatedAt.getTime() !== expectedUpdatedAt) {
+      throw new LibraryMarkdownVersionConflictError(existing.updatedAt);
+    }
+  }
+
+  const normalizedContent = input.content.replace(/\r\n/g, "\n");
+
+  await db
+    .insert(libraryChunks)
+    .values({
+      tenantId: actorTenantId,
+      libraryItemId: existing.id,
+      chunkIndex: 0,
+      content: normalizedContent,
+      contentType: "markdown_source",
+      tokenCount: null,
+      vectorRefId: null,
+      metadata: {
+        source: "document_management_editor",
+      },
+    })
+    .onConflictDoUpdate({
+      target: [libraryChunks.libraryItemId, libraryChunks.chunkIndex],
+      set: {
+        content: normalizedContent,
+        contentType: "markdown_source",
+        tokenCount: null,
+        vectorRefId: null,
+        metadata: {
+          source: "document_management_editor",
+        },
+      },
+    });
+
+  const updatedRows = await db
+    .update(libraryItems)
+    .set({
+      status: "indexing",
+      metadata: normalizeLibraryMetadata({
+        ...(existing.metadata as Record<string, unknown>),
+        markdown_last_saved_at: new Date().toISOString(),
+      }),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(libraryItems.id, existing.id), eq(libraryItems.tenantId, actorTenantId)))
+    .returning();
+
+  const updated = updatedRows[0];
+  if (!updated) {
+    throw new Error("Failed to save markdown content");
+  }
+
+  const indexJob = await enqueueLibraryIndexJob(
+    {
+      libraryItemId: existing.id,
+      tenantId: actorTenantId,
+      jobType: "markdown_update",
+    },
+    db,
+  );
+
+  return {
+    item: toLibraryItemDto(updated),
+    indexJob,
   };
 }
 
@@ -645,6 +1129,7 @@ export async function searchLibraryItems(
   dbClient?: DbClient,
 ): Promise<LibrarySearchResponseV1> {
   const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
 
   const limit = Math.min(Math.max(input.limit ?? 20, 1), 100);
   const offset = Math.max(input.offset ?? 0, 0);
@@ -654,7 +1139,7 @@ export async function searchLibraryItems(
   const itemRows = await db
     .select()
     .from(libraryItems)
-    .where(and(eq(libraryItems.tenantId, actor.tenantId), isNull(libraryItems.deletedAt)))
+    .where(and(eq(libraryItems.tenantId, actorTenantId), isNull(libraryItems.deletedAt)))
     .orderBy(desc(libraryItems.createdAt));
 
   const filteredItems = itemRows.filter((item) => itemMatchesFilters(item, input.filters));
@@ -682,23 +1167,34 @@ export async function searchLibraryItems(
       .from(libraryChunks)
       .where(
         and(
-          eq(libraryChunks.tenantId, actor.tenantId),
+          eq(libraryChunks.tenantId, actorTenantId),
           inArray(libraryChunks.libraryItemId, itemIds),
         ),
       ),
     db
       .select({
         libraryItemId: libraryPermissions.libraryItemId,
+        subjectType: libraryPermissions.subjectType,
+        subjectId: libraryPermissions.subjectId,
         permissionLevel: libraryPermissions.permissionLevel,
         expiresAt: libraryPermissions.expiresAt,
       })
       .from(libraryPermissions)
       .where(
         and(
-          eq(libraryPermissions.tenantId, actor.tenantId),
-          eq(libraryPermissions.subjectType, "user"),
-          eq(libraryPermissions.subjectId, String(actor.userId)),
+          eq(libraryPermissions.tenantId, actorTenantId),
+          or(
+            and(
+              eq(libraryPermissions.subjectType, "user"),
+              eq(libraryPermissions.subjectId, String(actor.userId)),
+            ),
+            and(
+              eq(libraryPermissions.subjectType, "tenant_role"),
+              eq(libraryPermissions.subjectId, actor.role || ""),
+            ),
+          ),
           inArray(libraryPermissions.libraryItemId, itemIds),
+          or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
         ),
       ),
   ]);
@@ -715,8 +1211,8 @@ export async function searchLibraryItems(
 
   const visibleScored = filteredItems
     .filter((item) => {
-      const permissionLevel = hasActivePermissionForItem(permissionRows, item.id) ? "read" : null;
-      return canReadLibraryItem(item, actor, permissionLevel);
+      const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor);
+      return canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel);
     })
     .map((item) => {
       const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);

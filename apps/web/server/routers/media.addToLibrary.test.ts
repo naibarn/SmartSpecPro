@@ -131,6 +131,78 @@ describe("mediaRouter.addTaskToLibrary", () => {
     ).rejects.toThrow("Tenant context is required");
   });
 
+  it("falls back to numeric user tenant when ctx tenant is string in mixed schema", async () => {
+    mockAddMediaTaskToLibrary.mockResolvedValue({
+      itemId: 502,
+      created: true,
+      indexJob: { jobId: 9002, status: "pending", created: true },
+      taskStatus: "completed",
+    });
+
+    const fn = mediaRouter.addTaskToLibrary as Function;
+    await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: 44 },
+        userToken: "token-abc",
+        tenantId: "tenant-ZCSKEM9s" as any,
+      },
+      input: { taskId: "task-123" },
+    });
+
+    expect(mockAddMediaTaskToLibrary).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ tenantId: 44 }),
+    );
+  });
+
+  it("prefers numeric ctx tenant when user tenant is non-numeric string", async () => {
+    mockAddMediaTaskToLibrary.mockResolvedValue({
+      itemId: 504,
+      created: true,
+      indexJob: { jobId: 9004, status: "pending", created: true },
+      taskStatus: "completed",
+    });
+
+    const fn = mediaRouter.addTaskToLibrary as Function;
+    await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: "tenant-ZCSKEM9s" as any },
+        userToken: "token-abc",
+        tenantId: 44 as any,
+      },
+      input: { taskId: "task-123" },
+    });
+
+    expect(mockAddMediaTaskToLibrary).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ tenantId: 44 }),
+    );
+  });
+
+  it("uses ctx string tenant when user tenant is missing", async () => {
+    mockAddMediaTaskToLibrary.mockResolvedValue({
+      itemId: 503,
+      created: true,
+      indexJob: { jobId: 9003, status: "pending", created: true },
+      taskStatus: "completed",
+    });
+
+    const fn = mediaRouter.addTaskToLibrary as Function;
+    await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: null },
+        userToken: "token-abc",
+        tenantId: "tenant-ZCSKEM9s" as any,
+      },
+      input: { taskId: "task-123" },
+    });
+
+    expect(mockAddMediaTaskToLibrary).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ tenantId: "tenant-ZCSKEM9s" }),
+    );
+  });
+
   it("rejects add-to-library when library feature is disabled", async () => {
     process.env.LIBRARY_ENABLED = "false";
     const fn = mediaRouter.addTaskToLibrary as Function;

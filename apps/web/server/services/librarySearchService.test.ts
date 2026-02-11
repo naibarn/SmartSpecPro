@@ -193,8 +193,10 @@ describe("searchLibraryItems", () => {
     const permissions = [
       {
         libraryItemId: 12,
+        subjectType: "user",
+        subjectId: "5",
         permissionLevel: "read",
-        expiresAt: new Date(baseDate.getTime() + 86_400_000),
+        expiresAt: new Date(baseDate.getTime() + (7 * 86_400_000)),
       },
     ];
 

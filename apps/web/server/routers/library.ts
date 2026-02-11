@@ -4,9 +4,14 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { auditLogger } from "../services/auditLogger";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
+import { resolveTenantId, type TenantIdValue } from "../services/tenantContext";
 import {
   createLibraryItem,
+  getLibraryMarkdownContent,
   getLibraryItemById,
+  LibraryMarkdownVersionConflictError,
+  listLibraryDocuments,
+  saveLibraryMarkdown,
   searchLibraryItems,
   shareLibraryItem,
   softDeleteLibraryItem,
@@ -34,8 +39,18 @@ const searchFilterSchema = z.object({
   toDate: z.coerce.date().optional(),
 }).optional();
 
-function resolveTenantId(ctx: { tenantId: number | null; user: { currentTenantId?: number | null } }): number {
-  const tenantId = ctx.tenantId ?? ctx.user.currentTenantId ?? null;
+const documentScopeSchema = z.enum(["all", "my_library", "shared_with_me", "shared_groups"]);
+const documentSortSchema = z.enum(["updated_desc", "created_desc"]);
+const documentFilterSchema = z.object({
+  itemType: z.string().min(1).max(32).optional(),
+  ownerUserId: z.number().int().positive().optional(),
+  status: itemStatusSchema.optional(),
+  fromDate: z.coerce.date().optional(),
+  toDate: z.coerce.date().optional(),
+}).optional();
+
+function resolveLibraryTenantId(ctx: { tenantId: unknown; user: { currentTenantId?: unknown } }): TenantIdValue {
+  const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
   if (tenantId === null || tenantId === undefined) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -46,7 +61,7 @@ function resolveTenantId(ctx: { tenantId: number | null; user: { currentTenantId
   return tenantId;
 }
 
-function assertLibraryEnabled(tenantId: number): void {
+function assertLibraryEnabled(tenantId: TenantIdValue): void {
   if (!isLibraryEnabledForTenant(tenantId)) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -66,11 +81,11 @@ export const libraryRouter = router({
       }).optional(),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = resolveTenantId(ctx);
-      assertLibraryEnabled(tenantId);
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId,
+        tenantId: tenantIdResolved as any,
         role: ctx.user.role,
       };
 
@@ -83,6 +98,124 @@ export const libraryRouter = router({
         },
         actor,
       );
+    }),
+
+  listDocuments: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().max(1000).optional(),
+        scope: documentScopeSchema.optional(),
+        sort: documentSortSchema.optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+        offset: z.number().int().min(0).optional(),
+        filters: documentFilterSchema,
+      }).optional(),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved as any,
+        role: ctx.user.role,
+      };
+
+      return listLibraryDocuments(
+        {
+          query: input?.query,
+          scope: input?.scope,
+          sort: input?.sort,
+          limit: input?.limit,
+          offset: input?.offset,
+          filters: input?.filters,
+        },
+        actor,
+      );
+    }),
+
+  getMarkdownContent: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved as any,
+        role: ctx.user.role,
+      };
+
+      const result = await getLibraryMarkdownContent(input.id, actor);
+      if (!result) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Library item not found",
+        });
+      }
+
+      return result;
+    }),
+
+  saveMarkdown: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        content: z.string().max(1_000_000),
+        expectedUpdatedAt: z.coerce.date().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved as any,
+        role: ctx.user.role,
+      };
+
+      try {
+        const result = await saveLibraryMarkdown(
+          {
+            itemId: input.id,
+            content: input.content,
+            expectedUpdatedAt: input.expectedUpdatedAt,
+          },
+          actor,
+        );
+
+        if (!result) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Library item not found",
+          });
+        }
+
+        auditLogger.log({
+          eventType: "library_mutation",
+          userId: ctx.user.id,
+          endpoint: "library.saveMarkdown",
+          requestType: "mutation",
+          requestPayload: {
+            tenantId: tenantIdResolved,
+            itemId: input.id,
+            expectedUpdatedAt: input.expectedUpdatedAt?.toISOString() ?? null,
+          },
+          responsePayload: {
+            itemId: result.item.id,
+            indexJobId: result.indexJob.jobId,
+            indexJobCreated: result.indexJob.created,
+          },
+        });
+
+        return result;
+      } catch (error) {
+        if (error instanceof LibraryMarkdownVersionConflictError) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Markdown version conflict. Current version updated at ${error.currentUpdatedAt.toISOString()}`,
+          });
+        }
+        throw error;
+      }
     }),
 
   createItem: protectedProcedure
@@ -101,11 +234,11 @@ export const libraryRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantId(ctx);
-      assertLibraryEnabled(tenantId);
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId,
+        tenantId: tenantIdResolved as any,
         role: ctx.user.role,
       };
 
@@ -116,7 +249,7 @@ export const libraryRouter = router({
         endpoint: "library.createItem",
         requestType: "mutation",
         requestPayload: {
-          tenantId,
+          tenantId: tenantIdResolved,
           itemType: input.itemType,
           source: input.source,
           visibility: input.visibility ?? "private",
@@ -133,11 +266,11 @@ export const libraryRouter = router({
   getItem: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input, ctx }) => {
-      const tenantId = resolveTenantId(ctx);
-      assertLibraryEnabled(tenantId);
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId,
+        tenantId: tenantIdResolved as any,
         role: ctx.user.role,
       };
 
@@ -166,11 +299,11 @@ export const libraryRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantId(ctx);
-      assertLibraryEnabled(tenantId);
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId,
+        tenantId: tenantIdResolved as any,
         role: ctx.user.role,
       };
 
@@ -190,7 +323,7 @@ export const libraryRouter = router({
         endpoint: "library.updateItem",
         requestType: "mutation",
         requestPayload: {
-          tenantId,
+          tenantId: tenantIdResolved,
           itemId: id,
           fields: Object.keys(payload),
         },
@@ -206,11 +339,11 @@ export const libraryRouter = router({
   deleteItem: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantId(ctx);
-      assertLibraryEnabled(tenantId);
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId,
+        tenantId: tenantIdResolved as any,
         role: ctx.user.role,
       };
 
@@ -228,7 +361,7 @@ export const libraryRouter = router({
         endpoint: "library.deleteItem",
         requestType: "mutation",
         requestPayload: {
-          tenantId,
+          tenantId: tenantIdResolved,
           itemId: input.id,
         },
         responsePayload: {
@@ -250,11 +383,11 @@ export const libraryRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantId(ctx);
-      assertLibraryEnabled(tenantId);
+      const tenantIdResolved = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId,
+        tenantId: tenantIdResolved as any,
         role: ctx.user.role,
       };
 
@@ -272,7 +405,7 @@ export const libraryRouter = router({
         endpoint: "library.shareItem",
         requestType: "mutation",
         requestPayload: {
-          tenantId,
+          tenantId: tenantIdResolved,
           itemId: input.itemId,
           subjectType: input.subjectType,
           subjectId: input.subjectId,
