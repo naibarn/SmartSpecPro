@@ -29,8 +29,15 @@
   - Static middleware behavior is validated through `uploadContentSafety` helper tests instead of direct express route tests.
 
 ## Section section-05-tenant-feature-gating
-- Commit: pending
+- Commit: `49f3c20`
 - Test command: `bash -lc "cd apps/web && npm test -- server/services/libraryFeatureFlags.test.ts server/routers/library.test.ts server/routers/media.addToLibrary.test.ts"`
 - Pass/fail summary: pass (26/26)
 - Notable deviations:
   - Router files did not require direct changes; service-level gating behavior is covered and router regressions were validated by existing tests.
+
+## Section section-06-library-ops-tenant-scope-phase1
+- Commit: pending
+- Test command: `bash -lc "cd apps/web && npm test -- server/services/libraryFeatureFlags.test.ts server/services/libraryOpsService.test.ts server/routers/libraryOps.test.ts"`
+- Pass/fail summary: pass (18/18)
+- Notable deviations:
+  - Elevated global-role check currently allows both `admin` and `super_admin` for explicit global ops.

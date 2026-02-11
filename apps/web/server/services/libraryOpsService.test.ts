@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  getLibraryOpsSummary,
   reprocessCallbackDlqEntry,
+  retryFailedLibraryIndexJobs,
   type LibraryOpsRepository,
 } from "./libraryOpsService";
 
@@ -56,3 +58,115 @@ describe("reprocessCallbackDlqEntry", () => {
   });
 });
 
+function createMockDb(
+  selectRowsQueue: Array<any[]>,
+  updatedRows: Array<{ id: number }> = [],
+) {
+  const select = vi.fn().mockImplementation(() => {
+    const rows = selectRowsQueue.shift() ?? [];
+    const query: any = {};
+    query.where = vi.fn().mockReturnValue(query);
+    query.orderBy = vi.fn().mockReturnValue(query);
+    query.limit = vi.fn().mockResolvedValue(rows);
+    return {
+      from: vi.fn().mockReturnValue(query),
+    };
+  });
+
+  const returning = vi.fn().mockResolvedValue(updatedRows);
+  const where = vi.fn().mockReturnValue({ returning });
+  const set = vi.fn().mockReturnValue({ where });
+  const update = vi.fn().mockReturnValue({ set });
+
+  return {
+    db: {
+      select,
+      update,
+    },
+    select,
+    update,
+    where,
+    returning,
+  };
+}
+
+describe("retryFailedLibraryIndexJobs", () => {
+  it("retries only tenant-scoped failed jobs", async () => {
+    const { db, update } = createMockDb(
+      [[{ id: 1 }, { id: 3 }]],
+      [{ id: 1 }],
+    );
+
+    const result = await retryFailedLibraryIndexJobs(db as any, {
+      tenantId: "tenant-A",
+      jobIds: [1, 2, 3],
+      limit: 10,
+    });
+
+    expect(result).toEqual({
+      retried: 1,
+      jobIds: [1],
+    });
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns zero when no retry-eligible jobs remain in tenant scope", async () => {
+    const { db, update } = createMockDb([[]]);
+
+    const result = await retryFailedLibraryIndexJobs(db as any, {
+      tenantId: "tenant-A",
+      jobIds: [101, 102],
+      limit: 10,
+    });
+
+    expect(result).toEqual({
+      retried: 0,
+      jobIds: [],
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("getLibraryOpsSummary", () => {
+  it("returns tenant-scoped index metrics and hides global callback metrics by default", async () => {
+    const { db, select } = createMockDb([
+      [{ count: 4 }],
+      [{ count: 2 }],
+    ]);
+
+    const result = await getLibraryOpsSummary(db as any, {
+      tenantId: "tenant-A",
+      includeGlobalCallbackMetrics: false,
+    });
+
+    expect(result).toEqual({
+      callbackDlqPending: 0,
+      callbackRetryPending: 0,
+      indexRetryPending: 4,
+      indexFailed: 2,
+    });
+    expect(select).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns global callback metrics only when explicitly requested", async () => {
+    const { db, select } = createMockDb([
+      [{ count: 7 }],
+      [{ count: 5 }],
+      [{ count: 3 }],
+      [{ count: 1 }],
+    ]);
+
+    const result = await getLibraryOpsSummary(db as any, {
+      tenantId: null,
+      includeGlobalCallbackMetrics: true,
+    });
+
+    expect(result).toEqual({
+      callbackDlqPending: 7,
+      callbackRetryPending: 5,
+      indexRetryPending: 3,
+      indexFailed: 1,
+    });
+    expect(select).toHaveBeenCalledTimes(4);
+  });
+});
