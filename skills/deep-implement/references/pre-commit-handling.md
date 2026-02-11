@@ -22,9 +22,9 @@ git add <new_files_if_any>
 ## Case 2: Lint/Type Errors
 
 Summarize key errors to user and ask for direction:
-1. Fix now and continue
-2. Commit with `--no-verify`
-3. Pause
+- `fix_now` = Fix now and continue
+- `no_verify` = Commit with `--no-verify`
+- `pause` = Pause
 
 Use `--no-verify` only with explicit user approval.
 

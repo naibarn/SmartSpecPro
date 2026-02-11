@@ -53,9 +53,9 @@ Run:
 - quick regression subset for nearby behavior
 
 If failures persist after 3 focused attempts, stop and ask user whether to:
-1. continue debugging,
-2. skip section,
-3. pause workflow.
+- `debug` = continue debugging
+- `skip` = skip current section
+- `pause` = pause workflow
 
 ### 6) Stage for Review
 
