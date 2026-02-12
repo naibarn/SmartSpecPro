@@ -327,13 +327,13 @@ export const mediaModelsRouter = router({
 
       return {
         total: models.length,
-        enabled: models.filter(m => m.isEnabled).length,
+        enabled: models.filter((m: (typeof models)[number]) => m.isEnabled).length,
         byType: {
-          image: models.filter(m => m.modelType === "image").length,
-          video: models.filter(m => m.modelType === "video").length,
-          audio: models.filter(m => m.modelType === "audio").length,
+          image: models.filter((m: (typeof models)[number]) => m.modelType === "image").length,
+          video: models.filter((m: (typeof models)[number]) => m.modelType === "video").length,
+          audio: models.filter((m: (typeof models)[number]) => m.modelType === "audio").length,
         },
-        providers: [...new Set(models.map(m => m.provider))],
+        providers: [...new Set(models.map((m: (typeof models)[number]) => m.provider))],
       };
     } catch (error: any) {
       console.warn("[MediaModels] Stats query failed:", error.message);
@@ -392,7 +392,7 @@ export const mediaModelsRouter = router({
           .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority));
 
         // Get unique providers for grouping
-        const providers = [...new Set(models.map(m => m.provider))];
+        const providers = [...new Set(models.map((m: (typeof models)[number]) => m.provider))];
 
         return { models, providers };
       } catch (error: any) {
@@ -406,11 +406,11 @@ export const mediaModelsRouter = router({
    */
   providers: adminProcedure.query(async () => {
     try {
-      const result = await db
+      const result = await db.instance
         .selectDistinct({ provider: mediaModels.provider })
         .from(mediaModels);
 
-      return result.map(r => r.provider);
+      return result.map((r: (typeof result)[number]) => r.provider);
     } catch (error: any) {
       return [];
     }

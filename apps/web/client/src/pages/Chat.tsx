@@ -340,10 +340,7 @@ export default function Chat() {
             />
           )}
           {rightPanel === "generate" && (
-            <MediaGenerationPanel
-              conversationId={selectedConversationId ?? undefined}
-              onClose={() => setRightPanel("none")}
-            />
+            <MediaGenerationPanel />
           )}
           {rightPanel === "schedule" && (
             <SchedulePanel
@@ -362,4 +359,3 @@ export default function Chat() {
     </div>
   );
 }
-

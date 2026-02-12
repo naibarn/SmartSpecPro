@@ -252,10 +252,10 @@ export const llmProvidersRouter = router({
       .where(eq(modelProviderMap.isEnabled, true))
       .groupBy(modelProviderMap.providerId);
 
-    const countMap = new Map(modelCounts.map(c => [c.providerId, Number(c.count)]));
+    const countMap = new Map(modelCounts.map((c: (typeof modelCounts)[number]) => [c.providerId, Number(c.count)]));
 
     // Merge routed model count into providers
-    return providers.map(p => ({
+    return providers.map((p: (typeof providers)[number]) => ({
       ...p,
       routedModelCount: countMap.get(p.id) ?? 0,
     }));
@@ -325,7 +325,7 @@ export const llmProvidersRouter = router({
         .select({ max: sql<number>`MAX(${llmProviders.sortOrder})` })
         .from(llmProviders);
       
-      const result = await db.insert(llmProviders).values({
+      const [created] = await db.insert(llmProviders).values({
         providerName: input.providerName,
         displayName: input.displayName,
         description: input.description || null,
@@ -337,9 +337,9 @@ export const llmProvidersRouter = router({
         configJson: input.configJson || null,
         isEnabled: input.isEnabled,
         sortOrder: (maxOrder?.max || 0) + 1,
-      });
+      }).returning({ id: llmProviders.id });
       
-      return { id: Number(result.insertId) };
+      return { id: created.id };
     }),
 
   // Update provider (admin)
@@ -545,16 +545,16 @@ export const llmProvidersRouter = router({
       })
       .from(llmProviders);
     
-    const totalModels = providers.reduce((sum, p) => {
+    const totalModels = providers.reduce((sum: number, p: (typeof providers)[number]) => {
       const models = (p.availableModels as any[]) || [];
       return sum + models.length;
     }, 0);
     
     return {
       total: providers.length,
-      enabled: providers.filter(p => p.isEnabled).length,
-      configured: providers.filter(p => p.hasApiKey).length,
-      ready: providers.filter(p => p.isEnabled && p.hasApiKey).length,
+      enabled: providers.filter((p: (typeof providers)[number]) => p.isEnabled).length,
+      configured: providers.filter((p: (typeof providers)[number]) => p.hasApiKey).length,
+      ready: providers.filter((p: (typeof providers)[number]) => p.isEnabled && p.hasApiKey).length,
       totalModels,
     };
   }),

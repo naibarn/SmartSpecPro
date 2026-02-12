@@ -4,6 +4,7 @@ import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
+import { randomUUID } from "node:crypto";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
@@ -22,6 +23,7 @@ export type SessionPayload = {
   openId: string;
   appId: string;
   name: string;
+  jti?: string;
 };
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
@@ -186,6 +188,7 @@ class SDKServer {
       openId: payload.openId,
       appId: payload.appId,
       name: payload.name,
+      jti: payload.jti ?? randomUUID(),
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -194,7 +197,7 @@ class SDKServer {
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string } | null> {
+  ): Promise<{ openId: string; appId: string; name: string; jti?: string } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -205,7 +208,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name } = payload as Record<string, unknown>;
+      const { openId, appId, name, jti } = payload as Record<string, unknown>;
 
       // Only openId and appId are required - name can be empty
       if (!isNonEmptyString(openId) || !isNonEmptyString(appId)) {
@@ -217,6 +220,7 @@ class SDKServer {
         openId,
         appId,
         name: typeof name === "string" ? name : "",
+        jti: typeof jti === "string" ? jti : undefined,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -260,7 +264,7 @@ class SDKServer {
     }
 
     const sessionUserId = session.openId;
-    let user = await db.getUserByOpenId(sessionUserId);
+    let user = (await db.getUserByOpenId(sessionUserId)) as User | undefined;
 
     // If user exists in DB (local or OAuth), use it directly
     if (user) {
@@ -277,9 +281,9 @@ class SDKServer {
         name: userInfo.name || null,
         email: userInfo.email ?? null,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-        lastSignedIn: signedInAt,
+        lastSignedIn: new Date(),
       });
-      user = await db.getUserByOpenId(userInfo.openId);
+      user = (await db.getUserByOpenId(userInfo.openId)) as User | undefined;
     } catch (error) {
       console.error("[Auth] Failed to sync user from OAuth:", error);
       throw ForbiddenError("Failed to sync user info");

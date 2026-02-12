@@ -22,11 +22,11 @@ function requireGatewayKey(req: any, res: any): boolean {
   return true;
 }
 
-function resolveApiUrl() {
+function resolveApiUrl(): string {
   throw new Error("Built-in Forge API is not configured. Please configure an LLM provider.");
 }
 
-function assertApiKey() {
+function assertApiKey(): string {
   throw new Error("Built-in Forge API is not configured. Please configure an LLM provider.");
 }
 
@@ -35,7 +35,7 @@ export function registerOpenAICompatRoutes(app: any) {
     if (!requireGatewayKey(req, res)) return;
 
     try {
-      assertApiKey();
+      const apiKey = assertApiKey();
       const url = resolveApiUrl();
       const payload = req.body || {};
       const stream = !!payload.stream;
@@ -44,7 +44,7 @@ export function registerOpenAICompatRoutes(app: any) {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          authorization: `Bearer ${ENV.forgeApiKey}`,
+          authorization: `Bearer ${apiKey || ENV.forgeApiKey}`,
           ...(stream ? { accept: "text/event-stream" } : {}),
         },
         body: JSON.stringify(payload),

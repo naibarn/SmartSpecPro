@@ -87,7 +87,7 @@ const SilenceDetectionPanel: React.FC<SilenceDetectionPanelProps> = ({
       // Get the asset URI from the first clip of the first selected track
       const firstClip = selectedTracks[0].clips[0];
       const asset = project.assets[firstClip.assetId];
-      const assetUri = asset?.path || asset?.url || '';
+      const assetUri = asset?.path || '';
 
       if (!assetUri) {
         throw new Error('No asset URI found for silence detection');

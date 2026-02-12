@@ -61,7 +61,7 @@ export const creditsRouter = router({
         endDate: input.endDate,
       });
 
-      return transactions.map((t) => ({
+      return transactions.map((t: (typeof transactions)[number]) => ({
         id: t.id,
         amount: t.amount,
         type: t.type,
@@ -77,7 +77,7 @@ export const creditsRouter = router({
    */
   packages: publicProcedure.query(async () => {
     const packages = await getCreditPackages();
-    return packages.map((p) => ({
+    return packages.map((p: (typeof packages)[number]) => ({
       id: p.id,
       name: p.name,
       description: p.description,

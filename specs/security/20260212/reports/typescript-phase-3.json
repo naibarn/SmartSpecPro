@@ -1,0 +1,331 @@
+{
+  "total_errors": 186,
+  "codes": [
+    {
+      "code": "TS2339",
+      "count": 58
+    },
+    {
+      "code": "TS7006",
+      "count": 55
+    },
+    {
+      "code": "TS2322",
+      "count": 19
+    },
+    {
+      "code": "TS18047",
+      "count": 17
+    },
+    {
+      "code": "TS2345",
+      "count": 13
+    },
+    {
+      "code": "TS2304",
+      "count": 5
+    },
+    {
+      "code": "TS2353",
+      "count": 4
+    },
+    {
+      "code": "TS7053",
+      "count": 2
+    },
+    {
+      "code": "TS7022",
+      "count": 2
+    },
+    {
+      "code": "TS7024",
+      "count": 2
+    },
+    {
+      "code": "TS2740",
+      "count": 2
+    },
+    {
+      "code": "TS2783",
+      "count": 2
+    },
+    {
+      "code": "TS2724",
+      "count": 1
+    },
+    {
+      "code": "TS18048",
+      "count": 1
+    },
+    {
+      "code": "TS2551",
+      "count": 1
+    },
+    {
+      "code": "TS2769",
+      "count": 1
+    },
+    {
+      "code": "TS2741",
+      "count": 1
+    }
+  ],
+  "top_files": [
+    {
+      "file": "server/_core/llmRoutes.ts",
+      "count": 21
+    },
+    {
+      "file": "client/src/pages/MediaStudio.tsx",
+      "count": 14
+    },
+    {
+      "file": "server/services/userSkillService.ts",
+      "count": 14
+    },
+    {
+      "file": "client/src/pages/AdminLLMProviders.tsx",
+      "count": 9
+    },
+    {
+      "file": "client/src/pages/Factory.tsx",
+      "count": 8
+    },
+    {
+      "file": "server/routers/llmProviders.ts",
+      "count": 8
+    },
+    {
+      "file": "server/routers/mediaModels.ts",
+      "count": 8
+    },
+    {
+      "file": "server/routers/marketplace.ts",
+      "count": 7
+    },
+    {
+      "file": "client/src/pages/AdminSkills.tsx",
+      "count": 6
+    },
+    {
+      "file": "server/routers.ts",
+      "count": 6
+    },
+    {
+      "file": "server/routers/storageSettings.ts",
+      "count": 6
+    },
+    {
+      "file": "client/src/pages/AdminMediaModels.tsx",
+      "count": 4
+    },
+    {
+      "file": "drizzle/schema.ts",
+      "count": 4
+    },
+    {
+      "file": "server/routers/chat.ts",
+      "count": 3
+    },
+    {
+      "file": "server/routers/mediaJobs.ts",
+      "count": 3
+    },
+    {
+      "file": "server/routers/multiProvider.ts",
+      "count": 3
+    },
+    {
+      "file": "client/src/components/chat/SchedulePanel.tsx",
+      "count": 2
+    },
+    {
+      "file": "client/src/components/chat/artifacts/ArtifactPanel.tsx",
+      "count": 2
+    },
+    {
+      "file": "client/src/components/videoeditor/VideoEditorPhase3.tsx",
+      "count": 2
+    },
+    {
+      "file": "client/src/pages/AdminSettings.tsx",
+      "count": 2
+    },
+    {
+      "file": "client/src/pages/DomainAdmin.tsx",
+      "count": 2
+    },
+    {
+      "file": "client/src/pages/DomainAdminInvoice.tsx",
+      "count": 2
+    },
+    {
+      "file": "server/_core/revocation.ts",
+      "count": 2
+    },
+    {
+      "file": "server/_core/sdk.ts",
+      "count": 2
+    },
+    {
+      "file": "server/db.ts",
+      "count": 2
+    },
+    {
+      "file": "server/routers/credits.ts",
+      "count": 2
+    },
+    {
+      "file": "server/routers/packages.ts",
+      "count": 2
+    },
+    {
+      "file": "server/services/postgresAdapter.ts",
+      "count": 2
+    },
+    {
+      "file": "server/services/skillRegistry.ts",
+      "count": 2
+    },
+    {
+      "file": "shared/types/mediaJob.ts",
+      "count": 2
+    },
+    {
+      "file": "client/src/components/chat/ChatView.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/components/chat/JobCard.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/components/chat/MemoryPanel.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/components/videoeditor/SilenceDetectionPanel.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/components/workflow/config/DynamicNodeConfig.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/main.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminPackages.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminQueueDashboard.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminQueueLLM.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminQueueMedia.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminQueues.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminSTTProviders.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminStorageSettings.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminTenants.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/AdminUsers.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/Chat.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/Credits.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/Dashboard.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/DocPage.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/DocumentManagement.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/DomainAdminContent.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/DomainBlogAdmin.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/Marketplace.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/SkillBrowser.tsx",
+      "count": 1
+    },
+    {
+      "file": "client/src/pages/TenantSettings.tsx",
+      "count": 1
+    },
+    {
+      "file": "server/_core/oauth.ts",
+      "count": 1
+    },
+    {
+      "file": "server/routers/adminTenants.ts",
+      "count": 1
+    },
+    {
+      "file": "server/routers/scheduledMessages.ts",
+      "count": 1
+    },
+    {
+      "file": "server/routers/sttProviders.ts",
+      "count": 1
+    },
+    {
+      "file": "server/routers/translation.ts",
+      "count": 1
+    },
+    {
+      "file": "server/routers/workflow.ts",
+      "count": 1
+    },
+    {
+      "file": "server/services/libraryService.ts",
+      "count": 1
+    },
+    {
+      "file": "server/services/memoryService.ts",
+      "count": 1
+    },
+    {
+      "file": "server/services/skillExecutor.ts",
+      "count": 1
+    }
+  ]
+}

@@ -15,12 +15,20 @@ function invalidateUserCache(userId: number) {
   userVisibleCache.delete(userId);
 }
 
+async function requireDb() {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+  return db;
+}
+
 /**
  * Lazy-initialize visibility for a user who has no rows yet.
  * Copies all skills with visibleByDefault=true.
  */
 async function initializeUserVisibility(userId: number): Promise<number[]> {
-  const db = await getDb();
+  const db = await requireDb();
 
   // Insert defaults for this user
   await db.execute(sql`
@@ -44,7 +52,7 @@ async function initializeUserVisibility(userId: number): Promise<number[]> {
  * Ensure a user has visibility rows. If none exist, lazy-init from defaults.
  */
 async function ensureUserInitialized(userId: number): Promise<void> {
-  const db = await getDb();
+  const db = await requireDb();
   const [row] = await db
     .select({ id: userSkillVisibility.id })
     .from(userSkillVisibility)
@@ -78,7 +86,7 @@ export async function getUserVisibleSkillIds(userId: number): Promise<number[]> 
     return cached.skillIds;
   }
 
-  const db = await getDb();
+  const db = await requireDb();
 
   // Check if user has any visibility rows
   const rows = await db
@@ -103,7 +111,7 @@ export async function getUserVisibleSkillIds(userId: number): Promise<number[]> 
  * Get user's visible skills with auto-trigger info (for skill detection)
  */
 export async function getUserVisibleSkillsWithAutoTrigger(userId: number): Promise<{ skillId: number; autoTriggerEnabled: boolean }[]> {
-  const db = await getDb();
+  const db = await requireDb();
 
   const rows = await db
     .select({
@@ -128,7 +136,7 @@ export async function getUserVisibleSkills(
   userId: number,
   options: { search?: string; category?: string; limit?: number; offset?: number } = {}
 ) {
-  const db = await getDb();
+  const db = await requireDb();
   const { search, category, limit = 50, offset = 0 } = options;
 
   // Ensure user has visibility rows (lazy init)
@@ -195,7 +203,7 @@ export async function getAllSkillsForUser(
   userId: number,
   options: { search?: string; category?: string; limit?: number; offset?: number } = {}
 ) {
-  const db = await getDb();
+  const db = await requireDb();
   const { search, category, limit = 20, offset = 0 } = options;
 
   const conditions = [eq(skillsTable.isEnabled, true)];
@@ -264,7 +272,7 @@ export async function getAllSkillsForUser(
  * Toggle visibility for a single skill
  */
 export async function setSkillVisibility(userId: number, skillId: number, visible: boolean) {
-  const db = await getDb();
+  const db = await requireDb();
 
   await db
     .insert(userSkillVisibility)
@@ -281,7 +289,7 @@ export async function setSkillVisibility(userId: number, skillId: number, visibl
  * Batch toggle visibility
  */
 export async function batchSetVisibility(userId: number, updates: { skillId: number; visible: boolean }[]) {
-  const db = await getDb();
+  const db = await requireDb();
 
   for (const { skillId, visible } of updates) {
     await db
@@ -300,7 +308,7 @@ export async function batchSetVisibility(userId: number, updates: { skillId: num
  * Toggle auto-trigger for a specific skill
  */
 export async function setAutoTrigger(userId: number, skillId: number, enabled: boolean) {
-  const db = await getDb();
+  const db = await requireDb();
 
   await db
     .insert(userSkillVisibility)
@@ -317,7 +325,7 @@ export async function setAutoTrigger(userId: number, skillId: number, enabled: b
  * Get lightweight slash command list for a user (slug, name, icon only)
  */
 export async function getSlashCommands(userId: number) {
-  const db = await getDb();
+  const db = await requireDb();
 
   // Ensure user has visibility rows (lazy init)
   await ensureUserInitialized(userId);

@@ -407,7 +407,7 @@ function DocPageInner({ slug }: { slug: string }) {
 
 export default function DocPage() {
   const [, params] = useRoute('/docs/:slug+');
-  const slug = params?.slug || 'intro';
+  const slug = params?.["slug+"] || 'intro';
 
   // key={slug} forces re-mount when navigating between doc pages
   return <DocPageInner key={slug} slug={slug} />;

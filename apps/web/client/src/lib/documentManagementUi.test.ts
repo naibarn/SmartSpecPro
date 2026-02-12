@@ -69,6 +69,22 @@ describe("documentManagementUi", () => {
 
     expect(
       resolveDocumentPreviewType({
+        item_type: "video",
+        source_url: "https://example.com/a.mp4",
+        metadata: {},
+      } as any),
+    ).toBe("video");
+
+    expect(
+      resolveDocumentPreviewType({
+        item_type: "document",
+        source_url: "https://example.com/a.pdf",
+        metadata: {},
+      } as any),
+    ).toBe("pdf");
+
+    expect(
+      resolveDocumentPreviewType({
         item_type: "document",
         source_url: "https://example.com/a.unknown",
         metadata: {},

@@ -54,6 +54,7 @@ import { workflowRouter } from "./routers/workflow";
 import { approvalsRouter } from "./routers/approvals";
 import { libraryRouter } from "./routers/library";
 import { libraryOpsRouter } from "./routers/libraryOps";
+import { factoryRouter } from "./routers/factory";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -148,7 +149,7 @@ export const appRouter = router({
       const { sdk } = await import("./_core/sdk");
 
       // Create JWT token with 24h expiry for cross-domain access
-      const { token: accessToken } = await sdk.createSessionToken(
+      const accessToken = await sdk.createSessionToken(
         user.openId || user.email || String(user.id),
         {
           expiresInMs: TWENTY_FOUR_HOURS_MS,
@@ -406,7 +407,7 @@ export const appRouter = router({
         if (!user) throw new Error('User not found');
 
         // Create session
-        const { token: sessionToken } = await sdk.createSessionToken(user.openId, {
+        const sessionToken = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || '',
         });
 
@@ -1060,7 +1061,7 @@ export const appRouter = router({
         // Store verification code
         await db.insert(emailVerificationTokens).values({
           email: input.channel === "sms" ? user.phone! : user.backupEmail!,
-          token: code,
+          code,
           expiresAt: new Date(Date.now() + 15 * 60_000),
           channel: channelKey,
           userId: user.id,
@@ -1121,7 +1122,7 @@ export const appRouter = router({
           .where(eq(users.id, user.id));
 
         // Create session
-        const { token: sessionToken } = await sdk.createSessionToken(user.openId, {
+        const sessionToken = await sdk.createSessionToken(user.openId, {
           name: user.name || user.email || "",
         });
         const { getSessionCookieOptions } = await import("./_core/cookies");
@@ -1209,6 +1210,9 @@ export const appRouter = router({
 
   // Library operations (admin)
   libraryOps: libraryOpsRouter,
+
+  // Factory workflow/settings API
+  factory: factoryRouter,
 
   // Skills management and prompt enhancement
   skills: skillsRouter,
@@ -1323,10 +1327,11 @@ export const appRouter = router({
     list: publicProcedure
       .input(galleryFiltersSchema.omit({ isPublished: true }))
       .query(async ({ input, ctx }) => {
+        const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
         return getGalleryItems({
           ...input,
           isPublished: true, // Only show published items to public
-          tenantId: ctx.tenantId ?? undefined, // Filter by current tenant
+          tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Filter by current tenant
         });
       }),
 
@@ -1369,9 +1374,10 @@ export const appRouter = router({
     adminList: adminProcedure
       .input(galleryFiltersSchema)
       .query(async ({ input, ctx }) => {
+        const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
         return getGalleryItems({
           ...input,
-          tenantId: ctx.tenantId ?? undefined, // Filter by current tenant
+          tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Filter by current tenant
         });
       }),
 
@@ -1386,10 +1392,11 @@ export const appRouter = router({
     create: adminProcedure
       .input(createGalleryItemSchema)
       .mutation(async ({ input, ctx }) => {
+        const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
         const id = await createGalleryItem({
           ...input,
           authorId: ctx.user.id,
-          tenantId: ctx.tenantId ?? undefined, // Associate with current tenant
+          tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Associate with current tenant
           tags: input.tags || [],
         });
         return { id };

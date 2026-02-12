@@ -759,7 +759,7 @@ async function deductCreditsForUsage(
         provider: cachedProvider?.providerName || "unknown",
         inputTokens: usage.promptTokens,
         outputTokens: usage.completionTokens,
-        costUsd: costUsd.toFixed(6),
+        costUsd,
         endpoint: "/v1/chat/completions",
       },
     });
@@ -859,7 +859,7 @@ async function proxyChatWithCredits(
   const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
   await acquireProviderSlot(provider.providerName, isFreeModel);
 
-  let upstream: Response;
+  let upstream: globalThis.Response;
   try {
     upstream = await fetch(url, {
       method: "POST",
@@ -1412,12 +1412,12 @@ export function registerLLMRoutes(app: Express) {
               .where(like(llmProviders.providerName, "stt-%"))
               .orderBy(asc(llmProviders.sortOrder));
 
-            const enabledStt = sttProviders.filter((p) => p.apiKeyEncrypted);
+            const enabledStt = sttProviders.filter((p: (typeof sttProviders)[number]) => p.apiKeyEncrypted);
             let chosen: (typeof enabledStt)[0] | null = null;
 
             // Prefer stt-groq (free), then stt-openai, then any
             for (const pref of ["stt-groq", "stt-openai"]) {
-              chosen = enabledStt.find((p) => p.providerName === pref) || null;
+              chosen = enabledStt.find((p: (typeof enabledStt)[number]) => p.providerName === pref) || null;
               if (chosen) break;
             }
             if (!chosen && enabledStt.length > 0) chosen = enabledStt[0];
@@ -1436,11 +1436,11 @@ export function registerLLMRoutes(app: Express) {
                 .where(eq(llmProviders.isEnabled, true));
 
               for (const name of ["groq", "openai"]) {
-                chosen = llmProv.find((p) => p.providerName === name && p.apiKeyEncrypted) || null;
+                chosen = llmProv.find((p: (typeof llmProv)[number]) => p.providerName === name && p.apiKeyEncrypted) || null;
                 if (chosen) break;
               }
               if (!chosen) {
-                chosen = llmProv.find((p) => p.providerName !== "openrouter" && p.apiKeyEncrypted) || null;
+                chosen = llmProv.find((p: (typeof llmProv)[number]) => p.providerName !== "openrouter" && p.apiKeyEncrypted) || null;
               }
             }
 
@@ -1513,7 +1513,11 @@ export function registerLLMRoutes(app: Express) {
         // Deduct credits (skip if free provider)
         if (creditsUsed > 0) {
           const { deductCredits } = await import("../services/creditService");
-          await deductCredits(check.userId, creditsUsed, `STT transcription (${Math.round(result.duration || 0)}s)`);
+          await deductCredits({
+            userId: check.userId,
+            amount: creditsUsed,
+            description: `STT transcription (${Math.round(result.duration || 0)}s)`,
+          });
         }
 
         res.json({
@@ -1758,7 +1762,7 @@ export function registerLLMRoutes(app: Express) {
         const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
         await acquireProviderSlot(provider!.providerName, isFreeModel);
 
-        let upstream: Response;
+        let upstream: globalThis.Response;
         try {
           upstream = await fetch(url, {
             method: "POST",
@@ -1855,7 +1859,7 @@ export function registerLLMRoutes(app: Express) {
         try {
           const skillResult = await detectSkill(userMessage);
           if (skillResult.detected && skillResult.skill && skillResult.confidence >= 0.5) {
-            detectedSkillSlug = skillResult.skill.slug;
+            detectedSkillSlug = skillResult.skill.id;
             detectedSkillName = skillResult.skill.name;
 
             // Load skill knowledge from DB

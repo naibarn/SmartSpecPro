@@ -622,11 +622,11 @@ export default function Dashboard() {
                           <span className="capitalize">{task.mediaType}</span>
                           <span className="text-gray-300">|</span>
                           <span className="font-mono text-gray-600">{task.model || 'unknown'}</span>
-                          {task.creditsUsed > 0 && (
+                          {(task.creditsUsed ?? 0) > 0 && (
                             <>
                               <span className="text-gray-300">|</span>
                               <span className="flex items-center gap-0.5 text-amber-600">
-                                <Zap className="w-3 h-3" /> {task.creditsUsed}
+                                <Zap className="w-3 h-3" /> {task.creditsUsed ?? 0}
                               </span>
                             </>
                           )}

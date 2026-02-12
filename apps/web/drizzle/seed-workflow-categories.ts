@@ -2,11 +2,15 @@
  * Seed initial workflow template categories.
  * Run: cd apps/web && tsx drizzle/seed-workflow-categories.ts
  */
-import { db } from "../server/_core/db";
+import { getDb } from "../server/db";
 import { templateCategories } from "./schema";
 
 async function seedCategories() {
   console.log("Seeding workflow template categories...");
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
 
   const categories = [
     { name: "AI Workflows", slug: "ai-workflows", sortOrder: 1 },

@@ -4,7 +4,8 @@
  * These tests run against the REAL database to catch schema mismatches
  * that unit tests with mocked DB cannot detect.
  *
- * Run with: npx vitest run server/routers/adminTenants.integration.test.ts
+ * Run with:
+ *   DATABASE_URL=postgresql://.../smartspec_test RUN_DB_INTEGRATION_TESTS=true npx vitest run server/routers/adminTenants.integration.test.ts
  */
 import { describe, it, expect, afterAll } from "vitest";
 import postgres from "postgres";
@@ -12,10 +13,43 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import { tenants } from "../../drizzle/schema";
 
-const describeDbSuite =
-  process.env.RUN_DB_INTEGRATION_TESTS === "true" ? describe : describe.skip;
+const RUN_DB_INTEGRATION_TESTS =
+  process.env.RUN_DB_INTEGRATION_TESTS === "true";
+const describeDbSuite = RUN_DB_INTEGRATION_TESTS ? describe : describe.skip;
 
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec";
+function resolveTestDatabaseUrl(): string {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required for DB integration tests");
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(databaseUrl);
+  } catch {
+    throw new Error("DATABASE_URL must be a valid URL for DB integration tests");
+  }
+
+  const dbName = parsed.pathname.replace(/^\/+/, "");
+  if (!dbName || !/(^|_|-)(test|ci)(_|-|$)/i.test(dbName)) {
+    throw new Error(
+      `Refusing to run DB integration tests against non-test database "${dbName || "<unknown>"}"`,
+    );
+  }
+
+  const allowedHosts = new Set(["localhost", "127.0.0.1", "postgres", "smartspec-postgres"]);
+  if (!allowedHosts.has(parsed.hostname)) {
+    throw new Error(
+      `Refusing to run DB integration tests on non-local host "${parsed.hostname}"`,
+    );
+  }
+
+  return databaseUrl;
+}
+
+const DATABASE_URL = RUN_DB_INTEGRATION_TESTS
+  ? resolveTestDatabaseUrl()
+  : "postgresql://smartspec:smartspec123@localhost:5432/smartspec_test";
 const sql = postgres(DATABASE_URL);
 const drizzleClient = postgres(DATABASE_URL);
 const db = drizzle(drizzleClient);

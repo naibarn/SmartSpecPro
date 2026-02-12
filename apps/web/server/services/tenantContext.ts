@@ -22,6 +22,20 @@ function parseTenantId(value: unknown): TenantIdValue | null {
   return null;
 }
 
+function normalizeTenantIdVarchar(value: unknown): string | null {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return String(value);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    return trimmed;
+  }
+
+  return null;
+}
+
 /**
  * Resolve tenant ID for library/runtime operations.
  *
@@ -48,6 +62,25 @@ export function resolveTenantId(
 
   if (ctxTenantIdParsed !== null) return ctxTenantIdParsed;
   if (userTenantIdParsed !== null) return userTenantIdParsed;
+
+  return null;
+}
+
+/**
+ * Resolve tenant ID as a canonical varchar/string value.
+ *
+ * Use this for boundary flows backed by varchar tenant IDs.
+ * Preference order: request tenant context, then user current tenant.
+ */
+export function resolveTenantIdVarchar(
+  ctxTenantId: unknown,
+  userCurrentTenantId: unknown,
+): string | null {
+  const fromContext = normalizeTenantIdVarchar(ctxTenantId);
+  if (fromContext !== null) return fromContext;
+
+  const fromUser = normalizeTenantIdVarchar(userCurrentTenantId);
+  if (fromUser !== null) return fromUser;
 
   return null;
 }

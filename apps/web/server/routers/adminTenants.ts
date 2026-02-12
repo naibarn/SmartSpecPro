@@ -90,6 +90,7 @@ export function registerAdminTenantsRoutes(app: Express) {
       // Generate unique tenant ID
       const tenantId = `tenant-${nanoid(8)}`;
 
+      const actorUser = (req as any).user;
       const [tenant] = await dbInstance.insert(tenants).values({
         id: tenantId,
         slug,
@@ -103,7 +104,7 @@ export function registerAdminTenantsRoutes(app: Express) {
         themeConfig: themeConfig || {},
         seoConfig: seoConfig || {},
         settings: settings || {},
-        ownerId: req.user.id,
+        ownerId: actorUser.id,
         status: 'ACTIVE',
         plan: 'FREE',
         created_at: new Date(),

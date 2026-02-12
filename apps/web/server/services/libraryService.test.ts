@@ -215,6 +215,56 @@ describe("createLibraryItem", () => {
       }),
     );
   });
+
+  it("keeps string tenant id and numeric owner user id aligned on insert", async () => {
+    const now = new Date("2026-02-10T00:00:00.000Z");
+    const valuesMock = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([
+        {
+          id: 89,
+          tenantId: "tenant-ZCSKEM9s",
+          ownerUserId: 42,
+          itemType: "image",
+          source: "media_history",
+          title: "Tenant String",
+          description: null,
+          status: "ready",
+          visibility: "private",
+          metadata: {},
+          sourceUrl: null,
+          thumbnailUrl: null,
+          deletedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]),
+    });
+    mockDb.insert.mockReturnValueOnce({
+      values: valuesMock,
+    });
+
+    const result = await createLibraryItem(
+      {
+        itemType: "image",
+        source: "media_history",
+        title: "Tenant String",
+      },
+      {
+        userId: 42,
+        tenantId: "tenant-ZCSKEM9s",
+        role: "user",
+      },
+    );
+
+    expect(result.item.tenantId).toBe("tenant-ZCSKEM9s");
+    expect(result.item.ownerUserId).toBe(42);
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-ZCSKEM9s",
+        ownerUserId: 42,
+      }),
+    );
+  });
 });
 
 describe("tenant boundaries", () => {

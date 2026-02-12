@@ -591,7 +591,7 @@ export default function DomainAdminContent() {
                   Content Editor
                 </h1>
                 <p className="text-sm text-gray-600">
-                  Domain: {tenant?.name || user.registeredDomain}
+                  Domain: {tenant?.name || (user as any)?.registeredDomain}
                 </p>
               </div>
             </div>

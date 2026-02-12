@@ -1,13 +1,10 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../_core/trpc";
-import { users } from "../../drizzle/schema";
-import { getDb } from "../db";
 import { auditLogger } from "../services/auditLogger";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
-import { resolveTenantId, type TenantIdValue } from "../services/tenantContext";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   createLibraryItem,
   getLibraryMarkdownContent,
@@ -63,29 +60,8 @@ const uploadLibraryFileSchema = z.object({
 
 async function resolveLibraryTenantId(
   ctx: { tenantId: unknown; user: { id: number; currentTenantId?: unknown } },
-): Promise<TenantIdValue> {
-  let tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
-
-  // Legacy compatibility: if request tenant is string but DB/runtime still expects a numeric user tenant,
-  // try to reload `currentTenantId` directly from users table.
-  if (typeof tenantId === "string") {
-    try {
-      const db = await getDb();
-      if (db) {
-        const rows = await db
-          .select({ currentTenantId: users.currentTenantId })
-          .from(users)
-          .where(eq(users.id, ctx.user.id))
-          .limit(1);
-        const fallbackTenantId = resolveTenantId(null, rows[0]?.currentTenantId);
-        if (typeof fallbackTenantId === "number") {
-          tenantId = fallbackTenantId;
-        }
-      }
-    } catch {
-      // Keep resolved tenant from request context when fallback lookup is unavailable.
-    }
-  }
+): Promise<string> {
+  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
 
   if (tenantId === null || tenantId === undefined) {
     throw new TRPCError({
@@ -97,7 +73,7 @@ async function resolveLibraryTenantId(
   return tenantId;
 }
 
-function assertLibraryEnabled(tenantId: TenantIdValue): void {
+function assertLibraryEnabled(tenantId: string): void {
   if (!isLibraryEnabledForTenant(tenantId)) {
     throw new TRPCError({
       code: "FORBIDDEN",

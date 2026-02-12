@@ -82,7 +82,7 @@ export interface LibraryItemDto {
   updatedAt: Date;
 }
 
-interface CreateLibraryItemResult {
+export interface CreateLibraryItemResult {
   item: LibraryItemDto;
   idempotent: boolean;
 }
@@ -766,7 +766,7 @@ export async function uploadLibraryFile(
   const b64 = input.fileBase64.includes(",")
     ? input.fileBase64.split(",", 2)[1]
     : input.fileBase64;
-  let fileBuffer = Buffer.from(b64, "base64");
+  let fileBuffer: Buffer<ArrayBufferLike> = Buffer.from(b64, "base64");
 
   if (!fileBuffer.length) {
     throw new Error("Uploaded file is empty");

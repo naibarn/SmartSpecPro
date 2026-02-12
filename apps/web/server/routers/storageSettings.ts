@@ -46,7 +46,7 @@ export const storageSettingsRouter = router({
         .orderBy(asc(storageSettings.name));
 
       // Don't expose encrypted credentials
-      return settings.map(s => ({
+      return settings.map((s: (typeof settings)[number]) => ({
         ...s,
         accessKeyIdEncrypted: undefined,
         secretAccessKeyEncrypted: undefined,
@@ -105,12 +105,12 @@ export const storageSettingsRouter = router({
 
       return {
         total: all.length,
-        active: all.filter(s => s.isActive).length,
-        withCredentials: all.filter(s => s.hasCredentials).length,
+        active: all.filter((s: (typeof all)[number]) => s.isActive).length,
+        withCredentials: all.filter((s: (typeof all)[number]) => s.hasCredentials).length,
         byType: {
-          r2: all.filter(s => s.providerType === "r2").length,
-          s3: all.filter(s => s.providerType === "s3").length,
-          local: all.filter(s => s.providerType === "local").length,
+          r2: all.filter((s: (typeof all)[number]) => s.providerType === "r2").length,
+          s3: all.filter((s: (typeof all)[number]) => s.providerType === "s3").length,
+          local: all.filter((s: (typeof all)[number]) => s.providerType === "local").length,
         },
       };
     } catch (error: any) {

@@ -22,7 +22,7 @@ import SilenceDetectionPanel from './SilenceDetectionPanel';
 import TextClipEditor from './TextClipEditor';
 import { projectManager } from '../../services/projectManager';
 import { videoEditorRenderService, videoEditorMediaLibrary } from '../../services/videoEditorService';
-import ToastContainer from './Toast';
+import ToastContainer, { showToast } from './Toast';
 import { useLocation } from 'wouter';
 import { sanitizeProjectName } from '@smartspec/shared';
 import { trpc } from '../../lib/trpc';

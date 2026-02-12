@@ -100,7 +100,13 @@ const trpcClient = trpc.createClient({
       url: "/trpc",
       transformer: superjson,
       async fetch(input, init) {
-        console.log("[tRPC Fetch]", typeof input === 'string' ? input : input.url, init?.method);
+        const requestUrl =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        console.log("[tRPC Fetch]", requestUrl, init?.method);
         try {
           const response = await globalThis.fetch(input, {
             ...(init ?? {}),

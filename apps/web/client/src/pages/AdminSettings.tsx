@@ -49,6 +49,10 @@ import {
   Menu,
   Brain,
   Search,
+  Database,
+  HardDrive,
+  Info,
+  AlertCircle,
 } from "lucide-react";
 import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
 
@@ -262,7 +266,7 @@ export default function AdminSettings() {
       if (data.success) {
         toast.success(`Connected to bot: @${data.botInfo?.username || "unknown"}`);
       } else {
-        toast.error(data.message || "Connection test failed");
+        toast.error(data.error || "Connection test failed");
       }
     },
     onError: (err: any) => {
@@ -367,6 +371,72 @@ export default function AdminSettings() {
     }
   }, [aiSettings]);
 
+  // Vector Database settings
+  const [vectorDbForm, setVectorDbForm] = useState({
+    provider: "chromadb" as "chromadb" | "pgvector",
+    embeddingModel: "all-MiniLM-L6-v2",
+    embeddingDimension: 384,
+    chromaPersistDir: "~/.smartspec/chroma",
+    pgvectorHost: "",
+    pgvectorPort: "5432",
+    pgvectorDatabase: "",
+    pgvectorUser: "",
+    pgvectorPassword: "",
+    openaiApiKey: "",
+  });
+  const [showPgvectorPassword, setShowPgvectorPassword] = useState(false);
+  const [showOpenaiApiKey, setShowOpenaiApiKey] = useState(false);
+  const [pgvectorPasswordConfigured, setPgvectorPasswordConfigured] = useState(false);
+  const [openaiApiKeyConfigured, setOpenaiApiKeyConfigured] = useState(false);
+
+  const { data: vectorDbSettings, refetch: refetchVectorDb } = trpc.systemSettings.getVectorDbSettings.useQuery(
+    undefined,
+    { enabled: !!user && user.role === "admin" }
+  );
+  const { data: vectorDbStats, refetch: refetchVectorDbStats } = trpc.systemSettings.getVectorDbStats.useQuery(
+    undefined,
+    { enabled: !!user && user.role === "admin" }
+  );
+
+  const updateVectorDbMutation = trpc.systemSettings.updateVectorDbSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Vector Database settings saved");
+      refetchVectorDb();
+      refetchVectorDbStats();
+      setVectorDbForm(prev => ({ ...prev, pgvectorPassword: "", openaiApiKey: "" }));
+    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+  });
+
+  const testVectorDbMutation = trpc.systemSettings.testVectorDbConnection.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err: any) => toast.error(`Test failed: ${err.message}`),
+  });
+
+  useEffect(() => {
+    if (vectorDbSettings) {
+      setVectorDbForm(prev => ({
+        ...prev,
+        provider: (vectorDbSettings.provider as "chromadb" | "pgvector") || "chromadb",
+        embeddingModel: vectorDbSettings.embeddingModel || "all-MiniLM-L6-v2",
+        embeddingDimension: vectorDbSettings.embeddingDimension || 384,
+        chromaPersistDir: vectorDbSettings.chromaPersistDir || "~/.smartspec/chroma",
+        pgvectorHost: vectorDbSettings.pgvectorHost || "",
+        pgvectorPort: vectorDbSettings.pgvectorPort || "5432",
+        pgvectorDatabase: vectorDbSettings.pgvectorDatabase || "",
+        pgvectorUser: vectorDbSettings.pgvectorUser || "",
+      }));
+      setPgvectorPasswordConfigured(!!vectorDbSettings.pgvectorPasswordConfigured);
+      setOpenaiApiKeyConfigured(!!vectorDbSettings.openaiApiKeyConfigured);
+    }
+  }, [vectorDbSettings]);
+
   // Load settings into form
   useEffect(() => {
     if (stripeSettings) {
@@ -439,6 +509,7 @@ export default function AdminSettings() {
     { key: "2FA", label: "2FA", sublabel: "Authenticator", icon: Shield },
     { key: "stt", label: "STT", sublabel: "Speech-to-Text", icon: Mic },
     { key: "ai", label: "AI / Memory", sublabel: "Summary Model", icon: Brain },
+    { key: "vectordb", label: "Vector Database", sublabel: "RAG & Embeddings", icon: Database },
     { key: "menu", label: "Main Menu", sublabel: "Visibility Control", icon: Menu },
   ];
 
@@ -1511,9 +1582,9 @@ export default function AdminSettings() {
                   Configure STT providers for voice transcription in Chat
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6 pt-6">
+                <CardContent className="space-y-6 pt-6">
                 {(sttTemplates || []).map((tpl) => {
-                  const configured = sttProviders?.find((p) => p.providerName === tpl.providerName);
+                  const configured = sttProviders?.find((p: any) => p.providerName === tpl.providerName);
                   const isEditing = sttEditId === (configured?.id ?? -1);
 
                   return (
@@ -1742,6 +1813,421 @@ export default function AdminSettings() {
                   )}
                   Save AI Settings
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Vector Database Settings Tab */}
+          <TabsContent value="vectordb">
+            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Database className="w-5 h-5 text-purple-600" />
+                  Vector Database Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure vector database for RAG (Retrieval-Augmented Generation), semantic search, and document indexing
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                {/* Info Banner */}
+                <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+                  <CardContent className="flex items-start gap-3 p-4">
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-800 dark:text-blue-200">About Vector Databases</p>
+                      <p className="text-blue-700 dark:text-blue-300 mt-1">
+                        Vector databases store document embeddings for semantic search and RAG. Choose <strong>ChromaDB</strong> for development (zero-config, local storage) or <strong>pgvector</strong> for production (scalable, hybrid search with PostgreSQL).
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Statistics Cards */}
+                {vectorDbStats && !vectorDbStats.error && (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Provider</CardTitle>
+                        <Database className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold capitalize">{vectorDbStats.provider}</div>
+                        {vectorDbStats.provider === "chromadb" && (
+                          <p className="text-xs text-muted-foreground mt-1">In-memory + Persistent</p>
+                        )}
+                        {vectorDbStats.provider === "pgvector" && (
+                          <p className="text-xs text-muted-foreground mt-1">PostgreSQL Extension</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {vectorDbStats.provider === "chromadb" && vectorDbStats.totalCollections !== undefined && (
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Collections</CardTitle>
+                          <HardDrive className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{vectorDbStats.totalCollections}</div>
+                          <p className="text-xs text-muted-foreground mt-1">Active collections</p>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {vectorDbStats.provider === "pgvector" && vectorDbStats.totalDocuments !== undefined && (
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Documents</CardTitle>
+                          <HardDrive className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{vectorDbStats.totalDocuments.toLocaleString()}</div>
+                          <p className="text-xs text-muted-foreground mt-1">Indexed documents</p>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Storage</CardTitle>
+                        <HardDrive className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-xs font-mono truncate">
+                          {vectorDbStats.storageLocation || vectorDbStats.storageType || "N/A"}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Location</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Provider Selection */}
+                <div className="space-y-3">
+                  <Label htmlFor="provider" className="text-base font-semibold">Vector Database Provider</Label>
+                  <Select
+                    value={vectorDbForm.provider}
+                    onValueChange={(value: "chromadb" | "pgvector") =>
+                      setVectorDbForm({ ...vectorDbForm, provider: value })
+                    }
+                  >
+                    <SelectTrigger id="provider" className="max-w-md">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="chromadb">
+                        <div className="flex items-center gap-2">
+                          <Database className="h-4 w-4" />
+                          <div>
+                            <div className="font-medium">ChromaDB</div>
+                            <div className="text-xs text-muted-foreground">Local, zero-config (Development)</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="pgvector">
+                        <div className="flex items-center gap-2">
+                          <Database className="h-4 w-4" />
+                          <div>
+                            <div className="font-medium">pgvector</div>
+                            <div className="text-xs text-muted-foreground">PostgreSQL extension (Production)</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Card className="border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/30">
+                    <CardContent className="p-3 space-y-2 text-sm">
+                      <div className="font-medium flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        {vectorDbForm.provider === "chromadb" ? "ChromaDB" : "pgvector"} Features:
+                      </div>
+                      {vectorDbForm.provider === "chromadb" ? (
+                        <ul className="space-y-1 text-xs text-muted-foreground ml-6 list-disc">
+                          <li>✅ Zero configuration required</li>
+                          <li>✅ Automatic model download (all-MiniLM-L6-v2)</li>
+                          <li>✅ Fast in-memory + persistent storage</li>
+                          <li>✅ Perfect for development and small projects</li>
+                          <li>⚠️ Limited scalability (single machine)</li>
+                        </ul>
+                      ) : (
+                        <ul className="space-y-1 text-xs text-muted-foreground ml-6 list-disc">
+                          <li>✅ Production-ready with PostgreSQL ACID</li>
+                          <li>✅ Hybrid search (vector + full-text)</li>
+                          <li>✅ Multi-tenant support with isolation</li>
+                          <li>✅ Scalable (distributed, replication)</li>
+                          <li>⚠️ Requires PostgreSQL with pgvector extension</li>
+                        </ul>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Embedding Model Selection */}
+                <div className="space-y-3">
+                  <Label htmlFor="embeddingModel" className="text-base font-semibold">Embedding Model</Label>
+                  <Select
+                    value={vectorDbForm.embeddingModel}
+                    onValueChange={(value) =>
+                      setVectorDbForm({
+                        ...vectorDbForm,
+                        embeddingModel: value,
+                        embeddingDimension: value === "all-MiniLM-L6-v2" ? 384 : 1536,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="embeddingModel" className="max-w-md">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-MiniLM-L6-v2">
+                        <div>
+                          <div className="font-medium">all-MiniLM-L6-v2 (384D)</div>
+                          <div className="text-xs text-muted-foreground">FREE • Local • Fast</div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="text-embedding-ada-002">
+                        <div>
+                          <div className="font-medium">text-embedding-ada-002 (1536D)</div>
+                          <div className="text-xs text-muted-foreground">OpenAI • ~$0.0001/1K tokens</div>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-xs">
+                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <strong>Dimension: {vectorDbForm.embeddingDimension}</strong> •{" "}
+                      {vectorDbForm.embeddingModel === "all-MiniLM-L6-v2"
+                        ? "MiniLM runs locally, no API key needed"
+                        : "OpenAI embeddings require API key below"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ChromaDB Settings */}
+                {vectorDbForm.provider === "chromadb" && (
+                  <div className="space-y-3 border-t pt-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      ChromaDB Configuration
+                    </h3>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="chromaPersistDir">Persistence Directory</Label>
+                      <Input
+                        id="chromaPersistDir"
+                        value={vectorDbForm.chromaPersistDir}
+                        onChange={(e) =>
+                          setVectorDbForm({ ...vectorDbForm, chromaPersistDir: e.target.value })
+                        }
+                        placeholder="~/.smartspec/chroma"
+                        className="max-w-md font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Path where ChromaDB stores collections. Use absolute path or ~/ for home directory.
+                      </p>
+                    </div>
+
+                    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                      <CardContent className="p-3 text-xs">
+                        <strong className="text-green-800 dark:text-green-200">Example:</strong>
+                        <code className="block mt-1 p-2 bg-white dark:bg-slate-900 rounded border text-green-700 dark:text-green-300">
+                          CHROMA_PERSIST_DIR=~/.smartspec/chroma
+                        </code>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* pgvector Settings */}
+                {vectorDbForm.provider === "pgvector" && (
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      pgvector Configuration (PostgreSQL)
+                    </h3>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="pgvectorHost">Host</Label>
+                        <Input
+                          id="pgvectorHost"
+                          value={vectorDbForm.pgvectorHost}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, pgvectorHost: e.target.value })
+                          }
+                          placeholder="localhost"
+                          className="font-mono text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pgvectorPort">Port</Label>
+                        <Input
+                          id="pgvectorPort"
+                          value={vectorDbForm.pgvectorPort}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, pgvectorPort: e.target.value })
+                          }
+                          placeholder="5432"
+                          className="font-mono text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="pgvectorDatabase">Database Name</Label>
+                        <Input
+                          id="pgvectorDatabase"
+                          value={vectorDbForm.pgvectorDatabase}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, pgvectorDatabase: e.target.value })
+                          }
+                          placeholder="smartspec"
+                          className="font-mono text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pgvectorUser">Username</Label>
+                        <Input
+                          id="pgvectorUser"
+                          value={vectorDbForm.pgvectorUser}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, pgvectorUser: e.target.value })
+                          }
+                          placeholder="smartspec"
+                          className="font-mono text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="pgvectorPassword">
+                        Password {pgvectorPasswordConfigured && "(leave empty to keep current)"}
+                      </Label>
+                      <div className="relative max-w-md">
+                        <Input
+                          id="pgvectorPassword"
+                          type={showPgvectorPassword ? "text" : "password"}
+                          value={vectorDbForm.pgvectorPassword}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, pgvectorPassword: e.target.value })
+                          }
+                          placeholder={pgvectorPasswordConfigured ? "••••••••" : "Enter password"}
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPgvectorPassword(!showPgvectorPassword)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPgvectorPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {pgvectorPasswordConfigured && (
+                        <Badge variant="outline" className="text-green-600">
+                          <Check className="mr-1 h-3 w-3" />
+                          Password configured
+                        </Badge>
+                      )}
+                    </div>
+
+                    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                      <CardContent className="p-3 text-xs space-y-2">
+                        <strong className="text-green-800 dark:text-green-200">Setup pgvector:</strong>
+                        <code className="block p-2 bg-white dark:bg-slate-900 rounded border text-green-700 dark:text-green-300">
+                          {`-- Connect to PostgreSQL\npsql -U smartspec -d smartspec\n\n-- Enable pgvector extension\nCREATE EXTENSION IF NOT EXISTS vector;`}
+                        </code>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* OpenAI API Key (if using OpenAI embeddings) */}
+                {vectorDbForm.embeddingModel === "text-embedding-ada-002" && (
+                  <div className="space-y-3 border-t pt-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Key className="h-4 w-4" />
+                      OpenAI API Key (Required for OpenAI Embeddings)
+                    </h3>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="openaiApiKey">
+                        API Key {openaiApiKeyConfigured && "(leave empty to keep current)"}
+                      </Label>
+                      <div className="relative max-w-md">
+                        <Input
+                          id="openaiApiKey"
+                          type={showOpenaiApiKey ? "text" : "password"}
+                          value={vectorDbForm.openaiApiKey}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, openaiApiKey: e.target.value })
+                          }
+                          placeholder={openaiApiKeyConfigured ? "sk-••••••••" : "sk-..."}
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowOpenaiApiKey(!showOpenaiApiKey)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showOpenaiApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {openaiApiKeyConfigured && (
+                        <Badge variant="outline" className="text-green-600">
+                          <Check className="mr-1 h-3 w-3" />
+                          API key configured
+                        </Badge>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Get your API key from{" "}
+                        <a
+                          href="https://platform.openai.com/api-keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          platform.openai.com/api-keys
+                        </a>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 border-t pt-4">
+                  <Button
+                    onClick={() => updateVectorDbMutation.mutate(vectorDbForm)}
+                    disabled={updateVectorDbMutation.isPending}
+                    className="min-w-32"
+                  >
+                    {updateVectorDbMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Save Configuration
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => testVectorDbMutation.mutate()}
+                    disabled={testVectorDbMutation.isPending}
+                  >
+                    {testVectorDbMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <TestTube className="w-4 h-4 mr-2" />
+                    )}
+                    Test Connection
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

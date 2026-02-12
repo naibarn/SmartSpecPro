@@ -185,7 +185,7 @@ export function registerTenantRoutes(app: Express) {
       const pages = await dbInstance
         .select()
         .from(tenantPages)
-        .where(eq(tenantPages.tenantId, req.tenant.id));
+        .where(eq(tenantPages.tenantId as any, req.tenant.id as any));
 
       // Convert to map by pageKey
       const pagesMap = pages.reduce((acc, page) => {
@@ -216,7 +216,7 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId, req.tenant.id),
+            eq(tenantPages.tenantId as any, req.tenant.id as any),
             eq(tenantPages.pageKey, pageKey)
           )
         );
@@ -278,7 +278,7 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId, req.tenant.id),
+            eq(tenantPages.tenantId as any, req.tenant.id as any),
             eq(tenantPages.pageKey, pageData.pageKey)
           )
         );
@@ -302,7 +302,7 @@ export function registerTenantRoutes(app: Express) {
       } else {
         // Create new page
         await dbInstance.insert(tenantPages).values({
-          tenantId: req.tenant.id,
+          tenantId: req.tenant.id as any,
           pageKey: pageData.pageKey,
           title: pageData.title,
           slug: pageData.slug,
@@ -350,7 +350,7 @@ export function registerTenantRoutes(app: Express) {
         .delete(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId, req.tenant.id),
+            eq(tenantPages.tenantId as any, req.tenant.id as any),
             eq(tenantPages.pageKey, pageKey)
           )
         );
@@ -380,7 +380,7 @@ export function registerTenantRoutes(app: Express) {
         .from(tenantPages)
         .where(
           and(
-            eq(tenantPages.tenantId, req.tenant.id),
+            eq(tenantPages.tenantId as any, req.tenant.id as any),
             eq(tenantPages.pageKey, pageKey)
           )
         );

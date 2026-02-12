@@ -50,7 +50,7 @@ const SKILLS_DIR = path.resolve(process.cwd(), "skills");
 /**
  * Parse skill.md frontmatter and content
  */
-interface SkillMetadata {
+export interface SkillMetadata {
   name: string;
   version?: string;
   author?: string;

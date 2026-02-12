@@ -231,7 +231,7 @@ function FormField({ input, value, isConnected, onChange }: FormFieldProps) {
       {input.ui_type === "code_editor" && (
         <CodeEditor
           value={value || ""}
-          language={input.validation?.language || "javascript"}
+          language={String((input.validation as any)?.language || "javascript")}
           onChange={onChange}
           placeholder={input.placeholder}
         />

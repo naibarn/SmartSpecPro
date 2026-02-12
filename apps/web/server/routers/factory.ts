@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, router } from "../trpc"; // adjust to your project helper
+import { publicProcedure, router } from "../_core/trpc";
 import { loadServerEnv, mintUserToken } from "../controlPlaneClient";
 
 const env = loadServerEnv();

@@ -404,11 +404,11 @@ export default function AdminLLMProviders() {
   };
 
   // Filter out templates that are already configured
-  const configuredProviderNames = providers.map(p => p.providerName);
-  const availableTemplates = templates.filter(t => !configuredProviderNames.includes(t.providerName));
+  const configuredProviderNames = providers.map((p: any) => p.providerName);
+  const availableTemplates = templates.filter((t: any) => !configuredProviderNames.includes(t.providerName));
 
   // Calculate total routed models (from model_provider_map)
-  const totalModels = providers.reduce((sum, p) => sum + (p.routedModelCount || 0), 0);
+  const totalModels = providers.reduce((sum: number, p: any) => sum + (p.routedModelCount || 0), 0);
 
   if (authLoading || !user || user.role !== "admin") {
     return (
@@ -576,7 +576,7 @@ export default function AdminLLMProviders() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {providers.map((provider) => (
+            {providers.map((provider: any) => (
               <Card key={provider.id} className={provider.isEnabled ? "border-green-200" : ""}>
                 <CardContent className="py-4">
                   <div className="flex items-start justify-between gap-4">
@@ -625,7 +625,7 @@ export default function AdminLLMProviders() {
                         )}
                         
                         {/* Test result */}
-                        {testResult?.id === provider.id && (
+                        {testResult && testResult.id === provider.id && (
                           <div className={`mt-2 text-sm ${testResult.success ? "text-green-600" : "text-red-600"}`}>
                             {testResult.success ? <Check className="inline h-4 w-4 mr-1" /> : <X className="inline h-4 w-4 mr-1" />}
                             {testResult.message}
@@ -1076,7 +1076,7 @@ export default function AdminLLMProviders() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={() => deleteConfirm && deleteMutation.mutate(deleteConfirm.id)}
+              onClick={() => deleteConfirm && deleteMutation.mutate({ id: deleteConfirm.id })}
             >
               {deleteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1280,7 +1280,7 @@ export default function AdminLLMProviders() {
                 className="ml-2 px-2 py-1 border rounded-md bg-background"
                 id="importTargetProvider"
               >
-                {providers.map((p) => (
+                {providers.map((p: any) => (
                   <option key={p.id} value={p.id}>{p.displayName}</option>
                 ))}
               </select>

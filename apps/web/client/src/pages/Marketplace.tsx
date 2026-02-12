@@ -218,6 +218,7 @@ export default function Marketplace() {
             }}
             isAuthenticated={isAuthenticated}
             userId={user?.id}
+            isAdmin={user?.role === "admin"}
           />
         )}
       </AnimatePresence>
@@ -303,12 +304,14 @@ function SkillDetailDialog({
   onClose,
   isAuthenticated,
   userId,
+  isAdmin,
 }: {
   slug: string;
   open: boolean;
   onClose: () => void;
   isAuthenticated: boolean;
   userId?: number;
+  isAdmin?: boolean;
 }) {
   const utils = trpc.useUtils();
   const [commentText, setCommentText] = useState("");
@@ -515,7 +518,7 @@ function SkillDetailDialog({
                               <span className="text-[10px] text-gray-400">
                                 {new Date(c.createdAt).toLocaleDateString()}
                               </span>
-                              {isAuthenticated && (c.userId === userId || (user as any)?.role === "admin") && (
+                              {isAuthenticated && (c.userId === userId || isAdmin) && (
                                 <button
                                   className="opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={() => deleteCommentMutation.mutate({ commentId: c.id })}

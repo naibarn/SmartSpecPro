@@ -94,7 +94,11 @@ export function JobCard({
     cancelled: { color: "secondary" as const, icon: AlertCircle, label: "Cancelled" },
   };
 
-  const { color, icon: StatusIcon, label } = statusConfig[status] || statusConfig.pending;
+  const statusKey =
+    typeof status === "string" && status in statusConfig
+      ? (status as keyof typeof statusConfig)
+      : "pending";
+  const { color, icon: StatusIcon, label } = statusConfig[statusKey];
 
   return (
     <div className="border border-input rounded-lg p-4 bg-card shadow-sm my-2">

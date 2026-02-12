@@ -10,10 +10,14 @@ export type DocumentPreviewType =
   | "video"
   | "audio"
   | "pdf"
+  | "excel"
   | "office"
-  | "text"
+  | "code"
+  | "csv"
   | "json"
+  | "text"
   | "html"
+  | "xml"
   | "fallback";
 
 export interface DocumentLibraryItem {
@@ -136,14 +140,38 @@ export function resolveDocumentPreviewType(
   item: Pick<DocumentLibraryItem, "item_type" | "source_url" | "metadata">,
 ): DocumentPreviewType {
   const ext = getFileExtension(item);
+
+  // Markdown
   if (ext === "md" || ext === "markdown") return "markdown";
+
+  // Media
   if (["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "image"].includes(ext)) return "image";
   if (["mp4", "webm", "mov", "mkv", "avi", "video"].includes(ext)) return "video";
   if (["mp3", "wav", "ogg", "m4a", "audio"].includes(ext)) return "audio";
+
+  // Documents
   if (ext === "pdf") return "pdf";
-  if (["doc", "docx", "ppt", "pptx", "xls", "xlsx", "odt", "ods", "odp"].includes(ext)) return "office";
-  if (["txt", "csv", "log", "text"].includes(ext)) return "text";
+  if (["xls", "xlsx", "xlsm", "xlsb", "ods"].includes(ext)) return "excel";
+  if (["doc", "docx", "ppt", "pptx", "odt", "odp"].includes(ext)) return "office";
+
+  // Data Formats
+  if (ext === "csv") return "csv";
   if (ext === "json") return "json";
+  if (["xml", "svg"].includes(ext)) return "xml";
+
+  // Code Files
+  const codeExtensions = [
+    "js", "jsx", "ts", "tsx", "py", "rb", "java", "cpp", "c", "cs", "go", "rs",
+    "php", "swift", "kt", "scala", "sql", "sh", "bash", "zsh", "yml", "yaml",
+    "css", "scss", "sass", "less", "dockerfile", "makefile", "r", "matlab",
+    "lua", "perl", "dart", "graphql", "toml", "ini", "diff", "git", "vue",
+    "svelte", "astro", "prisma", "proto"
+  ];
+  if (codeExtensions.includes(ext)) return "code";
+
+  // Plain Text
+  if (["txt", "log", "text"].includes(ext)) return "text";
   if (["html", "htm"].includes(ext)) return "html";
+
   return "fallback";
 }

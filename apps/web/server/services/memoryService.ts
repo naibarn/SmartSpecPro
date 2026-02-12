@@ -851,6 +851,7 @@ export async function processConversationMemory(
   suggestedMemories: SuggestedMemory[];
   compacted: boolean;
   compactedMessageCount: number;
+  consolidated: boolean;
 }> {
   let summarized = false;
   let entitiesExtracted = 0;

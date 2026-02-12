@@ -6,6 +6,10 @@ import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentMan
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { Check, ExternalLink, Pencil, X } from "lucide-react";
 import MarkdownFileEditor from "./MarkdownFileEditor";
+import CodeViewer from "./CodeViewer";
+import CSVViewer from "./CSVViewer";
+import JSONViewer from "./JSONViewer";
+import ExcelViewer from "./ExcelViewer";
 
 interface DocumentPreviewPanelProps {
   item: DocumentLibraryItem | null;
@@ -84,7 +88,7 @@ export default function DocumentPreviewPanel({
       .catch(() => {
         if (cancelled) return;
         setPdfObjectUrl(null);
-        setPreviewLoadError("PDF preview could not be loaded. Try Open file.");
+        setPreviewLoadError("PDF preview could not be loaded. Try Download File.");
       })
       .finally(() => {
         if (!cancelled) {
@@ -120,7 +124,7 @@ export default function DocumentPreviewPanel({
   const officeViewerUrl = officePreviewDecision?.viewerUrl ?? null;
   const canUseOfficeViewer = Boolean(officePreviewDecision?.canEmbed && officeViewerUrl);
   const officeFallbackMessage = officePreviewDecision?.message
-    || "Office preview is limited in this environment. Use Open file for full document access.";
+    || "Office preview is limited in this environment. Use Download File for full document access.";
 
   return (
     <div className="space-y-4 rounded-xl border bg-background/90 p-4 shadow-sm">
@@ -210,9 +214,9 @@ export default function DocumentPreviewPanel({
           </div>
           {sourceUrl ? (
             <Button asChild size="sm" variant="outline">
-              <a href={sourceUrl} target="_blank" rel="noreferrer">
+              <a href={sourceUrl} target="_blank" rel="noreferrer" download>
                 <ExternalLink className="mr-1 h-4 w-4" />
-                Open file
+                Download File
               </a>
             </Button>
           ) : null}
@@ -239,7 +243,7 @@ export default function DocumentPreviewPanel({
             src={sourceUrl}
             alt={item.title}
             className="max-h-[70vh] w-full rounded-lg border border-white/80 bg-white object-contain shadow-sm"
-            onError={() => setPreviewLoadError("Image preview failed to load. Try Open file.")}
+            onError={() => setPreviewLoadError("Image preview failed to load. Try Download File.")}
           />
           {previewLoadError ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -255,7 +259,7 @@ export default function DocumentPreviewPanel({
             src={sourceUrl}
             controls
             className="max-h-[70vh] w-full rounded-lg border border-white/80 bg-black shadow-sm"
-            onError={() => setPreviewLoadError("Video preview failed to load. Try Open file.")}
+            onError={() => setPreviewLoadError("Video preview failed to load. Try Download File.")}
           />
           {previewLoadError ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -282,7 +286,7 @@ export default function DocumentPreviewPanel({
               title={`preview-${item.id}`}
               src={pdfObjectUrl || sourceUrl}
               className="h-[70vh] w-full rounded-lg border bg-white"
-              onError={() => setPreviewLoadError("PDF preview failed to load. Try Open file.")}
+              onError={() => setPreviewLoadError("PDF preview failed to load. Try Download File.")}
             />
           )}
           {previewLoadError ? (
@@ -293,6 +297,13 @@ export default function DocumentPreviewPanel({
         </div>
       ) : null}
 
+      {previewType === "excel" && sourceUrl ? (
+        <ExcelViewer
+          fileUrl={sourceUrl}
+          fileName={item.title}
+        />
+      ) : null}
+
       {previewType === "office" && sourceUrl ? (
         <div className="space-y-2 rounded-xl border bg-slate-50 p-2 shadow-inner">
           {canUseOfficeViewer && officeViewerUrl ? (
@@ -301,7 +312,7 @@ export default function DocumentPreviewPanel({
                 title={`office-preview-${item.id}`}
                 src={officeViewerUrl}
                 className="h-[70vh] w-full rounded-lg border bg-white"
-                onError={() => setPreviewLoadError("Office preview failed to load. Try Open file.")}
+                onError={() => setPreviewLoadError("Office preview failed to load. Try Download File.")}
               />
               <div className="px-2 pb-1 text-xs text-muted-foreground">
                 Office preview uses Microsoft online viewer. If it cannot render this URL, use Open file.
@@ -320,12 +331,47 @@ export default function DocumentPreviewPanel({
         </div>
       ) : null}
 
+      {previewType === "code" && previewText ? (
+        <CodeViewer
+          code={previewText}
+          language=""
+          fileName={item.title}
+        />
+      ) : null}
+
+      {previewType === "csv" && previewText ? (
+        <CSVViewer
+          csvData={previewText}
+          fileName={item.title}
+        />
+      ) : null}
+
+      {previewType === "json" && previewText ? (
+        <JSONViewer
+          jsonData={previewText}
+          fileName={item.title}
+        />
+      ) : null}
+
+      {previewType === "xml" && previewText ? (
+        <CodeViewer
+          code={previewText}
+          language="xml"
+          fileName={item.title}
+        />
+      ) : null}
+
       {previewType !== "markdown" &&
       previewType !== "image" &&
       previewType !== "video" &&
       previewType !== "audio" &&
       previewType !== "pdf" &&
-      previewType !== "office" ? (
+      previewType !== "excel" &&
+      previewType !== "office" &&
+      previewType !== "code" &&
+      previewType !== "csv" &&
+      previewType !== "json" &&
+      previewType !== "xml" ? (
         <div className="space-y-3">
           {previewText ? (
             <pre className="max-h-[70vh] overflow-auto rounded-lg border bg-slate-50/80 p-3 text-xs shadow-inner">
@@ -333,7 +379,7 @@ export default function DocumentPreviewPanel({
             </pre>
           ) : (
             <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">
-              Preview is not available for this file type in-browser. Use Open file instead.
+              Preview is not available for this file type in-browser. Use Download File instead.
             </div>
           )}
         </div>

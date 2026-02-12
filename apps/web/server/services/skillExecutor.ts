@@ -380,7 +380,7 @@ export async function executeAudioGeneration(
   } else {
     const defaultModel = getDefaultModel("audio");
     if (!defaultModel) {
-      return { success: false, skillId: skill.id, type: "audio", error: "No audio models available" };
+      return { success: false, skillId: "audio-generation", type: "audio", error: "No audio models available" };
     }
     model = defaultModel.id as AudioModel;
   }

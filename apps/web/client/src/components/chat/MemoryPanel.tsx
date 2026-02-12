@@ -556,13 +556,22 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
               <FileText className="h-3.5 w-3.5" />
               Summaries ({summaries.length})
             </div>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
-              {summaries.map((s) => (
-                <SummaryItem key={s.id} summary={s} />
-              ))}
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {summaries.map((s) => (
+                  <SummaryItem
+                    key={s.id}
+                    summary={{
+                      ...s,
+                      createdAt:
+                        s.createdAt instanceof Date
+                          ? s.createdAt.toISOString()
+                          : String(s.createdAt),
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
       )}
 
       <div className="px-4 pb-3">

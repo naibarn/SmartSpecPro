@@ -3,12 +3,13 @@
  * Handles authorization scopes for MCP and other features
  */
 
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET || JWT_SECRET.length < 32) {
+const jwtSecretEnv = process.env.JWT_SECRET;
+if (!jwtSecretEnv || jwtSecretEnv.length < 32) {
   throw new Error("CRITICAL: JWT_SECRET must be set (min 32 characters) in all environments");
 }
+const JWT_SECRET: string = jwtSecretEnv;
 
 /**
  * Token claims interface
@@ -43,7 +44,10 @@ export async function verifyBearerToken(token: string): Promise<TokenClaims> {
  * @param expiresIn - Token expiration (default: 1h)
  * @returns Signed JWT token
  */
-export function signBearerToken(claims: TokenClaims, expiresIn: string = "1h"): string {
+export function signBearerToken(
+  claims: TokenClaims,
+  expiresIn: SignOptions["expiresIn"] = "1h",
+): string {
   return jwt.sign(claims, JWT_SECRET, { expiresIn });
 }
 

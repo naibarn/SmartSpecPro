@@ -360,7 +360,7 @@ export default function Credits() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {history.map((transaction) => (
+                    {history.map((transaction: any) => (
                       <tr key={transaction.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-6 py-4">
                           <span

@@ -81,7 +81,7 @@ export function registerOAuthRoutes(app: Express) {
 
       if (isNewUser && userInfo.email) {
         // Rate limit check
-        const rateLimited = !registrationLimiter.checkLimit(ipAddress);
+        const rateLimited = !registrationLimiter.isAllowed(ipAddress);
         if (rateLimited) {
           console.warn(`[OAuth] Registration rate limited for IP: ${ipAddress}`);
           res.redirect(302, "/?error=rate_limited");

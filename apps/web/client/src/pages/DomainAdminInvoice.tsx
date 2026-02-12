@@ -29,7 +29,7 @@ import {
 
 interface InvoiceConfig {
   id?: number;
-  tenantId?: number | null;
+  tenantId?: string | null;
   companyName?: string;
   addressLine1?: string;
   addressLine2?: string;
@@ -69,7 +69,7 @@ export default function DomainAdminInvoice() {
   // Query tenant-specific invoice config
   const { data: invoiceConfig, isLoading: invoiceLoading, refetch: refetchInvoice } =
     trpc.systemSettings.getTenantInvoiceConfig.useQuery(
-      { tenantId: tenant?.id || 0 },
+      { tenantId: tenant?.id || "" },
       {
         enabled: !!user && !!tenant?.id && (user.role === "domain_admin" || user.role === "admin"),
       }
@@ -89,7 +89,7 @@ export default function DomainAdminInvoice() {
   // Load settings into form
   useEffect(() => {
     if (invoiceConfig) {
-      setInvoiceForm(invoiceConfig);
+      setInvoiceForm(invoiceConfig as InvoiceConfig);
     }
   }, [invoiceConfig]);
 
@@ -170,7 +170,7 @@ export default function DomainAdminInvoice() {
           {tenant && (
             <Badge variant="outline" className="text-purple-600 border-purple-600">
               <Building2 className="w-3 h-3 mr-1" />
-              {tenant.domain}
+              {tenant.primaryDomain}
             </Badge>
           )}
         </div>

@@ -388,7 +388,7 @@ export default function DomainUsers() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {/* Don't show actions for self or other domain admins */}
-                            {u.id !== user?.id && u.role !== "domain_admin" && u.role !== "admin" && (
+                            {u.id !== Number(user?.id) && u.role !== "domain_admin" && u.role !== "admin" && (
                               <>
                                 <Button
                                   variant="outline"
@@ -419,7 +419,7 @@ export default function DomainUsers() {
                                 </Button>
                               </>
                             )}
-                            {u.id === user?.id && (
+                            {u.id === Number(user?.id) && (
                               <span className="text-sm text-gray-400 italic">You</span>
                             )}
                           </div>
