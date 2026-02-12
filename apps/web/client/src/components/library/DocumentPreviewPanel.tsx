@@ -4,12 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentManagementUi";
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
+import { trpc } from "@/lib/trpc";
 import { Check, ExternalLink, Pencil, X } from "lucide-react";
 import MarkdownFileEditor from "./MarkdownFileEditor";
 import CodeViewer from "./CodeViewer";
 import CSVViewer from "./CSVViewer";
 import JSONViewer from "./JSONViewer";
 import ExcelViewer from "./ExcelViewer";
+import { ShareButton } from "./ShareButton";
+import { ShareDialog } from "./ShareDialog";
 
 interface DocumentPreviewPanelProps {
   item: DocumentLibraryItem | null;
@@ -53,6 +56,12 @@ export default function DocumentPreviewPanel({
   const [previewLoadError, setPreviewLoadError] = useState<string | null>(null);
   const [pdfObjectUrl, setPdfObjectUrl] = useState<string | null>(null);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
+  const { data: sharesData } = trpc.library.getItemShares.useQuery(
+    { itemId: item?.id ?? 0 },
+    { enabled: Boolean(item?.id) },
+  );
 
   useEffect(() => {
     setTitleDraft(item?.title || "");
@@ -212,14 +221,20 @@ export default function DocumentPreviewPanel({
               <Badge variant="outline">{item.status}</Badge>
             </div>
           </div>
-          {sourceUrl ? (
-            <Button asChild size="sm" variant="outline">
-              <a href={sourceUrl} target="_blank" rel="noreferrer" download>
-                <ExternalLink className="mr-1 h-4 w-4" />
-                Download File
-              </a>
-            </Button>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-2">
+            <ShareButton
+              shareCount={sharesData?.shares?.length ?? 0}
+              onOpenDialog={() => setShareDialogOpen(true)}
+            />
+            {sourceUrl ? (
+              <Button asChild size="sm" variant="outline">
+                <a href={sourceUrl} target="_blank" rel="noreferrer" download>
+                  <ExternalLink className="mr-1 h-4 w-4" />
+                  Download File
+                </a>
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -384,6 +399,13 @@ export default function DocumentPreviewPanel({
           )}
         </div>
       ) : null}
+
+      <ShareDialog
+        itemId={item.id}
+        itemTitle={item.title}
+        isOpen={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+      />
     </div>
   );
 }
