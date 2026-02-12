@@ -367,7 +367,18 @@
       "WebFetch(domain:blog.thnkandgrow.com)",
       "WebFetch(domain:karthickragavendran.medium.com)",
       "WebFetch(domain:supabase.com)",
-      "WebFetch(domain:trpc.io)"
+      "WebFetch(domain:trpc.io)",
+      "Bash(ss -tlnp:*)",
+      "Bash(openssl rand:*)",
+      "Bash(./scripts/health-check.sh:*)",
+      "Bash(crontab -l:*)",
+      "Bash(__NEW_LINE_87354a621761edd7__ cat << 'EOF'\n\n📁 Created Files:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✓ scripts/health-check.sh        - Health monitoring script\n✓ scripts/setup-monitoring.sh    - Monitoring setup tool\n✓ logs/                          - Health check log directory\n✓ apps/web/.env                  - Fixed environment variables\n\n🔧 Quick Commands:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n./scripts/health-check.sh              - Manual health check\ntail -f logs/health-check.log          - Watch health logs\n./run-services.sh status               - Service status\n./run-services.sh restart              - Restart all services\ncrontab -e                             - Edit cron jobs\n\n════════════════════════════════════════════════════════════\nEOF)",
+      "Bash(__NEW_LINE_5a198a4c8be1e1e0__ ./run-services.sh status)",
+      "Bash(__NEW_LINE_21e5b45c7ebae524__ cat << 'EOF'\n\n🔧 MONITORING CONFIGURED:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✓ Cron job: Every 5 minutes\n✓ Log file: logs/health-check.log\n✓ Scripts:\n  • scripts/health-check.sh       - Health monitoring\n  • scripts/setup-monitoring.sh   - Setup tool\n\n📋 IMPORTANT REMINDERS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n1. ใช้ ./run-services.sh เสมอ \\(ห้ามรัน services manual!\\)\n2. ตรวจสอบ logs/health-check.log เป็นประจำ\n3. Backup .env files ก่อนแก้ไข\n4. ถ้า website ตาย: ./run-services.sh stop && ./run-services.sh start\n\n🚀 NEXT STEPS \\(OPTIONAL\\):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[ ] ตั้งค่า email/Slack alerts สำหรับ health check\n[ ] Setup log rotation \\(logrotate\\)\n[ ] พิจารณาใช้ systemd services แทน screen \\(production\\)\n[ ] เพิ่ม auto-restart ใน health check script\n\n════════════════════════════════════════════════════════════\nWebsite พร้อมใช้งานแล้ว! 🎉\nhttps://smartaihub.app\n════════════════════════════════════════════════════════════\nEOF)",
+      "Bash(__NEW_LINE_cf37bd6a8bf8276b__ echo \"\")",
+      "Bash(__NEW_LINE_0d0cf6e34c3c03f1__ echo \"\")",
+      "Bash(__NEW_LINE_45c00a8fd3c686db__ cat << 'EOF'\n\n════════════════════════════════════════════════════════════\nตอนนี้ https://docker.smartaihub.app ควรใช้งานได้แล้ว! ✅\n════════════════════════════════════════════════════════════\n\n📝 หมายเหตุ:\nถ้า Nginx container ถูก restart ใหม่ ต้อง reload config:\n  docker exec smartspec-nginx-dev nginx -s reload\n\nหรือ restart ผ่าน service manager:\n  ./run-services.sh restart\n\nEOF)",
+      "Bash(systemctl:*)"
     ]
   }
 }

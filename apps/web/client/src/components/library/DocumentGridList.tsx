@@ -151,7 +151,7 @@ export default function DocumentGridList({
   }
 
   return (
-    <ScrollArea className={cn("h-[calc(100vh-340px)] rounded-lg", className)}>
+    <ScrollArea className={cn("h-full min-h-0 rounded-lg", className)}>
       <div className="space-y-3 pr-1.5">
         {items.map((item) => {
           const statusMeta = getLibraryStatusMeta(item.status);

@@ -293,6 +293,9 @@ start_nginx() {
         nginx:alpine > /dev/null 2>&1
 
     if [ $? -eq 0 ]; then
+        # Reload configuration to ensure latest config is applied
+        sleep 1
+        docker exec smartspec-nginx-dev nginx -s reload > /dev/null 2>&1 || true
         log_info "Nginx started successfully (https://smartaihub.app)"
         return 0
     else

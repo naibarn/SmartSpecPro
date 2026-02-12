@@ -1,0 +1,33 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/009-sharefile/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/009-sharefile/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-database-schema",
+    "section-02-groups-service",
+    "section-03-library-service",
+    "section-04-groups-router",
+    "section-05-library-router",
+    "section-06-trash-job",
+    "section-07-group-management-ui",
+    "section-08-file-sharing-ui",
+    "section-09-trash-ui",
+    "section-10-caching-optimization",
+    "section-11-security-tests",
+    "section-12-deployment-verification"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-12T08:11:00.927442+00:00"
+}

@@ -523,7 +523,7 @@ export function EmailSettings() {
           <div>
             <h4 className="font-mono text-sm font-bold mb-2">Built-in Notifications</h4>
             <p className="text-sm text-muted-foreground">
-              Email notifications are sent through the Manus notification system. 
+              Email notifications are sent through the platform notification system.
               Configure your notification preferences in the Settings panel to receive 
               Docker alerts via email.
             </p>
