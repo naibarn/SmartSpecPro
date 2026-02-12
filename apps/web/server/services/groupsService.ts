@@ -906,6 +906,121 @@ export async function requestJoinGroup(
   return { success: true };
 }
 
+export interface GroupMemberDetail {
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  role: GroupMemberRole;
+  status: string;
+  joinedAt: Date;
+}
+
+export async function getGroupMembers(
+  groupId: number,
+  actor: GroupsActor,
+  dbClient?: DbClient,
+): Promise<GroupMemberDetail[]> {
+  const db = await resolveDb(dbClient);
+  const tenantId = normalizeTenantId(actor.tenantId);
+  const group = await getGroupForTenant(db, groupId, tenantId);
+  if (!group) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Group not found",
+    });
+  }
+
+  // Verify caller is a member of this group
+  const membershipRows = await db
+    .select({ userId: groupMembers.userId })
+    .from(groupMembers)
+    .where(and(
+      eq(groupMembers.groupId, groupId),
+      eq(groupMembers.userId, actor.userId),
+      eq(groupMembers.status, "active"),
+    ))
+    .limit(1);
+
+  if (membershipRows.length === 0) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You must be a member to view group members",
+    });
+  }
+
+  const rows = await db
+    .select({
+      userId: groupMembers.userId,
+      userName: users.name,
+      userEmail: users.email,
+      role: groupMembers.role,
+      status: groupMembers.status,
+      joinedAt: groupMembers.joinedAt,
+    })
+    .from(groupMembers)
+    .innerJoin(users, eq(users.id, groupMembers.userId))
+    .where(and(
+      eq(groupMembers.groupId, groupId),
+      or(
+        eq(groupMembers.status, "active"),
+        eq(groupMembers.status, "pending"),
+      ),
+    ))
+    .orderBy(asc(groupMembers.role), asc(users.name));
+
+  return rows.map((r) => ({
+    ...r,
+    role: mapRole(r.role),
+  }));
+}
+
+export async function searchTenantUsers(
+  query: string,
+  tenantId: GroupsTenantId,
+  excludeGroupId: number | undefined,
+  limit: number,
+  dbClient?: DbClient,
+) {
+  const db = await resolveDb(dbClient);
+  const normalizedTenantId = normalizeTenantId(tenantId);
+  const escaped = query.trim().replace(/%/g, "\\%").replace(/_/g, "\\_");
+  const searchPattern = `%${escaped}%`;
+
+  const conditions: SQL[] = [
+    or(
+      ilike(users.name, searchPattern),
+      ilike(users.email, searchPattern),
+    )!,
+  ];
+
+  // Filter to users in the same tenant (by registeredDomain or currentTenantId)
+  // Using currentTenantId for tenant scoping
+  conditions.push(sql`${users.currentTenantId}::text = ${normalizedTenantId}`);
+
+  if (excludeGroupId) {
+    // Exclude users already in the group
+    conditions.push(
+      sql`${users.id} NOT IN (
+        SELECT ${groupMembers.userId} FROM ${groupMembers}
+        WHERE ${groupMembers.groupId} = ${excludeGroupId}
+          AND ${groupMembers.status} IN ('active', 'pending')
+      )`,
+    );
+  }
+
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    })
+    .from(users)
+    .where(and(...conditions))
+    .limit(Math.min(limit, 20));
+
+  return rows;
+}
+
 export async function searchPublicGroups(
   input: SearchPublicGroupsInput,
   actor: GroupsActor,

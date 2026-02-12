@@ -57,6 +57,9 @@ import MediaStudio from "./pages/MediaStudio";
 import Credits from "./pages/Credits";
 import MediaHistory from "./pages/MediaHistory";
 import DocumentManagement from "./pages/DocumentManagement";
+import GroupManagement from "./pages/GroupManagement";
+import GroupDiscovery from "./pages/GroupDiscovery";
+import GroupDetailPanel from "./components/groups/GroupDetailPanel";
 import Settings from "./pages/Settings";
 import SkillBrowser from "./pages/SkillBrowser";
 import DockerRedirect from "./pages/DockerRedirect";
@@ -132,6 +135,9 @@ function Router() {
       <Route path="/usage" component={UsageAnalytics} />
       <Route path="/tasks" component={TaskQueueMonitor} />
       <Route path="/media-history" component={MediaHistory} />
+      <Route path="/groups" component={GroupManagement} />
+      <Route path="/groups/discover" component={GroupDiscovery} />
+      <Route path="/groups/:groupId" component={GroupDetailPanel} />
       <Route path="/document-management" component={DocumentManagement} />
       <Route path="/settings" component={Settings} />
       <Route path="/settings/skills" component={SkillBrowser} />

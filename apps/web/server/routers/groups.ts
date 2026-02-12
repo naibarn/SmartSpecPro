@@ -6,6 +6,7 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   createUserGroup,
   getUserGroups,
+  getGroupMembers,
   addGroupMember,
   removeGroupMember,
   deleteUserGroup,
@@ -16,6 +17,7 @@ import {
   approveJoinRequest,
   rejectJoinRequest,
   searchPublicGroups,
+  searchTenantUsers,
   type GroupsActor,
 } from "../services/groupsService";
 
@@ -132,6 +134,32 @@ export const groupsRouter = router({
           offset: input?.offset ?? 0,
         },
         actor,
+      );
+    }),
+
+  listMembers: protectedProcedure
+    .input(z.object({ groupId: z.number().positive() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = resolveGroupsTenantId(ctx);
+      const actor = buildActor(ctx, tenantId);
+      return getGroupMembers(input.groupId, actor);
+    }),
+
+  searchTenantUsers: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(1).max(100),
+        excludeGroupId: z.number().positive().optional(),
+        limit: z.number().min(1).max(20).default(10),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = resolveGroupsTenantId(ctx);
+      return searchTenantUsers(
+        input.query,
+        tenantId,
+        input.excludeGroupId,
+        input.limit,
       );
     }),
 
