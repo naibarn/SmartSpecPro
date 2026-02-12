@@ -384,3 +384,61 @@ describe("uploadLibraryFile", () => {
     expect(mockDb.insert).not.toHaveBeenCalled();
   });
 });
+
+// Section 03: Group Permissions Tests
+describe("libraryService - Group Permissions", () => {
+  describe("rankPermissionLevel", () => {
+    it.todo("returns correct rank for read (1)");
+    it.todo("returns correct rank for write (2)");
+    it.todo("returns correct rank for delete (3)");
+    it.todo("returns correct rank for owner (4)");
+  });
+
+  describe("canManageLibraryItem", () => {
+    it.todo("returns true for owner permission level");
+    it.todo("returns true for delete permission level");
+    it.todo("returns false for write permission level");
+    it.todo("returns false for read permission level");
+  });
+
+  describe("getUserEffectivePermission", () => {
+    it.todo("includes group permissions in resolution");
+    it.todo("returns highest permission level when multiple sources exist");
+    it.todo("returns all permission sources in sources array");
+    it.todo("includes direct user share in sources");
+    it.todo("includes group share in sources with groupName");
+    it.todo("returns null when user has no access");
+    it.todo("handles user in multiple groups with different permissions");
+    it.todo("prioritizes owner over all other sources");
+    it.todo("prioritizes delete over write/read");
+  });
+
+  describe("shareLibraryItem", () => {
+    it.todo("creates permission for subjectType = group");
+    it.todo("validates group exists before creating permission");
+    it.todo("validates group is in same tenant as item");
+    it.todo("rejects when actor lacks delete or owner permission");
+    it.todo("rejects when group is from different tenant (cross-tenant isolation)");
+  });
+
+  describe("softDeleteLibraryItem", () => {
+    it.todo("sets deletedAt timestamp");
+    it.todo("sets deletedBy to actor.userId");
+    it.todo("existing soft deletes remain functional after update");
+  });
+
+  describe("searchLibraryWithPermissions", () => {
+    it.todo("includes files shared via group permissions");
+    it.todo("excludes deleted files (deletedAt IS NOT NULL)");
+    it.todo("filters by owner, direct share, group share, role share, and public");
+    it.todo("handles user with no groups gracefully");
+    it.todo("applies group permissions for user in multiple groups");
+  });
+});
+
+describe("libraryService - Pre-requisite Refactoring", () => {
+  it.todo("hasTenantRoleShare (renamed from hasGroupShare) works with existing data");
+  it.todo("tenantRoleMatches (renamed from groupMatches) filters correctly");
+  it.todo("no references to old hasGroupShare function remain");
+  it.todo("no references to old groupMatches function remain");
+});

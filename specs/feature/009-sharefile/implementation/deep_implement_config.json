@@ -20,7 +20,16 @@
     "section-11-security-tests",
     "section-12-deployment-verification"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-database-schema": {
+      "status": "complete",
+      "commit_hash": "b32f377"
+    },
+    "section-02-groups-service": {
+      "status": "complete",
+      "commit_hash": "92de1c3"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",
@@ -29,5 +38,5 @@
     "may_modify_files": false,
     "detected_formatters": []
   },
-  "created_at": "2026-02-12T08:11:00.927442+00:00"
+  "created_at": "2026-02-12T08:12:56.821839+00:00"
 }
