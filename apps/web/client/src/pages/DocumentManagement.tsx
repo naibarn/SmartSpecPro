@@ -790,11 +790,11 @@ export default function DocumentManagement() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 xl:min-h-[calc(100vh-150px)] xl:flex-row">
+        <div className="flex flex-col gap-4 xl:h-[calc(100vh-230px)] xl:flex-row">
           {isLibraryPanelOpen ? (
             <aside
               ref={previewSectionRef}
-              className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:w-[440px] xl:shrink-0"
+              className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:min-h-0 xl:w-[440px] xl:shrink-0"
             >
               <div className="mb-4 flex items-center justify-between gap-2">
                 <div>
@@ -851,23 +851,25 @@ export default function DocumentManagement() {
                 </Select>
               </div>
 
-              <DocumentGridList
-                items={documents}
-                selectedId={selectedId}
-                isLoading={listLoading}
-                className="h-[calc(100vh-420px)] xl:h-[calc(100vh-400px)]"
-                emptyMessage="No documents match the selected scope and filters."
-                onSelect={(item) => {
-                  setPendingAutoSelectId(null);
-                  setProvisionalSelectedItem(null);
-                  openEditorTab(item, { scope: queryState.scope });
-                }}
-                onOpen={(item) => {
-                  setPendingAutoSelectId(null);
-                  setProvisionalSelectedItem(null);
-                  openEditorTab(item, { scope: queryState.scope });
-                }}
-              />
+              <div className="min-h-[280px] xl:min-h-0 xl:flex-1">
+                <DocumentGridList
+                  items={documents}
+                  selectedId={selectedId}
+                  isLoading={listLoading}
+                  className="h-full"
+                  emptyMessage="No documents match the selected scope and filters."
+                  onSelect={(item) => {
+                    setPendingAutoSelectId(null);
+                    setProvisionalSelectedItem(null);
+                    openEditorTab(item, { scope: queryState.scope });
+                  }}
+                  onOpen={(item) => {
+                    setPendingAutoSelectId(null);
+                    setProvisionalSelectedItem(null);
+                    openEditorTab(item, { scope: queryState.scope });
+                  }}
+                />
+              </div>
             </aside>
           ) : (
             <div className="flex items-center justify-center xl:shrink-0">

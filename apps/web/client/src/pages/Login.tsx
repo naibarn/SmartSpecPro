@@ -48,10 +48,16 @@ export default function Login() {
   const [resetCode, setResetCode] = useState('');
   const [resetStep, setResetStep] = useState<'choose' | 'sent' | 'done'>('choose');
 
-  // Redirect to dashboard if already authenticated
+  // Redirect to dashboard (or returnUrl) if already authenticated
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/dashboard');
+      const redirectUrl = getReturnUrl();
+      // Use window.location.href for external URLs, navigate() for internal paths
+      if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
+        window.location.href = redirectUrl;
+      } else {
+        navigate(redirectUrl);
+      }
     }
   }, [authLoading, user, navigate]);
 

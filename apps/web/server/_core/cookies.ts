@@ -72,11 +72,12 @@ export function getSessionCookieOptions(
     domain,
     httpOnly: true,
     path: "/",
-    // SameSite handling:
+    // SameSite handling for subdomain cookie sharing:
     // - HTTPS: Use SameSite=none with secure=true (cross-subdomain sharing works)
     // - HTTP (localhost): Use SameSite=lax (required for modern browsers to accept cookie)
     // Modern browsers REQUIRE secure=true when sameSite=none
-    sameSite: "lax",
+    // For smartaihub.app and docker.smartaihub.app to share cookies, use "none" with HTTPS
+    sameSite: isSecure ? "none" : "lax",
     secure: isSecure,
   };
 }
