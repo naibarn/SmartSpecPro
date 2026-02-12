@@ -87,7 +87,8 @@ interface Skill {
   skillContent: string | null;
   knowledgebase: string | null;
   configJson: Record<string, unknown> | null;
-  executionMode: string | null;
+  executionMode: "llm-only" | "media-generate" | "enhance-prompt" | null;
+  marketplaceContent?: string | null;
   importSource: string | null;
   importedFromZip: string | null;
   createdBy: number | null;
@@ -634,7 +635,16 @@ export default function AdminSkills() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setEditingSkill(skill)}
+                                onClick={() =>
+                                  setEditingSkill({
+                                    ...(skill as any),
+                                    triggerPatterns: ((skill as any).triggerPatterns || []).map((pattern: any) =>
+                                      typeof pattern === "string" ? pattern : pattern?.pattern || ""
+                                    ),
+                                    executionMode: (skill as any).executionMode ?? "llm-only",
+                                    marketplaceContent: (skill as any).marketplaceContent ?? null,
+                                  } as Skill)
+                                }
                               >
                                 <Edit className="h-3 w-3" />
                               </Button>
@@ -1069,7 +1079,11 @@ export default function AdminSkills() {
                 <Select
                   value={editingSkill.executionMode || "llm-only"}
                   onValueChange={(value) =>
-                    setEditingSkill({ ...editingSkill, executionMode: value, defaultModel: null })
+                    setEditingSkill({
+                      ...editingSkill,
+                      executionMode: value as "llm-only" | "media-generate" | "enhance-prompt",
+                      defaultModel: null
+                    })
                   }
                 >
                   <SelectTrigger>

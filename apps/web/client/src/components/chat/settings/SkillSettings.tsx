@@ -60,7 +60,7 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
   const [autoDetect, setAutoDetect] = useState(true);
   const [skillStates, setSkillStates] = useState<Record<string, boolean>>({});
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const utils = trpc.useUtils();
 

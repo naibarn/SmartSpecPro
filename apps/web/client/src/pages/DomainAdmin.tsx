@@ -56,7 +56,7 @@ export default function DomainAdmin() {
   const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = trpc.users.list.useQuery(
     {
       search: search || undefined,
-      registeredDomain: user?.registeredDomain || undefined,
+      registeredDomain: (user as any)?.registeredDomain || undefined,
       limit,
       offset: page * limit
     },
@@ -118,7 +118,7 @@ export default function DomainAdmin() {
                 Domain Admin: User Management
               </h1>
               <p className="text-gray-600 mt-2">
-                Manage users in domain: <span className="font-semibold">{user.registeredDomain || 'All domains'}</span>
+                Manage users in domain: <span className="font-semibold">{(user as any)?.registeredDomain || 'All domains'}</span>
               </p>
             </div>
             <div className="flex gap-2">

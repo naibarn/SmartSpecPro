@@ -87,7 +87,7 @@ const categoryLabels: Record<string, string> = {
 
 export default function SkillBrowser() {
   const [, navigate] = useLocation();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -114,7 +114,7 @@ export default function SkillBrowser() {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     },
-    { enabled: isAuthenticated, keepPreviousData: true }
+    { enabled: isAuthenticated }
   );
 
   const utils = trpc.useUtils();

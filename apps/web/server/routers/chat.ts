@@ -92,6 +92,7 @@ const skillSettingsSchema = z.object({
 });
 
 const entityTypeSchema = z.enum(["user", "project", "preference", "technical"]);
+type MessageAttachment = z.infer<typeof attachmentSchema>;
 
 // ==================== Chat Router ====================
 
@@ -144,7 +145,7 @@ export const chatRouter = router({
       const conversations = await getConversations({
         userId: ctx.user.id,
         isArchived: input.isArchived ?? false,
-        search: input.search,
+        search: input.search ?? undefined,
         limit: input.limit,
         offset: input.offset,
       });
@@ -965,7 +966,7 @@ export const chatRouter = router({
           resolution: input.resolution,
           apiConfig: input.apiConfig,
           extraParams: input.extraParams,
-          publicUrl: ctx.publicUrl,
+          publicUrl: ctx.publicUrl ?? undefined,
         },
         ctx.user.id,
         userToken
@@ -975,12 +976,14 @@ export const chatRouter = router({
       if (input.conversationId && result.success) {
         try {
           let content = "";
-          let attachments: Array<{ type: string; url: string; name: string }> = [];
+          let attachments: MessageAttachment[] = [];
 
           if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
             content = `Generated image${result.resultUrls.length > 1 ? "s" : ""}:\n\n${result.resultUrls.map((url: string) => `![Generated Image](${url})`).join("\n\n")}`;
             attachments = result.resultUrls.map((url: string, i: number) => ({
-              type: "image", url, name: `generated-image-${i + 1}.png`,
+              type: "image" as const,
+              url,
+              name: `generated-image-${i + 1}.png`,
             }));
           } else if (result.type === "video" && result.isAsync) {
             content = `Video generation started. ${result.message || ""}\n\nYou can check the progress in the Media History page.`;

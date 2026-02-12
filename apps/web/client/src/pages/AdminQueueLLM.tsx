@@ -59,7 +59,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
 export default function AdminQueueLLM() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [refreshInterval, setRefreshInterval] = useState<number | null>(5000);
   const [historyMinutes, setHistoryMinutes] = useState<number>(60);

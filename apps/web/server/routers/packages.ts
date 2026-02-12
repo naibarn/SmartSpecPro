@@ -205,7 +205,7 @@ export const packagesRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const result = await db.insert(creditPackages).values({
+      const [created] = await db.insert(creditPackages).values({
         name: input.name,
         description: input.description || null,
         credits: input.credits,
@@ -219,11 +219,11 @@ export const packagesRouter = router({
         isActive: input.isActive,
         isFeatured: input.isFeatured,
         sortOrder: input.sortOrder,
-      });
+      }).returning({ id: creditPackages.id });
 
       return {
         success: true,
-        id: result[0].insertId,
+        id: created.id,
       };
     }),
 
@@ -420,7 +420,7 @@ export const packagesRouter = router({
         throw new Error("Package not found");
       }
 
-      const result = await db.insert(creditPackages).values({
+      const [created] = await db.insert(creditPackages).values({
         name: `${pkg.name} (Copy)`,
         description: pkg.description,
         credits: pkg.credits,
@@ -434,11 +434,11 @@ export const packagesRouter = router({
         isActive: false, // Start as inactive
         isFeatured: false,
         sortOrder: pkg.sortOrder + 1,
-      });
+      }).returning({ id: creditPackages.id });
 
       return {
         success: true,
-        id: result[0].insertId,
+        id: created.id,
       };
     }),
 });

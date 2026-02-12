@@ -56,7 +56,7 @@ const CLEANUP_CONFIG = {
   requireCreatedAt: true,
 };
 
-interface SyncedModel {
+export interface SyncedModel {
   id: string;
   name: string;
   contextLength?: number;
@@ -83,7 +83,7 @@ function isModelRecent(model: OpenRouterModel): boolean {
   return modelAge <= maxAgeSeconds;
 }
 
-interface SyncResult {
+export interface SyncResult {
   success: boolean;
   provider: string;
   modelsAdded: number;
@@ -704,7 +704,7 @@ function isModelTooOld(model: SyncedModel): boolean {
 /**
  * Cleanup result interface
  */
-interface CleanupResult {
+export interface CleanupResult {
   success: boolean;
   provider: string;
   modelsRemoved: number;

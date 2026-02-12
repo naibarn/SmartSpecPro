@@ -5,7 +5,7 @@ import { adminProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { auditLogger } from "../services/auditLogger";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
-import { resolveTenantId } from "../services/tenantContext";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   createLibraryOpsRepository,
   getLibraryOpsSummary,
@@ -28,7 +28,7 @@ export const libraryOpsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const scope = input?.scope ?? "tenant";
-      const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (scope === "tenant" && (tenantId === null || tenantId === undefined)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Tenant scope is required for library ops summary" });
       }
@@ -57,7 +57,7 @@ export const libraryOpsRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const scope = input.scope ?? "tenant";
-      const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (scope === "tenant" && (tenantId === null || tenantId === undefined)) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -109,7 +109,7 @@ export const libraryOpsRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const scope = input.scope ?? "tenant";
-      const tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (scope === "tenant" && (tenantId === null || tenantId === undefined)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Tenant scope is required for retry operations" });
       }

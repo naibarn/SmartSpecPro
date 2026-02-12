@@ -106,7 +106,7 @@ export default function AdminSTTProviders() {
       <main className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Provider cards */}
         {(templates || []).map((tpl) => {
-          const configured = providers?.find((p) => p.providerName === tpl.providerName);
+          const configured = providers?.find((p: any) => p.providerName === tpl.providerName);
           const isEditing = editId === (configured?.id ?? -1);
 
           return (

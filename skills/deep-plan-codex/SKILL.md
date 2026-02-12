@@ -2,7 +2,7 @@
 name: deep-plan-codex
 description: Creates detailed, sectionized, TDD-oriented implementation plans in Codex using a file-based workflow (no Claude TaskList dependency). Use when planning complex features that need thorough pre-implementation analysis.
 license: MIT
-compatibility: Requires uv (Python 3.11+). Review runs automatically: external LLM when credentials are available, otherwise self-review fallback.
+compatibility: "Requires uv (Python 3.11+). Review runs automatically: external LLM when credentials are available, otherwise self-review fallback."
 ---
 
 # Deep Planning Skill (Codex)

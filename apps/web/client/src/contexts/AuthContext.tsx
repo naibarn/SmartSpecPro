@@ -13,6 +13,7 @@ export interface User {
   name: string;
   avatar?: string;
   company?: string;
+  registeredDomain?: string | null;
   plan: 'free' | 'pro' | 'enterprise';
   credits?: number;
   role?: string;

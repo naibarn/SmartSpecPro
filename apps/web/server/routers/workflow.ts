@@ -10,10 +10,25 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { db } from "../db";
 import { workflows } from "@db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, type SQL } from "drizzle-orm";
 
 // Python backend URL from environment (default to localhost:8000)
 const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+
+function workflowOwnershipConditions(
+  workflowId: number,
+  userId: number,
+  tenantId: string | null,
+): SQL<unknown>[] {
+  const conditions: SQL<unknown>[] = [
+    eq(workflows.id, workflowId),
+    eq(workflows.userId, userId),
+  ];
+  if (tenantId) {
+    conditions.push(eq(workflows.tenantId, tenantId));
+  }
+  return conditions;
+}
 
 /**
  * Helper to make authenticated requests to Python backend
@@ -24,14 +39,12 @@ async function fetchPythonBackend(
   userToken: string | null
 ): Promise<Response> {
   const url = `${PYTHON_BACKEND_URL}${endpoint}`;
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
+  const headers = new Headers(options.headers);
+  headers.set("Content-Type", "application/json");
 
   // Pass user's JWT token to Python backend if available
   if (userToken) {
-    headers["Authorization"] = `Bearer ${userToken}`;
+    headers.set("Authorization", `Bearer ${userToken}`);
   }
 
   return fetch(url, {
@@ -65,7 +78,7 @@ export const workflowRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const userId = ctx.user.id;
-        const tenantId = ctx.user.currentTenantId || null;
+        const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
 
         if (input.id) {
           // Update existing workflow
@@ -79,11 +92,7 @@ export const workflowRouter = router({
               updatedAt: new Date(),
             })
             .where(
-              and(
-                eq(workflows.id, input.id),
-                eq(workflows.userId, userId),
-                tenantId ? eq(workflows.tenantId, tenantId) : undefined
-              )
+              and(...workflowOwnershipConditions(input.id, userId, tenantId))
             )
             .returning();
 
@@ -143,17 +152,13 @@ export const workflowRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const userId = ctx.user.id;
-        const tenantId = ctx.user.currentTenantId || null;
+        const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
 
         const [workflow] = await db
           .select()
           .from(workflows)
           .where(
-            and(
-              eq(workflows.id, input.id),
-              eq(workflows.userId, userId),
-              tenantId ? eq(workflows.tenantId, tenantId) : undefined
-            )
+            and(...workflowOwnershipConditions(input.id, userId, tenantId))
           )
           .limit(1);
 
@@ -245,7 +250,7 @@ export const workflowRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const userId = ctx.user.id;
-        const tenantId = ctx.user.currentTenantId || null;
+        const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
 
         // Soft delete: update status to 'deleted'
         // Alternative: Hard delete with .delete()
@@ -256,11 +261,7 @@ export const workflowRouter = router({
             updatedAt: new Date(),
           })
           .where(
-            and(
-              eq(workflows.id, input.id),
-              eq(workflows.userId, userId),
-              tenantId ? eq(workflows.tenantId, tenantId) : undefined
-            )
+            and(...workflowOwnershipConditions(input.id, userId, tenantId))
           )
           .returning();
 

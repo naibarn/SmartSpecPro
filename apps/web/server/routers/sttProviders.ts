@@ -143,7 +143,7 @@ export const sttProvidersRouter = router({
       }
 
       // Insert
-      const result = await db.insert(llmProviders).values({
+      const [created] = await db.insert(llmProviders).values({
         providerName,
         displayName: input.displayName,
         description: input.description || null,
@@ -154,9 +154,9 @@ export const sttProvidersRouter = router({
         configJson,
         isEnabled: input.isEnabled,
         sortOrder: 900, // high sort order so STT doesn't interfere with LLM providers
-      });
+      }).returning({ id: llmProviders.id });
 
-      return { id: Number(result.insertId) };
+      return { id: created.id };
     }),
 
   /** Delete an STT provider */

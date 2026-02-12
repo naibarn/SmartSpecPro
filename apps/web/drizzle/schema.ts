@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, boolean, numeric, serial, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, boolean, numeric, serial, uniqueIndex, index, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 /**
  * Enums
@@ -108,7 +108,7 @@ export const users = pgTable("users", {
   registeredDomain: varchar("registeredDomain", { length: 255 }),
 
   /** Current tenant ID (for quick access) */
-  currentTenantId: integer("currentTenantId").references(() => tenants.id),
+  currentTenantId: integer("currentTenantId").references((): AnyPgColumn => tenants.id),
 
   /** User's credit balance (in smallest unit, e.g., 1 credit = 100 units for precision) */
   credits: integer("credits").default(0).notNull(),
@@ -681,7 +681,7 @@ export const tenants = pgTable("tenants", {
   }>(),
 
   /** Owner/Admin user ID */
-  ownerId: integer("ownerId").references(() => users.id),
+  ownerId: integer("ownerId").references((): AnyPgColumn => users.id),
 
   /** Tenant status (from Python backend) */
   status: varchar("status", { length: 20 }).notNull().default("ACTIVE"),

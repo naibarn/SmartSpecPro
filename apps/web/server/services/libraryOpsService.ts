@@ -221,12 +221,6 @@ export async function retryFailedLibraryIndexJobs(
   };
 }
 
-export async function getLibraryOpsSummary(db: DrizzleDB): Promise<{
-  callbackDlqPending: number;
-  callbackRetryPending: number;
-  indexRetryPending: number;
-  indexFailed: number;
-}>;
 export async function getLibraryOpsSummary(
   db: DrizzleDB,
   scope?: LibraryOpsScopeInput,

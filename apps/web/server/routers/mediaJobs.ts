@@ -349,7 +349,7 @@ export const mediaJobsRouter = router({
       // Dispatch to Python Celery worker
       try {
         await dispatchToCelery(JSON.stringify(spec), String(ctx.user.id), jobId);
-      } catch (e: any) {
+      } catch (e: unknown) {
         await setJobKey(jobId, "status", {
           status: "error",
           progress: 0,
@@ -369,7 +369,7 @@ export const mediaJobsRouter = router({
         auditLogger.log({
           eventType: "media_request",
           traceId: spec.telemetry?.traceId,
-          userId: String(ctx.user.id),
+          userId: ctx.user.id,
           requestPayload: { jobId, jobType: spec.jobType },
         });
       } catch {
@@ -610,7 +610,7 @@ export function registerMediaJobRoutes(app: Express) {
       closed = true;
       clearInterval(pollInterval);
       if (subRedis) {
-        subRedis.unsubscribe().catch((err) => console.error("[MediaJobs] Redis unsubscribe failed:", err?.message));
+        subRedis.unsubscribe().catch((err: unknown) => console.error("[MediaJobs] Redis unsubscribe failed:", err));
         subRedis.disconnect();
       }
       res.end();

@@ -206,7 +206,6 @@ export function ArtifactPanel({ artifacts, onClose, className }: ArtifactPanelPr
         return (
           <VideoPlayer
             src={videoUrl}
-            title={artifact.title}
             className="max-h-[400px]"
           />
         );
@@ -289,7 +288,7 @@ export function ArtifactPanel({ artifacts, onClose, className }: ArtifactPanelPr
           >
             {/* Artifact tabs */}
             <div className="border-b px-4">
-              <ScrollArea className="w-full" orientation="horizontal">
+              <ScrollArea className="w-full">
                 <TabsList className="h-10 w-full justify-start bg-transparent p-0">
                   {artifacts.map((artifact) => {
                     const Icon = artifactIcons[artifact.type] || File;

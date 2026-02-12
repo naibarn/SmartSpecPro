@@ -500,7 +500,11 @@ export const scheduledMessagesRouter = router({
       }
 
       const provider = providers[0];
-      const apiKey = decrypt(provider.apiKeyEncrypted);
+      const encryptedApiKey = provider.apiKeyEncrypted;
+      if (!encryptedApiKey) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No LLM provider configured" });
+      }
+      const apiKey = decrypt(encryptedApiKey);
       const model = input.model || provider.defaultModel || "gpt-4o-mini";
 
       const systemPrompt = `You are a scheduling assistant. Parse the user's scheduling intent and return ONLY a valid JSON object:

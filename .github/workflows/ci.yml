@@ -72,13 +72,39 @@ jobs:
 
   smartspecweb:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: smartspec
+          POSTGRES_PASSWORD: smartspec123
+          POSTGRES_DB: smartspec_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartspec -d smartspec_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Test SmartSpecWeb (coverage)
+      - name: Test SmartSpecWeb (coverage + socket suites)
+        env:
+          RUN_SOCKET_TESTS: "true"
+          JWT_SECRET: "test-jwt-secret-32-chars-minimum-1234567890"
         run: bash scripts/ci/node_tests.sh apps/web
+      - name: Run SmartSpecWeb DB integration suite
+        env:
+          DATABASE_URL: postgresql://smartspec:smartspec123@localhost:5432/smartspec_test
+          RUN_DB_INTEGRATION_TESTS: "true"
+          JWT_SECRET: "test-jwt-secret-32-chars-minimum-1234567890"
+        run: |
+          cd apps/web
+          npm run db:migrate
+          npm run test:db-integration
       - name: Upload SmartSpecWeb coverage summary
         uses: actions/upload-artifact@v4
         with:

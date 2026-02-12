@@ -32,9 +32,12 @@ export const db = {
     }
     return _db;
   },
-  select: (...args: Parameters<NonNullable<typeof _db>['select']>) => {
+  select: (...args: any[]) => {
     if (!_db) throw new Error("Database not initialized");
-    return _db.select(...args);
+    if (args.length === 0) {
+      return (_db as any).select();
+    }
+    return (_db as any).select(...args);
   },
   insert: (...args: Parameters<NonNullable<typeof _db>['insert']>) => {
     if (!_db) throw new Error("Database not initialized");
@@ -50,7 +53,7 @@ export const db = {
   },
   transaction: async <T>(fn: (tx: NonNullable<typeof _db>) => Promise<T>): Promise<T> => {
     if (!_db) throw new Error("Database not initialized");
-    return _db.transaction(fn);
+    return _db.transaction(async (tx) => fn(tx as unknown as NonNullable<typeof _db>));
   },
 };
 
@@ -254,12 +257,13 @@ export async function getGalleryItems(filters: GalleryFilters = {}): Promise<Gal
   }
 
   if (filters.search) {
-    conditions.push(
-      or(
-        like(galleryItems.title, `%${filters.search}%`),
-        like(galleryItems.description, `%${filters.search}%`)
-      )
+    const searchCondition = or(
+      like(galleryItems.title, `%${filters.search}%`),
+      like(galleryItems.description, `%${filters.search}%`)
     );
+    if (searchCondition) {
+      conditions.push(searchCondition);
+    }
   }
 
   let query = db.select().from(galleryItems);
@@ -442,12 +446,13 @@ export async function getGalleryItemsCount(filters: {
   }
 
   if (filters.search) {
-    conditions.push(
-      or(
-        like(galleryItems.title, `%${filters.search}%`),
-        like(galleryItems.description, `%${filters.search}%`)
-      )
+    const searchCondition = or(
+      like(galleryItems.title, `%${filters.search}%`),
+      like(galleryItems.description, `%${filters.search}%`)
     );
+    if (searchCondition) {
+      conditions.push(searchCondition);
+    }
   }
 
   let query = db.select({ count: sql<number>`COUNT(*)` }).from(galleryItems);

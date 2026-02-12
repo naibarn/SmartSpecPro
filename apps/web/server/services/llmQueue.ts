@@ -82,7 +82,7 @@ let usageEvents: QueueEvents | null = null;
 let skillEvents: QueueEvents | null = null;
 
 // Statistics
-interface QueueStats {
+export interface QueueStats {
   name: string;
   completed: number;
   failed: number;

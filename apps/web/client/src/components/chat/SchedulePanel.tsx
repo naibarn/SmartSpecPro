@@ -42,7 +42,6 @@ import {
   Save,
   X,
   Mail,
-  MailOff,
   CalendarDays,
   List,
   FileText,
@@ -481,7 +480,7 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
                           {formatScheduleTime(item)}
                         </span>
                         {item.emailNotify && (
-                          <Mail className="h-3 w-3 text-muted-foreground" title="Email notifications on" />
+                          <Mail className="h-3 w-3 text-muted-foreground" />
                         )}
                       </div>
                       {item.nextRunAt && item.status === "active" && (

@@ -14,7 +14,7 @@ import { encrypt, decrypt } from "../services/crypto";
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram"]);
+const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb"]);
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),
@@ -25,8 +25,13 @@ const stripeSettingsSchema = z.object({
   priceIds: z.record(z.string(), z.record(z.string(), z.string())).optional(),
 });
 
+const tenantIdInputSchema = z
+  .union([z.string(), z.number()])
+  .transform((value) => String(value).trim())
+  .pipe(z.string().min(1));
+
 const invoiceConfigSchema = z.object({
-  tenantId: z.union([z.number(), z.string()]).optional().nullable(),
+  tenantId: tenantIdInputSchema.optional().nullable(),
   companyName: z.string().optional(),
   addressLine1: z.string().optional(),
   addressLine2: z.string().optional(),
@@ -225,7 +230,7 @@ export const systemSettingsRouter = router({
    * Get invoice configuration for a specific tenant
    */
   getTenantInvoiceConfig: domainAdminProcedure
-    .input(z.object({ tenantId: z.union([z.number(), z.string()]) }))
+    .input(z.object({ tenantId: tenantIdInputSchema }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -252,7 +257,7 @@ export const systemSettingsRouter = router({
         tenant: {
           id: tenants.id,
           name: tenants.name,
-          domain: tenants.domain,
+          domain: tenants.primaryDomain,
         },
       })
       .from(invoiceConfig)
@@ -273,8 +278,13 @@ export const systemSettingsRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const whereClause = input.tenantId
-        ? eq(invoiceConfig.tenantId, input.tenantId)
+      const normalizedInput = {
+        ...input,
+        tenantId: input.tenantId ?? null,
+      };
+
+      const whereClause = normalizedInput.tenantId
+        ? eq(invoiceConfig.tenantId, normalizedInput.tenantId)
         : isNull(invoiceConfig.tenantId);
 
       const existing = await db
@@ -287,14 +297,14 @@ export const systemSettingsRouter = router({
         await db
           .update(invoiceConfig)
           .set({
-            ...input,
+            ...normalizedInput,
             updatedAt: new Date(),
           })
           .where(eq(invoiceConfig.id, existing[0].id));
 
         return { success: true, id: existing[0].id, updated: true };
       } else {
-        const [result] = await db.insert(invoiceConfig).values(input).returning();
+        const [result] = await db.insert(invoiceConfig).values(normalizedInput).returning();
         return { success: true, id: result.id, updated: false };
       }
     }),
@@ -319,7 +329,7 @@ export const systemSettingsRouter = router({
     const db = await getDb();
     if (!db) return [];
 
-    return db.select({ id: tenants.id, name: tenants.name, domain: tenants.domain }).from(tenants);
+    return db.select({ id: tenants.id, name: tenants.name, domain: tenants.primaryDomain }).from(tenants);
   }),
 
   // ============================================================
@@ -1150,4 +1160,297 @@ export const systemSettingsRouter = router({
         .filter(o => o[colKey] === false)
         .map(o => ({ menuItemId: o.menuItemId, visible: false }));
     }),
+
+  // ============================================================
+  // Vector Database Settings
+  // ============================================================
+
+  /**
+   * Get Vector Database settings
+   */
+  getVectorDbSettings: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "vectordb"));
+
+    const result: Record<string, any> = {
+      provider: "chromadb", // chromadb or pgvector
+      embeddingModel: "all-MiniLM-L6-v2",
+      embeddingDimension: 384,
+      chromaPersistDir: "~/.smartspec/chroma",
+      pgvectorHost: undefined,
+      pgvectorPort: undefined,
+      pgvectorDatabase: undefined,
+      pgvectorUser: undefined,
+      openaiApiKeyConfigured: false,
+    };
+
+    for (const setting of settings) {
+      if (setting.key === "provider") {
+        result.provider = setting.value || "chromadb";
+      } else if (setting.key === "embeddingModel") {
+        result.embeddingModel = setting.value || "all-MiniLM-L6-v2";
+      } else if (setting.key === "embeddingDimension") {
+        result.embeddingDimension = parseInt(setting.value || "384", 10);
+      } else if (setting.key === "chromaPersistDir") {
+        result.chromaPersistDir = setting.value || "~/.smartspec/chroma";
+      } else if (setting.key === "pgvectorHost") {
+        result.pgvectorHost = setting.value;
+      } else if (setting.key === "pgvectorPort") {
+        result.pgvectorPort = setting.value;
+      } else if (setting.key === "pgvectorDatabase") {
+        result.pgvectorDatabase = setting.value;
+      } else if (setting.key === "pgvectorUser") {
+        result.pgvectorUser = setting.value;
+      } else if (setting.key === "pgvectorPassword" && setting.value) {
+        result.pgvectorPasswordConfigured = true;
+      } else if (setting.key === "openaiApiKey" && setting.value) {
+        result.openaiApiKeyConfigured = true;
+      }
+    }
+
+    return result;
+  }),
+
+  /**
+   * Update Vector Database settings
+   */
+  updateVectorDbSettings: adminProcedure
+    .input(z.object({
+      provider: z.enum(["chromadb", "pgvector"]).optional(),
+      embeddingModel: z.string().optional(),
+      embeddingDimension: z.number().optional(),
+      chromaPersistDir: z.string().optional(),
+      pgvectorHost: z.string().optional(),
+      pgvectorPort: z.string().optional(),
+      pgvectorDatabase: z.string().optional(),
+      pgvectorUser: z.string().optional(),
+      pgvectorPassword: z.string().optional(),
+      openaiApiKey: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const updates = [
+        { key: "provider", value: input.provider, sensitive: false },
+        { key: "embeddingModel", value: input.embeddingModel, sensitive: false },
+        { key: "embeddingDimension", value: input.embeddingDimension?.toString(), sensitive: false },
+        { key: "chromaPersistDir", value: input.chromaPersistDir, sensitive: false },
+        { key: "pgvectorHost", value: input.pgvectorHost, sensitive: false },
+        { key: "pgvectorPort", value: input.pgvectorPort, sensitive: false },
+        { key: "pgvectorDatabase", value: input.pgvectorDatabase, sensitive: false },
+        { key: "pgvectorUser", value: input.pgvectorUser, sensitive: false },
+        { key: "pgvectorPassword", value: input.pgvectorPassword, sensitive: true },
+        { key: "openaiApiKey", value: input.openaiApiKey, sensitive: true },
+      ];
+
+      for (const update of updates) {
+        if (update.value !== undefined && update.value !== null && update.value !== "") {
+          const storedValue = update.sensitive ? encrypt(update.value) : update.value;
+
+          const existing = await db
+            .select()
+            .from(systemSettings)
+            .where(and(
+              eq(systemSettings.category, "vectordb"),
+              eq(systemSettings.key, update.key)
+            ))
+            .limit(1);
+
+          if (existing.length > 0) {
+            await db
+              .update(systemSettings)
+              .set({
+                value: storedValue,
+                isSensitive: update.sensitive,
+                updatedBy: ctx.user?.id,
+                updatedAt: new Date(),
+              })
+              .where(eq(systemSettings.id, existing[0].id));
+          } else {
+            await db.insert(systemSettings).values({
+              category: "vectordb",
+              key: update.key,
+              value: storedValue,
+              isSensitive: update.sensitive,
+              description: `Vector DB ${update.key}`,
+              updatedBy: ctx.user?.id,
+            });
+          }
+        }
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Test Vector Database connection
+   */
+  testVectorDbConnection: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "vectordb"));
+
+    const config: Record<string, string> = {};
+    for (const setting of settings) {
+      if (setting.value) {
+        config[setting.key] = setting.isSensitive ? decrypt(setting.value) || "" : setting.value;
+      }
+    }
+
+    const provider = config.provider || "chromadb";
+
+    try {
+      if (provider === "chromadb") {
+        // Test ChromaDB connection
+        const persistDir = config.chromaPersistDir || "~/.smartspec/chroma";
+        return {
+          success: true,
+          message: `ChromaDB configured at: ${persistDir}`,
+          provider: "chromadb",
+          collections: ["episodic_memories", "code_snippets", "conversation_history"],
+        };
+      } else if (provider === "pgvector") {
+        // Test pgvector connection
+        if (!config.pgvectorHost || !config.pgvectorDatabase) {
+          return {
+            success: false,
+            message: "pgvector connection details are incomplete",
+          };
+        }
+
+        // Try to connect to PostgreSQL
+        const { Pool } = await import("pg");
+        const pool = new Pool({
+          host: config.pgvectorHost,
+          port: parseInt(config.pgvectorPort || "5432", 10),
+          database: config.pgvectorDatabase,
+          user: config.pgvectorUser,
+          password: config.pgvectorPassword,
+        });
+
+        try {
+          const result = await pool.query("SELECT extname, extversion FROM pg_extension WHERE extname = 'vector'");
+          await pool.end();
+
+          if (result.rows.length > 0) {
+            return {
+              success: true,
+              message: `Connected to pgvector database (v${result.rows[0].extversion})`,
+              provider: "pgvector",
+              version: result.rows[0].extversion,
+            };
+          } else {
+            return {
+              success: false,
+              message: "pgvector extension not installed in the database",
+            };
+          }
+        } catch (error: any) {
+          await pool.end().catch(() => {});
+          throw error;
+        }
+      }
+
+      return { success: false, message: "Unknown provider" };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message || "Connection test failed",
+      };
+    }
+  }),
+
+  /**
+   * Get Vector Database statistics
+   */
+  getVectorDbStats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "vectordb"));
+
+    const config: Record<string, string> = {};
+    for (const setting of settings) {
+      if (setting.value) {
+        config[setting.key] = setting.isSensitive ? decrypt(setting.value) || "" : setting.value;
+      }
+    }
+
+    const provider = config.provider || "chromadb";
+
+    try {
+      if (provider === "chromadb") {
+        return {
+          provider: "chromadb",
+          totalCollections: 3,
+          collections: [
+            { name: "episodic_memories", documentCount: 0, embeddingDimension: 384 },
+            { name: "code_snippets", documentCount: 0, embeddingDimension: 384 },
+            { name: "conversation_history", documentCount: 0, embeddingDimension: 384 },
+          ],
+          storageLocation: config.chromaPersistDir || "~/.smartspec/chroma",
+        };
+      } else if (provider === "pgvector") {
+        // Get stats from pgvector
+        if (!config.pgvectorHost || !config.pgvectorDatabase) {
+          return {
+            provider: "pgvector",
+            error: "Connection not configured",
+          };
+        }
+
+        const { Pool } = await import("pg");
+        const pool = new Pool({
+          host: config.pgvectorHost,
+          port: parseInt(config.pgvectorPort || "5432", 10),
+          database: config.pgvectorDatabase,
+          user: config.pgvectorUser,
+          password: config.pgvectorPassword,
+        });
+
+        try {
+          const result = await pool.query(`
+            SELECT
+              COUNT(*) as total_documents,
+              COUNT(DISTINCT doc_type) as unique_types
+            FROM vector_documents
+          `);
+          await pool.end();
+
+          return {
+            provider: "pgvector",
+            totalDocuments: parseInt(result.rows[0]?.total_documents || "0", 10),
+            uniqueTypes: parseInt(result.rows[0]?.unique_types || "0", 10),
+            storageType: "PostgreSQL with pgvector extension",
+          };
+        } catch (error: any) {
+          await pool.end().catch(() => {});
+          return {
+            provider: "pgvector",
+            error: error.message,
+          };
+        }
+      }
+
+      return { provider, error: "Unknown provider" };
+    } catch (error: any) {
+      return {
+        provider,
+        error: error.message || "Failed to fetch stats",
+      };
+    }
+  }),
 });

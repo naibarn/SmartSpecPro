@@ -13,7 +13,7 @@ export type TrpcContext = {
   /** The user's bearer token from the request header (for passing to Python backend) */
   userToken: string | null;
   /** The current tenant ID from the tenant middleware */
-  tenantId: number | null;
+  tenantId: string | null;
   /** The public URL for the current tenant (e.g., https://smartaihub.app) for external services */
   publicUrl: string | null;
 };

@@ -29,7 +29,7 @@ import {
 
 interface InvoiceConfig {
   id?: number;
-  tenantId?: number | null;
+  tenantId?: string | null;
   companyName?: string;
   addressLine1?: string;
   addressLine2?: string;
@@ -90,7 +90,7 @@ export default function TenantSettings() {
   // Load settings into form
   useEffect(() => {
     if (invoiceConfig) {
-      setInvoiceForm(invoiceConfig);
+      setInvoiceForm(invoiceConfig as InvoiceConfig);
     }
   }, [invoiceConfig]);
 

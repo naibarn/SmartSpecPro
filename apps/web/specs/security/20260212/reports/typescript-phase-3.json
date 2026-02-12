@@ -1,0 +1,31 @@
+{
+  "total_errors": 17,
+  "codes": [
+    {
+      "code": "TS4023",
+      "count": 17
+    }
+  ],
+  "top_files": [
+    {
+      "file": "client/src/lib/trpc.ts",
+      "count": 6
+    },
+    {
+      "file": "server/routers.ts",
+      "count": 6
+    },
+    {
+      "file": "server/routers/llmProviders.ts",
+      "count": 3
+    },
+    {
+      "file": "server/routers/library.ts",
+      "count": 1
+    },
+    {
+      "file": "server/routers/queues.ts",
+      "count": 1
+    }
+  ]
+}

@@ -358,7 +358,16 @@
       "Bash(sudo ./scripts/install-autostart.sh:*)",
       "Bash(systemctl is-enabled:*)",
       "Bash(docker network rm:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(claude-code install:*)",
+      "WebFetch(domain:www.dataquest.io)",
+      "WebFetch(domain:oneuptime.com)",
+      "WebFetch(domain:www.permit.io)",
+      "WebFetch(domain:evilmartians.com)",
+      "WebFetch(domain:blog.thnkandgrow.com)",
+      "WebFetch(domain:karthickragavendran.medium.com)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:trpc.io)"
     ]
   }
 }

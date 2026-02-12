@@ -24,9 +24,9 @@ import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { auditLogger } from "../services/auditLogger";
 import { addMediaTaskToLibrary } from "../services/mediaLibraryService";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
-import { resolveTenantId } from "../services/tenantContext";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
-import { mediaModels, users } from "../../drizzle/schema";
+import { mediaModels } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 // Helper to create secure token for Python backend (fallback)
@@ -46,27 +46,8 @@ function getUserToken(ctx: { userToken: string | null; user: { id: number } }): 
 
 async function resolveLibraryTenantIdForMedia(
   ctx: { tenantId: unknown; user: { id: number; currentTenantId?: unknown } },
-): Promise<number | string | null> {
-  let tenantId = resolveTenantId(ctx.tenantId, ctx.user.currentTenantId);
-  if (typeof tenantId === "string") {
-    try {
-      const db = await getDb();
-      if (db) {
-        const rows = await db
-          .select({ currentTenantId: users.currentTenantId })
-          .from(users)
-          .where(eq(users.id, ctx.user.id))
-          .limit(1);
-        const fallbackTenantId = resolveTenantId(null, rows[0]?.currentTenantId);
-        if (typeof fallbackTenantId === "number") {
-          tenantId = fallbackTenantId;
-        }
-      }
-    } catch {
-      // Keep original tenant when lookup is unavailable.
-    }
-  }
-  return tenantId;
+): Promise<string | null> {
+  return resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
 }
 
 function isLibraryUrlValidationError(error: unknown): boolean {

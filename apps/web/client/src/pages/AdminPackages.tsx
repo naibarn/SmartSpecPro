@@ -229,7 +229,7 @@ export default function AdminPackages() {
     setShowModal(true);
   };
 
-  const openEditModal = (pkg: PackageData) => {
+  const openEditModal = (pkg: any) => {
     setEditingPackage(pkg);
     setFormData({
       name: pkg.name,

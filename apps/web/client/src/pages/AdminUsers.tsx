@@ -201,7 +201,7 @@ export default function AdminUsers() {
 
     updateUserMutation.mutate({
       id: selectedUser.id,
-      data: { registeredDomain: newDomain || null },
+      data: { registeredDomain: newDomain || undefined },
     });
     setShowDomainModal(false);
   };

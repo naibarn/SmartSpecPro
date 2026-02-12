@@ -1,5 +1,13 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
+  "extends": "../../tsconfig.base.json",
+  "include": [
+    "client/src/**/*",
+    "shared/**/*",
+    "server/**/*",
+    "drizzle/**/*",
+    "vite.config.ts",
+    "../../packages/ui/src/**/*"
+  ],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "incremental": true,
@@ -18,7 +26,9 @@
     "paths": {
       "@/*": ["./client/src/*"],
       "@shared/*": ["./shared/*"],
-      "@db/*": ["./drizzle/*"]
+      "@db/*": ["./drizzle/*"],
+      "@server/*": ["./server/*"],
+      "@smartspec/ui/src/*": ["../../packages/ui/src/*"]
     }
   }
 }

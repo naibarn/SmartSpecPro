@@ -113,7 +113,7 @@ export class PostgresAdapter implements DbAdapter {
   // ---- Messages ----
 
   async getMessages(conversationId: number): Promise<DbMessage[]> {
-    const messages = await getMessages({ conversationId });
+    const messages = await getMessages(conversationId);
     return messages as unknown as DbMessage[];
   }
 
@@ -176,7 +176,7 @@ export class PostgresAdapter implements DbAdapter {
   // ---- Memory ----
 
   async getMemories(userId: number, conversationId?: number): Promise<DbEntityMemory[]> {
-    const memories = await getEntityMemories({ userId, conversationId });
+    const memories = await getEntityMemories(userId);
     return memories as unknown as DbEntityMemory[];
   }
 

@@ -267,7 +267,12 @@ export function projectToTimeline(
     tracks: project.timeline.tracks.map(
       (track: Track): MediaTrack => ({
         trackId: track.id,
-        type: track.type === "overlay" ? "video" : track.type,
+        type:
+          track.type === "overlay"
+            ? "video"
+            : track.type === "text"
+              ? "subtitle"
+              : track.type,
         clips: track.clips.map(
           (clip: Clip): MediaClip => ({
             clipId: clip.id,
@@ -319,6 +324,7 @@ export function timelineToProject(
       ),
       muted: false,
       locked: false,
+      visible: true,
     }),
   );
 

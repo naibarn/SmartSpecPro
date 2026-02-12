@@ -41,7 +41,12 @@ export const marketplaceRouter = router({
       const db = await getDb();
       if (!db) return { skills: [], total: 0 };
 
-      const filters = input || {};
+      const filters: {
+        category?: string;
+        search?: string;
+        limit?: number;
+        offset?: number;
+      } = input ?? {};
       const conditions: any[] = [eq(skills.isEnabled, true)];
 
       if (filters.category) {

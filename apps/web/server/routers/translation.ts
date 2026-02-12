@@ -103,7 +103,6 @@ export const translationRouter = router({
       await deductCredits({
         userId: ctx.user.id,
         amount: credits,
-        type: "usage",
         description: `Translation (${textIsEnglish ? "EN→" + targetLang.toUpperCase() : "→EN"})`,
         metadata: { model, provider: provider.providerName, tokens: usage },
       });

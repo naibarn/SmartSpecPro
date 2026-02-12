@@ -604,7 +604,7 @@ export default function AdminMediaModels() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {models.map((model, index) => (
+                {models.map((model: any, index: number) => (
                   <TableRow key={model.id}>
                     <TableCell className="font-mono text-muted-foreground">
                       {index + 1}
@@ -638,7 +638,7 @@ export default function AdminMediaModels() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {(model.aliases || []).slice(0, 2).map((alias, i) => (
+                        {(model.aliases || []).slice(0, 2).map((alias: string, i: number) => (
                           <Badge key={i} variant="outline" className="text-xs">
                             {alias}
                           </Badge>

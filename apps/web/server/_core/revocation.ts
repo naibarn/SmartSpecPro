@@ -1,7 +1,9 @@
-import { createClient, type RedisClientType } from "redis";
+import { createClient } from "redis";
 
-let client: RedisClientType | null = null;
-let clientInit: Promise<RedisClientType | null> | null = null;
+type RedisHandle = ReturnType<typeof createClient>;
+
+let client: RedisHandle | null = null;
+let clientInit: Promise<RedisHandle | null> | null = null;
 
 // Fallback in-memory denylist (for dev / when redis is unavailable)
 const mem = new Map<string, number>(); // jti -> expMs
@@ -9,7 +11,7 @@ const mem = new Map<string, number>(); // jti -> expMs
 const PREFIX = process.env.TOKEN_REVOKE_PREFIX || "revoked:";
 const REDIS_URL = process.env.REDIS_URL || process.env.TOKEN_REVOKE_REDIS_URL || "";
 
-async function getRedis(): Promise<RedisClientType | null> {
+async function getRedis(): Promise<RedisHandle | null> {
   if (!REDIS_URL) return null;
   if (client) return client;
 

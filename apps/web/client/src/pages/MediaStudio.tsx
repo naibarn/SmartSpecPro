@@ -592,7 +592,7 @@ export default function MediaStudio() {
 
     if (savedModelId) {
       // Verify the saved model still exists
-      const savedModel = mediaModels.models.find(m => m.modelId === savedModelId);
+      const savedModel = mediaModels.models.find((m: any) => m.modelId === savedModelId);
       if (savedModel) {
         setSelectedModel(savedModelId);
         setModelInitialized(true);
@@ -619,7 +619,7 @@ export default function MediaStudio() {
       setModelInputValues({});
       return;
     }
-    const model = mediaModels.models.find(m => m.modelId === selectedModel);
+    const model = mediaModels.models.find((m: any) => m.modelId === selectedModel);
     const config = model?.configJson as any;
     if (!config?.inputFields) {
       setModelInputValues({});
@@ -759,7 +759,7 @@ export default function MediaStudio() {
       setSelectedLlmModel(skillConfig.defaultModel);
     } else if (visionModels?.models?.length && !selectedLlmModel) {
       // Fallback to first available vision model
-      const defaultModel = visionModels.models.find(m => m.isDefault) || visionModels.models[0];
+      const defaultModel = visionModels.models.find((m: any) => m.isDefault) || visionModels.models[0];
       setSelectedLlmModel(defaultModel.id);
     }
   }, [skillConfig, visionModels, llmModelManuallySet]);
@@ -1124,7 +1124,7 @@ export default function MediaStudio() {
           skillId: selectedSkillId,
           userInputs: sanitizedInputs,
           model: selectedLlmModel || undefined,
-          referenceImages: referenceImages.map(r => r.url),
+          referenceImages: referenceImages.map((r: any) => r.url),
         });
 
         if (result.success && result.content) {
@@ -1184,7 +1184,7 @@ export default function MediaStudio() {
 
         // Get maxPromptLength from selected media model's configJson
         // Default to 2000 if not set in model config
-        const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+        const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
         const modelConfig = modelData?.configJson as any;
         const modelMaxPromptLength = modelConfig?.maxPromptLength || 2000;
 
@@ -1203,7 +1203,7 @@ export default function MediaStudio() {
 
           requestData = {
             userInput: userIdea || "Create a prompt based on the reference images",
-            referenceImages: referenceImages.map(r => r.url),
+            referenceImages: referenceImages.map((r: any) => r.url),
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
             ...(selectedLlmModel ? { model: selectedLlmModel } : {}),
             // Pass maxPromptLength from selected media model so skill generates shorter prompts
@@ -1221,7 +1221,7 @@ export default function MediaStudio() {
 
           requestData = {
             userInput: userIdea || "Create a prompt based on the reference images",
-            referenceImages: referenceImages.map(r => r.url),
+            referenceImages: referenceImages.map((r: any) => r.url),
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
             ...(selectedLlmModel ? { model: selectedLlmModel } : {}),
             // Pass maxPromptLength from selected media model so skill generates shorter prompts
@@ -1247,9 +1247,13 @@ export default function MediaStudio() {
           // Use the enhanced English prompt
           setEnhancedPrompt(result.promptEn);
         } else {
+          const description =
+            "error" in result && typeof result.error === "string"
+              ? result.error
+              : "The LLM did not generate a prompt. Try a different input.";
           // Handle case where result is returned but no prompt generated
           toast.error("Auto Prompt returned empty", {
-            description: result.error || "The LLM did not generate a prompt. Try a different input.",
+            description,
           });
         }
       }
@@ -1276,7 +1280,7 @@ export default function MediaStudio() {
     if (action === "upscale") {
       // Auto-fill the prompt with upscale-specific text
       if (useAdvancedMode) {
-        setDynamicFormValues(prev => ({
+        setDynamicFormValues((prev: Record<string, any>) => ({
           ...prev,
           request: UPSCALE_DEFAULT_PROMPT,
         }));
@@ -1388,7 +1392,7 @@ export default function MediaStudio() {
       : currentAspectRatio;
 
     // Build extra params from dynamic model input fields
-    const selectedModelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+    const selectedModelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
     const rawConfig = selectedModelData?.configJson;
     const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
     const extraParams: Record<string, any> = {};
@@ -1417,7 +1421,7 @@ export default function MediaStudio() {
       // This ensures KIE AI models receive images with the key they expect (e.g., "image_input")
       const imageUrlsField = (modelConfig.inputFields || []).find((f: any) => f.type === "image_urls");
       if (imageUrlsField && referenceImages.length > 0) {
-        extraParams[imageUrlsField.key] = referenceImages.map(r => r.url);
+        extraParams[imageUrlsField.key] = referenceImages.map((r: any) => r.url);
         usedModelSpecificImageKey = true;
       }
     }
@@ -1446,7 +1450,7 @@ export default function MediaStudio() {
           numImages: 1, // Always 1 per call for progressive loading
           duration: activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined,
           // Only use referenceImageUrls as fallback when model doesn't define specific image_urls field
-          referenceImageUrls: (!usedModelSpecificImageKey && referenceImages.length > 0) ? referenceImages.map(r => r.url) : undefined,
+          referenceImageUrls: (!usedModelSpecificImageKey && referenceImages.length > 0) ? referenceImages.map((r: any) => r.url) : undefined,
           ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
           ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
           ...(modelInputValues.resolution ? { resolution: modelInputValues.resolution } : {}),
@@ -2006,7 +2010,7 @@ export default function MediaStudio() {
   // Get model credit cost using pricing tiers from configJson
   const getModelCost = () => {
     if (!mediaModels?.models) return 10;
-    const model = mediaModels.models.find(m => m.modelId === selectedModel);
+    const model = mediaModels.models.find((m: any) => m.modelId === selectedModel);
     if (!model) return 10;
 
     const config = model.configJson as any;
@@ -2259,7 +2263,7 @@ export default function MediaStudio() {
               {/* Character Count */}
               {(() => {
                 const currentPromptLength = (enhancedPrompt || prompt).length;
-                const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+                const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
                 const config = modelData?.configJson as any;
                 const maxLength = config?.maxPromptLength || 2000;
                 const isOverLimit = currentPromptLength > maxLength;
@@ -2468,10 +2472,10 @@ export default function MediaStudio() {
                     <Bot className="h-4 w-4 mr-2" />
                     <span className="flex-1 text-left break-words whitespace-normal">
                       {selectedModel
-                        ? mediaModels?.models?.find((m) => m.modelId === selectedModel)?.name || "Select model"
+                        ? mediaModels?.models?.find((m: any) => m.modelId === selectedModel)?.name || "Select model"
                         : "Select model"}
                     </span>
-                    {selectedModel && mediaModels?.models?.find((m) => m.modelId === selectedModel) && (
+                    {selectedModel && mediaModels?.models?.find((m: any) => m.modelId === selectedModel) && (
                       <Badge variant="outline" className="ml-2 text-xs shrink-0">
                         {getModelCost()}c
                       </Badge>
@@ -2481,7 +2485,13 @@ export default function MediaStudio() {
                     open={showModelDialog}
                     onOpenChange={setShowModelDialog}
                     models={mediaModels?.models || []}
-                    providers={mediaModels?.providers || []}
+                    providers={
+                      ((mediaModels?.providers as string[] | undefined) || []).map((name) => ({
+                        id: name,
+                        name,
+                        displayName: name,
+                      }))
+                    }
                     selectedModelId={selectedModel}
                     onSelect={setSelectedModel}
                     mediaType={activeTab}
@@ -2491,7 +2501,7 @@ export default function MediaStudio() {
 
                 {/* Aspect Ratio — uses model-specific options from configJson when available (not for audio) */}
                 {activeTab !== "audio" && (() => {
-                  const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+                  const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
                   const config = modelData?.configJson as any;
                   const arField = config?.inputFields?.find((f: any) => f.key === "aspect_ratio");
                   const arOptions = arField?.options as { value: string; label: string }[] | undefined;
@@ -2505,7 +2515,7 @@ export default function MediaStudio() {
                     { value: "3:4", label: "3:4" },
                   ];
                   const options = arOptions
-                    || (modelAspectRatios?.length ? modelAspectRatios.map(r => ({ value: r, label: r })) : null)
+                    || (modelAspectRatios?.length ? modelAspectRatios.map((r: any) => ({ value: r, label: r })) : null)
                     || defaultOptions;
                   const isDisabled = isFieldDisabledByAdvancedMode("aspectRatio");
                   return (
@@ -2556,7 +2566,7 @@ export default function MediaStudio() {
 
                 {/* Duration (for video only) — uses model-specific options from configJson when available */}
                 {activeTab === "video" && (() => {
-                  const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+                  const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
                   const config = modelData?.configJson as any;
                   const durationField = config?.inputFields?.find((f: any) => f.key === "duration");
                   const durationOptions = durationField?.options as { value: string; label: string }[] | undefined;
@@ -2571,7 +2581,7 @@ export default function MediaStudio() {
                         value={currentVal}
                         onValueChange={(v) => {
                           setDuration(Number(v));
-                          setModelInputValues(prev => ({ ...prev, duration: v }));
+                          setModelInputValues((prev: Record<string, any>) => ({ ...prev, duration: v }));
                         }}
                       >
                         <SelectTrigger>
@@ -2598,7 +2608,7 @@ export default function MediaStudio() {
 
                 {/* Dynamic Model Input Fields from configJson */}
                 {(() => {
-                  const modelData = mediaModels?.models?.find(m => m.modelId === selectedModel);
+                  const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
                   const config = modelData?.configJson as any;
                   const fields = config?.inputFields || [];
                   // Filter out fields already handled by standard UI (aspect_ratio, duration for video)
@@ -2619,7 +2629,7 @@ export default function MediaStudio() {
                       {field.type === "select" && field.options ? (
                         <Select
                           value={String(modelInputValues[field.key] ?? field.default ?? field.options?.[0]?.value ?? "")}
-                          onValueChange={(v) => setModelInputValues(prev => ({ ...prev, [field.key]: v }))}
+                          onValueChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -2636,7 +2646,7 @@ export default function MediaStudio() {
                         <div className="flex items-center gap-2 h-10">
                           <Switch
                             checked={!!modelInputValues[field.key]}
-                            onCheckedChange={(v) => setModelInputValues(prev => ({ ...prev, [field.key]: v }))}
+                            onCheckedChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
                           />
                           <span className="text-sm">{modelInputValues[field.key] ? "On" : "Off"}</span>
                         </div>
@@ -2644,14 +2654,14 @@ export default function MediaStudio() {
                         <Input
                           type="number"
                           value={modelInputValues[field.key] ?? field.default ?? ""}
-                          onChange={(e) => setModelInputValues(prev => ({ ...prev, [field.key]: Number(e.target.value) }))}
+                          onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: Number(e.target.value) }))}
                         />
                       ) : (
                         <Input
                           type="text"
                           placeholder={field.label}
                           value={modelInputValues[field.key] ?? ""}
-                          onChange={(e) => setModelInputValues(prev => ({ ...prev, [field.key]: e.target.value }))}
+                          onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
                         />
                       )}
                     </div>
@@ -3094,8 +3104,8 @@ export default function MediaStudio() {
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select LLM model...">
-                          {selectedLlmModel && visionModels?.models?.find(m => m.id === selectedLlmModel)?.name
-                            ? `${visionModels.models.find(m => m.id === selectedLlmModel)?.name} (${visionModels.models.find(m => m.id === selectedLlmModel)?.providerDisplayName})`
+                          {selectedLlmModel && visionModels?.models?.find((m: any) => m.id === selectedLlmModel)?.name
+                            ? `${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.name} (${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.providerDisplayName})`
                             : selectedLlmModel || "Select LLM model..."}
                         </SelectValue>
                       </SelectTrigger>
@@ -3370,7 +3380,7 @@ export default function MediaStudio() {
                             alt={`Generated ${task.index + 1}`}
                             className="w-full h-full object-cover cursor-pointer"
                             onClick={() => {
-                              const media = generatedMedia.find(m => m.url === task.url);
+                              const media = generatedMedia.find((m: any) => m.url === task.url);
                               openLightbox(task.url!, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
                             }}
                           />
@@ -3381,7 +3391,7 @@ export default function MediaStudio() {
                               variant="ghost"
                               className="h-8 w-8 text-white hover:bg-white/20"
                               onClick={() => {
-                                const media = generatedMedia.find(m => m.url === task.url);
+                                const media = generatedMedia.find((m: any) => m.url === task.url);
                                 openLightbox(task.url!, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
                               }}
                             >
@@ -3428,7 +3438,7 @@ export default function MediaStudio() {
                           className="w-full h-full object-contain cursor-pointer"
                           onClick={() => {
                             // Find the matching generated media for prompt info
-                            const media = generatedMedia.find(m => m.url === previewUrl);
+                            const media = generatedMedia.find((m: any) => m.url === previewUrl);
                             openLightbox(previewUrl, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
                           }}
                         />
@@ -3439,7 +3449,7 @@ export default function MediaStudio() {
                             variant="ghost"
                             className="h-12 w-12 text-white hover:bg-white/20"
                             onClick={() => {
-                              const media = generatedMedia.find(m => m.url === previewUrl);
+                              const media = generatedMedia.find((m: any) => m.url === previewUrl);
                               openLightbox(previewUrl, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
                             }}
                           >

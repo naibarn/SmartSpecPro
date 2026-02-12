@@ -203,7 +203,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
       // Read and parse skill.md
       const content = fs.readFileSync(folder.skillMdPath, "utf-8");
       const parsed = parseSkillFile(content);
-      const metadata: SkillMetadata = { name: folder.slug, ...parsed.metadata };
+      const metadata: SkillMetadata = { ...parsed.metadata, name: parsed.metadata.name ?? folder.slug };
 
       const skillData = {
         name: metadata.name || folder.slug,
@@ -328,7 +328,7 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
 
     // Parse skill.md
     const parsed = parseSkillFile(rawContent);
-    const metadata: SkillMetadata = { name: slug, ...parsed.metadata };
+    const metadata: SkillMetadata = { ...parsed.metadata, name: parsed.metadata.name ?? slug };
 
     const updateData = {
       skillContent: parsed.content,

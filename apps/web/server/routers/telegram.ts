@@ -169,7 +169,6 @@ const updateTelegramSettings = adminProcedure
           key,
           value,
           isSensitive,
-          createdBy: userId,
           updatedBy: userId,
         });
       }
@@ -193,7 +192,6 @@ const updateTelegramSettings = adminProcedure
         key: "webhook_secret",
         value: encrypt(generatedSecret),
         isSensitive: true,
-        createdBy: userId,
         updatedBy: userId,
       });
     }

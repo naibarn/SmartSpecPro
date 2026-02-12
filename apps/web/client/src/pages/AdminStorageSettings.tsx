@@ -403,7 +403,7 @@ export default function AdminStorageSettings() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {settings.map((setting) => (
+                {settings.map((setting: any) => (
                   <TableRow key={setting.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">

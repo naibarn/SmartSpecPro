@@ -203,6 +203,33 @@ describe("mediaRouter.addTaskToLibrary", () => {
     );
   });
 
+  it("prefers request tenant when both ctx/user tenants are strings", async () => {
+    mockAddMediaTaskToLibrary.mockResolvedValue({
+      itemId: 505,
+      created: true,
+      indexJob: { jobId: 9005, status: "pending", created: true },
+      taskStatus: "completed",
+    });
+
+    const fn = mediaRouter.addTaskToLibrary as Function;
+    await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: "tenant-legacy" as any },
+        userToken: "token-abc",
+        tenantId: "tenant-request" as any,
+      },
+      input: { taskId: "task-123" },
+    });
+
+    expect(mockAddMediaTaskToLibrary).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        userId: 9,
+        tenantId: "tenant-request",
+      }),
+    );
+  });
+
   it("rejects add-to-library when library feature is disabled", async () => {
     process.env.LIBRARY_ENABLED = "false";
     const fn = mediaRouter.addTaskToLibrary as Function;

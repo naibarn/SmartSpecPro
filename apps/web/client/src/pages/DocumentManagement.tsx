@@ -9,6 +9,7 @@ import {
   FileText,
   FolderOpen,
   ImagePlus,
+  Info,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -44,15 +45,12 @@ import {
   type DocumentLibraryItem,
   type DocumentQueryState,
 } from "@/lib/documentManagementUi";
+import {
+  closeDocumentEditorTab,
+  upsertDocumentEditorTab,
+  type DocumentEditorTab,
+} from "@/lib/documentManagementTabs";
 import { trpc } from "@/lib/trpc";
-
-interface EditorTab {
-  id: number;
-  title: string;
-  itemType: string;
-  accessSource?: DocumentLibraryItem["access_source"];
-  openedFromScope?: DocumentQueryState["scope"];
-}
 
 interface MarkdownDraftState {
   value: string;
@@ -94,7 +92,7 @@ export default function DocumentManagement() {
   const [isLibraryPanelOpen, setIsLibraryPanelOpen] = useState(true);
   const [isMarkdownPreviewPanelOpen, setIsMarkdownPreviewPanelOpen] = useState(true);
   const [isEditorPanelCollapsed, setIsEditorPanelCollapsed] = useState(false);
-  const [openEditorTabs, setOpenEditorTabs] = useState<EditorTab[]>(() => {
+  const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
     if (typeof window === "undefined") {
       return [];
     }
@@ -280,37 +278,13 @@ export default function DocumentManagement() {
     item: Pick<DocumentLibraryItem, "id" | "title" | "item_type"> & Partial<Pick<DocumentLibraryItem, "access_source">>,
     options?: { openedFromScope?: DocumentQueryState["scope"] },
   ) {
-    setOpenEditorTabs((prev) => {
-      const nextTab: EditorTab = {
+    setOpenEditorTabs((prev) => upsertDocumentEditorTab(prev, {
         id: item.id,
         title: item.title || `Document ${item.id}`,
         itemType: item.item_type || "document",
         accessSource: item.access_source,
         openedFromScope: options?.openedFromScope,
-      };
-      const existingIndex = prev.findIndex((tab) => tab.id === nextTab.id);
-      if (existingIndex === -1) {
-        return [...prev, nextTab];
-      }
-      const existing = prev[existingIndex];
-      const mergedTab: EditorTab = {
-        ...existing,
-        ...nextTab,
-        accessSource: nextTab.accessSource ?? existing.accessSource,
-        openedFromScope: nextTab.openedFromScope ?? existing.openedFromScope,
-      };
-      if (
-        existing.title === mergedTab.title &&
-        existing.itemType === mergedTab.itemType &&
-        existing.accessSource === mergedTab.accessSource &&
-        existing.openedFromScope === mergedTab.openedFromScope
-      ) {
-        return prev;
-      }
-      const next = [...prev];
-      next[existingIndex] = mergedTab;
-      return next;
-    });
+      }));
   }
 
   function openEditorTab(
@@ -343,21 +317,19 @@ export default function DocumentManagement() {
   }
 
   function closeEditorTab(tabId: number) {
-    const currentIndex = openEditorTabs.findIndex((tab) => tab.id === tabId);
-    if (currentIndex === -1) {
+    const closeResult = closeDocumentEditorTab({
+      tabs: openEditorTabs,
+      selectedId,
+      tabId,
+      isDirty: isEditorTabDirty,
+      confirmClose: (tab) => window.confirm(`"${tab.title}" has unsaved changes. Close without saving?`),
+    });
+
+    if (!closeResult.closed) {
       return;
     }
 
-    const tab = openEditorTabs[currentIndex];
-    if (tab && isEditorTabDirty(tabId)) {
-      const shouldClose = window.confirm(`"${tab.title}" has unsaved changes. Close without saving?`);
-      if (!shouldClose) {
-        return;
-      }
-    }
-
-    const nextTabs = openEditorTabs.filter((tab) => tab.id !== tabId);
-    setOpenEditorTabs(nextTabs);
+    setOpenEditorTabs(closeResult.nextTabs);
     setMarkdownDraftByDocId((prev) => {
       if (!prev[tabId]) return prev;
       const next = { ...prev };
@@ -366,12 +338,11 @@ export default function DocumentManagement() {
     });
 
     if (selectedId === tabId) {
-      const nextActiveId = nextTabs[currentIndex]?.id ?? nextTabs[currentIndex - 1]?.id ?? null;
-      setSelectedId(nextActiveId);
+      setSelectedId(closeResult.nextSelectedId);
       setQueryState((state) => ({
         ...state,
-        viewMode: nextActiveId ? "editor" : "library",
-        docId: nextActiveId ?? undefined,
+        viewMode: closeResult.nextSelectedId ? "editor" : "library",
+        docId: closeResult.nextSelectedId ?? undefined,
       }));
     }
   }
@@ -444,7 +415,7 @@ export default function DocumentManagement() {
     }));
   }, [documents]);
 
-  function getEditorTabScopeLabel(tab: EditorTab): string {
+  function getEditorTabScopeLabel(tab: DocumentEditorTab): string {
     if (tab.accessSource === "owner") return "My Library";
     if (tab.accessSource === "shared_direct") return "Shared With Me";
     if (tab.accessSource === "shared_group") return "My Group";
@@ -512,7 +483,7 @@ export default function DocumentManagement() {
       return;
     }
 
-    if (!["text", "json", "html"].includes(previewType) || !selectedItem.source_url) {
+    if (!["text", "json", "html", "code", "csv", "xml"].includes(previewType) || !selectedItem.source_url) {
       setPreviewText(undefined);
       return;
     }
@@ -538,7 +509,7 @@ export default function DocumentManagement() {
     if (!selectedItem || previewType !== "markdown") return;
     const draft = markdownDraftByDocId[selectedItem.id];
     const contentToSave = draft?.value ?? "";
-    const expectedUpdatedAt = draft?.updatedAt || selectedItem.updated_at;
+    const expectedUpdatedAt = new Date(draft?.updatedAt ?? selectedItem.updated_at);
 
     try {
       setMarkdownError(undefined);
@@ -721,30 +692,6 @@ export default function DocumentManagement() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsLibraryPanelOpen((prev) => !prev)}
-              >
-                {isLibraryPanelOpen ? (
-                  <PanelLeftClose className="mr-1 h-4 w-4" />
-                ) : (
-                  <PanelLeftOpen className="mr-1 h-4 w-4" />
-                )}
-                {isLibraryPanelOpen ? "Hide Library" : "Show Library"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsMarkdownPreviewPanelOpen((prev) => !prev)}
-              >
-                {isMarkdownPreviewPanelOpen ? (
-                  <PanelRightClose className="mr-1 h-4 w-4" />
-                ) : (
-                  <PanelRightOpen className="mr-1 h-4 w-4" />
-                )}
-                {isMarkdownPreviewPanelOpen ? "Hide MD Preview" : "Show MD Preview"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={uploadFileMutation.isPending}
               >
@@ -820,11 +767,34 @@ export default function DocumentManagement() {
       />
 
       <main className="px-4 py-6 sm:px-6 lg:px-8">
+        {/* File Type Support Information Banner */}
+        <div className="mb-4 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-cyan-50 to-blue-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500 shadow-sm">
+              <Info className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-sky-900">
+                Total: 70+ file types with native preview!
+              </h3>
+              <p className="mt-1 text-sm text-sky-800">
+                <span className="font-medium">Documents:</span> PDF, Markdown, Word, PowerPoint, Excel, CSV, JSON, XML, HTML
+                {" • "}
+                <span className="font-medium">Media:</span> Images (PNG, JPG, WebP, SVG), Videos (MP4, WebM, MOV), Audio (MP3, WAV, M4A)
+                {" • "}
+                <span className="font-medium">Code:</span> JavaScript, TypeScript, Python, Java, C++, Go, Rust, PHP, SQL, YAML
+                {" • "}
+                and many more...
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-4 xl:min-h-[calc(100vh-150px)] xl:flex-row">
           {isLibraryPanelOpen ? (
             <aside
               ref={previewSectionRef}
-              className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md xl:w-[440px] xl:shrink-0"
+              className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:w-[440px] xl:shrink-0"
             >
               <div className="mb-4 flex items-center justify-between gap-2">
                 <div>
@@ -841,11 +811,11 @@ export default function DocumentManagement() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full"
+                    className="h-8 w-8 rounded-full hover:bg-slate-100 transition-colors"
                     onClick={() => setIsLibraryPanelOpen(false)}
                     title="Collapse library panel"
                   >
-                    <PanelLeftClose className="h-4 w-4" />
+                    <ChevronsLeft className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -900,16 +870,16 @@ export default function DocumentManagement() {
               />
             </aside>
           ) : (
-            <div className="flex xl:shrink-0 xl:items-start">
+            <div className="flex items-center justify-center xl:shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 rounded-full border-slate-300 bg-white shadow-sm"
+                className="h-12 w-12 rounded-2xl border-2 border-sky-200 bg-gradient-to-br from-white to-sky-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
                 onClick={() => setIsLibraryPanelOpen(true)}
                 title="Show library panel"
               >
-                <PanelLeftOpen className="h-5 w-5" />
+                <ChevronsRight className="h-6 w-6 text-sky-600" />
               </Button>
             </div>
           )}
@@ -917,13 +887,13 @@ export default function DocumentManagement() {
           {!isEditorPanelCollapsed ? (
             <section
               ref={editorWorkspaceRef}
-              className="min-w-0 flex-1 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-200"
+              className="min-w-0 flex-1 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300"
             >
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="text-base font-semibold text-slate-900">Document Editor</div>
                 {hasUnsavedTabs ? (
-                  <span className="rounded bg-amber-100 px-2 py-1 text-xs text-amber-800">
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
                     Unsaved changes
                   </span>
                 ) : null}
@@ -933,41 +903,28 @@ export default function DocumentManagement() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-full"
-                  onClick={() => {
-                    setIsMarkdownPreviewPanelOpen(true);
-                    setIsEditorPanelCollapsed(true);
-                  }}
-                  title="Collapse editor to left"
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full"
+                  className="h-8 w-8 rounded-full hover:bg-slate-100 transition-colors"
                   onClick={() => setIsLibraryPanelOpen((prev) => !prev)}
-                  title={isLibraryPanelOpen ? "Collapse left panel" : "Open left panel"}
+                  title={isLibraryPanelOpen ? "Hide Library" : "Show Library"}
                 >
                   {isLibraryPanelOpen ? (
-                    <PanelLeftClose className="h-4 w-4" />
+                    <ChevronsLeft className="h-4 w-4 text-slate-600" />
                   ) : (
-                    <PanelLeftOpen className="h-4 w-4" />
+                    <ChevronsRight className="h-4 w-4 text-slate-600" />
                   )}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-full"
+                  className="h-8 w-8 rounded-full hover:bg-slate-100 transition-colors"
                   onClick={() => setIsMarkdownPreviewPanelOpen((prev) => !prev)}
-                  title={isMarkdownPreviewPanelOpen ? "Collapse right panel" : "Open right panel"}
+                  title={isMarkdownPreviewPanelOpen ? "Hide Preview" : "Show Preview"}
                 >
                   {isMarkdownPreviewPanelOpen ? (
-                    <PanelRightClose className="h-4 w-4" />
+                    <ChevronsRight className="h-4 w-4 text-slate-600" />
                   ) : (
-                    <PanelRightOpen className="h-4 w-4" />
+                    <ChevronsLeft className="h-4 w-4 text-slate-600" />
                   )}
                 </Button>
               </div>
@@ -1070,10 +1027,23 @@ export default function DocumentManagement() {
               ) : null}
             </div>
             </section>
-          ) : null}
+          ) : (
+            <div className="flex items-center justify-center min-w-0 flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                onClick={() => setIsEditorPanelCollapsed(false)}
+                title="Show editor panel"
+              >
+                <FileText className="h-6 w-6 text-slate-600" />
+              </Button>
+            </div>
+          )}
 
           {isMarkdownPreviewPanelOpen ? (
-            <aside className={`space-y-3 rounded-3xl border border-slate-200/80 bg-white p-3 shadow-md ${
+            <aside className={`space-y-3 rounded-3xl border border-slate-200/80 bg-white p-3 shadow-md transition-all duration-300 ${
               isEditorPanelCollapsed ? "xl:min-w-0 xl:basis-0 xl:flex-1" : "xl:w-[430px] xl:shrink-0"
             }`}>
               <div className="flex items-center justify-between gap-2">
@@ -1083,11 +1053,11 @@ export default function DocumentManagement() {
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 rounded-full border border-slate-200 bg-white"
+                      className="h-9 w-9 rounded-full border border-slate-200 bg-white hover:bg-slate-100 transition-colors"
                       onClick={() => setIsEditorPanelCollapsed(false)}
                       title="Expand editor panel"
                     >
-                      <ChevronsLeft className="h-4 w-4" />
+                      <ChevronsLeft className="h-5 w-5 text-slate-600" />
                     </Button>
                   ) : null}
                   <div>
@@ -1101,11 +1071,11 @@ export default function DocumentManagement() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full"
+                  className="h-9 w-9 rounded-full hover:bg-slate-100 transition-colors"
                   onClick={() => setIsMarkdownPreviewPanelOpen(false)}
                   title="Hide markdown preview"
                 >
-                  <PanelRightClose className="h-4 w-4" />
+                  <ChevronsRight className="h-4 w-4 text-slate-600" />
                 </Button>
               </div>
 
@@ -1122,16 +1092,16 @@ export default function DocumentManagement() {
               )}
             </aside>
           ) : (
-            <div className="flex xl:shrink-0 xl:items-start">
+            <div className="flex items-center justify-center xl:shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 rounded-full border-slate-300 bg-white shadow-sm"
+                className="h-12 w-12 rounded-2xl border-2 border-cyan-200 bg-gradient-to-br from-white to-cyan-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
                 onClick={() => setIsMarkdownPreviewPanelOpen(true)}
                 title="Show markdown preview"
               >
-                <PanelRightOpen className="h-5 w-5" />
+                <ChevronsLeft className="h-6 w-6 text-cyan-600" />
               </Button>
             </div>
           )}

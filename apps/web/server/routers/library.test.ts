@@ -194,6 +194,34 @@ describe("libraryRouter.createItem", () => {
     );
   });
 
+  it("prefers request tenant when both ctx/user tenants are strings", async () => {
+    mockCreateLibraryItem.mockResolvedValue({
+      item: { id: 14, title: "Demo" },
+      idempotent: false,
+    });
+
+    const fn = libraryRouter.createItem as Function;
+    await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: "tenant-legacy" as any },
+        tenantId: "tenant-request" as any,
+      },
+      input: {
+        itemType: "image",
+        source: "media_history",
+        title: "Demo",
+      },
+    });
+
+    expect(mockCreateLibraryItem).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        userId: 9,
+        tenantId: "tenant-request",
+      }),
+    );
+  });
+
   it("rejects when library feature is disabled", async () => {
     process.env.LIBRARY_ENABLED = "false";
     const fn = libraryRouter.createItem as Function;

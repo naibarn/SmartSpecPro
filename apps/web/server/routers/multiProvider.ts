@@ -113,7 +113,7 @@ export const multiProviderRouter = router({
       .orderBy(asc(routingRules.modelPattern));
 
     // Sort: exact matches first, then globs, then wildcard
-    return rules.sort((a, b) => {
+    return rules.sort((a: (typeof rules)[number], b: (typeof rules)[number]) => {
       const aHasWild = a.modelPattern.includes("*");
       const bHasWild = b.modelPattern.includes("*");
       if (!aHasWild && bHasWild) return -1;
@@ -177,7 +177,7 @@ export const multiProviderRouter = router({
       .from(llmProviders)
       .where(eq(llmProviders.isEnabled, true));
 
-    return providers.map((p) => {
+    return providers.map((p: (typeof providers)[number]) => {
       const state = summary.get(p.id);
       return {
         providerId: p.id,
