@@ -525,4 +525,30 @@ Before marking this section complete, verify:
 
 ---
 
+## Implementation Notes (Actual)
+
+### Files Modified
+- `apps/web/server/routers/library.ts` — Router with 6 new procedures (thin wrappers)
+- `apps/web/server/services/libraryService.ts` — 6 new service functions + `users` schema import
+- `apps/web/server/routers/library.test.ts` — 1 new test + 28 todo stubs
+
+### Deviations from Plan
+1. **All 6 new procedures delegated to service layer** — Code review identified raw DB access in router as CRITICAL. Created `removeLibraryShare()`, `updateLibrarySharePermission()`, `getLibraryItemShares()`, `listLibraryTrash()`, `restoreFromLibraryTrash()`, `permanentDeleteLibraryItem()` in libraryService.ts.
+2. **listTrash scope expanded** — Plan said `ownerUserId = actor.userId` only. Review identified User B (deleter) should also see items they deleted. Now uses `OR(ownerUserId = userId, deletedBy = userId)`.
+3. **permanentDelete includes domain_admin** — Plan said "admin" only. Review identified `domain_admin` role also needs purge authority.
+4. **restoreFromTrash wrapped in transaction** — Plan omitted transaction. Review identified race condition between SELECT and UPDATE.
+5. **restoreFromTrash UPDATE scoped by tenantId** — Plan omitted tenant filter on UPDATE. Review identified defense-in-depth gap.
+6. **getItemShares does not expose email** — Plan had `userName` field. Original implementation fell back to `users.email`. Review flagged as data leak. Now uses `users.name` only.
+7. **Storage cleanup deferred** — `storageDelete` function does not exist in storage module. Orphaned files remain after DB purge. TODO for future.
+8. **Vector DB cleanup deferred** — Not implemented, acknowledged as accepted limitation.
+9. **Output uses `title`/`itemType` not `name`/`mimeType`** — Schema uses `title` not `name`, and `itemType` not `mimeType`. Differs from plan's output format.
+10. **Removed `as any` casts** — `resolveLibraryTenantId` returns `string` which is assignable to `LibraryTenantId = string | number`.
+
+### Test Coverage
+- 28 todo stubs for new procedures (full implementation deferred to section-11)
+- 1 implemented test: `getItem > returns item with userPermissions when found`
+- 9 pre-existing test failures (tenantId string vs number mismatch from section-03)
+
+---
+
 **End of Section 05: Library Router Updates**
