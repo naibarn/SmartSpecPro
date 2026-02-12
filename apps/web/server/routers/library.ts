@@ -9,20 +9,28 @@ import {
   createLibraryItem,
   getLibraryMarkdownContent,
   getLibraryItemById,
+  getLibraryItemShares,
+  getUserEffectivePermission,
   LibraryMarkdownVersionConflictError,
   listLibraryDocuments,
+  listLibraryTrash,
+  permanentDeleteLibraryItem,
+  removeLibraryShare,
+  restoreFromLibraryTrash,
   saveLibraryMarkdown,
   searchLibraryItems,
   shareLibraryItem,
   softDeleteLibraryItem,
+  updateLibrarySharePermission,
   uploadLibraryFile,
   updateLibraryItem,
 } from "../services/libraryService";
 
 const visibilitySchema = z.enum(["private", "team", "public"]);
 const itemStatusSchema = z.enum(["draft", "ready", "indexing", "archived", "failed"]);
-const permissionLevelSchema = z.enum(["read", "write", "owner"]);
-const subjectTypeSchema = z.enum(["user", "tenant_role"]);
+const permissionLevelSchema = z.enum(["read", "write", "delete", "owner"]);
+const sharePermissionLevelSchema = z.enum(["read", "write", "delete"]);
+const subjectTypeSchema = z.enum(["user", "tenant_role", "group"]);
 
 const sourceLinkSchema = z.object({
   linkType: z.string().min(1).max(64),
@@ -112,7 +120,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -143,7 +151,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -167,7 +175,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -200,7 +208,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -228,7 +236,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -298,7 +306,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -338,7 +346,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -350,7 +358,22 @@ export const libraryRouter = router({
         });
       }
 
-      return item;
+      // Include effective permissions for the requesting user
+      const effectivePermission = await getUserEffectivePermission(input.id, actor);
+      const level = effectivePermission.effectivePermissionLevel;
+      const rank = level === "owner" ? 4 : level === "delete" ? 3 : level === "write" ? 2 : level === "read" ? 1 : 0;
+
+      return {
+        ...item,
+        userPermissions: {
+          effectiveLevel: level,
+          sources: effectivePermission.sources,
+          canRead: rank >= 1,
+          canWrite: rank >= 2,
+          canDelete: rank >= 3,
+          isOwner: rank >= 4,
+        },
+      };
     }),
 
   updateItem: protectedProcedure
@@ -371,7 +394,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -419,7 +442,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -454,7 +477,7 @@ export const libraryRouter = router({
         itemId: z.number().int().positive(),
         subjectType: subjectTypeSchema,
         subjectId: z.string().min(1).max(64),
-        permissionLevel: permissionLevelSchema,
+        permissionLevel: sharePermissionLevelSchema,
         expiresAt: z.coerce.date().nullable().optional(),
       }),
     )
@@ -463,7 +486,7 @@ export const libraryRouter = router({
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
         userId: ctx.user.id,
-        tenantId: tenantIdResolved as any,
+        tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
 
@@ -490,6 +513,175 @@ export const libraryRouter = router({
         responsePayload: {
           success: true,
         },
+      });
+
+      return { success: true };
+    }),
+
+  // ── New procedures for ShareFile feature ──
+
+  removeShare: protectedProcedure
+    .input(
+      z.object({
+        itemId: z.number().int().positive(),
+        subjectType: subjectTypeSchema,
+        subjectId: z.string().min(1).max(64),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      await removeLibraryShare(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.removeShare",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.itemId,
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+        },
+        responsePayload: { success: true },
+      });
+
+      return { success: true };
+    }),
+
+  updateSharePermission: protectedProcedure
+    .input(
+      z.object({
+        itemId: z.number().int().positive(),
+        subjectType: subjectTypeSchema,
+        subjectId: z.string().min(1).max(64),
+        permissionLevel: sharePermissionLevelSchema,
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      await updateLibrarySharePermission(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.updateSharePermission",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.itemId,
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+          permissionLevel: input.permissionLevel,
+        },
+        responsePayload: { success: true },
+      });
+
+      return { success: true };
+    }),
+
+  getItemShares: protectedProcedure
+    .input(z.object({ itemId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      return getLibraryItemShares(input.itemId, actor);
+    }),
+
+  listTrash: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(100).default(50),
+        offset: z.number().int().min(0).default(0),
+      }).optional(),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      return listLibraryTrash(
+        { limit: input?.limit, offset: input?.offset },
+        actor,
+      );
+    }),
+
+  restoreFromTrash: protectedProcedure
+    .input(z.object({ itemId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      await restoreFromLibraryTrash(input.itemId, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.restoreFromTrash",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.itemId,
+        },
+        responsePayload: { success: true },
+      });
+
+      return { success: true };
+    }),
+
+  permanentDelete: protectedProcedure
+    .input(z.object({ itemId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      const result = await permanentDeleteLibraryItem(input.itemId, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.permanentDelete",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.itemId,
+          daysInTrash: result.daysInTrash,
+        },
+        responsePayload: { success: true },
       });
 
       return { success: true };

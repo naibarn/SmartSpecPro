@@ -4,6 +4,7 @@ const {
   mockCreateLibraryItem,
   mockGetLibraryItemById,
   mockGetLibraryMarkdownContent,
+  mockGetUserEffectivePermission,
   mockListLibraryDocuments,
   mockSaveLibraryMarkdown,
   mockSearchLibraryItems,
@@ -16,6 +17,7 @@ const {
   mockCreateLibraryItem: vi.fn(),
   mockGetLibraryItemById: vi.fn(),
   mockGetLibraryMarkdownContent: vi.fn(),
+  mockGetUserEffectivePermission: vi.fn(),
   mockListLibraryDocuments: vi.fn(),
   mockSaveLibraryMarkdown: vi.fn(),
   mockSearchLibraryItems: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock("../services/libraryService", () => ({
   createLibraryItem: mockCreateLibraryItem,
   getLibraryItemById: mockGetLibraryItemById,
   getLibraryMarkdownContent: mockGetLibraryMarkdownContent,
+  getUserEffectivePermission: mockGetUserEffectivePermission,
   listLibraryDocuments: mockListLibraryDocuments,
   saveLibraryMarkdown: mockSaveLibraryMarkdown,
   searchLibraryItems: mockSearchLibraryItems,
@@ -37,6 +40,14 @@ vi.mock("../services/libraryService", () => ({
   updateLibraryItem: mockUpdateLibraryItem,
   softDeleteLibraryItem: mockSoftDeleteLibraryItem,
   shareLibraryItem: mockShareLibraryItem,
+  LibraryMarkdownVersionConflictError: class extends Error {
+    currentUpdatedAt: Date;
+    constructor(msg: string, currentUpdatedAt: Date) {
+      super(msg);
+      this.name = "LibraryMarkdownVersionConflictError";
+      this.currentUpdatedAt = currentUpdatedAt;
+    }
+  },
 }));
 
 vi.mock("../services/auditLogger", () => ({
@@ -464,6 +475,32 @@ describe("libraryRouter.getItem", () => {
       }),
     ).rejects.toThrow("Library item not found");
   });
+
+  it("returns item with userPermissions when found", async () => {
+    mockGetLibraryItemById.mockResolvedValue({ id: 123, title: "Test" });
+    mockGetUserEffectivePermission.mockResolvedValue({
+      effectivePermissionLevel: "write",
+      sources: [{ type: "direct", permissionLevel: "write" }],
+    });
+
+    const fn = libraryRouter.getItem as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 4, role: "user", currentTenantId: 2 },
+        tenantId: 2,
+      },
+      input: { id: 123 },
+    });
+
+    expect(result.userPermissions).toEqual({
+      effectiveLevel: "write",
+      sources: [{ type: "direct", permissionLevel: "write" }],
+      canRead: true,
+      canWrite: true,
+      canDelete: false,
+      isOwner: false,
+    });
+  });
 });
 
 describe("libraryRouter.updateItem", () => {
@@ -512,4 +549,52 @@ describe("libraryRouter.shareItem", () => {
       expect.objectContaining({ userId: 4, tenantId: 2, role: "admin" }),
     );
   });
+});
+
+// ── New ShareFile procedures (section-05) ──
+
+describe("libraryRouter.removeShare", () => {
+  it.todo("removes share when actor has delete permission");
+  it.todo("rejects when actor has only read/write permission");
+  it.todo("throws NOT_FOUND for non-existent share");
+  it.todo("logs audit event on success");
+});
+
+describe("libraryRouter.updateSharePermission", () => {
+  it.todo("updates permission level when actor has manage permission");
+  it.todo("rejects when actor lacks delete/owner permission");
+  it.todo("throws NOT_FOUND for non-existent share");
+  it.todo("logs audit event on success");
+});
+
+describe("libraryRouter.getItemShares", () => {
+  it.todo("returns share list with resolved user names");
+  it.todo("returns share list with resolved group names");
+  it.todo("returns tenant_role shares with roleName");
+  it.todo("rejects when actor has no permission on item");
+});
+
+describe("libraryRouter.listTrash", () => {
+  it.todo("returns owner's deleted items with pagination");
+  it.todo("calculates daysInTrash and daysUntilPurge correctly");
+  it.todo("returns empty list when no trashed items");
+  it.todo("applies default limit and offset");
+});
+
+describe("libraryRouter.restoreFromTrash", () => {
+  it.todo("restores item when actor is the owner");
+  it.todo("restores item when actor is the deleter");
+  it.todo("rejects when actor is neither owner nor deleter");
+  it.todo("throws NOT_FOUND for non-trashed item");
+  it.todo("clears deletedAt and deletedBy, sets status to ready");
+  it.todo("logs audit event on success");
+});
+
+describe("libraryRouter.permanentDelete", () => {
+  it.todo("hard deletes item and cascades chunks + permissions for owner");
+  it.todo("allows admin to purge items 90+ days in trash");
+  it.todo("rejects non-owner non-admin permanent delete");
+  it.todo("rejects admin for items < 90 days in trash");
+  it.todo("throws NOT_FOUND for non-trashed item");
+  it.todo("logs audit event with daysInTrash");
 });

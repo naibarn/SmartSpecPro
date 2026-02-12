@@ -1,5 +1,6 @@
 import crypto from "crypto";
-import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { and, count, desc, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 
 import { getDb } from "../db";
 import { storagePut } from "../storage";
@@ -15,6 +16,7 @@ import {
   libraryLinks,
   libraryPermissions,
   userGroups,
+  users,
 } from "../../drizzle/schema";
 import { getUserGroups as getGroupsServiceUserGroups } from "./groupsService";
 import type { EffectivePermission, PermissionSource } from "../../shared/types/library";
@@ -1769,4 +1771,358 @@ export async function searchLibraryItems(
     has_more: offset + results.length < total,
     results,
   };
+}
+
+// ── ShareFile: Share Management ──
+
+export async function removeLibraryShare(
+  input: { itemId: number; subjectType: string; subjectId: string },
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<boolean> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  const permission = await getUserEffectivePermission(input.itemId, actor, db);
+  const level = permission.effectivePermissionLevel;
+  if (level !== "delete" && level !== "owner") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You need delete or owner permission to manage shares",
+    });
+  }
+
+  const deleted = await db
+    .delete(libraryPermissions)
+    .where(
+      and(
+        eq(libraryPermissions.libraryItemId, input.itemId),
+        eq(libraryPermissions.subjectType, input.subjectType),
+        eq(libraryPermissions.subjectId, input.subjectId),
+        eq(libraryPermissions.tenantId, actorTenantId),
+      ),
+    )
+    .returning({ id: libraryPermissions.id });
+
+  if (!deleted[0]) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Share not found",
+    });
+  }
+
+  return true;
+}
+
+export async function updateLibrarySharePermission(
+  input: { itemId: number; subjectType: string; subjectId: string; permissionLevel: string },
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<boolean> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  const permission = await getUserEffectivePermission(input.itemId, actor, db);
+  const level = permission.effectivePermissionLevel;
+  if (level !== "delete" && level !== "owner") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You need delete or owner permission to manage shares",
+    });
+  }
+
+  const updated = await db
+    .update(libraryPermissions)
+    .set({
+      permissionLevel: input.permissionLevel,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(libraryPermissions.libraryItemId, input.itemId),
+        eq(libraryPermissions.subjectType, input.subjectType),
+        eq(libraryPermissions.subjectId, input.subjectId),
+        eq(libraryPermissions.tenantId, actorTenantId),
+      ),
+    )
+    .returning({ id: libraryPermissions.id });
+
+  if (!updated[0]) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Share not found",
+    });
+  }
+
+  return true;
+}
+
+export interface LibraryShareEntry {
+  id: number;
+  subjectType: string;
+  subjectId: string;
+  permissionLevel: string;
+  expiresAt: Date | null;
+  userName?: string | null;
+  groupName?: string | null;
+  roleName?: string | null;
+}
+
+export async function getLibraryItemShares(
+  itemId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<{ shares: LibraryShareEntry[] }> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  const permission = await getUserEffectivePermission(itemId, actor, db);
+  if (!permission.effectivePermissionLevel) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You don't have access to this item",
+    });
+  }
+
+  const permRows = await db
+    .select({
+      id: libraryPermissions.id,
+      subjectType: libraryPermissions.subjectType,
+      subjectId: libraryPermissions.subjectId,
+      permissionLevel: libraryPermissions.permissionLevel,
+      expiresAt: libraryPermissions.expiresAt,
+    })
+    .from(libraryPermissions)
+    .where(
+      and(
+        eq(libraryPermissions.libraryItemId, itemId),
+        eq(libraryPermissions.tenantId, actorTenantId),
+      ),
+    );
+
+  // Resolve names for each share (N+1 — acceptable for now, batch in section-10)
+  const shares: LibraryShareEntry[] = await Promise.all(
+    permRows.map(async (p) => {
+      const base: LibraryShareEntry = {
+        id: p.id,
+        subjectType: p.subjectType,
+        subjectId: p.subjectId,
+        permissionLevel: p.permissionLevel,
+        expiresAt: p.expiresAt,
+      };
+
+      if (p.subjectType === "user") {
+        const userRows = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, Number(p.subjectId)))
+          .limit(1);
+        return { ...base, userName: userRows[0]?.name ?? null };
+      }
+
+      if (p.subjectType === "group") {
+        const groupRows = await db
+          .select({ name: userGroups.name })
+          .from(userGroups)
+          .where(and(eq(userGroups.id, Number(p.subjectId)), isNull(userGroups.deletedAt)))
+          .limit(1);
+        return { ...base, groupName: groupRows[0]?.name ?? "Deleted Group" };
+      }
+
+      // tenant_role
+      return { ...base, roleName: p.subjectId };
+    }),
+  );
+
+  return { shares };
+}
+
+// ── ShareFile: Trash Management ──
+
+const MS_PER_DAY = 86_400_000;
+const TRASH_PURGE_DAYS = 90;
+
+export interface TrashListItem {
+  id: number;
+  title: string;
+  itemType: string;
+  source: string;
+  thumbnailUrl: string | null;
+  deletedAt: Date | null;
+  deletedBy: number | null;
+  daysInTrash: number;
+  daysUntilPurge: number;
+}
+
+export async function listLibraryTrash(
+  input: { limit?: number; offset?: number },
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<{ items: TrashListItem[]; total: number }> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const limit = input.limit ?? 50;
+  const offset = input.offset ?? 0;
+
+  const whereCondition = and(
+    eq(libraryItems.tenantId, actorTenantId),
+    isNotNull(libraryItems.deletedAt),
+    or(
+      eq(libraryItems.ownerUserId, actor.userId),
+      eq(libraryItems.deletedBy, actor.userId),
+    ),
+  );
+
+  const [totalRow] = await db
+    .select({ total: count() })
+    .from(libraryItems)
+    .where(whereCondition);
+
+  const rows = await db
+    .select({
+      id: libraryItems.id,
+      title: libraryItems.title,
+      itemType: libraryItems.itemType,
+      source: libraryItems.source,
+      thumbnailUrl: libraryItems.thumbnailUrl,
+      deletedAt: libraryItems.deletedAt,
+      deletedBy: libraryItems.deletedBy,
+    })
+    .from(libraryItems)
+    .where(whereCondition)
+    .orderBy(desc(libraryItems.deletedAt))
+    .limit(limit)
+    .offset(offset);
+
+  const now = Date.now();
+  const items: TrashListItem[] = rows.map((r) => {
+    const deletedAtMs = r.deletedAt ? new Date(r.deletedAt).getTime() : now;
+    const daysInTrash = Math.floor((now - deletedAtMs) / MS_PER_DAY);
+    return {
+      ...r,
+      daysInTrash,
+      daysUntilPurge: Math.max(0, TRASH_PURGE_DAYS - daysInTrash),
+    };
+  });
+
+  return { items, total: Number(totalRow?.total ?? 0) };
+}
+
+export async function restoreFromLibraryTrash(
+  itemId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<boolean> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  return await db.transaction(async (tx) => {
+    const rows = await tx
+      .select({
+        id: libraryItems.id,
+        ownerUserId: libraryItems.ownerUserId,
+        deletedBy: libraryItems.deletedBy,
+      })
+      .from(libraryItems)
+      .where(
+        and(
+          eq(libraryItems.id, itemId),
+          eq(libraryItems.tenantId, actorTenantId),
+          isNotNull(libraryItems.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    const item = rows[0];
+    if (!item) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Item not found in trash",
+      });
+    }
+
+    if (item.ownerUserId !== actor.userId && item.deletedBy !== actor.userId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only the item owner or the person who deleted it can restore",
+      });
+    }
+
+    await tx
+      .update(libraryItems)
+      .set({
+        deletedAt: null,
+        deletedBy: null,
+        status: "ready",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(libraryItems.id, itemId),
+          eq(libraryItems.tenantId, actorTenantId),
+        ),
+      );
+
+    return true;
+  });
+}
+
+export async function permanentDeleteLibraryItem(
+  itemId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<{ daysInTrash: number }> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  const rows = await db
+    .select({
+      id: libraryItems.id,
+      ownerUserId: libraryItems.ownerUserId,
+      deletedAt: libraryItems.deletedAt,
+      sourceUrl: libraryItems.sourceUrl,
+      thumbnailUrl: libraryItems.thumbnailUrl,
+    })
+    .from(libraryItems)
+    .where(
+      and(
+        eq(libraryItems.id, itemId),
+        eq(libraryItems.tenantId, actorTenantId),
+        isNotNull(libraryItems.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  const item = rows[0];
+  if (!item) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Item not found in trash",
+    });
+  }
+
+  const isOwner = item.ownerUserId === actor.userId;
+  const daysInTrash = item.deletedAt
+    ? Math.floor((Date.now() - new Date(item.deletedAt).getTime()) / MS_PER_DAY)
+    : 0;
+  const isAdminWithExpired =
+    (actor.role === "admin" || actor.role === "domain_admin") && daysInTrash >= TRASH_PURGE_DAYS;
+
+  if (!isOwner && !isAdminWithExpired) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only the item owner can permanently delete, or admins for items 90+ days in trash",
+    });
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(libraryChunks).where(eq(libraryChunks.libraryItemId, itemId));
+    await tx.delete(libraryPermissions).where(eq(libraryPermissions.libraryItemId, itemId));
+    await tx.delete(libraryItems).where(eq(libraryItems.id, itemId));
+  });
+
+  // Note: Storage cleanup (sourceUrl/thumbnailUrl) not yet implemented.
+  // storageDelete does not exist yet — files remain in storage after DB purge.
+
+  return { daysInTrash };
 }
