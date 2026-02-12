@@ -44,6 +44,10 @@
     "section-06-trash-job": {
       "status": "complete",
       "commit_hash": "049206f"
+    },
+    "section-07-group-management-ui": {
+      "status": "complete",
+      "commit_hash": "c1b3757"
     }
   },
   "pre_commit": {

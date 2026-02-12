@@ -560,18 +560,46 @@ Before marking this section complete, verify:
 
 Implementer should complete in this order:
 
-1. [ ] Write all test stubs (3 test files)
-2. [ ] Implement PermissionBadge component (simplest, no external dependencies)
-3. [ ] Run PermissionBadge tests, verify all pass
-4. [ ] Implement ShareButton component
-5. [ ] Run ShareButton tests, verify all pass
-6. [ ] Implement ShareDialog component (most complex)
-7. [ ] Run ShareDialog tests, verify all pass
-8. [ ] Integrate ShareButton into DocumentPreviewPanel
+1. [x] Write all test stubs (3 test files)
+2. [x] Implement PermissionBadge component (simplest, no external dependencies)
+3. [x] Run PermissionBadge tests, verify all pass
+4. [x] Implement ShareButton component
+5. [x] Run ShareButton tests, verify all pass
+6. [x] Implement ShareDialog component (most complex)
+7. [x] Run ShareDialog tests, verify all pass
+8. [x] Integrate ShareButton into DocumentPreviewPanel
 9. [ ] Manual testing: Open DocumentPreviewPanel, click Share button, test all flows
 10. [ ] Accessibility audit: Test with keyboard navigation and screen reader
-11. [ ] Run full test suite: `cd apps/web && pnpm test`
-12. [ ] TypeScript type check: `cd apps/web && pnpm check`
+11. [x] Run full test suite: `cd apps/web && pnpm test`
+12. [x] TypeScript type check: `cd apps/web && pnpm check`
+
+## Implementation Notes (Actual vs Planned)
+
+### Files Created
+- `apps/web/client/src/components/library/PermissionBadge.tsx` - Permission level badge component
+- `apps/web/client/src/components/library/PermissionBadge.test.ts` - 7 tests (SSR-based)
+- `apps/web/client/src/components/library/ShareButton.tsx` - Share button with count badge
+- `apps/web/client/src/components/library/ShareButton.test.ts` - 6 tests (SSR-based)
+- `apps/web/client/src/components/library/ShareDialog.tsx` - Full sharing dialog
+- `apps/web/client/src/components/library/ShareDialog.test.ts` - 14 tests (SSR-based)
+
+### Files Modified
+- `apps/web/client/src/components/library/DocumentPreviewPanel.tsx` - Added ShareButton + ShareDialog integration
+
+### Deviations from Plan
+1. **Test files use `.test.ts` not `.test.tsx`**: Project convention uses SSR-based tests (`renderToStaticMarkup`) in node environment (no jsdom). Tests use `React.createElement()` instead of JSX.
+2. **`role="status"` removed from PermissionBadge**: Code review identified this as semantically incorrect for static labels. Using `aria-label` only.
+3. **`itemId` prop removed from ShareButton**: Not used by the component; removed after code review.
+4. **Remove share confirmation added**: `window.confirm()` dialog before removing shares (code review fix).
+5. **Error state added**: Shows error message when shares fail to load, disables Add button.
+6. **Groups loading state added**: Shows spinner while groups are loading.
+7. **Multi-source permission display deferred**: Backend `getLibraryItemShares` doesn't return `sources` field. Deferred to section-10.
+8. **Frontend permission check deferred**: Backend enforces authorization; frontend shows controls and handles FORBIDDEN errors via toast. Client-side permission gating requires additional data flow (user permissions).
+9. **`itemTitle` prop added to ShareDialog**: Shows document name in dialog title (minor addition).
+
+### Test Results
+- 27 tests total (7 + 6 + 14), all passing
+- 0 TypeScript errors
 
 ---
 
