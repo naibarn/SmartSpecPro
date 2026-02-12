@@ -40,6 +40,10 @@
     "section-05-library-router": {
       "status": "complete",
       "commit_hash": "55f2ce3"
+    },
+    "section-06-trash-job": {
+      "status": "complete",
+      "commit_hash": "049206f"
     }
   },
   "pre_commit": {
