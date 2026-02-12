@@ -29,6 +29,7 @@ import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
 import { initializeScheduler } from "../services/scheduler";
 import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
+import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { initializeQueues } from "../services/llmQueue";
 import { PostgresAdapter } from "../services/postgresAdapter";
@@ -334,6 +335,13 @@ async function main() {
     console.error("[Startup] Failed to initialize LLM queues:", error);
   }
 
+  // Initialize trash auto-purge job (daily at 2 AM)
+  try {
+    await initializeTrashPurgeJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize trash purge job:", error);
+  }
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -366,10 +374,12 @@ process.on("unhandledRejection", (reason, promise) => {
 
 // Graceful shutdown: flush audit logs and close queues
 process.on("SIGTERM", async () => {
+  await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await auditLogger.shutdown().catch(() => {});
 });
 process.on("SIGINT", async () => {
+  await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await auditLogger.shutdown().catch(() => {});
 });

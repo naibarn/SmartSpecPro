@@ -2067,6 +2067,22 @@ export async function restoreFromLibraryTrash(
   });
 }
 
+/**
+ * Cascade-delete all child records for a library item, then delete the item itself.
+ * Shared by permanentDeleteLibraryItem (user-initiated) and auto-purge job (system).
+ * Order: links -> chunks -> index jobs -> permissions -> item
+ */
+export async function cascadeDeleteLibraryItem(
+  tx: Parameters<Parameters<DbClient["transaction"]>[0]>[0],
+  itemId: number,
+): Promise<void> {
+  await tx.delete(libraryLinks).where(eq(libraryLinks.libraryItemId, itemId));
+  await tx.delete(libraryChunks).where(eq(libraryChunks.libraryItemId, itemId));
+  await tx.delete(libraryIndexJobs).where(eq(libraryIndexJobs.libraryItemId, itemId));
+  await tx.delete(libraryPermissions).where(eq(libraryPermissions.libraryItemId, itemId));
+  await tx.delete(libraryItems).where(eq(libraryItems.id, itemId));
+}
+
 export async function permanentDeleteLibraryItem(
   itemId: number,
   actor: LibraryActor,
@@ -2116,9 +2132,7 @@ export async function permanentDeleteLibraryItem(
   }
 
   await db.transaction(async (tx) => {
-    await tx.delete(libraryChunks).where(eq(libraryChunks.libraryItemId, itemId));
-    await tx.delete(libraryPermissions).where(eq(libraryPermissions.libraryItemId, itemId));
-    await tx.delete(libraryItems).where(eq(libraryItems.id, itemId));
+    await cascadeDeleteLibraryItem(tx, itemId);
   });
 
   // Note: Storage cleanup (sourceUrl/thumbnailUrl) not yet implemented.

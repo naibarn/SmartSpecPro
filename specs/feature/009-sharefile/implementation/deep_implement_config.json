@@ -32,6 +32,14 @@
     "section-03-library-service": {
       "status": "complete",
       "commit_hash": "a076d70"
+    },
+    "section-04-groups-router": {
+      "status": "complete",
+      "commit_hash": "b4b4d54"
+    },
+    "section-05-library-router": {
+      "status": "complete",
+      "commit_hash": "55f2ce3"
     }
   },
   "pre_commit": {
