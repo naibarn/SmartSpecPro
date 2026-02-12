@@ -281,7 +281,8 @@ class SDKServer {
     const userInfo = {
       openId: session.openId,
       name: session.name,
-      email: session.openId.includes('@') ? session.openId : null
+      email: session.openId.includes('@') ? session.openId : null,
+      loginMethod: null as string | null,
     };
 
     const signedInAt = new Date();

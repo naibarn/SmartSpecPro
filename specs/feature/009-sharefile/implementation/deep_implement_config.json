@@ -28,6 +28,10 @@
     "section-02-groups-service": {
       "status": "complete",
       "commit_hash": "92de1c3"
+    },
+    "section-03-library-service": {
+      "status": "complete",
+      "commit_hash": "a076d70"
     }
   },
   "pre_commit": {

@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(npx vitest:*)"
+    ]
+  },
   "enabledPlugins": {
     "context7@claude-plugins-official": true,
     "coderabbit@claude-plugins-official": true,

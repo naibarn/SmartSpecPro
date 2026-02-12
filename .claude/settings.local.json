@@ -378,7 +378,13 @@
       "Bash(__NEW_LINE_cf37bd6a8bf8276b__ echo \"\")",
       "Bash(__NEW_LINE_0d0cf6e34c3c03f1__ echo \"\")",
       "Bash(__NEW_LINE_45c00a8fd3c686db__ cat << 'EOF'\n\n════════════════════════════════════════════════════════════\nตอนนี้ https://docker.smartaihub.app ควรใช้งานได้แล้ว! ✅\n════════════════════════════════════════════════════════════\n\n📝 หมายเหตุ:\nถ้า Nginx container ถูก restart ใหม่ ต้อง reload config:\n  docker exec smartspec-nginx-dev nginx -s reload\n\nหรือ restart ผ่าน service manager:\n  ./run-services.sh restart\n\nEOF)",
-      "Bash(systemctl:*)"
+      "Bash(systemctl:*)",
+      "Bash(claude task list:*)",
+      "Bash(npm run drizzle:generate:*)",
+      "Bash(npm run:*)",
+      "Bash(npx drizzle-kit generate:*)",
+      "Bash(npx drizzle-kit migrate:*)",
+      "Bash(git reset:*)"
     ]
   }
 }

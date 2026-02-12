@@ -400,24 +400,52 @@ This section is complete when:
 6. Cross-tenant isolation is enforced in all procedures
 7. TypeScript types are correctly inferred (no `any` types)
 
+## Implementation Notes (Actual)
+
+### Files Created/Modified
+
+**New Files:**
+- `apps/web/server/routers/groups.ts` — 14-procedure tRPC router (286 lines)
+- `apps/web/server/routers/groups.test.ts` — 53 test stubs (full tests in section-11)
+
+**Modified Files:**
+- `apps/web/server/routers.ts` — Registered `groupsRouter` as `groups` in appRouter
+- `apps/web/server/services/groupsService.ts` — Added 4 new service functions
+
+### Service Layer Additions (code review driven)
+
+During code review, 3 router procedures were found to bypass the service layer with raw DB access. Per user decision, proper service functions were added:
+
+1. **`updateUserGroup(groupId, input, actor)`** — Group metadata update with cache invalidation
+2. **`updateGroupMemberRole(groupId, userId, role, actor)`** — Member role changes with owner protection and active-only filter
+3. **`joinOpenGroup(groupId, actor)`** — Self-join for open groups without faking actor identity
+4. **`requestJoinGroup(groupId, actor)`** — Pending membership creation with proper status checks
+
+### Deviations from Plan
+
+1. **`listTenantUsers` not implemented** — Frontend will use existing `follows.searchUsers` endpoint
+2. **`get` procedure does not include pending join requests for admins** — Deferred to UI implementation (section-07)
+3. **Audit logging uses console.log** — Basic structured logging per user decision; can be upgraded to JSONL audit logger later
+4. **`iconUrl` requires valid URL format** — Added `.url()` Zod validation (stricter than plan's string-only)
+5. **Error handling simplified** — Service layer already throws `TRPCError`, so router delegates directly without string-matching
+
+### Test Count
+- 53 `.todo()` test stubs covering all procedures
+- 12 existing groupsService unit tests pass
+
 ## Known Issues & Future Enhancements
 
 **Limitations:**
 - No bulk operations (e.g., add multiple members at once)
 - No group templates (pre-defined group types)
 - No transfer ownership endpoint (owner remains owner forever in MVP)
+- `get` procedure fetches all user groups to find one (performance optimization deferred to section-10)
 
 **Post-MVP:**
 - Add `transferOwnership` mutation
 - Add bulk member operations
 - Add group activity log endpoint
-
-## Additional Notes
-
-- Follow existing router patterns in `apps/web/server/routers/library.ts` and `apps/web/server/routers/chat.ts` for consistency
-- Use Drizzle ORM patterns consistent with existing codebase
-- Ensure all timestamps use PostgreSQL's NOW() function (not JavaScript Date)
-- Test with realistic data: 50+ groups, 100+ members per group
+- Upgrade audit logging to JSONL audit logger
 
 ---
 

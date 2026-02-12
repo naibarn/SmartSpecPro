@@ -55,6 +55,7 @@ import { approvalsRouter } from "./routers/approvals";
 import { libraryRouter } from "./routers/library";
 import { libraryOpsRouter } from "./routers/libraryOps";
 import { factoryRouter } from "./routers/factory";
+import { groupsRouter } from "./routers/groups";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1210,6 +1211,9 @@ export const appRouter = router({
 
   // Library operations (admin)
   libraryOps: libraryOpsRouter,
+
+  // Groups management (ShareFile feature)
+  groups: groupsRouter,
 
   // Factory workflow/settings API
   factory: factoryRouter,
