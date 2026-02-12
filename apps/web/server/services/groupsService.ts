@@ -649,6 +649,263 @@ export async function rejectJoinRequest(
   return { success: true };
 }
 
+export interface UpdateUserGroupInput {
+  name?: string;
+  description?: string | null;
+  visibility?: GroupVisibility;
+  joinPolicy?: GroupJoinPolicy;
+  iconUrl?: string | null;
+}
+
+export async function updateUserGroup(
+  groupId: number,
+  input: UpdateUserGroupInput,
+  actor: GroupsActor,
+  dbClient?: DbClient,
+) {
+  const db = await resolveDb(dbClient);
+  const group = await requireAdminOrOwner(db, groupId, actor);
+  const tenantId = normalizeTenantId(group.tenantId);
+
+  const updatePayload: Record<string, unknown> = { updatedAt: new Date() };
+
+  if (input.name !== undefined) {
+    updatePayload.name = validateGroupName(input.name);
+  }
+  if (input.description !== undefined) {
+    updatePayload.description = validateGroupDescription(input.description);
+  }
+  if (input.visibility !== undefined || input.joinPolicy !== undefined) {
+    const currentSettings = (group.settings ?? { visibility: "private", joinPolicy: "invite_only" }) as {
+      visibility: GroupVisibility;
+      joinPolicy: GroupJoinPolicy;
+    };
+    updatePayload.settings = {
+      ...currentSettings,
+      ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+      ...(input.joinPolicy !== undefined ? { joinPolicy: input.joinPolicy } : {}),
+    };
+  }
+  if (input.iconUrl !== undefined) {
+    updatePayload.iconUrl = input.iconUrl;
+  }
+
+  await db
+    .update(userGroups)
+    .set(updatePayload)
+    .where(and(eq(userGroups.id, groupId), eq(userGroups.tenantId, tenantId)));
+
+  // Invalidate cache for all group members
+  const memberRows = await db
+    .select({ userId: groupMembers.userId })
+    .from(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")));
+
+  await invalidateManyUsersGroupsCache(
+    memberRows.map((r) => r.userId),
+    tenantId,
+  );
+
+  return { success: true };
+}
+
+export async function updateGroupMemberRole(
+  groupId: number,
+  userId: number,
+  role: GroupMemberRole,
+  actor: GroupsActor,
+  dbClient?: DbClient,
+) {
+  const db = await resolveDb(dbClient);
+  const group = await requireAdminOrOwner(db, groupId, actor);
+  const tenantId = normalizeTenantId(group.tenantId);
+
+  // Prevent changing the owner's role
+  if (userId === group.ownerId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Cannot change the group owner's role",
+    });
+  }
+
+  const updated = await db
+    .update(groupMembers)
+    .set({ role })
+    .where(
+      and(
+        eq(groupMembers.groupId, groupId),
+        eq(groupMembers.userId, userId),
+        eq(groupMembers.status, "active"),
+      ),
+    )
+    .returning({ id: groupMembers.id });
+
+  if (!updated[0]) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Active member not found in group",
+    });
+  }
+
+  await invalidateUserGroupsCache(userId, tenantId);
+  return { success: true };
+}
+
+export async function joinOpenGroup(
+  groupId: number,
+  actor: GroupsActor,
+  dbClient?: DbClient,
+) {
+  const db = await resolveDb(dbClient);
+  const tenantId = normalizeTenantId(actor.tenantId);
+  const group = await getGroupForTenant(db, groupId, tenantId);
+  if (!group) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Group not found",
+    });
+  }
+
+  const settings = (group.settings ?? {}) as { joinPolicy?: string };
+  const joinPolicy = settings.joinPolicy ?? "invite_only";
+
+  if (joinPolicy !== "open") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        joinPolicy === "request_to_join"
+          ? "This group requires a join request. Use requestJoin instead."
+          : "This group is invite-only",
+    });
+  }
+
+  // Check member count
+  const activeMemberCountRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")));
+
+  if (Number(activeMemberCountRows[0]?.count ?? 0) >= MAX_GROUP_MEMBERS) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `Maximum ${MAX_GROUP_MEMBERS} members per group`,
+    });
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    const existingRows = await tx
+      .select()
+      .from(groupMembers)
+      .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, actor.userId)))
+      .limit(1);
+
+    const existing = existingRows[0];
+    if (existing?.status === "active") {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "You are already a member of this group",
+      });
+    }
+
+    if (existing) {
+      await tx
+        .update(groupMembers)
+        .set({ role: "member", status: "active", joinedAt: now, removedAt: null })
+        .where(eq(groupMembers.id, existing.id));
+    } else {
+      await tx.insert(groupMembers).values({
+        groupId,
+        userId: actor.userId,
+        role: "member",
+        addedBy: null,
+        status: "active",
+        joinedAt: now,
+      });
+    }
+
+    await tx
+      .update(userGroups)
+      .set({ memberCount: sql`${userGroups.memberCount} + 1`, updatedAt: now })
+      .where(eq(userGroups.id, groupId));
+  });
+
+  await invalidateUserGroupsCache(actor.userId, tenantId);
+  return { success: true };
+}
+
+export async function requestJoinGroup(
+  groupId: number,
+  actor: GroupsActor,
+  dbClient?: DbClient,
+) {
+  const db = await resolveDb(dbClient);
+  const tenantId = normalizeTenantId(actor.tenantId);
+  const group = await getGroupForTenant(db, groupId, tenantId);
+  if (!group) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Group not found",
+    });
+  }
+
+  const settings = (group.settings ?? {}) as { joinPolicy?: string };
+  const joinPolicy = settings.joinPolicy ?? "invite_only";
+
+  if (joinPolicy === "invite_only") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This group is invite-only",
+    });
+  }
+  if (joinPolicy === "open") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This group is open. Use join instead of requestJoin.",
+    });
+  }
+
+  // Check existing membership
+  const existingRows = await db
+    .select()
+    .from(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, actor.userId)))
+    .limit(1);
+
+  const existing = existingRows[0];
+  if (existing?.status === "active") {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "You are already a member of this group",
+    });
+  }
+  if (existing?.status === "pending") {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "You already have a pending join request",
+    });
+  }
+
+  // Re-activate removed membership as pending, or create new
+  if (existing) {
+    await db
+      .update(groupMembers)
+      .set({ status: "pending", role: "member", joinedAt: new Date(), removedAt: null })
+      .where(eq(groupMembers.id, existing.id));
+  } else {
+    await db.insert(groupMembers).values({
+      groupId,
+      userId: actor.userId,
+      role: "member",
+      addedBy: null,
+      status: "pending",
+      joinedAt: new Date(),
+    });
+  }
+
+  return { success: true };
+}
+
 export async function searchPublicGroups(
   input: SearchPublicGroupsInput,
   actor: GroupsActor,
