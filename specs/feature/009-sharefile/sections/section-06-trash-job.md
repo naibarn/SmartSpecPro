@@ -565,4 +565,40 @@ This section **depends on** section-01-database-schema being completed first:
 
 ---
 
+## Implementation Notes (Actual)
+
+### Deviations from Plan
+
+1. **No storage/vector cleanup**: `storageDelete` and `vectorDbClient` do not exist in the codebase. Storage and vector cleanup are deferred until those services are implemented. The `sourceUrl`/`thumbnailUrl` fields are no longer selected (not needed without storage cleanup).
+
+2. **Shared cascade helper**: Created `cascadeDeleteLibraryItem(tx, itemId)` in `libraryService.ts` — a shared helper used by both this job and `permanentDeleteLibraryItem()`. This eliminates code duplication identified in code review. The helper deletes: libraryLinks → libraryChunks → libraryIndexJobs → libraryPermissions → libraryItems (covers all 4 FK child tables, not just 2 as in the original plan).
+
+3. **Batch processing added**: Added `BATCH_SIZE = 100` with a while-loop to prevent unbounded memory consumption. Items are fetched in batches of 100 and processed sequentially. This was flagged as HIGH in code review.
+
+4. **`upsertJobScheduler` instead of `queue.add()`**: Switched to `queue.upsertJobScheduler()` matching the pattern in `scheduler.ts`. This is idempotent and avoids duplicate scheduled entries across deployments.
+
+5. **Audit log `userId: null`**: Changed from `userId: 0` (magic value) to `userId: null` for system-initiated actions, per `AuditLogEntry` type which allows `number | null`.
+
+6. **Event type `library_mutation`**: Plan specified `trash_auto_purge` but `AuditEventType` union doesn't include it. Used existing `library_mutation` type.
+
+7. **Lazy IORedis connection**: Followed the pattern from `scheduler.ts` and `telegramService.ts` with lazy-init IORedis, `maxRetriesPerRequest: null`, and `enableReadyCheck: false`.
+
+8. **No worker rate limiter**: Plan specified `limiter: { max: 1, duration: 60000 }` but `concurrency: 1` is sufficient since this is a daily cron job.
+
+9. **Console logging**: Used `console.log`/`console.error` matching existing patterns in `scheduler.ts` rather than structured logger.
+
+### Files Created/Modified
+
+| File | Action | Description |
+|------|--------|-------------|
+| `apps/web/server/jobs/purgeOldTrashItems.ts` | NEW | BullMQ job: queue, worker, executeTrashPurge, shutdown |
+| `apps/web/server/jobs/purgeOldTrashItems.test.ts` | NEW | 1 test + 13 todo stubs |
+| `apps/web/server/_core/index.ts` | MODIFIED | Added job init + shutdown handlers |
+| `apps/web/server/services/libraryService.ts` | MODIFIED | Added `cascadeDeleteLibraryItem()` helper, refactored `permanentDeleteLibraryItem` |
+
+### Test Results
+
+- 1 passed, 13 todo
+- TypeScript: passes
+
 **End of Section 06**
