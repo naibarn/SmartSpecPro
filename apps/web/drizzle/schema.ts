@@ -1,4 +1,5 @@
 import { integer, pgEnum, pgTable, text, timestamp, varchar, json, boolean, numeric, serial, uniqueIndex, index, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Enums
@@ -698,6 +699,81 @@ export const tenants = pgTable("tenants", {
 
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = typeof tenants.$inferInsert;
+
+/**
+ * User Groups - Custom groups for file sharing and collaboration
+ */
+export const userGroups = pgTable("user_groups", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 })
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 128 }).notNull(),
+  description: text("description"),
+  ownerId: integer("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  iconUrl: text("icon_url"),
+  settings: json("settings").$type<{
+    visibility: "private" | "public";
+    joinPolicy: "invite_only" | "request_to_join" | "open";
+  }>().notNull().default(sql`'{"visibility":"private","joinPolicy":"invite_only"}'::json`),
+  memberCount: integer("member_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (t) => [
+  // Partial unique index - allows recreating deleted group names (namespace collision fix)
+  uniqueIndex("user_groups_tenant_name_unique")
+    .on(t.tenantId, t.name)
+    .where(sql`deleted_at IS NULL`),
+
+  // Partial indexes for soft-delete performance
+  index("user_groups_tenant_idx")
+    .on(t.tenantId)
+    .where(sql`deleted_at IS NULL`),
+  index("user_groups_owner_idx")
+    .on(t.ownerId)
+    .where(sql`deleted_at IS NULL`),
+  index("user_groups_visibility_idx")
+    .on(t.tenantId, sql`(settings->>'visibility')`)
+    .where(sql`deleted_at IS NULL`),
+]);
+
+export type UserGroup = typeof userGroups.$inferSelect;
+export type InsertUserGroup = typeof userGroups.$inferInsert;
+
+/**
+ * Group Members - User membership in groups
+ */
+export const groupMembers = pgTable("group_members", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id")
+    .notNull()
+    .references(() => userGroups.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 32 }).notNull().default("member"), // "admin" | "member"
+  addedBy: integer("added_by").references(() => users.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 32 }).notNull().default("active"), // "active" | "pending" | "removed"
+  joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+}, (t) => [
+  // One membership per user per group
+  uniqueIndex("group_members_group_user_unique").on(t.groupId, t.userId),
+
+  // Partial indexes for active memberships only (huge performance gain)
+  index("group_members_group_active_idx")
+    .on(t.groupId)
+    .where(sql`status = 'active'`),
+  index("group_members_user_active_idx")
+    .on(t.userId)
+    .where(sql`status = 'active'`),
+]);
+
+export type GroupMember = typeof groupMembers.$inferSelect;
+export type InsertGroupMember = typeof groupMembers.$inferInsert;
 
 /**
  * Theme configuration type (shared between tenants and presets)
@@ -1439,6 +1515,10 @@ export const libraryItems = pgTable("library_items", {
   sourceUrl: text("source_url"),
   thumbnailUrl: text("thumbnail_url"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+
+  // Track who deleted the file (for trash UI)
+  deletedBy: integer("deleted_by").references(() => users.id, { onDelete: "set null" }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -1501,6 +1581,11 @@ export const libraryPermissions = pgTable("library_permissions", {
 }, (t) => [
   uniqueIndex("library_permissions_subject_unique").on(t.libraryItemId, t.subjectType, t.subjectId),
   index("library_permissions_tenant_subject_idx").on(t.tenantId, t.subjectType, t.subjectId),
+
+  // Optimize group permission lookups
+  index("library_permissions_group_idx")
+    .on(t.subjectId, t.subjectType)
+    .where(sql`subject_type = 'group'`),
 ]);
 
 export type LibraryPermission = typeof libraryPermissions.$inferSelect;
