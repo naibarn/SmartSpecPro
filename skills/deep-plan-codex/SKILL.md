@@ -260,40 +260,44 @@ Use `multi_tool_use.parallel` automatically when operations are independent and 
 - If uncertain whether tasks are independent, treat as risky and run sequentially.
 - If parallel execution causes contention or inconsistent findings, rerun sequentially and log rationale in `<planning_dir>/decision-log.md`.
 
-### 6) Research Decision (Mandatory Baseline)
+### 6) Mandatory Codebase Recon (Before Plan Writing)
 
 Read `references/research-protocol.md`.
 
-Planning must always perform research before plan writing.
+Before any planning artifacts are written, always run repository research for impacted areas:
+- existing architecture and module boundaries
+- touched routers/services/components and integration touchpoints
+- existing tests and coverage gaps in impacted paths
+- database schema/table dependencies and migration risk
+- tenant attribution, permission checks, and security controls in current code
 
-Mandatory baseline research:
-- codebase structure and architecture patterns
-- affected modules/services and integration touchpoints
-- testing setup and current coverage in impacted areas
-- schema/table dependencies and data flow for impacted features
-- existing tenant/security constraints in touched paths
+Execution rules:
+- Use `multi_tool_use.parallel` for independent read-only discovery tasks.
+- Keep all file writes sequential.
+- If destructive or data-loss risk is detected, mark it explicitly.
 
-Additional research (decision policy applies):
-- targeted web research for uncertain standards, security hardening, migration patterns, or framework best practices
+Write findings to:
+- `<planning_dir>/research-notes.md` (section: `Codebase Recon`)
 
-If the user requests fast-track planning, keep baseline research mandatory and reduce only optional web research scope.
+### 7) Mandatory Web Research Topic Selection + Execution
 
-### 7) Execute Research
+After step 6, derive a focused list of web research topics from:
+- spec scope
+- codebase recon findings
+- known uncertainty/risk areas (security, migration, compatibility, performance, UX)
 
-If codebase research selected:
-- inspect repository structure, existing services, schemas, and tests
-- summarize findings
+Then present a concise multi-select prompt to user with numbered options (single-level list only):
+- allow selecting multiple topics
+- allow `apply_all`
+- allow `skip` when user wants no additional web research
 
-If web research selected:
-- run web research and summarize sources
+Required behavior:
+- Do not skip topic proposal; always show candidate topics first.
+- If user selects any topic, run web research and capture sources with short rationale per topic.
+- If user selects `skip`, continue with codebase findings only and record that decision.
 
-Execution guidance:
-- Use `multi_tool_use.parallel` for independent read-only tasks.
-- Keep all file writes sequential and centralized in parent flow.
-- If research signals migration or data-risk, explicitly flag this in research output.
-
-Write combined output to:
-- `<planning_dir>/research-notes.md`
+Write/append output to:
+- `<planning_dir>/research-notes.md` (section: `Web Research`)
 
 ### 8) Detailed Interview
 
