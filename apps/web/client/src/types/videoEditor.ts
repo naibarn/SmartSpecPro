@@ -211,13 +211,18 @@ export interface SilentRegion {
   startTime: number;         // Start time in seconds
   endTime: number;           // End time in seconds
   duration: number;          // Duration in seconds
+  adjustedStartTime: number; // start + softeningBuffer
+  adjustedEndTime: number;   // end - softeningBuffer
+  adjustedDuration: number;  // may be 0 if skipped
   selected: boolean;         // User can toggle selection to remove
   averageDb: number;         // Average dB level in this region
+  skipped: boolean;          // true if too short after buffer
 }
 
 export interface SilenceDetectionConfig {
   threshold: number;         // dB threshold for silence (e.g., -40)
   minDuration: number;       // Minimum silence duration to detect (seconds, e.g., 0.5)
+  softeningBuffer: number;   // Buffer in seconds to add/subtract at region edges (default 0.2)
   enabled: boolean;          // Whether silence detection is active
   trackIds: string[];        // Which tracks to analyze
 }
@@ -227,6 +232,34 @@ export interface SilenceDetectionResult {
   totalSilenceDuration: number;
   totalActiveDuration: number;
   analysisComplete: boolean;
+}
+
+export type AnalysisStage =
+  | 'idle'
+  | 'preparing'
+  | 'scanning'
+  | 'detecting'
+  | 'applying_buffer'
+  | 'done'
+  | 'error';
+
+/**
+ * Reference interface for the Silence Detection Dialog's local state.
+ * NOT used as a single useState<SilenceDetectionDialogState>() -- each
+ * field is managed by its own useState hook. This exists as a type
+ * contract / documentation for what state the dialog manages.
+ */
+export interface SilenceDetectionDialogState {
+  isOpen: boolean;
+  config: SilenceDetectionConfig;
+  regions: SilentRegion[];
+  analysisComplete: boolean;
+  isAnalyzing: boolean;
+  analysisStage: AnalysisStage;
+  playbackTime: number;
+  timelineZoom: number;
+  skipSilencePreview: boolean;
+  applyToAllTracks: boolean;
 }
 
 // ========================================
@@ -504,6 +537,40 @@ export function validateProject(project: VideoEditorProject): { valid: boolean; 
     valid: errors.length === 0,
     errors
   };
+}
+
+/**
+ * Apply a softening buffer to silence regions.
+ * For each region: adjustedStart = start + buffer, adjustedEnd = end - buffer.
+ * If the buffer makes the region too short (adjustedEnd <= adjustedStart),
+ * the region is marked as skipped with adjustedDuration = 0.
+ */
+export function applyBufferToRegions(
+  regions: SilentRegion[],
+  bufferSeconds: number
+): SilentRegion[] {
+  const buf = Math.max(0, bufferSeconds);
+  return regions.map((region) => {
+    const adjustedStartTime = Math.max(0, region.startTime + buf);
+    const adjustedEndTime = region.endTime - buf;
+    const skipped = adjustedEndTime <= adjustedStartTime;
+    return {
+      ...region,
+      adjustedStartTime,
+      adjustedEndTime,
+      adjustedDuration: skipped ? 0 : adjustedEndTime - adjustedStartTime,
+      skipped,
+    };
+  });
+}
+
+/**
+ * Convert a dB value to a percentage for display purposes.
+ * Maps the range [-60dB, -20dB] to [0%, 100%].
+ * Values outside this range are NOT clamped.
+ */
+export function dbToPercent(db: number): number {
+  return ((db + 60) / 40) * 100;
 }
 
 // ========================================
