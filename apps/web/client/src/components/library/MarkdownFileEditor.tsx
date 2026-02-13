@@ -2,6 +2,9 @@ import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Bold,
   Code2,
+  Edit3,
+  Eye,
+  Hash,
   Heading1,
   Heading2,
   Heading3,
@@ -27,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import CodeMirrorEditor, { useLineNumbersToggle } from "./CodeMirrorEditor";
 
 interface MarkdownFileEditorProps {
   value: string;
@@ -63,6 +67,8 @@ export default function MarkdownFileEditor({
   const [imageFilter, setImageFilter] = useState("");
   const [editorCollapsed, setEditorCollapsed] = useState(false);
   const [previewCollapsed, setPreviewCollapsed] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false); // Start in view mode
+  const { showLineNumbers, toggleLineNumbers } = useLineNumbersToggle(true);
 
   const availableImages = useMemo(() => {
     const normalizedFilter = imageFilter.trim().toLowerCase();
@@ -228,28 +234,62 @@ export default function MarkdownFileEditor({
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-xs text-muted-foreground">
-            {updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleString()}` : "Markdown file"}
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-muted-foreground">
+              {updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleString()}` : "Markdown file"}
+            </div>
+            {!isEditMode && (
+              <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                View Mode
+              </div>
+            )}
+            {isEditMode && (
+              <div className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                Edit Mode
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant={isEditMode ? "outline" : "default"}
               size="sm"
-              onClick={() => importInputRef.current?.click()}
+              onClick={() => setIsEditMode(!isEditMode)}
             >
-              <Import className="mr-1 h-4 w-4" />
-              Import .md/.txt
+              {isEditMode ? (
+                <>
+                  <Eye className="mr-1 h-4 w-4" />
+                  View Mode
+                </>
+              ) : (
+                <>
+                  <Edit3 className="mr-1 h-4 w-4" />
+                  Edit Mode
+                </>
+              )}
             </Button>
-            <Button
-              size="sm"
-              onClick={onSave}
-              disabled={disabled || isSaving}
-              className="gap-2"
-            >
-              <Save className="h-4 w-4" />
-              {isSaving ? "Saving..." : "Save to Library"}
-            </Button>
+            {isEditMode && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  <Import className="mr-1 h-4 w-4" />
+                  Import .md/.txt
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={onSave}
+                  disabled={disabled || isSaving}
+                  className="gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  {isSaving ? "Saving..." : "Save to Library"}
+                </Button>
+              </>
+            )}
           </div>
         </div>
         <input
@@ -266,68 +306,104 @@ export default function MarkdownFileEditor({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-2 rounded-md border bg-muted/20 p-2.5">
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 1" onClick={() => insertHeading(1)}><Heading1 className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 2" onClick={() => insertHeading(2)}><Heading2 className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 3" onClick={() => insertHeading(3)}><Heading3 className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 4" onClick={() => insertHeading(4)}><Heading4 className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Bold" onClick={() => wrapSelection("**", "**", "bold text")}><Bold className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Italic" onClick={() => wrapSelection("*", "*", "italic text")}><Italic className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Underline" onClick={() => wrapSelection("<u>", "</u>", "underline text")}><Underline className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Link" onClick={insertLink}><Link2 className="h-5 w-5" /></Button>
-          <Button type="button" size="sm" variant="outline" className="h-10 px-3" onClick={clearInlineFormatting}>Normal</Button>
-          <Popover open={imagePickerOpen} onOpenChange={setImagePickerOpen}>
-            <PopoverTrigger asChild>
-              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Insert image from library">
-                <ImagePlus className="h-5 w-5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[360px] p-2" align="start">
-              <div className="space-y-2">
-                <Input
-                  placeholder="Search image in library..."
-                  value={imageFilter}
-                  onChange={(event) => setImageFilter(event.target.value)}
-                />
-                <ScrollArea className="h-[240px] rounded-md border">
-                  <div className="space-y-1 p-2">
-                    {availableImages.length ? availableImages.map((image) => (
-                      <button
-                        key={image.id}
-                        type="button"
-                        className="w-full rounded-md border px-2 py-1.5 text-left text-xs hover:bg-muted"
-                        onClick={() => insertImageFromLibrary(image)}
-                      >
-                        <div className="truncate font-medium">{image.title}</div>
-                        <div className="truncate text-muted-foreground">{image.source_url}</div>
-                      </button>
-                    )) : (
-                      <div className="px-2 py-6 text-center text-xs text-muted-foreground">
-                        No image found in library.
+        {isEditMode ? (
+          <>
+            <div className="flex flex-wrap gap-2 rounded-md border bg-muted/20 p-2.5">
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 1" onClick={() => insertHeading(1)}><Heading1 className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 2" onClick={() => insertHeading(2)}><Heading2 className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 3" onClick={() => insertHeading(3)}><Heading3 className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 4" onClick={() => insertHeading(4)}><Heading4 className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Bold" onClick={() => wrapSelection("**", "**", "bold text")}><Bold className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Italic" onClick={() => wrapSelection("*", "*", "italic text")}><Italic className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Underline" onClick={() => wrapSelection("<u>", "</u>", "underline text")}><Underline className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Link" onClick={insertLink}><Link2 className="h-5 w-5" /></Button>
+              <Button type="button" size="sm" variant="outline" className="h-10 px-3" onClick={clearInlineFormatting}>Normal</Button>
+              <Popover open={imagePickerOpen} onOpenChange={setImagePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Insert image from library">
+                    <ImagePlus className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[360px] p-2" align="start">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Search image in library..."
+                      value={imageFilter}
+                      onChange={(event) => setImageFilter(event.target.value)}
+                    />
+                    <ScrollArea className="h-[240px] rounded-md border">
+                      <div className="space-y-1 p-2">
+                        {availableImages.length ? availableImages.map((image) => (
+                          <button
+                            key={image.id}
+                            type="button"
+                            className="w-full rounded-md border px-2 py-1.5 text-left text-xs hover:bg-muted"
+                            onClick={() => insertImageFromLibrary(image)}
+                          >
+                            <div className="truncate font-medium">{image.title}</div>
+                            <div className="truncate text-muted-foreground">{image.source_url}</div>
+                          </button>
+                        )) : (
+                          <div className="px-2 py-6 text-center text-xs text-muted-foreground">
+                            No image found in library.
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </ScrollArea>
                   </div>
-                </ScrollArea>
+                </PopoverContent>
+              </Popover>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Bulleted list" onClick={() => prefixLines("- ", "list item")}><List className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Numbered list" onClick={() => prefixLines("1. ", "list item")}><ListOrdered className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Quote" onClick={() => prefixLines("> ", "quote")}><Quote className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Inline code" onClick={() => wrapSelection("`", "`", "code")}><Code2 className="h-5 w-5" /></Button>
+              <Button type="button" size="sm" variant="outline" className="h-10 px-3" onClick={() => wrapSelection("```text\n", "\n```", "code block")}>Code Block</Button>
+              <div className="ml-auto flex items-center gap-2 border-l pl-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant={showLineNumbers ? "default" : "outline"}
+                  className="h-10 w-10"
+                  title={showLineNumbers ? "Hide line numbers" : "Show line numbers"}
+                  onClick={toggleLineNumbers}
+                >
+                  <Hash className="h-5 w-5" />
+                </Button>
               </div>
-            </PopoverContent>
-          </Popover>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Bulleted list" onClick={() => prefixLines("- ", "list item")}><List className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Numbered list" onClick={() => prefixLines("1. ", "list item")}><ListOrdered className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Quote" onClick={() => prefixLines("> ", "quote")}><Quote className="h-5 w-5" /></Button>
-          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Inline code" onClick={() => wrapSelection("`", "`", "code")}><Code2 className="h-5 w-5" /></Button>
-          <Button type="button" size="sm" variant="outline" className="h-10 px-3" onClick={() => wrapSelection("```text\n", "\n```", "code block")}>Code Block</Button>
-        </div>
+            </div>
 
-        <div className="rounded-md border bg-background p-3">
-          <Textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            className={`${editorMinHeightClass} font-mono text-sm`}
-            placeholder="Write markdown content..."
-            disabled={disabled}
-          />
-        </div>
+            <CodeMirrorEditor
+              value={value}
+              onChange={onChange}
+              fileExtension="md"
+              showLineNumbers={showLineNumbers}
+              height={fullHeight ? "70vh" : "auto"}
+              minHeight={fullHeight ? "70vh" : "320px"}
+              placeholder="Write markdown content..."
+              disabled={disabled}
+            />
+          </>
+        ) : (
+          <div className={`${editorMinHeightClass} rounded-md border bg-gradient-to-br from-slate-50 via-white to-sky-50/30 p-6 shadow-inner`}>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-medium text-muted-foreground">Markdown Preview</div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditMode(true)}
+              >
+                <Edit3 className="mr-1 h-4 w-4" />
+                Edit
+              </Button>
+            </div>
+            <ScrollArea className={`${editorMinHeightClass} pr-4`}>
+              <SafeMarkdown className="md-preview prose max-w-none">
+                {value || "_Empty markdown file_"}
+              </SafeMarkdown>
+            </ScrollArea>
+          </div>
+        )}
       </div>
     );
   }
@@ -424,6 +500,18 @@ export default function MarkdownFileEditor({
           <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Quote" onClick={() => prefixLines("> ", "quote")}><Quote className="h-5 w-5" /></Button>
           <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Inline code" onClick={() => wrapSelection("`", "`", "code")}><Code2 className="h-5 w-5" /></Button>
           <Button type="button" size="sm" variant="outline" className="h-10 px-3" onClick={() => wrapSelection("```text\n", "\n```", "code block")}>Code Block</Button>
+          <div className="ml-auto flex items-center gap-2 border-l pl-2">
+            <Button
+              type="button"
+              size="icon"
+              variant={showLineNumbers ? "default" : "outline"}
+              className="h-10 w-10"
+              title={showLineNumbers ? "Hide line numbers" : "Show line numbers"}
+              onClick={toggleLineNumbers}
+            >
+              <Hash className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       ) : null}
 
@@ -451,11 +539,13 @@ export default function MarkdownFileEditor({
           </Button>
         </div>
         {!editorCollapsed ? (
-          <Textarea
-            ref={textareaRef}
+          <CodeMirrorEditor
             value={value}
-            onChange={(event) => onChange(event.target.value)}
-            className={`${editorMinHeightClass} font-mono text-sm`}
+            onChange={onChange}
+            fileExtension="md"
+            showLineNumbers={showLineNumbers}
+            height="auto"
+            minHeight={fullHeight ? "70vh" : "320px"}
             placeholder="Write markdown content..."
             disabled={disabled}
           />
@@ -472,12 +562,14 @@ export default function MarkdownFileEditor({
 
       <div className="hidden items-stretch md:flex">
         {!editorCollapsed ? (
-          <div className="relative min-w-0 flex-1 rounded-md border bg-background p-3">
-            <Textarea
-              ref={textareaRef}
+          <div className="relative min-w-0 flex-1">
+            <CodeMirrorEditor
               value={value}
-              onChange={(event) => onChange(event.target.value)}
-              className={`${editorMinHeightClass} font-mono text-sm`}
+              onChange={onChange}
+              fileExtension="md"
+              showLineNumbers={showLineNumbers}
+              height="auto"
+              minHeight={fullHeight ? "70vh" : "320px"}
               placeholder="Write markdown content..."
               disabled={disabled}
             />

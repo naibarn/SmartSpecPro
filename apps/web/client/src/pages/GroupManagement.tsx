@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Globe, Loader2, Plus, Search, Users } from "lucide-react";
+import { ChevronLeft, Globe, Loader2, Plus, Search, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,71 +77,94 @@ export default function GroupManagement() {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="h-7 w-7 text-muted-foreground" />
-          <h1 className="text-2xl font-bold">Groups</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLocation("/groups/discover")}
-          >
-            <Globe className="mr-1 h-4 w-4" />
-            Discover
-          </Button>
-          <Button size="sm" onClick={() => setIsCreateOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" />
-            Create Group
-          </Button>
-        </div>
-      </div>
-
-      <Tabs
-        value={selectedTab}
-        onValueChange={(v) => setSelectedTab(v as TabScope)}
-      >
-        <TabsList>
-          <TabsTrigger value="my_groups">My Groups</TabsTrigger>
-          <TabsTrigger value="member_of">Member Of</TabsTrigger>
-          <TabsTrigger value="public">Public Groups</TabsTrigger>
-        </TabsList>
-
-        {selectedTab === "public" && (
-          <div className="mt-4 max-w-sm">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search public groups..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
+        <div className="px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/dashboard")}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" />
+                Back
+              </Button>
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">Groups</h1>
+                  <p className="text-xs text-muted-foreground">
+                    Manage & discover groups
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation("/groups/discover")}
+              >
+                <Globe className="mr-1 h-4 w-4" />
+                Discover
+              </Button>
+              <Button size="sm" onClick={() => setIsCreateOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                Create Group
+              </Button>
             </div>
           </div>
-        )}
+        </div>
+      </header>
 
-        <TabsContent value={selectedTab} className="mt-4">
-          {currentLoading ? (
-            <GroupGridSkeleton />
-          ) : !currentGroups || currentGroups.length === 0 ? (
-            <EmptyState message={getEmptyMessage()} />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {currentGroups.map((group) => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  onClick={() => setLocation(`/groups/${group.id}`)}
+      <main className="px-4 py-6 sm:px-6 lg:px-8">
+        <Tabs
+          value={selectedTab}
+          onValueChange={(v) => setSelectedTab(v as TabScope)}
+        >
+          <TabsList>
+            <TabsTrigger value="my_groups">My Groups</TabsTrigger>
+            <TabsTrigger value="member_of">Member Of</TabsTrigger>
+            <TabsTrigger value="public">Public Groups</TabsTrigger>
+          </TabsList>
+
+          {selectedTab === "public" && (
+            <div className="mt-4 max-w-sm">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search public groups..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
                 />
-              ))}
+              </div>
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+
+          <TabsContent value={selectedTab} className="mt-4">
+            {currentLoading ? (
+              <GroupGridSkeleton />
+            ) : !currentGroups || currentGroups.length === 0 ? (
+              <EmptyState message={getEmptyMessage()} />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {currentGroups.map((group) => (
+                  <GroupCard
+                    key={group.id}
+                    group={group}
+                    onClick={() => setLocation(`/groups/${group.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </main>
 
       <CreateGroupDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
     </div>

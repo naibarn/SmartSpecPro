@@ -19,6 +19,12 @@ import type {
   SilenceDetectionConfig,
   AnalysisStage,
 } from '../../types/videoEditor';
+import {
+  generateId,
+  formatTime,
+  dbToPercent,
+  applyBufferToRegions,
+} from '../../types/videoEditor';
 import { createMediaJobClient } from '../../services/mediaJobClient';
 
 interface AssetWithWaveform {
@@ -40,18 +46,28 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   onExportToTimeline,
   onClose,
 }) => {
-  // Detection config
-  const [config, setConfig] = useState<SilenceDetectionConfig>({
-    threshold: -40,
-    minDuration: 0.5,
-    softeningBuffer: 0.2,
-    enabled: true,
-    trackIds: [],
-  });
+  // Slider state
+  const [threshold, setThreshold] = useState(-40);
+  const [minDuration, setMinDuration] = useState(0.5);
+  const [softeningBuffer, setSofteningBuffer] = useState(0.2);
+
+  // Track selection
+  const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
+
+  // Analysis state
   const [regions, setRegions] = useState<SilentRegion[]>([]);
+  const [rawRegions, setRawRegions] = useState<SilentRegion[]>([]); // Store raw regions for re-buffering
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>('idle');
+  const [totalSilence, setTotalSilence] = useState(0);
+  const [totalActive, setTotalActive] = useState(0);
+  const [projectDuration, setProjectDuration] = useState(0); // Store at analysis time to prevent re-renders
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const stageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // UI state
   const [playbackTime, setPlaybackTime] = useState(0);
   const [timelineZoom, setTimelineZoom] = useState(100);
   const [skipSilencePreview, setSkipSilencePreview] = useState(false);
@@ -112,6 +128,169 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     };
     fetchWaveform();
   }, [project]);
+
+  // Abort controller and stage timers cleanup
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      // Clear stage timers to prevent setState on unmounted component
+      stageTimersRef.current.forEach(clearTimeout);
+      stageTimersRef.current = [];
+    };
+  }, []);
+
+  // Auto-select first audio track
+  useEffect(() => {
+    const audioTracks = project.timeline.tracks.filter(
+      (t) => t.type === 'audio' && t.clips.length > 0
+    );
+    if (audioTracks.length > 0 && selectedTrackIds.length === 0) {
+      setSelectedTrackIds([audioTracks[0].id]);
+    }
+  }, [project, selectedTrackIds.length]);
+
+  // Re-apply buffer when it changes after analysis
+  // NOTE: Uses rawRegions.length (not regions.length) in dependency array to avoid infinite loop.
+  // We update 'regions' inside this effect, so depending on 'regions' would retrigger the effect.
+  // rawRegions only changes when a new analysis completes, which is the correct trigger.
+  useEffect(() => {
+    if (analysisComplete && rawRegions.length > 0) {
+      const reBuffered = applyBufferToRegions(rawRegions, softeningBuffer);
+      setRegions(reBuffered);
+
+      // Recalculate stats
+      const silenceDuration = reBuffered
+        .filter((r) => !r.skipped)
+        .reduce((sum, r) => sum + r.adjustedDuration, 0);
+      setTotalSilence(silenceDuration);
+      setTotalActive(Math.max(0, projectDuration - silenceDuration));
+    }
+  }, [softeningBuffer, analysisComplete, rawRegions.length, projectDuration]);
+
+  // Get audio tracks for UI
+  const audioTracks = useMemo(() =>
+    project.timeline.tracks.filter((t) => t.type === 'audio' && t.clips.length > 0),
+    [project]
+  );
+
+  // Handle analyze button
+  const handleAutoDetect = async () => {
+    if (selectedTrackIds.length === 0) return;
+
+    // Filter out invalid track IDs (tracks that no longer exist)
+    const validTrackIds = selectedTrackIds.filter((id) =>
+      audioTracks.some((track) => track.id === id)
+    );
+    if (validTrackIds.length === 0) {
+      setAnalysisError('Selected tracks no longer exist. Please select a valid track.');
+      return;
+    }
+
+    // Create abort controller
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // Reset state
+    setIsAnalyzing(true);
+    setAnalysisStage('preparing');
+    setAnalysisComplete(false);
+    setAnalysisError(null);
+    setRegions([]);
+    setRawRegions([]);
+
+    // Stage timers for visual feedback
+    stageTimersRef.current = [];
+    stageTimersRef.current.push(setTimeout(() => setAnalysisStage('scanning'), 1000));
+    stageTimersRef.current.push(setTimeout(() => setAnalysisStage('detecting'), 3000));
+
+    try {
+      // Find asset URI
+      const firstTrack = project.timeline.tracks.find((t) => t.id === validTrackIds[0]);
+      if (!firstTrack || firstTrack.clips.length === 0) {
+        throw new Error('No clips found in selected track');
+      }
+
+      const firstClip = firstTrack.clips[0];
+      const asset = project.assets[firstClip.assetId];
+      if (!asset || !asset.path) {
+        throw new Error('Asset not found');
+      }
+
+      setAnalysisStage('detecting');
+
+      // Call backend
+      const client = await createMediaJobClient();
+      const result = await client.detectDeadAir(asset.path, {
+        thresholdDb: threshold,
+        minSilenceMs: minDuration * 1000,
+      });
+
+      // Check if aborted
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      setAnalysisStage('applying_buffer');
+
+      // Map segments to regions
+      const silenceSegments = result.derived?.silenceSegments || [];
+      const rawRegions: SilentRegion[] = silenceSegments.map((seg: any) => ({
+        id: generateId('region'),
+        startTime: seg.startMs / 1000,
+        endTime: seg.endMs / 1000,
+        duration: (seg.endMs - seg.startMs) / 1000,
+        adjustedStartTime: 0,
+        adjustedEndTime: 0,
+        adjustedDuration: 0,
+        averageDb: seg.averageDb || threshold,
+        trackId: firstTrack.id,
+        selected: true,
+        skipped: false,
+      }));
+
+      // Store raw regions for re-buffering
+      setRawRegions(rawRegions);
+
+      // Apply buffer
+      const bufferedRegions = applyBufferToRegions(rawRegions, softeningBuffer);
+
+      // Calculate stats
+      const silenceDuration = bufferedRegions
+        .filter((r) => !r.skipped)
+        .reduce((sum, r) => sum + r.adjustedDuration, 0);
+      const duration = project.settings.duration || 0;
+      const activeDuration = duration > 0 ? Math.max(0, duration - silenceDuration) : 0;
+
+      setRegions(bufferedRegions);
+      setTotalSilence(silenceDuration);
+      setTotalActive(activeDuration);
+      setProjectDuration(duration); // Store for later re-calculations
+      setAnalysisComplete(true);
+      setAnalysisStage('done');
+    } catch (err) {
+      // Check abort signal even in catch block to handle race condition:
+      // If network error occurs and then user closes dialog, ignore the error
+      if (abortController.signal.aborted) {
+        return;
+      }
+      console.error('Analysis failed:', err);
+      setAnalysisStage('error');
+      setAnalysisError(err instanceof Error ? err.message : 'Analysis failed - try again or adjust settings');
+    } finally {
+      stageTimersRef.current.forEach(clearTimeout);
+      stageTimersRef.current = [];
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Track toggle handler
+  const handleTrackToggle = (trackId: string) => {
+    setSelectedTrackIds((prev) =>
+      prev.includes(trackId)
+        ? prev.filter((id) => id !== trackId)
+        : [...prev, trackId]
+    );
+  };
 
   const selectedRegionCount = regions.filter((r) => r.selected && !r.skipped).length;
   const exportDisabled = !analysisComplete || selectedRegionCount === 0;
@@ -279,6 +458,175 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               color: #888;
               font-size: 13px;
             }
+            /* Settings Panel Styles */
+            .settings-panel {
+              display: flex;
+              flex-direction: column;
+              gap: 24px;
+            }
+            .settings-heading {
+              font-size: 16px;
+              font-weight: 600;
+              color: #fff;
+              margin: 0;
+            }
+            .control-group {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+            .control-label {
+              display: flex;
+              justify-content: space-between;
+              font-size: 14px;
+              color: #ccc;
+            }
+            .control-value {
+              color: #fff;
+              font-weight: 500;
+            }
+            .slider-container {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .slider-endpoint {
+              font-size: 12px;
+              color: #888;
+              min-width: 30px;
+              text-align: center;
+            }
+            .slider {
+              flex: 1;
+              height: 4px;
+              border-radius: 2px;
+              background: #444;
+              outline: none;
+              -webkit-appearance: none;
+              cursor: pointer;
+            }
+            .slider::-webkit-slider-thumb {
+              -webkit-appearance: none;
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              background: #0078d4;
+              cursor: pointer;
+            }
+            .slider::-moz-range-thumb {
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              background: #0078d4;
+              cursor: pointer;
+              border: none;
+            }
+            .slider:disabled {
+              opacity: 0.5;
+              cursor: not-allowed;
+            }
+            .slider:disabled::-webkit-slider-thumb {
+              cursor: not-allowed;
+            }
+            .slider:disabled::-moz-range-thumb {
+              cursor: not-allowed;
+            }
+            .control-help {
+              font-size: 12px;
+              color: #888;
+              font-style: italic;
+            }
+            .track-selection {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+            .track-selection-heading {
+              font-size: 14px;
+              font-weight: 600;
+              color: #fff;
+              margin: 0;
+            }
+            .track-checkbox-label {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 14px;
+              color: #ccc;
+              cursor: pointer;
+            }
+            .track-checkbox-label input {
+              cursor: pointer;
+            }
+            .track-checkbox-label input:disabled {
+              cursor: not-allowed;
+            }
+            .track-empty-state {
+              font-size: 14px;
+              color: #888;
+              font-style: italic;
+            }
+            .analyze-btn {
+              width: 100%;
+              padding: 12px 20px;
+              background: #0078d4;
+              color: #fff;
+              border: none;
+              border-radius: 4px;
+              font-size: 14px;
+              font-weight: 500;
+              cursor: pointer;
+            }
+            .analyze-btn:hover:not(:disabled) {
+              background: #006cbd;
+            }
+            .analyze-btn:disabled {
+              background: #444;
+              color: #888;
+              cursor: not-allowed;
+            }
+            .stats-section {
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+            }
+            .stats-heading {
+              font-size: 14px;
+              font-weight: 600;
+              color: #fff;
+              margin: 0;
+            }
+            .stats-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 8px;
+            }
+            .stat-card {
+              background: #1e1e1e;
+              border: 1px solid #444;
+              border-radius: 4px;
+              padding: 12px;
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+            }
+            .stat-label {
+              font-size: 12px;
+              color: #888;
+            }
+            .stat-value {
+              font-size: 16px;
+              font-weight: 600;
+              color: #fff;
+            }
+            .analysis-error {
+              padding: 12px;
+              background: rgba(255, 0, 0, 0.1);
+              border: 1px solid rgba(255, 0, 0, 0.3);
+              border-radius: 4px;
+              color: #ff6b6b;
+              font-size: 14px;
+            }
             @media (max-width: 1279px) {
               .silence-dialog-main {
                 flex-direction: column;
@@ -292,6 +640,9 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               .silence-dialog-preview {
                 height: 300px;
                 border-bottom: 1px solid #444;
+              }
+              .stats-grid {
+                grid-template-columns: 1fr;
               }
             }
           `}</style>
@@ -322,8 +673,170 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               Preview Player (Section 07)
             </div>
             <div className="silence-dialog-settings" data-testid="silence-dialog-settings">
-              {/* Settings panel placeholder (section 03) */}
-              Settings Panel (Section 03)
+              <div className="settings-panel">
+                <h3 className="settings-heading">Detection Settings</h3>
+
+                {/* Volume Threshold Slider */}
+                <div className="control-group">
+                  <label className="control-label">
+                    <span>Volume Threshold</span>
+                    <span
+                      className="control-value"
+                      data-testid="threshold-label"
+                    >
+                      {threshold} dB ({Math.round(dbToPercent(threshold))}%)
+                    </span>
+                  </label>
+                  <div className="slider-container">
+                    <span className="slider-endpoint">-60</span>
+                    <input
+                      type="range"
+                      min="-60"
+                      max="-20"
+                      step="1"
+                      value={threshold}
+                      onChange={(e) => setThreshold(Number(e.target.value))}
+                      disabled={isAnalyzing}
+                      className="slider"
+                      data-testid="threshold-slider"
+                    />
+                    <span className="slider-endpoint">-20</span>
+                  </div>
+                </div>
+
+                {/* Minimum Duration Slider */}
+                <div className="control-group">
+                  <label className="control-label">
+                    <span>Minimum Duration</span>
+                    <span className="control-value" data-testid="minDuration-label">
+                      {minDuration.toFixed(1)}s
+                    </span>
+                  </label>
+                  <div className="slider-container">
+                    <span className="slider-endpoint">0.1</span>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="5.0"
+                      step="0.1"
+                      value={minDuration}
+                      onChange={(e) => setMinDuration(Number(e.target.value))}
+                      disabled={isAnalyzing}
+                      className="slider"
+                      data-testid="minDuration-slider"
+                    />
+                    <span className="slider-endpoint">5.0</span>
+                  </div>
+                </div>
+
+                {/* Softening Buffer Slider */}
+                <div className="control-group">
+                  <label className="control-label">
+                    <span>Softening Buffer</span>
+                    <span className="control-value" data-testid="softeningBuffer-label">
+                      {softeningBuffer.toFixed(2)}s
+                    </span>
+                  </label>
+                  <div className="slider-container">
+                    <span className="slider-endpoint">0.0</span>
+                    <input
+                      type="range"
+                      min="0.0"
+                      max="2.0"
+                      step="0.05"
+                      value={softeningBuffer}
+                      onChange={(e) => setSofteningBuffer(Number(e.target.value))}
+                      disabled={isAnalyzing}
+                      className="slider"
+                      data-testid="softeningBuffer-slider"
+                    />
+                    <span className="slider-endpoint">2.0</span>
+                  </div>
+                  <div className="control-help">
+                    Adds padding around cuts for smoother transitions
+                  </div>
+                </div>
+
+                {/* Track Selection */}
+                <div className="track-selection">
+                  <h4 className="track-selection-heading">Audio Tracks</h4>
+                  {audioTracks.length === 0 ? (
+                    <div className="track-empty-state">
+                      No audio tracks with clips found
+                    </div>
+                  ) : (
+                    audioTracks.map((track) => (
+                      <label key={track.id} className="track-checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={selectedTrackIds.includes(track.id)}
+                          onChange={() => handleTrackToggle(track.id)}
+                          disabled={isAnalyzing}
+                        />
+                        <span>{track.name || track.id}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+
+                {/* Analyze Button */}
+                <button
+                  className="analyze-btn"
+                  onClick={handleAutoDetect}
+                  disabled={isAnalyzing || selectedTrackIds.length === 0 || audioTracks.length === 0}
+                  data-testid="analyze-btn"
+                >
+                  {isAnalyzing
+                    ? analysisStage === 'preparing'
+                      ? 'Preparing...'
+                      : analysisStage === 'scanning'
+                      ? 'Scanning audio...'
+                      : analysisStage === 'detecting'
+                      ? 'Detecting silence...'
+                      : analysisStage === 'applying_buffer'
+                      ? 'Applying buffer...'
+                      : 'Analyzing...'
+                    : 'Analyze'}
+                </button>
+
+                {/* Stats Display */}
+                {analysisComplete && !analysisError && (
+                  <div className="stats-section" data-testid="stats-section">
+                    <h4 className="stats-heading">Analysis Results</h4>
+                    <div className="stats-grid">
+                      <div className="stat-card">
+                        <div className="stat-label">Total Silence</div>
+                        <div className="stat-value" data-testid="total-silence">
+                          {formatTime(totalSilence)}
+                        </div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-label">Active Audio</div>
+                        <div className="stat-value" data-testid="active-audio">
+                          {formatTime(totalActive)}
+                        </div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-label">Selected</div>
+                        <div className="stat-value" data-testid="selected-count">
+                          {selectedRegionCount} ({formatTime(
+                            regions
+                              .filter((r) => r.selected && !r.skipped)
+                              .reduce((sum, r) => sum + r.adjustedDuration, 0)
+                          )})
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Display */}
+                {analysisError && (
+                  <div className="analysis-error" data-testid="analysis-error">
+                    {analysisError}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
