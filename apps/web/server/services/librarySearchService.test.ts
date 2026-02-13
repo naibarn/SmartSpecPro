@@ -17,6 +17,14 @@ vi.mock("../db", () => ({
   getDb: mockGetDb,
 }));
 
+vi.mock("./groupsService", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("./groupsService")>();
+  return {
+    ...orig,
+    getUserGroups: vi.fn().mockResolvedValue([]),
+  };
+});
+
 import { searchLibraryItems } from "./libraryService";
 
 function makeSelectWithOrder(rows: any[]) {

@@ -25,6 +25,14 @@ vi.mock("../storage", () => ({
   storagePut: mockStoragePut,
 }));
 
+vi.mock("./groupsService", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("./groupsService")>();
+  return {
+    ...orig,
+    getUserGroups: vi.fn().mockResolvedValue([]),
+  };
+});
+
 import {
   LibraryUrlValidationError,
   canReadLibraryItem,
@@ -441,4 +449,80 @@ describe("libraryService - Pre-requisite Refactoring", () => {
   it.todo("tenantRoleMatches (renamed from groupMatches) filters correctly");
   it.todo("no references to old hasGroupShare function remain");
   it.todo("no references to old groupMatches function remain");
+});
+
+// Section 10: Caching & Performance Tests
+describe("libraryService - Batch Permission Checks", () => {
+  describe("getLibraryItemShares batching", () => {
+    it.todo("resolves user and group names in batch queries instead of N+1");
+  });
+
+  describe("listLibraryDocuments group permissions", () => {
+    it.todo("includes group permissions in batch permission query");
+  });
+
+  describe("searchLibraryItems group permissions", () => {
+    it.todo("passes group IDs to getPermissionLevelForItem for correct resolution");
+  });
+});
+
+describe("libraryService - Permission Resolution", () => {
+  // Test getPermissionLevelForItem with group support
+  // These functions are internal but tested via canReadLibraryItem
+
+  describe("canReadLibraryItem", () => {
+    it("allows admin to read any item in tenant", () => {
+      const result = canReadLibraryItem(
+        { tenantId: "t1", ownerUserId: 1, visibility: "private" },
+        { userId: 99, tenantId: "t1", role: "admin" },
+        null,
+      );
+      expect(result).toBe(true);
+    });
+
+    it("allows owner to read own item", () => {
+      const result = canReadLibraryItem(
+        { tenantId: "t1", ownerUserId: 42, visibility: "private" },
+        { userId: 42, tenantId: "t1", role: "user" },
+        null,
+      );
+      expect(result).toBe(true);
+    });
+
+    it("allows reading with permission level from group share", () => {
+      const result = canReadLibraryItem(
+        { tenantId: "t1", ownerUserId: 1, visibility: "private" },
+        { userId: 99, tenantId: "t1", role: "user" },
+        "read",
+      );
+      expect(result).toBe(true);
+    });
+
+    it("rejects cross-tenant access", () => {
+      const result = canReadLibraryItem(
+        { tenantId: "t1", ownerUserId: 1, visibility: "private" },
+        { userId: 99, tenantId: "t2", role: "admin" },
+        "owner",
+      );
+      expect(result).toBe(false);
+    });
+
+    it("allows reading public items without permission", () => {
+      const result = canReadLibraryItem(
+        { tenantId: "t1", ownerUserId: 1, visibility: "public" },
+        { userId: 99, tenantId: "t1", role: "user" },
+        null,
+      );
+      expect(result).toBe(true);
+    });
+
+    it("allows reading team items without permission", () => {
+      const result = canReadLibraryItem(
+        { tenantId: "t1", ownerUserId: 1, visibility: "team" },
+        { userId: 99, tenantId: "t1", role: "user" },
+        null,
+      );
+      expect(result).toBe(true);
+    });
+  });
 });
