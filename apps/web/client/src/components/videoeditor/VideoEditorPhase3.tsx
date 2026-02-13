@@ -44,8 +44,10 @@ import {
   addClipToTrack,
   findTrackByType,
   calculateProjectDuration,
-  validateProject
+  validateProject,
+  formatTime,
 } from '../../types/videoEditor';
+import { processExportToTimeline } from './silenceExportUtils';
 
 export const VideoEditorPhase3: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -891,6 +893,62 @@ export const VideoEditorPhase3: React.FC = () => {
 
     alert('Dead air removed and video combined successfully!');
   }, [addToHistory]);
+
+  // Export to Timeline Handler (Section 08)
+  // Note: showToast, setProject, setShowSilenceDialog, setSelectedClipId, setSelectedClipIds
+  // are not in dependency array because they are stable (imported or from useState)
+  const handleSilenceExportToTimeline = useCallback(
+    (selectedRegions: SilentRegion[], applyToAllTracks: boolean) => {
+      // Filter valid regions
+      const validRegions = selectedRegions.filter(
+        (r) => r.selected && !r.skipped,
+      );
+
+      if (validRegions.length === 0) {
+        return;
+      }
+
+      // Determine analyzed track IDs from regions
+      const analyzedTrackIds = Array.from(
+        new Set(validRegions.map((r) => r.trackId)),
+      );
+
+      // Process export via utility function
+      const newProject = processExportToTimeline(
+        project,
+        validRegions,
+        applyToAllTracks,
+        analyzedTrackIds,
+      );
+
+      // Update project state
+      setProject(newProject);
+
+      // Add to undo history
+      addToHistory(newProject);
+
+      // Close dialog
+      setShowSilenceDialog(false);
+
+      // Reset selected clips
+      setSelectedClipId(null);
+      setSelectedClipIds([]);
+
+      // Show success toast
+      const removedCount = validRegions.length;
+      const totalRemovedDuration = validRegions.reduce(
+        (sum, r) => sum + r.adjustedDuration,
+        0,
+      );
+
+      showToast(
+        `Removed ${removedCount} silent region${removedCount !== 1 ? 's' : ''} (${formatTime(totalRemovedDuration)})`,
+        'success',
+        4000,
+      );
+    },
+    [project, addToHistory],
+  );
 
   // ========================================
   // Text Clip Management
