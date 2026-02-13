@@ -347,21 +347,36 @@ if (isLoading) {
 
 ## Implementation Checklist
 
-- [ ] Create TrashPanel.tsx with component structure
-- [ ] Implement listTrash query with tRPC
-- [ ] Implement restoreFromTrash mutation with error handling
-- [ ] Implement permanentDelete mutation with confirmation dialog
-- [ ] Implement relative date display logic
-- [ ] Implement days-until-purge calculation
-- [ ] Implement warning badge for < 7 days remaining
-- [ ] Implement "Deleted by" user name display
-- [ ] Implement empty state
-- [ ] Add TrashPanel as 4th tab in DocumentManagement
-- [ ] Add ARIA attributes for accessibility
-- [ ] Write all test stubs from TrashPanel.test.tsx
-- [ ] Run tests and verify all pass
-- [ ] Test keyboard navigation
-- [ ] Test screen reader compatibility
+- [x] Create TrashPanel.tsx with component structure
+- [x] Implement listTrash query with tRPC
+- [x] Implement restoreFromTrash mutation with error handling
+- [x] Implement permanentDelete mutation with AlertDialog confirmation
+- [x] Implement relative date display logic (formatDeleteInfo)
+- [x] Implement days-until-purge calculation (backend-computed)
+- [x] Implement warning badge for < 7 days remaining (bg-red-100)
+- [ ] Implement "Deleted by" user name display (DEFERRED: needs backend username population)
+- [x] Implement empty state
+- [x] Add TrashPanel as 4th tab in DocumentManagement (via DocumentLibraryTabs + scope routing)
+- [x] Add ARIA attributes for accessibility
+- [x] Write 21 SSR tests (TrashPanel.test.ts)
+- [x] Run tests and verify all pass (21/21)
+- [ ] Test keyboard navigation (deferred to section-11)
+- [ ] Test screen reader compatibility (deferred to section-11)
+
+## Implementation Notes
+
+### Actual Files Modified/Created
+- `apps/web/client/src/components/library/TrashPanel.tsx` — Main trash panel component (EXISTING, updated with `import React` and code review fixes)
+- `apps/web/client/src/components/library/TrashPanel.test.ts` — 21 SSR tests using renderToStaticMarkup
+- `apps/web/client/src/components/library/DocumentLibraryTabs.tsx` — Already had 4-column grid with Trash tab (pre-existing)
+- `apps/web/client/src/pages/DocumentManagement.tsx` — Already had TrashPanel integration (pre-existing), added listScope mapping and query disabling for trash mode
+
+### Deviations from Plan
+1. **AlertDialog instead of window.confirm**: Component uses Radix AlertDialog for both single-item delete and empty-trash confirmations (better UX than window.confirm)
+2. **"Deleted by" display deferred**: Backend `listTrash` returns `deletedBy` as userId (number), not username. Needs backend enhancement to populate name.
+3. **Test approach**: Uses `.test.ts` with SSR `renderToStaticMarkup` instead of `.test.tsx` with `@testing-library/react` (project doesn't have jsdom environment)
+4. **Empty trash uses Promise.allSettled**: Code review fix — reports partial failure count instead of failing silently
+5. **Fixed dangling separator**: Code review fix — separator only renders when daysUntilPurge >= 7
 
 ## Validation
 
