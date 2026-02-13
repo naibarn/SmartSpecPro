@@ -1113,7 +1113,8 @@ export async function searchPublicGroups(
   ];
 
   if (query) {
-    const pattern = `%${query}%`;
+    const escaped = query.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    const pattern = `%${escaped}%`;
     conditions.push(or(
       ilike(userGroups.name, pattern),
       ilike(userGroups.description, pattern),

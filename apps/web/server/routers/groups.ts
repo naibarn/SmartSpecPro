@@ -28,7 +28,10 @@ const createGroupSchema = z.object({
   description: z.string().max(512).optional(),
   visibility: z.enum(["private", "public"]).default("private"),
   joinPolicy: z.enum(["invite_only", "request_to_join", "open"]).default("invite_only"),
-  iconUrl: z.string().url().max(512).optional(),
+  iconUrl: z.string().url().max(512).refine(
+    (val) => /^https?:\/\//i.test(val),
+    { message: "Icon URL must use http or https protocol" },
+  ).optional(),
 });
 
 const updateGroupSchema = z.object({
@@ -37,7 +40,10 @@ const updateGroupSchema = z.object({
   description: z.string().max(512).optional(),
   visibility: z.enum(["private", "public"]).optional(),
   joinPolicy: z.enum(["invite_only", "request_to_join", "open"]).optional(),
-  iconUrl: z.string().url().max(512).nullable().optional(),
+  iconUrl: z.string().url().max(512).refine(
+    (val) => /^https?:\/\//i.test(val),
+    { message: "Icon URL must use http or https protocol" },
+  ).nullable().optional(),
 });
 
 const memberRoleSchema = z.enum(["admin", "member"]);
