@@ -23,6 +23,7 @@ import {
 import DocumentGridList from "@/components/library/DocumentGridList";
 import DocumentLibraryTabs from "@/components/library/DocumentLibraryTabs";
 import DocumentPreviewPanel from "@/components/library/DocumentPreviewPanel";
+import { TrashPanel } from "@/components/library/TrashPanel";
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -173,8 +174,9 @@ export default function DocumentManagement() {
     });
   }, [selectedId, queryState.viewMode]);
 
+  const listScope = queryState.scope === "trash" ? "my_library" : queryState.scope;
   const listInput = useMemo(() => ({
-    scope: queryState.scope,
+    scope: listScope,
     sort: queryState.sort,
     query: debouncedQuery || undefined,
     limit: 60,
@@ -183,9 +185,9 @@ export default function DocumentManagement() {
       itemType: queryState.itemType || undefined,
       status: queryState.status as any,
     },
-  }), [debouncedQuery, queryState.scope, queryState.sort, queryState.itemType, queryState.status]);
+  }), [debouncedQuery, listScope, queryState.sort, queryState.itemType, queryState.status]);
 
-  const { data: documentData, isLoading: listLoading } = trpc.library.listDocuments.useQuery(listInput);
+  const { data: documentData, isLoading: listLoading } = trpc.library.listDocuments.useQuery(listInput, { enabled: queryState.scope !== "trash" });
   const documents = (documentData?.results || []) as DocumentLibraryItem[];
   const selectedFromList = selectedId ? (documents.find((item) => item.id === selectedId) || null) : null;
   const selectedNeedsDirectFetch = Boolean(selectedId && !selectedFromList && !provisionalSelectedItem);
@@ -427,6 +429,7 @@ export default function DocumentManagement() {
   function getCurrentScopeLabel(scope: DocumentQueryState["scope"]): string {
     if (scope === "shared_with_me") return "Shared With Me";
     if (scope === "shared_groups") return "My Group";
+    if (scope === "trash") return "Trash";
     return "My Library";
   }
 
@@ -827,49 +830,57 @@ export default function DocumentManagement() {
                 />
               </div>
 
-              <div className="mb-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="h-11 rounded-xl border-slate-300 bg-white pl-9"
-                    placeholder="Search files..."
-                    value={queryState.query}
-                    onChange={(event) => setQueryState((prev) => ({ ...prev, query: event.target.value }))}
-                  />
+              {queryState.scope === "trash" ? (
+                <div className="min-h-[280px] xl:min-h-0 xl:flex-1">
+                  <TrashPanel />
                 </div>
-                <Select
-                  value={queryState.sort}
-                  onValueChange={(value) => setQueryState((prev) => ({ ...prev, sort: value as DocumentQueryState["sort"] }))}
-                >
-                  <SelectTrigger className="h-11 rounded-xl border-slate-300 bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="updated_desc">Newest updated first</SelectItem>
-                    <SelectItem value="created_desc">Newest created first</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              ) : (
+                <>
+                  <div className="mb-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        className="h-11 rounded-xl border-slate-300 bg-white pl-9"
+                        placeholder="Search files..."
+                        value={queryState.query}
+                        onChange={(event) => setQueryState((prev) => ({ ...prev, query: event.target.value }))}
+                      />
+                    </div>
+                    <Select
+                      value={queryState.sort}
+                      onValueChange={(value) => setQueryState((prev) => ({ ...prev, sort: value as DocumentQueryState["sort"] }))}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-slate-300 bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="updated_desc">Newest updated first</SelectItem>
+                        <SelectItem value="created_desc">Newest created first</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="min-h-[280px] xl:min-h-0 xl:flex-1">
-                <DocumentGridList
-                  items={documents}
-                  selectedId={selectedId}
-                  isLoading={listLoading}
-                  className="h-full"
-                  emptyMessage="No documents match the selected scope and filters."
-                  onSelect={(item) => {
-                    setPendingAutoSelectId(null);
-                    setProvisionalSelectedItem(null);
-                    openEditorTab(item, { scope: queryState.scope });
-                  }}
-                  onOpen={(item) => {
-                    setPendingAutoSelectId(null);
-                    setProvisionalSelectedItem(null);
-                    openEditorTab(item, { scope: queryState.scope });
-                  }}
-                />
-              </div>
+                  <div className="min-h-[280px] xl:min-h-0 xl:flex-1">
+                    <DocumentGridList
+                      items={documents}
+                      selectedId={selectedId}
+                      isLoading={listLoading}
+                      className="h-full"
+                      emptyMessage="No documents match the selected scope and filters."
+                      onSelect={(item) => {
+                        setPendingAutoSelectId(null);
+                        setProvisionalSelectedItem(null);
+                        openEditorTab(item, { scope: queryState.scope });
+                      }}
+                      onOpen={(item) => {
+                        setPendingAutoSelectId(null);
+                        setProvisionalSelectedItem(null);
+                        openEditorTab(item, { scope: queryState.scope });
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </aside>
           ) : (
             <div className="flex items-center justify-center xl:shrink-0">

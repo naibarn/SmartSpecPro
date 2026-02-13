@@ -1,5 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen, Share2, Users } from "lucide-react";
+import { FolderOpen, Share2, Trash2, Users } from "lucide-react";
 import type { DocumentScopeTab } from "@/lib/documentManagementUi";
 
 interface DocumentLibraryTabsProps {
@@ -10,7 +10,7 @@ interface DocumentLibraryTabsProps {
 export default function DocumentLibraryTabs({ value, onChange }: DocumentLibraryTabsProps) {
   return (
     <Tabs value={value} onValueChange={(next) => onChange(next as DocumentScopeTab)}>
-      <TabsList className="grid h-14 w-full grid-cols-3 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+      <TabsList className="grid h-14 w-full grid-cols-4 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
         <TabsTrigger
           value="my_library"
           className="rounded-xl text-[13px] font-medium text-slate-700 data-[state=active]:border data-[state=active]:border-sky-200 data-[state=active]:bg-sky-50 data-[state=active]:text-sky-700 data-[state=active]:shadow-sm"
@@ -31,6 +31,13 @@ export default function DocumentLibraryTabs({ value, onChange }: DocumentLibrary
         >
           <Users className="mr-1.5 h-4 w-4" />
           My Group
+        </TabsTrigger>
+        <TabsTrigger
+          value="trash"
+          className="rounded-xl text-[13px] font-medium text-slate-700 data-[state=active]:border data-[state=active]:border-red-200 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:shadow-sm"
+        >
+          <Trash2 className="mr-1.5 h-4 w-4" />
+          Trash
         </TabsTrigger>
       </TabsList>
     </Tabs>

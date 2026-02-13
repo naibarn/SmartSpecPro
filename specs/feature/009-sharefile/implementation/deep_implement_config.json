@@ -48,6 +48,10 @@
     "section-07-group-management-ui": {
       "status": "complete",
       "commit_hash": "c1b3757"
+    },
+    "section-08-file-sharing-ui": {
+      "status": "complete",
+      "commit_hash": "7a2f6b0"
     }
   },
   "pre_commit": {

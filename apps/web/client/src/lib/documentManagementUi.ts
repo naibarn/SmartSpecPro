@@ -1,6 +1,6 @@
 export const DOCUMENT_MANAGEMENT_ROUTE = "/document-management";
 
-export type DocumentScopeTab = "my_library" | "shared_with_me" | "shared_groups";
+export type DocumentScopeTab = "my_library" | "shared_with_me" | "shared_groups" | "trash";
 export type DocumentSortOrder = "updated_desc" | "created_desc";
 export type DocumentViewMode = "library" | "editor";
 export type DocumentAccessSource = "owner" | "shared_direct" | "shared_group";
@@ -64,7 +64,7 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
   const docId = Number.isFinite(docIdParsed) && docIdParsed > 0 ? docIdParsed : undefined;
 
   return {
-    scope: scope === "shared_with_me" || scope === "shared_groups" ? scope : "my_library",
+    scope: scope === "shared_with_me" || scope === "shared_groups" || scope === "trash" ? scope : "my_library",
     sort: sort === "created_desc" ? "created_desc" : "updated_desc",
     viewMode: mode === "editor" ? "editor" : "library",
     query,
