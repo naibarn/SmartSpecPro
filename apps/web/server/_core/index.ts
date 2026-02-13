@@ -23,7 +23,7 @@ import { ENV } from "./env";
 import { debugError } from "./logger";
 import { sdk } from "./sdk";
 import { signBearerToken } from "./tokens";
-import { getUploadsDir, useLocalStorage } from "../storage";
+import { getUploadsDir } from "../storage";
 import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
@@ -145,21 +145,18 @@ const csrfCheck = (req: any, res: any, next: any) => {
 app.use("/trpc", csrfCheck);
 app.use("/api", csrfCheck);
 
-// Serve uploaded files AFTER tenant middleware for access control
-if (useLocalStorage()) {
-  const uploadsDir = getUploadsDir();
-  console.log(`[Storage] Using local storage at: ${uploadsDir}`);
-  app.use('/uploads', express.static(uploadsDir, {
-    maxAge: '1d',
-    etag: true,
-    setHeaders: (res, filePath) => {
-      const extraHeaders = getUploadStaticHeaders(filePath);
-      for (const [key, value] of Object.entries(extraHeaders)) {
-        res.setHeader(key, value);
-      }
-    },
-  }));
-}
+// Always mount local static handler — harmless when S3/R2 is active (no local files to serve)
+const uploadsDir = getUploadsDir();
+app.use('/uploads', express.static(uploadsDir, {
+  maxAge: '1d',
+  etag: true,
+  setHeaders: (res, filePath) => {
+    const extraHeaders = getUploadStaticHeaders(filePath);
+    for (const [key, value] of Object.entries(extraHeaders)) {
+      res.setHeader(key, value);
+    }
+  },
+}));
 
 // REST/SSE endpoints
 registerLLMRoutes(app);

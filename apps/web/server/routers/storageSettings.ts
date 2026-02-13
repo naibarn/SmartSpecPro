@@ -5,6 +5,7 @@ import { storageSettings } from "../../drizzle/schema";
 import { eq, asc, sql } from "drizzle-orm";
 import { S3Client, PutObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { encrypt, decrypt } from "../services/crypto";
+import { invalidateStorageCache } from "../storage";
 
 // Get S3 client for a storage settings configuration
 function getS3Client(settings: {
@@ -161,6 +162,7 @@ export const storageSettingsRouter = router({
         })
         .returning();
 
+      invalidateStorageCache();
       return { id: setting.id };
     }),
 
@@ -222,6 +224,7 @@ export const storageSettingsRouter = router({
         .set(updateData)
         .where(eq(storageSettings.id, id));
 
+      invalidateStorageCache();
       return { success: true };
     }),
 
@@ -233,6 +236,7 @@ export const storageSettingsRouter = router({
         .delete(storageSettings)
         .where(eq(storageSettings.id, input.id));
 
+      invalidateStorageCache();
       return { success: true };
     }),
 
