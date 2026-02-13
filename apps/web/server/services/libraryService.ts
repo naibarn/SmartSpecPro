@@ -537,10 +537,12 @@ function getPermissionLevelForItem(
   permissions: LibraryPermissionRow[],
   itemId: number,
   actor: LibraryActor,
+  userGroupIds?: number[],
 ): {
   effectivePermissionLevel: LibraryPermissionLevel | null;
   hasDirectShare: boolean;
   hasTenantRoleShare: boolean;
+  hasGroupShare: boolean;
 } {
   const now = new Date();
   const relevant = permissions.filter((permission) => {
@@ -554,6 +556,7 @@ function getPermissionLevelForItem(
       effectivePermissionLevel: null,
       hasDirectShare: false,
       hasTenantRoleShare: false,
+      hasGroupShare: false,
     };
   }
 
@@ -568,16 +571,25 @@ function getPermissionLevelForItem(
       Boolean(actor.role) &&
       permission.subjectId === actor.role,
   );
+  const groupMatches = userGroupIds?.length
+    ? relevant.filter(
+        (permission) =>
+          permission.subjectType === "group" &&
+          userGroupIds.includes(Number(permission.subjectId)),
+      )
+    : [];
 
   const highest = selectHighestPermissionLevel([
     ...directMatches.map((permission) => permission.permissionLevel),
     ...tenantRoleMatches.map((permission) => permission.permissionLevel),
+    ...groupMatches.map((permission) => permission.permissionLevel),
   ]);
 
   return {
     effectivePermissionLevel: highest,
     hasDirectShare: directMatches.length > 0,
     hasTenantRoleShare: tenantRoleMatches.length > 0,
+    hasGroupShare: groupMatches.length > 0,
   };
 }
 
@@ -587,6 +599,11 @@ async function getUserPermissionLevel(
   actor: LibraryActor,
 ): Promise<LibraryPermissionLevel | null> {
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  // Fetch user's groups (cached in groupsService, 1-min TTL)
+  const userGroupsList = await getUserGroups(actor.userId, actorTenantId, db);
+  const groupIds = userGroupsList.map((g) => String(g.id));
+
   const rows = await db
     .select({
       subjectType: libraryPermissions.subjectType,
@@ -608,6 +625,14 @@ async function getUserPermissionLevel(
             eq(libraryPermissions.subjectType, "tenant_role"),
             eq(libraryPermissions.subjectId, actor.role || ""),
           ),
+          ...(groupIds.length > 0
+            ? [
+                and(
+                  eq(libraryPermissions.subjectType, "group"),
+                  inArray(libraryPermissions.subjectId, groupIds),
+                ),
+              ]
+            : []),
         ),
         or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
       ),
@@ -1257,6 +1282,7 @@ function getDocumentAccessSource(
   permissionInfo: {
     hasDirectShare: boolean;
     hasTenantRoleShare: boolean;
+    hasGroupShare: boolean;
   },
 ): LibraryDocumentAccessSource {
   if (item.ownerUserId === actor.userId) {
@@ -1267,7 +1293,7 @@ function getDocumentAccessSource(
     return "shared_direct";
   }
 
-  if (permissionInfo.hasTenantRoleShare || item.visibility === "team" || item.visibility === "public") {
+  if (permissionInfo.hasGroupShare || permissionInfo.hasTenantRoleShare || item.visibility === "team" || item.visibility === "public") {
     return "shared_group";
   }
 
@@ -1340,6 +1366,11 @@ export async function listLibraryDocuments(
   const offset = Math.max(input.offset ?? 0, 0);
   const query = (input.query ?? "").trim();
 
+  // Get user's groups (cached in groupsService, 1-min TTL)
+  const userGroupsList = await getUserGroups(actor.userId, actorTenantId);
+  const groupIds = userGroupsList.map(g => String(g.id));
+  const groupIdNums = userGroupsList.map(g => g.id);
+
   const itemRows = await db
     .select()
     .from(libraryItems)
@@ -1380,6 +1411,12 @@ export async function listLibraryDocuments(
             eq(libraryPermissions.subjectType, "tenant_role"),
             eq(libraryPermissions.subjectId, actor.role || ""),
           ),
+          ...(groupIds.length > 0 ? [
+            and(
+              eq(libraryPermissions.subjectType, "group"),
+              inArray(libraryPermissions.subjectId, groupIds),
+            )
+          ] : []),
         ),
         or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
       ),
@@ -1389,7 +1426,7 @@ export async function listLibraryDocuments(
     .filter((item) => itemMatchesDocumentFilters(item, input.filters))
     .filter((item) => itemMatchesDocumentQuery(item, query))
     .map((item) => {
-      const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor);
+      const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
       if (!canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel)) {
         return null;
       }
@@ -1671,9 +1708,11 @@ export async function searchLibraryItems(
     chunksByItem.set(chunk.libraryItemId, list);
   }
 
+  const groupIdNums = userGroups.map(g => g.id);
+
   const visibleScored = filteredItems
     .filter((item) => {
-      const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor);
+      const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
       return canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel);
     })
     .map((item) => {
@@ -1900,39 +1939,52 @@ export async function getLibraryItemShares(
       ),
     );
 
-  // Resolve names for each share (N+1 — acceptable for now, batch in section-10)
-  const shares: LibraryShareEntry[] = await Promise.all(
-    permRows.map(async (p) => {
-      const base: LibraryShareEntry = {
-        id: p.id,
-        subjectType: p.subjectType,
-        subjectId: p.subjectId,
-        permissionLevel: p.permissionLevel,
-        expiresAt: p.expiresAt,
-      };
+  // Batch resolve names for shares (one query per subject type)
+  const userSubjectIds = permRows
+    .filter((p) => p.subjectType === "user")
+    .map((p) => Number(p.subjectId));
+  const groupSubjectIds = permRows
+    .filter((p) => p.subjectType === "group")
+    .map((p) => Number(p.subjectId));
 
-      if (p.subjectType === "user") {
-        const userRows = await db
-          .select({ name: users.name })
+  const [userNameRows, groupNameRows] = await Promise.all([
+    userSubjectIds.length > 0
+      ? db
+          .select({ id: users.id, name: users.name })
           .from(users)
-          .where(eq(users.id, Number(p.subjectId)))
-          .limit(1);
-        return { ...base, userName: userRows[0]?.name ?? null };
-      }
-
-      if (p.subjectType === "group") {
-        const groupRows = await db
-          .select({ name: userGroups.name })
+          .where(inArray(users.id, userSubjectIds))
+      : Promise.resolve([]),
+    groupSubjectIds.length > 0
+      ? db
+          .select({ id: userGroups.id, name: userGroups.name })
           .from(userGroups)
-          .where(and(eq(userGroups.id, Number(p.subjectId)), isNull(userGroups.deletedAt)))
-          .limit(1);
-        return { ...base, groupName: groupRows[0]?.name ?? "Deleted Group" };
-      }
+          .where(and(inArray(userGroups.id, groupSubjectIds), isNull(userGroups.deletedAt)))
+      : Promise.resolve([]),
+  ]);
 
-      // tenant_role
-      return { ...base, roleName: p.subjectId };
-    }),
-  );
+  const userNameMap = new Map(userNameRows.map((r) => [r.id, r.name]));
+  const groupNameMap = new Map(groupNameRows.map((r) => [r.id, r.name]));
+
+  const shares: LibraryShareEntry[] = permRows.map((p) => {
+    const base: LibraryShareEntry = {
+      id: p.id,
+      subjectType: p.subjectType,
+      subjectId: p.subjectId,
+      permissionLevel: p.permissionLevel,
+      expiresAt: p.expiresAt,
+    };
+
+    if (p.subjectType === "user") {
+      return { ...base, userName: userNameMap.get(Number(p.subjectId)) ?? null };
+    }
+
+    if (p.subjectType === "group") {
+      return { ...base, groupName: groupNameMap.get(Number(p.subjectId)) ?? "Deleted Group" };
+    }
+
+    // tenant_role
+    return { ...base, roleName: p.subjectId };
+  });
 
   return { shares };
 }

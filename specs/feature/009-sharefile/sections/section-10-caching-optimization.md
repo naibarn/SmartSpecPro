@@ -380,6 +380,35 @@ After implementing this section:
    - If Redis is down, all group membership queries hit database
    - **Mitigation:** Graceful degradation (cache miss → query DB)
 
+## Implementation Notes
+
+### Actual Files Modified
+- `apps/web/server/services/libraryService.ts` — Core changes:
+  - `getUserPermissionLevel()` now calls `getUserGroups()` and includes group permissions in query (fixes H1 from code review: 6 single-item operations now resolve group-based access)
+  - `getPermissionLevelForItem()` accepts optional `userGroupIds` param and processes group permission rows
+  - `getDocumentAccessSource()` accepts `hasGroupShare` in permissionInfo
+  - `listLibraryDocuments()` includes group permissions in batch query via `getUserGroups()`
+  - `searchLibraryItems()` passes group IDs to `getPermissionLevelForItem()`
+  - `getLibraryItemShares()` uses batch `inArray` queries for name resolution (2 queries max vs N+1)
+- `apps/web/server/services/groupsService.test.ts` — Added 12 caching tests (cache key format, TTL, cache hit, corrupt cache, selective invalidation on 5 mutation types)
+- `apps/web/server/services/libraryService.test.ts` — Added batch permission check stubs + 6 canReadLibraryItem tests + groupsService mock
+- `apps/web/server/services/libraryDocumentManagementService.test.ts` — Added groupsService mock
+- `apps/web/server/services/librarySearchService.test.ts` — Added groupsService mock
+
+### Deviations from Plan
+1. **No `batchGetUserPermissions()` standalone function**: Group support was added inline to `getPermissionLevelForItem()` and the batch queries in `listLibraryDocuments`/`searchLibraryItems` (M1 from review — acceptable deviation)
+2. **No `performanceMonitoring.ts` middleware**: Deferred to section 12 (M2 from review)
+3. **No `LIBRARY_PAGE_SIZE` constants**: Values already inline in Zod schemas (M3 from review — low impact)
+4. **No `GROUPS_CACHE_TTL` env var**: Hardcoded to 60 seconds (L4 from review — acceptable for now)
+5. **Redis caching was already implemented** in prior sections (02-04), so this section focused on the missing group permission resolution in batch and single-item operations
+6. **Critical fix H1**: `getUserPermissionLevel` was updated to resolve group permissions — without this, users with group-only access couldn't open files, read markdown, update items, or share items
+
+### Test Results
+- 12 new caching tests in groupsService.test.ts (all pass)
+- 6 new permission resolution tests in libraryService.test.ts (all pass)
+- 3 batch permission check stubs (test.todo)
+- Pre-existing failures in library.test.ts, media.addToLibrary.test.ts, auth.logout.test.ts, gallery.test.ts confirmed unrelated
+
 ## Next Steps
 
 After completing this section, proceed to:
