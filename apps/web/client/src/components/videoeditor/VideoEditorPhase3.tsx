@@ -19,6 +19,7 @@ import HistoryPanel from './HistoryPanel';
 import TransitionsPanel from './TransitionsPanel';
 import OverlayPanel from './OverlayPanel';
 import SilenceDetectionPanel from './SilenceDetectionPanel';
+import SilenceDetectionDialog from './SilenceDetectionDialog';
 import TextClipEditor from './TextClipEditor';
 import { projectManager } from '../../services/projectManager';
 import { videoEditorRenderService, videoEditorMediaLibrary } from '../../services/videoEditorService';
@@ -69,6 +70,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
   // Dialogs
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showSilenceDialog, setShowSilenceDialog] = useState(false);
   const [showRenderProgress, setShowRenderProgress] = useState(false);
   const [currentRenderJob, setCurrentRenderJob] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<Omit<ConfirmDialogProps, 'onConfirm' | 'onCancel'> | null>(null);
@@ -755,6 +757,16 @@ export const VideoEditorPhase3: React.FC = () => {
   // ========================================
   // Silence Detection & Dead Air Removal
   // ========================================
+
+  const handleSilenceExportToTimeline = useCallback(
+    (selectedRegions: SilentRegion[], applyToAllTracks: boolean) => {
+      // Section 08 implements the full clip splitting + ripple delete logic.
+      // For now, close the dialog and log.
+      console.log('Export to timeline:', selectedRegions.length, 'regions');
+      setShowSilenceDialog(false);
+    },
+    [],
+  );
 
   const handleCutAndCombine = useCallback((selectedRegions: SilentRegion[]) => {
     if (selectedRegions.length === 0) return;
@@ -2036,8 +2048,7 @@ export const VideoEditorPhase3: React.FC = () => {
               )}
               {sidebarView === 'silence' && (
                 <SilenceDetectionPanel
-                  project={project}
-                  onCutAndCombine={handleCutAndCombine}
+                  onOpenDialog={() => setShowSilenceDialog(true)}
                 />
               )}
               {sidebarView === 'text' && (
@@ -2065,6 +2076,15 @@ export const VideoEditorPhase3: React.FC = () => {
             jobId={currentRenderJob}
             onComplete={handleRenderComplete}
             onCancel={handleRenderCancel}
+          />
+        )}
+
+        {/* Silence Detection Dialog */}
+        {showSilenceDialog && (
+          <SilenceDetectionDialog
+            project={project}
+            onExportToTimeline={handleSilenceExportToTimeline}
+            onClose={() => setShowSilenceDialog(false)}
           />
         )}
 

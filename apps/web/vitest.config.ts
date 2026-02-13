@@ -1,12 +1,17 @@
 import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
 import path from "path";
 
 const templateRoot = path.resolve(import.meta.dirname);
 
 export default defineConfig({
+  plugins: [react()],
   root: templateRoot,
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: {
+      "react": path.resolve(templateRoot, "node_modules", "react"),
+      "react-dom": path.resolve(templateRoot, "node_modules", "react-dom"),
       "@": path.resolve(templateRoot, "client", "src"),
       "@shared": path.resolve(templateRoot, "shared"),
       "@assets": path.resolve(templateRoot, "attached_assets"),
@@ -15,7 +20,16 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/src/**/*.test.ts", "shared/**/*.test.ts"],
+    environmentMatchGlobs: [
+      ["client/src/**/*.test.tsx", "jsdom"],
+    ],
+    include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/src/**/*.test.ts", "client/src/**/*.test.tsx", "shared/**/*.test.ts"],
+    setupFiles: ["client/src/test-setup.ts"],
+    server: {
+      deps: {
+        inline: [/react/, /react-dom/, /@testing-library/],
+      },
+    },
     coverage: {
       provider: "v8",
       reportsDirectory: "coverage",
