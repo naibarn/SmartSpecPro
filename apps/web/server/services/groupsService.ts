@@ -97,7 +97,22 @@ function validateGroupName(name: string): string {
       message: `Group name must be at most ${MAX_GROUP_NAME_LENGTH} characters`,
     });
   }
-  return trimmed;
+  // Block control characters (except normal whitespace)
+  if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(trimmed)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Group name contains invalid characters",
+    });
+  }
+  // Block HTML tags
+  if (/<[^>]*>/.test(trimmed)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Group name must not contain HTML tags",
+    });
+  }
+  // Normalize consecutive whitespace
+  return trimmed.replace(/\s+/g, " ");
 }
 
 function validateGroupDescription(description?: string | null): string | null {
@@ -406,6 +421,9 @@ export async function addGroupMember(
 
   const now = new Date();
   await db.transaction(async (tx) => {
+    // Lock the group row to serialize concurrent member additions
+    await tx.execute(sql`SELECT 1 FROM ${userGroups} WHERE ${userGroups.id} = ${input.groupId} FOR UPDATE`);
+
     const existingRows = await tx
       .select()
       .from(groupMembers)
@@ -542,6 +560,24 @@ export async function deleteUserGroup(
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Only group owner can delete this group",
+    });
+  }
+
+  // Check if group has active shared permissions — warn before silent removal
+  const permCountRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(libraryPermissions)
+    .where(and(
+      eq(libraryPermissions.tenantId, group.tenantId),
+      eq(libraryPermissions.subjectType, "group"),
+      eq(libraryPermissions.subjectId, String(groupId)),
+    ));
+
+  const permCount = Number(permCountRows[0]?.count ?? 0);
+  if (permCount > 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `Cannot delete group with ${permCount} active shared permission(s). Remove shares first.`,
     });
   }
 
@@ -794,6 +830,9 @@ export async function joinOpenGroup(
 
   const now = new Date();
   await db.transaction(async (tx) => {
+    // Lock the group row to serialize concurrent join operations
+    await tx.execute(sql`SELECT 1 FROM ${userGroups} WHERE ${userGroups.id} = ${groupId} FOR UPDATE`);
+
     const existingRows = await tx
       .select()
       .from(groupMembers)

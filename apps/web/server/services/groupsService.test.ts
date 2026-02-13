@@ -43,6 +43,7 @@ const {
   const txDeleteCalls: Array<{ table: unknown }> = [];
 
   const mockTx = {
+    execute: vi.fn().mockResolvedValue(undefined),
     select: txSelect,
     insert: vi.fn().mockImplementation((table: unknown) => ({
       values: vi.fn().mockImplementation((values: unknown) => {
@@ -125,6 +126,7 @@ const {
       db.update.mockClear();
       db.delete.mockClear();
       db.transaction.mockClear();
+      mockTx.execute.mockClear();
       mockTx.select.mockClear();
       mockTx.insert.mockClear();
       mockTx.update.mockClear();
@@ -384,6 +386,7 @@ describe("groupsService", () => {
             deletedAt: null,
           },
         ],
+        [{ count: 0 }], // permission count check (no shared permissions)
         [{ userId: 7 }, { userId: 9 }],
       ]);
 
@@ -609,6 +612,7 @@ describe("groupsService", () => {
       it("invalidates all members' caches on deleteUserGroup", async () => {
         setDbSelectQueue([
           [{ id: 10, tenantId: "tenant-1", ownerId: 7, name: "Marketing", deletedAt: null }],
+          [{ count: 0 }], // permission count check (no shared permissions)
           [{ userId: 7 }, { userId: 9 }, { userId: 15 }],
         ]);
 

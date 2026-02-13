@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { db } from "../db";
@@ -6,6 +7,74 @@ import { eq, asc, sql } from "drizzle-orm";
 import { S3Client, PutObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { encrypt, decrypt } from "../services/crypto";
 import { invalidateStorageCache } from "../storage";
+
+// ─── Input validation helpers (SSRF prevention + S3 naming rules) ────────────
+
+function validateEndpointUrl(endpoint: string | undefined | null): void {
+  if (!endpoint) return;
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Invalid endpoint URL format",
+    });
+  }
+  if (!["https:", "http:"].includes(url.protocol)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Endpoint URL must use https:// or http:// protocol",
+    });
+  }
+  // Block private/internal network endpoints (SSRF prevention)
+  const hostname = url.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    hostname === "::1" ||
+    hostname.startsWith("10.") ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("169.254.") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Endpoint URL must not point to a private or internal network address",
+    });
+  }
+}
+
+function validateBucketName(bucket: string | undefined | null): void {
+  if (!bucket) return;
+  if (bucket.length < 3 || bucket.length > 63) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Bucket name must be between 3 and 63 characters",
+    });
+  }
+  if (!/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$/.test(bucket)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Bucket name must start/end with a letter or number and contain only lowercase letters, numbers, hyphens, and periods",
+    });
+  }
+  if (/\.\./.test(bucket)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Bucket name must not contain consecutive periods",
+    });
+  }
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(bucket)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Bucket name must not be formatted as an IP address",
+    });
+  }
+}
 
 // Get S3 client for a storage settings configuration
 function getS3Client(settings: {
@@ -145,6 +214,12 @@ export const storageSettingsRouter = router({
     .mutation(async ({ input }) => {
       const { accessKeyId, secretAccessKey, ...data } = input;
 
+      // Validate endpoint and bucket for non-local providers
+      if (data.providerType !== "local") {
+        validateEndpointUrl(data.endpoint);
+        validateBucketName(data.bucket);
+      }
+
       // If setting this as active, deactivate others first
       if (data.isActive) {
         await db
@@ -186,6 +261,14 @@ export const storageSettingsRouter = router({
     }))
     .mutation(async ({ input }) => {
       const { id, accessKeyId, secretAccessKey, ...data } = input;
+
+      // Validate endpoint and bucket if provided
+      if (data.endpoint !== undefined) {
+        validateEndpointUrl(data.endpoint);
+      }
+      if (data.bucket !== undefined) {
+        validateBucketName(data.bucket);
+      }
 
       // If setting this as active, deactivate others first
       if (data.isActive) {
