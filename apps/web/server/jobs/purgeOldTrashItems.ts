@@ -5,17 +5,18 @@
  * Runs daily at 2 AM via BullMQ cron schedule.
  *
  * Deletion cascade uses shared cascadeDeleteLibraryItem() helper.
- * Storage and vector DB cleanup are not yet implemented (storageDelete does not exist).
+ * Storage files are cleaned up after DB deletion (best-effort).
  */
 
 import { Queue, Worker, type Job } from "bullmq";
 import IORedis from "ioredis";
-import { and, isNotNull, lt } from "drizzle-orm";
+import { and, eq, isNotNull, lt } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { libraryItems } from "../../drizzle/schema";
+import { libraryItems, libraryLinks } from "../../drizzle/schema";
 import { auditLogger } from "../services/auditLogger";
 import { cascadeDeleteLibraryItem } from "../services/libraryService";
+import { storageDelete } from "../storage";
 
 const QUEUE_NAME = "trash-auto-purge";
 const TRASH_RETENTION_DAYS = 90;
@@ -56,7 +57,7 @@ function getQueue(): Queue {
  * Execute the trash purge job. Finds all items older than TRASH_RETENTION_DAYS
  * in the trash and permanently deletes them in batches.
  */
-export async function executeTrashPurge(): Promise<{ purgedCount: number; totalFound: number; errors: number }> {
+export async function executeTrashPurge(): Promise<{ purgedCount: number; totalFound: number; errors: number; storageDeleted: number }> {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for trash purge");
@@ -67,6 +68,7 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
   let totalFound = 0;
   let purgedCount = 0;
   let errors = 0;
+  let storageDeleted = 0;
 
   // Process in batches to avoid unbounded memory consumption
   let hasMore = true;
@@ -87,10 +89,34 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
 
     for (const item of batch) {
       try {
+        // Collect storage keys before cascade delete removes them
+        const uploadKeys = await db
+          .select({ linkId: libraryLinks.linkId })
+          .from(libraryLinks)
+          .where(
+            and(
+              eq(libraryLinks.libraryItemId, item.id),
+              eq(libraryLinks.linkType, "upload_key"),
+            ),
+          );
+
         await db.transaction(async (tx) => {
           await cascadeDeleteLibraryItem(tx, item.id);
         });
         purgedCount++;
+
+        // Best-effort storage cleanup after successful DB delete
+        for (const { linkId } of uploadKeys) {
+          try {
+            const deleted = await storageDelete(linkId);
+            if (deleted) storageDeleted++;
+          } catch (err) {
+            console.error(
+              `[trash-purge] Storage cleanup failed for key ${linkId}:`,
+              err instanceof Error ? err.message : err,
+            );
+          }
+        }
       } catch (error) {
         errors++;
         console.error(`[trash-purge] Failed to purge item ${item.id}:`, error instanceof Error ? error.message : error);
@@ -98,7 +124,7 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
     }
   }
 
-  return { purgedCount, totalFound, errors };
+  return { purgedCount, totalFound, errors, storageDeleted };
 }
 
 /**
@@ -127,7 +153,7 @@ export async function initializeTrashPurgeJob(): Promise<void> {
       const result = await executeTrashPurge();
 
       const executionTimeMs = Date.now() - startTime;
-      console.log(`[trash-purge] Completed: ${result.purgedCount}/${result.totalFound} purged, ${result.errors} errors (${executionTimeMs}ms)`);
+      console.log(`[trash-purge] Completed: ${result.purgedCount}/${result.totalFound} purged, ${result.storageDeleted} files cleaned, ${result.errors} errors (${executionTimeMs}ms)`);
 
       auditLogger.log({
         eventType: "library_mutation",
