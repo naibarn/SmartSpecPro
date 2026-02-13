@@ -73,6 +73,28 @@ def _to_int(val: Any, default: int = 0) -> int:
         return default
 
 
+def _safe_float_for_ffmpeg(val: float, precision: int = 6) -> str:
+    """Safely format a float for FFmpeg filter string interpolation.
+
+    Validates that the formatted string contains no shell metacharacters
+    that could be used for filter injection attacks.
+
+    Args:
+        val: Float value to format
+        precision: Decimal precision (default 6)
+
+    Returns:
+        Formatted float string safe for FFmpeg interpolation
+
+    Raises:
+        ValueError: If the formatted value contains shell metacharacters
+    """
+    s = f"{val:.{precision}f}"
+    if SHELL_METACHAR_RE.search(s):
+        raise ValueError(f"Invalid FFmpeg value (contains shell metacharacters): {s}")
+    return s
+
+
 def _safe_clip_id(clip: dict, max_len: int = 50) -> str:
     """Return a log-safe clip ID stripped of all control characters."""
     raw = str(clip.get("clipId", "?"))[:max_len]
@@ -771,6 +793,408 @@ def handle_subtitles_extract(spec: dict, tmp_dir: str) -> dict:
     }
 
 
+def _calculate_keep_segments(
+    silence_segments: list[tuple[float, float]],
+    total_duration: float,
+    buffer_seconds: float = 0.0,
+) -> list[tuple[float, float]]:
+    """Invert silence segments to produce keep segments.
+
+    Args:
+        silence_segments: List of (start, end) tuples in seconds, sorted by start.
+        total_duration: Total duration of the media file in seconds.
+        buffer_seconds: Softening buffer — shrinks silence boundaries (expands keep).
+
+    Returns:
+        List of (start, end) tuples representing portions to keep.
+    """
+    # Sort silence segments by start time
+    sorted_silence = sorted(silence_segments, key=lambda s: s[0])
+
+    # Apply buffer: shrink each silence segment
+    buffered_silence = []
+    for start, end in sorted_silence:
+        buffered_start = start + buffer_seconds
+        buffered_end = end - buffer_seconds
+        # Only keep the silence segment if it still has positive duration after buffering
+        if buffered_start < buffered_end:
+            buffered_silence.append((buffered_start, buffered_end))
+
+    # Calculate keep segments as gaps between buffered silence segments
+    keep_segments = []
+    current_time = 0.0
+
+    for silence_start, silence_end in buffered_silence:
+        # Add the keep segment before this silence
+        if current_time < silence_start:
+            keep_segments.append((current_time, silence_start))
+        current_time = max(current_time, silence_end)
+
+    # Add final keep segment if there's time remaining
+    if current_time < total_duration:
+        keep_segments.append((current_time, total_duration))
+
+    return keep_segments
+
+
+def _probe_media_info(input_path: str) -> dict:
+    """Probe a media file for duration, frame rate, and stream types.
+
+    Returns dict with keys:
+        duration_s: float
+        fps: str (e.g., "30000/1001")
+        has_video: bool
+        has_audio: bool
+        is_vfr: bool (True if variable frame rate detected)
+    """
+    result = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", input_path],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(f"ffprobe failed: {_sanitize_stderr(result.stderr)}")
+
+    probe_data = json.loads(result.stdout)
+    fmt = probe_data.get("format", {})
+    streams = probe_data.get("streams", [])
+
+    duration_s = float(fmt.get("duration", 0))
+
+    # Find video and audio streams
+    video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
+    audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
+
+    has_video = video_stream is not None
+    has_audio = audio_stream is not None
+
+    fps = "30"  # default
+    is_vfr = False
+
+    if video_stream:
+        r_frame_rate = video_stream.get("r_frame_rate", "30/1")
+        avg_frame_rate = video_stream.get("avg_frame_rate", r_frame_rate)
+        fps = r_frame_rate
+
+        # Detect VFR: if r_frame_rate and avg_frame_rate differ significantly
+        try:
+            def _eval_fraction(frac: str) -> float:
+                parts = frac.split("/")
+                if len(parts) == 2:
+                    return float(parts[0]) / float(parts[1])
+                return float(frac)
+
+            r_fps = _eval_fraction(r_frame_rate)
+            avg_fps = _eval_fraction(avg_frame_rate)
+            # If they differ by more than 5%, consider it VFR
+            if abs(r_fps - avg_fps) > 0.05 * r_fps:
+                is_vfr = True
+        except (ValueError, ZeroDivisionError):
+            pass
+
+    return {
+        "duration_s": duration_s,
+        "fps": fps,
+        "has_video": has_video,
+        "has_audio": has_audio,
+        "is_vfr": is_vfr,
+    }
+
+
+def _build_select_aselect_cmd(
+    input_path: str,
+    output_path: str,
+    keep_segments: list[tuple[float, float]],
+    fps: str,
+    has_video: bool,
+    has_audio: bool,
+) -> list[str]:
+    """Build FFmpeg command using select/aselect + setpts for clean cuts.
+
+    Produces between() expressions for each keep segment.
+    """
+    # Build between() expressions (with safe float formatting to prevent injection)
+    between_exprs = [f"between(t,{_safe_float_for_ffmpeg(s)},{_safe_float_for_ffmpeg(e)})" for s, e in keep_segments]
+    select_expr = "+".join(between_exprs)
+
+    cmd = ["ffmpeg", "-i", input_path]
+
+    if has_video:
+        vf = f"select='{select_expr}',setpts=N/{fps}/TB"
+        cmd.extend(["-vf", vf, "-c:v", "libx264"])
+
+    if has_audio:
+        af = f"aselect='{select_expr}',asetpts=N/SR/TB"
+        cmd.extend(["-af", af, "-c:a", "aac"])
+
+    cmd.extend(["-y", output_path])
+    return cmd
+
+
+def _build_trim_concat_cmd(
+    input_path: str,
+    output_path: str,
+    keep_segments: list[tuple[float, float]],
+    crossfade_seconds: float,
+    has_video: bool,
+    has_audio: bool,
+) -> list[str]:
+    """Build FFmpeg command using trim/atrim + concat with acrossfade.
+
+    Used when crossfade is enabled or when VFR source is detected.
+    """
+    if len(keep_segments) == 0:
+        raise ValueError("Cannot build trim+concat command with zero keep segments")
+
+    # If only one segment, use simple trim (with safe float formatting and codecs)
+    if len(keep_segments) == 1:
+        start, end = keep_segments[0]
+        start_str = _safe_float_for_ffmpeg(start)
+        end_str = _safe_float_for_ffmpeg(end)
+        cmd = ["ffmpeg", "-i", input_path]
+        if has_video:
+            cmd.extend(["-vf", f"trim=start={start_str}:end={end_str},setpts=PTS-STARTPTS", "-c:v", "libx264"])
+        if has_audio:
+            cmd.extend(["-af", f"atrim=start={start_str}:end={end_str},asetpts=PTS-STARTPTS", "-c:a", "aac"])
+        cmd.extend(["-y", output_path])
+        return cmd
+
+    # Multiple segments: build filter_complex (with safe float formatting)
+    filter_parts = []
+    video_labels = []
+    audio_labels = []
+
+    # Trim each segment
+    for i, (start, end) in enumerate(keep_segments):
+        start_str = _safe_float_for_ffmpeg(start)
+        end_str = _safe_float_for_ffmpeg(end)
+        if has_video:
+            filter_parts.append(f"[0:v]trim=start={start_str}:end={end_str},setpts=PTS-STARTPTS[v{i}]")
+            video_labels.append(f"[v{i}]")
+        if has_audio:
+            filter_parts.append(f"[0:a]atrim=start={start_str}:end={end_str},asetpts=PTS-STARTPTS[a{i}]")
+            audio_labels.append(f"[a{i}]")
+
+    # Concatenate video (simple concat, no crossfade)
+    if has_video:
+        concat_v = "".join(video_labels) + f"concat=n={len(keep_segments)}:v=1:a=0[vout]"
+        filter_parts.append(concat_v)
+
+    # Concatenate audio with crossfade
+    if has_audio:
+        if len(audio_labels) == 1:
+            # Only one audio segment, just map it directly
+            filter_parts.append(f"{audio_labels[0]}anull[aout]")
+        else:
+            # Chain acrossfade for adjacent segments
+            current_label = audio_labels[0]
+            for i in range(1, len(audio_labels)):
+                next_label = audio_labels[i]
+                # Calculate crossfade duration (limit to BOTH segment durations)
+                prev_duration = keep_segments[i - 1][1] - keep_segments[i - 1][0]
+                next_duration = keep_segments[i][1] - keep_segments[i][0]
+                fade_dur = min(crossfade_seconds, prev_duration, next_duration)
+                if fade_dur < 0.04:
+                    fade_dur = 0.0  # Skip crossfade if too short
+
+                output_label = f"[afade{i}]" if i < len(audio_labels) - 1 else "[aout]"
+
+                if fade_dur > 0:
+                    # Use acrossfade for smooth transition
+                    fade_str = _safe_float_for_ffmpeg(fade_dur, precision=3)
+                    filter_parts.append(f"{current_label}{next_label}acrossfade=d={fade_str}:c1=tri:c2=tri{output_label}")
+                else:
+                    # Hard cut using concat
+                    filter_parts.append(f"{current_label}{next_label}concat=n=2:v=0:a=1{output_label}")
+
+                current_label = output_label
+
+    filter_complex = ";".join(filter_parts)
+
+    cmd = ["ffmpeg", "-i", input_path, "-filter_complex", filter_complex]
+
+    if has_video:
+        cmd.extend(["-map", "[vout]", "-c:v", "libx264"])
+    if has_audio:
+        cmd.extend(["-map", "[aout]", "-c:a", "aac"])
+
+    cmd.extend(["-y", output_path])
+    return cmd
+
+
+def handle_dead_air_cut(spec: dict, tmp_dir: str) -> dict:
+    """Cut silent segments from video/audio and concatenate remaining parts.
+
+    Reads segments to remove from spec.params.segments.
+    Applies optional softening buffer and audio crossfade.
+    Returns concatenated output file as artifact.
+    """
+    job_id = spec["jobId"]
+
+    # Extract inputs
+    assets = spec.get("inputs", {}).get("assets", [])
+    if not assets:
+        raise ValueError("No assets provided for dead_air_cut")
+
+    asset_uri = assets[0]["uri"]
+    input_path = _resolve_asset_path(asset_uri, tmp_dir)
+
+    # Extract params
+    params = spec.get("params", {})
+    segments = params.get("segments", [])
+    mode = params.get("mode", "remove")
+    softening_buffer_ms = _to_int(params.get("softeningBufferMs", 0), default=0)
+    crossfade = params.get("crossfade", False)
+
+    # Validate mode
+    if mode != "remove":
+        raise ValueError(f"Unsupported mode: {mode!r}. Only 'remove' is supported.")
+
+    # Validate segment count
+    if len(segments) > 500:
+        raise ValueError(f"Too many segments: {len(segments)}. Maximum is 500.")
+
+    # Clamp softening buffer
+    softening_buffer_ms = max(0, min(softening_buffer_ms, 5000))
+    buffer_seconds = softening_buffer_ms / 1000.0
+
+    # Validate and cast segments
+    validated_segments = []
+    for seg in segments:
+        start_ms = _to_int(seg.get("startMs"), default=-1)
+        end_ms = _to_int(seg.get("endMs"), default=-1)
+
+        if start_ms < 0:
+            raise ValueError(f"Invalid segment: startMs must be >= 0, got {start_ms}")
+        if start_ms >= end_ms:
+            raise ValueError(f"Invalid segment: startMs ({start_ms}) must be < endMs ({end_ms})")
+
+        validated_segments.append((start_ms, end_ms))
+
+    # Sort segments and check for overlaps
+    validated_segments.sort(key=lambda s: s[0])
+    for i in range(1, len(validated_segments)):
+        prev_end = validated_segments[i - 1][1]
+        curr_start = validated_segments[i][0]
+        if curr_start < prev_end:
+            raise ValueError(f"Overlapping segments detected: segment {i} starts at {curr_start}ms but previous ends at {prev_end}ms")
+
+    report_progress(job_id, 0.1, "preparing", "Validating input")
+
+    # Handle empty segments
+    if len(validated_segments) == 0:
+        # No segments to remove, return input as-is
+        media_info = _probe_media_info(input_path)
+        original_duration_ms = int(media_info["duration_s"] * 1000)
+        # Determine MIME type based on streams
+        if media_info["has_video"]:
+            mime_type = "video/mp4"
+            kind = "video"
+        else:
+            mime_type = "audio/mp4"
+            kind = "audio"
+        return {
+            "artifacts": [{"path": input_path, "kind": kind, "mime": mime_type}],
+            "derived": {
+                "originalDurationMs": original_duration_ms,
+                "outputDurationMs": original_duration_ms,
+                "removedMs": 0,
+                "segmentCount": 1,
+            },
+        }
+
+    # Probe the source file
+    media_info = _probe_media_info(input_path)
+    duration_s = media_info["duration_s"]
+    duration_ms = int(duration_s * 1000)
+
+    # Validate endMs against probed duration (with 100ms tolerance)
+    for start_ms, end_ms in validated_segments:
+        if end_ms > duration_ms + 100:
+            raise ValueError(f"Segment endMs ({end_ms}ms) exceeds file duration ({duration_ms}ms)")
+
+    # Convert segments to seconds for calculations
+    silence_segments_s = [(start_ms / 1000.0, end_ms / 1000.0) for start_ms, end_ms in validated_segments]
+
+    # Calculate keep segments
+    keep_segments = _calculate_keep_segments(silence_segments_s, duration_s, buffer_seconds)
+
+    if len(keep_segments) == 0:
+        raise ValueError("All segments cover the entire file; no content remains to keep")
+
+    report_progress(job_id, 0.3, "building_filter", "Building FFmpeg filter")
+
+    # Determine output path
+    output_path = os.path.join(tmp_dir, "dead_air_cut_output.mp4")
+
+    # Choose FFmpeg approach
+    use_trim_concat = crossfade or media_info["is_vfr"]
+
+    if use_trim_concat:
+        # Calculate crossfade duration
+        if len(keep_segments) > 1:
+            shortest_keep = min(e - s for s, e in keep_segments)
+            crossfade_duration = min(buffer_seconds * 2, shortest_keep)
+        else:
+            crossfade_duration = 0.0
+
+        cmd = _build_trim_concat_cmd(
+            input_path,
+            output_path,
+            keep_segments,
+            crossfade_duration,
+            media_info["has_video"],
+            media_info["has_audio"],
+        )
+    else:
+        cmd = _build_select_aselect_cmd(
+            input_path,
+            output_path,
+            keep_segments,
+            media_info["fps"],
+            media_info["has_video"],
+            media_info["has_audio"],
+        )
+
+    report_progress(job_id, 0.4, "encoding", "Running FFmpeg")
+
+    # Run FFmpeg
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"FFmpeg failed: {_sanitize_stderr(result.stderr)}")
+
+    if not os.path.exists(output_path):
+        raise RuntimeError("FFmpeg succeeded but output file was not created")
+
+    report_progress(job_id, 0.9, "finalizing", "Finalizing output")
+
+    # Calculate derived metadata
+    original_duration_ms = duration_ms
+    removed_ms = sum(end_ms - start_ms for start_ms, end_ms in validated_segments)
+    output_duration_ms = original_duration_ms - removed_ms
+
+    # Determine MIME type based on streams
+    if media_info["has_video"]:
+        mime_type = "video/mp4"
+        kind = "video"
+    else:
+        mime_type = "audio/mp4"
+        kind = "audio"
+
+    return {
+        "artifacts": [{"path": output_path, "kind": kind, "mime": mime_type}],
+        "derived": {
+            "originalDurationMs": original_duration_ms,
+            "outputDurationMs": output_duration_ms,
+            "removedMs": removed_ms,
+            "segmentCount": len(keep_segments),
+        },
+    }
+
+
 # ========================================
 # Main Celery Task
 # ========================================
@@ -793,7 +1217,7 @@ HANDLER_MAP = {
     "render_hls": _not_implemented_handler,
     "subtitles_burnin": _not_implemented_handler,
     "concat": _not_implemented_handler,
-    "dead_air_cut": _not_implemented_handler,
+    "dead_air_cut": handle_dead_air_cut,
     "generate_clip_from_api": _not_implemented_handler,
 }
 
