@@ -60,6 +60,24 @@ export interface SilenceSegment {
   endMs: number;
 }
 
+/**
+ * Options for dead air cutting operation.
+ */
+export interface CutDeadAirOptions {
+  /**
+   * Softening buffer in milliseconds. Expands keep regions by shrinking silence boundaries.
+   * Valid range: [0, 5000]. Values outside this range will be clamped.
+   * @default 0
+   */
+  softeningBufferMs?: number;
+
+  /**
+   * Enable audio crossfade between adjacent keep segments.
+   * @default false
+   */
+  crossfade?: boolean;
+}
+
 export interface ConcatClip {
   uri: string;
   inMs?: number;
@@ -268,8 +286,16 @@ export class MediaJobClient {
     assetUri: string,
     segments: SilenceSegment[],
     mode: "remove" | "compress" = "remove",
+    options?: CutDeadAirOptions,
   ): Promise<MediaJobResult> {
     const jobId = generateJobId();
+
+    // Clamp softeningBufferMs to valid range [0, 5000]
+    const softeningBufferMs = Math.max(
+      0,
+      Math.min(options?.softeningBufferMs ?? 0, 5000),
+    );
+
     const spec: MediaJobSpec = {
       specVersion: "0.1",
       jobId,
@@ -277,7 +303,12 @@ export class MediaJobClient {
       inputs: {
         assets: [{ assetId: "input", kind: "video", uri: assetUri }],
       },
-      params: { segments, mode },
+      params: {
+        segments: segments.map((s) => ({ startMs: s.startMs, endMs: s.endMs })),
+        mode,
+        softeningBufferMs,
+        crossfade: options?.crossfade ?? false,
+      },
       output: { mode: "file", target: "" },
     };
     await this.submitJob(spec);
