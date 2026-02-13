@@ -142,6 +142,18 @@ export const registrationLimiter = createRateLimiter("registration", {
   blockDurationMs: 7200000, // Block for 2 hours if exceeded
 });
 
+export const groupOperationLimiter = createRateLimiter("group-operation", {
+  windowMs: 60000, // 1 minute
+  maxRequests: 20, // 20 group mutations per minute per user
+  blockDurationMs: 30000, // Block for 30 seconds if exceeded
+});
+
+export const shareOperationLimiter = createRateLimiter("share-operation", {
+  windowMs: 60000, // 1 minute
+  maxRequests: 30, // 30 share operations per minute per user
+  blockDurationMs: 30000, // Block for 30 seconds if exceeded
+});
+
 // Cleanup old entries periodically (run every 5 minutes)
 const CLEANUP_INTERVAL = 5 * 60 * 1000;
 setInterval(() => {

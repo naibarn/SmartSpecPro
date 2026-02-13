@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../_core/trpc";
+import { groupOperationLimiter } from "../services/rateLimiter";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   createUserGroup,
@@ -168,6 +169,9 @@ export const groupsRouter = router({
   create: protectedProcedure
     .input(createGroupSchema)
     .mutation(async ({ ctx, input }) => {
+      if (!groupOperationLimiter.isAllowed(`user:${ctx.user.id}`)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many group operations. Please try again later." });
+      }
       const tenantId = resolveGroupsTenantId(ctx);
       const actor = buildActor(ctx, tenantId);
       const group = await createUserGroup(input, actor);
@@ -205,6 +209,9 @@ export const groupsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!groupOperationLimiter.isAllowed(`user:${ctx.user.id}`)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many group operations. Please try again later." });
+      }
       const tenantId = resolveGroupsTenantId(ctx);
       const actor = buildActor(ctx, tenantId);
       const result = await addGroupMember(
@@ -265,6 +272,9 @@ export const groupsRouter = router({
   join: protectedProcedure
     .input(z.object({ groupId: z.number().positive() }))
     .mutation(async ({ ctx, input }) => {
+      if (!groupOperationLimiter.isAllowed(`user:${ctx.user.id}`)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many group operations. Please try again later." });
+      }
       const tenantId = resolveGroupsTenantId(ctx);
       const actor = buildActor(ctx, tenantId);
       const result = await joinOpenGroup(input.groupId, actor);
@@ -275,6 +285,9 @@ export const groupsRouter = router({
   requestJoin: protectedProcedure
     .input(z.object({ groupId: z.number().positive() }))
     .mutation(async ({ ctx, input }) => {
+      if (!groupOperationLimiter.isAllowed(`user:${ctx.user.id}`)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many group operations. Please try again later." });
+      }
       const tenantId = resolveGroupsTenantId(ctx);
       const actor = buildActor(ctx, tenantId);
       const result = await requestJoinGroup(input.groupId, actor);

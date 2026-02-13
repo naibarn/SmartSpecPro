@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { protectedProcedure, router } from "../_core/trpc";
 import { auditLogger } from "../services/auditLogger";
+import { shareOperationLimiter } from "../services/rateLimiter";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
@@ -478,10 +479,22 @@ export const libraryRouter = router({
         subjectType: subjectTypeSchema,
         subjectId: z.string().min(1).max(64),
         permissionLevel: sharePermissionLevelSchema,
-        expiresAt: z.coerce.date().nullable().optional(),
+        expiresAt: z.coerce.date().nullable().optional().refine(
+          (val) => {
+            if (!val) return true;
+            const now = new Date();
+            const maxExpiry = new Date();
+            maxExpiry.setFullYear(maxExpiry.getFullYear() + 1);
+            return val > now && val <= maxExpiry;
+          },
+          { message: "Expiry date must be in the future and within 1 year" },
+        ),
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      if (!shareOperationLimiter.isAllowed(`user:${ctx.user.id}`)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many share operations. Please try again later." });
+      }
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
       const actor = {
