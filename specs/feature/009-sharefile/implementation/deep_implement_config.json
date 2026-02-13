@@ -60,6 +60,10 @@
     "section-10-caching-optimization": {
       "status": "complete",
       "commit_hash": "9c02eb3"
+    },
+    "section-11-security-tests": {
+      "status": "complete",
+      "commit_hash": "e1cfe25"
     }
   },
   "pre_commit": {
