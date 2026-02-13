@@ -21,16 +21,20 @@ const THROTTLE_MS = 16; // ~60fps for mousemove throttling
  * @param duration - Total duration of the media in seconds
  * @param canvasWidth - Logical canvas width in pixels
  * @param pixelsPerSecond - Optional zoom factor (overrides duration-based calculation)
+ * @param visibleStartTime - Optional start time of visible range (for virtualized rendering)
  * @returns Pixel X position
  */
 export function timeToPixel(
   time: number,
   duration: number,
   canvasWidth: number,
-  pixelsPerSecond?: number
+  pixelsPerSecond?: number,
+  visibleStartTime?: number
 ): number {
   if (pixelsPerSecond !== undefined) {
-    return time * pixelsPerSecond;
+    // When using pixelsPerSecond, compute position relative to visible range start
+    const relativeTime = time - (visibleStartTime || 0);
+    return relativeTime * pixelsPerSecond;
   }
 
   if (duration === 0) {
@@ -47,18 +51,22 @@ export function timeToPixel(
  * @param duration - Total duration of the media in seconds
  * @param canvasWidth - Logical canvas width in pixels
  * @param pixelsPerSecond - Optional zoom factor
+ * @param visibleStartTime - Optional start time of visible range (for virtualized rendering)
  * @returns Time in seconds, clamped to [0, duration]
  */
 export function pixelToTime(
   pixelX: number,
   duration: number,
   canvasWidth: number,
-  pixelsPerSecond?: number
+  pixelsPerSecond?: number,
+  visibleStartTime?: number
 ): number {
   let time: number;
 
   if (pixelsPerSecond !== undefined) {
-    time = pixelX / pixelsPerSecond;
+    // When using pixelsPerSecond, convert pixel to time relative to visible range
+    const relativeTime = pixelX / pixelsPerSecond;
+    time = relativeTime + (visibleStartTime || 0);
   } else if (canvasWidth === 0) {
     time = 0;
   } else {
@@ -78,6 +86,7 @@ export function pixelToTime(
  * @param duration - Total duration of the media in seconds
  * @param canvasWidth - Logical canvas width in pixels
  * @param pixelsPerSecond - Optional zoom factor
+ * @param visibleStartTime - Optional start time of visible range (for virtualized rendering)
  * @returns Region ID if hit, null otherwise
  */
 export function hitTestRegion(
@@ -86,13 +95,14 @@ export function hitTestRegion(
   regions: SilentRegion[],
   duration: number,
   canvasWidth: number,
-  pixelsPerSecond?: number
+  pixelsPerSecond?: number,
+  visibleStartTime?: number
 ): string | null {
   // Convert client coordinates to canvas-relative position
   const x = clientX - canvasRect.left;
 
   // Convert pixel position to time
-  const time = pixelToTime(x, duration, canvasWidth, pixelsPerSecond);
+  const time = pixelToTime(x, duration, canvasWidth, pixelsPerSecond, visibleStartTime);
 
   // Filter to non-skipped regions that contain this time
   const hits = regions
@@ -131,6 +141,8 @@ interface SilenceWaveformOverlayProps {
   height: number;
   /** Optional pixels-per-second for zoomed timeline (used by SilenceTimeline in Section 06) */
   pixelsPerSecond?: number;
+  /** Optional start time of visible range (for virtualized rendering in Section 06) */
+  visibleStartTime?: number;
   /** Whether media is currently playing (controls playhead animation) */
   isPlaying?: boolean;
   /** Called when user clicks on a region -- parent toggles selection */
@@ -177,6 +189,7 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
     width,
     height,
     pixelsPerSecond,
+    visibleStartTime,
     isPlaying = true,
     onRegionClick,
     onSeek,
@@ -226,8 +239,8 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
 
     // Draw each region
     for (const region of regions) {
-      const x = timeToPixel(region.adjustedStartTime, duration, width, pixelsPerSecond);
-      const endX = timeToPixel(region.adjustedEndTime, duration, width, pixelsPerSecond);
+      const x = timeToPixel(region.adjustedStartTime, duration, width, pixelsPerSecond, visibleStartTime);
+      const endX = timeToPixel(region.adjustedEndTime, duration, width, pixelsPerSecond, visibleStartTime);
       const regionWidth = endX - x;
 
       if (region.skipped) {
@@ -274,7 +287,7 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
     // Helper to draw playhead at current time
     const drawPlayheadAtTime = (time: number) => {
       ctx.clearRect(0, 0, width, height);
-      const x = timeToPixel(time, duration, width, pixelsPerSecond);
+      const x = timeToPixel(time, duration, width, pixelsPerSecond, visibleStartTime);
       ctx.strokeStyle = '#ff3333';
       ctx.lineWidth = PLAYHEAD_LINE_WIDTH;
       ctx.beginPath();
@@ -304,7 +317,7 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
       // When paused, draw once
       drawPlayheadAtTime(currentTime);
     }
-  }, [currentTime, duration, width, height, pixelsPerSecond, isPlaying]);
+  }, [currentTime, duration, width, height, pixelsPerSecond, visibleStartTime, isPlaying]);
 
   // ---- Click handler ----
 
@@ -319,14 +332,15 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
       regions,
       duration,
       width,
-      pixelsPerSecond
+      pixelsPerSecond,
+      visibleStartTime
     );
 
     if (regionId) {
       onRegionClick(regionId);
     } else {
       const x = e.clientX - rect.left;
-      const time = pixelToTime(x, duration, width, pixelsPerSecond);
+      const time = pixelToTime(x, duration, width, pixelsPerSecond, visibleStartTime);
       onSeek(time);
     }
   };
@@ -353,7 +367,8 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
       regions,
       duration,
       width,
-      pixelsPerSecond
+      pixelsPerSecond,
+      visibleStartTime
     );
 
     // Update cursor
