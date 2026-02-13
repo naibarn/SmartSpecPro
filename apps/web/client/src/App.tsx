@@ -7,7 +7,7 @@ import TerminalPage from "@/pages/TerminalPage";
 import CLIPage from "@/pages/CLIPage";
 import Factory from "@/pages/Factory";
 import VideoEditorPage from "@/pages/VideoEditorPage";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import { HelmetProvider } from "react-helmet-async";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -39,7 +39,6 @@ import AdminMediaProviders from "./pages/AdminMediaProviders";
 import AdminMediaModels from "./pages/AdminMediaModels";
 import AdminSkills from "./pages/AdminSkills";
 import AdminSkillRepositories from "./pages/AdminSkillRepositories";
-import AdminStorageSettings from "./pages/AdminStorageSettings";
 import AdminTenants from "./pages/AdminTenants";
 import AdminServices from "./pages/AdminServices";
 import AdminSettings from "./pages/AdminSettings";
@@ -108,7 +107,7 @@ function Router() {
       <Route path="/admin/media-models" component={AdminMediaModels} />
       <Route path="/admin/skills" component={AdminSkills} />
       <Route path="/admin/skill-repositories" component={AdminSkillRepositories} />
-      <Route path="/admin/storage-settings" component={AdminStorageSettings} />
+      <Route path="/admin/storage-settings"><Redirect to="/admin/settings" /></Route>
       <Route path="/admin/services" component={AdminServices} />
       <Route path="/admin/settings" component={AdminSettings} />
       <Route path="/admin/queues" component={AdminQueueDashboard} />

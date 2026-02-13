@@ -53,8 +53,10 @@ import {
   HardDrive,
   Info,
   AlertCircle,
+  Cloud,
 } from "lucide-react";
 import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
+import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 
 interface StripeSettings {
   secretKey?: string;
@@ -510,6 +512,7 @@ export default function AdminSettings() {
     { key: "stt", label: "STT", sublabel: "Speech-to-Text", icon: Mic },
     { key: "ai", label: "AI / Memory", sublabel: "Summary Model", icon: Brain },
     { key: "vectordb", label: "Vector Database", sublabel: "RAG & Embeddings", icon: Database },
+    { key: "storage", label: "Storage", sublabel: "Local / R2 / S3", icon: Cloud },
     { key: "menu", label: "Main Menu", sublabel: "Visibility Control", icon: Menu },
   ];
 
@@ -2233,6 +2236,10 @@ export default function AdminSettings() {
           </TabsContent>
 
           {/* Main Menu Settings Tab */}
+          <TabsContent value="storage">
+            <StorageSettingsPanel />
+          </TabsContent>
+
           <TabsContent value="menu">
             <MenuOverridesPanel />
           </TabsContent>
