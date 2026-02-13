@@ -29,17 +29,21 @@ function validateEndpointUrl(endpoint: string | undefined | null): void {
   }
   // Block private/internal network endpoints (SSRF prevention)
   const hostname = url.hostname.toLowerCase();
+  // Strip IPv4-mapped IPv6 prefix to catch bypass via ::ffff:127.0.0.1
+  const normalizedHost = hostname.startsWith("::ffff:") ? hostname.slice(7) : hostname;
   if (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "0.0.0.0" ||
+    normalizedHost === "localhost" ||
+    normalizedHost === "127.0.0.1" ||
+    normalizedHost === "0.0.0.0" ||
+    normalizedHost === "::1" ||
     hostname === "::1" ||
-    hostname.startsWith("10.") ||
-    hostname.startsWith("192.168.") ||
-    hostname.startsWith("169.254.") ||
-    hostname.endsWith(".local") ||
-    hostname.endsWith(".internal") ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+    hostname.startsWith("::ffff:") ||
+    normalizedHost.startsWith("10.") ||
+    normalizedHost.startsWith("192.168.") ||
+    normalizedHost.startsWith("169.254.") ||
+    normalizedHost.endsWith(".local") ||
+    normalizedHost.endsWith(".internal") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(normalizedHost)
   ) {
     throw new TRPCError({
       code: "BAD_REQUEST",

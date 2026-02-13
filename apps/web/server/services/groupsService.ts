@@ -129,7 +129,22 @@ function validateGroupDescription(description?: string | null): string | null {
       message: `Group description must be at most ${MAX_GROUP_DESCRIPTION_LENGTH} characters`,
     });
   }
-  return trimmed;
+  // Block control characters (except normal whitespace)
+  if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(trimmed)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Group description contains invalid characters",
+    });
+  }
+  // Block HTML tags
+  if (/<[^>]*>/.test(trimmed)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Group description must not contain HTML tags",
+    });
+  }
+  // Normalize consecutive whitespace
+  return trimmed.replace(/\s+/g, " ");
 }
 
 function getGroupsCacheKey(userId: number, tenantId: string): string {
@@ -645,6 +660,25 @@ export async function approveJoinRequest(
 
   const now = new Date();
   await db.transaction(async (tx) => {
+    // Lock the group row to serialize concurrent approvals
+    await tx.execute(sql`SELECT 1 FROM ${userGroups} WHERE ${userGroups.id} = ${input.groupId} FOR UPDATE`);
+
+    // Check member count to prevent exceeding limit via concurrent approvals
+    const activeMemberCountRows = await tx
+      .select({ count: sql<number>`count(*)` })
+      .from(groupMembers)
+      .where(and(
+        eq(groupMembers.groupId, input.groupId),
+        eq(groupMembers.status, "active"),
+      ));
+
+    if (Number(activeMemberCountRows[0]?.count ?? 0) >= MAX_GROUP_MEMBERS) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Maximum ${MAX_GROUP_MEMBERS} members per group`,
+      });
+    }
+
     await tx
       .update(groupMembers)
       .set({

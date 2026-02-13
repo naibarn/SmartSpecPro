@@ -425,6 +425,9 @@ describe("groupsService", () => {
           },
         ],
       ]);
+      setTxSelectQueue([
+        [{ count: 5 }], // member count check (inside tx after FOR UPDATE)
+      ]);
 
       const result = await approveJoinRequest(
         { groupId: 10, userId: 9 },
@@ -432,6 +435,7 @@ describe("groupsService", () => {
       );
 
       expect(result).toEqual({ success: true });
+      expect(mockTx.execute).toHaveBeenCalledTimes(1); // FOR UPDATE lock
       expect(mockTx.update).toHaveBeenCalledTimes(2);
       expect(mockRedis.del).toHaveBeenCalledWith("user:9:groups:tenant-1");
     });
@@ -640,6 +644,9 @@ describe("groupsService", () => {
         setDbSelectQueue([
           [{ id: 10, tenantId: "tenant-1", ownerId: 7, name: "Marketing", deletedAt: null }],
           [{ id: 300, groupId: 10, userId: 9, status: "pending" }],
+        ]);
+        setTxSelectQueue([
+          [{ count: 5 }], // member count check (inside tx after FOR UPDATE)
         ]);
 
         await approveJoinRequest(
