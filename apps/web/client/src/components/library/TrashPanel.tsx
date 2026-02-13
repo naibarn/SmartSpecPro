@@ -12,15 +12,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 
 export function TrashPanel() {
+  const { user } = useAuth();
   const trpcUtils = trpc.useUtils();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     title: string;
   } | null>(null);
   const [emptyTrashOpen, setEmptyTrashOpen] = useState(false);
+  const [pendingRestoreIds, setPendingRestoreIds] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
 
   const {
     data: trashData,
@@ -45,40 +54,62 @@ export function TrashPanel() {
   const items = trashData?.items ?? [];
 
   async function handleRestore(itemId: number) {
+    setPendingRestoreIds((prev) => new Set(prev).add(itemId));
     try {
       await restoreMutation.mutateAsync({ itemId });
       toast.success("File restored successfully");
     } catch {
       toast.error("Failed to restore file");
+    } finally {
+      setPendingRestoreIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
     }
   }
 
   async function handlePermanentDelete(itemId: number) {
+    setPendingDeleteIds((prev) => new Set(prev).add(itemId));
     try {
       await deleteMutation.mutateAsync({ itemId });
       toast.success("File permanently deleted");
       setDeleteTarget(null);
     } catch {
       toast.error("Failed to delete file");
+    } finally {
+      setPendingDeleteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
     }
   }
 
   async function handleEmptyTrash() {
-    try {
-      const results = await Promise.allSettled(
-        items.map((item) => deleteMutation.mutateAsync({ itemId: item.id })),
-      );
-      const failed = results.filter((r) => r.status === "rejected").length;
-      if (failed === 0) {
-        toast.success("Trash emptied");
-      } else {
-        toast.error(`Failed to delete ${failed} of ${items.length} items`);
+    setIsEmptyingTrash(true);
+    setEmptyTrashOpen(false);
+    let failed = 0;
+    for (const item of items) {
+      try {
+        await deleteMutation.mutateAsync({ itemId: item.id });
+      } catch {
+        failed++;
       }
-    } catch {
-      toast.error("Failed to empty trash");
-    } finally {
-      setEmptyTrashOpen(false);
     }
+    setIsEmptyingTrash(false);
+    if (failed === 0) {
+      toast.success("Trash emptied");
+    } else {
+      toast.error(`Failed to delete ${failed} of ${items.length} items`);
+    }
+    trpcUtils.library.listTrash.invalidate();
+  }
+
+  function getDeletedByLabel(deletedBy: number | null): string | null {
+    if (!deletedBy) return null;
+    if (user && deletedBy === Number(user.id)) return "Deleted by you";
+    return null;
   }
 
   return (
@@ -97,10 +128,15 @@ export function TrashPanel() {
             size="sm"
             className="text-red-600 hover:bg-red-50 hover:text-red-700"
             onClick={() => setEmptyTrashOpen(true)}
+            disabled={isEmptyingTrash}
             aria-label="Empty all trash items"
           >
-            <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
-            Empty Trash
+            {isEmptyingTrash ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+            )}
+            {isEmptyingTrash ? "Emptying..." : "Empty Trash"}
           </Button>
         )}
       </div>
@@ -152,62 +188,78 @@ export function TrashPanel() {
       {/* Item list */}
       {!isLoading && !error && items.length > 0 && (
         <div className="space-y-2">
-          {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="truncate font-medium text-slate-900">
-                  {item.title}
-                </span>
-                {item.daysUntilPurge < 7 && (
-                  <span
-                    role="status"
-                    aria-label={`Item will be deleted in ${item.daysUntilPurge} days`}
-                    className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
-                  >
-                    <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                    {item.daysUntilPurge} days left
-                  </span>
-                )}
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {formatDeleteInfo(item.daysInTrash)}
-                {item.daysUntilPurge >= 7 && (
-                  <>{" \u00b7 "}{item.daysUntilPurge} days left</>
-                )}
-              </p>
-            </div>
+          {items.map((item) => {
+            const isRestoring = pendingRestoreIds.has(item.id);
+            const isDeleting = pendingDeleteIds.has(item.id);
+            const isBusy = isRestoring || isDeleting || isEmptyingTrash;
+            const deletedByLabel = getDeletedByLabel(item.deletedBy);
 
-            <div className="ml-4 flex shrink-0 items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleRestore(item.id)}
-                disabled={restoreMutation.isPending}
-                aria-label={`Restore ${item.title}`}
+            return (
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
               >
-                <RotateCcw className="mr-1 h-4 w-4" aria-hidden="true" />
-                Restore
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                onClick={() =>
-                  setDeleteTarget({ id: item.id, title: item.title })
-                }
-                disabled={deleteMutation.isPending}
-                aria-label={`Permanently delete ${item.title}`}
-              >
-                <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
-                Delete
-              </Button>
-            </div>
-          </div>
-        ))}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium text-slate-900">
+                      {item.title}
+                    </span>
+                    {item.daysUntilPurge < 7 && (
+                      <span
+                        role="status"
+                        aria-label={`Item will be deleted in ${item.daysUntilPurge} days`}
+                        className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
+                      >
+                        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                        {item.daysUntilPurge} days left
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {deletedByLabel && <>{deletedByLabel}{" \u00b7 "}</>}
+                    {formatDeleteInfo(item.daysInTrash)}
+                    {item.daysUntilPurge >= 7 && (
+                      <>{" \u00b7 "}{item.daysUntilPurge} days left</>
+                    )}
+                  </p>
+                </div>
+
+                <div className="ml-4 flex shrink-0 items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRestore(item.id)}
+                    disabled={isBusy}
+                    aria-label={`Restore ${item.title}`}
+                  >
+                    {isRestoring ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <RotateCcw className="mr-1 h-4 w-4" aria-hidden="true" />
+                    )}
+                    Restore
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onClick={() =>
+                      setDeleteTarget({ id: item.id, title: item.title })
+                    }
+                    disabled={isBusy}
+                    aria-label={`Permanently delete ${item.title}`}
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+                    )}
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
