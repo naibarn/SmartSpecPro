@@ -262,6 +262,111 @@ describe("MediaJobClient", () => {
     expect(spec.params?.mode).toBe("remove");
   });
 
+  it("cutDeadAir includes softeningBufferMs in job spec params", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const segments = [{ startMs: 1000, endMs: 3000 }];
+    const promise = client.cutDeadAir("file:///test.mp4", segments, "remove", {
+      softeningBufferMs: 200,
+    });
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.softeningBufferMs).toBe(200);
+  });
+
+  it("cutDeadAir includes crossfade flag in job spec params", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const segments = [{ startMs: 1000, endMs: 3000 }];
+    const promise = client.cutDeadAir("file:///test.mp4", segments, "remove", {
+      crossfade: true,
+    });
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.crossfade).toBe(true);
+  });
+
+  it("cutDeadAir defaults softeningBufferMs to 0 when not provided", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.cutDeadAir("file:///test.mp4", []);
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.softeningBufferMs).toBe(0);
+  });
+
+  it("cutDeadAir defaults crossfade to false when not provided", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.cutDeadAir("file:///test.mp4", []);
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.crossfade).toBe(false);
+  });
+
+  it("cutDeadAir clamps softeningBufferMs to valid range [0, 5000]", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    // Test negative value (should clamp to 0)
+    const promise1 = client.cutDeadAir("file:///test.mp4", [], "remove", {
+      softeningBufferMs: -100,
+    });
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise1;
+
+    let spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.softeningBufferMs).toBe(0);
+
+    // Test excessive value (should clamp to 5000)
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+    const promise2 = client.cutDeadAir("file:///test.mp4", [], "remove", {
+      softeningBufferMs: 10000,
+    });
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise2;
+
+    spec = mockAdapter.submitJobCalls[1];
+    expect(spec.params?.softeningBufferMs).toBe(5000);
+  });
+
+  it("cutDeadAir accepts both softeningBufferMs and crossfade together", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const segments = [{ startMs: 1000, endMs: 3000 }];
+    const promise = client.cutDeadAir("file:///test.mp4", segments, "remove", {
+      softeningBufferMs: 200,
+      crossfade: true,
+    });
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise;
+
+    const spec = mockAdapter.submitJobCalls[0];
+    expect(spec.params?.softeningBufferMs).toBe(200);
+    expect(spec.params?.crossfade).toBe(true);
+  });
+
   it("getThumbnails convenience method builds correct job spec", async () => {
     mockAdapter.setStatusSequence([
       { jobId: "any", status: "done", progress: 1.0 },
