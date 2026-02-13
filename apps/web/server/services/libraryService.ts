@@ -1947,7 +1947,8 @@ export async function getLibraryItemShares(
         eq(libraryPermissions.libraryItemId, itemId),
         eq(libraryPermissions.tenantId, actorTenantId),
       ),
-    );
+    )
+    .limit(200);
 
   // Batch resolve names for shares (one query per subject type)
   const userSubjectIds = permRows
