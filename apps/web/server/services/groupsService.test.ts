@@ -322,9 +322,9 @@ describe("groupsService", () => {
           },
         ],
         [{ id: 9, currentTenantId: "tenant-1" }],
-        [{ count: 5 }],
       ]);
       setTxSelectQueue([
+        [{ count: 5 }], // member count check (inside tx after FOR UPDATE)
         [
           {
             id: 77,
@@ -570,9 +570,11 @@ describe("groupsService", () => {
         setDbSelectQueue([
           [{ id: 10, tenantId: "tenant-1", ownerId: 7, name: "Marketing", deletedAt: null }],
           [{ id: 9, currentTenantId: "tenant-1" }],
-          [{ count: 5 }],
         ]);
-        setTxSelectQueue([[]]); // no existing membership
+        setTxSelectQueue([
+          [{ count: 5 }], // member count check (inside tx after FOR UPDATE)
+          [],              // no existing membership
+        ]);
 
         mockTx.insert.mockReturnValueOnce({
           values: vi.fn().mockResolvedValue(undefined),

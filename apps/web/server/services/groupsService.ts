@@ -403,26 +403,27 @@ export async function addGroupMember(
 
   await requireTargetUserInTenant(db, input.userId, tenantId);
 
-  const activeMemberCountRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(groupMembers)
-    .where(and(
-      eq(groupMembers.groupId, input.groupId),
-      eq(groupMembers.status, "active"),
-    ));
-
-  const memberCount = Number(activeMemberCountRows[0]?.count ?? 0);
-  if (memberCount >= MAX_GROUP_MEMBERS) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: `Maximum ${MAX_GROUP_MEMBERS} members per group`,
-    });
-  }
-
   const now = new Date();
   await db.transaction(async (tx) => {
     // Lock the group row to serialize concurrent member additions
     await tx.execute(sql`SELECT 1 FROM ${userGroups} WHERE ${userGroups.id} = ${input.groupId} FOR UPDATE`);
+
+    // Check member count INSIDE the transaction (after lock) to prevent race condition
+    const activeMemberCountRows = await tx
+      .select({ count: sql<number>`count(*)` })
+      .from(groupMembers)
+      .where(and(
+        eq(groupMembers.groupId, input.groupId),
+        eq(groupMembers.status, "active"),
+      ));
+
+    const memberCount = Number(activeMemberCountRows[0]?.count ?? 0);
+    if (memberCount >= MAX_GROUP_MEMBERS) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Maximum ${MAX_GROUP_MEMBERS} members per group`,
+      });
+    }
 
     const existingRows = await tx
       .select()
@@ -815,23 +816,23 @@ export async function joinOpenGroup(
     });
   }
 
-  // Check member count
-  const activeMemberCountRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(groupMembers)
-    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")));
-
-  if (Number(activeMemberCountRows[0]?.count ?? 0) >= MAX_GROUP_MEMBERS) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: `Maximum ${MAX_GROUP_MEMBERS} members per group`,
-    });
-  }
-
   const now = new Date();
   await db.transaction(async (tx) => {
     // Lock the group row to serialize concurrent join operations
     await tx.execute(sql`SELECT 1 FROM ${userGroups} WHERE ${userGroups.id} = ${groupId} FOR UPDATE`);
+
+    // Check member count INSIDE the transaction (after lock) to prevent race condition
+    const activeMemberCountRows = await tx
+      .select({ count: sql<number>`count(*)` })
+      .from(groupMembers)
+      .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")));
+
+    if (Number(activeMemberCountRows[0]?.count ?? 0) >= MAX_GROUP_MEMBERS) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Maximum ${MAX_GROUP_MEMBERS} members per group`,
+      });
+    }
 
     const existingRows = await tx
       .select()
