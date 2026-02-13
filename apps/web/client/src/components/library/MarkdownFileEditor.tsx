@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import CodeMirrorEditor, { useLineNumbersToggle } from "./CodeMirrorEditor";
+import CodeMirrorEditor, { useLineNumbersToggle, type CodeMirrorEditorMethods } from "./CodeMirrorEditor";
 
 interface MarkdownFileEditorProps {
   value: string;
@@ -61,7 +61,7 @@ export default function MarkdownFileEditor({
   editorOnly,
   imageLibraryItems,
 }: MarkdownFileEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<CodeMirrorEditorMethods | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [imageFilter, setImageFilter] = useState("");
@@ -81,61 +81,19 @@ export default function MarkdownFileEditor({
       .slice(0, 80);
   }, [imageFilter, imageLibraryItems]);
 
-  function applyTextTransform(
-    transform: (args: {
-      currentValue: string;
-      selectionStart: number;
-      selectionEnd: number;
-      selectedText: string;
-    }) => {
-      nextValue: string;
-      nextSelectionStart: number;
-      nextSelectionEnd: number;
-    },
-  ) {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const selectionStart = textarea.selectionStart || 0;
-    const selectionEnd = textarea.selectionEnd || 0;
-    const selectedText = value.slice(selectionStart, selectionEnd);
-    const result = transform({
-      currentValue: value,
-      selectionStart,
-      selectionEnd,
-      selectedText,
-    });
-
-    onChange(result.nextValue);
-
-    window.requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(result.nextSelectionStart, result.nextSelectionEnd);
-    });
-  }
-
   function wrapSelection(prefix: string, suffix: string, fallbackText: string) {
-    applyTextTransform(({ currentValue, selectionStart, selectionEnd, selectedText }) => {
-      const text = selectedText || fallbackText;
-      const nextValue = `${currentValue.slice(0, selectionStart)}${prefix}${text}${suffix}${currentValue.slice(selectionEnd)}`;
-      const nextSelectionStart = selectionStart + prefix.length;
-      const nextSelectionEnd = nextSelectionStart + text.length;
-      return { nextValue, nextSelectionStart, nextSelectionEnd };
-    });
+    if (!editorRef.current) return;
+    editorRef.current.wrapSelection(prefix, suffix, fallbackText);
   }
 
   function prefixLines(prefix: string, fallbackText: string) {
-    applyTextTransform(({ currentValue, selectionStart, selectionEnd, selectedText }) => {
-      const text = selectedText || fallbackText;
-      const prefixed = text
-        .split("\n")
-        .map((line) => `${prefix}${line}`)
-        .join("\n");
-      const nextValue = `${currentValue.slice(0, selectionStart)}${prefixed}${currentValue.slice(selectionEnd)}`;
-      const nextSelectionStart = selectionStart;
-      const nextSelectionEnd = selectionStart + prefixed.length;
-      return { nextValue, nextSelectionStart, nextSelectionEnd };
-    });
+    if (!editorRef.current) return;
+    const selectedText = editorRef.current.getSelection() || fallbackText;
+    const prefixed = selectedText
+      .split("\n")
+      .map((line) => `${prefix}${line}`)
+      .join("\n");
+    editorRef.current.replaceSelection(prefixed);
   }
 
   function insertHeading(level: 1 | 2 | 3 | 4) {
@@ -144,47 +102,32 @@ export default function MarkdownFileEditor({
   }
 
   function clearInlineFormatting() {
-    applyTextTransform(({ currentValue, selectionStart, selectionEnd, selectedText }) => {
-      const text = selectedText || "";
-      const cleared = text
-        .replace(/\*\*(.*?)\*\*/g, "$1")
-        .replace(/\*(.*?)\*/g, "$1")
-        .replace(/<u>(.*?)<\/u>/g, "$1")
-        .replace(/`([^`]+)`/g, "$1");
-
-      const nextValue = `${currentValue.slice(0, selectionStart)}${cleared}${currentValue.slice(selectionEnd)}`;
-      const nextSelectionStart = selectionStart;
-      const nextSelectionEnd = selectionStart + cleared.length;
-      return { nextValue, nextSelectionStart, nextSelectionEnd };
-    });
+    if (!editorRef.current) return;
+    const selectedText = editorRef.current.getSelection() || "";
+    const cleared = selectedText
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/<u>(.*?)<\/u>/g, "$1")
+      .replace(/`([^`]+)`/g, "$1");
+    editorRef.current.replaceSelection(cleared);
   }
 
   function insertLink() {
+    if (!editorRef.current) return;
     const url = window.prompt("Enter URL", "https://");
     if (!url) return;
 
-    applyTextTransform(({ currentValue, selectionStart, selectionEnd, selectedText }) => {
-      const linkText = selectedText || "link text";
-      const markdown = `[${linkText}](${url.trim()})`;
-      const nextValue = `${currentValue.slice(0, selectionStart)}${markdown}${currentValue.slice(selectionEnd)}`;
-      const nextSelectionStart = selectionStart;
-      const nextSelectionEnd = selectionStart + markdown.length;
-      return { nextValue, nextSelectionStart, nextSelectionEnd };
-    });
+    const linkText = editorRef.current.getSelection() || "link text";
+    const markdown = `[${linkText}](${url.trim()})`;
+    editorRef.current.replaceSelection(markdown);
   }
 
   function insertImageFromLibrary(image: { title: string; source_url: string | null }) {
-    if (!image.source_url) return;
+    if (!image.source_url || !editorRef.current) return;
 
-    applyTextTransform(({ currentValue, selectionStart, selectionEnd }) => {
-      const alt = image.title.trim() || "image";
-      const markdown = `![${alt}](${image.source_url})`;
-      const nextValue = `${currentValue.slice(0, selectionStart)}${markdown}${currentValue.slice(selectionEnd)}`;
-      const nextSelectionStart = selectionStart;
-      const nextSelectionEnd = selectionStart + markdown.length;
-      return { nextValue, nextSelectionStart, nextSelectionEnd };
-    });
-
+    const alt = image.title.trim() || "image";
+    const markdown = `![${alt}](${image.source_url})`;
+    editorRef.current.insertText(markdown);
     setImagePickerOpen(false);
   }
 
@@ -373,6 +316,7 @@ export default function MarkdownFileEditor({
             </div>
 
             <CodeMirrorEditor
+              ref={editorRef}
               value={value}
               onChange={onChange}
               fileExtension="md"
@@ -540,6 +484,7 @@ export default function MarkdownFileEditor({
         </div>
         {!editorCollapsed ? (
           <CodeMirrorEditor
+            ref={editorRef}
             value={value}
             onChange={onChange}
             fileExtension="md"
@@ -564,6 +509,7 @@ export default function MarkdownFileEditor({
         {!editorCollapsed ? (
           <div className="relative min-w-0 flex-1">
             <CodeMirrorEditor
+              ref={editorRef}
               value={value}
               onChange={onChange}
               fileExtension="md"
