@@ -61,6 +61,10 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { id: 100, name: "Test User" } }),
+}));
+
 vi.mock("lucide-react", () => ({
   AlertTriangle: (props: Record<string, unknown>) =>
     React.createElement("svg", {

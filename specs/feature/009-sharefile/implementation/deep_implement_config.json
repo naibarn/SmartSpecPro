@@ -52,6 +52,10 @@
     "section-08-file-sharing-ui": {
       "status": "complete",
       "commit_hash": "7a2f6b0"
+    },
+    "section-09-trash-ui": {
+      "status": "complete",
+      "commit_hash": "12fcd7e"
     }
   },
   "pre_commit": {

@@ -354,7 +354,7 @@ if (isLoading) {
 - [x] Implement relative date display logic (formatDeleteInfo)
 - [x] Implement days-until-purge calculation (backend-computed)
 - [x] Implement warning badge for < 7 days remaining (bg-red-100)
-- [ ] Implement "Deleted by" user name display (DEFERRED: needs backend username population)
+- [x] Implement "Deleted by" user name display (partial: shows "Deleted by you" for current user)
 - [x] Implement empty state
 - [x] Add TrashPanel as 4th tab in DocumentManagement (via DocumentLibraryTabs + scope routing)
 - [x] Add ARIA attributes for accessibility
@@ -366,17 +366,19 @@ if (isLoading) {
 ## Implementation Notes
 
 ### Actual Files Modified/Created
-- `apps/web/client/src/components/library/TrashPanel.tsx` — Main trash panel component (EXISTING, updated with `import React` and code review fixes)
-- `apps/web/client/src/components/library/TrashPanel.test.ts` — 21 SSR tests using renderToStaticMarkup
-- `apps/web/client/src/components/library/DocumentLibraryTabs.tsx` — Already had 4-column grid with Trash tab (pre-existing)
-- `apps/web/client/src/pages/DocumentManagement.tsx` — Already had TrashPanel integration (pre-existing), added listScope mapping and query disabling for trash mode
+- `apps/web/client/src/components/library/TrashPanel.tsx` — NEW: Main trash panel with per-item pending state, sequential empty trash, "Deleted by you" display
+- `apps/web/client/src/components/library/TrashPanel.test.ts` — 21 SSR tests using renderToStaticMarkup (pre-existing, added useAuth mock)
+- `apps/web/client/src/components/library/DocumentLibraryTabs.tsx` — MODIFIED: Added Trash as 4th tab with red accent color
+- `apps/web/client/src/pages/DocumentManagement.tsx` — MODIFIED: TrashPanel integration, listScope mapping, query disabling for trash mode
+- `apps/web/client/src/lib/documentManagementUi.ts` — MODIFIED: Added "trash" to DocumentScopeTab union type
 
 ### Deviations from Plan
 1. **AlertDialog instead of window.confirm**: Component uses Radix AlertDialog for both single-item delete and empty-trash confirmations (better UX than window.confirm)
-2. **"Deleted by" display deferred**: Backend `listTrash` returns `deletedBy` as userId (number), not username. Needs backend enhancement to populate name.
+2. **"Deleted by" partial**: Shows "Deleted by you" for current user via useAuth. Other users' names require backend enhancement to populate.
 3. **Test approach**: Uses `.test.ts` with SSR `renderToStaticMarkup` instead of `.test.tsx` with `@testing-library/react` (project doesn't have jsdom environment)
-4. **Empty trash uses Promise.allSettled**: Code review fix — reports partial failure count instead of failing silently
-5. **Fixed dangling separator**: Code review fix — separator only renders when daysUntilPurge >= 7
+4. **Sequential empty trash**: Code review fix — sequential deletion with `isEmptyingTrash` state instead of parallel `Promise.all`. Reports partial failure count.
+5. **Per-item pending state**: Code review fix — `pendingRestoreIds`/`pendingDeleteIds` Sets track per-item loading instead of global `isPending`
+6. **Fixed dangling separator**: Code review fix — separator only renders when daysUntilPurge >= 7
 
 ## Validation
 
