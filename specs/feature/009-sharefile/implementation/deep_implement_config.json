@@ -64,6 +64,10 @@
     "section-11-security-tests": {
       "status": "complete",
       "commit_hash": "e1cfe25"
+    },
+    "section-12-deployment-verification": {
+      "status": "complete",
+      "commit_hash": "abb20d4"
     }
   },
   "pre_commit": {

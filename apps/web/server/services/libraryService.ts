@@ -1147,6 +1147,16 @@ export async function shareLibraryItem(
     return false;
   }
 
+  // Prevent privilege escalation: actor cannot grant higher permission than they have
+  // Owner and admin bypass this check (they can grant any level)
+  if (existing.ownerUserId !== actor.userId && actor.role !== "admin") {
+    const actorRank = rankPermissionLevel(permission);
+    const grantRank = rankPermissionLevel(input.permissionLevel);
+    if (grantRank > actorRank) {
+      return false;
+    }
+  }
+
   // NEW: Validate group shares
   if (input.subjectType === 'group') {
     // 1. Validate group exists

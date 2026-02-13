@@ -145,6 +145,7 @@ import {
   canManageLibraryItem,
   canReadLibraryItem,
   getUserEffectivePermission,
+  shareLibraryItem,
 } from "./libraryService";
 
 import {
@@ -581,7 +582,94 @@ describe("Permission Bypass Prevention", () => {
   });
 });
 
-// ─── Category 6: Integration Test Stubs (require real DB) ──────────────────
+// ─── Category 6: Privilege Escalation Prevention ───────────────────────────
+
+describe("Privilege Escalation Prevention", () => {
+  it("user with write permission cannot grant delete to others", async () => {
+    // getUserGroups mock
+    mockGetUserGroups.mockResolvedValueOnce([]);
+
+    setDbSelectQueue([
+      // 1. getLibraryItemRowById
+      [
+        {
+          id: 100,
+          tenantId: "50",
+          ownerUserId: 999,
+          visibility: "private",
+          itemType: "md",
+          deletedAt: null,
+        },
+      ],
+      // 2. getUserPermissionLevel → getUserGroups already mocked above
+      // 3. getUserPermissionLevel → libraryPermissions query
+      [
+        {
+          subjectType: "user",
+          subjectId: "5",
+          permissionLevel: "write",
+          expiresAt: null,
+        },
+      ],
+    ]);
+
+    const result = await shareLibraryItem(
+      {
+        itemId: 100,
+        subjectType: "user",
+        subjectId: "99",
+        permissionLevel: "delete",
+      },
+      { userId: 5, tenantId: 50, role: "user" },
+    );
+
+    // Should return false — write user cannot grant delete
+    expect(result).toBe(false);
+  });
+
+  it("owner can grant any permission level", async () => {
+    // getUserGroups mock
+    mockGetUserGroups.mockResolvedValueOnce([]);
+
+    setDbSelectQueue([
+      // 1. getLibraryItemRowById — actor IS the owner
+      [
+        {
+          id: 100,
+          tenantId: "50",
+          ownerUserId: 5,
+          visibility: "private",
+          itemType: "md",
+          deletedAt: null,
+        },
+      ],
+      // 2. getUserPermissionLevel → libraryPermissions (owner has no explicit rows)
+      [],
+    ]);
+
+    // Mock insert for the share creation
+    mockDb.insert.mockReturnValueOnce({
+      values: vi.fn().mockReturnValue({
+        onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+      }),
+    });
+
+    const result = await shareLibraryItem(
+      {
+        itemId: 100,
+        subjectType: "user",
+        subjectId: "99",
+        permissionLevel: "delete",
+      },
+      { userId: 5, tenantId: 50, role: "user" },
+    );
+
+    // Owner should be able to grant delete
+    expect(result).toBe(true);
+  });
+});
+
+// ─── Category 7: Integration Test Stubs (require real DB) ──────────────────
 
 describe("Integration Tests (stubs for real DB environment)", () => {
   describe("End-to-End Group Management", () => {
