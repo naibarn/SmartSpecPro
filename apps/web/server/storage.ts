@@ -197,6 +197,56 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
 }
 
 /**
+ * Delete a file from local storage. Returns true if deleted, false if not found.
+ */
+async function localStorageDelete(relKey: string): Promise<boolean> {
+  const key = normalizeKey(relKey);
+  const filePath = path.join(UPLOADS_DIR, key);
+  try {
+    fs.unlinkSync(filePath);
+    return true;
+  } catch (err: any) {
+    if (err.code === "ENOENT") return false;
+    throw err;
+  }
+}
+
+function buildDeleteUrl(baseUrl: string, relKey: string): URL {
+  const url = new URL("v1/storage/delete", ensureTrailingSlash(baseUrl));
+  url.searchParams.set("path", normalizeKey(relKey));
+  return url;
+}
+
+/**
+ * Delete a file from storage by its relative key.
+ * Returns true if deleted, false if not found.
+ */
+export async function storageDelete(relKey: string): Promise<boolean> {
+  const config = getStorageConfig();
+
+  if (!config) {
+    return localStorageDelete(relKey);
+  }
+
+  const { baseUrl, apiKey } = config;
+  const key = normalizeKey(relKey);
+  const deleteUrl = buildDeleteUrl(baseUrl, key);
+  const response = await fetch(deleteUrl, {
+    method: "DELETE",
+    headers: buildAuthHeaders(apiKey),
+  });
+
+  if (response.status === 404) return false;
+  if (!response.ok) {
+    const message = await response.text().catch(() => response.statusText);
+    throw new Error(
+      `Storage delete failed (${response.status} ${response.statusText}): ${message}`
+    );
+  }
+  return true;
+}
+
+/**
  * Get the uploads directory path (for static serving)
  */
 export function getUploadsDir(): string {

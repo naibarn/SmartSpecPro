@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { storagePut } from "../storage";
+import { storagePut, storageDelete } from "../storage";
 import {
   validateLibraryUrl,
   type LibraryUrlRejectReason,
@@ -2193,12 +2193,32 @@ export async function permanentDeleteLibraryItem(
     });
   }
 
+  // Collect storage keys before cascade delete removes them
+  const uploadKeyRows = await db
+    .select({ linkId: libraryLinks.linkId })
+    .from(libraryLinks)
+    .where(
+      and(
+        eq(libraryLinks.libraryItemId, itemId),
+        eq(libraryLinks.linkType, "upload_key"),
+      ),
+    );
+
   await db.transaction(async (tx) => {
     await cascadeDeleteLibraryItem(tx, itemId);
   });
 
-  // Note: Storage cleanup (sourceUrl/thumbnailUrl) not yet implemented.
-  // storageDelete does not exist yet — files remain in storage after DB purge.
+  // Best-effort storage cleanup — don't fail the operation if storage delete errors
+  for (const { linkId } of uploadKeyRows) {
+    try {
+      await storageDelete(linkId);
+    } catch (err) {
+      console.error(
+        `[permanent-delete] Storage cleanup failed for key ${linkId}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
 
   return { daysInTrash };
 }

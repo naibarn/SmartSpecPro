@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockGetDb, mockAuditLog, mockCascadeDelete } = vi.hoisted(() => ({
+const { mockGetDb, mockAuditLog, mockCascadeDelete, mockStorageDelete } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
   mockAuditLog: vi.fn(),
   mockCascadeDelete: vi.fn(),
+  mockStorageDelete: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("../db", () => ({
@@ -16,10 +17,15 @@ vi.mock("../services/auditLogger", () => ({
 
 vi.mock("../../drizzle/schema", () => ({
   libraryItems: { id: "id", deletedAt: "deletedAt" },
+  libraryLinks: { libraryItemId: "libraryItemId", linkType: "linkType", linkId: "linkId" },
 }));
 
 vi.mock("../services/libraryService", () => ({
   cascadeDeleteLibraryItem: mockCascadeDelete,
+}));
+
+vi.mock("../storage", () => ({
+  storageDelete: (...args: any[]) => mockStorageDelete(...args),
 }));
 
 // Note: BullMQ is NOT mocked for executeTrashPurge (it's tested directly)

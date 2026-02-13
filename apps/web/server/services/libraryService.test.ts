@@ -23,6 +23,7 @@ const { mockStoragePut } = vi.hoisted(() => ({
 
 vi.mock("../storage", () => ({
   storagePut: mockStoragePut,
+  storageDelete: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("./groupsService", async (importOriginal) => {
