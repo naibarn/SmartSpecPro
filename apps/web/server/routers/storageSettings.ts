@@ -291,9 +291,22 @@ export const storageSettingsRouter = router({
         return result;
       } catch (error: any) {
         const latencyMs = Date.now() - startTime;
+        // Sanitize error message — S3 SDK errors may expose endpoints/account IDs
+        const rawMsg: string = error.message || "Connection failed";
+        const safeMsg = rawMsg.includes("AccessDenied")
+          ? "Access denied — check credentials and bucket permissions"
+          : rawMsg.includes("NoSuchBucket")
+            ? "Bucket not found — check the bucket name"
+            : rawMsg.includes("ENOTFOUND") || rawMsg.includes("getaddrinfo")
+              ? "Endpoint not reachable — check the endpoint URL"
+              : rawMsg.includes("ECONNREFUSED")
+                ? "Connection refused — check the endpoint URL and port"
+                : rawMsg.length > 120
+                  ? rawMsg.slice(0, 120) + "…"
+                  : rawMsg;
         const result = {
           success: false,
-          message: error.message || "Connection failed",
+          message: safeMsg,
           latencyMs,
         };
 
