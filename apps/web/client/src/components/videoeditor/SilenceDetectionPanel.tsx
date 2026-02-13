@@ -105,15 +105,24 @@ const SilenceDetectionPanel: React.FC<SilenceDetectionPanelProps> = ({
       const silenceSegments = derived.silenceSegments || [];
       const keepSegments = derived.keepSegments || [];
 
-      const regions: SilentRegion[] = silenceSegments.map((seg: any, i: number) => ({
-        id: generateId(),
-        startTime: (seg.startMs || 0) / 1000,
-        endTime: (seg.endMs || 0) / 1000,
-        duration: ((seg.endMs || 0) - (seg.startMs || 0)) / 1000,
-        averageDb: seg.averageDb || threshold,
-        trackId: selectedTracks[0].id,
-        selected: true,
-      }));
+      const regions: SilentRegion[] = silenceSegments.map((seg: any, i: number) => {
+        const startTime = (seg.startMs || 0) / 1000;
+        const endTime = (seg.endMs || 0) / 1000;
+        const duration = endTime - startTime;
+        return {
+          id: generateId(),
+          startTime,
+          endTime,
+          duration,
+          adjustedStartTime: startTime,
+          adjustedEndTime: endTime,
+          adjustedDuration: duration,
+          averageDb: seg.averageDb || threshold,
+          trackId: selectedTracks[0].id,
+          selected: true,
+          skipped: false,
+        };
+      });
 
       const totalSilenceDuration = regions.reduce((sum: number, r: SilentRegion) => sum + r.duration, 0);
       const projectDuration = project.settings.duration || 0;
