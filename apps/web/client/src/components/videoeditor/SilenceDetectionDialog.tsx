@@ -4,7 +4,7 @@
  * Uses Radix UI Dialog for focus trapping, ESC-to-close, and ARIA support.
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   Dialog,
@@ -26,6 +26,89 @@ import {
   applyBufferToRegions,
 } from '../../types/videoEditor';
 import { createMediaJobClient } from '../../services/mediaJobClient';
+import PreviewPlayer, { type ActiveClipInfo } from './PreviewPlayer';
+import SilenceWaveformOverlay from './SilenceWaveformOverlay';
+
+/**
+ * Pure functions for skip-silence logic (exported for testing)
+ */
+
+/**
+ * Binary search to find a region containing currentTime.
+ * Expects regions to be pre-filtered (selected && !skipped) and sorted by adjustedStartTime.
+ */
+export function findRegionAtTime(
+  regions: SilentRegion[],
+  currentTime: number,
+): SilentRegion | null {
+  if (regions.length === 0) return null;
+
+  // Binary search
+  let lo = 0;
+  let hi = regions.length - 1;
+
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const region = regions[mid];
+
+    if (
+      currentTime >= region.adjustedStartTime &&
+      currentTime <= region.adjustedEndTime
+    ) {
+      return region;
+    }
+
+    if (currentTime < region.adjustedStartTime) {
+      hi = mid - 1;
+    } else {
+      lo = mid + 1;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Determines if playback should skip silence at the current time.
+ * Returns the target seek time (adjustedEndTime) or null if no skip should occur.
+ */
+export function shouldSkipSilence(params: {
+  enabled: boolean;
+  currentTime: number;
+  regions: SilentRegion[];
+  lastSkipTimestamp: number;
+  cooldownMs: number;
+  boundaryGuardMs: number;
+}): number | null {
+  const {
+    enabled,
+    currentTime,
+    regions,
+    lastSkipTimestamp,
+    cooldownMs,
+    boundaryGuardMs,
+  } = params;
+
+  // Check if skip-silence is enabled
+  if (!enabled) return null;
+
+  // Check cooldown
+  if (performance.now() - lastSkipTimestamp < cooldownMs) {
+    return null;
+  }
+
+  // Find region at current time
+  const region = findRegionAtTime(regions, currentTime);
+  if (!region) return null;
+
+  // Check boundary guard
+  if (Math.abs(currentTime - region.adjustedEndTime) < boundaryGuardMs) {
+    return null;
+  }
+
+  // Return target seek time
+  return region.adjustedEndTime;
+}
 
 interface AssetWithWaveform {
   path: string;
@@ -70,8 +153,14 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   // UI state
   const [playbackTime, setPlaybackTime] = useState(0);
   const [timelineZoom, setTimelineZoom] = useState(100);
-  const [skipSilencePreview, setSkipSilencePreview] = useState(false);
   const [applyToAllTracks, setApplyToAllTracks] = useState(false);
+
+  // Preview player state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [skipSilenceEnabled, setSkipSilenceEnabled] = useState(false);
+  const lastSkipRef = useRef(0);
+  const playbackTimeRef = useRef(playbackTime);
+  playbackTimeRef.current = playbackTime;
 
   // Waveform state
   const [waveformData, setWaveformData] = useState<number[] | null>(null);
@@ -167,11 +256,103 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     }
   }, [softeningBuffer, analysisComplete, rawRegions.length, projectDuration]);
 
+  // Pre-filter and sort regions for skip-silence
+  const skipRegions = useMemo(() => {
+    return regions
+      .filter((r) => r.selected && !r.skipped && r.adjustedDuration > 0)
+      .sort((a, b) => a.adjustedStartTime - b.adjustedStartTime);
+  }, [regions]);
+
+  // Skip-silence effect during playback
+  useEffect(() => {
+    if (!isPlaying || !skipSilenceEnabled || skipRegions.length === 0) {
+      return;
+    }
+
+    let rafId: number;
+
+    const tick = () => {
+      const target = shouldSkipSilence({
+        enabled: true,
+        currentTime: playbackTimeRef.current,
+        regions: skipRegions,
+        lastSkipTimestamp: lastSkipRef.current,
+        cooldownMs: 100,
+        boundaryGuardMs: 0.05,
+      });
+
+      if (target !== null) {
+        setPlaybackTime(target);
+        lastSkipRef.current = performance.now();
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [isPlaying, skipSilenceEnabled, skipRegions, setPlaybackTime]);
+
   // Get audio tracks for UI
   const audioTracks = useMemo(() =>
     project.timeline.tracks.filter((t) => t.type === 'audio' && t.clips.length > 0),
     [project]
   );
+
+  // Resolve preview asset from first selected track
+  const { previewUrl, activeClip, duration } = useMemo(() => {
+    if (selectedTrackIds.length === 0) {
+      return { previewUrl: '', activeClip: null, duration: 0 };
+    }
+
+    const firstTrack = project.timeline.tracks.find(
+      (t) => t.id === selectedTrackIds[0],
+    );
+    if (!firstTrack || firstTrack.clips.length === 0) {
+      return { previewUrl: '', activeClip: null, duration: 0 };
+    }
+
+    const firstClip = firstTrack.clips[0];
+    const asset = project.assets[firstClip.assetId];
+    if (!asset || !asset.path) {
+      return { previewUrl: '', activeClip: null, duration: 0 };
+    }
+
+    // Build ActiveClipInfo if clip has trim points
+    let clipInfo: ActiveClipInfo | null = null;
+    if (firstClip.trimIn != null || firstClip.trimOut != null) {
+      clipInfo = {
+        videoUrl: asset.path,
+        clipStartTime: firstClip.startTime,
+        trimIn: firstClip.trimIn ?? 0,
+        clipDuration: firstClip.duration || 0,
+      };
+    }
+
+    return {
+      previewUrl: asset.path,
+      activeClip: clipInfo,
+      duration: project.settings.duration || firstClip.duration || 0,
+    };
+  }, [project, selectedTrackIds]);
+
+  // Playback handlers
+  const handleTimeChange = useCallback((time: number) => {
+    setPlaybackTime(time);
+  }, []);
+
+  const handleWaveformSeek = useCallback((time: number) => {
+    setPlaybackTime(time);
+  }, []);
+
+  const handlePlayPause = useCallback(() => {
+    setIsPlaying((prev) => !prev);
+  }, []);
+
+  const handleStop = useCallback(() => {
+    setIsPlaying(false);
+    setPlaybackTime(0);
+  }, []);
 
   // Handle analyze button
   const handleAutoDetect = async () => {
@@ -372,12 +553,42 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
             .silence-dialog-preview {
               flex: 0 0 60%;
               display: flex;
-              align-items: center;
-              justify-content: center;
+              flex-direction: column;
               background: #111;
               border-right: 1px solid #444;
+              overflow: hidden;
+            }
+            .preview-container {
+              display: flex;
+              flex-direction: column;
+              flex: 1;
+              overflow: hidden;
+            }
+            .preview-placeholder {
+              flex: 1;
+              display: flex;
+              align-items: center;
+              justify-content: center;
               color: #666;
               font-size: 14px;
+            }
+            .skip-silence-toggle {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              padding: 12px 16px;
+              font-size: 13px;
+              color: #e0e0e0;
+              cursor: pointer;
+              user-select: none;
+              background: #1a1a1a;
+              border-top: 1px solid #333;
+            }
+            .skip-silence-toggle input[type="checkbox"] {
+              accent-color: #0078d4;
+              width: 16px;
+              height: 16px;
+              cursor: pointer;
             }
             .silence-dialog-settings {
               flex: 0 0 40%;
@@ -669,8 +880,35 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
           {/* Main Content: Preview (left) + Settings (right) */}
           <div className="silence-dialog-main">
             <div className="silence-dialog-preview" data-testid="silence-dialog-preview">
-              {/* PreviewPlayer placeholder (section 07) */}
-              Preview Player (Section 07)
+              <div className="preview-container">
+                {previewUrl ? (
+                  <>
+                    <PreviewPlayer
+                      currentTime={playbackTime}
+                      duration={duration}
+                      isPlaying={isPlaying}
+                      onTimeChange={handleTimeChange}
+                      onPlayPause={handlePlayPause}
+                      onStop={handleStop}
+                      previewVideoUrl={previewUrl}
+                      activeClip={activeClip}
+                    />
+                    <label htmlFor="skip-silence-toggle" className="skip-silence-toggle">
+                      <input
+                        id="skip-silence-toggle"
+                        type="checkbox"
+                        checked={skipSilenceEnabled}
+                        onChange={(e) => setSkipSilenceEnabled(e.target.checked)}
+                      />
+                      Skip Silence Preview
+                    </label>
+                  </>
+                ) : (
+                  <div className="preview-placeholder">
+                    Select a track with clips to preview
+                  </div>
+                )}
+              </div>
             </div>
             <div className="silence-dialog-settings" data-testid="silence-dialog-settings">
               <div className="settings-panel">
@@ -861,8 +1099,17 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                 Waveform unavailable
               </div>
             )}
-            {!waveformLoading && !waveformError && (
-              <span>Timeline (Section 06)</span>
+            {!waveformLoading && !waveformError && waveformData && (
+              <SilenceWaveformOverlay
+                currentTime={playbackTime}
+                onSeek={handleWaveformSeek}
+                regions={regions}
+                duration={duration}
+                waveformData={waveformData}
+              />
+            )}
+            {!waveformLoading && !waveformError && !waveformData && (
+              <span>No waveform data available</span>
             )}
           </div>
 
