@@ -379,3 +379,20 @@ After initial implementation, a code review identified performance and code qual
 - The playhead canvas uses `requestAnimationFrame` which runs at display refresh rate (~60fps) for smooth playhead animation.
 - `devicePixelRatio` scaling ensures crisp rendering on Retina/HiDPI displays.
 - For very long videos with many regions (hundreds), the drawing loop is still O(n) per region-canvas redraw. This is acceptable because the region count is capped at 500 segments by the backend (Section 09's validation), and canvas fill operations for 500 rectangles are sub-millisecond.
+### Post-Implementation Update (Section-06 Integration)
+
+**Added during section-06 implementation:** `visibleStartTime?: number` prop
+
+When used in a virtualized timeline (section-06), the overlay needs to render regions relative to the visible time range rather than the full timeline. The `visibleStartTime` prop enables this:
+
+- **Without prop (default):** Regions are rendered at absolute timeline positions (time * pixelsPerSecond)
+- **With prop:** Regions are rendered relative to visible range start: (time - visibleStartTime) * pixelsPerSecond
+
+This change is backward-compatible (defaults to 0 when omitted) and doesn't affect non-virtualized usage.
+
+**Modified functions:**
+- `timeToPixel(time, duration, canvasWidth, pixelsPerSecond, visibleStartTime)`
+- `pixelToTime(pixelX, duration, canvasWidth, pixelsPerSecond, visibleStartTime)`
+- `hitTestRegion(clientX, canvasRect, regions, duration, canvasWidth, pixelsPerSecond, visibleStartTime)`
+
+All helper functions now accept `visibleStartTime` as an optional final parameter.
