@@ -81,8 +81,17 @@ class GoogleTokenService:
         """
         Returns a valid access token, refreshing if near expiry.
         Raises InvalidGrantError if refresh fails with invalid_grant.
+        Uses SELECT ... FOR UPDATE to prevent concurrent refresh races.
         """
-        conn = await self._get_connection(user_id)
+        result = await self.db.execute(
+            select(OAuthConnection)
+            .where(
+                OAuthConnection.user_id == user_id,
+                OAuthConnection.provider == "google",
+            )
+            .with_for_update()
+        )
+        conn = result.scalar_one_or_none()
         if not conn:
             raise ValueError("No Google connection found for this user")
 

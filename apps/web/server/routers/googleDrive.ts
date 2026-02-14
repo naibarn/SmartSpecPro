@@ -228,9 +228,14 @@ export const googleDriveRouter = router({
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
+      auditLogger.log({
+        eventType: "error",
+        userId: ctx.user.id,
+        metadata: { endpoint: "disconnect", detail: (err as any).detail },
+      });
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: (err as any).detail || "Failed to start disconnect cleanup",
+        message: "Failed to start disconnect cleanup",
       });
     }
 
@@ -362,7 +367,12 @@ export const googleDriveRouter = router({
       });
       if (!uploadResp.ok) {
         const err = await uploadResp.json().catch(() => ({}));
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (err as any).detail || "Drive upload failed" });
+        auditLogger.log({
+          eventType: "error",
+          userId: ctx.user.id,
+          metadata: { endpoint: "openForEditing/upload", detail: (err as any).detail },
+        });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Drive upload failed" });
       }
       const uploadResult = await uploadResp.json() as { driveFileId: string; editUrl: string };
 
@@ -455,7 +465,12 @@ export const googleDriveRouter = router({
       });
       if (!exportResp.ok) {
         const err = await exportResp.json().catch(() => ({}));
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (err as any).detail || "Drive export failed" });
+        auditLogger.log({
+          eventType: "error",
+          userId: ctx.user.id,
+          metadata: { endpoint: "saveBack/export", detail: (err as any).detail },
+        });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Drive export failed" });
       }
       const exportResult = await exportResp.json() as { content: string; size: number };
       const fileBuffer = Buffer.from(exportResult.content, "base64");
@@ -607,9 +622,14 @@ export const googleDriveRouter = router({
     });
     if (!pyResp.ok) {
       const err = await pyResp.json().catch(() => ({}));
+      auditLogger.log({
+        eventType: "error",
+        userId: ctx.user.id,
+        metadata: { endpoint: "startSync", detail: (err as any).detail },
+      });
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: (err as any).detail || "Failed to start sync",
+        message: "Failed to start sync",
       });
     }
     return { started: true };

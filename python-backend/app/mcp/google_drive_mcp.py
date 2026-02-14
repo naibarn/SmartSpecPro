@@ -63,7 +63,10 @@ async def _get_access_token(user_id: int, token_service=None) -> str:
     """Obtain a valid Google access token for the user."""
     if token_service is None:
         from app.services.google_token_service import GoogleTokenService
-        token_service = GoogleTokenService()
+        from app.core.database import get_db_context
+        async with get_db_context() as db:
+            svc = GoogleTokenService(db)
+            return await svc.get_valid_access_token(user_id)
     return await token_service.get_valid_access_token(user_id)
 
 

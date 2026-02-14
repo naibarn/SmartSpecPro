@@ -3,7 +3,10 @@ OAuth API Endpoints
 Handles OAuth 2.0 authentication with Google and GitHub
 """
 
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
@@ -146,9 +149,10 @@ async def google_callback(
             detail=str(e)
         )
     except Exception as e:
+        logger.exception("OAuth callback error for provider google")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"OAuth callback failed: {str(e)}"
+            detail="OAuth callback failed"
         )
 
 
@@ -201,9 +205,10 @@ async def github_callback(
             detail=str(e)
         )
     except Exception as e:
+        logger.exception("OAuth callback error for provider github")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"OAuth callback failed: {str(e)}"
+            detail="OAuth callback failed"
         )
 
 

@@ -112,7 +112,7 @@ async def estimate_sync_cost(
         return result
     except Exception as e:
         logger.error("estimate_cost_failed user_id=%d error=%s", request.user_id, str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to estimate sync cost")
 
 
 @router.post("/disconnect")
