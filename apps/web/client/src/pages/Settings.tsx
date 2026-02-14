@@ -55,6 +55,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
+import { BudgetPanel } from '@/components/settings/BudgetPanel';
 
 type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing' | 'integrations';
 
@@ -1442,6 +1443,8 @@ export default function Settings() {
                       </Button>
                     </div>
                   </div>
+
+                  <BudgetPanel />
 
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">Recent Invoices</h3>
