@@ -58,6 +58,9 @@ celery_app.conf.update(
         "app.tasks.media_tasks.recover_stuck_tasks": {"queue": "media"},
         # Google Drive indexing -> media queue (network-bound)
         "app.tasks.google_drive_tasks.process_google_drive_index_job": {"queue": "media"},
+        "app.tasks.google_drive_tasks.initial_drive_sync": {"queue": "media"},
+        "app.tasks.google_drive_tasks.process_drive_changes": {"queue": "media"},
+        "app.tasks.google_drive_tasks.renew_drive_watch_channels": {"queue": "media"},
         # Workflow tasks -> celery queue (lightweight, frequent)
         "app.tasks.workflow_tasks.check_scheduled_workflows": {"queue": "celery"},
         "app.tasks.workflow_tasks.process_system_event": {"queue": "celery"},
@@ -96,6 +99,10 @@ celery_app.conf.beat_schedule = {
     "cleanup-expired-edit-sessions": {
         "task": "cleanup_expired_edit_sessions",
         "schedule": crontab(minute="*/30"),  # Every 30 minutes - expire stale Google Drive edit sessions
+    },
+    "renew-drive-watch-channels": {
+        "task": "renew_drive_watch_channels",
+        "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours - renew expiring webhook channels
     },
 }
 

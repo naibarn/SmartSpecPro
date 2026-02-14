@@ -13,6 +13,7 @@ import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 
+import { createWebhookRouter } from "../routes/webhooks";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
@@ -125,7 +126,9 @@ const csrfCheck = (req: any, res: any, next: any) => {
   // These are server-to-server callbacks and are validated by provider-specific logic.
   if (
     req.path === "/v1/media/callback/kie-ai" ||
-    req.originalUrl === "/api/v1/media/callback/kie-ai"
+    req.originalUrl === "/api/v1/media/callback/kie-ai" ||
+    req.path.startsWith("/webhooks/gdrive") ||
+    req.originalUrl.startsWith("/api/webhooks/gdrive")
   ) {
     return next();
   }
@@ -212,6 +215,9 @@ app.get("/api/storage/files/*", async (req, res) => {
     }
   }
 });
+
+// Webhook routes (before CSRF-protected routes, Google Drive sends raw POSTs)
+app.use("/api/webhooks", createWebhookRouter());
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
