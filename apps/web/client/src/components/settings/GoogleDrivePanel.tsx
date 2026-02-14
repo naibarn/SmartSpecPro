@@ -32,6 +32,7 @@ import {
   Download,
 } from "lucide-react";
 import { FolderPicker } from "./FolderPicker";
+import { DisconnectGoogleDialog } from "./DisconnectGoogleDialog";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -673,6 +674,7 @@ export function GoogleDrivePanel() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -688,7 +690,8 @@ export function GoogleDrivePanel() {
   });
   const disconnectMutation = trpc.googleDrive.disconnect.useMutation({
     onSuccess: () => {
-      toast.success("Google Drive disconnected");
+      setDisconnectDialogOpen(false);
+      toast.success("Google Drive disconnected. Cleanup is in progress.");
       statusQuery.refetch();
     },
     onError: (err) => toast.error(`Disconnect failed: ${err.message}`),
@@ -804,7 +807,7 @@ export function GoogleDrivePanel() {
           <TabsContent value="overview">
             <OverviewPanel
               connectionStatus={{ email, scopes, connectedAt }}
-              onDisconnect={() => disconnectMutation.mutate()}
+              onDisconnect={() => setDisconnectDialogOpen(true)}
               onSetTab={setActiveTab}
               onManageFolders={() => setFolderPickerOpen(true)}
             />
@@ -835,6 +838,14 @@ export function GoogleDrivePanel() {
           ((syncStatusQuery.data?.folderSelections as string[]) ?? []).map((id) => ({ id, name: `${id} (Folder ID)` }))
         }
         onConfirm={handleFolderConfirm}
+      />
+
+      {/* Disconnect Confirmation Dialog */}
+      <DisconnectGoogleDialog
+        open={disconnectDialogOpen}
+        onOpenChange={setDisconnectDialogOpen}
+        onConfirm={() => disconnectMutation.mutate()}
+        isLoading={disconnectMutation.isPending}
       />
     </div>
   );

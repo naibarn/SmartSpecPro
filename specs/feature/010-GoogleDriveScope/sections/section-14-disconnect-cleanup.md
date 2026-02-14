@@ -458,3 +458,47 @@ Celery task runs (background):
 4. **Large number of items:** If a user has thousands of indexed Drive files, the local cleanup (Step 5) should use batched deletes to avoid long-running transactions. Delete in batches of 500 item IDs.
 
 5. **Vector store unavailable:** If the vector store delete fails (Step 7), log the error but do not fail the entire cleanup. The orphaned vectors will not match any library items and will not appear in search results. They can be cleaned up later by an admin maintenance task.
+
+---
+
+## Implementation Notes (Post-Build)
+
+### Deviations from Plan
+
+1. **Disconnect endpoint location:** Used `internal_gdrive.py` instead of `oauth.py` as planned. This keeps all Google Drive internal endpoints co-located and avoids bloating the OAuth router with cleanup logic.
+
+2. **Vector store cleanup deferred:** Vector store cleanup (Step 7) was not implemented in this section. Orphaned vectors cause no search issues since they reference deleted library items. This can be addressed via an admin maintenance task later.
+
+3. **Step consolidation:** Steps 4-9 (local cleanup) were consolidated into a single Node.js internal endpoint call (`POST /api/internal/google-drive/cleanup`). The Python task calls this endpoint once instead of making multiple cross-service calls. The Node.js endpoint handles: edit sessions, sync state, and library items (with cascading deletes for chunks and links).
+
+4. **Celery task naming:** Used auto-generated fully-qualified name (`app.tasks.google_drive_tasks.disconnect_google_drive_cleanup`) instead of a custom `name=` parameter, consistent with all other task definitions in the codebase.
+
+### Code Review Fixes Applied
+
+1. **TOCTOU race in oauth_connections DELETE (HIGH):** Added `AND status = 'revoked'` to the DELETE query in step 10 to prevent deleting a freshly re-established active connection if user reconnects during cleanup.
+
+2. **Celery task_routes key mismatch (MEDIUM):** Changed route key to fully-qualified path and removed custom `name=` parameter from task decorator for consistency.
+
+3. **Missing tenant_id filter in temp file deletion (MEDIUM):** Added `AND tenant_id = :tenant_id` to the edit sessions query in `_delete_temp_drive_files` for multi-tenant safety.
+
+### Actual Files Modified/Created
+
+**Created:**
+- `apps/web/client/src/components/settings/DisconnectGoogleDialog.tsx` — Radix AlertDialog confirmation component
+- `specs/feature/010-GoogleDriveScope/implementation/code_review/section-14-diff.md` — Staged diff
+- `specs/feature/010-GoogleDriveScope/implementation/code_review/section-14-interview.md` — Review interview transcript
+
+**Modified:**
+- `python-backend/app/services/google_token_service.py` — Added `revoke_token` method
+- `python-backend/app/api/internal_gdrive.py` — Added `POST /disconnect` endpoint
+- `python-backend/app/tasks/google_drive_tasks.py` — Added `disconnect_google_drive_cleanup` task + helpers
+- `python-backend/app/core/celery_app.py` — Added task route entry
+- `apps/web/server/services/libraryService.ts` — Added `removeGoogleDriveData` function
+- `apps/web/server/_core/index.ts` — Added `POST /api/internal/google-drive/cleanup` endpoint
+- `apps/web/server/routers/googleDrive.ts` — Rewrote `disconnect` mutation to use internal endpoint
+- `apps/web/client/src/components/settings/GoogleDrivePanel.tsx` — Integrated disconnect dialog
+
+### Tests
+
+- Vitest: 57 passed, 12 pre-existing failures (no regressions)
+- Python: 10 unit tests passed, 1 pre-existing failure (no regressions)

@@ -2534,3 +2534,55 @@ export async function permanentDeleteLibraryItem(
 
   return { daysInTrash };
 }
+
+/**
+ * Remove all Google Drive virtual references and associated data for a user.
+ * Called during disconnect cleanup. Cascading FK deletes handle chunks and links.
+ */
+export async function removeGoogleDriveData(
+  userId: number,
+  tenantId: string,
+): Promise<{ itemsDeleted: number; chunksDeleted: number; linksDeleted: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Find all Google Drive items for this user
+  const driveItems = await db
+    .select({ id: libraryItems.id })
+    .from(libraryItems)
+    .where(
+      and(
+        eq(libraryItems.source, "google_drive"),
+        eq(libraryItems.ownerUserId, userId),
+        eq(libraryItems.tenantId, tenantId),
+      ),
+    );
+
+  const itemIds = driveItems.map((i) => i.id);
+  if (itemIds.length === 0) {
+    return { itemsDeleted: 0, chunksDeleted: 0, linksDeleted: 0 };
+  }
+
+  // Count chunks and links before cascade delete (for audit)
+  const [chunkRow] = await db
+    .select({ cnt: count(libraryChunks.id) })
+    .from(libraryChunks)
+    .where(inArray(libraryChunks.libraryItemId, itemIds));
+
+  const [linkRow] = await db
+    .select({ cnt: count(libraryLinks.id) })
+    .from(libraryLinks)
+    .where(inArray(libraryLinks.libraryItemId, itemIds));
+
+  const chunksDeleted = chunkRow?.cnt ?? 0;
+  const linksDeleted = linkRow?.cnt ?? 0;
+
+  // Delete items in batches (cascades to chunks and links via FK)
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
+    const batch = itemIds.slice(i, i + BATCH_SIZE);
+    await db.delete(libraryItems).where(inArray(libraryItems.id, batch));
+  }
+
+  return { itemsDeleted: itemIds.length, chunksDeleted, linksDeleted };
+}

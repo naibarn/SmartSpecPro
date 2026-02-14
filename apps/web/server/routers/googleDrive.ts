@@ -129,21 +129,38 @@ export const googleDriveRouter = router({
 
   /**
    * Disconnect Google Drive for the current user.
+   * Enqueues a background Celery task for full cleanup (Drive API + local data).
    */
   disconnect: protectedProcedure.mutation(async ({ ctx }) => {
-    const token = createDriveToken(ctx.user.id);
+    if (!ctx.tenantId) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+    }
+
+    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
     const resp = await fetch(
-      `${PYTHON_BACKEND_URL}/api/oauth/google/drive/disconnect`,
+      `${PYTHON_BACKEND_URL}/api/internal/gdrive/disconnect`,
       {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-proxy-token": proxyToken,
+        },
+        body: JSON.stringify({
+          user_id: ctx.user.id,
+          tenant_id: ctx.tenantId,
+        }),
       },
     );
+
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
-      throw new Error(err.detail || "Disconnect failed");
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: (err as any).detail || "Failed to start disconnect cleanup",
+      });
     }
-    return resp.json() as Promise<{ success: boolean }>;
+
+    return resp.json() as Promise<{ status: string; task_id: string }>;
   }),
 
   /**
