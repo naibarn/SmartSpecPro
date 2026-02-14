@@ -104,6 +104,10 @@ celery_app.conf.beat_schedule = {
         "task": "renew_drive_watch_channels",
         "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours - renew expiring webhook channels
     },
+    "poll-drive-changes": {
+        "task": "poll_drive_changes",
+        "schedule": crontab(minute="*/15"),  # Every 15 min - fallback polling when webhook is down
+    },
 }
 
 # Auto-discover tasks

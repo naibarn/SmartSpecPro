@@ -20,6 +20,18 @@ import {
   creditTransactions,
 } from "../../drizzle/schema";
 import { storageGet, storagePut } from "../storage";
+import {
+  gdriveSearchLimiter,
+  gdriveReadLimiter,
+  gdriveSyncLimiter,
+  gdriveEditLimiter,
+} from "../services/googleDriveRateLimiter";
+import { createGDriveRateLimitMiddleware } from "../services/googleDriveRateLimitMiddleware";
+
+const searchRateLimit = createGDriveRateLimitMiddleware(gdriveSearchLimiter);
+const readRateLimit = createGDriveRateLimitMiddleware(gdriveReadLimiter);
+const syncRateLimit = createGDriveRateLimitMiddleware(gdriveSyncLimiter);
+const editRateLimit = createGDriveRateLimitMiddleware(gdriveEditLimiter);
 
 const PYTHON_BACKEND_URL =
   process.env.PYTHON_BACKEND_URL ||
@@ -160,6 +172,7 @@ export const googleDriveRouter = router({
    * Open a library file for editing in Google Docs/Sheets.
    */
   openForEditing: protectedProcedure
+    .use(editRateLimit)
     .input(z.object({ libraryItemId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
@@ -272,6 +285,7 @@ export const googleDriveRouter = router({
    * Save back edited file from Google Drive to storage.
    */
   saveBack: protectedProcedure
+    .use(editRateLimit)
     .input(z.object({ sessionId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
@@ -428,7 +442,7 @@ export const googleDriveRouter = router({
   /**
    * Start an initial sync or manual re-sync.
    */
-  startSync: protectedProcedure.mutation(async ({ ctx }) => {
+  startSync: protectedProcedure.use(syncRateLimit).mutation(async ({ ctx }) => {
     if (!ctx.tenantId)
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
 
@@ -541,7 +555,7 @@ export const googleDriveRouter = router({
   /**
    * Estimate sync cost (count matching files and credit cost).
    */
-  estimateSyncCost: protectedProcedure.mutation(async ({ ctx }) => {
+  estimateSyncCost: protectedProcedure.use(syncRateLimit).mutation(async ({ ctx }) => {
     if (!ctx.tenantId)
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
 
@@ -635,6 +649,7 @@ export const googleDriveRouter = router({
    * Paginated list of indexed Google Drive files with chunk counts.
    */
   getIndexedFiles: protectedProcedure
+    .use(searchRateLimit)
     .input(
       z.object({
         search: z.string().optional(),
@@ -815,6 +830,7 @@ export const googleDriveRouter = router({
    * List Google Drive folders for folder picker (proxied via Python backend).
    */
   listDriveFolders: protectedProcedure
+    .use(searchRateLimit)
     .input(z.object({ parentFolderId: z.string().nullable().default(null) }))
     .query(async ({ ctx, input }) => {
       const token = createDriveToken(ctx.user.id);
@@ -841,6 +857,7 @@ export const googleDriveRouter = router({
    * Re-index a specific Google Drive file.
    */
   reindexFile: protectedProcedure
+    .use(syncRateLimit)
     .input(z.object({ libraryItemId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId)
