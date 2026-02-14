@@ -8,10 +8,14 @@ interface pattern (name, description, inputSchema, handler).
 
 import logging
 import math
+import re
 import time
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+# File ID validation: alphanumeric, hyphens, underscores, max 256 chars
+_FILE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,256}$")
 
 
 # ── Exceptions ──────────────────────────────────────────────────────────────
@@ -63,6 +67,25 @@ async def _get_access_token(user_id: int, token_service=None) -> str:
     return await token_service.get_valid_access_token(user_id)
 
 
+def _validate_file_id(file_id: str) -> str:
+    """Validate and return a safe file ID."""
+    if not file_id or not _FILE_ID_RE.match(file_id):
+        raise ToolError("invalid_input", f"Invalid file ID format: {file_id!r}")
+    return file_id
+
+
+def _validate_query(query: str, max_length: int = 500) -> str:
+    """Validate and sanitize a search query."""
+    if not query or not query.strip():
+        raise ToolError("invalid_input", "Search query cannot be empty")
+    query = query.strip()
+    if len(query) > max_length:
+        raise ToolError("invalid_input", f"Search query too long (max {max_length} chars)")
+    # Strip null bytes and control characters
+    query = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", query)
+    return query
+
+
 # ── Tool Handlers ───────────────────────────────────────────────────────────
 
 
@@ -82,6 +105,8 @@ async def search_drive_files(
     """
     from app.services.google_token_service import InvalidGrantError
 
+    query = _validate_query(query)
+
     try:
         access_token = await _get_access_token(user_id, token_service)
 
@@ -90,8 +115,9 @@ async def search_drive_files(
         else:
             drive = _build_drive_service(access_token)
 
-        # Build query string
-        q_parts = [f"fullText contains '{query}' or name contains '{query}'"]
+        # Build query string — escape single quotes in user query
+        escaped_query = query.replace("\\", "\\\\").replace("'", "\\'")
+        q_parts = [f"fullText contains '{escaped_query}' or name contains '{escaped_query}'"]
         q_parts.append("trashed = false")
 
         if file_type and file_type in _MIME_FILTER_MAP:
@@ -139,6 +165,8 @@ async def read_drive_file(
     Service tag: gdrive.mcp_read
     """
     from app.services.google_token_service import InvalidGrantError
+
+    file_id = _validate_file_id(file_id)
 
     try:
         access_token = await _get_access_token(user_id, token_service)
@@ -220,6 +248,10 @@ async def read_sheet_data(
     """
     from app.services.google_token_service import InvalidGrantError
 
+    file_id = _validate_file_id(file_id)
+    if cell_range and not re.match(r"^[A-Za-z0-9:!]+$", cell_range):
+        raise ToolError("invalid_input", f"Invalid cell range format: {cell_range!r}")
+
     try:
         access_token = await _get_access_token(user_id, token_service)
 
@@ -296,6 +328,9 @@ async def list_drive_folder(
     """
     from app.services.google_token_service import InvalidGrantError
 
+    if folder_id:
+        folder_id = _validate_file_id(folder_id)
+
     try:
         access_token = await _get_access_token(user_id, token_service)
 
@@ -339,6 +374,8 @@ async def get_drive_file_info(
     Free operation -- no credit charge.
     """
     from app.services.google_token_service import InvalidGrantError
+
+    file_id = _validate_file_id(file_id)
 
     try:
         access_token = await _get_access_token(user_id, token_service)
