@@ -15,6 +15,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.oauth_config import get_oauth_config
+from app.core.smartspecweb_crypto import (
+    decrypt_smartspecweb,
+    encrypt_smartspecweb,
+    is_encrypted,
+)
 from app.models.oauth import OAuthConnection
 from app.services.oauth_service import OAuthService, state_serializer
 
@@ -56,6 +61,22 @@ class GoogleTokenService:
         )
         return result.scalar_one_or_none()
 
+    @staticmethod
+    def _decrypt_token(token: Optional[str]) -> str:
+        """Decrypt a token value, handling both encrypted and plaintext formats."""
+        if not token:
+            return ""
+        if is_encrypted(token):
+            return decrypt_smartspecweb(token)
+        return token
+
+    @staticmethod
+    def _encrypt_token(token: str) -> str:
+        """Encrypt a token value for storage."""
+        if not token:
+            return ""
+        return encrypt_smartspecweb(token)
+
     async def get_valid_access_token(self, user_id: int) -> str:
         """
         Returns a valid access token, refreshing if near expiry.
@@ -72,14 +93,15 @@ class GoogleTokenService:
 
         # Return cached token if not near expiry
         if expires_at and (expires_at - now) > REFRESH_BUFFER:
-            return conn.access_token
+            return self._decrypt_token(conn.access_token)
 
         # Refresh the token
         return await self._refresh_token(conn)
 
     async def _refresh_token(self, conn: OAuthConnection) -> str:
         """Refresh the access token using the stored refresh_token."""
-        if not conn.refresh_token:
+        refresh_token = self._decrypt_token(conn.refresh_token)
+        if not refresh_token:
             conn.status = "expired"
             await self.db.commit()
             raise InvalidGrantError("No refresh token available")
@@ -94,7 +116,7 @@ class GoogleTokenService:
                 data={
                     "client_id": client_id,
                     "client_secret": client_secret,
-                    "refresh_token": conn.refresh_token,
+                    "refresh_token": refresh_token,
                     "grant_type": "refresh_token",
                 },
             )
@@ -109,10 +131,11 @@ class GoogleTokenService:
                 raise InvalidGrantError(f"Google token refresh failed: {error}")
             raise ValueError(f"Token refresh failed: {error}")
 
-        # Update stored tokens
-        conn.access_token = data["access_token"]
+        # Update stored tokens (encrypted)
+        new_access_token = data["access_token"]
+        conn.access_token = self._encrypt_token(new_access_token)
         if "refresh_token" in data:
-            conn.refresh_token = data["refresh_token"]
+            conn.refresh_token = self._encrypt_token(data["refresh_token"])
         conn.token_expires_at = datetime.now(timezone.utc) + timedelta(
             seconds=data.get("expires_in", 3600)
         )
@@ -120,7 +143,7 @@ class GoogleTokenService:
         await self.db.commit()
 
         logger.info("Refreshed Google access token for user %s", conn.user_id)
-        return conn.access_token
+        return new_access_token
 
     async def build_drive_auth_url(self, user_id: int) -> dict:
         """Build Google OAuth URL with Drive scopes for incremental consent."""
@@ -205,23 +228,25 @@ class GoogleTokenService:
         if userinfo_resp.status_code == 200:
             email = userinfo_resp.json().get("email")
 
-        # Upsert oauth_connections
+        # Upsert oauth_connections (encrypt tokens before storage)
+        encrypted_access = self._encrypt_token(access_token)
+        encrypted_refresh = self._encrypt_token(refresh_token) if refresh_token else None
+
         existing = await self._get_connection(user_id)
         if existing:
-            existing.access_token = access_token
-            if refresh_token:
-                existing.refresh_token = refresh_token
+            existing.access_token = encrypted_access
+            if encrypted_refresh:
+                existing.refresh_token = encrypted_refresh
             existing.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
             existing.status = "active"
             existing.scopes = ",".join(granted_scopes)
         else:
-            # TODO: encrypt access_token and refresh_token before storage (section-15)
             new_conn = OAuthConnection(
                 user_id=user_id,
                 provider="google",
                 provider_user_id=email or str(user_id),
-                access_token=access_token,
-                refresh_token=refresh_token,
+                access_token=encrypted_access,
+                refresh_token=encrypted_refresh,
                 token_expires_at=datetime.now(timezone.utc) + timedelta(seconds=expires_in),
                 status="active",
                 scopes=",".join(granted_scopes),
@@ -278,7 +303,7 @@ class GoogleTokenService:
         if not conn:
             return False
 
-        access_token = conn.access_token
+        access_token = self._decrypt_token(conn.access_token)
         revoked_at_google = False
 
         if access_token:

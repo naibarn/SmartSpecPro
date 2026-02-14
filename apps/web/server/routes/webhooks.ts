@@ -10,6 +10,7 @@ import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { googleDriveSyncState } from "../../drizzle/schema";
+import { auditLogger } from "../services/auditLogger";
 
 const PYTHON_BACKEND_URL =
   process.env.PYTHON_BACKEND_URL ||
@@ -38,6 +39,11 @@ export function createWebhookRouter(): Router {
     const resourceState = req.headers["x-goog-resource-state"] as string | undefined;
 
     if (!channelId || !resourceId || !channelToken) {
+      auditLogger.log({
+        eventType: "google_drive_webhook",
+        userId: null,
+        metadata: { rejection: "missing_headers", sourceIp: req.ip },
+      });
       res.status(403).json({ error: "Missing required headers" });
       return;
     }
@@ -50,12 +56,22 @@ export function createWebhookRouter(): Router {
       .limit(1);
 
     if (!syncState) {
+      auditLogger.log({
+        eventType: "google_drive_webhook",
+        userId: null,
+        metadata: { rejection: "unknown_channel", channelId, sourceIp: req.ip },
+      });
       res.status(403).json({ error: "Unknown channel" });
       return;
     }
 
     // Validate resource_id
     if (syncState.resourceId !== resourceId) {
+      auditLogger.log({
+        eventType: "google_drive_webhook",
+        userId: syncState.userId,
+        metadata: { rejection: "resource_mismatch", channelId, resourceId, sourceIp: req.ip },
+      });
       res.status(403).json({ error: "Resource mismatch" });
       return;
     }
@@ -68,12 +84,23 @@ export function createWebhookRouter(): Router {
       receivedHash.length !== storedHash.length ||
       !crypto.timingSafeEqual(Buffer.from(receivedHash), Buffer.from(storedHash))
     ) {
+      auditLogger.log({
+        eventType: "google_drive_webhook",
+        userId: syncState.userId,
+        metadata: { rejection: "invalid_token", channelId, sourceIp: req.ip },
+      });
       res.status(403).json({ error: "Invalid token" });
       return;
     }
 
     // Return 200 immediately (Google requires fast response)
     res.status(200).send("OK");
+
+    auditLogger.log({
+      eventType: "google_drive_webhook",
+      userId: syncState.userId,
+      metadata: { channelId, resourceState, action: "accepted" },
+    });
 
     // Skip processing for initial "sync" notification
     if (resourceState === "sync") {

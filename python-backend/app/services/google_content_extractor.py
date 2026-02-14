@@ -195,6 +195,10 @@ class GoogleContentExtractor:
             err.http_status = http_status  # type: ignore[attr-defined]
             raise err
 
+        # Sanitize extracted content before returning
+        from app.services.google_drive_content_sanitizer import sanitize_drive_content
+        text = sanitize_drive_content(text)
+
         return ContentExtractionResult(
             text=text,
             mime_type=mime_type,

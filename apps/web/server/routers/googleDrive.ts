@@ -11,13 +11,14 @@ import { eq, and, sql, count, sum, desc, gte, lt, ilike } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
-import { db } from "../db";
+import { db, getDb } from "../db";
 import {
   googleDriveEditSessions,
   googleDriveSyncState,
   libraryItems,
   libraryChunks,
   creditTransactions,
+  systemSettings,
 } from "../../drizzle/schema";
 import { storageGet, storagePut } from "../storage";
 import {
@@ -27,6 +28,61 @@ import {
   gdriveEditLimiter,
 } from "../services/googleDriveRateLimiter";
 import { createGDriveRateLimitMiddleware } from "../services/googleDriveRateLimitMiddleware";
+import { auditLogger } from "../services/auditLogger";
+
+// ── Input validation schemas ──────────────────────────────────────────────
+const driveFileIdSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(/^[a-zA-Z0-9_-]+$/, "Invalid file ID format");
+
+const searchQuerySchema = z
+  .string()
+  .min(1)
+  .max(500)
+  .transform((s) => s.trim());
+
+// ── Feature flag helper ───────────────────────────────────────────────────
+let _driveReadonlyCached: { value: boolean; expiry: number } | null = null;
+
+async function isDriveReadonlyApproved(): Promise<boolean> {
+  const now = Date.now();
+  if (_driveReadonlyCached && _driveReadonlyCached.expiry > now) {
+    return _driveReadonlyCached.value;
+  }
+  try {
+    const dbInst = await getDb();
+    if (!dbInst) return false;
+    const [row] = await dbInst
+      .select()
+      .from(systemSettings)
+      .where(
+        and(
+          eq(systemSettings.category, "oauth"),
+          eq(systemSettings.key, "driveReadonlyScopeApproved"),
+        ),
+      )
+      .limit(1);
+    const val = row?.value === "true";
+    _driveReadonlyCached = { value: val, expiry: now + 5 * 60 * 1000 }; // 5 min cache
+    return val;
+  } catch {
+    return false;
+  }
+}
+
+async function assertDriveReadonlyApproved(): Promise<void> {
+  if (!(await isDriveReadonlyApproved())) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Google Drive read access is pending verification. " +
+        "Edit-in-Google features are available. " +
+        "Contact admin when drive.readonly scope is approved.",
+    });
+  }
+}
 
 const searchRateLimit = createGDriveRateLimitMiddleware(gdriveSearchLimiter);
 const readRateLimit = createGDriveRateLimitMiddleware(gdriveReadLimiter);
@@ -120,11 +176,15 @@ export const googleDriveRouter = router({
         const err = await resp.json().catch(() => ({}));
         throw new Error(err.detail || "OAuth exchange failed");
       }
-      return resp.json() as Promise<{
-        email: string;
-        scopes: string[];
-        status: string;
-      }>;
+      const result = await resp.json() as { email: string; scopes: string[]; status: string };
+
+      auditLogger.log({
+        eventType: "google_drive_connect",
+        userId: ctx.user.id,
+        metadata: { email: result.email, scopes: result.scopes },
+      });
+
+      return result;
     }),
 
   /**
@@ -160,7 +220,15 @@ export const googleDriveRouter = router({
       });
     }
 
-    return resp.json() as Promise<{ status: string; task_id: string }>;
+    const result = await resp.json() as { status: string; task_id: string };
+
+    auditLogger.log({
+      eventType: "google_drive_disconnect",
+      userId: ctx.user.id,
+      metadata: { tenantId: ctx.tenantId, taskId: result.task_id },
+    });
+
+    return result;
   }),
 
   /**
@@ -294,6 +362,12 @@ export const googleDriveRouter = router({
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         })
         .returning();
+
+      auditLogger.log({
+        eventType: "google_drive_edit",
+        userId: ctx.user.id,
+        metadata: { libraryItemId: input.libraryItemId, driveFileId: uploadResult.driveFileId, action: "open" },
+      });
 
       return { sessionId: session.id, editUrl: session.editUrl, driveFileId: session.driveFileId };
     }),
@@ -462,6 +536,9 @@ export const googleDriveRouter = router({
   startSync: protectedProcedure.use(syncRateLimit).mutation(async ({ ctx }) => {
     if (!ctx.tenantId)
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+
+    // Gate behind drive.readonly scope approval
+    await assertDriveReadonlyApproved();
 
     // Verify Google connection
     const token = createDriveToken(ctx.user.id);

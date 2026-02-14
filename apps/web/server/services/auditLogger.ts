@@ -26,6 +26,13 @@ export type AuditEventType =
   | "skill_detect"
   | "skill_execute"
   | "gdrive_api_call"
+  | "google_drive_connect"
+  | "google_drive_disconnect"
+  | "google_drive_token_refresh"
+  | "google_drive_data_access"
+  | "google_drive_sync"
+  | "google_drive_webhook"
+  | "google_drive_edit"
   | "error";
 
 export interface AuditLogEntry {
