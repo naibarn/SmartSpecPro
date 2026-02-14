@@ -4,6 +4,7 @@ Exposes endpoints for the Node.js backend to trigger sync operations:
   POST /api/internal/gdrive/start-sync        -- enqueue initial sync
   POST /api/internal/gdrive/process-changes   -- enqueue change processing
   POST /api/internal/gdrive/estimate-cost     -- count matching files
+  POST /api/internal/gdrive/disconnect        -- enqueue disconnect cleanup
 """
 
 import logging
@@ -48,6 +49,11 @@ class ProcessChangesRequest(BaseModel):
 
 
 class EstimateCostRequest(BaseModel):
+    user_id: int
+    tenant_id: str
+
+
+class DisconnectRequest(BaseModel):
     user_id: int
     tenant_id: str
 
@@ -107,3 +113,21 @@ async def estimate_sync_cost(
     except Exception as e:
         logger.error("estimate_cost_failed user_id=%d error=%s", request.user_id, str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/disconnect")
+async def disconnect_drive(
+    request: DisconnectRequest,
+    x_proxy_token: Optional[str] = Header(None),
+):
+    """Enqueue disconnect_google_drive_cleanup Celery task."""
+    await _verify_proxy_token(x_proxy_token)
+
+    from app.tasks.google_drive_tasks import disconnect_google_drive_cleanup
+
+    result = disconnect_google_drive_cleanup.delay(request.user_id, request.tenant_id)
+    logger.info(
+        "disconnect_google_drive_cleanup enqueued user_id=%d tenant_id=%s task_id=%s",
+        request.user_id, request.tenant_id, result.id,
+    )
+    return {"status": "cleanup_started", "task_id": result.id}

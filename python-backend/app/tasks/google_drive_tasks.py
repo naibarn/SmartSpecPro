@@ -1259,3 +1259,214 @@ async def _try_reestablish_webhook(user_id: int, tenant_id: str):
         logger.warning("webhook_reestablish_token_expired user_id=%d", user_id)
     except Exception as e:
         logger.warning("webhook_reestablish_failed user_id=%d error=%s", user_id, str(e))
+
+
+# ── Disconnect & Cleanup ────────────────────────────────────────────────────
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+)
+def disconnect_google_drive_cleanup(self, user_id: int, tenant_id: str):
+    """Complete cleanup when user disconnects Google Drive.
+
+    Phase 1: Google API operations (require valid token)
+      - Delete temp Drive files from active edit sessions
+      - Stop webhook channel
+      - Revoke access token
+
+    Phase 2: Local data cleanup (via Node.js internal endpoint)
+      - Delete edit sessions, sync state, library items (cascades chunks + links)
+      - Delete oauth_connection record
+    """
+    logger.info("disconnect_cleanup_started user_id=%d tenant_id=%s", user_id, tenant_id)
+    try:
+        result = _run_async(_disconnect_cleanup_async(user_id, tenant_id))
+        logger.info("disconnect_cleanup_completed user_id=%d result=%s", user_id, result)
+        return result
+    except Exception as e:
+        logger.error("disconnect_cleanup_failed user_id=%d error=%s", user_id, str(e))
+        try:
+            self.retry(exc=e)
+        except self.MaxRetriesExceededError:
+            logger.error("disconnect_cleanup_max_retries user_id=%d", user_id)
+            return {"error": str(e), "phase": "unknown"}
+
+
+async def _disconnect_cleanup_async(user_id: int, tenant_id: str) -> dict:
+    """Async implementation of the disconnect cleanup flow."""
+    from app.core.database import AsyncSessionLocal
+    from app.services.google_token_service import GoogleTokenService, InvalidGrantError
+
+    result = {
+        "temp_files_deleted": 0,
+        "webhook_stopped": False,
+        "token_revoked": False,
+        "local_cleanup": False,
+        "oauth_deleted": False,
+    }
+
+    # ── Phase 1: Google API operations (require valid token) ──
+
+    access_token = None
+    try:
+        async with AsyncSessionLocal() as db:
+            token_svc = GoogleTokenService(db)
+            access_token = await token_svc.get_valid_access_token(user_id)
+    except (ValueError, InvalidGrantError) as e:
+        logger.warning(
+            "disconnect_no_valid_token user_id=%d error=%s (skipping Phase 1 Drive API ops)",
+            user_id, str(e),
+        )
+
+    if access_token:
+        # Step 1: Delete temp Drive files from active edit sessions
+        result["temp_files_deleted"] = await _delete_temp_drive_files(user_id, tenant_id, access_token)
+
+        # Step 2: Stop webhook channel
+        result["webhook_stopped"] = await _stop_webhook_channel(user_id, tenant_id, access_token)
+
+    # Step 3: Revoke access token
+    try:
+        async with AsyncSessionLocal() as db:
+            token_svc = GoogleTokenService(db)
+            result["token_revoked"] = await token_svc.revoke_token(user_id)
+    except Exception as e:
+        logger.warning("disconnect_revoke_failed user_id=%d error=%s", user_id, str(e))
+
+    # ── Phase 2: Local data cleanup ──
+
+    # Check if user reconnected during cleanup (new active connection)
+    async with AsyncSessionLocal() as db:
+        check = await db.execute(
+            text("""
+                SELECT status FROM oauth_connections
+                WHERE user_id = :user_id AND provider = 'google' AND status = 'active'
+            """),
+            {"user_id": user_id},
+        )
+        if check.fetchone():
+            logger.warning("disconnect_aborted_reconnected user_id=%d", user_id)
+            return {**result, "aborted": True, "reason": "user_reconnected"}
+
+    # Step 4-9: Call Node.js internal endpoint for DB cleanup
+    result["local_cleanup"] = await _call_node_cleanup(user_id, tenant_id)
+
+    # Step 10: Delete oauth_connection
+    try:
+        async with AsyncSessionLocal() as db:
+            await db.execute(
+                text("""
+                    DELETE FROM oauth_connections
+                    WHERE user_id = :user_id AND provider = 'google'
+                      AND status = 'revoked'
+                """),
+                {"user_id": user_id},
+            )
+            await db.commit()
+            result["oauth_deleted"] = True
+    except Exception as e:
+        logger.error("disconnect_oauth_delete_failed user_id=%d error=%s", user_id, str(e))
+
+    return result
+
+
+async def _delete_temp_drive_files(user_id: int, tenant_id: str, access_token: str) -> int:
+    """Delete temporary Drive files created by edit sessions."""
+    deleted = 0
+    with get_sync_session() as session:
+        rows = session.execute(
+            text("""
+                SELECT drive_file_id FROM google_drive_edit_sessions
+                WHERE user_id = :user_id AND tenant_id = :tenant_id
+                  AND status = 'active' AND drive_file_id IS NOT NULL
+            """),
+            {"user_id": user_id, "tenant_id": tenant_id},
+        )
+        file_ids = [r[0] for r in rows.fetchall()]
+
+    if not file_ids:
+        return 0
+
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+
+    creds = Credentials(token=access_token)
+    drive = build("drive", "v3", credentials=creds)
+
+    for fid in file_ids:
+        try:
+            drive.files().delete(fileId=fid).execute()
+            deleted += 1
+        except Exception as e:
+            logger.warning("disconnect_delete_file_failed file_id=%s error=%s", fid, str(e))
+
+    return deleted
+
+
+async def _stop_webhook_channel(user_id: int, tenant_id: str, access_token: str) -> bool:
+    """Stop the webhook channel for this user."""
+    with get_sync_session() as session:
+        row = session.execute(
+            text("""
+                SELECT channel_id, resource_id FROM google_drive_sync_state
+                WHERE user_id = :user_id AND tenant_id = :tenant_id
+                  AND channel_id IS NOT NULL
+            """),
+            {"user_id": user_id, "tenant_id": tenant_id},
+        ).fetchone()
+
+    if not row or not row[0]:
+        return False
+
+    channel_id, resource_id = row[0], row[1]
+
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+
+    try:
+        creds = Credentials(token=access_token)
+        drive = build("drive", "v3", credentials=creds)
+        drive.channels().stop(body={"id": channel_id, "resourceId": resource_id}).execute()
+        return True
+    except Exception as e:
+        logger.warning("disconnect_stop_channel_failed user_id=%d error=%s", user_id, str(e))
+        return False
+
+
+async def _call_node_cleanup(user_id: int, tenant_id: str) -> bool:
+    """Call Node.js internal endpoint to clean up Drizzle-managed tables."""
+    import httpx
+
+    base_url = (settings.SMARTSPEC_WEB_GATEWAY_URL or "").rstrip("/")
+    token = settings.SMARTSPEC_WEB_GATEWAY_TOKEN or ""
+
+    if not base_url or not token:
+        logger.warning("disconnect_node_cleanup_skipped: gateway URL or token not configured")
+        return False
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"{base_url}/api/internal/google-drive/cleanup",
+                json={"userId": user_id, "tenantId": tenant_id},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if resp.status_code == 200:
+            data = resp.json()
+            logger.info(
+                "disconnect_node_cleanup_ok user_id=%d items=%d",
+                user_id, data.get("itemsDeleted", 0),
+            )
+            return True
+        else:
+            logger.warning(
+                "disconnect_node_cleanup_failed user_id=%d status=%d body=%s",
+                user_id, resp.status_code, resp.text[:200],
+            )
+            return False
+    except Exception as e:
+        logger.error("disconnect_node_cleanup_error user_id=%d error=%s", user_id, str(e))
+        return False

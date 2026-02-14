@@ -267,6 +267,41 @@ class GoogleTokenService:
             return pid
         return None
 
+    async def revoke_token(self, user_id: int) -> bool:
+        """
+        Revoke the user's Google OAuth token and update connection status.
+
+        Best-effort: updates status to 'revoked' regardless of Google's response.
+        Returns True if Google accepted the revocation, False otherwise.
+        """
+        conn = await self._get_connection(user_id)
+        if not conn:
+            return False
+
+        access_token = conn.access_token
+        revoked_at_google = False
+
+        if access_token:
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post(
+                        "https://oauth2.googleapis.com/revoke",
+                        data={"token": access_token},
+                        headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    )
+                revoked_at_google = resp.status_code == 200
+                if not revoked_at_google:
+                    logger.warning(
+                        "Token revocation returned %d for user %d",
+                        resp.status_code, user_id,
+                    )
+            except Exception as e:
+                logger.warning("Token revocation request failed for user %d: %s", user_id, str(e))
+
+        conn.status = "revoked"
+        await self.db.commit()
+        return revoked_at_google
+
     async def disconnect(self, user_id: int) -> bool:
         """Remove the Google Drive connection (simple version)."""
         conn = await self._get_connection(user_id)

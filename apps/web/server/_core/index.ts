@@ -303,6 +303,60 @@ app.post("/api/internal/credits/charge", async (req, res) => {
   }
 });
 
+// Internal Google Drive cleanup endpoint (Python backend -> Node.js)
+app.post("/api/internal/google-drive/cleanup", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+  const token = authHeader.slice(7);
+  if (token !== ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  try {
+    const { userId, tenantId } = req.body;
+    if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+    }
+    if (typeof tenantId !== "string" || !tenantId) {
+      return res.status(400).json({ success: false, error: "tenantId is required" });
+    }
+
+    const { removeGoogleDriveData } = await import("../services/libraryService");
+    const { googleDriveEditSessions, googleDriveSyncState } = await import("../../drizzle/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) {
+      return res.status(500).json({ success: false, error: "Database not available" });
+    }
+
+    // Delete edit sessions for this user
+    await db.delete(googleDriveEditSessions).where(eq(googleDriveEditSessions.userId, userId));
+
+    // Delete sync state for this user + tenant
+    await db.delete(googleDriveSyncState).where(
+      and(
+        eq(googleDriveSyncState.userId, userId),
+        eq(googleDriveSyncState.tenantId, tenantId),
+      ),
+    );
+
+    // Remove library items + cascaded chunks/links
+    const result = await removeGoogleDriveData(userId, tenantId);
+
+    return res.json({
+      status: "ok",
+      itemsDeleted: result.itemsDeleted,
+      chunksDeleted: result.chunksDeleted,
+      linksDeleted: result.linksDeleted,
+    });
+  } catch (err: any) {
+    debugError("GDriveCleanup", "Internal cleanup failed", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Device auth routes (for desktop app)
 registerDeviceAuthRoutes(app);
 
