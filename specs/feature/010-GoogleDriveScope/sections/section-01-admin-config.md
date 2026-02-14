@@ -11,20 +11,29 @@ This section adds the ability for platform admins to configure Google Cloud OAut
 - **No dependencies on other sections.** This section is part of Batch 1 (foundation) and can be implemented independently.
 - **Blocks:** Section 03 (OAuth Consent) depends on these credentials being available.
 
-## Files to Modify
+## Files Modified (Actual)
 
 | File | Action | Description |
 |------|--------|-------------|
-| `/home/dev/projects/SmartSpecPro/apps/web/server/routers/systemSettings.ts` | Modify | Add `saveGoogleOAuthConfig`, `getGoogleOAuthConfig`, `testGoogleConnection` mutations. Extend `settingCategorySchema` if needed. |
-| `/home/dev/projects/SmartSpecPro/apps/web/client/src/pages/AdminSettings.tsx` | Modify | Add "Google Drive" section within the existing OAuth tab (or as a new sub-section), including "Test Connection" button. |
-| `/home/dev/projects/SmartSpecPro/python-backend/app/core/oauth_config.py` | Modify | Extend to load Google Drive-specific scoped config from DB, with env var fallback, DB taking precedence. |
+| `apps/web/server/routers/systemSettings.ts` | Modified | Added `testGoogleOAuthConnection` mutation with AbortController timeout. Uses shared validation. |
+| `apps/web/client/src/pages/AdminSettings.tsx` | Modified | Added Google Drive info box (with dark mode), Test Connection button, updated redirect URI placeholder. |
+| `python-backend/app/core/oauth_config.py` | Modified | Added `get_google_oauth_config()`, updated default redirect URI to production domain. |
 
-## Files to Create (Tests)
+## Files Created (Actual)
 
 | File | Description |
 |------|-------------|
-| `/home/dev/projects/SmartSpecPro/apps/web/server/systemSettings.googleOAuth.test.ts` | Vitest tests for the backend mutations |
-| `/home/dev/projects/SmartSpecPro/python-backend/tests/test_oauth_config.py` | pytest tests for the Python config loader |
+| `apps/web/server/services/googleOAuthValidation.ts` | Shared validation utility (extracted during code review) |
+| `apps/web/server/routers/systemSettings.googleOAuth.test.ts` | Vitest tests for validation utility (4 tests) |
+| `python-backend/tests/test_oauth_config.py` | pytest tests for config loader + `get_google_oauth_config` (6 tests) |
+
+## Deviations from Plan
+
+1. **Validation extracted to shared utility** — Code review identified that tests were testing a local copy. Extracted `validateGoogleOAuthFormat()` to `server/services/googleOAuthValidation.ts`.
+2. **Success message changed** — Made honest about limitations: "configured and reachable" instead of "valid".
+3. **Fetch timeout added** — 10s AbortController timeout on Google endpoint check.
+4. **Dark mode support** — Added `dark:` variants to info box for consistency.
+5. **Test file location** — Vitest test placed at `server/routers/` (matching existing pattern) instead of `server/` as planned.
 
 ---
 

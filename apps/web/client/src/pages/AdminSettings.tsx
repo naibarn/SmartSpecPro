@@ -165,6 +165,19 @@ export default function AdminSettings() {
     },
   });
 
+  const testGoogleOAuthMutation = trpc.systemSettings.testGoogleOAuthConnection.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err) => {
+      toast.error(`Test failed: ${err.message}`);
+    },
+  });
+
   // Registration settings query & mutation
   const { data: regSettings, refetch: refetchReg } =
     trpc.systemSettings.getRegistrationSettings.useQuery(undefined, {
@@ -878,7 +891,7 @@ export default function AdminSettings() {
                     <Label htmlFor="googleRedirectUri">Redirect URI</Label>
                     <Input
                       id="googleRedirectUri"
-                      placeholder="http://localhost:3000/auth/callback/google"
+                      placeholder="https://smartaihub.app/auth/callback/google"
                       value={oauthForm.googleRedirectUri || ""}
                       onChange={(e) =>
                         setOauthForm((prev) => ({ ...prev, googleRedirectUri: e.target.value }))
@@ -887,6 +900,42 @@ export default function AdminSettings() {
                     <p className="text-xs text-gray-500 mt-1">
                       Must match the authorized redirect URI in Google Cloud Console
                     </p>
+                  </div>
+
+                  {/* Google Drive Integration Info */}
+                  <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-5 h-5 text-blue-500 dark:text-blue-400 mt-0.5 shrink-0" />
+                      <div className="text-sm text-blue-800 dark:text-blue-200">
+                        <p className="font-medium mb-1">Google Drive Integration</p>
+                        <p>
+                          These credentials also enable Google Drive & Workspace integration.
+                          Ensure the following APIs are enabled in your Google Cloud Console project:
+                        </p>
+                        <ul className="list-disc list-inside mt-1 space-y-0.5">
+                          <li>Google Drive API</li>
+                          <li>Google Docs API</li>
+                          <li>Google Sheets API</li>
+                          <li>Google Slides API</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Test Connection Button */}
+                  <div className="mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => testGoogleOAuthMutation.mutate()}
+                      disabled={testGoogleOAuthMutation.isPending || !oauthSettings?.googleClientId}
+                    >
+                      {testGoogleOAuthMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <TestTube className="w-4 h-4 mr-2" />
+                      )}
+                      Test Google Connection
+                    </Button>
                   </div>
                 </div>
 
