@@ -126,6 +126,15 @@ export function createWebhookRouter(): Router {
         }),
         signal: AbortSignal.timeout(5000),
       }).catch((err) => {
+        auditLogger.log({
+          eventType: "google_drive_webhook",
+          userId: syncState.userId,
+          metadata: {
+            channelId,
+            action: "enqueue_failed",
+            error: String(err),
+          },
+        });
         console.error("[Webhook] Failed to enqueue Drive changes:", err);
       });
     } catch {
