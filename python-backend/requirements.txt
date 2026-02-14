@@ -144,3 +144,8 @@ croniter>=2.0.0
 # Data transformation (transformer node)
 xmltodict>=0.13.0
 defusedxml>=0.7.1
+
+# Google API client libraries (Drive, Docs, Sheets, Slides)
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-httplib2>=0.2.0
