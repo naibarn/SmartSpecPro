@@ -558,3 +558,606 @@ def process_google_drive_index_job_task(self, job_id: int):
     except Exception as e:
         logger.error("process_gdrive_index_exception", extra={"job_id": job_id, "error": str(e)})
         return {"status": "failed", "error": str(e), "job_id": job_id}
+
+
+# ── Incremental Sync Tasks ────────────────────────────────────────────────
+
+
+@celery_app.task(name="initial_drive_sync", bind=True, max_retries=3, default_retry_delay=60)
+def initial_drive_sync(self, user_id: int, tenant_id: str):
+    """Perform initial sync of a user's Google Drive.
+
+    Lists all files matching sync settings, creates virtual references,
+    and sets up a webhook channel for real-time updates.
+    """
+    logger.info("initial_drive_sync_started user_id=%d tenant_id=%s", user_id, tenant_id)
+    try:
+        return _run_async(_initial_drive_sync_async(user_id, tenant_id))
+    except Exception as e:
+        logger.error("initial_drive_sync_failed user_id=%d error=%s", user_id, str(e))
+        raise self.retry(exc=e, countdown=60)
+
+
+@celery_app.task(name="process_drive_changes", bind=True, max_retries=3, default_retry_delay=30)
+def process_drive_changes(self, user_id: int, tenant_id: str):
+    """Fetch and process changes from Google Drive Changes API.
+
+    Called after a webhook notification or periodic polling.
+    """
+    logger.info("process_drive_changes_started user_id=%d tenant_id=%s", user_id, tenant_id)
+    try:
+        return _run_async(_process_drive_changes_async(user_id, tenant_id))
+    except Exception as e:
+        logger.error("process_drive_changes_failed user_id=%d error=%s", user_id, str(e))
+        raise self.retry(exc=e, countdown=30)
+
+
+@celery_app.task(name="renew_drive_watch_channels")
+def renew_drive_watch_channels():
+    """Periodic task to renew expiring Drive webhook channels.
+
+    Runs every 6 hours via Celery Beat. Renews channels expiring within 24h.
+    """
+    logger.info("renew_drive_watch_channels_started")
+    try:
+        return _run_async(_renew_drive_watch_channels_async())
+    except Exception as e:
+        logger.error("renew_drive_watch_channels_failed error=%s", str(e))
+        return {"error": str(e)}
+
+
+# ── Async Implementations ─────────────────────────────────────────────────
+
+
+async def _initial_drive_sync_async(user_id: int, tenant_id: str) -> dict:
+    """Async implementation of initial Drive sync."""
+    from app.core.database import AsyncSessionLocal
+    from app.services.google_token_service import GoogleTokenService, InvalidGrantError
+    from app.services.google_drive_sync_service import should_index_file, setup_watch_channel
+
+    async with AsyncSessionLocal() as db:
+        # Load sync state
+        sync_state = await db.execute(
+            text("""
+                SELECT id, indexing_mode, folder_selections, file_type_filter,
+                       max_file_size_bytes, auto_sync_enabled
+                FROM google_drive_sync_state
+                WHERE tenant_id = :tenant_id AND user_id = :user_id
+            """),
+            {"tenant_id": tenant_id, "user_id": user_id},
+        )
+        row = sync_state.fetchone()
+        if not row:
+            return {"error": "no_sync_state", "user_id": user_id}
+
+        sync_id = row[0]
+        indexing_mode = row[1]
+        folder_selections = row[2] or []
+        file_type_filter = row[3] or []
+        max_file_size_bytes = row[4] or 52428800
+        auto_sync_enabled = row[5]
+
+        if indexing_mode == "none":
+            return {"status": "skipped", "reason": "indexing_mode_none"}
+
+        # Get access token
+        token_svc = GoogleTokenService(db)
+        try:
+            access_token = await token_svc.get_valid_access_token(user_id)
+        except InvalidGrantError:
+            await db.execute(
+                text("""
+                    UPDATE google_drive_sync_state
+                    SET last_error = 'token_expired', auto_sync_enabled = false, updated_at = NOW()
+                    WHERE id = :id
+                """),
+                {"id": sync_id},
+            )
+            await db.commit()
+            return {"error": "token_expired"}
+
+        # Build Drive service
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        creds = Credentials(token=access_token)
+        drive = build("drive", "v3", credentials=creds)
+
+        # Build sync settings dict for should_index_file
+        sync_settings = {
+            "indexing_mode": indexing_mode,
+            "file_type_filter": file_type_filter,
+            "folder_selections": folder_selections,
+            "max_file_size_bytes": max_file_size_bytes,
+        }
+
+        # List all files (paginated)
+        all_files = []
+        page_token = None
+
+        while True:
+            params = {
+                "q": "trashed = false",
+                "pageSize": 100,
+                "fields": "files(id,name,mimeType,size,modifiedTime,parents),nextPageToken",
+                "orderBy": "modifiedTime desc",
+            }
+            if page_token:
+                params["pageToken"] = page_token
+
+            result = drive.files().list(**params).execute()
+            files = result.get("files", [])
+            all_files.extend(files)
+            page_token = result.get("nextPageToken")
+            if not page_token:
+                break
+
+        # Filter files
+        matching_files = [f for f in all_files if should_index_file(f, sync_settings)]
+
+        # Update files_total
+        await db.execute(
+            text("""
+                UPDATE google_drive_sync_state
+                SET files_total = :total, files_processed = 0, last_error = NULL, updated_at = NOW()
+                WHERE id = :id
+            """),
+            {"total": len(matching_files), "id": sync_id},
+        )
+        await db.commit()
+
+        # Create virtual references for matching files and enqueue indexing
+        files_processed = 0
+        failed_files = []
+
+        for file_meta in matching_files:
+            try:
+                await _create_virtual_reference(db, tenant_id, user_id, file_meta)
+                files_processed += 1
+            except Exception as e:
+                failed_files.append(file_meta.get("id", "unknown"))
+                logger.warning("Failed to create reference for %s: %s", file_meta.get("id"), str(e))
+
+            # Update progress every 10 files
+            total_done = files_processed + len(failed_files)
+            if total_done % 10 == 0:
+                await db.execute(
+                    text("UPDATE google_drive_sync_state SET files_processed = :n, updated_at = NOW() WHERE id = :id"),
+                    {"n": total_done, "id": sync_id},
+                )
+                await db.commit()
+
+        # Final progress update
+        total_done = files_processed + len(failed_files)
+        last_error = None
+        if failed_files:
+            last_error = f"{len(failed_files)} files failed: {failed_files[:5]}"
+
+        # Set up webhook channel if auto_sync_enabled
+        channel_info = {}
+        if auto_sync_enabled:
+            try:
+                channel_info = await setup_watch_channel(user_id, tenant_id, access_token)
+                token_hash = hashlib.sha256(channel_info["channel_token"].encode()).hexdigest()
+                await db.execute(
+                    text("""
+                        UPDATE google_drive_sync_state
+                        SET channel_id = :channel_id, resource_id = :resource_id,
+                            channel_token_hash = :token_hash, channel_expiry = :expiry,
+                            page_token = :page_token, updated_at = NOW()
+                        WHERE id = :id
+                    """),
+                    {
+                        "channel_id": channel_info["channel_id"],
+                        "resource_id": channel_info["resource_id"],
+                        "token_hash": token_hash,
+                        "expiry": channel_info["channel_expiry"],
+                        "page_token": channel_info["page_token"],
+                        "id": sync_id,
+                    },
+                )
+            except Exception as e:
+                logger.error("Failed to set up watch channel: %s", str(e))
+
+        # Finalize sync state
+        await db.execute(
+            text("""
+                UPDATE google_drive_sync_state
+                SET files_processed = :n, last_sync_at = NOW(), last_error = :error, updated_at = NOW()
+                WHERE id = :id
+            """),
+            {"n": total_done, "error": last_error, "id": sync_id},
+        )
+        await db.commit()
+
+        logger.info(
+            "initial_drive_sync_completed user_id=%d files=%d/%d failed=%d",
+            user_id, files_processed, len(matching_files), len(failed_files),
+        )
+        return {
+            "status": "completed",
+            "files_total": len(matching_files),
+            "files_processed": files_processed,
+            "failed": len(failed_files),
+        }
+
+
+async def _create_virtual_reference(db, tenant_id: str, user_id: int, file_meta: dict):
+    """Create or update a library_items record for a Drive file and enqueue indexing."""
+    drive_file_id = file_meta.get("id", "")
+    name = file_meta.get("name", "Untitled")
+    mime_type = file_meta.get("mimeType", "")
+    modified_time = file_meta.get("modifiedTime")
+
+    import json
+
+    # Check if already exists
+    existing = await db.execute(
+        text("""
+            SELECT id FROM library_items
+            WHERE tenant_id = :tenant_id AND metadata_json->>'driveFileId' = :drive_id
+            AND deleted_at IS NULL
+            LIMIT 1
+        """),
+        {"tenant_id": tenant_id, "drive_id": drive_file_id},
+    )
+    existing_row = existing.fetchone()
+
+    if existing_row:
+        # Update metadata for re-indexing (file may have been modified)
+        item_id = existing_row[0]
+        await db.execute(
+            text("""
+                UPDATE library_items
+                SET metadata_json = jsonb_set(
+                    jsonb_set(metadata_json, '{driveModifiedTime}', :mod_time::jsonb),
+                    '{syncStatus}', '"pending"'::jsonb
+                ), status = 'pending', updated_at = NOW()
+                WHERE id = :id
+            """),
+            {"mod_time": json.dumps(modified_time), "id": item_id},
+        )
+        await db.commit()
+        # Enqueue re-indexing
+        _enqueue_index_job(db, tenant_id, item_id)
+        return
+
+    # Determine item type from MIME
+    item_type = "document"
+    if "spreadsheet" in mime_type or "excel" in mime_type:
+        item_type = "spreadsheet"
+    elif "presentation" in mime_type or "powerpoint" in mime_type:
+        item_type = "presentation"
+    elif mime_type == "application/pdf":
+        item_type = "pdf"
+    elif mime_type.startswith("image/"):
+        item_type = "image"
+    elif mime_type.startswith("text/"):
+        item_type = "text"
+
+    metadata = json.dumps({
+        "driveFileId": drive_file_id,
+        "driveMimeType": mime_type,
+        "driveModifiedTime": modified_time,
+        "source": "google_drive",
+        "syncStatus": "pending",
+    })
+
+    result = await db.execute(
+        text("""
+            INSERT INTO library_items (tenant_id, owner_user_id, title, item_type, source,
+                                        metadata_json, status, created_at, updated_at)
+            VALUES (:tenant_id, :user_id, :title, :item_type, 'google_drive',
+                    :metadata::jsonb, 'pending', NOW(), NOW())
+            ON CONFLICT DO NOTHING
+            RETURNING id
+        """),
+        {
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "title": name,
+            "item_type": item_type,
+            "metadata": metadata,
+        },
+    )
+    row = result.fetchone()
+    if row:
+        await db.commit()
+        _enqueue_index_job(db, tenant_id, row[0])
+
+
+def _enqueue_index_job(db, tenant_id: str, item_id: int):
+    """Enqueue an indexing job for a library item."""
+    try:
+        process_google_drive_index_job_task.delay(item_id)
+    except Exception as e:
+        logger.warning("Failed to enqueue index job for item %d: %s", item_id, str(e))
+
+
+async def _process_drive_changes_async(user_id: int, tenant_id: str) -> dict:
+    """Async implementation of Drive change processing."""
+    from app.core.database import AsyncSessionLocal
+    from app.services.google_token_service import GoogleTokenService, InvalidGrantError
+    from app.services.google_drive_sync_service import should_index_file
+
+    async with AsyncSessionLocal() as db:
+        # Load sync state
+        sync_state = await db.execute(
+            text("""
+                SELECT id, page_token, indexing_mode, folder_selections,
+                       file_type_filter, max_file_size_bytes
+                FROM google_drive_sync_state
+                WHERE tenant_id = :tenant_id AND user_id = :user_id
+            """),
+            {"tenant_id": tenant_id, "user_id": user_id},
+        )
+        row = sync_state.fetchone()
+        if not row:
+            return {"error": "no_sync_state"}
+
+        sync_id = row[0]
+        page_token = row[1]
+        if not page_token:
+            return {"error": "no_page_token"}
+
+        sync_settings = {
+            "indexing_mode": row[2],
+            "file_type_filter": row[4] or [],
+            "folder_selections": row[3] or [],
+            "max_file_size_bytes": row[5] or 52428800,
+        }
+
+        # Get access token
+        token_svc = GoogleTokenService(db)
+        try:
+            access_token = await token_svc.get_valid_access_token(user_id)
+        except InvalidGrantError:
+            await db.execute(
+                text("""
+                    UPDATE google_drive_sync_state
+                    SET last_error = 'token_expired', auto_sync_enabled = false, updated_at = NOW()
+                    WHERE id = :id
+                """),
+                {"id": sync_id},
+            )
+            await db.commit()
+            return {"error": "token_expired"}
+
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        creds = Credentials(token=access_token)
+        drive = build("drive", "v3", credentials=creds)
+
+        changes_processed = 0
+        new_page_token = page_token
+
+        while True:
+            result = drive.changes().list(
+                pageToken=new_page_token,
+                fields="changes(fileId,removed,file(id,name,mimeType,size,modifiedTime,parents)),newStartPageToken,nextPageToken",
+                pageSize=100,
+            ).execute()
+
+            changes = result.get("changes", [])
+
+            for change in changes:
+                file_id = change.get("fileId")
+                removed = change.get("removed", False)
+
+                if removed:
+                    # Mark virtual reference as deleted
+                    await db.execute(
+                        text("""
+                            UPDATE library_items
+                            SET deleted_at = NOW(), status = 'deleted', updated_at = NOW()
+                            WHERE tenant_id = :tenant_id
+                              AND metadata_json->>'driveFileId' = :file_id
+                              AND deleted_at IS NULL
+                        """),
+                        {"tenant_id": tenant_id, "file_id": file_id},
+                    )
+                    changes_processed += 1
+                    continue
+
+                file_meta = change.get("file")
+                if file_meta and should_index_file(file_meta, sync_settings):
+                    await _create_virtual_reference(db, tenant_id, user_id, file_meta)
+                    changes_processed += 1
+
+            # Update page token
+            if result.get("newStartPageToken"):
+                new_page_token = result["newStartPageToken"]
+                break
+            elif result.get("nextPageToken"):
+                new_page_token = result["nextPageToken"]
+            else:
+                break
+
+        # Save new page token and last_sync_at
+        await db.execute(
+            text("""
+                UPDATE google_drive_sync_state
+                SET page_token = :token, last_sync_at = NOW(), updated_at = NOW()
+                WHERE id = :id
+            """),
+            {"token": new_page_token, "id": sync_id},
+        )
+        await db.commit()
+
+        logger.info(
+            "process_drive_changes_completed user_id=%d changes=%d",
+            user_id, changes_processed,
+        )
+        return {"status": "completed", "changes_processed": changes_processed}
+
+
+async def _renew_drive_watch_channels_async() -> dict:
+    """Async implementation of channel renewal."""
+    from app.core.database import AsyncSessionLocal
+    from app.services.google_token_service import GoogleTokenService, InvalidGrantError
+    from app.services.google_drive_sync_service import setup_watch_channel
+
+    renewed = 0
+    failed = 0
+
+    async with AsyncSessionLocal() as db:
+        # Find channels expiring within 24 hours
+        rows = await db.execute(
+            text("""
+                SELECT id, user_id, tenant_id, channel_id, resource_id
+                FROM google_drive_sync_state
+                WHERE auto_sync_enabled = true
+                  AND channel_id IS NOT NULL
+                  AND channel_expiry IS NOT NULL
+                  AND channel_expiry < NOW() + INTERVAL '24 hours'
+            """)
+        )
+        expiring = rows.fetchall()
+
+        for row in expiring:
+            sync_id, uid, tid, old_channel_id, old_resource_id = row
+
+            try:
+                token_svc = GoogleTokenService(db)
+                access_token = await token_svc.get_valid_access_token(uid)
+
+                # Stop old channel
+                from google.oauth2.credentials import Credentials
+                from googleapiclient.discovery import build
+
+                creds = Credentials(token=access_token)
+                drive = build("drive", "v3", credentials=creds)
+
+                try:
+                    drive.channels().stop(body={
+                        "id": old_channel_id,
+                        "resourceId": old_resource_id,
+                    }).execute()
+                except Exception:
+                    pass  # Old channel may already be expired
+
+                # Create new channel
+                channel_info = await setup_watch_channel(uid, tid, access_token)
+                token_hash = hashlib.sha256(channel_info["channel_token"].encode()).hexdigest()
+
+                await db.execute(
+                    text("""
+                        UPDATE google_drive_sync_state
+                        SET channel_id = :channel_id, resource_id = :resource_id,
+                            channel_token_hash = :token_hash, channel_expiry = :expiry,
+                            page_token = :page_token, updated_at = NOW()
+                        WHERE id = :id
+                    """),
+                    {
+                        "channel_id": channel_info["channel_id"],
+                        "resource_id": channel_info["resource_id"],
+                        "token_hash": token_hash,
+                        "expiry": channel_info["channel_expiry"],
+                        "page_token": channel_info["page_token"],
+                        "id": sync_id,
+                    },
+                )
+                await db.commit()
+                renewed += 1
+
+            except InvalidGrantError:
+                # Token expired -- disable auto-sync
+                await db.execute(
+                    text("""
+                        UPDATE google_drive_sync_state
+                        SET auto_sync_enabled = false, last_error = 'token_expired', updated_at = NOW()
+                        WHERE id = :id
+                    """),
+                    {"id": sync_id},
+                )
+                await db.execute(
+                    text("""
+                        UPDATE oauth_connections
+                        SET status = 'expired', updated_at = NOW()
+                        WHERE user_id = :uid AND provider = 'google'
+                    """),
+                    {"uid": uid},
+                )
+                await db.commit()
+                failed += 1
+                logger.warning("Channel renewal failed for user %d: token expired", uid)
+
+            except Exception as e:
+                failed += 1
+                logger.error("Channel renewal failed for user %d: %s", uid, str(e))
+
+    logger.info("renew_drive_watch_channels_completed renewed=%d failed=%d", renewed, failed)
+    return {"renewed": renewed, "failed": failed}
+
+
+async def _estimate_sync_cost_impl(user_id: int, tenant_id: str) -> dict:
+    """Count matching files and return estimated credit cost."""
+    from app.core.database import AsyncSessionLocal
+    from app.services.google_token_service import GoogleTokenService, InvalidGrantError
+    from app.services.google_drive_sync_service import should_index_file
+
+    async with AsyncSessionLocal() as db:
+        sync_state = await db.execute(
+            text("""
+                SELECT indexing_mode, folder_selections, file_type_filter, max_file_size_bytes
+                FROM google_drive_sync_state
+                WHERE tenant_id = :tenant_id AND user_id = :user_id
+            """),
+            {"tenant_id": tenant_id, "user_id": user_id},
+        )
+        row = sync_state.fetchone()
+        if not row:
+            return {"file_count": 0, "estimated_credits": 0, "estimated_size_mb": 0}
+
+        sync_settings = {
+            "indexing_mode": row[0],
+            "file_type_filter": row[2] or [],
+            "folder_selections": row[1] or [],
+            "max_file_size_bytes": row[3] or 52428800,
+        }
+
+        if sync_settings["indexing_mode"] == "none":
+            return {"file_count": 0, "estimated_credits": 0, "estimated_size_mb": 0}
+
+        token_svc = GoogleTokenService(db)
+        access_token = await token_svc.get_valid_access_token(user_id)
+
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        creds = Credentials(token=access_token)
+        drive = build("drive", "v3", credentials=creds)
+
+        all_files = []
+        page_token = None
+        total_size = 0
+
+        while True:
+            params = {
+                "q": "trashed = false",
+                "pageSize": 100,
+                "fields": "files(id,name,mimeType,size,modifiedTime,parents),nextPageToken",
+            }
+            if page_token:
+                params["pageToken"] = page_token
+            result = drive.files().list(**params).execute()
+            files = result.get("files", [])
+            for f in files:
+                if should_index_file(f, sync_settings):
+                    all_files.append(f)
+                    total_size += int(f.get("size", 0) or 0)
+            page_token = result.get("nextPageToken")
+            if not page_token:
+                break
+
+        # Estimate: ~2 credits per chunk, ~1 chunk per 1000 chars, ~5 chars/byte
+        estimated_chars = total_size * 5
+        estimated_chunks = max(1, estimated_chars // 1000) if all_files else 0
+        estimated_credits = estimated_chunks * 2
+
+        return {
+            "file_count": len(all_files),
+            "estimated_credits": estimated_credits,
+            "estimated_size_mb": round(total_size / (1024 * 1024), 1),
+        }

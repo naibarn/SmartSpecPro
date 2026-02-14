@@ -12,7 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
 import { db } from "../db";
-import { googleDriveEditSessions, libraryItems } from "../../drizzle/schema";
+import { googleDriveEditSessions, googleDriveSyncState, libraryItems } from "../../drizzle/schema";
 import { storageGet, storagePut } from "../storage";
 
 const PYTHON_BACKEND_URL =
@@ -389,4 +389,172 @@ export const googleDriveRouter = router({
 
       return { success: true };
     }),
+
+  /**
+   * Get the user's Drive sync status and settings.
+   */
+  getSyncStatus: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) return null;
+    const [state] = await db
+      .select()
+      .from(googleDriveSyncState)
+      .where(
+        and(
+          eq(googleDriveSyncState.tenantId, ctx.tenantId),
+          eq(googleDriveSyncState.userId, ctx.user.id),
+        ),
+      )
+      .limit(1);
+    if (!state) return null;
+    return {
+      indexingMode: state.indexingMode,
+      folderSelections: state.folderSelections,
+      fileTypeFilter: state.fileTypeFilter,
+      maxFileSizeBytes: state.maxFileSizeBytes,
+      filesTotal: state.filesTotal,
+      filesProcessed: state.filesProcessed,
+      lastSyncAt: state.lastSyncAt?.toISOString() ?? null,
+      lastError: state.lastError,
+      autoSyncEnabled: state.autoSyncEnabled,
+    };
+  }),
+
+  /**
+   * Start an initial sync or manual re-sync.
+   */
+  startSync: protectedProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.tenantId)
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+
+    // Verify Google connection
+    const token = createDriveToken(ctx.user.id);
+    const statusResp = await fetch(`${PYTHON_BACKEND_URL}/api/oauth/google/drive/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!statusResp.ok)
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to check Google connection" });
+    const connStatus = (await statusResp.json()) as { status: string };
+    if (connStatus.status !== "connected")
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Google account not connected" });
+
+    // Ensure sync state exists
+    const [existing] = await db
+      .select()
+      .from(googleDriveSyncState)
+      .where(
+        and(
+          eq(googleDriveSyncState.tenantId, ctx.tenantId),
+          eq(googleDriveSyncState.userId, ctx.user.id),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      await db.insert(googleDriveSyncState).values({
+        tenantId: ctx.tenantId,
+        userId: ctx.user.id,
+        indexingMode: "all",
+      });
+    }
+
+    // Trigger sync via Python backend
+    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
+    const pyResp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/start-sync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-proxy-token": proxyToken,
+      },
+      body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
+    });
+    if (!pyResp.ok) {
+      const err = await pyResp.json().catch(() => ({}));
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: (err as any).detail || "Failed to start sync",
+      });
+    }
+    return { started: true };
+  }),
+
+  /**
+   * Update sync settings (indexing mode, folder selections, file type filter).
+   */
+  updateSyncSettings: protectedProcedure
+    .input(
+      z.object({
+        indexingMode: z.enum(["none", "selected_folders", "all_except", "all"]),
+        folderSelections: z
+          .array(z.object({ folderId: z.string(), folderName: z.string() }))
+          .optional(),
+        fileTypeFilter: z.array(z.string()).optional(),
+        maxFileSizeBytes: z.number().positive().optional(),
+        autoSyncEnabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+
+      const [existing] = await db
+        .select()
+        .from(googleDriveSyncState)
+        .where(
+          and(
+            eq(googleDriveSyncState.tenantId, ctx.tenantId),
+            eq(googleDriveSyncState.userId, ctx.user.id),
+          ),
+        )
+        .limit(1);
+
+      const values: any = {
+        indexingMode: input.indexingMode as any,
+        updatedAt: new Date(),
+      };
+      if (input.folderSelections !== undefined)
+        values.folderSelections = input.folderSelections.map((f) => f.folderId);
+      if (input.fileTypeFilter !== undefined) values.fileTypeFilter = input.fileTypeFilter;
+      if (input.maxFileSizeBytes !== undefined) values.maxFileSizeBytes = input.maxFileSizeBytes;
+      if (input.autoSyncEnabled !== undefined) values.autoSyncEnabled = input.autoSyncEnabled;
+
+      if (existing) {
+        await db
+          .update(googleDriveSyncState)
+          .set(values)
+          .where(eq(googleDriveSyncState.id, existing.id));
+      } else {
+        await db.insert(googleDriveSyncState).values({
+          tenantId: ctx.tenantId,
+          userId: ctx.user.id,
+          ...values,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Estimate sync cost (count matching files and credit cost).
+   */
+  estimateSyncCost: protectedProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.tenantId)
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+
+    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
+    const resp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/estimate-cost`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-proxy-token": proxyToken,
+      },
+      body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
+    });
+    if (!resp.ok) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to estimate cost" });
+    }
+    return resp.json() as Promise<{
+      file_count: number;
+      estimated_credits: number;
+      estimated_size_mb: number;
+    }>;
+  }),
 });
