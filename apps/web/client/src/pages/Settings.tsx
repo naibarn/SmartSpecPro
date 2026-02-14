@@ -51,10 +51,12 @@ import {
   ShieldCheck,
   ShieldOff,
   Send,
+  Link2,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing';
+type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing' | 'integrations';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
@@ -545,6 +547,7 @@ export default function Settings() {
     { id: 'preferences', label: 'Preferences', icon: Palette },
     { id: 'api', label: 'API Keys', icon: Key },
     { id: 'billing', label: 'Billing', icon: CreditCard },
+    { id: 'integrations', label: 'Integrations', icon: Link2 },
   ];
 
   const handleSave = () => {
@@ -1459,6 +1462,17 @@ export default function Settings() {
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Integrations Tab */}
+              {activeTab === 'integrations' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Integrations</h2>
+                    <p className="text-gray-600 dark:text-gray-400">Connect external services to enhance your workflow</p>
+                  </div>
+                  <GoogleDrivePanel />
                 </div>
               )}
             </div>

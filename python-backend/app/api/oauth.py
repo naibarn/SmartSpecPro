@@ -15,6 +15,7 @@ from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.core.oauth_config import get_oauth_config
 from app.services.oauth_service import OAuthService
+from app.services.google_token_service import GoogleTokenService, InvalidGrantError
 from app.models.user import User
 
 router = APIRouter(prefix="/api/oauth", tags=["oauth"])
@@ -360,3 +361,76 @@ async def get_oauth_connections(
             for conn in connections
         ]
     }
+
+
+# ─── Google Drive OAuth (per-user incremental consent) ───
+
+
+class DriveCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
+@router.get("/google/drive/authorize")
+async def drive_authorize(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get Google OAuth URL with Drive scopes for an authenticated user."""
+    try:
+        svc = GoogleTokenService(db)
+        return await svc.build_drive_auth_url(user_id=current_user.id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        )
+
+
+@router.post("/google/drive/callback")
+async def drive_callback(
+    request: DriveCallbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Exchange Drive OAuth code for tokens and store them."""
+    try:
+        svc = GoogleTokenService(db)
+        result = await svc.exchange_drive_code(
+            user_id=current_user.id,
+            code=request.code,
+            state=request.state,
+            tenant_id=getattr(current_user, "tenant_id", None),
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.get("/google/drive/status")
+async def drive_status(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current user's Google Drive connection status."""
+    svc = GoogleTokenService(db)
+    return await svc.get_connection_status(user_id=current_user.id)
+
+
+@router.delete("/google/drive/disconnect")
+async def drive_disconnect(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect Google Drive for the current user."""
+    svc = GoogleTokenService(db)
+    success = await svc.disconnect(user_id=current_user.id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No Google Drive connection found",
+        )
+    return {"success": True}
