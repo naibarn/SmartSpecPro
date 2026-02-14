@@ -6,6 +6,7 @@ import { auditLogger } from "../services/auditLogger";
 import { shareOperationLimiter } from "../services/rateLimiter";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { federatedSearch } from "../services/federatedSearch";
 import {
   createLibraryItem,
   getContentVersionById,
@@ -785,5 +786,29 @@ export const libraryRouter = router({
       });
 
       return { success: true };
+    }),
+
+  /**
+   * Federated search across local DB, vector store, and Google Drive.
+   */
+  federatedSearch: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(1).max(1000),
+        includeGoogleDrive: z.boolean().default(true),
+        sourceFilter: z.enum(["all", "library", "google_drive"]).default("all"),
+        limit: z.number().int().min(1).max(100).default(20),
+        offset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx);
+      await isLibraryEnabledForTenant(tenantId);
+
+      return federatedSearch(input, {
+        userId: ctx.user.id,
+        tenantId,
+        role: ctx.user.role ?? null,
+      });
     }),
 });
