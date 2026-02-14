@@ -56,6 +56,8 @@ celery_app.conf.update(
         "app.tasks.media_tasks.process_library_index_job_task": {"queue": "media"},
         "app.tasks.media_tasks.retry_library_index_jobs": {"queue": "media"},
         "app.tasks.media_tasks.recover_stuck_tasks": {"queue": "media"},
+        # Google Drive indexing -> media queue (network-bound)
+        "app.tasks.google_drive_tasks.process_google_drive_index_job": {"queue": "media"},
         # Workflow tasks -> celery queue (lightweight, frequent)
         "app.tasks.workflow_tasks.check_scheduled_workflows": {"queue": "celery"},
         "app.tasks.workflow_tasks.process_system_event": {"queue": "celery"},
