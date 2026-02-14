@@ -124,6 +124,7 @@ export function createWebhookRouter(): Router {
           user_id: syncState.userId,
           tenant_id: syncState.tenantId,
         }),
+        signal: AbortSignal.timeout(5000),
       }).catch((err) => {
         console.error("[Webhook] Failed to enqueue Drive changes:", err);
       });
