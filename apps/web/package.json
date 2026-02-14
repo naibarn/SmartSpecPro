@@ -4,11 +4,11 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development tsx watch server/_core/index.ts",
+    "dev": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development NODE_OPTIONS='--max-old-space-size=4096' tsx watch server/_core/index.ts",
     "dev:tsx": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development tsx watch server/_core/index.ts",
     "dev:no-watch": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development node --import tsx server/_core/index.ts",
     "build": "vite build",
-    "start": "NODE_ENV=production tsx server/_core/index.ts",
+    "start": "NODE_ENV=production NODE_OPTIONS='--max-old-space-size=8192' tsx server/_core/index.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest run",

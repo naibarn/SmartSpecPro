@@ -1,0 +1,36 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/010-GoogleDriveScope/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/010-GoogleDriveScope/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-admin-config",
+    "section-02-database-schema",
+    "section-03-oauth-consent",
+    "section-04-credit-billing",
+    "section-05-budget-protection",
+    "section-06-content-extraction",
+    "section-07-edit-in-google",
+    "section-08-virtual-references",
+    "section-09-mcp-server",
+    "section-10-federated-search",
+    "section-11-sync-webhooks",
+    "section-12-dashboard-ui",
+    "section-13-rate-limiting",
+    "section-14-disconnect-cleanup",
+    "section-15-security-hardening"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-14T07:17:19.444156+00:00"
+}

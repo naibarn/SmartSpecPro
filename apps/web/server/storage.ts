@@ -42,7 +42,7 @@ interface ConfigCache {
 const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes, matches Python
 let _configCache: ConfigCache | null = null;
 
-async function getActiveStorageConfig(): Promise<ResolvedConfig> {
+export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
   // Priority 1: Legacy Forge ENV vars (backward compatibility)
   const forgeUrl = ENV.forgeApiUrl;
   const forgeKey = ENV.forgeApiKey;
@@ -388,4 +388,52 @@ export async function useLocalStorage(): Promise<boolean> {
 export function getUploadsDir(): string {
   ensureUploadsDir();
   return UPLOADS_DIR;
+}
+
+/**
+ * Generate a presigned PUT URL for direct client upload to S3/R2.
+ * Returns null if storage is local/forge (not S3-compatible).
+ */
+export async function storagePresignPut(
+  relKey: string,
+  contentType: string,
+  contentLength: number,
+  expiresIn = 3600,
+): Promise<{ url: string; key: string } | null> {
+  const config = await getActiveStorageConfig();
+  if (config.provider !== "s3") return null;
+
+  const key = normalizeKey(relKey);
+  const cmd = new PutObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
+    ContentType: contentType,
+    ContentLength: contentLength,
+  });
+  const url = await getSignedUrl(config.client, cmd, { expiresIn });
+  return { url, key };
+}
+
+/**
+ * Resolve a storage key to its public/accessible URL.
+ */
+export async function storageResolveUrl(relKey: string): Promise<string | null> {
+  const config = await getActiveStorageConfig();
+  const key = normalizeKey(relKey);
+
+  switch (config.provider) {
+    case "s3":
+      if (config.publicUrlPrefix) {
+        return `${config.publicUrlPrefix.replace(/\/$/, "")}/${key}`;
+      }
+      return getSignedUrl(
+        config.client,
+        new GetObjectCommand({ Bucket: config.bucket, Key: key }),
+        { expiresIn: 3600 },
+      );
+    case "local":
+      return `/uploads/${key}`;
+    default:
+      return null;
+  }
 }

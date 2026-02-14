@@ -2,6 +2,7 @@
 
 # SmartSpecPro Health Check & Auto-Recovery Script
 # Run this periodically (e.g., every 5 minutes via cron) to detect and fix common issues
+# Web and Backend are managed by systemd (auto-restart on crash).
 
 set -e
 
@@ -18,78 +19,38 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 
-# Check if services are running in screen (not orphaned)
-check_screen_sessions() {
-    local expected_sessions=("smartspec-backend" "smartspec-web" "smartspec-docker-status")
-    local missing_sessions=()
+# Check systemd-managed services (web and backend)
+check_systemd_services() {
+    local failed=0
 
-    for session in "${expected_sessions[@]}"; do
-        if ! screen -ls | grep -q "\.${session}"; then
-            missing_sessions+=("$session")
+    for service in smartspec-web smartspec-backend; do
+        local active=$(systemctl is-active ${service}.service 2>/dev/null || echo "inactive")
+        local restarts=$(systemctl show ${service}.service -p NRestarts --value 2>/dev/null || echo "?")
+
+        if [ "$active" = "active" ]; then
+            log_info "${service}: active (restarts: $restarts)"
+        else
+            log_error "${service}: $active (restarts: $restarts)"
+            ((failed++))
         fi
     done
 
-    if [ ${#missing_sessions[@]} -gt 0 ]; then
-        log_error "Missing screen sessions: ${missing_sessions[*]}"
-        return 1
+    if [ $failed -eq 0 ]; then
+        log_info "All systemd services running"
     fi
 
-    log_info "✓ All screen sessions running"
-    return 0
+    return $failed
 }
 
-# Check for truly orphaned processes (parent is not screen/bash in screen session)
-check_orphaned_processes() {
-    local orphaned=0
-
-    # Get all screen session PIDs
-    local screen_pids=$(screen -ls | grep "smartspec-" | awk '{print $1}' | cut -d. -f1)
-
-    # Function to check if a process is child of screen session
-    is_child_of_screen() {
-        local pid=$1
-        local ppid=$(ps -o ppid= -p $pid 2>/dev/null | tr -d ' ')
-
-        # Trace up to 5 levels of parents
-        for i in {1..5}; do
-            [ -z "$ppid" ] && return 1
-
-            # Check if this parent is a screen session
-            for spid in $screen_pids; do
-                [ "$ppid" = "$spid" ] && return 0
-            done
-
-            # Get parent's parent
-            ppid=$(ps -o ppid= -p $ppid 2>/dev/null | tr -d ' ')
-        done
-
-        return 1
-    }
-
-    # Check for uvicorn processes
-    while IFS= read -r pid; do
-        if ! is_child_of_screen "$pid"; then
-            log_warn "Found orphaned backend process: $pid (started: $(ps -o lstart= -p $pid))"
-            orphaned=1
-        fi
-    done < <(pgrep -f "uvicorn.*app.main" 2>/dev/null || true)
-
-    # Check for tsx web processes (exclude docker-status)
-    while IFS= read -r pid; do
-        local cmd=$(ps -o args= -p $pid)
-        if [[ ! "$cmd" =~ "docker-status" ]] && ! is_child_of_screen "$pid"; then
-            log_warn "Found orphaned web process: $pid (started: $(ps -o lstart= -p $pid))"
-            orphaned=1
-        fi
-    done < <(pgrep -f "tsx.*server/_core" 2>/dev/null || true)
-
-    if [ $orphaned -eq 0 ]; then
-        log_info "✓ No orphaned processes detected"
-        return 0
-    else
-        log_error "Orphaned processes detected!"
+# Check screen session (docker-status only)
+check_screen_sessions() {
+    if ! screen -ls 2>/dev/null | grep -q "\.smartspec-docker-status"; then
+        log_warn "Missing screen session: smartspec-docker-status"
         return 1
     fi
+
+    log_info "Screen session smartspec-docker-status: running"
+    return 0
 }
 
 # Check if services respond to health checks
@@ -102,7 +63,7 @@ check_service_health() {
         log_error "Backend health check failed (status: $backend_status)"
         failed=1
     else
-        log_info "✓ Backend responding ($backend_status)"
+        log_info "Backend responding ($backend_status)"
     fi
 
     # Check Web App
@@ -111,7 +72,7 @@ check_service_health() {
         log_error "Web app health check failed (HTTP $web_status)"
         failed=1
     else
-        log_info "✓ Web app responding (HTTP $web_status)"
+        log_info "Web app responding (HTTP $web_status)"
     fi
 
     return $failed
@@ -119,20 +80,20 @@ check_service_health() {
 
 # Main health check
 main() {
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "---"
     echo "SmartSpecPro Health Check - $(date)"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "---"
     echo ""
 
     local issues=0
 
-    # 1. Check screen sessions
-    if ! check_screen_sessions; then
+    # 1. Check systemd services
+    if ! check_systemd_services; then
         ((issues++))
     fi
 
-    # 2. Check for orphans
-    if ! check_orphaned_processes; then
+    # 2. Check screen sessions (docker-status)
+    if ! check_screen_sessions; then
         ((issues++))
     fi
 
@@ -143,16 +104,12 @@ main() {
 
     echo ""
     if [ $issues -eq 0 ]; then
-        log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         log_info "Health check PASSED - All systems operational"
-        log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         exit 0
     else
-        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         log_error "Health check FAILED - $issues issue(s) detected"
-        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        log_warn ""
-        log_warn "Recommended action: Run ./run-services.sh stop && ./run-services.sh start"
+        log_warn "Web and Backend auto-recover via systemd (Restart=always)."
+        log_warn "If issues persist: ./run-services.sh restart"
         exit 1
     fi
 }

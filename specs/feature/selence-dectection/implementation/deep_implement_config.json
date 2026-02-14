@@ -1,0 +1,72 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/selence-dectection/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/selence-dectection/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-types-shared-logic",
+    "section-02-dialog-layout",
+    "section-03-settings-detection",
+    "section-04-region-list",
+    "section-05-waveform-overlay",
+    "section-06-mini-timeline",
+    "section-07-preview-skip-silence",
+    "section-08-export-to-timeline",
+    "section-09-backend-dead-air-cut",
+    "section-10-media-job-client"
+  ],
+  "sections_state": {
+    "section-01-types-shared-logic": {
+      "status": "complete",
+      "commit_hash": "90a0537c94dfc2df12fc54ba3cac3d8049072ce6"
+    },
+    "section-02-dialog-layout": {
+      "status": "complete",
+      "commit_hash": "9713fc9"
+    },
+    "section-03-settings-detection": {
+      "status": "complete",
+      "commit_hash": "86718e9"
+    },
+    "section-04-region-list": {
+      "status": "complete",
+      "commit_hash": "871ad95"
+    },
+    "section-05-waveform-overlay": {
+      "status": "complete",
+      "commit_hash": "6132170"
+    },
+    "section-06-mini-timeline": {
+      "status": "complete",
+      "commit_hash": "822950e"
+    },
+    "section-07-preview-skip-silence": {
+      "status": "complete",
+      "commit_hash": "9330776"
+    },
+    "section-08-export-to-timeline": {
+      "status": "complete",
+      "commit_hash": "f241552"
+    },
+    "section-09-backend-dead-air-cut": {
+      "status": "complete",
+      "commit_hash": "86730b3"
+    },
+    "section-10-media-job-client": {
+      "status": "complete",
+      "commit_hash": "b3ae661"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-13T07:48:53.271377+00:00"
+}

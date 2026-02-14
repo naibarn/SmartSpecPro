@@ -1567,6 +1567,28 @@ export const libraryChunks = pgTable("library_chunks", {
 export type LibraryChunk = typeof libraryChunks.$inferSelect;
 export type InsertLibraryChunk = typeof libraryChunks.$inferInsert;
 
+export const libraryContentVersions = pgTable("library_content_versions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  versionNumber: integer("version_number").notNull(),
+  contentHash: varchar("content_hash", { length: 64 }).notNull(),
+  content: text("content").notNull(),
+  contentType: varchar("content_type", { length: 32 }).notNull().default("markdown_source"),
+  contentSizeBytes: integer("content_size_bytes").notNull(),
+  changeDescription: text("change_description"),
+  createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("library_versions_item_version_unique").on(t.libraryItemId, t.versionNumber),
+  index("library_versions_item_created_idx").on(t.libraryItemId, t.createdAt),
+  index("library_versions_tenant_created_idx").on(t.tenantId, t.createdAt),
+  index("library_versions_hash_idx").on(t.contentHash),
+]);
+
+export type LibraryContentVersion = typeof libraryContentVersions.$inferSelect;
+export type InsertLibraryContentVersion = typeof libraryContentVersions.$inferInsert;
+
 export const libraryPermissions = pgTable("library_permissions", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),

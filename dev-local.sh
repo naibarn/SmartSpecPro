@@ -229,17 +229,26 @@ cmd_web() {
     # Environment is already loaded from .env.local
     # Override only if needed (use sync driver for SmartSpecWeb)
     export DATABASE_URL="${DATABASE_URL:-postgresql://smartspec:smartspec123@localhost:5432/smartspec}"
-    export NODE_ENV="${NODE_ENV:-development}"
+    # Only set NODE_ENV if not already set (preserve value passed from run-services.sh)
+    if [ -z "$NODE_ENV" ]; then
+        export NODE_ENV="development"
+    fi
     export PORT="${WEB_PORT:-3000}"
 
     log_info "Environment: DATABASE_URL=$DATABASE_URL"
-    log_info "Starting Vite dev server on port $PORT..."
 
-    # Run from workspace directory
-    cd "$WEB_DIR"
-    # Use no-watch mode for stability in long-running screen sessions.
-    # This prevents periodic restarts when file watchers detect incidental changes.
-    "$NPM_CMD" run dev:no-watch
+    # Check if production build exists and use it if NODE_ENV is production
+    if [ "$NODE_ENV" = "production" ] && [ -d "$WEB_DIR/dist/public" ]; then
+        log_info "Starting production server on port $PORT..."
+        cd "$WEB_DIR"
+        "$NPM_CMD" run start
+    else
+        log_info "Starting Vite dev server on port $PORT..."
+        cd "$WEB_DIR"
+        # Use no-watch mode for stability in long-running screen sessions.
+        # This prevents periodic restarts when file watchers detect incidental changes.
+        "$NPM_CMD" run dev:no-watch
+    fi
 }
 
 cmd_backend() {
