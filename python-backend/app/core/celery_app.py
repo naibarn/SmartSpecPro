@@ -91,6 +91,10 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.workflow_tasks.check_scheduled_workflows",
         "schedule": crontab(minute="*"),  # Every minute - check for due schedules
     },
+    "cleanup-expired-edit-sessions": {
+        "task": "cleanup_expired_edit_sessions",
+        "schedule": crontab(minute="*/30"),  # Every 30 minutes - expire stale Google Drive edit sessions
+    },
 }
 
 # Auto-discover tasks

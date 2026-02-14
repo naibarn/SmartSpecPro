@@ -7,8 +7,13 @@
 
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import { eq, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
+import { db } from "../db";
+import { googleDriveEditSessions, libraryItems } from "../../drizzle/schema";
+import { storageGet, storagePut } from "../storage";
 
 const PYTHON_BACKEND_URL =
   process.env.PYTHON_BACKEND_URL ||
@@ -122,4 +127,266 @@ export const googleDriveRouter = router({
     }
     return resp.json() as Promise<{ success: boolean }>;
   }),
+
+  /**
+   * Get active edit session for a library item.
+   */
+  getActiveEditSession: protectedProcedure
+    .input(z.object({ libraryItemId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) return null;
+      const [session] = await db
+        .select()
+        .from(googleDriveEditSessions)
+        .where(
+          and(
+            eq(googleDriveEditSessions.tenantId, ctx.tenantId),
+            eq(googleDriveEditSessions.libraryItemId, input.libraryItemId),
+            eq(googleDriveEditSessions.userId, ctx.user.id),
+            eq(googleDriveEditSessions.status, "active"),
+          ),
+        )
+        .limit(1);
+      return session ?? null;
+    }),
+
+  /**
+   * Open a library file for editing in Google Docs/Sheets.
+   */
+  openForEditing: protectedProcedure
+    .input(z.object({ libraryItemId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+
+      // Check Google connection
+      const token = createDriveToken(ctx.user.id);
+      const statusResp = await fetch(
+        `${PYTHON_BACKEND_URL}/api/oauth/google/drive/status`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!statusResp.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to check Google connection" });
+      const connStatus = await statusResp.json() as { status: string };
+      if (connStatus.status !== "connected") {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Google account not connected" });
+      }
+
+      // Check for existing active session
+      const [existing] = await db
+        .select()
+        .from(googleDriveEditSessions)
+        .where(
+          and(
+            eq(googleDriveEditSessions.libraryItemId, input.libraryItemId),
+            eq(googleDriveEditSessions.userId, ctx.user.id),
+            eq(googleDriveEditSessions.status, "active"),
+          ),
+        )
+        .limit(1);
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Active edit session already exists",
+          cause: { sessionId: existing.id, editUrl: existing.editUrl, driveFileId: existing.driveFileId },
+        });
+      }
+
+      // Get library item (tenant-scoped)
+      const [item] = await db
+        .select()
+        .from(libraryItems)
+        .where(
+          and(
+            eq(libraryItems.id, input.libraryItemId),
+            eq(libraryItems.tenantId, ctx.tenantId),
+          ),
+        )
+        .limit(1);
+      if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Library item not found" });
+      if (!item.sourceUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No source file to edit" });
+
+      // Determine target Google MIME type
+      const itemType = (item.itemType || "").toLowerCase();
+      let targetMime: string;
+      if (itemType.includes("doc") || itemType.includes("word") || item.sourceUrl.endsWith(".docx")) {
+        targetMime = "application/vnd.google-apps.document";
+      } else if (itemType.includes("sheet") || itemType.includes("excel") || item.sourceUrl.endsWith(".xlsx")) {
+        targetMime = "application/vnd.google-apps.spreadsheet";
+      } else if (itemType.includes("slide") || itemType.includes("ppt") || item.sourceUrl.endsWith(".pptx")) {
+        targetMime = "application/vnd.google-apps.presentation";
+      } else {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "File type not supported for Google editing" });
+      }
+
+      // Download file from storage
+      const storageInfo = await storageGet(item.sourceUrl);
+      const fileResp = await fetch(storageInfo.url);
+      if (!fileResp.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to download file from storage" });
+      const fileBuffer = Buffer.from(await fileResp.arrayBuffer());
+
+      // Upload to Google Drive via Python backend
+      const uploadResp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          file_content: fileBuffer.toString("base64"),
+          file_name: item.title,
+          mime_type: targetMime,
+          convert: true,
+          user_id: ctx.user.id,
+        }),
+      });
+      if (!uploadResp.ok) {
+        const err = await uploadResp.json().catch(() => ({}));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (err as any).detail || "Drive upload failed" });
+      }
+      const uploadResult = await uploadResp.json() as { driveFileId: string; editUrl: string };
+
+      // Create edit session record
+      const [session] = await db
+        .insert(googleDriveEditSessions)
+        .values({
+          tenantId: ctx.tenantId,
+          userId: ctx.user.id,
+          libraryItemId: input.libraryItemId,
+          driveFileId: uploadResult.driveFileId,
+          editUrl: uploadResult.editUrl,
+          originalSourceUrl: item.sourceUrl,
+          status: "active",
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        })
+        .returning();
+
+      return { sessionId: session.id, editUrl: session.editUrl, driveFileId: session.driveFileId };
+    }),
+
+  /**
+   * Save back edited file from Google Drive to storage.
+   */
+  saveBack: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+
+      // Fetch session
+      const [session] = await db
+        .select()
+        .from(googleDriveEditSessions)
+        .where(
+          and(
+            eq(googleDriveEditSessions.id, input.sessionId),
+            eq(googleDriveEditSessions.userId, ctx.user.id),
+            eq(googleDriveEditSessions.status, "active"),
+          ),
+        )
+        .limit(1);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Active edit session not found" });
+
+      // Get library item to determine export format
+      const [item] = await db
+        .select()
+        .from(libraryItems)
+        .where(eq(libraryItems.id, session.libraryItemId))
+        .limit(1);
+      if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Library item not found" });
+
+      // Determine export MIME type
+      const editUrl = session.editUrl;
+      let exportMime: string;
+      let ext: string;
+      if (editUrl.includes("docs.google.com/document")) {
+        exportMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        ext = "docx";
+      } else if (editUrl.includes("docs.google.com/spreadsheets")) {
+        exportMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        ext = "xlsx";
+      } else {
+        exportMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        ext = "pptx";
+      }
+
+      // Export from Google Drive
+      const token = createDriveToken(ctx.user.id);
+      const exportResp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/export`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          drive_file_id: session.driveFileId,
+          export_mime_type: exportMime,
+          user_id: ctx.user.id,
+        }),
+      });
+      if (!exportResp.ok) {
+        const err = await exportResp.json().catch(() => ({}));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: (err as any).detail || "Drive export failed" });
+      }
+      const exportResult = await exportResp.json() as { content: string; size: number };
+      const fileBuffer = Buffer.from(exportResult.content, "base64");
+
+      // Upload to storage with new key
+      const timestamp = Date.now();
+      const newKey = `library/${ctx.tenantId}/${session.libraryItemId}/edited-${timestamp}.${ext}`;
+      const { url: newSourceUrl } = await storagePut(newKey, fileBuffer, exportMime);
+
+      // Update library item source URL
+      await db
+        .update(libraryItems)
+        .set({ sourceUrl: newKey, updatedAt: new Date() })
+        .where(eq(libraryItems.id, session.libraryItemId));
+
+      // Delete temp Drive file
+      await fetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/files/${session.driveFileId}?user_id=${ctx.user.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Mark session as saved_back
+      await db
+        .update(googleDriveEditSessions)
+        .set({ status: "saved_back", updatedAt: new Date() })
+        .where(eq(googleDriveEditSessions.id, session.id));
+
+      return { success: true, newSourceUrl };
+    }),
+
+  /**
+   * Discard edit session -- delete temp Drive file and mark session.
+   */
+  discardEditSession: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      // Fetch session
+      const [session] = await db
+        .select()
+        .from(googleDriveEditSessions)
+        .where(
+          and(
+            eq(googleDriveEditSessions.id, input.sessionId),
+            eq(googleDriveEditSessions.userId, ctx.user.id),
+            eq(googleDriveEditSessions.status, "active"),
+          ),
+        )
+        .limit(1);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Active edit session not found" });
+
+      // Delete temp Drive file
+      const token = createDriveToken(ctx.user.id);
+      await fetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/files/${session.driveFileId}?user_id=${ctx.user.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Mark session as discarded
+      await db
+        .update(googleDriveEditSessions)
+        .set({ status: "discarded", updatedAt: new Date() })
+        .where(eq(googleDriveEditSessions.id, session.id));
+
+      return { success: true };
+    }),
 });
