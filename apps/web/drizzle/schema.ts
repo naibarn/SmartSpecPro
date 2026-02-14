@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, boolean, numeric, serial, uniqueIndex, index, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -83,6 +83,22 @@ export const policyActionEnum = pgEnum("policy_action", [
   "allow",
   "deny",
   "require_approval",
+]);
+
+// Google Drive indexing mode enum
+export const indexingModeEnum = pgEnum("indexing_mode", [
+  "none",
+  "selected_folders",
+  "all_except",
+  "all",
+]);
+
+// Google Drive edit session status enum
+export const editSessionStatusEnum = pgEnum("edit_session_status", [
+  "active",
+  "saved_back",
+  "discarded",
+  "expired",
 ]);
 
 /**
@@ -199,8 +215,15 @@ export const creditTransactions = pgTable("credit_transactions", {
   /** Reference ID for external systems (e.g., Stripe payment ID) */
   referenceId: varchar("referenceId", { length: 128 }),
 
+  /** Idempotency key to prevent duplicate charges for the same operation */
+  idempotencyKey: varchar("idempotencyKey", { length: 256 }),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  uniqueIndex("credit_transactions_idempotency_key_unique")
+    .on(t.idempotencyKey)
+    .where(sql`"idempotencyKey" IS NOT NULL`),
+]);
 
 export type CreditTransaction = typeof creditTransactions.$inferSelect;
 export type InsertCreditTransaction = typeof creditTransactions.$inferInsert;
@@ -1537,9 +1560,10 @@ export const libraryLinks = pgTable("library_links", {
   linkType: varchar("link_type", { length: 64 }).notNull(),
   linkId: varchar("link_id", { length: 128 }).notNull(),
   providerTaskId: varchar("provider_task_id", { length: 128 }),
+  tenantId: varchar("tenant_id", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
-  uniqueIndex("library_links_source_unique").on(t.linkType, t.linkId),
+  uniqueIndex("library_links_source_tenant_unique").on(t.linkType, t.linkId, t.tenantId),
   index("library_links_item_type_idx").on(t.libraryItemId, t.linkType),
   index("library_links_provider_task_idx").on(t.providerTaskId),
 ]);
@@ -1636,6 +1660,90 @@ export const libraryIndexJobs = pgTable("library_index_jobs", {
 
 export type LibraryIndexJob = typeof libraryIndexJobs.$inferSelect;
 export type InsertLibraryIndexJob = typeof libraryIndexJobs.$inferInsert;
+
+// ============================================================
+// Google Drive Integration Tables
+// ============================================================
+
+/**
+ * Stores per-user Google Drive sync configuration and webhook channel tracking.
+ * One row per user per tenant.
+ */
+export const googleDriveSyncState = pgTable("google_drive_sync_state", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  indexingMode: indexingModeEnum("indexing_mode").notNull().default("none"),
+  folderSelections: jsonb("folder_selections").$type<string[]>().default([]),
+  fileTypeFilter: jsonb("file_type_filter").$type<string[]>().default([]),
+  maxFileSizeBytes: integer("max_file_size_bytes").default(52428800),
+  channelId: varchar("channel_id", { length: 128 }),
+  resourceId: varchar("resource_id", { length: 128 }),
+  channelTokenHash: varchar("channel_token_hash", { length: 128 }),
+  channelExpiry: timestamp("channel_expiry", { withTimezone: true }),
+  pageToken: text("page_token"),
+  filesTotal: integer("files_total").default(0),
+  filesProcessed: integer("files_processed").default(0),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  autoSyncEnabled: boolean("auto_sync_enabled").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("gdrive_sync_tenant_user_unique").on(t.tenantId, t.userId),
+  index("gdrive_sync_channel_id_idx").on(t.channelId),
+]);
+
+export type GoogleDriveSyncState = typeof googleDriveSyncState.$inferSelect;
+export type InsertGoogleDriveSyncState = typeof googleDriveSyncState.$inferInsert;
+
+/**
+ * Tracks active editing sessions where a library file has been uploaded
+ * to Google Drive for editing in Google Docs/Sheets.
+ */
+export const googleDriveEditSessions = pgTable("google_drive_edit_sessions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  driveFileId: varchar("drive_file_id", { length: 128 }).notNull(),
+  editUrl: text("edit_url").notNull(),
+  originalSourceUrl: text("original_source_url"),
+  status: editSessionStatusEnum("status").notNull().default("active"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("gdrive_edit_tenant_user_status_idx").on(t.tenantId, t.userId, t.status),
+  index("gdrive_edit_library_item_idx").on(t.libraryItemId),
+  index("gdrive_edit_expires_at_idx").on(t.expiresAt),
+]);
+
+export type GoogleDriveEditSession = typeof googleDriveEditSessions.$inferSelect;
+export type InsertGoogleDriveEditSession = typeof googleDriveEditSessions.$inferInsert;
+
+/**
+ * Per-user monthly credit budget limits.
+ * Applies to ALL credit-consuming operations system-wide.
+ */
+export const userCreditBudgets = pgTable("user_credit_budgets", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  monthlyLimit: integer("monthly_limit").notNull(),
+  creditsUsedThisMonth: integer("credits_used_this_month").notNull().default(0),
+  budgetMonthKey: varchar("budget_month_key", { length: 7 }).notNull(),
+  alertThresholdPct: integer("alert_threshold_pct").notNull().default(80),
+  alertSent: boolean("alert_sent").notNull().default(false),
+  hardCapReached: boolean("hard_cap_reached").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_credit_budgets_tenant_user_unique").on(t.tenantId, t.userId),
+]);
+
+export type UserCreditBudget = typeof userCreditBudgets.$inferSelect;
+export type InsertUserCreditBudget = typeof userCreditBudgets.$inferInsert;
 
 /**
  * Skill Category Enum
