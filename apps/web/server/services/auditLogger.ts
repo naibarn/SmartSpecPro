@@ -25,6 +25,7 @@ export type AuditEventType =
   | "rollout_gate"
   | "skill_detect"
   | "skill_execute"
+  | "gdrive_api_call"
   | "error";
 
 export interface AuditLogEntry {

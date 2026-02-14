@@ -1161,3 +1161,101 @@ async def _estimate_sync_cost_impl(user_id: int, tenant_id: str) -> dict:
             "estimated_credits": estimated_credits,
             "estimated_size_mb": round(total_size / (1024 * 1024), 1),
         }
+
+
+# ── Webhook Fallback: Periodic Polling ─────────────────────────────────────
+
+
+@celery_app.task(name="poll_drive_changes")
+def poll_drive_changes():
+    """Periodic fallback task for users whose webhook channel is down.
+
+    Runs every 15 minutes via Celery Beat. Finds users with auto_sync_enabled
+    but no active webhook channel, and polls the Changes API for them.
+    Attempts to re-establish the webhook channel on each run.
+    """
+    logger.info("poll_drive_changes_started")
+    try:
+        return _run_async(_poll_drive_changes_async())
+    except Exception as e:
+        logger.error("poll_drive_changes_failed error=%s", str(e))
+        return {"error": str(e)}
+
+
+async def _poll_drive_changes_async() -> dict:
+    """Async implementation of polling fallback."""
+    from app.core.database import AsyncSessionLocal
+
+    polled = 0
+    failed = 0
+
+    async with AsyncSessionLocal() as db:
+        rows = await db.execute(
+            text("""
+                SELECT user_id, tenant_id
+                FROM google_drive_sync_state
+                WHERE auto_sync_enabled = true
+                  AND channel_id IS NULL
+                  AND page_token IS NOT NULL
+            """)
+        )
+        candidates = rows.fetchall()
+
+        for row in candidates:
+            uid, tid = row[0], row[1]
+            try:
+                result = await _process_drive_changes_async(uid, tid)
+                if result.get("error"):
+                    failed += 1
+                else:
+                    polled += 1
+
+                # Attempt to re-establish webhook
+                await _try_reestablish_webhook(uid, tid)
+
+            except Exception as e:
+                failed += 1
+                logger.warning("poll_drive_changes user_id=%d error=%s", uid, str(e))
+
+    logger.info("poll_drive_changes_completed polled=%d failed=%d", polled, failed)
+    return {"polled": polled, "failed": failed}
+
+
+async def _try_reestablish_webhook(user_id: int, tenant_id: str):
+    """Attempt to re-establish a webhook channel for a user."""
+    from app.core.database import AsyncSessionLocal
+    from app.services.google_token_service import GoogleTokenService, InvalidGrantError
+    from app.services.google_drive_sync_service import setup_watch_channel
+
+    try:
+        async with AsyncSessionLocal() as db:
+            token_svc = GoogleTokenService(db)
+            access_token = await token_svc.get_valid_access_token(user_id)
+
+            channel_info = await setup_watch_channel(user_id, tenant_id, access_token)
+            token_hash = hashlib.sha256(channel_info["channel_token"].encode()).hexdigest()
+
+            await db.execute(
+                text("""
+                    UPDATE google_drive_sync_state
+                    SET channel_id = :channel_id, resource_id = :resource_id,
+                        channel_token_hash = :token_hash, channel_expiry = :expiry,
+                        page_token = :page_token, updated_at = NOW()
+                    WHERE tenant_id = :tenant_id AND user_id = :user_id
+                """),
+                {
+                    "channel_id": channel_info["channel_id"],
+                    "resource_id": channel_info["resource_id"],
+                    "token_hash": token_hash,
+                    "expiry": channel_info["channel_expiry"],
+                    "page_token": channel_info["page_token"],
+                    "tenant_id": tenant_id,
+                    "user_id": user_id,
+                },
+            )
+            await db.commit()
+            logger.info("webhook_reestablished user_id=%d", user_id)
+    except InvalidGrantError:
+        logger.warning("webhook_reestablish_token_expired user_id=%d", user_id)
+    except Exception as e:
+        logger.warning("webhook_reestablish_failed user_id=%d error=%s", user_id, str(e))
