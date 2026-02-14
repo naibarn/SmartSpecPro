@@ -56,6 +56,7 @@ import { libraryRouter } from "./routers/library";
 import { libraryOpsRouter } from "./routers/libraryOps";
 import { factoryRouter } from "./routers/factory";
 import { groupsRouter } from "./routers/groups";
+import { googleDriveRouter } from "./routers/googleDrive";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1217,6 +1218,9 @@ export const appRouter = router({
 
   // Factory workflow/settings API
   factory: factoryRouter,
+
+  // Google Drive integration (OAuth, sync, editing)
+  googleDrive: googleDriveRouter,
 
   // Skills management and prompt enhancement
   skills: skillsRouter,
