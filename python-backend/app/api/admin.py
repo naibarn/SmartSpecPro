@@ -825,3 +825,78 @@ async def admin_delete_tenant(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete tenant: {str(e)}"
         )
+
+
+# ============================================================
+# Vector Database — Reindex
+# ============================================================
+
+@router.post("/vectordb/reindex")
+async def trigger_vectordb_reindex(
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger a full reindex of all library items via Celery."""
+    import redis
+    from app.tasks.media_tasks import reindex_all_library_task
+
+    # Check if a reindex is already running
+    redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
+    r = redis.from_url(redis_url)
+    existing_task_id = r.get("vectordb:reindex:task_id")
+    if existing_task_id:
+        existing_task_id = existing_task_id.decode() if isinstance(existing_task_id, bytes) else existing_task_id
+        from celery.result import AsyncResult
+        result = AsyncResult(existing_task_id)
+        if result.state in ("PENDING", "STARTED", "RETRY"):
+            return {
+                "task_id": existing_task_id,
+                "status": "already_running",
+                "message": "A reindex job is already in progress",
+            }
+
+    # Trigger the reindex task
+    task = reindex_all_library_task.delay(tenant_id=None)
+    r.set("vectordb:reindex:task_id", task.id, ex=3600)  # TTL 1 hour
+
+    return {
+        "task_id": task.id,
+        "status": "started",
+        "message": "Reindex job has been queued",
+    }
+
+
+@router.get("/vectordb/reindex/status")
+async def get_vectordb_reindex_status(
+    request: Request,
+    admin: User = Depends(require_admin),
+):
+    """Check the status of the current reindex job."""
+    import redis
+    from celery.result import AsyncResult
+
+    redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
+    r = redis.from_url(redis_url)
+    task_id = r.get("vectordb:reindex:task_id")
+
+    if not task_id:
+        return {"status": "idle", "task_id": None, "result": None}
+
+    task_id = task_id.decode() if isinstance(task_id, bytes) else task_id
+    result = AsyncResult(task_id)
+
+    response: Dict[str, Any] = {
+        "task_id": task_id,
+        "status": result.state.lower(),
+        "result": None,
+    }
+
+    if result.state == "SUCCESS":
+        response["result"] = result.result
+        response["status"] = "completed"
+    elif result.state == "FAILURE":
+        response["status"] = "failed"
+        response["result"] = {"error": str(result.result)}
+
+    return response

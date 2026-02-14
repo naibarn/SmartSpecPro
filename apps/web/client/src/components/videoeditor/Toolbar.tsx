@@ -20,10 +20,13 @@ interface ToolbarProps {
   isDirty: boolean;
   rippleEditMode?: boolean;
   onToggleRippleEdit?: () => void;
+  razorToolActive?: boolean;
+  onToggleRazorTool?: () => void;
   selectedCount?: number;
   onGroupClips?: () => void;
   onUngroupClips?: () => void;
   onAddText?: () => void;
+  onOpenSilenceDetection?: () => void;
 }
 
 const ZOOM_LEVELS = [10, 20, 30, 50, 75, 100, 150, 200];
@@ -43,10 +46,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   isDirty,
   rippleEditMode = false,
   onToggleRippleEdit,
+  razorToolActive = false,
+  onToggleRazorTool,
   selectedCount = 0,
   onGroupClips,
   onUngroupClips,
-  onAddText
+  onAddText,
+  onOpenSilenceDetection
 }) => {
   const handleZoomIn = () => {
     if (onZoomIn) {
@@ -215,7 +221,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       {/* Tools */}
       <div className="toolbar-group">
         <button className="tb" title="Selection Tool (V)">&#10148;</button>
-        <button className="tb" title="Razor Tool (C)">&#9986;</button>
+        {onToggleRazorTool && (
+          <button
+            className={`tb ${razorToolActive ? 'active' : ''}`}
+            onClick={onToggleRazorTool}
+            title={`Razor Tool: ${razorToolActive ? 'ON - Click clip to split at playhead' : 'OFF'} (C)`}
+          >
+            &#9986;
+          </button>
+        )}
         {onToggleRippleEdit && (
           <button
             className={`tb ${rippleEditMode ? 'active' : ''}`}
@@ -228,6 +242,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {onAddText && (
           <button className="tb tb-text" onClick={onAddText} title="Add Text Overlay">
             T+
+          </button>
+        )}
+        {onOpenSilenceDetection && (
+          <button className="tb tb-text" onClick={onOpenSilenceDetection} title="Silence Detection - Cut Dead Air">
+            🔇
           </button>
         )}
       </div>

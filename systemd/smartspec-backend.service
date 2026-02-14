@@ -1,0 +1,38 @@
+[Unit]
+Description=SmartSpecPro Python Backend
+Documentation=https://github.com/smartspecpro/smartspec
+After=docker.service smartspec-infra.service
+Requires=smartspec-infra.service
+PartOf=smartspec.target
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro/python-backend
+
+# Environment
+Environment="PATH=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=-/home/dev/projects/SmartSpecPro/python-backend/.env
+
+# Kill any orphan process on port 8000 before starting
+ExecStartPre=/bin/bash -c '/usr/bin/fuser -k 8000/tcp 2>/dev/null || true'
+ExecStartPre=/bin/sleep 1
+
+# Start backend (no --reload for production stability)
+ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Restart policy
+Restart=always
+RestartSec=5s
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-backend
+
+[Install]
+WantedBy=smartspec.target

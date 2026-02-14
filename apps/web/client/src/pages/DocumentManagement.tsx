@@ -10,6 +10,8 @@ import {
   FolderOpen,
   ImagePlus,
   Info,
+  Maximize2,
+  Minimize2,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -93,6 +95,7 @@ export default function DocumentManagement() {
   const [isLibraryPanelOpen, setIsLibraryPanelOpen] = useState(true);
   const [isMarkdownPreviewPanelOpen, setIsMarkdownPreviewPanelOpen] = useState(true);
   const [isEditorPanelCollapsed, setIsEditorPanelCollapsed] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -203,17 +206,6 @@ export default function DocumentManagement() {
     || selectedFromQuery;
   const previewType = selectedItem ? resolveDocumentPreviewType(selectedItem) : "fallback";
   const selectedMarkdownDraft = selectedItem ? markdownDraftByDocId[selectedItem.id] : undefined;
-  const imageLibraryItems = useMemo(
-    () => documents
-      .filter((item) => resolveDocumentPreviewType(item) === "image" && Boolean(item.source_url))
-      .map((item) => ({
-        id: item.id,
-        title: item.title,
-        source_url: item.source_url,
-      })),
-    [documents],
-  );
-
   const markdownContentQuery = trpc.library.getMarkdownContent.useQuery(
     { id: selectedItem?.id || 0 },
     {
@@ -545,6 +537,21 @@ export default function DocumentManagement() {
     }
   }
 
+  async function handleVersionRestore() {
+    if (!selectedItem) return;
+    // Invalidate markdown content to re-fetch restored version
+    await Promise.all([
+      trpcUtils.library.getMarkdownContent.invalidate({ id: selectedItem.id }),
+      trpcUtils.library.listDocuments.invalidate(),
+    ]);
+    // Clear draft so it picks up the server content
+    setMarkdownDraftByDocId((prev) => {
+      const next = { ...prev };
+      delete next[selectedItem.id];
+      return next;
+    });
+  }
+
   async function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -793,7 +800,7 @@ export default function DocumentManagement() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 xl:h-[calc(100vh-230px)] xl:flex-row">
+        <div className="flex flex-col gap-4 xl:h-[calc(100vh-140px)] xl:flex-row">
           {isLibraryPanelOpen ? (
             <aside
               ref={previewSectionRef}
@@ -860,7 +867,7 @@ export default function DocumentManagement() {
                     </Select>
                   </div>
 
-                  <div className="min-h-[200px] max-h-[50vh] overflow-y-auto xl:max-h-none xl:min-h-0 xl:flex-1">
+                  <div className="overflow-y-auto xl:h-[1000px]">
                     <DocumentGridList
                       items={documents}
                       selectedId={selectedId}
@@ -889,7 +896,10 @@ export default function DocumentManagement() {
                 variant="outline"
                 size="icon"
                 className="h-12 w-12 rounded-2xl border-2 border-sky-200 bg-gradient-to-br from-white to-sky-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-                onClick={() => setIsLibraryPanelOpen(true)}
+                onClick={() => {
+                  setIsLibraryPanelOpen(true);
+                  setIsPreviewExpanded(false);
+                }}
                 title="Show library panel"
               >
                 <ChevronsRight className="h-6 w-6 text-sky-600" />
@@ -1007,7 +1017,7 @@ export default function DocumentManagement() {
                 isRenamingTitle={updateItemMutation.isPending}
                 markdownFullHeight
                 markdownEditorOnly
-                markdownImageItems={imageLibraryItems}
+                documentId={selectedItem?.id}
                 onMarkdownChange={(value) => {
                   if (!selectedItem) return;
                   const docId = selectedItem.id;
@@ -1025,6 +1035,7 @@ export default function DocumentManagement() {
                   });
                 }}
                 onMarkdownSave={handleSaveMarkdown}
+                onVersionRestore={handleVersionRestore}
                 onRenameTitle={handleRenameDocument}
               />
               {!selectedItem && selectedItemQuery.isLoading ? (
@@ -1041,13 +1052,16 @@ export default function DocumentManagement() {
             </div>
             </section>
           ) : (
-            <div className="flex items-center justify-center min-w-0 flex-1">
+            <div className={`flex items-center justify-center ${isPreviewExpanded ? "xl:shrink-0" : "min-w-0 flex-1"}`}>
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
                 className="h-12 w-12 rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-                onClick={() => setIsEditorPanelCollapsed(false)}
+                onClick={() => {
+                  setIsEditorPanelCollapsed(false);
+                  setIsPreviewExpanded(false);
+                }}
                 title="Show editor panel"
               >
                 <FileText className="h-6 w-6 text-slate-600" />
@@ -1057,7 +1071,7 @@ export default function DocumentManagement() {
 
           {isMarkdownPreviewPanelOpen ? (
             <aside className={`space-y-3 rounded-3xl border border-slate-200/80 bg-white p-3 shadow-md transition-all duration-300 ${
-              isEditorPanelCollapsed ? "xl:min-w-0 xl:basis-0 xl:flex-1" : "xl:w-[430px] xl:shrink-0"
+              isPreviewExpanded || (!isLibraryPanelOpen && isEditorPanelCollapsed) ? "xl:min-w-0 xl:flex-1" : "xl:w-[430px] xl:shrink-0"
             }`}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -1067,7 +1081,10 @@ export default function DocumentManagement() {
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 rounded-full border border-slate-200 bg-white hover:bg-slate-100 transition-colors"
-                      onClick={() => setIsEditorPanelCollapsed(false)}
+                      onClick={() => {
+                        setIsEditorPanelCollapsed(false);
+                        setIsPreviewExpanded(false);
+                      }}
                       title="Expand editor panel"
                     >
                       <ChevronsLeft className="h-5 w-5 text-slate-600" />
@@ -1080,20 +1097,50 @@ export default function DocumentManagement() {
                     </div>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full hover:bg-slate-100 transition-colors"
-                  onClick={() => setIsMarkdownPreviewPanelOpen(false)}
-                  title="Hide markdown preview"
-                >
-                  <ChevronsRight className="h-4 w-4 text-slate-600" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full hover:bg-sky-100 transition-colors"
+                    onClick={() => {
+                      setIsPreviewExpanded(!isPreviewExpanded);
+                      if (!isPreviewExpanded) {
+                        // Expanding - hide library and editor
+                        setIsLibraryPanelOpen(false);
+                        setIsEditorPanelCollapsed(true);
+                      } else {
+                        // Collapsing - restore panels
+                        setIsLibraryPanelOpen(true);
+                        setIsEditorPanelCollapsed(false);
+                      }
+                    }}
+                    title={isPreviewExpanded ? "Restore layout" : "Expand preview to full width"}
+                  >
+                    {isPreviewExpanded ? (
+                      <Minimize2 className="h-4 w-4 text-sky-700" />
+                    ) : (
+                      <Maximize2 className="h-4 w-4 text-sky-700" />
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full hover:bg-slate-100 transition-colors"
+                    onClick={() => {
+                      setIsMarkdownPreviewPanelOpen(false);
+                      setIsPreviewExpanded(false);
+                    }}
+                    title="Hide markdown preview"
+                  >
+                    <ChevronsRight className="h-4 w-4 text-slate-600" />
+                  </Button>
+                </div>
               </div>
 
               {selectedItem && previewType === "markdown" ? (
-                <ScrollArea className="h-[360px] rounded-2xl border border-slate-200 bg-slate-50 p-3 xl:h-[calc(100vh-280px)]">
+                <ScrollArea className="h-[1000px] rounded-2xl border border-slate-200 bg-slate-50 p-3">
                   <SafeMarkdown className="md-preview">
                     {activeMarkdownValue || "_Empty markdown file_"}
                   </SafeMarkdown>

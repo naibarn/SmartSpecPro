@@ -8,6 +8,8 @@ import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   createLibraryItem,
+  getContentVersionById,
+  getContentVersionHistory,
   getLibraryMarkdownContent,
   getLibraryItemById,
   getLibraryItemShares,
@@ -17,6 +19,7 @@ import {
   listLibraryTrash,
   permanentDeleteLibraryItem,
   removeLibraryShare,
+  restoreContentVersion,
   restoreFromLibraryTrash,
   saveLibraryMarkdown,
   searchLibraryItems,
@@ -230,6 +233,7 @@ export const libraryRouter = router({
         id: z.number().int().positive(),
         content: z.string().max(1_000_000),
         expectedUpdatedAt: z.coerce.date().optional(),
+        changeDescription: z.string().max(500).optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -247,6 +251,7 @@ export const libraryRouter = router({
             itemId: input.id,
             content: input.content,
             expectedUpdatedAt: input.expectedUpdatedAt,
+            changeDescription: input.changeDescription,
           },
           actor,
         );
@@ -669,6 +674,88 @@ export const libraryRouter = router({
       });
 
       return { success: true };
+    }),
+
+  getVersionHistory: protectedProcedure
+    .input(
+      z.object({
+        itemId: z.number().int().positive(),
+        limit: z.number().int().min(1).max(100).optional(),
+        offset: z.number().int().min(0).optional(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      return getContentVersionHistory(input.itemId, actor, {
+        limit: input.limit,
+        offset: input.offset,
+      });
+    }),
+
+  getVersionContent: protectedProcedure
+    .input(z.object({ versionId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      const version = await getContentVersionById(input.versionId, actor);
+      if (!version) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Version not found",
+        });
+      }
+
+      return version;
+    }),
+
+  restoreVersion: protectedProcedure
+    .input(z.object({ versionId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      const result = await restoreContentVersion(input.versionId, actor);
+      if (!result) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Version not found or cannot restore",
+        });
+      }
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.restoreVersion",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          versionId: input.versionId,
+        },
+        responsePayload: {
+          itemId: result.item.id,
+          indexJobId: result.indexJob.jobId,
+        },
+      });
+
+      return result;
     }),
 
   permanentDelete: protectedProcedure

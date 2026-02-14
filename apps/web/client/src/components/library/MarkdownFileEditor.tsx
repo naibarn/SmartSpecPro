@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Bold,
   Code2,
@@ -15,13 +15,16 @@ import {
   Link2,
   List,
   ListOrdered,
+  Loader2,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
   Quote,
+  Redo2,
   Save,
   Underline,
+  Undo2,
 } from "lucide-react";
 
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
@@ -29,57 +32,77 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
+import { trpc } from "@/lib/trpc";
 import CodeMirrorEditor, { useLineNumbersToggle, type CodeMirrorEditorMethods } from "./CodeMirrorEditor";
+import { MarkdownVersionHistory } from "./MarkdownVersionHistory";
 
 interface MarkdownFileEditorProps {
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
+  onVersionRestore?: () => void;
   disabled?: boolean;
   isSaving?: boolean;
   updatedAt?: string;
   errorMessage?: string;
   fullHeight?: boolean;
   editorOnly?: boolean;
-  imageLibraryItems?: Array<{
-    id: number;
-    title: string;
-    source_url: string | null;
-  }>;
+  documentId?: number;
 }
 
 export default function MarkdownFileEditor({
   value,
   onChange,
   onSave,
+  onVersionRestore,
   disabled,
   isSaving,
   updatedAt,
   errorMessage,
   fullHeight,
   editorOnly,
-  imageLibraryItems,
+  documentId,
 }: MarkdownFileEditorProps) {
   const editorRef = useRef<CodeMirrorEditorMethods | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
-  const [imageFilter, setImageFilter] = useState("");
+  const [imageSearchQuery, setImageSearchQuery] = useState("");
+  const [debouncedImageQuery, setDebouncedImageQuery] = useState("");
   const [editorCollapsed, setEditorCollapsed] = useState(false);
   const [previewCollapsed, setPreviewCollapsed] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false); // Start in view mode
   const { showLineNumbers, toggleLineNumbers } = useLineNumbersToggle(true);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedImageQuery(imageSearchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [imageSearchQuery]);
+
+  const imageSearchInput = useMemo(() => ({
+    query: debouncedImageQuery || undefined,
+    limit: 50,
+    offset: 0,
+    scope: "all" as const,
+    filters: { itemType: "image" },
+  }), [debouncedImageQuery]);
+
+  const { data: imageSearchData, isLoading: imageSearchLoading } =
+    trpc.library.listDocuments.useQuery(imageSearchInput, {
+      enabled: imagePickerOpen,
+    });
+
   const availableImages = useMemo(() => {
-    const normalizedFilter = imageFilter.trim().toLowerCase();
-    return (imageLibraryItems || [])
-      .filter((item) => Boolean(item.source_url))
-      .filter((item) => {
-        if (!normalizedFilter) return true;
-        return item.title.toLowerCase().includes(normalizedFilter);
-      })
-      .slice(0, 80);
-  }, [imageFilter, imageLibraryItems]);
+    return (imageSearchData?.results || [])
+      .filter((item: any) => Boolean(item.source_url))
+      .map((item: any) => ({
+        id: item.id as number,
+        title: item.title as string,
+        source_url: item.source_url as string | null,
+        thumbnail_url: (item.thumbnail_url ?? item.source_url) as string | null,
+      }));
+  }, [imageSearchData]);
 
   function wrapSelection(prefix: string, suffix: string, fallbackText: string) {
     if (!editorRef.current) return;
@@ -129,6 +152,14 @@ export default function MarkdownFileEditor({
     const markdown = `![${alt}](${image.source_url})`;
     editorRef.current.insertText(markdown);
     setImagePickerOpen(false);
+  }
+
+  function handleUndo() {
+    editorRef.current?.undo();
+  }
+
+  function handleRedo() {
+    editorRef.current?.redo();
   }
 
   async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
@@ -252,6 +283,9 @@ export default function MarkdownFileEditor({
         {isEditMode ? (
           <>
             <div className="flex flex-wrap gap-2 rounded-md border bg-muted/20 p-2.5">
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Undo (Ctrl+Z)" onClick={handleUndo}><Undo2 className="h-5 w-5" /></Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Redo (Ctrl+Shift+Z)" onClick={handleRedo}><Redo2 className="h-5 w-5" /></Button>
+              <div className="border-r" />
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 1" onClick={() => insertHeading(1)}><Heading1 className="h-5 w-5" /></Button>
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 2" onClick={() => insertHeading(2)}><Heading2 className="h-5 w-5" /></Button>
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 3" onClick={() => insertHeading(3)}><Heading3 className="h-5 w-5" /></Button>
@@ -261,37 +295,58 @@ export default function MarkdownFileEditor({
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Underline" onClick={() => wrapSelection("<u>", "</u>", "underline text")}><Underline className="h-5 w-5" /></Button>
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Link" onClick={insertLink}><Link2 className="h-5 w-5" /></Button>
               <Button type="button" size="sm" variant="outline" className="h-10 px-3" onClick={clearInlineFormatting}>Normal</Button>
-              <Popover open={imagePickerOpen} onOpenChange={setImagePickerOpen}>
+              <Popover open={imagePickerOpen} onOpenChange={(open) => { setImagePickerOpen(open); if (!open) setImageSearchQuery(""); }}>
                 <PopoverTrigger asChild>
                   <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Insert image from library">
                     <ImagePlus className="h-5 w-5" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[360px] p-2" align="start">
+                <PopoverContent className="w-[480px] p-2" align="start">
                   <div className="space-y-2">
                     <Input
-                      placeholder="Search image in library..."
-                      value={imageFilter}
-                      onChange={(event) => setImageFilter(event.target.value)}
+                      placeholder="Search images in library..."
+                      value={imageSearchQuery}
+                      onChange={(event) => setImageSearchQuery(event.target.value)}
                     />
-                    <ScrollArea className="h-[240px] rounded-md border">
-                      <div className="space-y-1 p-2">
-                        {availableImages.length ? availableImages.map((image) => (
-                          <button
-                            key={image.id}
-                            type="button"
-                            className="w-full rounded-md border px-2 py-1.5 text-left text-xs hover:bg-muted"
-                            onClick={() => insertImageFromLibrary(image)}
-                          >
-                            <div className="truncate font-medium">{image.title}</div>
-                            <div className="truncate text-muted-foreground">{image.source_url}</div>
-                          </button>
-                        )) : (
-                          <div className="px-2 py-6 text-center text-xs text-muted-foreground">
-                            No image found in library.
-                          </div>
-                        )}
-                      </div>
+                    <ScrollArea className="h-[320px] rounded-md border">
+                      {imageSearchLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : availableImages.length ? (
+                        <div className="grid grid-cols-2 gap-2 p-2">
+                          {availableImages.map((image) => (
+                            <button
+                              key={image.id}
+                              type="button"
+                              className="group relative overflow-hidden rounded-lg border bg-white transition-all hover:border-primary hover:shadow-md"
+                              onClick={() => insertImageFromLibrary(image)}
+                            >
+                              {image.thumbnail_url ? (
+                                <img
+                                  src={image.thumbnail_url}
+                                  alt={image.title}
+                                  className="h-24 w-full object-cover"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="flex h-24 w-full items-center justify-center bg-slate-100">
+                                  <ImagePlus className="h-8 w-8 text-slate-400" />
+                                </div>
+                              )}
+                              <div className="bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                                <div className="truncate text-xs font-medium text-white">
+                                  {image.title}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-2 py-8 text-center text-sm text-muted-foreground">
+                          {imageSearchQuery ? "No images found matching your search." : "No images in library."}
+                        </div>
+                      )}
                     </ScrollArea>
                   </div>
                 </PopoverContent>
@@ -326,6 +381,13 @@ export default function MarkdownFileEditor({
               placeholder="Write markdown content..."
               disabled={disabled}
             />
+
+            {documentId && (
+              <MarkdownVersionHistory
+                itemId={documentId}
+                onRestore={onVersionRestore}
+              />
+            )}
           </>
         ) : (
           <div className={`${editorMinHeightClass} rounded-md border bg-gradient-to-br from-slate-50 via-white to-sky-50/30 p-6 shadow-inner`}>
@@ -395,6 +457,9 @@ export default function MarkdownFileEditor({
 
       {!editorCollapsed ? (
         <div className="flex flex-wrap gap-2 rounded-md border bg-muted/20 p-2.5">
+          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Undo (Ctrl+Z)" onClick={handleUndo}><Undo2 className="h-5 w-5" /></Button>
+          <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Redo (Ctrl+Shift+Z)" onClick={handleRedo}><Redo2 className="h-5 w-5" /></Button>
+          <div className="border-r" />
           <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 1" onClick={() => insertHeading(1)}><Heading1 className="h-5 w-5" /></Button>
           <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 2" onClick={() => insertHeading(2)}><Heading2 className="h-5 w-5" /></Button>
           <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Heading 3" onClick={() => insertHeading(3)}><Heading3 className="h-5 w-5" /></Button>
@@ -404,37 +469,58 @@ export default function MarkdownFileEditor({
           <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Underline" onClick={() => wrapSelection("<u>", "</u>", "underline text")}><Underline className="h-5 w-5" /></Button>
           <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Link" onClick={insertLink}><Link2 className="h-5 w-5" /></Button>
           <Button type="button" size="sm" variant="outline" className="h-10 px-3" onClick={clearInlineFormatting}>Normal</Button>
-          <Popover open={imagePickerOpen} onOpenChange={setImagePickerOpen}>
+          <Popover open={imagePickerOpen} onOpenChange={(open) => { setImagePickerOpen(open); if (!open) setImageSearchQuery(""); }}>
             <PopoverTrigger asChild>
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Insert image from library">
                 <ImagePlus className="h-5 w-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[360px] p-2" align="start">
+            <PopoverContent className="w-[480px] p-2" align="start">
               <div className="space-y-2">
                 <Input
-                  placeholder="Search image in library..."
-                  value={imageFilter}
-                  onChange={(event) => setImageFilter(event.target.value)}
+                  placeholder="Search images in library..."
+                  value={imageSearchQuery}
+                  onChange={(event) => setImageSearchQuery(event.target.value)}
                 />
-                <ScrollArea className="h-[240px] rounded-md border">
-                  <div className="space-y-1 p-2">
-                    {availableImages.length ? availableImages.map((image) => (
-                      <button
-                        key={image.id}
-                        type="button"
-                        className="w-full rounded-md border px-2 py-1.5 text-left text-xs hover:bg-muted"
-                        onClick={() => insertImageFromLibrary(image)}
-                      >
-                        <div className="truncate font-medium">{image.title}</div>
-                        <div className="truncate text-muted-foreground">{image.source_url}</div>
-                      </button>
-                    )) : (
-                      <div className="px-2 py-6 text-center text-xs text-muted-foreground">
-                        No image found in library.
-                      </div>
-                    )}
-                  </div>
+                <ScrollArea className="h-[320px] rounded-md border">
+                  {imageSearchLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : availableImages.length ? (
+                    <div className="grid grid-cols-2 gap-2 p-2">
+                      {availableImages.map((image) => (
+                        <button
+                          key={image.id}
+                          type="button"
+                          className="group relative overflow-hidden rounded-lg border bg-white transition-all hover:border-primary hover:shadow-md"
+                          onClick={() => insertImageFromLibrary(image)}
+                        >
+                          {image.thumbnail_url ? (
+                            <img
+                              src={image.thumbnail_url}
+                              alt={image.title}
+                              className="h-24 w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-24 w-full items-center justify-center bg-slate-100">
+                              <ImagePlus className="h-8 w-8 text-slate-400" />
+                            </div>
+                          )}
+                          <div className="bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                            <div className="truncate text-xs font-medium text-white">
+                              {image.title}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-2 py-8 text-center text-sm text-muted-foreground">
+                      {imageSearchQuery ? "No images found matching your search." : "No images in library."}
+                    </div>
+                  )}
                 </ScrollArea>
               </div>
             </PopoverContent>

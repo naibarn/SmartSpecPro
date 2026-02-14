@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any, Callable, Optional, Protocol
 
 import structlog
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.vectordb import VectorCollection
@@ -172,6 +172,237 @@ def _default_vector_upsert(
         ],
     )
     return vector_ids
+
+
+# ── Provider-specific upsert adapters ────────────────────────────────────
+
+
+def _pgvector_vector_upsert(
+    *,
+    tenant_id: str,
+    item_id: int,
+    chunks: list[dict[str, Any]],
+    embeddings: list[list[float]],
+    pgvector_config: dict[str, str] | None = None,
+) -> list[str]:
+    """Store chunk embeddings via pgvector and return vector IDs."""
+    from app.orchestrator.vector_store.pgvector_store import PgVectorStore, VectorDocument
+
+    if len(chunks) != len(embeddings):
+        raise RuntimeError("embedding_count_mismatch")
+
+    cfg = pgvector_config or {}
+    host = cfg.get("pgvectorHost", "localhost")
+    port = cfg.get("pgvectorPort", "5432")
+    database = cfg.get("pgvectorDatabase", "smartspec")
+    user = cfg.get("pgvectorUser", "smartspec")
+    password = cfg.get("pgvectorPassword", "")
+    conn_str = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+
+    store = PgVectorStore(connection_string=conn_str)
+
+    vector_ids = [f"lib:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks]
+
+    docs = [
+        VectorDocument(
+            doc_id=vid,
+            content=chunk["content"],
+            embedding=emb,
+            metadata={
+                "tenant_id": tenant_id,
+                "item_id": item_id,
+                "chunk_index": chunk["chunk_index"],
+                "token_count": chunk.get("token_count") or 0,
+                "content_type": chunk.get("content_type") or "text",
+            },
+            tenant_id=tenant_id,
+            doc_type="library_chunk",
+            source=f"library_item:{item_id}",
+        )
+        for vid, chunk, emb in zip(vector_ids, chunks, embeddings)
+    ]
+
+    store.add_documents(docs)
+    return vector_ids
+
+
+def _cloudflare_vector_upsert(
+    *,
+    tenant_id: str,
+    item_id: int,
+    chunks: list[dict[str, Any]],
+    embeddings: list[list[float]],
+    vectorize_config: dict[str, str] | None = None,
+) -> list[str]:
+    """Store chunk embeddings via Cloudflare Vectorize and return vector IDs."""
+    import asyncio
+    from app.orchestrator.vector_store.cloudflare_vectorize_store import (
+        CloudflareVectorizeStore,
+        VectorizeConfig,
+    )
+
+    if len(chunks) != len(embeddings):
+        raise RuntimeError("embedding_count_mismatch")
+
+    cfg = vectorize_config or {}
+    account_id = cfg.get("vectorizeAccountId", "")
+    api_token = cfg.get("vectorizeApiToken", "")
+    index_name = cfg.get("vectorizeIndexName", "smartspec-library")
+
+    if not account_id or not api_token:
+        raise RuntimeError("Cloudflare Vectorize credentials not configured")
+
+    store = CloudflareVectorizeStore(
+        VectorizeConfig(
+            account_id=account_id,
+            api_token=api_token,
+            index_name=index_name,
+        )
+    )
+
+    vector_ids = [f"lib:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks]
+
+    vectors = [
+        {
+            "id": vid,
+            "values": emb,
+            "metadata": {
+                "tenant_id": tenant_id,
+                "item_id": item_id,
+                "chunk_index": chunk["chunk_index"],
+                "content_type": chunk.get("content_type") or "text",
+            },
+        }
+        for vid, chunk, emb in zip(vector_ids, chunks, embeddings)
+    ]
+
+    # Run async upsert from sync context (Celery worker)
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(store.upsert(vectors))
+    finally:
+        loop.close()
+
+    return vector_ids
+
+
+def get_vector_upsert_fn(
+    provider: str,
+    config: dict[str, str] | None = None,
+) -> VectorUpsertFn:
+    """Factory: return the correct upsert function for the active vector DB provider."""
+    if provider == "pgvector":
+        def pgvector_fn(
+            *, tenant_id: str, item_id: int,
+            chunks: list[dict[str, Any]], embeddings: list[list[float]],
+        ) -> list[str]:
+            return _pgvector_vector_upsert(
+                tenant_id=tenant_id, item_id=item_id,
+                chunks=chunks, embeddings=embeddings,
+                pgvector_config=config,
+            )
+        return pgvector_fn
+
+    if provider == "cloudflare_vectorize":
+        def vectorize_fn(
+            *, tenant_id: str, item_id: int,
+            chunks: list[dict[str, Any]], embeddings: list[list[float]],
+        ) -> list[str]:
+            return _cloudflare_vector_upsert(
+                tenant_id=tenant_id, item_id=item_id,
+                chunks=chunks, embeddings=embeddings,
+                vectorize_config=config,
+            )
+        return vectorize_fn
+
+    # Default: ChromaDB
+    return _default_vector_upsert
+
+
+async def reindex_all_library_items(
+    db: AsyncSession,
+    *,
+    tenant_id: str | None = None,
+) -> dict[str, Any]:
+    """
+    Reindex all library items by clearing existing chunks and enqueuing fresh index jobs.
+
+    Returns summary with total_items and enqueued_jobs count.
+    """
+    predicates = [
+        LibraryItem.deleted_at.is_(None),
+    ]
+    if tenant_id is not None:
+        predicates.append(LibraryItem.tenant_id == tenant_id)
+
+    # Count total items
+    total_count = await db.scalar(
+        select(func.count(LibraryItem.id)).where(and_(*predicates))
+    )
+    total_count = int(total_count or 0)
+
+    if total_count == 0:
+        return {"total_items": 0, "enqueued_jobs": 0, "errors": 0}
+
+    # Fetch all item IDs in batches
+    batch_size = 200
+    offset = 0
+    enqueued = 0
+    errors = 0
+
+    while offset < total_count:
+        rows = (
+            await db.execute(
+                select(LibraryItem.id, LibraryItem.tenant_id)
+                .where(and_(*predicates))
+                .order_by(LibraryItem.id.asc())
+                .offset(offset)
+                .limit(batch_size)
+            )
+        ).all()
+
+        if not rows:
+            break
+
+        for row in rows:
+            try:
+                await enqueue_library_index_job(
+                    db,
+                    row.id,
+                    tenant_id=row.tenant_id,
+                    job_type="reindex",
+                    run_at=datetime.utcnow(),
+                )
+                enqueued += 1
+            except Exception as exc:
+                logger.warning(
+                    "reindex_enqueue_error",
+                    library_item_id=row.id,
+                    error=str(exc),
+                )
+                errors += 1
+
+        offset += batch_size
+
+    logger.info(
+        "reindex_all_enqueued",
+        tenant_id=tenant_id,
+        total_items=total_count,
+        enqueued_jobs=enqueued,
+        errors=errors,
+    )
+    emit_metric(
+        "library.reindex.enqueued_total",
+        tenant_id=tenant_id,
+        total=total_count,
+        enqueued=enqueued,
+    )
+
+    return {
+        "total_items": total_count,
+        "enqueued_jobs": enqueued,
+        "errors": errors,
+    }
 
 
 async def enqueue_library_index_job(

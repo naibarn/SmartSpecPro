@@ -54,7 +54,19 @@ import {
   Info,
   AlertCircle,
   Cloud,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
 import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 
@@ -374,8 +386,9 @@ export default function AdminSettings() {
   }, [aiSettings]);
 
   // Vector Database settings
+  type VectorDbProvider = "chromadb" | "pgvector" | "cloudflare_vectorize";
   const [vectorDbForm, setVectorDbForm] = useState({
-    provider: "chromadb" as "chromadb" | "pgvector",
+    provider: "chromadb" as VectorDbProvider,
     embeddingModel: "all-MiniLM-L6-v2",
     embeddingDimension: 384,
     chromaPersistDir: "~/.smartspec/chroma",
@@ -385,11 +398,20 @@ export default function AdminSettings() {
     pgvectorUser: "",
     pgvectorPassword: "",
     openaiApiKey: "",
+    vectorizeAccountId: "",
+    vectorizeApiToken: "",
+    vectorizeIndexName: "",
   });
   const [showPgvectorPassword, setShowPgvectorPassword] = useState(false);
   const [showOpenaiApiKey, setShowOpenaiApiKey] = useState(false);
+  const [showVectorizeApiToken, setShowVectorizeApiToken] = useState(false);
   const [pgvectorPasswordConfigured, setPgvectorPasswordConfigured] = useState(false);
   const [openaiApiKeyConfigured, setOpenaiApiKeyConfigured] = useState(false);
+  const [vectorizeApiTokenConfigured, setVectorizeApiTokenConfigured] = useState(false);
+  const [showProviderSwitchWarning, setShowProviderSwitchWarning] = useState(false);
+  const [pendingProvider, setPendingProvider] = useState<VectorDbProvider | null>(null);
+  const [showReindexConfirm, setShowReindexConfirm] = useState(false);
+  const [isReindexing, setIsReindexing] = useState(false);
 
   const { data: vectorDbSettings, refetch: refetchVectorDb } = trpc.systemSettings.getVectorDbSettings.useQuery(
     undefined,
@@ -405,7 +427,7 @@ export default function AdminSettings() {
       toast.success("Vector Database settings saved");
       refetchVectorDb();
       refetchVectorDbStats();
-      setVectorDbForm(prev => ({ ...prev, pgvectorPassword: "", openaiApiKey: "" }));
+      setVectorDbForm(prev => ({ ...prev, pgvectorPassword: "", openaiApiKey: "", vectorizeApiToken: "" }));
     },
     onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
@@ -421,11 +443,44 @@ export default function AdminSettings() {
     onError: (err: any) => toast.error(`Test failed: ${err.message}`),
   });
 
+  const triggerReindexMutation = trpc.systemSettings.triggerReindex.useMutation({
+    onSuccess: (data: any) => {
+      if (data.status === "started" || data.status === "already_running") {
+        toast.success(data.message || "Reindex job started");
+        setIsReindexing(true);
+      } else {
+        toast.error(data.message || "Failed to trigger reindex");
+      }
+    },
+    onError: (err: any) => toast.error(`Reindex failed: ${err.message}`),
+  });
+
+  const { data: reindexStatus } = trpc.systemSettings.getReindexStatus.useQuery(
+    undefined,
+    {
+      enabled: !!user && user.role === "admin" && isReindexing,
+      refetchInterval: isReindexing ? 5000 : false,
+    }
+  );
+
+  // Stop polling when reindex completes
+  useEffect(() => {
+    if (reindexStatus && (reindexStatus.status === "completed" || reindexStatus.status === "failed" || reindexStatus.status === "idle")) {
+      if (isReindexing && reindexStatus.status === "completed") {
+        toast.success("Reindex completed successfully");
+        refetchVectorDbStats();
+      } else if (isReindexing && reindexStatus.status === "failed") {
+        toast.error("Reindex failed — check server logs");
+      }
+      setIsReindexing(false);
+    }
+  }, [reindexStatus]);
+
   useEffect(() => {
     if (vectorDbSettings) {
       setVectorDbForm(prev => ({
         ...prev,
-        provider: (vectorDbSettings.provider as "chromadb" | "pgvector") || "chromadb",
+        provider: (vectorDbSettings.provider as VectorDbProvider) || "chromadb",
         embeddingModel: vectorDbSettings.embeddingModel || "all-MiniLM-L6-v2",
         embeddingDimension: vectorDbSettings.embeddingDimension || 384,
         chromaPersistDir: vectorDbSettings.chromaPersistDir || "~/.smartspec/chroma",
@@ -433,9 +488,12 @@ export default function AdminSettings() {
         pgvectorPort: vectorDbSettings.pgvectorPort || "5432",
         pgvectorDatabase: vectorDbSettings.pgvectorDatabase || "",
         pgvectorUser: vectorDbSettings.pgvectorUser || "",
+        vectorizeAccountId: vectorDbSettings.vectorizeAccountId || "",
+        vectorizeIndexName: vectorDbSettings.vectorizeIndexName || "",
       }));
       setPgvectorPasswordConfigured(!!vectorDbSettings.pgvectorPasswordConfigured);
       setOpenaiApiKeyConfigured(!!vectorDbSettings.openaiApiKeyConfigured);
+      setVectorizeApiTokenConfigured(!!vectorDbSettings.vectorizeApiTokenConfigured);
     }
   }, [vectorDbSettings]);
 
@@ -1840,7 +1898,7 @@ export default function AdminSettings() {
                     <div className="text-sm">
                       <p className="font-medium text-blue-800 dark:text-blue-200">About Vector Databases</p>
                       <p className="text-blue-700 dark:text-blue-300 mt-1">
-                        Vector databases store document embeddings for semantic search and RAG. Choose <strong>ChromaDB</strong> for development (zero-config, local storage) or <strong>pgvector</strong> for production (scalable, hybrid search with PostgreSQL).
+                        Vector databases store document embeddings for semantic search and RAG. Choose <strong>ChromaDB</strong> for development (zero-config, local storage), <strong>pgvector</strong> for production (scalable, hybrid search with PostgreSQL), or <strong>Cloudflare Vectorize</strong> for edge-native global deployment.
                       </p>
                     </div>
                   </CardContent>
@@ -1861,6 +1919,9 @@ export default function AdminSettings() {
                         )}
                         {vectorDbStats.provider === "pgvector" && (
                           <p className="text-xs text-muted-foreground mt-1">PostgreSQL Extension</p>
+                        )}
+                        {vectorDbStats.provider === "cloudflare_vectorize" && (
+                          <p className="text-xs text-muted-foreground mt-1">Cloudflare Edge Network</p>
                         )}
                       </CardContent>
                     </Card>
@@ -1891,6 +1952,21 @@ export default function AdminSettings() {
                       </Card>
                     )}
 
+                    {vectorDbStats.provider === "cloudflare_vectorize" && (
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Vectors</CardTitle>
+                          <Cloud className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{vectorDbStats.vectorCount?.toLocaleString() ?? "—"}</div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {vectorDbStats.dimensions ? `${vectorDbStats.dimensions}D • ${vectorDbStats.metric || "cosine"}` : "Index info"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Storage</CardTitle>
@@ -1911,9 +1987,15 @@ export default function AdminSettings() {
                   <Label htmlFor="provider" className="text-base font-semibold">Vector Database Provider</Label>
                   <Select
                     value={vectorDbForm.provider}
-                    onValueChange={(value: "chromadb" | "pgvector") =>
-                      setVectorDbForm({ ...vectorDbForm, provider: value })
-                    }
+                    onValueChange={(value: VectorDbProvider) => {
+                      // Show warning if switching from currently saved provider
+                      if (vectorDbSettings?.provider && value !== vectorDbSettings.provider) {
+                        setPendingProvider(value);
+                        setShowProviderSwitchWarning(true);
+                      } else {
+                        setVectorDbForm({ ...vectorDbForm, provider: value });
+                      }
+                    }}
                   >
                     <SelectTrigger id="provider" className="max-w-md">
                       <SelectValue />
@@ -1937,6 +2019,15 @@ export default function AdminSettings() {
                           </div>
                         </div>
                       </SelectItem>
+                      <SelectItem value="cloudflare_vectorize">
+                        <div className="flex items-center gap-2">
+                          <Cloud className="h-4 w-4" />
+                          <div>
+                            <div className="font-medium">Cloudflare Vectorize</div>
+                            <div className="text-xs text-muted-foreground">Edge-native, global (Production)</div>
+                          </div>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -1944,23 +2035,31 @@ export default function AdminSettings() {
                     <CardContent className="p-3 space-y-2 text-sm">
                       <div className="font-medium flex items-center gap-2">
                         <AlertCircle className="h-4 w-4" />
-                        {vectorDbForm.provider === "chromadb" ? "ChromaDB" : "pgvector"} Features:
+                        {vectorDbForm.provider === "chromadb" ? "ChromaDB" : vectorDbForm.provider === "pgvector" ? "pgvector" : "Cloudflare Vectorize"} Features:
                       </div>
                       {vectorDbForm.provider === "chromadb" ? (
                         <ul className="space-y-1 text-xs text-muted-foreground ml-6 list-disc">
-                          <li>✅ Zero configuration required</li>
-                          <li>✅ Automatic model download (all-MiniLM-L6-v2)</li>
-                          <li>✅ Fast in-memory + persistent storage</li>
-                          <li>✅ Perfect for development and small projects</li>
-                          <li>⚠️ Limited scalability (single machine)</li>
+                          <li>Zero configuration required</li>
+                          <li>Automatic model download (all-MiniLM-L6-v2)</li>
+                          <li>Fast in-memory + persistent storage</li>
+                          <li>Perfect for development and small projects</li>
+                          <li className="text-amber-600">Limited scalability (single machine)</li>
+                        </ul>
+                      ) : vectorDbForm.provider === "pgvector" ? (
+                        <ul className="space-y-1 text-xs text-muted-foreground ml-6 list-disc">
+                          <li>Production-ready with PostgreSQL ACID</li>
+                          <li>Hybrid search (vector + full-text)</li>
+                          <li>Multi-tenant support with isolation</li>
+                          <li>Scalable (distributed, replication)</li>
+                          <li className="text-amber-600">Requires PostgreSQL with pgvector extension</li>
                         </ul>
                       ) : (
                         <ul className="space-y-1 text-xs text-muted-foreground ml-6 list-disc">
-                          <li>✅ Production-ready with PostgreSQL ACID</li>
-                          <li>✅ Hybrid search (vector + full-text)</li>
-                          <li>✅ Multi-tenant support with isolation</li>
-                          <li>✅ Scalable (distributed, replication)</li>
-                          <li>⚠️ Requires PostgreSQL with pgvector extension</li>
+                          <li>Edge-native vector search (Cloudflare network)</li>
+                          <li>Global distribution with low latency</li>
+                          <li>Managed service, zero infrastructure</li>
+                          <li>Supports metadata filtering</li>
+                          <li className="text-amber-600">Requires Cloudflare account with Workers plan</li>
                         </ul>
                       )}
                     </CardContent>
@@ -2151,6 +2250,88 @@ export default function AdminSettings() {
                   </div>
                 )}
 
+                {/* Cloudflare Vectorize Settings */}
+                {vectorDbForm.provider === "cloudflare_vectorize" && (
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Cloud className="h-4 w-4" />
+                      Cloudflare Vectorize Configuration
+                    </h3>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="vectorizeAccountId">Account ID</Label>
+                        <Input
+                          id="vectorizeAccountId"
+                          value={vectorDbForm.vectorizeAccountId}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, vectorizeAccountId: e.target.value })
+                          }
+                          placeholder="e.g. abc123def456"
+                          className="font-mono text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vectorizeIndexName">Index Name</Label>
+                        <Input
+                          id="vectorizeIndexName"
+                          value={vectorDbForm.vectorizeIndexName}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, vectorizeIndexName: e.target.value })
+                          }
+                          placeholder="smartspec-library"
+                          className="font-mono text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="vectorizeApiToken">
+                        API Token {vectorizeApiTokenConfigured && "(leave empty to keep current)"}
+                      </Label>
+                      <div className="relative max-w-md">
+                        <Input
+                          id="vectorizeApiToken"
+                          type={showVectorizeApiToken ? "text" : "password"}
+                          value={vectorDbForm.vectorizeApiToken}
+                          onChange={(e) =>
+                            setVectorDbForm({ ...vectorDbForm, vectorizeApiToken: e.target.value })
+                          }
+                          placeholder={vectorizeApiTokenConfigured ? "••••••••" : "Enter API token"}
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowVectorizeApiToken(!showVectorizeApiToken)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showVectorizeApiToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {vectorizeApiTokenConfigured && (
+                        <Badge variant="outline" className="text-green-600">
+                          <Check className="mr-1 h-3 w-3" />
+                          API token configured
+                        </Badge>
+                      )}
+                    </div>
+
+                    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                      <CardContent className="p-3 text-xs space-y-2">
+                        <strong className="text-green-800 dark:text-green-200">Setup Cloudflare Vectorize:</strong>
+                        <ol className="list-decimal ml-4 space-y-1 text-green-700 dark:text-green-300">
+                          <li>Go to <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">Cloudflare Dashboard</a> &gt; Workers &amp; Pages &gt; Vectorize</li>
+                          <li>Click "Create Index" — set name, dimension (must match your embedding model), and metric (cosine)</li>
+                          <li>Copy your Account ID from the dashboard URL or Overview page</li>
+                          <li>Go to My Profile &gt; API Tokens &gt; Create Token with "Vectorize: Edit" permission</li>
+                          <li>Paste the Account ID, Index Name, and API Token above</li>
+                        </ol>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
                 {/* OpenAI API Key (if using OpenAI embeddings) */}
                 {vectorDbForm.embeddingModel === "text-embedding-ada-002" && (
                   <div className="space-y-3 border-t pt-4">
@@ -2231,8 +2412,122 @@ export default function AdminSettings() {
                     Test Connection
                   </Button>
                 </div>
+
+                {/* Reindex Section */}
+                <div className="space-y-3 border-t pt-4">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Reindex All Documents
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Re-process all library documents and rebuild the vector index for the active provider.
+                    This is required after switching providers or changing embedding models.
+                  </p>
+
+                  {isReindexing && reindexStatus && (
+                    <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+                      <CardContent className="p-3 flex items-center gap-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-800">Reindexing in progress...</span>
+                          {reindexStatus.result && (
+                            <span className="text-blue-600 ml-2">
+                              ({reindexStatus.result.enqueued_jobs ?? 0} jobs enqueued)
+                            </span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                    onClick={() => setShowReindexConfirm(true)}
+                    disabled={isReindexing || triggerReindexMutation.isPending}
+                  >
+                    {triggerReindexMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    {isReindexing ? "Reindexing..." : "Reindex All Documents"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
+
+            {/* Provider Switch Warning Dialog */}
+            <AlertDialog open={showProviderSwitchWarning} onOpenChange={setShowProviderSwitchWarning}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    Switch Vector Database Provider?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-2">
+                    <p>
+                      Switching from <strong>{vectorDbSettings?.provider || "current provider"}</strong> to{" "}
+                      <strong>{pendingProvider === "cloudflare_vectorize" ? "Cloudflare Vectorize" : pendingProvider}</strong>{" "}
+                      requires reindexing all documents.
+                    </p>
+                    <p>
+                      Your existing index data on the previous provider will be preserved but inactive.
+                      After saving, use the "Reindex All Documents" button to rebuild the index on the new provider.
+                    </p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setPendingProvider(null)}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-amber-600 hover:bg-amber-700"
+                    onClick={() => {
+                      if (pendingProvider) {
+                        setVectorDbForm({ ...vectorDbForm, provider: pendingProvider });
+                      }
+                      setPendingProvider(null);
+                      setShowProviderSwitchWarning(false);
+                    }}
+                  >
+                    Switch Provider
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Reindex Confirmation Dialog */}
+            <AlertDialog open={showReindexConfirm} onOpenChange={setShowReindexConfirm}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <RefreshCw className="h-5 w-5 text-amber-500" />
+                    Reindex All Documents?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-2">
+                    <p>
+                      This will reindex all library documents using the currently active vector database provider
+                      (<strong>{vectorDbForm.provider === "cloudflare_vectorize" ? "Cloudflare Vectorize" : vectorDbForm.provider}</strong>).
+                    </p>
+                    <p>
+                      The process runs in the background and may take several minutes depending on the number of documents.
+                      You can safely navigate away — the reindex will continue.
+                    </p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-amber-600 hover:bg-amber-700"
+                    onClick={() => {
+                      triggerReindexMutation.mutate();
+                      setShowReindexConfirm(false);
+                    }}
+                  >
+                    Start Reindex
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
 
           {/* Main Menu Settings Tab */}

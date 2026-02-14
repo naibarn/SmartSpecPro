@@ -96,8 +96,8 @@ app.use((_req, res, next) => {
   next();
 });
 
-// JSON body parser — limit to 10MB to prevent DoS
-app.use(express.json({ limit: "10mb" }));
+// JSON body parser — limit to 100MB (most requests are small, but allow larger payloads)
+app.use(express.json({ limit: "100mb" }));
 app.use((err: any, req: any, res: any, next: any) => {
   // Catch JSON parse errors (SyntaxError from body-parser)
   if (err instanceof SyntaxError && 'body' in err) {
@@ -106,7 +106,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   }
   next(err);
 });
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.urlencoded({ limit: "100mb", extended: true }));
 app.use(cookieParser(ENV.cookieSecret));
 
 // Audit trace context — generates traceId for every request

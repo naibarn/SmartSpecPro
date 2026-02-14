@@ -61,6 +61,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [zoom, setZoom] = useState(50);
   const [clipboardClip, setClipboardClip] = useState<Clip | null>(null);
   const [rippleEditMode, setRippleEditMode] = useState(false);
+  const [razorToolActive, setRazorToolActive] = useState(false);
 
   // History — seed with initial project so first undo works
   const [history, setHistory] = useState<VideoEditorProject[]>(() => [
@@ -759,16 +760,7 @@ export const VideoEditorPhase3: React.FC = () => {
   // ========================================
   // Silence Detection & Dead Air Removal
   // ========================================
-
-  const handleSilenceExportToTimeline = useCallback(
-    (selectedRegions: SilentRegion[], applyToAllTracks: boolean) => {
-      // Section 08 implements the full clip splitting + ripple delete logic.
-      // For now, close the dialog and log.
-      console.log('Export to timeline:', selectedRegions.length, 'regions');
-      setShowSilenceDialog(false);
-    },
-    [],
-  );
+  // Note: handleSilenceExportToTimeline is defined later (line ~900) with full implementation
 
   const handleCutAndCombine = useCallback((selectedRegions: SilentRegion[]) => {
     if (selectedRegions.length === 0) return;
@@ -1063,6 +1055,64 @@ export const VideoEditorPhase3: React.FC = () => {
 
   // When selecting a clip that has a groupId, select all clips in the group
   const handleClipSelectWithGroup = useCallback((clipId: string, isMultiSelect: boolean) => {
+    // If razor tool is active, split the clip at playhead instead of selecting
+    if (razorToolActive && !isMultiSelect) {
+      setProject(prevProject => {
+        const newProject = JSON.parse(JSON.stringify(prevProject));
+
+        // Find the clip
+        for (const track of newProject.timeline.tracks) {
+          const clipIndex = track.clips.findIndex((c: Clip) => c.id === clipId);
+          if (clipIndex !== -1) {
+            const originalClip = track.clips[clipIndex];
+
+            // Check if playhead is within the clip
+            const clipEndTime = originalClip.startTime + originalClip.duration;
+            if (currentTime <= originalClip.startTime || currentTime >= clipEndTime) {
+              alert('Move playhead within the clip to split it');
+              return prevProject;
+            }
+
+            // Calculate split position relative to clip start
+            const splitOffset = currentTime - originalClip.startTime;
+
+            // Create first part (before split)
+            const firstClip: Clip = {
+              ...originalClip,
+              duration: splitOffset,
+              trimOut: originalClip.trimIn + splitOffset,
+            };
+
+            // Create second part (after split)
+            const secondClip: Clip = {
+              ...originalClip,
+              id: generateId('clip'),
+              startTime: currentTime,
+              duration: originalClip.duration - splitOffset,
+              trimIn: originalClip.trimIn + splitOffset,
+              trimOut: originalClip.trimOut,
+              inTransition: undefined, // Split clip can't inherit transition
+            };
+
+            // Replace original clip with the two new clips
+            track.clips.splice(clipIndex, 1, firstClip, secondClip);
+
+            // Select the second clip
+            setSelectedClipId(secondClip.id);
+
+            // Update project
+            newProject.modifiedAt = new Date().toISOString();
+            addToHistory(newProject);
+            break;
+          }
+        }
+
+        return newProject;
+      });
+      return;
+    }
+
+    // Normal selection behavior
     // Find if this clip belongs to a group
     let groupId: string | undefined;
     for (const track of project.timeline.tracks) {
@@ -1091,7 +1141,7 @@ export const VideoEditorPhase3: React.FC = () => {
       setSelectedClipId(clipId);
       setSelectedClipIds([]);
     }
-  }, [project.timeline.tracks]);
+  }, [project.timeline.tracks, razorToolActive, currentTime, addToHistory]);
 
   // ========================================
   // Track Controls
@@ -1521,6 +1571,16 @@ export const VideoEditorPhase3: React.FC = () => {
     });
   }, [clipboardClip, currentTime, addToHistory]);
 
+  // Handle Razor Tool toggle
+  const handleToggleRazorTool = useCallback(() => {
+    setRazorToolActive(prev => !prev);
+  }, []);
+
+  // Handle Silence Detection dialog open
+  const handleOpenSilenceDetection = useCallback(() => {
+    setShowSilenceDialog(true);
+  }, []);
+
   // Handle zoom in/out
   const handleZoomIn = useCallback(() => {
     setZoom(prev => Math.min(prev * 1.2, 200)); // Max zoom: 200px per second
@@ -1931,10 +1991,13 @@ export const VideoEditorPhase3: React.FC = () => {
               isDirty={isDirty}
               rippleEditMode={rippleEditMode}
               onToggleRippleEdit={() => setRippleEditMode(prev => !prev)}
+              razorToolActive={razorToolActive}
+              onToggleRazorTool={handleToggleRazorTool}
               selectedCount={selectedClipIds.length}
               onGroupClips={handleGroupClips}
               onUngroupClips={handleUngroupClips}
               onAddText={() => setSidebarView('text')}
+              onOpenSilenceDetection={handleOpenSilenceDetection}
             />
 
             {/* Active render banner */}

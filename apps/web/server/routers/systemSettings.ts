@@ -1178,7 +1178,7 @@ export const systemSettingsRouter = router({
       .where(eq(systemSettings.category, "vectordb"));
 
     const result: Record<string, any> = {
-      provider: "chromadb", // chromadb or pgvector
+      provider: "chromadb", // chromadb, pgvector, or cloudflare_vectorize
       embeddingModel: "all-MiniLM-L6-v2",
       embeddingDimension: 384,
       chromaPersistDir: "~/.smartspec/chroma",
@@ -1187,6 +1187,9 @@ export const systemSettingsRouter = router({
       pgvectorDatabase: undefined,
       pgvectorUser: undefined,
       openaiApiKeyConfigured: false,
+      vectorizeAccountId: undefined,
+      vectorizeIndexName: undefined,
+      vectorizeApiTokenConfigured: false,
     };
 
     for (const setting of settings) {
@@ -1210,6 +1213,12 @@ export const systemSettingsRouter = router({
         result.pgvectorPasswordConfigured = true;
       } else if (setting.key === "openaiApiKey" && setting.value) {
         result.openaiApiKeyConfigured = true;
+      } else if (setting.key === "vectorizeAccountId") {
+        result.vectorizeAccountId = setting.value;
+      } else if (setting.key === "vectorizeIndexName") {
+        result.vectorizeIndexName = setting.value;
+      } else if (setting.key === "vectorizeApiToken" && setting.value) {
+        result.vectorizeApiTokenConfigured = true;
       }
     }
 
@@ -1221,7 +1230,7 @@ export const systemSettingsRouter = router({
    */
   updateVectorDbSettings: adminProcedure
     .input(z.object({
-      provider: z.enum(["chromadb", "pgvector"]).optional(),
+      provider: z.enum(["chromadb", "pgvector", "cloudflare_vectorize"]).optional(),
       embeddingModel: z.string().optional(),
       embeddingDimension: z.number().optional(),
       chromaPersistDir: z.string().optional(),
@@ -1231,6 +1240,9 @@ export const systemSettingsRouter = router({
       pgvectorUser: z.string().optional(),
       pgvectorPassword: z.string().optional(),
       openaiApiKey: z.string().optional(),
+      vectorizeAccountId: z.string().optional(),
+      vectorizeApiToken: z.string().optional(),
+      vectorizeIndexName: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -1247,6 +1259,9 @@ export const systemSettingsRouter = router({
         { key: "pgvectorUser", value: input.pgvectorUser, sensitive: false },
         { key: "pgvectorPassword", value: input.pgvectorPassword, sensitive: true },
         { key: "openaiApiKey", value: input.openaiApiKey, sensitive: true },
+        { key: "vectorizeAccountId", value: input.vectorizeAccountId, sensitive: false },
+        { key: "vectorizeApiToken", value: input.vectorizeApiToken, sensitive: true },
+        { key: "vectorizeIndexName", value: input.vectorizeIndexName, sensitive: false },
       ];
 
       for (const update of updates) {
@@ -1359,6 +1374,43 @@ export const systemSettingsRouter = router({
           await pool.end().catch(() => {});
           throw error;
         }
+      } else if (provider === "cloudflare_vectorize") {
+        // Test Cloudflare Vectorize connection
+        if (!config.vectorizeAccountId || !config.vectorizeApiToken || !config.vectorizeIndexName) {
+          return {
+            success: false,
+            message: "Cloudflare Vectorize configuration is incomplete (need Account ID, API Token, and Index Name)",
+          };
+        }
+
+        const url = `https://api.cloudflare.com/client/v4/accounts/${config.vectorizeAccountId}/vectorize/v2/indexes/${config.vectorizeIndexName}`;
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${config.vectorizeApiToken}` },
+        });
+
+        if (!response.ok) {
+          const status = response.status;
+          if (status === 401) {
+            return { success: false, message: "Authentication failed — check your API token" };
+          } else if (status === 404) {
+            return { success: false, message: `Index '${config.vectorizeIndexName}' not found — create it in the Cloudflare dashboard first` };
+          }
+          return { success: false, message: `Cloudflare API error (${status}): ${response.statusText}` };
+        }
+
+        const data = await response.json() as any;
+        if (!data.success) {
+          return { success: false, message: `Cloudflare API error: ${JSON.stringify(data.errors)}` };
+        }
+
+        const indexConfig = data.result?.config || {};
+        return {
+          success: true,
+          message: `Connected to Vectorize index '${config.vectorizeIndexName}' (${indexConfig.dimensions || "?"}D, ${indexConfig.metric || "cosine"})`,
+          provider: "cloudflare_vectorize",
+          dimensions: indexConfig.dimensions,
+          metric: indexConfig.metric,
+        };
       }
 
       return { success: false, message: "Unknown provider" };
@@ -1443,6 +1495,44 @@ export const systemSettingsRouter = router({
             error: error.message,
           };
         }
+      } else if (provider === "cloudflare_vectorize") {
+        // Get stats from Cloudflare Vectorize
+        if (!config.vectorizeAccountId || !config.vectorizeApiToken || !config.vectorizeIndexName) {
+          return {
+            provider: "cloudflare_vectorize",
+            error: "Configuration incomplete",
+          };
+        }
+
+        try {
+          const url = `https://api.cloudflare.com/client/v4/accounts/${config.vectorizeAccountId}/vectorize/v2/indexes/${config.vectorizeIndexName}`;
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${config.vectorizeApiToken}` },
+          });
+
+          if (!response.ok) {
+            return {
+              provider: "cloudflare_vectorize",
+              error: `API error (${response.status})`,
+            };
+          }
+
+          const data = await response.json() as any;
+          const result = data.result || {};
+          return {
+            provider: "cloudflare_vectorize",
+            indexName: config.vectorizeIndexName,
+            dimensions: result.config?.dimensions,
+            metric: result.config?.metric || "cosine",
+            vectorCount: result.vector_count,
+            storageType: "Cloudflare Vectorize (Edge)",
+          };
+        } catch (error: any) {
+          return {
+            provider: "cloudflare_vectorize",
+            error: error.message,
+          };
+        }
       }
 
       return { provider, error: "Unknown provider" };
@@ -1451,6 +1541,42 @@ export const systemSettingsRouter = router({
         provider,
         error: error.message || "Failed to fetch stats",
       };
+    }
+  }),
+
+  /**
+   * Trigger full reindex of all library items
+   */
+  triggerReindex: adminProcedure.mutation(async () => {
+    const PY = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    try {
+      const res = await fetch(`${PY}/api/admin/vectordb/reindex`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        return { status: "error", message: (err as any).detail || res.statusText };
+      }
+      return await res.json() as { task_id: string; status: string; message: string };
+    } catch (error: any) {
+      return { status: "error", message: error.message || "Failed to trigger reindex" };
+    }
+  }),
+
+  /**
+   * Get reindex job status
+   */
+  getReindexStatus: adminProcedure.query(async () => {
+    const PY = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    try {
+      const res = await fetch(`${PY}/api/admin/vectordb/reindex/status`);
+      if (!res.ok) {
+        return { status: "error", task_id: null, result: null };
+      }
+      return await res.json() as { status: string; task_id: string | null; result: any };
+    } catch (error: any) {
+      return { status: "error", task_id: null, result: null };
     }
   }),
 });

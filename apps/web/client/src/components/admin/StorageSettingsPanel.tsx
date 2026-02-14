@@ -64,6 +64,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 
 interface StorageSetting {
@@ -94,6 +98,8 @@ export default function StorageSettingsPanel() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<StorageSetting | null>(null);
   const [testResult, setTestResult] = useState<{ id: number; success: boolean; message: string } | null>(null);
+  const [showR2Guide, setShowR2Guide] = useState(false);
+  const [showS3Guide, setShowS3Guide] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -418,6 +424,202 @@ export default function StorageSettingsPanel() {
                 : `Files are stored in ${activeProvider === "r2" ? "Cloudflare R2" : "AWS S3"} (${activeSetting?.displayName}). External services can access uploaded files via public URLs.`
               }
             </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Setup Guides */}
+      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <CardHeader className="border-b bg-gradient-to-r from-blue-50/50 to-indigo-50/30 pb-5">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <BookOpen className="w-5 h-5 text-blue-500" />
+            Storage Setup Guides
+          </CardTitle>
+          <CardDescription>
+            Step-by-step instructions for configuring Cloudflare R2 or AWS S3 storage, including required CORS settings for direct file uploads.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          {/* Cloudflare R2 Guide */}
+          <div className="rounded-lg border border-orange-200 bg-orange-50/30 overflow-hidden">
+            <button
+              onClick={() => setShowR2Guide(!showR2Guide)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-orange-50/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <Cloud className="h-4 w-4 text-orange-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-orange-900">Cloudflare R2 Setup Guide</p>
+                  <p className="text-xs text-orange-600">S3-compatible object storage by Cloudflare</p>
+                </div>
+              </div>
+              {showR2Guide ? (
+                <ChevronDown className="h-4 w-4 text-orange-500" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-orange-500" />
+              )}
+            </button>
+            {showR2Guide && (
+              <div className="px-4 pb-4 space-y-4 text-sm border-t border-orange-200 pt-4">
+                <ol className="space-y-4 text-orange-900 list-decimal pl-5">
+                  <li>
+                    <p className="font-semibold">Create R2 Bucket</p>
+                    <ul className="mt-1 space-y-1 text-xs text-orange-700 list-disc pl-4">
+                      <li>Go to <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="underline font-medium inline-flex items-center gap-0.5">Cloudflare Dashboard <ExternalLink className="h-3 w-3" /></a></li>
+                      <li>Navigate to <strong>R2 Object Storage</strong> &gt; <strong>Create bucket</strong></li>
+                      <li>Choose a bucket name (e.g., <code className="bg-orange-100 px-1 rounded">my-media</code>) and location</li>
+                    </ul>
+                  </li>
+                  <li>
+                    <p className="font-semibold">Create API Token</p>
+                    <ul className="mt-1 space-y-1 text-xs text-orange-700 list-disc pl-4">
+                      <li>Go to <strong>R2</strong> &gt; <strong>Manage R2 API Tokens</strong> &gt; <strong>Create API token</strong></li>
+                      <li>Permission: <code className="bg-orange-100 px-1 rounded">Object Read & Write</code></li>
+                      <li>Specify bucket: select your bucket name</li>
+                      <li>Click <strong>Create API Token</strong></li>
+                      <li>Copy the <strong>Access Key ID</strong> and <strong>Secret Access Key</strong> (shown only once)</li>
+                    </ul>
+                  </li>
+                  <li>
+                    <p className="font-semibold">Get S3 API Endpoint</p>
+                    <ul className="mt-1 space-y-1 text-xs text-orange-700 list-disc pl-4">
+                      <li>Go to <strong>R2</strong> &gt; your bucket &gt; <strong>Settings</strong></li>
+                      <li>Copy the <strong>S3 API</strong> endpoint URL:</li>
+                      <li><code className="bg-orange-100 px-1.5 py-0.5 rounded text-xs">https://&lt;account-id&gt;.r2.cloudflarestorage.com</code></li>
+                    </ul>
+                  </li>
+                  <li>
+                    <p className="font-semibold">Enable Public Access <span className="font-normal text-orange-600">(Optional but recommended)</span></p>
+                    <ul className="mt-1 space-y-1 text-xs text-orange-700 list-disc pl-4">
+                      <li>Go to <strong>R2</strong> &gt; your bucket &gt; <strong>Settings</strong> &gt; <strong>Public access</strong></li>
+                      <li>Enable the <strong>R2.dev subdomain</strong> or connect a custom domain</li>
+                      <li>Copy the public URL to use as <strong>Public URL Prefix</strong></li>
+                    </ul>
+                  </li>
+                  <li>
+                    <p className="font-semibold text-red-700">Configure CORS <span className="font-normal text-red-600">(Required for direct uploads)</span></p>
+                    <ul className="mt-1 space-y-1 text-xs text-orange-700 list-disc pl-4">
+                      <li>Go to <strong>R2</strong> &gt; your bucket &gt; <strong>Settings</strong> &gt; <strong>CORS Policy</strong></li>
+                      <li>Click <strong>Add CORS policy</strong> and paste this JSON:</li>
+                    </ul>
+                    <pre className="mt-2 p-3 rounded-md bg-gray-900 text-green-400 text-xs overflow-x-auto font-mono leading-relaxed">{`[
+  {
+    "AllowedOrigins": ["https://your-domain.com"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type", "Content-Length"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]`}</pre>
+                    <p className="mt-1.5 text-xs text-red-600 font-medium">
+                      Replace <code className="bg-red-100 px-1 rounded">your-domain.com</code> with your actual domain. Without CORS, large file uploads will fail silently.
+                    </p>
+                  </li>
+                  <li>
+                    <p className="font-semibold">Fill in the Storage Form</p>
+                    <ul className="mt-1 space-y-1 text-xs text-orange-700 list-disc pl-4">
+                      <li>Provider Type: <code className="bg-orange-100 px-1 rounded">Cloudflare R2</code></li>
+                      <li>Endpoint URL: the S3 API endpoint from step 3</li>
+                      <li>Bucket: your bucket name</li>
+                      <li>Region: <code className="bg-orange-100 px-1 rounded">auto</code></li>
+                      <li>Access Key ID & Secret: from step 2</li>
+                      <li>Public URL Prefix: from step 4 (if enabled)</li>
+                      <li>Click <strong>Test Connection</strong> to verify everything works</li>
+                    </ul>
+                  </li>
+                </ol>
+              </div>
+            )}
+          </div>
+
+          {/* AWS S3 Guide */}
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50/30 overflow-hidden">
+            <button
+              onClick={() => setShowS3Guide(!showS3Guide)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-yellow-50/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center">
+                  <Database className="h-4 w-4 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-yellow-900">AWS S3 Setup Guide</p>
+                  <p className="text-xs text-yellow-600">Amazon Simple Storage Service</p>
+                </div>
+              </div>
+              {showS3Guide ? (
+                <ChevronDown className="h-4 w-4 text-yellow-500" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-yellow-500" />
+              )}
+            </button>
+            {showS3Guide && (
+              <div className="px-4 pb-4 space-y-4 text-sm border-t border-yellow-200 pt-4">
+                <ol className="space-y-4 text-yellow-900 list-decimal pl-5">
+                  <li>
+                    <p className="font-semibold">Create S3 Bucket</p>
+                    <ul className="mt-1 space-y-1 text-xs text-yellow-700 list-disc pl-4">
+                      <li>Go to <a href="https://console.aws.amazon.com/s3/" target="_blank" rel="noopener noreferrer" className="underline font-medium inline-flex items-center gap-0.5">AWS S3 Console <ExternalLink className="h-3 w-3" /></a></li>
+                      <li>Click <strong>Create bucket</strong></li>
+                      <li>Choose a bucket name and AWS Region (e.g., <code className="bg-yellow-100 px-1 rounded">us-east-1</code>)</li>
+                      <li>Uncheck <strong>"Block all public access"</strong> if you want public URLs</li>
+                    </ul>
+                  </li>
+                  <li>
+                    <p className="font-semibold">Create IAM Access Key</p>
+                    <ul className="mt-1 space-y-1 text-xs text-yellow-700 list-disc pl-4">
+                      <li>Go to <a href="https://console.aws.amazon.com/iam/" target="_blank" rel="noopener noreferrer" className="underline font-medium inline-flex items-center gap-0.5">AWS IAM Console <ExternalLink className="h-3 w-3" /></a> &gt; <strong>Users</strong> &gt; <strong>Create user</strong></li>
+                      <li>Attach policy: <code className="bg-yellow-100 px-1 rounded">AmazonS3FullAccess</code> (or a custom policy for your bucket only)</li>
+                      <li>Go to <strong>Security credentials</strong> &gt; <strong>Create access key</strong></li>
+                      <li>Use case: <strong>"Application running outside AWS"</strong></li>
+                      <li>Copy the <strong>Access Key ID</strong> and <strong>Secret Access Key</strong></li>
+                    </ul>
+                  </li>
+                  <li>
+                    <p className="font-semibold text-red-700">Configure CORS on S3 Bucket <span className="font-normal text-red-600">(Required for direct uploads)</span></p>
+                    <ul className="mt-1 space-y-1 text-xs text-yellow-700 list-disc pl-4">
+                      <li>Go to <strong>S3</strong> &gt; your bucket &gt; <strong>Permissions</strong> &gt; <strong>Cross-origin resource sharing (CORS)</strong></li>
+                      <li>Click <strong>Edit</strong> and paste this JSON:</li>
+                    </ul>
+                    <pre className="mt-2 p-3 rounded-md bg-gray-900 text-green-400 text-xs overflow-x-auto font-mono leading-relaxed">{`[
+  {
+    "AllowedOrigins": ["https://your-domain.com"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type", "Content-Length"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]`}</pre>
+                    <p className="mt-1.5 text-xs text-red-600 font-medium">
+                      Replace <code className="bg-red-100 px-1 rounded">your-domain.com</code> with your actual domain. Without CORS, large file uploads will fail silently.
+                    </p>
+                  </li>
+                  <li>
+                    <p className="font-semibold">Optional: Create CloudFront Distribution</p>
+                    <ul className="mt-1 space-y-1 text-xs text-yellow-700 list-disc pl-4">
+                      <li>For faster file delivery, create a <a href="https://console.aws.amazon.com/cloudfront/" target="_blank" rel="noopener noreferrer" className="underline font-medium inline-flex items-center gap-0.5">CloudFront distribution <ExternalLink className="h-3 w-3" /></a></li>
+                      <li>Set origin to your S3 bucket</li>
+                      <li>Use the CloudFront URL as <strong>Public URL Prefix</strong></li>
+                    </ul>
+                  </li>
+                  <li>
+                    <p className="font-semibold">Fill in the Storage Form</p>
+                    <ul className="mt-1 space-y-1 text-xs text-yellow-700 list-disc pl-4">
+                      <li>Provider Type: <code className="bg-yellow-100 px-1 rounded">AWS S3</code></li>
+                      <li>Endpoint URL: <code className="bg-yellow-100 px-1 rounded">https://s3.&lt;region&gt;.amazonaws.com</code></li>
+                      <li>Bucket: your bucket name</li>
+                      <li>Region: your AWS region (e.g., <code className="bg-yellow-100 px-1 rounded">us-east-1</code>)</li>
+                      <li>Access Key ID & Secret: from step 2</li>
+                      <li>Public URL Prefix: CloudFront URL or S3 public URL</li>
+                      <li>Force Path Style: <code className="bg-yellow-100 px-1 rounded">OFF</code> (AWS S3 uses virtual-hosted style)</li>
+                      <li>Click <strong>Test Connection</strong> to verify everything works</li>
+                    </ul>
+                  </li>
+                </ol>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -780,6 +982,31 @@ export default function StorageSettingsPanel() {
                   </div>
                 </div>
               </>
+            )}
+
+            {/* CORS Warning */}
+            {formData.providerType !== "local" && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-sm space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-600" />
+                  <div className="space-y-2">
+                    <p className="font-semibold text-amber-800">CORS Configuration Required</p>
+                    <p className="text-xs text-amber-700">
+                      {formData.providerType === "r2"
+                        ? "You must configure CORS on your R2 bucket for direct file uploads to work. Go to Cloudflare Dashboard > R2 > your bucket > Settings > CORS Policy."
+                        : "You must configure CORS on your S3 bucket for direct file uploads to work. Go to AWS S3 Console > your bucket > Permissions > Cross-origin resource sharing (CORS)."
+                      }
+                    </p>
+                    <pre className="p-2 rounded bg-gray-900 text-green-400 text-xs overflow-x-auto font-mono leading-relaxed">{`[{"AllowedOrigins":["https://your-domain.com"],
+  "AllowedMethods":["PUT","GET","HEAD"],
+  "AllowedHeaders":["Content-Type","Content-Length"],
+  "ExposeHeaders":["ETag"],"MaxAgeSeconds":3600}]`}</pre>
+                    <p className="text-xs text-amber-600">
+                      Replace <code className="bg-amber-100 px-1 rounded">your-domain.com</code> with your actual domain. Without this, uploads over 100MB will fail.
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* URL Settings */}

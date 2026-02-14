@@ -11,12 +11,14 @@ import {
 import { isSvgUpload, sanitizeUploadedSvg } from "./uploadContentSafety";
 import {
   libraryChunks,
+  libraryContentVersions,
   libraryIndexJobs,
   libraryItems,
   libraryLinks,
   libraryPermissions,
   userGroups,
   users,
+  type LibraryContentVersion,
 } from "../../drizzle/schema";
 import { getUserGroups as getGroupsServiceUserGroups } from "./groupsService";
 import type { EffectivePermission, PermissionSource } from "../../shared/types/library";
@@ -236,6 +238,7 @@ export interface SaveLibraryMarkdownInput {
   itemId: number;
   content: string;
   expectedUpdatedAt?: Date;
+  changeDescription?: string;
 }
 
 export interface SaveLibraryMarkdownResult {
@@ -1533,6 +1536,69 @@ export async function getLibraryMarkdownContent(
   };
 }
 
+async function createContentVersion(
+  db: DbClient,
+  input: {
+    tenantId: string;
+    libraryItemId: number;
+    content: string;
+    contentType: string;
+    createdByUserId: number;
+    changeDescription?: string;
+  },
+): Promise<LibraryContentVersion | null> {
+  const contentHash = crypto
+    .createHash("sha256")
+    .update(input.content, "utf8")
+    .digest("hex");
+  const contentSizeBytes = Buffer.byteLength(input.content, "utf8");
+
+  // Get next version number
+  const latestVersion = await db
+    .select({ versionNumber: libraryContentVersions.versionNumber })
+    .from(libraryContentVersions)
+    .where(eq(libraryContentVersions.libraryItemId, input.libraryItemId))
+    .orderBy(desc(libraryContentVersions.versionNumber))
+    .limit(1);
+
+  const nextVersionNumber = latestVersion[0]
+    ? latestVersion[0].versionNumber + 1
+    : 1;
+
+  // Check if identical content already exists (deduplication)
+  const existingWithHash = await db
+    .select({ id: libraryContentVersions.id })
+    .from(libraryContentVersions)
+    .where(
+      and(
+        eq(libraryContentVersions.libraryItemId, input.libraryItemId),
+        eq(libraryContentVersions.contentHash, contentHash),
+      ),
+    )
+    .limit(1);
+
+  if (existingWithHash[0]) {
+    return null;
+  }
+
+  const [version] = await db
+    .insert(libraryContentVersions)
+    .values({
+      tenantId: input.tenantId,
+      libraryItemId: input.libraryItemId,
+      versionNumber: nextVersionNumber,
+      contentHash,
+      content: input.content,
+      contentType: input.contentType,
+      contentSizeBytes,
+      changeDescription: input.changeDescription,
+      createdByUserId: input.createdByUserId,
+    })
+    .returning();
+
+  return version ?? null;
+}
+
 export async function saveLibraryMarkdown(
   input: SaveLibraryMarkdownInput,
   actor: LibraryActor,
@@ -1559,6 +1625,29 @@ export async function saveLibraryMarkdown(
 
   const normalizedContent = input.content.replace(/\r\n/g, "\n");
   const now = new Date();
+
+  // Save current content as version before overwriting
+  const currentChunk = await db
+    .select()
+    .from(libraryChunks)
+    .where(
+      and(
+        eq(libraryChunks.libraryItemId, existing.id),
+        eq(libraryChunks.chunkIndex, 0),
+      ),
+    )
+    .limit(1);
+
+  if (currentChunk[0] && currentChunk[0].content) {
+    await createContentVersion(db, {
+      tenantId: actorTenantId,
+      libraryItemId: existing.id,
+      content: currentChunk[0].content,
+      contentType: currentChunk[0].contentType,
+      createdByUserId: actor.userId,
+      changeDescription: input.changeDescription,
+    });
+  }
 
   await db
     .insert(libraryChunks)
@@ -1619,6 +1708,115 @@ export async function saveLibraryMarkdown(
     item: toLibraryItemDto(updated),
     indexJob,
   };
+}
+
+export async function getContentVersionHistory(
+  itemId: number,
+  actor: LibraryActor,
+  options?: { limit?: number; offset?: number },
+  dbClient?: DbClient,
+): Promise<LibraryContentVersion[]> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  const existing = await getLibraryItemRowById(db, itemId, actorTenantId);
+  if (!existing) {
+    return [];
+  }
+
+  const permissionLevel = await getUserPermissionLevel(db, existing.id, actor);
+  if (!canReadLibraryItem(existing, actor, permissionLevel)) {
+    return [];
+  }
+
+  const limit = Math.min(Math.max(options?.limit ?? 50, 1), 100);
+  const offset = Math.max(options?.offset ?? 0, 0);
+
+  return db
+    .select()
+    .from(libraryContentVersions)
+    .where(eq(libraryContentVersions.libraryItemId, itemId))
+    .orderBy(desc(libraryContentVersions.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getContentVersionById(
+  versionId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<LibraryContentVersion | null> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  const [version] = await db
+    .select()
+    .from(libraryContentVersions)
+    .where(
+      and(
+        eq(libraryContentVersions.id, versionId),
+        eq(libraryContentVersions.tenantId, actorTenantId),
+      ),
+    )
+    .limit(1);
+
+  if (!version) {
+    return null;
+  }
+
+  const existing = await getLibraryItemRowById(
+    db,
+    version.libraryItemId,
+    actorTenantId,
+  );
+  if (!existing) {
+    return null;
+  }
+
+  const permissionLevel = await getUserPermissionLevel(db, existing.id, actor);
+  if (!canReadLibraryItem(existing, actor, permissionLevel)) {
+    return null;
+  }
+
+  return version;
+}
+
+export async function restoreContentVersion(
+  versionId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<SaveLibraryMarkdownResult | null> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  const version = await getContentVersionById(versionId, actor, db);
+  if (!version) {
+    return null;
+  }
+
+  const existing = await getLibraryItemRowById(
+    db,
+    version.libraryItemId,
+    actorTenantId,
+  );
+  if (!existing) {
+    return null;
+  }
+
+  const permissionLevel = await getUserPermissionLevel(db, existing.id, actor);
+  if (!canManageLibraryItem(existing, actor, permissionLevel)) {
+    return null;
+  }
+
+  return saveLibraryMarkdown(
+    {
+      itemId: version.libraryItemId,
+      content: version.content,
+      changeDescription: `Restored from version ${version.versionNumber}`,
+    },
+    actor,
+    db,
+  );
 }
 
 export async function searchLibraryItems(

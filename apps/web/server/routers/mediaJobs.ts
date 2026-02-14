@@ -11,6 +11,9 @@ import { rateLimit } from "../_core/limits";
 import multer from "multer";
 import { storagePut } from "../storage";
 import { eq } from "drizzle-orm";
+import { promises as fs } from "fs";
+import path from "path";
+import os from "os";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -640,6 +643,8 @@ export function registerMediaJobRoutes(app: Express) {
 
   // ========================================
   // File upload endpoint
+  // IMPORTANT: This route has NO rate limiting to support large file uploads
+  // that may take several minutes. Do NOT add rate limiting middleware here.
   // ========================================
 
   const ALLOWED_UPLOAD_EXTENSIONS = new Set([
@@ -648,24 +653,42 @@ export function registerMediaJobRoutes(app: Express) {
     "srt", "vtt",
     "jpg", "jpeg", "png", "webp", "gif",
   ]);
-  const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500 MB
+  const MAX_UPLOAD_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB (support large video files)
 
+  // Use disk storage to avoid memory issues with large files
   const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: MAX_UPLOAD_SIZE },
+    storage: multer.diskStorage({
+      destination: (_req, _file, cb) => {
+        cb(null, os.tmpdir());
+      },
+      filename: (_req, file, cb) => {
+        const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        cb(null, `upload-${uniqueSuffix}-${file.originalname}`);
+      },
+    }),
+    // Temporarily disable limit to debug
+    // limits: { fileSize: MAX_UPLOAD_SIZE },
   });
 
   app.post(
     "/api/media-jobs/upload",
     upload.single("file") as any,
     async (req: Request, res: Response) => {
+      const startTime = Date.now();
       try {
         console.log("[MediaJobs Upload] Request received, file:", !!(req as any).file);
+        console.log("[MediaJobs Upload] Client IP:", req.ip);
+        console.log("[MediaJobs Upload] Content-Length:", req.headers['content-length']);
+
         const authResult = await authenticateMediaJobRequest(req, res);
-        if (!authResult) return;
+        if (!authResult) {
+          console.log("[MediaJobs Upload] Auth failed");
+          return;
+        }
+        console.log("[MediaJobs Upload] Auth successful, userId:", authResult.userId);
 
         const file = (req as any).file as {
-          buffer: Buffer;
+          path: string;
           originalname: string;
           mimetype: string;
           size: number;
@@ -678,38 +701,89 @@ export function registerMediaJobRoutes(app: Express) {
 
         console.log("[MediaJobs Upload] File:", file.originalname, file.size, "bytes");
 
-        // Validate extension
-        const ext = file.originalname.split(".").pop()?.toLowerCase() || "";
-        if (!ALLOWED_UPLOAD_EXTENSIONS.has(ext)) {
-          res.status(400).json({
-            error: `Unsupported file type: .${ext}. Allowed: ${Array.from(ALLOWED_UPLOAD_EXTENSIONS).join(", ")}`,
-          });
-          return;
+        try {
+          // Validate extension
+          const ext = file.originalname.split(".").pop()?.toLowerCase() || "";
+          if (!ALLOWED_UPLOAD_EXTENSIONS.has(ext)) {
+            await fs.unlink(file.path).catch(() => {}); // Clean up temp file
+            res.status(400).json({
+              error: `Unsupported file type: .${ext}. Allowed: ${Array.from(ALLOWED_UPLOAD_EXTENSIONS).join(", ")}`,
+            });
+            return;
+          }
+
+          // Validate MIME type
+          const ALLOWED_MIMES = new Set([
+            "video/mp4", "video/webm", "video/quicktime", "audio/mpeg", "audio/wav",
+            "image/jpeg", "image/png", "image/webp", "application/octet-stream",
+          ]);
+          if (file.mimetype && !ALLOWED_MIMES.has(file.mimetype)) {
+            await fs.unlink(file.path).catch(() => {}); // Clean up temp file
+            res.status(400).json({ error: `Unsupported MIME type: ${file.mimetype}` });
+            return;
+          }
+
+          const assetId = nanoid(21);
+          const storageKey = `media-jobs/assets/${assetId}/${file.originalname}`;
+
+          console.log("[MediaJobs Upload] File received:", file.originalname, file.size, "bytes");
+
+          // Check storage provider
+          const { getActiveStorageConfig } = await import("../storage");
+          const storageConfig = await getActiveStorageConfig();
+
+          let url: string;
+          if (storageConfig.provider === "local") {
+            // Local storage: move file directly without buffering
+            console.log("[MediaJobs Upload] Using local storage - moving file");
+            const { getUploadsDir } = await import("../storage");
+            const uploadsDir = getUploadsDir();
+            const targetDir = path.join(uploadsDir, "media-jobs", "assets", assetId);
+            await fs.mkdir(targetDir, { recursive: true });
+            const targetPath = path.join(targetDir, file.originalname);
+            await fs.rename(file.path, targetPath);
+            url = `/uploads/media-jobs/assets/${assetId}/${file.originalname}`;
+            console.log("[MediaJobs Upload] File moved to:", targetPath);
+          } else {
+            // Remote storage: read and upload
+            console.log("[MediaJobs Upload] Using remote storage - buffering file");
+            const fileBuffer = await fs.readFile(file.path);
+            console.log("[MediaJobs Upload] File read complete:", fileBuffer.length, "bytes");
+
+            const { url: storageUrl } = await storagePut(
+              storageKey,
+              fileBuffer,
+              file.mimetype || "application/octet-stream",
+            );
+            url = storageUrl;
+            console.log("[MediaJobs Upload] Storage upload complete");
+
+            // Clean up temp file
+            await fs.unlink(file.path).catch(e => console.warn("[Upload] Cleanup failed:", e));
+          }
+
+          const uploadDuration = Date.now() - startTime;
+          console.log("[MediaJobs Upload] Success:", url, `(${uploadDuration}ms)`);
+          res.json({ assetId, uri: url });
+        } catch (e: any) {
+          // Clean up temp file on error
+          if (file?.path) {
+            await fs.unlink(file.path).catch(() => {});
+          }
+          throw e;
         }
-
-        // Validate MIME type
-        const ALLOWED_MIMES = new Set([
-          "video/mp4", "video/webm", "video/quicktime", "audio/mpeg", "audio/wav",
-          "image/jpeg", "image/png", "image/webp", "application/octet-stream",
-        ]);
-        if (file.mimetype && !ALLOWED_MIMES.has(file.mimetype)) {
-          res.status(400).json({ error: `Unsupported MIME type: ${file.mimetype}` });
-          return;
-        }
-
-        const assetId = nanoid(21);
-        const storageKey = `media-jobs/assets/${assetId}/${file.originalname}`;
-        const { url } = await storagePut(
-          storageKey,
-          file.buffer,
-          file.mimetype || "application/octet-stream",
-        );
-
-        console.log("[MediaJobs Upload] Saved:", url);
-        res.json({ assetId, uri: url });
       } catch (e: any) {
-        console.error("[MediaJobs Upload] Error:", e);
-        res.status(500).json({ error: e.message || "Upload failed" });
+        const uploadDuration = Date.now() - startTime;
+        console.error("[MediaJobs Upload] Error after", uploadDuration, "ms:", e);
+        console.error("[MediaJobs Upload] Error stack:", e.stack);
+
+        // Never return 429 from upload route - it has no rate limiting
+        const statusCode = e.statusCode || 500;
+        if (statusCode === 429) {
+          console.error("[MediaJobs Upload] WARNING: 429 error from upload route - this should not happen!");
+        }
+
+        res.status(statusCode).json({ error: e.message || "Upload failed" });
       }
     },
   );
@@ -728,6 +802,115 @@ export function registerMediaJobRoutes(app: Express) {
     }
     next(err);
   }) as any);
+
+  // ========================================
+  // Presigned URL upload (bypasses Cloudflare size limit)
+  // Phase 1: Client requests a presigned PUT URL
+  // Phase 2: Client uploads directly to R2/S3
+  // Phase 3: Client confirms upload to get public URI
+  // ========================================
+
+  app.post(
+    "/api/media-jobs/upload/init",
+    async (req: Request, res: Response) => {
+      try {
+        const authResult = await authenticateMediaJobRequest(req, res);
+        if (!authResult) return;
+
+        const { filename, contentType, fileSize } = req.body as {
+          filename?: string;
+          contentType?: string;
+          fileSize?: number;
+        };
+
+        if (!filename || typeof filename !== "string") {
+          res.status(400).json({ error: "Missing filename" });
+          return;
+        }
+        if (!fileSize || typeof fileSize !== "number" || fileSize <= 0) {
+          res.status(400).json({ error: "Missing or invalid fileSize" });
+          return;
+        }
+        if (fileSize > MAX_UPLOAD_SIZE) {
+          res.status(400).json({
+            error: `File too large: ${(fileSize / (1024 * 1024 * 1024)).toFixed(1)}GB exceeds limit of ${MAX_UPLOAD_SIZE / (1024 * 1024 * 1024)}GB`,
+          });
+          return;
+        }
+
+        const ext = filename.split(".").pop()?.toLowerCase() || "";
+        if (!ALLOWED_UPLOAD_EXTENSIONS.has(ext)) {
+          res.status(400).json({
+            error: `Unsupported file type: .${ext}. Allowed: ${Array.from(ALLOWED_UPLOAD_EXTENSIONS).join(", ")}`,
+          });
+          return;
+        }
+
+        const assetId = nanoid(21);
+        const storageKey = `media-jobs/assets/${assetId}/${filename}`;
+
+        const { storagePresignPut } = await import("../storage");
+        const ct = contentType || "application/octet-stream";
+        const presigned = await storagePresignPut(storageKey, ct, fileSize);
+
+        if (!presigned) {
+          res.json({ method: "multipart" as const });
+          return;
+        }
+
+        console.log("[MediaJobs Upload/Init]", authResult.userId, assetId, filename, fileSize);
+        res.json({
+          method: "presigned" as const,
+          assetId,
+          key: presigned.key,
+          uploadUrl: presigned.url,
+        });
+      } catch (e: any) {
+        console.error("[MediaJobs Upload/Init] Error:", e);
+        res.status(500).json({ error: e.message || "Init failed" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/media-jobs/upload/complete",
+    async (req: Request, res: Response) => {
+      try {
+        const authResult = await authenticateMediaJobRequest(req, res);
+        if (!authResult) return;
+
+        const { assetId, key } = req.body as {
+          assetId?: string;
+          key?: string;
+        };
+
+        if (!assetId || !key) {
+          res.status(400).json({ error: "Missing assetId or key" });
+          return;
+        }
+
+        const expectedPrefix = `media-jobs/assets/${assetId}/`;
+        if (!key.startsWith(expectedPrefix)) {
+          res.status(400).json({ error: "Invalid key for assetId" });
+          return;
+        }
+
+        const { storageResolveUrl } = await import("../storage");
+        const url = await storageResolveUrl(key);
+
+        if (!url) {
+          res.status(500).json({ error: "Failed to resolve storage URL" });
+          return;
+        }
+
+        console.log("[MediaJobs Upload/Complete]", authResult.userId, assetId, url);
+        res.json({ assetId, uri: url });
+      } catch (e: any) {
+        console.error("[MediaJobs Upload/Complete] Error:", e);
+        res.status(500).json({ error: e.message || "Complete failed" });
+      }
+    },
+  );
 
   // ========================================
   // REST endpoints (non-tRPC) for direct HTTP access

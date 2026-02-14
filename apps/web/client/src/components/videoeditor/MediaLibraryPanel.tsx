@@ -11,6 +11,7 @@ import {
 } from '../../services/videoEditorService';
 import { showToast } from './Toast';
 import { WebAssetResolver } from '../../services/webAssetResolver';
+import { trpc } from '../../lib/trpc';
 import type { Asset } from '../../types/videoEditor';
 
 const isDesktopPlatform = typeof window !== 'undefined' && !!(window as any).__TAURI__;
@@ -47,7 +48,71 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [currentFileProgress, setCurrentFileProgress] = useState<{ fileName: string; percent: number } | null>(null);
+  const [currentUploadAbort, setCurrentUploadAbort] = useState<(() => void) | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Library search state
+  const [sourceMode, setSourceMode] = useState<'generated' | 'library'>('generated');
+  const [librarySearchQuery, setLibrarySearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [libraryTypeFilter, setLibraryTypeFilter] = useState<'all' | 'video' | 'audio' | 'image'>('all');
+  const [libraryOffset, setLibraryOffset] = useState(0);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(librarySearchQuery);
+      setLibraryOffset(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [librarySearchQuery]);
+
+  // Reset offset when type filter changes
+  useEffect(() => {
+    setLibraryOffset(0);
+  }, [libraryTypeFilter]);
+
+  // Library search query via tRPC
+  const libraryQuery = trpc.library.listDocuments.useQuery(
+    {
+      query: debouncedSearch || undefined,
+      limit: 50,
+      offset: libraryOffset,
+      filters: {
+        itemType: libraryTypeFilter !== 'all' ? libraryTypeFilter : undefined,
+        status: 'ready' as const,
+      },
+    },
+    { enabled: sourceMode === 'library' }
+  );
+
+  // Map library items to MediaLibraryAsset format
+  const MEDIA_TYPES = new Set(['video', 'audio', 'image']);
+  const libraryMediaAssets = useMemo<MediaLibraryAsset[]>(() => {
+    if (!libraryQuery.data?.results) return [];
+    return libraryQuery.data.results
+      .filter(item =>
+        MEDIA_TYPES.has(item.item_type) && item.source_url
+      )
+      .map(item => {
+        const ext = item.source_url
+          ? item.source_url.split('.').pop()?.split('?')[0] || ''
+          : (item.metadata?.extension as string) || '';
+        return {
+          id: `lib-${item.id}`,
+          type: item.item_type as 'video' | 'audio' | 'image',
+          title: item.title || 'Untitled',
+          thumbnailUrl: item.thumbnail_url
+            || (item.item_type === 'image' ? item.source_url || '' : ''),
+          duration: (item.metadata?.duration as number) || 0,
+          url: item.source_url || '',
+          model: item.source || 'library',
+          createdAt: new Date(item.created_at),
+          format: ext,
+        };
+      });
+  }, [libraryQuery.data?.results]);
 
   // Convert project assets to MediaLibraryAsset format for display
   const projectMediaAssets = useMemo<MediaLibraryAsset[]>(() => {
@@ -99,7 +164,23 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
     setUploadProgress({ done: 0, total: fileList.length });
 
     const uploadOne = async (file: File) => {
-      const { assetId, uri } = await webAssetResolver.uploadAsset(file);
+      // Show progress for this file
+      setCurrentFileProgress({ fileName: file.name, percent: 0 });
+
+      // Get upload promise and abort function
+      const { promise, abort } = webAssetResolver.uploadAsset(
+        file,
+        (percent) => {
+          // Update per-file progress
+          setCurrentFileProgress({ fileName: file.name, percent });
+        }
+      );
+
+      // Store abort function so user can cancel
+      setCurrentUploadAbort(() => abort);
+
+      const { assetId, uri } = await promise;
+
       const isVideo = file.type.startsWith('video/');
       const isImage = file.type.startsWith('image/');
 
@@ -130,25 +211,52 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
     // Upload files sequentially to avoid server overload
     let succeeded = 0;
     let failed = 0;
+    const errors: string[] = [];
+
     for (const file of fileList) {
       try {
         await uploadOne(file);
         succeeded++;
-      } catch {
+      } catch (e: any) {
         failed++;
+        const errorMsg = e.message || 'Unknown error';
+        errors.push(`${file.name}: ${errorMsg}`);
+        console.error(`Upload failed for ${file.name}:`, errorMsg);
         setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
       }
     }
 
+    // Clear current file progress and abort function
+    setCurrentFileProgress(null);
+    setCurrentUploadAbort(null);
+
+    // Show detailed results
     if (failed === 0) {
-      showToast(`Uploaded ${succeeded} file${succeeded !== 1 ? 's' : ''}`, 'success', 2000);
+      showToast(`✅ Uploaded ${succeeded} file${succeeded !== 1 ? 's' : ''}`, 'success', 3000);
+    } else if (succeeded === 0) {
+      // All failed - show first error in detail
+      showToast(errors[0] || `❌ Upload failed for all ${failed} file(s)`, 'error', 8000);
     } else {
-      showToast(`${succeeded} uploaded, ${failed} failed`, failed === fileList.length ? 'error' : 'warning', 4000);
+      // Some succeeded, some failed
+      showToast(
+        `⚠️ ${succeeded} succeeded, ${failed} failed\n${errors[0] || ''}`,
+        'warning',
+        6000
+      );
     }
 
     setUploading(false);
     setUploadProgress({ done: 0, total: 0 });
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCancelUpload = () => {
+    if (currentUploadAbort) {
+      currentUploadAbort();
+      setCurrentFileProgress(null);
+      setCurrentUploadAbort(null);
+      showToast('⛔ Upload cancelled by user', 'info', 2000);
+    }
   };
 
   const handleDragStart = (asset: MediaLibraryAsset) => (e: React.DragEvent) => {
@@ -532,6 +640,99 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           font-size: 48px;
           margin-bottom: 12px;
         }
+
+        .source-mode-toggle {
+          display: flex;
+          gap: 4px;
+          margin-bottom: 8px;
+        }
+
+        .source-toggle-btn {
+          flex: 1;
+          padding: 5px 10px;
+          background: #2a2a2a;
+          border: 1px solid #444;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 11px;
+          color: #e0e0e0;
+          transition: all 0.2s;
+        }
+
+        .source-toggle-btn:hover {
+          background: #333;
+        }
+
+        .source-toggle-btn.active {
+          background: #0078d4;
+          border-color: #0078d4;
+          color: white;
+        }
+
+        .library-search-bar {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 8px;
+        }
+
+        .library-search-input {
+          flex: 1;
+          padding: 6px 10px;
+          background: #2a2a2a;
+          border: 1px solid #444;
+          border-radius: 4px;
+          color: #e0e0e0;
+          font-size: 12px;
+          outline: none;
+        }
+
+        .library-search-input:focus {
+          border-color: #0078d4;
+        }
+
+        .library-search-input::placeholder {
+          color: #666;
+        }
+
+        .library-type-select {
+          padding: 6px 8px;
+          background: #2a2a2a;
+          border: 1px solid #444;
+          border-radius: 4px;
+          color: #e0e0e0;
+          font-size: 11px;
+          outline: none;
+          cursor: pointer;
+        }
+
+        .library-type-select:focus {
+          border-color: #0078d4;
+        }
+
+        .load-more-button {
+          display: block;
+          width: 100%;
+          padding: 8px;
+          margin-top: 12px;
+          background: #2a2a2a;
+          border: 1px solid #444;
+          border-radius: 4px;
+          color: #e0e0e0;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .load-more-button:hover {
+          background: #333;
+          border-color: #0078d4;
+        }
+
+        .library-result-count {
+          font-size: 10px;
+          color: #888;
+          margin-bottom: 8px;
+        }
       `}</style>
 
       {/* Hidden file input for web upload */}
@@ -549,7 +750,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
       <div className="media-library-header">
         <div className="media-library-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>📚 Media Library</span>
-          {!isDesktopPlatform && (
+          {!isDesktopPlatform && sourceMode === 'generated' && (
             <button
               className="add-button"
               onClick={() => fileInputRef.current?.click()}
@@ -560,196 +761,421 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
             </button>
           )}
         </div>
-        <div className="media-library-tabs">
+
+        {/* Source mode toggle */}
+        <div className="source-mode-toggle">
           <button
-            className={`tab-button ${selectedTab === 'videos' ? 'active' : ''}`}
-            onClick={() => setSelectedTab('videos')}
+            className={`source-toggle-btn ${sourceMode === 'generated' ? 'active' : ''}`}
+            onClick={() => setSourceMode('generated')}
           >
-            🎬 Videos ({videos.length})
+            Generated
           </button>
           <button
-            className={`tab-button ${selectedTab === 'audio' ? 'active' : ''}`}
-            onClick={() => setSelectedTab('audio')}
+            className={`source-toggle-btn ${sourceMode === 'library' ? 'active' : ''}`}
+            onClick={() => setSourceMode('library')}
           >
-            🎤 Audio ({audio.length})
-          </button>
-          <button
-            className={`tab-button ${selectedTab === 'images' ? 'active' : ''}`}
-            onClick={() => setSelectedTab('images')}
-          >
-            🖼️ Images ({images.length})
+            Library
           </button>
         </div>
-      </div>
 
-      <div className="media-library-content">
-        {/* Project Assets Section — always shown if project has assets for this tab */}
-        {currentProjectAssets.length > 0 && (
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#0078d4', marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
-              Project Media ({currentProjectAssets.length})
-            </div>
-            <div className="media-grid">
-              {currentProjectAssets.map(asset => (
-                <div
-                  key={`proj-${asset.id}`}
-                  className={`media-item ${downloadingIds.has(asset.id) ? 'downloading' : ''}`}
-                  draggable={!downloadingIds.has(asset.id)}
-                  onDragStart={handleDragStart(asset)}
-                  style={{ borderColor: '#0078d450' }}
-                >
-                  <div className="media-thumbnail">
-                    {asset.type === 'video' ? (
-                      asset.url ? (
-                        <video
-                          src={asset.url}
-                          preload="metadata"
-                          muted
-                          playsInline
-                          draggable={false}
-                          className="media-video-thumb"
-                          onLoadedData={(e) => { e.currentTarget.currentTime = 1; }}
-                          onMouseEnter={(e) => { e.currentTarget.currentTime = 0; e.currentTarget.play().catch(() => {}); }}
-                          onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }}
-                        />
-                      ) : (
-                        <div className="media-thumbnail-icon">🎬</div>
-                      )
-                    ) : asset.type === 'image' ? (
-                      asset.url ? (
-                        <img src={asset.url} alt={asset.title} draggable={false} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <div className="media-thumbnail-icon">🖼️</div>
-                      )
-                    ) : (
-                      <div className="media-thumbnail-icon">🎵</div>
-                    )}
-                    {asset.duration > 0 && (
-                      <div className="media-duration">
-                        {formatDuration(asset.duration)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="media-info">
-                    <div className="media-title" title={asset.title}>{asset.title}</div>
-                    <div className="media-meta">
-                      <span className="media-model">{asset.model}</span>
-                    </div>
-                  </div>
-                  <div className="media-actions">
-                    <button
-                      className="add-button"
-                      onClick={() => handleAddToTimeline(asset)}
-                      disabled={downloadingIds.has(asset.id)}
-                    >
-                      {downloadingIds.has(asset.id) ? '⏳ Loading...' : '➕ Add'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Generated mode: type tabs */}
+        {sourceMode === 'generated' && (
+          <div className="media-library-tabs">
+            <button
+              className={`tab-button ${selectedTab === 'videos' ? 'active' : ''}`}
+              onClick={() => setSelectedTab('videos')}
+            >
+              🎬 Videos ({videos.length})
+            </button>
+            <button
+              className={`tab-button ${selectedTab === 'audio' ? 'active' : ''}`}
+              onClick={() => setSelectedTab('audio')}
+            >
+              🎤 Audio ({audio.length})
+            </button>
+            <button
+              className={`tab-button ${selectedTab === 'images' ? 'active' : ''}`}
+              onClick={() => setSelectedTab('images')}
+            >
+              🖼️ Images ({images.length})
+            </button>
           </div>
         )}
 
-        {/* Generated Media Section */}
-        {loading ? (
-          <div className="loading-state">
-            <div>Loading media library...</div>
+        {/* Library mode: search bar + type filter */}
+        {sourceMode === 'library' && (
+          <div className="library-search-bar">
+            <input
+              type="text"
+              className="library-search-input"
+              placeholder="Search library..."
+              value={librarySearchQuery}
+              onChange={(e) => setLibrarySearchQuery(e.target.value)}
+            />
+            <select
+              className="library-type-select"
+              value={libraryTypeFilter}
+              onChange={(e) => setLibraryTypeFilter(e.target.value as any)}
+            >
+              <option value="all">All</option>
+              <option value="video">Video</option>
+              <option value="audio">Audio</option>
+              <option value="image">Image</option>
+            </select>
           </div>
-        ) : error ? (
-          <div className="error-state">
-            <div>❌ {error}</div>
-            <button className="retry-button" onClick={loadMediaLibrary}>
-              Retry
-            </button>
-          </div>
-        ) : currentAssets.length === 0 && currentProjectAssets.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              {selectedTab === 'videos' ? '🎬' : '🎤'}
-            </div>
-            <div>No {selectedTab} generated yet</div>
-            <div style={{ fontSize: '11px', marginTop: '8px' }}>
-              Generate {selectedTab} in the Media Studio first
-            </div>
-          </div>
-        ) : currentAssets.length === 0 ? null : (
-          <>
-          {currentProjectAssets.length > 0 && (
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#888', marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
-              Generated ({currentAssets.length})
-            </div>
-          )}
-          <div className="media-grid">
-            {currentAssets.map(asset => (
-              <div
-                key={asset.id}
-                className={`media-item ${downloadingIds.has(asset.id) ? 'downloading' : ''}`}
-                draggable={!downloadingIds.has(asset.id)}
-                onDragStart={handleDragStart(asset)}
-              >
-                <div className="media-thumbnail">
-                  {asset.type === 'video' ? (
-                    asset.url ? (
-                      <video
-                        src={asset.url}
-                        preload="metadata"
-                        muted
-                        playsInline
-                        draggable={false}
-                        className="media-video-thumb"
-                        onLoadedData={(e) => { e.currentTarget.currentTime = 1; }}
-                        onMouseEnter={(e) => { e.currentTarget.currentTime = 0; e.currentTarget.play().catch(() => {}); }}
-                        onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }}
-                      />
-                    ) : asset.thumbnailUrl ? (
-                      <img src={asset.thumbnailUrl} alt={asset.title} draggable={false} />
-                    ) : (
-                      <div className="media-thumbnail-icon">🎬</div>
-                    )
-                  ) : asset.type === 'image' ? (
-                    asset.url ? (
-                      <img src={asset.url} alt={asset.title} draggable={false} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div className="media-thumbnail-icon">🖼️</div>
-                    )
-                  ) : (
-                    <div className="media-thumbnail-icon">🎵</div>
-                  )}
-                  {asset.duration > 0 && (
-                    <div className="media-duration">
-                      {formatDuration(asset.duration)}
-                    </div>
-                  )}
-                </div>
+        )}
 
-                <div className="media-info">
-                  <div className="media-title" title={asset.title}>
-                    {asset.title}
-                  </div>
-                  <div className="media-meta">
-                    <span className="media-model">{asset.model}</span>
-                    <span>{formatDate(asset.createdAt)}</span>
-                  </div>
-                  {asset.fileSize && (
-                    <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
-                      {formatFileSize(asset.fileSize)}
-                    </div>
-                  )}
-                </div>
-
-                <div className="media-actions">
+        {/* Upload Progress Bar - shown for large files */}
+        {currentFileProgress && (
+          <div style={{
+            padding: '8px 12px',
+            background: '#2a2a2a',
+            borderRadius: '4px',
+            marginTop: '8px',
+            border: '1px solid #444'
+          }}>
+            <div style={{ fontSize: '11px', color: '#e0e0e0', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span title={currentFileProgress.fileName} style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '60%'
+              }}>
+                📤 {currentFileProgress.fileName}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontWeight: 600, color: currentFileProgress.percent === 100 ? '#4caf50' : '#0078d4' }}>
+                  {currentFileProgress.percent}%
+                </span>
+                {currentFileProgress.percent < 100 && currentUploadAbort && (
                   <button
-                    className="add-button"
-                    onClick={() => handleAddToTimeline(asset)}
-                    disabled={downloadingIds.has(asset.id)}
+                    onClick={handleCancelUpload}
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: '10px',
+                      background: '#d32f2f',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#b71c1c'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#d32f2f'}
                   >
-                    {downloadingIds.has(asset.id) ? '⏳ Loading...' : '➕ Add'}
+                    ✕ Cancel
                   </button>
+                )}
+              </div>
+            </div>
+            <div style={{
+              width: '100%',
+              height: '6px',
+              background: '#1a1a1a',
+              borderRadius: '3px',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: `${currentFileProgress.percent}%`,
+                height: '100%',
+                background: currentFileProgress.percent === 100
+                  ? 'linear-gradient(90deg, #4caf50, #66bb6a)'
+                  : 'linear-gradient(90deg, #0078d4, #00b294)',
+                transition: 'width 0.3s ease',
+                borderRadius: '3px'
+              }} />
+            </div>
+            {currentFileProgress.percent < 100 && (
+              <div style={{ fontSize: '10px', color: '#888', marginTop: '4px', textAlign: 'center' }}>
+                {currentFileProgress.percent < 30 && '⏳ Starting upload...'}
+                {currentFileProgress.percent >= 30 && currentFileProgress.percent < 70 && '📡 Uploading... Please wait'}
+                {currentFileProgress.percent >= 70 && currentFileProgress.percent < 100 && '⚡ Almost done...'}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="media-library-content">
+        {sourceMode === 'generated' ? (
+          <>
+            {/* Project Assets Section — always shown if project has assets for this tab */}
+            {currentProjectAssets.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#0078d4', marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
+                  Project Media ({currentProjectAssets.length})
+                </div>
+                <div className="media-grid">
+                  {currentProjectAssets.map(asset => (
+                    <div
+                      key={`proj-${asset.id}`}
+                      className={`media-item ${downloadingIds.has(asset.id) ? 'downloading' : ''}`}
+                      draggable={!downloadingIds.has(asset.id)}
+                      onDragStart={handleDragStart(asset)}
+                      style={{ borderColor: '#0078d450' }}
+                    >
+                      <div className="media-thumbnail">
+                        {asset.type === 'video' ? (
+                          asset.url ? (
+                            <video
+                              src={asset.url}
+                              preload="metadata"
+                              muted
+                              playsInline
+                              draggable={false}
+                              className="media-video-thumb"
+                              onLoadedData={(e) => { e.currentTarget.currentTime = 1; }}
+                              onMouseEnter={(e) => { e.currentTarget.currentTime = 0; e.currentTarget.play().catch(() => {}); }}
+                              onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }}
+                            />
+                          ) : (
+                            <div className="media-thumbnail-icon">🎬</div>
+                          )
+                        ) : asset.type === 'image' ? (
+                          asset.url ? (
+                            <img src={asset.url} alt={asset.title} draggable={false} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div className="media-thumbnail-icon">🖼️</div>
+                          )
+                        ) : (
+                          <div className="media-thumbnail-icon">🎵</div>
+                        )}
+                        {asset.duration > 0 && (
+                          <div className="media-duration">
+                            {formatDuration(asset.duration)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="media-info">
+                        <div className="media-title" title={asset.title}>{asset.title}</div>
+                        <div className="media-meta">
+                          <span className="media-model">{asset.model}</span>
+                        </div>
+                      </div>
+                      <div className="media-actions">
+                        <button
+                          className="add-button"
+                          onClick={() => handleAddToTimeline(asset)}
+                          disabled={downloadingIds.has(asset.id)}
+                        >
+                          {downloadingIds.has(asset.id) ? '⏳ Loading...' : '➕ Add'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* Generated Media Section */}
+            {loading ? (
+              <div className="loading-state">
+                <div>Loading media library...</div>
+              </div>
+            ) : error ? (
+              <div className="error-state">
+                <div>❌ {error}</div>
+                <button className="retry-button" onClick={loadMediaLibrary}>
+                  Retry
+                </button>
+              </div>
+            ) : currentAssets.length === 0 && currentProjectAssets.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  {selectedTab === 'videos' ? '🎬' : '🎤'}
+                </div>
+                <div>No {selectedTab} generated yet</div>
+                <div style={{ fontSize: '11px', marginTop: '8px' }}>
+                  Generate {selectedTab} in the Media Studio first
+                </div>
+              </div>
+            ) : currentAssets.length === 0 ? null : (
+              <>
+              {currentProjectAssets.length > 0 && (
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#888', marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
+                  Generated ({currentAssets.length})
+                </div>
+              )}
+              <div className="media-grid">
+                {currentAssets.map(asset => (
+                  <div
+                    key={asset.id}
+                    className={`media-item ${downloadingIds.has(asset.id) ? 'downloading' : ''}`}
+                    draggable={!downloadingIds.has(asset.id)}
+                    onDragStart={handleDragStart(asset)}
+                  >
+                    <div className="media-thumbnail">
+                      {asset.type === 'video' ? (
+                        asset.url ? (
+                          <video
+                            src={asset.url}
+                            preload="metadata"
+                            muted
+                            playsInline
+                            draggable={false}
+                            className="media-video-thumb"
+                            onLoadedData={(e) => { e.currentTarget.currentTime = 1; }}
+                            onMouseEnter={(e) => { e.currentTarget.currentTime = 0; e.currentTarget.play().catch(() => {}); }}
+                            onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }}
+                          />
+                        ) : asset.thumbnailUrl ? (
+                          <img src={asset.thumbnailUrl} alt={asset.title} draggable={false} />
+                        ) : (
+                          <div className="media-thumbnail-icon">🎬</div>
+                        )
+                      ) : asset.type === 'image' ? (
+                        asset.url ? (
+                          <img src={asset.url} alt={asset.title} draggable={false} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div className="media-thumbnail-icon">🖼️</div>
+                        )
+                      ) : (
+                        <div className="media-thumbnail-icon">🎵</div>
+                      )}
+                      {asset.duration > 0 && (
+                        <div className="media-duration">
+                          {formatDuration(asset.duration)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="media-info">
+                      <div className="media-title" title={asset.title}>
+                        {asset.title}
+                      </div>
+                      <div className="media-meta">
+                        <span className="media-model">{asset.model}</span>
+                        <span>{formatDate(asset.createdAt)}</span>
+                      </div>
+                      {asset.fileSize && (
+                        <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+                          {formatFileSize(asset.fileSize)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="media-actions">
+                      <button
+                        className="add-button"
+                        onClick={() => handleAddToTimeline(asset)}
+                        disabled={downloadingIds.has(asset.id)}
+                      >
+                        {downloadingIds.has(asset.id) ? '⏳ Loading...' : '➕ Add'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              </>
+            )}
+          </>
+        ) : (
+          /* Library Search Results */
+          <>
+            {libraryQuery.isLoading ? (
+              <div className="loading-state">
+                <div>Searching library...</div>
+              </div>
+            ) : libraryQuery.error ? (
+              <div className="error-state">
+                <div>❌ {libraryQuery.error.message}</div>
+                <button className="retry-button" onClick={() => libraryQuery.refetch()}>
+                  Retry
+                </button>
+              </div>
+            ) : libraryMediaAssets.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">🔍</div>
+                <div>No media found in library</div>
+                <div style={{ fontSize: '11px', marginTop: '8px' }}>
+                  {debouncedSearch
+                    ? 'Try a different search term or filter'
+                    : 'Upload media files via Document Management'}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="library-result-count">
+                  {libraryQuery.data?.total ?? 0} results
+                  {debouncedSearch && ` for "${debouncedSearch}"`}
+                </div>
+                <div className="media-grid">
+                  {libraryMediaAssets.map(asset => (
+                    <div
+                      key={asset.id}
+                      className={`media-item ${downloadingIds.has(asset.id) ? 'downloading' : ''}`}
+                      draggable={!downloadingIds.has(asset.id)}
+                      onDragStart={handleDragStart(asset)}
+                    >
+                      <div className="media-thumbnail">
+                        {asset.type === 'video' ? (
+                          asset.url ? (
+                            <video
+                              src={asset.url}
+                              preload="metadata"
+                              muted
+                              playsInline
+                              draggable={false}
+                              className="media-video-thumb"
+                              onLoadedData={(e) => { e.currentTarget.currentTime = 1; }}
+                              onMouseEnter={(e) => { e.currentTarget.currentTime = 0; e.currentTarget.play().catch(() => {}); }}
+                              onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }}
+                            />
+                          ) : asset.thumbnailUrl ? (
+                            <img src={asset.thumbnailUrl} alt={asset.title} draggable={false} />
+                          ) : (
+                            <div className="media-thumbnail-icon">🎬</div>
+                          )
+                        ) : asset.type === 'image' ? (
+                          asset.url ? (
+                            <img src={asset.url} alt={asset.title} draggable={false} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div className="media-thumbnail-icon">🖼️</div>
+                          )
+                        ) : (
+                          <div className="media-thumbnail-icon">🎵</div>
+                        )}
+                        {asset.duration > 0 && (
+                          <div className="media-duration">
+                            {formatDuration(asset.duration)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="media-info">
+                        <div className="media-title" title={asset.title}>
+                          {asset.title}
+                        </div>
+                        <div className="media-meta">
+                          <span className="media-model">{asset.model}</span>
+                          <span>{formatDate(asset.createdAt)}</span>
+                        </div>
+                      </div>
+
+                      <div className="media-actions">
+                        <button
+                          className="add-button"
+                          onClick={() => handleAddToTimeline(asset)}
+                          disabled={downloadingIds.has(asset.id)}
+                        >
+                          {downloadingIds.has(asset.id) ? '⏳ Loading...' : '➕ Add'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {libraryQuery.data?.has_more && (
+                  <button
+                    className="load-more-button"
+                    onClick={() => setLibraryOffset(prev => prev + 50)}
+                  >
+                    Load more...
+                  </button>
+                )}
+              </>
+            )}
           </>
         )}
       </div>

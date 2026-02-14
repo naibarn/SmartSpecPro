@@ -11,6 +11,7 @@ from app.services.media_task_service import MediaTaskService
 from app.services.media_callback_service import retry_due_callback_events
 from app.services.library_indexing_service import (
     process_library_index_job,
+    reindex_all_library_items,
     retry_due_library_index_jobs,
 )
 from app.services.library_backfill_service import run_library_backfill_batch
@@ -778,6 +779,32 @@ def run_library_backfill_batch_task(
         )
     except Exception as e:
         logger.error("library_backfill_batch_task_exception", error=str(e))
+        return {"status": "failed", "error": str(e)}
+
+
+async def _reindex_all_library_async(tenant_id: int | None):
+    """Reindex all library items for the specified tenant (or all tenants)."""
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await reindex_all_library_items(
+                db,
+                tenant_id=str(tenant_id) if tenant_id else None,
+            )
+            logger.info("reindex_all_library_task_completed", **result)
+            return {"status": "success", **result}
+        except Exception as e:
+            logger.error("reindex_all_library_task_failed", error=str(e))
+            raise
+
+
+@celery_app.task
+def reindex_all_library_task(tenant_id: int | None = None):
+    """Admin-triggered full reindex of all library items."""
+    logger.info("reindex_all_library_task_started", tenant_id=tenant_id)
+    try:
+        return _run_async(_reindex_all_library_async(tenant_id))
+    except Exception as e:
+        logger.error("reindex_all_library_task_exception", error=str(e))
         return {"status": "failed", "error": str(e)}
 
 

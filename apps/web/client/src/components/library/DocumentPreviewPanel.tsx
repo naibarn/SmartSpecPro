@@ -25,13 +25,10 @@ interface DocumentPreviewPanelProps {
   markdownFullHeight?: boolean;
   markdownEditorOnly?: boolean;
   isRenamingTitle?: boolean;
-  markdownImageItems?: Array<{
-    id: number;
-    title: string;
-    source_url: string | null;
-  }>;
+  documentId?: number;
   onMarkdownChange?: (value: string) => void;
   onMarkdownSave?: () => void;
+  onVersionRestore?: () => void;
   onRenameTitle?: (title: string) => Promise<void> | void;
 }
 
@@ -46,9 +43,10 @@ export default function DocumentPreviewPanel({
   markdownFullHeight,
   markdownEditorOnly,
   isRenamingTitle,
-  markdownImageItems,
+  documentId,
   onMarkdownChange,
   onMarkdownSave,
+  onVersionRestore,
   onRenameTitle,
 }: DocumentPreviewPanelProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -243,12 +241,13 @@ export default function DocumentPreviewPanel({
           value={markdownValue || ""}
           onChange={(value) => onMarkdownChange?.(value)}
           onSave={() => onMarkdownSave?.()}
+          onVersionRestore={onVersionRestore}
           updatedAt={markdownUpdatedAt}
           isSaving={isMarkdownSaving}
           errorMessage={markdownError}
           fullHeight={markdownFullHeight}
           editorOnly={markdownEditorOnly}
-          imageLibraryItems={markdownImageItems}
+          documentId={documentId}
         />
       ) : null}
 
