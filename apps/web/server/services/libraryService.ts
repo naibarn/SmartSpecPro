@@ -40,6 +40,17 @@ export interface LibrarySourceLinkInput {
   providerTaskId?: string | null;
 }
 
+export interface DriveFileInput {
+  driveFileId: string;
+  name: string;
+  mimeType: string;
+  modifiedTime: string;
+  size?: number;
+  iconLink?: string;
+  webViewLink?: string;
+  owners?: Array<{ emailAddress: string; displayName?: string }>;
+}
+
 export interface CreateLibraryItemInput {
   itemType: string;
   source: string;
@@ -928,6 +939,108 @@ export async function createLibraryItem(
       })
       .onConflictDoNothing();
   }
+
+  return {
+    item: toLibraryItemDto(created),
+    idempotent: false,
+  };
+}
+
+function mapDriveMimeToItemType(mimeType: string): string {
+  const m = mimeType.toLowerCase();
+  if (m.includes("document") || m.includes("word") || m.includes("msword")) return "document";
+  if (m.includes("spreadsheet") || m.includes("excel") || m.includes("ms-excel")) return "spreadsheet";
+  if (m.includes("presentation") || m.includes("powerpoint") || m.includes("ms-powerpoint")) return "presentation";
+  if (m === "application/pdf") return "pdf";
+  if (m.startsWith("text/")) return "text";
+  return "file";
+}
+
+export async function createVirtualDriveReference(
+  driveFile: DriveFileInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<CreateLibraryItemResult> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  // Dedup check via library_links (tenant-scoped)
+  const existing = await db
+    .select({ item: libraryItems })
+    .from(libraryLinks)
+    .innerJoin(libraryItems, eq(libraryLinks.libraryItemId, libraryItems.id))
+    .where(
+      and(
+        eq(libraryLinks.linkType, "google_drive_file"),
+        eq(libraryLinks.linkId, driveFile.driveFileId),
+        eq(libraryLinks.tenantId, actorTenantId),
+        isNull(libraryItems.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (existing[0]?.item) {
+    return {
+      item: toLibraryItemDto(existing[0].item),
+      idempotent: true,
+    };
+  }
+
+  const itemType = mapDriveMimeToItemType(driveFile.mimeType);
+  const now = new Date();
+
+  const inserted = await db
+    .insert(libraryItems)
+    .values({
+      tenantId: actorTenantId,
+      ownerUserId: actor.userId,
+      itemType,
+      source: "google_drive",
+      title: driveFile.name,
+      status: "indexing",
+      visibility: "private",
+      sourceUrl: null,
+      thumbnailUrl: driveFile.iconLink ?? null,
+      metadata: normalizeLibraryMetadata({
+        driveFileId: driveFile.driveFileId,
+        driveMimeType: driveFile.mimeType,
+        driveModifiedTime: driveFile.modifiedTime,
+        driveSize: driveFile.size ?? null,
+        driveWebViewLink: driveFile.webViewLink ?? null,
+        driveOwners: driveFile.owners ?? null,
+        syncStatus: "pending",
+      }),
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  const created = inserted[0];
+  if (!created) {
+    throw new Error("Failed to create virtual Drive reference");
+  }
+
+  // Insert library_link for dedup
+  await db
+    .insert(libraryLinks)
+    .values({
+      libraryItemId: created.id,
+      linkType: "google_drive_file",
+      linkId: driveFile.driveFileId,
+      tenantId: actorTenantId,
+      createdAt: now,
+    })
+    .onConflictDoNothing();
+
+  // Enqueue index job
+  await enqueueLibraryIndexJob(
+    {
+      libraryItemId: created.id,
+      tenantId: actorTenantId,
+      jobType: "google_drive_sync",
+    },
+    db,
+  );
 
   return {
     item: toLibraryItemDto(created),

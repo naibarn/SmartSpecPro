@@ -72,11 +72,12 @@ class LibraryLink(Base):
     link_type = Column(String(64), nullable=False)
     link_id = Column(String(128), nullable=False)
     provider_task_id = Column(String(128), nullable=True, index=True)
+    tenant_id = Column(String(36), nullable=True, index=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (
-        UniqueConstraint("link_type", "link_id", name="uq_library_links_link_type_link_id"),
+        UniqueConstraint("link_type", "link_id", "tenant_id", name="library_links_source_tenant_unique"),
         Index("ix_library_links_item_type", "library_item_id", "link_type"),
     )
 
