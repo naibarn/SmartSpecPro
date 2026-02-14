@@ -10,11 +10,27 @@ import { getRedisClient, isRedisAvailable } from "./redis";
 
 export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription";
 
+export class BudgetExceededError extends Error {
+  public readonly monthlyLimit: number;
+  public readonly creditsUsed: number;
+  public readonly budgetMonthKey: string;
+
+  constructor(monthlyLimit: number, creditsUsed: number, budgetMonthKey: string) {
+    super(`Monthly credit budget exceeded: ${creditsUsed}/${monthlyLimit} used in ${budgetMonthKey}`);
+    this.name = "BudgetExceededError";
+    this.monthlyLimit = monthlyLimit;
+    this.creditsUsed = creditsUsed;
+    this.budgetMonthKey = budgetMonthKey;
+  }
+}
+
 export interface DeductCreditsParams {
   userId: number;
   amount: number;
   description: string;
+  tenantId?: string;
   idempotencyKey?: string;
+  skipBudgetCheck?: boolean;
   metadata?: {
     model?: string;
     provider?: string;
@@ -98,10 +114,29 @@ export async function hasEnoughCredits(userId: number, amount: number): Promise<
  * This prevents TOCTOU race conditions and negative balances.
  */
 export async function deductCredits(params: DeductCreditsParams) {
-  const { userId, amount, description, metadata, idempotencyKey } = params;
+  const { userId, amount, description, metadata, idempotencyKey, tenantId, skipBudgetCheck } = params;
 
   if (amount <= 0) {
     throw new Error("Deduction amount must be positive");
+  }
+
+  // Budget pre-check (only when tenantId is provided and not skipped)
+  let budgetAlert = false;
+  let budgetUsagePctValue: number | undefined;
+  if (tenantId && !skipBudgetCheck) {
+    const { checkBudget, getCurrentMonthKey } = await import("./budgetService");
+    const budgetResult = await checkBudget(tenantId, userId, amount);
+    if (!budgetResult.allowed) {
+      throw new BudgetExceededError(
+        budgetResult.monthlyLimit,
+        budgetResult.creditsUsed,
+        getCurrentMonthKey(),
+      );
+    }
+    if (budgetResult.alert) {
+      budgetAlert = true;
+    }
+    budgetUsagePctValue = budgetResult.usagePct;
   }
 
   // Redis fast-path check for idempotency
@@ -174,12 +209,35 @@ export async function deductCredits(params: DeductCreditsParams) {
     throw err;
   }
 
-  const result = {
+  const result: {
+    success: boolean;
+    creditsUsed: number;
+    newBalance: number;
+    transactionId: number;
+    budgetAlert?: boolean;
+    budgetUsagePct?: number;
+  } = {
     success: true,
     creditsUsed: amount,
     newBalance,
     transactionId,
   };
+
+  // Budget post-update
+  if (tenantId) {
+    try {
+      const { incrementBudgetUsage } = await import("./budgetService");
+      const budgetResult = await incrementBudgetUsage(tenantId, userId, amount);
+      if (budgetAlert || budgetResult.alertTriggered) {
+        result.budgetAlert = true;
+      }
+      if (budgetUsagePctValue !== undefined) {
+        result.budgetUsagePct = budgetUsagePctValue;
+      }
+    } catch (budgetErr) {
+      console.error("[Budget] Failed to update budget usage", budgetErr);
+    }
+  }
 
   // Cache result in Redis for fast dedup (24h TTL)
   if (idempotencyKey && isRedisAvailable()) {
@@ -615,6 +673,7 @@ export async function chargeForIndexing(params: {
   userId: number;
   chunkCount: number;
   service: IndexingService;
+  tenantId?: string;
   idempotencyKey?: string;
   metadata?: Record<string, any>;
 }): Promise<{ creditsUsed: number; transactionId: number }> {
@@ -628,6 +687,7 @@ export async function chargeForIndexing(params: {
   const result = await deductCredits({
     userId: params.userId,
     amount,
+    tenantId: params.tenantId,
     description: `Indexing (${params.service}): ${params.chunkCount} chunks`,
     idempotencyKey: params.idempotencyKey,
     metadata: { ...params.metadata, service: params.service, chunkCount: params.chunkCount },
@@ -645,6 +705,7 @@ export type RagService = "rag.semantic_search" | "rag.chat_context";
 export async function chargeForRagQuery(params: {
   userId: number;
   service: RagService;
+  tenantId?: string;
   idempotencyKey?: string;
   metadata?: Record<string, any>;
 }): Promise<{ creditsUsed: number; transactionId: number }> {
@@ -658,6 +719,7 @@ export async function chargeForRagQuery(params: {
   const result = await deductCredits({
     userId: params.userId,
     amount,
+    tenantId: params.tenantId,
     description: `RAG query (${params.service})`,
     idempotencyKey: params.idempotencyKey,
     metadata: { ...params.metadata, service: params.service },
