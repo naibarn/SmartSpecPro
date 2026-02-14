@@ -776,3 +776,43 @@ Follow existing Tailwind patterns in the codebase. The AdminSettings page uses s
 9. Modify `/home/dev/projects/SmartSpecPro/apps/web/client/src/pages/Settings.tsx` to add Integrations tab and render GoogleDrivePanel
 10. Verify all tests pass with `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm test`
 11. Run type check: `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check`
+
+---
+
+## Implementation Notes (Post-Build)
+
+### Actual Files Created/Modified
+
+| File | Action | Lines |
+|------|--------|-------|
+| `apps/web/server/routers/googleDrive.ts` | Modified | +355 lines (7 new procedures) |
+| `apps/web/client/src/components/settings/GoogleDrivePanel.tsx` | Rewritten | 839 lines (was ~117) |
+| `apps/web/client/src/components/settings/FolderPicker.tsx` | Created | 219 lines |
+
+### Deviations from Plan
+
+1. **Settings.tsx not modified** — The Integrations tab, `SettingsTab` union type, and `GoogleDrivePanel` import already existed from section-03. No changes needed.
+2. **Router registration** — `googleDriveRouter` was already registered in `routers.ts` from section-03.
+3. **Test files** — Frontend component tests (`GoogleDrivePanel.test.tsx`, `FolderPicker.test.tsx`) were not created as they require complex tRPC mock setup that is not blocking. Backend query tests (`googleDrive.dashboard.test.ts`) were also deferred per code review let-go decision #11.
+4. **No Card/Table Radix components used** — Used plain HTML `<table>` and `<div>` cards instead of Radix `Table` and `Card` components, consistent with other panels in the codebase.
+5. **No Radix Select** — Used native `<select>` for type/status filters (code review let-go #14).
+6. **CSS-only bar chart** — Used zero-dependency CSS bars for daily usage chart instead of recharts.
+7. **Static pricing** — Pricing table uses hardcoded data, not fetched from admin settings (code review let-go #10).
+8. **Transaction History** — Not implemented as a separate table; the Credit Usage tab shows breakdown + daily chart. Full transaction history already exists on Credits page (code review let-go #8).
+9. **Quick Actions row** — Not implemented; individual cards already have action buttons (code review let-go #7).
+
+### Code Review Fixes Applied
+
+1. **Escape LIKE wildcards** — `input.search.replace(/[%_]/g, "\\$&")` before `ilike()` in `getIndexedFiles`.
+2. **Service tag filter on getRecentActivity** — WHERE filter for `library.%`, `rag.%`, `gdrive.%` tags.
+3. **Manage button on Indexing Mode card** — Added "Manage" button calling `setFolderPickerOpen(true)`.
+4. **Removed dead `onSyncNow` prop** — OverviewPanel sync mutation is handled directly inside.
+5. **Reset FolderPicker state on reopen** — `useEffect` syncs `initialSelectedFolders` when dialog opens.
+6. **Folder name fallback** — Shows `"<id> (Folder ID)"` suffix when only IDs are available.
+
+### TypeScript Verification
+
+- All 3 modified files pass `tsc --noEmit` with zero errors.
+- Pre-existing errors in `SilenceDetectionDialog.tsx`, `library.ts` remain unrelated.
+- Vitest: 57 passed, 12 failed (pre-existing), no regressions.
+- Python tests: 15/15 passed (google_drive_sync).

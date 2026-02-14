@@ -7,12 +7,18 @@
 
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql, count, sum, desc, gte, lt, ilike } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
 import { db } from "../db";
-import { googleDriveEditSessions, googleDriveSyncState, libraryItems } from "../../drizzle/schema";
+import {
+  googleDriveEditSessions,
+  googleDriveSyncState,
+  libraryItems,
+  libraryChunks,
+  creditTransactions,
+} from "../../drizzle/schema";
 import { storageGet, storagePut } from "../storage";
 
 const PYTHON_BACKEND_URL =
@@ -557,4 +563,351 @@ export const googleDriveRouter = router({
       estimated_size_mb: number;
     }>;
   }),
+
+  /**
+   * Dashboard overview: aggregated stats for at-a-glance display.
+   */
+  getDashboardOverview: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) return null;
+
+    // Sync state
+    const [syncState] = await db
+      .select()
+      .from(googleDriveSyncState)
+      .where(
+        and(
+          eq(googleDriveSyncState.tenantId, ctx.tenantId),
+          eq(googleDriveSyncState.userId, ctx.user.id),
+        ),
+      )
+      .limit(1);
+
+    // Count indexed files and chunks
+    const [fileStats] = await db
+      .select({
+        fileCount: count(libraryItems.id),
+      })
+      .from(libraryItems)
+      .where(
+        and(
+          eq(libraryItems.tenantId, ctx.tenantId),
+          eq(libraryItems.ownerUserId, ctx.user.id),
+          eq(libraryItems.source, "google_drive"),
+          sql`${libraryItems.deletedAt} IS NULL`,
+        ),
+      );
+
+    const [chunkStats] = await db
+      .select({
+        chunkCount: count(libraryChunks.id),
+      })
+      .from(libraryChunks)
+      .innerJoin(libraryItems, eq(libraryChunks.libraryItemId, libraryItems.id))
+      .where(
+        and(
+          eq(libraryItems.tenantId, ctx.tenantId),
+          eq(libraryItems.ownerUserId, ctx.user.id),
+          eq(libraryItems.source, "google_drive"),
+          sql`${libraryItems.deletedAt} IS NULL`,
+        ),
+      );
+
+    return {
+      indexedFileCount: fileStats?.fileCount ?? 0,
+      totalChunks: chunkStats?.chunkCount ?? 0,
+      lastSyncAt: syncState?.lastSyncAt?.toISOString() ?? null,
+      syncStatus: syncState?.lastError
+        ? "error"
+        : syncState?.filesTotal && syncState.filesProcessed !== null && syncState.filesProcessed < syncState.filesTotal
+          ? "syncing"
+          : "idle",
+      indexingMode: syncState?.indexingMode ?? "none",
+      autoSyncEnabled: syncState?.autoSyncEnabled ?? false,
+      channelExpiry: syncState?.channelExpiry?.toISOString() ?? null,
+      folderCount: (syncState?.folderSelections as string[] | null)?.length ?? 0,
+      filesTotal: syncState?.filesTotal ?? 0,
+      filesProcessed: syncState?.filesProcessed ?? 0,
+      lastError: syncState?.lastError ?? null,
+    };
+  }),
+
+  /**
+   * Paginated list of indexed Google Drive files with chunk counts.
+   */
+  getIndexedFiles: protectedProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        fileType: z.string().optional(),
+        status: z.string().optional(),
+        page: z.number().min(1).default(1),
+        pageSize: z.number().min(1).max(100).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) return { files: [], total: 0, page: input.page, pageSize: input.pageSize };
+
+      const conditions = [
+        eq(libraryItems.tenantId, ctx.tenantId),
+        eq(libraryItems.ownerUserId, ctx.user.id),
+        eq(libraryItems.source, "google_drive"),
+        sql`${libraryItems.deletedAt} IS NULL`,
+      ];
+
+      if (input.search) {
+        const escapedSearch = input.search.replace(/[%_]/g, "\\$&");
+        conditions.push(ilike(libraryItems.title, `%${escapedSearch}%`));
+      }
+      if (input.fileType && input.fileType !== "all") {
+        conditions.push(sql`${libraryItems.metadata}->>'driveMimeType' ILIKE ${"%" + input.fileType + "%"}`);
+      }
+      if (input.status && input.status !== "all") {
+        conditions.push(eq(libraryItems.status, input.status as any));
+      }
+
+      const offset = (input.page - 1) * input.pageSize;
+
+      // Count total
+      const [totalRow] = await db
+        .select({ total: count(libraryItems.id) })
+        .from(libraryItems)
+        .where(and(...conditions));
+
+      // Get files with chunk counts
+      const files = await db
+        .select({
+          id: libraryItems.id,
+          title: libraryItems.title,
+          itemType: libraryItems.itemType,
+          status: libraryItems.status,
+          metadata: libraryItems.metadata,
+          createdAt: libraryItems.createdAt,
+          updatedAt: libraryItems.updatedAt,
+          chunkCount: sql<number>`COALESCE((SELECT COUNT(*) FROM library_chunks WHERE library_item_id = ${libraryItems.id}), 0)`,
+        })
+        .from(libraryItems)
+        .where(and(...conditions))
+        .orderBy(desc(libraryItems.updatedAt))
+        .limit(input.pageSize)
+        .offset(offset);
+
+      return {
+        files: files.map((f: typeof files[number]) => {
+          const meta = (f.metadata || {}) as Record<string, any>;
+          return {
+            id: f.id,
+            name: f.title,
+            mimeType: meta.driveMimeType || f.itemType,
+            chunkCount: Number(f.chunkCount),
+            syncStatus: f.status,
+            driveFileId: meta.driveFileId || null,
+            lastSyncedAt: f.updatedAt?.toISOString() ?? null,
+          };
+        }),
+        total: totalRow?.total ?? 0,
+        page: input.page,
+        pageSize: input.pageSize,
+      };
+    }),
+
+  /**
+   * Monthly credit usage breakdown for Google Drive operations.
+   */
+  getCreditUsageBreakdown: protectedProcedure
+    .input(z.object({ monthKey: z.string().regex(/^\d{4}-\d{2}$/) }))
+    .query(async ({ ctx, input }) => {
+      const [year, month] = input.monthKey.split("-").map(Number);
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 1);
+
+      const rows = await db
+        .select({
+          serviceTag: sql<string>`COALESCE(${creditTransactions.metadata}->>'service', 'unknown')`,
+          txCount: count(creditTransactions.id),
+          totalCredits: sum(sql`ABS(${creditTransactions.amount})`),
+        })
+        .from(creditTransactions)
+        .where(
+          and(
+            eq(creditTransactions.userId, ctx.user.id),
+            gte(creditTransactions.createdAt, startDate),
+            lt(creditTransactions.createdAt, endDate),
+          ),
+        )
+        .groupBy(sql`COALESCE(${creditTransactions.metadata}->>'service', 'unknown')`);
+
+      const totalCredits = rows.reduce((s: number, r: typeof rows[number]) => s + Number(r.totalCredits ?? 0), 0);
+      const totalOperations = rows.reduce((s: number, r: typeof rows[number]) => s + Number(r.txCount), 0);
+
+      // Daily usage for chart
+      const dailyRows = await db
+        .select({
+          date: sql<string>`TO_CHAR(${creditTransactions.createdAt}, 'YYYY-MM-DD')`,
+          credits: sum(sql`ABS(${creditTransactions.amount})`),
+        })
+        .from(creditTransactions)
+        .where(
+          and(
+            eq(creditTransactions.userId, ctx.user.id),
+            gte(creditTransactions.createdAt, startDate),
+            lt(creditTransactions.createdAt, endDate),
+          ),
+        )
+        .groupBy(sql`TO_CHAR(${creditTransactions.createdAt}, 'YYYY-MM-DD')`)
+        .orderBy(sql`TO_CHAR(${creditTransactions.createdAt}, 'YYYY-MM-DD')`);
+
+      const tagLabels: Record<string, string> = {
+        "gdrive.index": "Initial indexing",
+        "library.upload_index": "Upload indexing",
+        "gdrive.reindex": "Re-indexing",
+        "library.save_reindex": "Save re-index",
+        "gdrive.mcp_read": "MCP file reads",
+        "gdrive.mcp_sheet": "MCP sheet reads",
+        "rag.semantic_search": "RAG semantic search",
+        "rag.chat_context": "RAG chat context",
+      };
+
+      return {
+        breakdown: rows.map((r: typeof rows[number]) => ({
+          operation: tagLabels[r.serviceTag] || r.serviceTag,
+          serviceTag: r.serviceTag,
+          count: Number(r.txCount),
+          totalCredits: Number(r.totalCredits ?? 0),
+          percentOfTotal: totalCredits > 0 ? Math.round((Number(r.totalCredits ?? 0) / totalCredits) * 100) : 0,
+        })),
+        dailyUsage: dailyRows.map((d: typeof dailyRows[number]) => ({
+          date: d.date,
+          credits: Number(d.credits ?? 0),
+        })),
+        totalCredits,
+        totalOperations,
+      };
+    }),
+
+  /**
+   * Recent credit activity for the dashboard.
+   */
+  getRecentActivity: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).default(10) }))
+    .query(async ({ ctx, input }) => {
+      const rows = await db
+        .select()
+        .from(creditTransactions)
+        .where(
+          and(
+            eq(creditTransactions.userId, ctx.user.id),
+            sql`(${creditTransactions.metadata}->>'service' LIKE 'library.%' OR ${creditTransactions.metadata}->>'service' LIKE 'rag.%' OR ${creditTransactions.metadata}->>'service' LIKE 'gdrive.%')`,
+          ),
+        )
+        .orderBy(desc(creditTransactions.createdAt))
+        .limit(input.limit);
+
+      return rows.map((r: typeof rows[number]) => ({
+        timestamp: r.createdAt.toISOString(),
+        description: r.description || "Credit transaction",
+        credits: r.amount,
+        serviceTag: (r.metadata as any)?.service || null,
+        metadata: r.metadata,
+      }));
+    }),
+
+  /**
+   * List Google Drive folders for folder picker (proxied via Python backend).
+   */
+  listDriveFolders: protectedProcedure
+    .input(z.object({ parentFolderId: z.string().nullable().default(null) }))
+    .query(async ({ ctx, input }) => {
+      const token = createDriveToken(ctx.user.id);
+      const params = new URLSearchParams();
+      if (input.parentFolderId) params.set("parent_id", input.parentFolderId);
+      params.set("user_id", String(ctx.user.id));
+
+      const resp = await fetch(
+        `${PYTHON_BACKEND_URL}/api/internal/gdrive/list-folders?${params}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "x-proxy-token": process.env.SMARTSPEC_PROXY_TOKEN || "",
+          },
+        },
+      );
+      if (!resp.ok) {
+        return [] as Array<{ id: string; name: string; hasChildren: boolean }>;
+      }
+      return resp.json() as Promise<Array<{ id: string; name: string; hasChildren: boolean }>>;
+    }),
+
+  /**
+   * Re-index a specific Google Drive file.
+   */
+  reindexFile: protectedProcedure
+    .input(z.object({ libraryItemId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+
+      const [item] = await db
+        .select()
+        .from(libraryItems)
+        .where(
+          and(
+            eq(libraryItems.id, input.libraryItemId),
+            eq(libraryItems.tenantId, ctx.tenantId),
+            eq(libraryItems.ownerUserId, ctx.user.id),
+            eq(libraryItems.source, "google_drive"),
+          ),
+        )
+        .limit(1);
+      if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+
+      await db
+        .update(libraryItems)
+        .set({ status: "pending" as any, updatedAt: new Date() })
+        .where(eq(libraryItems.id, input.libraryItemId));
+
+      // Trigger re-index via Python backend
+      const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
+      await fetch(`${PYTHON_BACKEND_URL}/api/internal/gdrive/start-sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-proxy-token": proxyToken,
+        },
+        body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
+      }).catch(() => {});
+
+      return { success: true };
+    }),
+
+  /**
+   * Remove a Google Drive file from the index.
+   */
+  removeFromIndex: protectedProcedure
+    .input(z.object({ libraryItemId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+
+      const [item] = await db
+        .select()
+        .from(libraryItems)
+        .where(
+          and(
+            eq(libraryItems.id, input.libraryItemId),
+            eq(libraryItems.tenantId, ctx.tenantId),
+            eq(libraryItems.ownerUserId, ctx.user.id),
+            eq(libraryItems.source, "google_drive"),
+          ),
+        )
+        .limit(1);
+      if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+
+      // Soft delete
+      await db
+        .update(libraryItems)
+        .set({ deletedAt: new Date(), deletedBy: ctx.user.id, updatedAt: new Date() })
+        .where(eq(libraryItems.id, input.libraryItemId));
+
+      return { success: true };
+    }),
 });
