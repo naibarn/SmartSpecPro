@@ -414,3 +414,38 @@ The following operations explicitly do **not** charge credits:
 8. Modify `HybridRAGEngine.retrieve()` to bill for semantic/hybrid queries.
 9. Run all tests and verify they pass.
 10. Verify existing LLM billing still works (backward compatibility of `deductCredits` without `idempotencyKey`).
+
+---
+
+## Actual Implementation (Post-Review)
+
+### Files Created
+- `python-backend/app/services/drive_billing.py` - Billing formula functions
+- `python-backend/tests/test_drive_billing.py` - 14 tests for billing formulas
+- `python-backend/app/services/credit_billing_client.py` - Python HTTP client for internal credit endpoint
+- `python-backend/tests/test_rag_billing.py` - 3 tests for RAG billing integration
+
+### Files Modified
+- `apps/web/server/services/creditService.ts` - Extended with idempotency, pricing config, service-tagged billing
+- `apps/web/server/routers/systemSettings.ts` - Added `credit_pricing` category
+- `apps/web/server/_core/index.ts` - Added `POST /api/internal/credits/charge` endpoint
+- `python-backend/app/services/library_indexing_service.py` - Added post-deduct billing
+- `python-backend/app/orchestrator/rag/hybrid_rag.py` - Added RAG query billing
+
+### Code Review Fixes Applied
+1. Internal endpoint token auth: `startsWith("Bearer ")`/`slice(7)` instead of `replace`
+2. Input validation: type checks for userId, amount, chunkCount, service
+3. `estimateIndexingCost`: removed unused `fileCount` parameter
+4. `chargeForRagQuery`: added `amount <= 0` guard
+5. RAG idempotency key: MD5 → SHA-256, imports moved to module level
+
+### Deviations from Plan
+- `estimateIndexingCost` is `async` (not sync as plan suggested) because it reads pricing config from DB
+- Plan Step 7 (RAG chat context billing for `rag.chat_context` service) deferred - out of scope for billing infrastructure
+- Nginx deny rule for `/api/internal/` deferred to section-15 (security hardening)
+
+### Test Results
+- 14 drive billing Python tests: PASS
+- 3 RAG billing Python tests: PASS
+- 12 existing creditService Vitest tests: PASS
+- TypeScript compilation: PASS (only pre-existing video editor errors)
