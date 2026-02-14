@@ -31,6 +31,24 @@ const REQUIRE_WRITE_TOKEN = process.env.MCP_REQUIRE_WRITE_TOKEN === "1";
 const WRITE_TOKEN = process.env.MCP_WRITE_TOKEN || "";
 const MCP_RPM = parseInt(process.env.WEB_MCP_RPM || "240");
 
+const PYTHON_BACKEND_URL =
+  process.env.PYTHON_BACKEND_URL ||
+  process.env.VITE_PYTHON_BACKEND_URL ||
+  "http://localhost:8000";
+const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
+
+// Simple TTL cache for Python-native tools
+let _pythonToolsCache: { tools: ToolDef[]; ts: number } | null = null;
+const PYTHON_TOOLS_CACHE_TTL = 60_000; // 60 seconds
+
+const DRIVE_TOOL_NAMES = new Set([
+  "search_drive_files",
+  "read_drive_file",
+  "read_sheet_data",
+  "list_drive_folder",
+  "get_drive_file_info",
+]);
+
 function safeJoin(rel: string): string {
   const cleaned = rel.replace(/^[\\/]+/, "");
   const full = path.resolve(WORKSPACE_ROOT, cleaned);
@@ -166,6 +184,55 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
   }
 }
 
+async function fetchPythonMcpTools(userId: number): Promise<ToolDef[]> {
+  try {
+    if (_pythonToolsCache && Date.now() - _pythonToolsCache.ts < PYTHON_TOOLS_CACHE_TTL) {
+      return _pythonToolsCache.tools;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const resp = await fetch(
+      `${PYTHON_BACKEND_URL}/api/internal/mcp/tools?user_id=${userId}`,
+      {
+        headers: { "x-proxy-token": PROXY_TOKEN },
+        signal: controller.signal,
+      },
+    );
+    clearTimeout(timeout);
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as { tools: ToolDef[] };
+    _pythonToolsCache = { tools: data.tools || [], ts: Date.now() };
+    return _pythonToolsCache.tools;
+  } catch {
+    return [];
+  }
+}
+
+async function forwardToolCallToPython(
+  name: string,
+  args: any,
+  userId: number,
+  tenantId: string,
+): Promise<any> {
+  const resp = await fetch(`${PYTHON_BACKEND_URL}/api/internal/mcp/tools/call`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-proxy-token": PROXY_TOKEN,
+    },
+    body: JSON.stringify({
+      name,
+      arguments: args || {},
+      user_id: userId,
+      tenant_id: tenantId,
+    }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Python MCP call failed: ${resp.status}`);
+  }
+  return resp.json();
+}
+
 async function requireMcpAuth(req: Request): Promise<any | null> {
   const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
   if (!auth.ok) return null;
@@ -191,7 +258,11 @@ export function registerMCPRoutes(app: Express) {
       res.status(401).json({ ok: false, error: { message: "Unauthorized" } });
       return;
     }
-    res.json({ tools });
+    // Merge Python-native Drive tools if user is authenticated
+    const userId = parseInt(auth.sub, 10);
+    const driveTools = userId ? await fetchPythonMcpTools(userId) : [];
+    const allTools = [...tools, ...driveTools];
+    res.json({ tools: allTools });
   };
 
   const callHandler = async (req: Request, res: Response) => {
@@ -226,6 +297,15 @@ export function registerMCPRoutes(app: Express) {
           ua: req.headers["user-agent"] || "",
         });
         res.status(403).json({ ok: false, error: { message: `Missing scope: ${required}` } });
+        return;
+      }
+
+      // Check if this is a Python-native Drive tool
+      if (DRIVE_TOOL_NAMES.has(toolName)) {
+        const userId = parseInt(auth.sub, 10);
+        const tenantId = auth.tenantId || "";
+        const result = await forwardToolCallToPython(toolName, args, userId, tenantId);
+        res.json(result);
         return;
       }
 

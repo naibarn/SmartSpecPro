@@ -19,6 +19,34 @@ import {
   InsertEntityMemory,
 } from "../../drizzle/schema";
 
+// ==================== Google Drive Integration ====================
+
+const PY_BACKEND =
+  process.env.PYTHON_BACKEND_URL ||
+  process.env.VITE_PYTHON_BACKEND_URL ||
+  "http://localhost:8000";
+const PY_PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
+
+async function checkUserHasDriveTools(userId: number): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const resp = await fetch(
+      `${PY_BACKEND}/api/internal/mcp/tools?user_id=${userId}`,
+      {
+        headers: { "x-proxy-token": PY_PROXY_TOKEN },
+        signal: controller.signal,
+      },
+    );
+    clearTimeout(timeout);
+    if (!resp.ok) return false;
+    const data = (await resp.json()) as { tools: unknown[] };
+    return (data.tools?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 // ==================== Conversation Operations ====================
 
 export interface ConversationFilters {
@@ -639,6 +667,24 @@ export async function buildChatContext(
     context.push({
       role: "system",
       content: `User Context:\n${memoryContext}`,
+    });
+  }
+
+  // 2b. Add Google Drive tools context if user has connection
+  const hasDriveTools = await checkUserHasDriveTools(userId);
+  if (hasDriveTools) {
+    context.push({
+      role: "system",
+      content: [
+        "You have access to the user's Google Drive via the following tools:",
+        "- search_drive_files: Search for files by name or content",
+        "- read_drive_file: Read the text content of a Drive file",
+        "- read_sheet_data: Read data from a Google Sheet",
+        "- list_drive_folder: List files in a Drive folder",
+        "- get_drive_file_info: Get metadata about a Drive file",
+        "",
+        "Use these tools when the user asks about their Google Drive files, wants to find documents, or needs content from their Drive.",
+      ].join("\n"),
     });
   }
 
