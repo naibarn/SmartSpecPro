@@ -29,6 +29,7 @@ import {
 } from "../services/googleDriveRateLimiter";
 import { createGDriveRateLimitMiddleware } from "../services/googleDriveRateLimitMiddleware";
 import { auditLogger } from "../services/auditLogger";
+import { getRedisClient, isRedisAvailable } from "../services/redis";
 
 // ── Input validation schemas ──────────────────────────────────────────────
 const driveFileIdSchema = z
@@ -44,13 +45,25 @@ const searchQuerySchema = z
   .transform((s) => s.trim());
 
 // ── Feature flag helper ───────────────────────────────────────────────────
-let _driveReadonlyCached: { value: boolean; expiry: number } | null = null;
+let _driveReadonlyMemCache: { value: boolean; expiry: number } | null = null;
 
 async function isDriveReadonlyApproved(): Promise<boolean> {
-  const now = Date.now();
-  if (_driveReadonlyCached && _driveReadonlyCached.expiry > now) {
-    return _driveReadonlyCached.value;
+  // Try Redis first (process-safe)
+  if (isRedisAvailable()) {
+    try {
+      const redis = getRedisClient();
+      const cached = await redis.get("feature:driveReadonlyApproved");
+      if (cached !== null) return cached === "true";
+    } catch { /* fall through to memory / DB */ }
   }
+
+  // In-memory fallback (single-process only)
+  const now = Date.now();
+  if (_driveReadonlyMemCache && _driveReadonlyMemCache.expiry > now) {
+    return _driveReadonlyMemCache.value;
+  }
+
+  // DB lookup
   try {
     const dbInst = await getDb();
     if (!dbInst) return false;
@@ -65,7 +78,15 @@ async function isDriveReadonlyApproved(): Promise<boolean> {
       )
       .limit(1);
     const val = row?.value === "true";
-    _driveReadonlyCached = { value: val, expiry: now + 5 * 60 * 1000 }; // 5 min cache
+
+    // Cache in both layers
+    _driveReadonlyMemCache = { value: val, expiry: now + 5 * 60 * 1000 };
+    if (isRedisAvailable()) {
+      try {
+        const redis = getRedisClient();
+        await redis.set("feature:driveReadonlyApproved", val ? "true" : "false", "EX", 300);
+      } catch { /* non-fatal */ }
+    }
     return val;
   } catch {
     return false;
@@ -791,8 +812,8 @@ export const googleDriveRouter = router({
     .use(searchRateLimit)
     .input(
       z.object({
-        search: z.string().optional(),
-        fileType: z.string().optional(),
+        search: z.string().max(200).optional(),
+        fileType: z.string().max(100).optional(),
         status: z.string().optional(),
         page: z.number().min(1).default(1),
         pageSize: z.number().min(1).max(100).default(20),
@@ -813,7 +834,8 @@ export const googleDriveRouter = router({
         conditions.push(ilike(libraryItems.title, `%${escapedSearch}%`));
       }
       if (input.fileType && input.fileType !== "all") {
-        conditions.push(sql`${libraryItems.metadata}->>'driveMimeType' ILIKE ${"%" + input.fileType + "%"}`);
+        const escapedType = input.fileType.replace(/[%_]/g, "\\$&");
+        conditions.push(sql`${libraryItems.metadata}->>'driveMimeType' ILIKE ${"%" + escapedType + "%"}`);
       }
       if (input.status && input.status !== "all") {
         conditions.push(eq(libraryItems.status, input.status as any));
