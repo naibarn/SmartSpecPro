@@ -61,7 +61,7 @@ async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
     }
 
     defaults = {
-        "googleRedirectUri": "http://localhost:3000/auth/callback/google",
+        "googleRedirectUri": "https://smartaihub.app/auth/callback/google",
         "githubRedirectUri": "http://localhost:3000/auth/callback/github",
     }
 
@@ -72,3 +72,26 @@ async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
                 config[config_key] = env_val
 
     return config
+
+
+async def get_google_oauth_config(db: AsyncSession) -> Dict[str, str]:
+    """
+    Get Google-specific OAuth config (clientId, clientSecret, redirectUri).
+
+    Returns dict with keys:
+        googleClientId, googleClientSecret, googleRedirectUri
+
+    Raises ValueError if clientId or clientSecret are not configured.
+    """
+    full_config = await get_oauth_config(db)
+
+    google_config = {
+        k: v for k, v in full_config.items() if k.startswith("google")
+    }
+
+    if not google_config.get("googleClientId"):
+        raise ValueError("Google OAuth Client ID is not configured")
+    if not google_config.get("googleClientSecret"):
+        raise ValueError("Google OAuth Client Secret is not configured")
+
+    return google_config
