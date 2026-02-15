@@ -29,7 +29,7 @@ describe("PreviewPlayer render preview mode", () => {
     expect(zoomSelect.disabled).toBe(true);
     expect(stage?.classList.contains("free-preview")).toBe(false);
     expect(
-      getByText("Preview Lock ON: frame-accurate view (viewport pan/zoom disabled)"),
+      getByText(/Preview Lock ON: frame-accurate view \(viewport pan\/zoom disabled\)/),
     ).toBeTruthy();
   });
 

@@ -5,7 +5,7 @@
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { formatTime } from '../../types/videoEditor';
-import type { ClipTransform, TransformKeyframe, Effect, TransitionName } from '../../types/videoEditor';
+import type { ClipTransform, TransformKeyframe, Effect, TextConfig, TransitionName } from '../../types/videoEditor';
 import { clamp01, DEFAULT_CLIP_TRANSFORM, resolveTransformAtTime } from './transformKeyframes';
 
 export interface ActiveClipInfo {
@@ -20,6 +20,14 @@ export interface ActiveClipInfo {
   effects?: Effect[];
 }
 
+export interface ActiveTextClipInfo {
+  id: string;
+  clipStartTime: number;
+  clipDuration: number;
+  textConfig: TextConfig;
+  transform?: ClipTransform;
+}
+
 interface PreviewPlayerProps {
   currentTime: number;
   duration: number;
@@ -31,6 +39,7 @@ interface PreviewPlayerProps {
   activeClip?: ActiveClipInfo | null;
   activeAudioClips?: ActiveClipInfo[];
   outgoingClip?: ActiveClipInfo | null;
+  activeTextClips?: ActiveTextClipInfo[];
   transitionName?: string;
   transitionProgress?: number;
   allowSeekingWhilePlaying?: boolean;
@@ -48,6 +57,36 @@ interface PreviewPlayerProps {
 }
 
 const ZOOM_PRESETS = [10, 25, 50, 75, 100, 125, 150, 200, 250, 300, 350, 400];
+const PREVIEW_TEXT_FONT_WHITELIST = new Set([
+  'Noto Sans',
+  'Noto Sans Thai',
+  'Roboto',
+  'Open Sans',
+  'Lato',
+  'Montserrat',
+  'Poppins',
+  'Ubuntu',
+]);
+
+function resolvePreviewTextFontFamily(fontFamily: string): string {
+  if (PREVIEW_TEXT_FONT_WHITELIST.has(fontFamily)) return fontFamily;
+  return 'Noto Sans';
+}
+
+function getTextEffectStyle(config: TextConfig): React.CSSProperties {
+  if (config.effect === 'shadow') {
+    return {
+      textShadow: `2px 2px 4px ${config.effectColor || '#000000'}`,
+    };
+  }
+  if (config.effect === 'outline') {
+    const c = config.effectColor || '#000000';
+    return {
+      textShadow: `-1px -1px 0 ${c}, 1px -1px 0 ${c}, -1px 1px 0 ${c}, 1px 1px 0 ${c}`,
+    };
+  }
+  return {};
+}
 
 /** Returns CSS styles for outgoing and incoming clips during a transition. */
 function getTransitionStyles(
@@ -115,6 +154,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   activeClip,
   activeAudioClips = [],
   outgoingClip,
+  activeTextClips = [],
   transitionName,
   transitionProgress,
   allowSeekingWhilePlaying = false,
@@ -142,6 +182,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [stalledLoading, setStalledLoading] = useState(false);
+  const [textFontsReady, setTextFontsReady] = useState(true);
   const safeCurrentTime = Number.isFinite(currentTime) ? currentTime : 0;
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
   const lastSkipTimestampRef = useRef(0);
@@ -196,6 +237,102 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     const safeHeight = Number.isFinite(outputHeight) && outputHeight > 0 ? outputHeight : 9;
     return safeWidth / safeHeight;
   }, [outputWidth, outputHeight]);
+  const activeTextFontFamilies = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          activeTextClips.map((clip) =>
+            resolvePreviewTextFontFamily(clip.textConfig.fontFamily),
+          ),
+        ),
+      ),
+    [activeTextClips],
+  );
+  const activeTextFontKey = useMemo(
+    () => activeTextFontFamilies.join('|'),
+    [activeTextFontFamilies],
+  );
+  const resolvedTextOverlays = useMemo(
+    () =>
+      activeTextClips.map((clip, index) => {
+        const normalizedTime =
+          clip.clipDuration > 0
+            ? clamp01((safeCurrentTime - clip.clipStartTime) / clip.clipDuration)
+            : 0;
+        const transform = resolveTransformAtTime(
+          clip.transform || DEFAULT_CLIP_TRANSFORM,
+          normalizedTime,
+        );
+        const transformParts: string[] = ['translate(-50%, -50%)'];
+        if (transform.scaleX !== 1 || transform.scaleY !== 1) {
+          transformParts.push(`scale(${transform.scaleX}, ${transform.scaleY})`);
+        }
+        if (transform.rotation !== 0) {
+          transformParts.push(`rotate(${transform.rotation}deg)`);
+        }
+        const config = clip.textConfig;
+        const fontFamily = resolvePreviewTextFontFamily(config.fontFamily);
+        return {
+          id: clip.id,
+          text: config.text,
+          style: {
+            position: 'absolute',
+            left: `${Math.max(0, Math.min(1, transform.x)) * 100}%`,
+            top: `${Math.max(0, Math.min(1, transform.y)) * 100}%`,
+            transform: transformParts.join(' '),
+            opacity: Math.max(0, Math.min(1, transform.opacity)),
+            fontFamily: `'${fontFamily}', sans-serif`,
+            fontSize: `${Math.max(8, Math.min(256, config.fontSize))}px`,
+            fontWeight: config.fontWeight,
+            fontStyle: config.fontStyle,
+            color: config.color,
+            backgroundColor:
+              config.backgroundColor === 'transparent'
+                ? 'transparent'
+                : config.backgroundColor,
+            textAlign: config.textAlign,
+            whiteSpace: 'pre-wrap',
+            maxWidth: '90%',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            lineHeight: 1.25,
+            pointerEvents: 'none',
+            zIndex: index + 1,
+            ...getTextEffectStyle(config),
+          } satisfies React.CSSProperties,
+        };
+      }),
+    [activeTextClips, safeCurrentTime],
+  );
+
+  useEffect(() => {
+    if (activeTextClips.length === 0) {
+      setTextFontsReady(true);
+      return;
+    }
+
+    const fontSet = (document as Document & { fonts?: FontFaceSet }).fonts;
+    if (!fontSet || typeof fontSet.load !== 'function') {
+      setTextFontsReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setTextFontsReady(false);
+    Promise.all(
+      activeTextFontFamilies.map((family) =>
+        fontSet.load(`400 16px "${family}"`).catch(() => undefined),
+      ),
+    ).finally(() => {
+      if (!cancelled) {
+        setTextFontsReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTextClips.length, activeTextFontFamilies, activeTextFontKey]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -1231,6 +1368,27 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           pointer-events: none;
           border: 1px solid rgba(242, 212, 122, 0.45);
         }
+
+        .preview-text-layer {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+        }
+
+        .preview-text-font-loading {
+          position: absolute;
+          left: 50%;
+          top: 12px;
+          transform: translateX(-50%);
+          padding: 2px 8px;
+          border-radius: 4px;
+          background: rgba(0, 0, 0, 0.55);
+          color: #cfcfcf;
+          font-size: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          letter-spacing: 0.01em;
+        }
       `}</style>
 
       {/* Video Container */}
@@ -1312,6 +1470,23 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                 alt="Image preview"
                 draggable={false}
               />
+              {activeTextClips.length > 0 && (
+                <div className="preview-text-layer" aria-hidden="true">
+                  {!textFontsReady ? (
+                    <div className="preview-text-font-loading">Loading preview fonts...</div>
+                  ) : (
+                    resolvedTextOverlays.map((overlay) => (
+                      <div
+                        key={overlay.id}
+                        data-testid={`preview-text-clip-${overlay.id}`}
+                        style={overlay.style}
+                      >
+                        {overlay.text}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
               {transformGuideStyle && (
                 <>
                   <div className="transform-edit-guide" style={transformGuideStyle} />
@@ -1377,6 +1552,23 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                     : {}),
                 }}
               />
+              {activeTextClips.length > 0 && (
+                <div className="preview-text-layer" aria-hidden="true">
+                  {!textFontsReady ? (
+                    <div className="preview-text-font-loading">Loading preview fonts...</div>
+                  ) : (
+                    resolvedTextOverlays.map((overlay) => (
+                      <div
+                        key={overlay.id}
+                        data-testid={`preview-text-clip-${overlay.id}`}
+                        style={overlay.style}
+                      >
+                        {overlay.text}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
               {transformGuideStyle && (
                 <>
                   <div className="transform-edit-guide" style={transformGuideStyle} />
@@ -1389,6 +1581,27 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                   {stalledLoading ? "Preview is taking longer to load..." : "Loading preview..."}
                 </div>
               )}
+            </div>
+          </div>
+        ) : activeTextClips.length > 0 ? (
+          <div className="preview-video-wrapper">
+            <div className={`preview-video-stage ${renderFramePreviewOnly ? '' : 'free-preview'}`} style={previewStageStyle}>
+              <div className="preview-text-layer" aria-hidden="true">
+                {!textFontsReady ? (
+                  <div className="preview-text-font-loading">Loading preview fonts...</div>
+                ) : (
+                  resolvedTextOverlays.map((overlay) => (
+                    <div
+                      key={overlay.id}
+                      data-testid={`preview-text-clip-${overlay.id}`}
+                      style={overlay.style}
+                    >
+                      {overlay.text}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="output-frame-badge">Output Frame (Render)</div>
             </div>
           </div>
         ) : (

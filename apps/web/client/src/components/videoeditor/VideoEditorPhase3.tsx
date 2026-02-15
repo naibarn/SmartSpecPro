@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import MediaLibraryPanel from './MediaLibraryPanel';
 import Timeline from './Timeline';
-import PreviewPlayer, { type ActiveClipInfo } from './PreviewPlayer';
+import PreviewPlayer, { type ActiveClipInfo, type ActiveTextClipInfo } from './PreviewPlayer';
 import Toolbar from './Toolbar';
 import ExportDialog from './ExportDialog';
 import RenderProgressDialog from './RenderProgressDialog';
@@ -1385,6 +1385,33 @@ export const VideoEditorPhase3: React.FC = () => {
     return null;
   }, [project.timeline.tracks, project.assets, currentTime]);
 
+  const activeTextClips = useMemo((): ActiveTextClipInfo[] => {
+    const textTracks = project.timeline.tracks.filter(
+      (track) => track.type === 'text' && track.visible !== false,
+    );
+    const clips: ActiveTextClipInfo[] = [];
+
+    for (const track of textTracks) {
+      for (const clip of track.clips) {
+        if (currentTime < clip.startTime || currentTime >= clip.startTime + clip.duration) {
+          continue;
+        }
+        if (!clip.textConfig) {
+          continue;
+        }
+        clips.push({
+          id: clip.id,
+          clipStartTime: clip.startTime,
+          clipDuration: clip.duration,
+          textConfig: clip.textConfig,
+          transform: clip.transform,
+        });
+      }
+    }
+
+    return clips;
+  }, [project.timeline.tracks, currentTime]);
+
   // Active audio clips for preview playback
   const activeAudioClips = useMemo((): ActiveClipInfo[] => {
     const audioTracks = project.timeline.tracks.filter(
@@ -2212,6 +2239,7 @@ export const VideoEditorPhase3: React.FC = () => {
                 activeClip={activeClip}
                 activeAudioClips={activeAudioClips}
                 outgoingClip={outgoingClip}
+                activeTextClips={activeTextClips}
                 transitionName={activeTransitionName}
                 transitionProgress={transitionProgress}
                 selectedClipId={selectedClipId}

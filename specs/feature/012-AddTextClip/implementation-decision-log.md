@@ -49,3 +49,21 @@
 - decision: `drop_invalid_and_fallback_to_segment`
 - mode_used: `auto`
 - rationale: This preserves backward compatibility for malformed payloads while guaranteeing deterministic behavior.
+
+- section: `section-04-preview-parity-engine`
+- options_considered: `render_text_in_timeline_layer`, `render_text_in_preview_player`
+- decision: `render_text_in_preview_player`
+- mode_used: `auto`
+- rationale: Keeps preview parity logic colocated with active clip timing/transition state and reuses existing transform interpolation flow.
+
+- section: `section-04-preview-parity-engine`
+- options_considered: `render_without_font_readiness_gate`, `wait_for_fontset_then_render`
+- decision: `wait_for_fontset_then_render`
+- mode_used: `auto`
+- rationale: Deterministic font readiness avoids transient parity drift from late font loads.
+
+- section: `section-04-preview-parity-engine`
+- options_considered: `hide_text_when_no_base_video`, `render_text_on_empty_preview_stage`
+- decision: `render_text_on_empty_preview_stage`
+- mode_used: `auto`
+- rationale: Preserves text preview behavior for text-only timelines and avoids misleading blank preview states.
