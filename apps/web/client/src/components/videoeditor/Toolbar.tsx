@@ -27,6 +27,7 @@ interface ToolbarProps {
   onUngroupClips?: () => void;
   onAddText?: () => void;
   onOpenSilenceDetection?: () => void;
+  onExtractAudio?: () => void;
 }
 
 const ZOOM_LEVELS = [10, 20, 30, 50, 75, 100, 150, 200];
@@ -52,7 +53,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onGroupClips,
   onUngroupClips,
   onAddText,
-  onOpenSilenceDetection
+  onOpenSilenceDetection,
+  onExtractAudio,
 }) => {
   const handleZoomIn = () => {
     if (onZoomIn) {
@@ -260,6 +262,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           )}
           {selectedCount >= 1 && onUngroupClips && (
             <button className="tb tb-text" onClick={onUngroupClips} title="Ungroup">&#9986;</button>
+          )}
+          {selectedCount >= 1 && onExtractAudio && (
+            <button className="tb tb-text" onClick={onExtractAudio} title="Extract Audio to A1">
+              &#128266;
+            </button>
           )}
         </div>
       )}

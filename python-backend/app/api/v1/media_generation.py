@@ -1094,6 +1094,64 @@ async def serve_render_file(
     return FileResponse(file_path, media_type="video/mp4", filename=safe_filename)
 
 
+@router.get("/files/transcoded/{user_id}/{job_id}/{filename}")
+async def serve_transcoded_file(
+    user_id: str,
+    job_id: str,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Serve a transcoded video file from media_storage/transcoded/.
+    Only the file owner (or admin) can access.
+    """
+    if str(current_user.id) != user_id and getattr(current_user, "role", None) != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    safe_filename = os.path.basename(filename)
+    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
+    file_path = os.path.join(media_storage, "transcoded", user_id, job_id, safe_filename)
+
+    real_path = os.path.realpath(file_path)
+    real_base = os.path.realpath(media_storage)
+    if not real_path.startswith(real_base + os.sep):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    return FileResponse(file_path, media_type="video/mp4", filename=safe_filename)
+
+
+@router.get("/files/audio_extracts/{user_id}/{job_id}/{filename}")
+async def serve_audio_extract_file(
+    user_id: str,
+    job_id: str,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Serve an extracted audio file from media_storage/audio_extracts/.
+    Only the file owner (or admin) can access.
+    """
+    if str(current_user.id) != user_id and getattr(current_user, "role", None) != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    safe_filename = os.path.basename(filename)
+    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
+    file_path = os.path.join(media_storage, "audio_extracts", user_id, job_id, safe_filename)
+
+    real_path = os.path.realpath(file_path)
+    real_base = os.path.realpath(media_storage)
+    if not real_path.startswith(real_base + os.sep):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    return FileResponse(file_path, media_type="audio/mp4", filename=safe_filename)
+
+
 # ==================== Async Endpoints with Celery ====================
 
 @router.post("/async/image", response_model=TaskResponse)

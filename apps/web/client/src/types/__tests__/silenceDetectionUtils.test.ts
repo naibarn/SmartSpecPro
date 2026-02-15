@@ -161,16 +161,16 @@ describe("dbToPercent", () => {
     expect(dbToPercent(-60)).toBe(0);
   });
 
-  it("-20dB maps to 100%", () => {
-    expect(dbToPercent(-20)).toBe(100);
+  it("-10dB maps to 100%", () => {
+    expect(dbToPercent(-10)).toBe(100);
   });
 
-  it("-40dB maps to 50%", () => {
-    expect(dbToPercent(-40)).toBe(50);
+  it("-35dB maps to 50%", () => {
+    expect(dbToPercent(-35)).toBe(50);
   });
 
   it("values outside range still compute (no clamping)", () => {
     expect(dbToPercent(-70)).toBeLessThan(0);
-    expect(dbToPercent(-10)).toBeGreaterThan(100);
+    expect(dbToPercent(0)).toBeGreaterThan(100);
   });
 });

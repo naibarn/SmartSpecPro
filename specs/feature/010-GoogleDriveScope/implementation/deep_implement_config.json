@@ -27,6 +27,62 @@
     "section-01-admin-config": {
       "status": "complete",
       "commit_hash": "749fc3b"
+    },
+    "section-02-database-schema": {
+      "status": "complete",
+      "commit_hash": "3be4a98"
+    },
+    "section-03-oauth-consent": {
+      "status": "complete",
+      "commit_hash": "d8ad0a2"
+    },
+    "section-04-credit-billing": {
+      "status": "complete",
+      "commit_hash": "4cc97e1"
+    },
+    "section-05-budget-protection": {
+      "status": "complete",
+      "commit_hash": "316d283"
+    },
+    "section-06-content-extraction": {
+      "status": "complete",
+      "commit_hash": "782698c"
+    },
+    "section-07-edit-in-google": {
+      "status": "complete",
+      "commit_hash": "42d7133"
+    },
+    "section-08-virtual-references": {
+      "status": "complete",
+      "commit_hash": "e68db84"
+    },
+    "section-09-mcp-server": {
+      "status": "complete",
+      "commit_hash": "f24018f"
+    },
+    "section-10-federated-search": {
+      "status": "complete",
+      "commit_hash": "b4f8719"
+    },
+    "section-11-sync-webhooks": {
+      "status": "complete",
+      "commit_hash": "421d0f4"
+    },
+    "section-12-dashboard-ui": {
+      "status": "complete",
+      "commit_hash": "2a0027e"
+    },
+    "section-13-rate-limiting": {
+      "status": "complete",
+      "commit_hash": "c5be754"
+    },
+    "section-14-disconnect-cleanup": {
+      "status": "complete",
+      "commit_hash": "1965e7f"
+    },
+    "section-15-security-hardening": {
+      "status": "complete",
+      "commit_hash": "3706606"
     }
   },
   "pre_commit": {
