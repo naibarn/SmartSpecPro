@@ -1065,50 +1065,6 @@ export function registerMediaJobRoutes(app: Express) {
     }
   });
 
-  // Periodic cleanup of stale Redis active-job set entries (every 5 min)
-  setInterval(async () => {
-    try {
-      const redis = await getRedis();
-      const now = Date.now();
-      // Scan for all user active-set keys
-      let cursor = "0";
-      do {
-        const [nextCursor, keys] = await redis.scan(
-          cursor, "MATCH", "media-jobs:user:*:active", "COUNT", "100",
-        );
-        cursor = nextCursor;
-        for (const key of keys) {
-          const members = await redis.smembers(key);
-          for (const jobId of members) {
-            const status = await getJobKey(jobId, "status");
-            if (!status) {
-              // Redis key expired → stale entry
-              await redis.srem(key, jobId);
-              continue;
-            }
-            if (["done", "error", "canceled"].includes(status.status)) {
-              await redis.srem(key, jobId);
-              continue;
-            }
-            // Check for stale queued/processing
-            const meta = await getJobKey(jobId, "meta");
-            const age = meta?.submittedAt ? now - meta.submittedAt : Infinity;
-            if (status.status === "queued" && age > STALE_QUEUED_MS) {
-              const msg = "Stale: queued >10 min";
-              await setJobKey(jobId, "status", { ...status, status: "error", message: msg });
-              await redis.srem(key, jobId);
-              if (meta?.userId) notifyJobFailure(meta.userId, jobId, msg);
-            } else if (status.status === "processing" && age > STALE_PROCESSING_MS) {
-              const msg = "Stale: processing >60 min";
-              await setJobKey(jobId, "status", { ...status, status: "error", message: msg });
-              await redis.srem(key, jobId);
-              if (meta?.userId) notifyJobFailure(meta.userId, jobId, msg);
-            }
-          }
-        }
-      } while (cursor !== "0");
-    } catch (err) {
-      // Ignore cleanup errors — best effort
-    }
-  }, 5 * 60 * 1000);
+  // Stale job cleanup moved to Cloud Scheduler: cleanup-redis-stale (every 5 min)
+  // See python-backend/app/api/v1/task_handlers.py cleanup_redis_stale endpoint
 }

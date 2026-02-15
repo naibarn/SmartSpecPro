@@ -455,3 +455,51 @@ The OIDC validation middleware skips token verification when `ENVIRONMENT=develo
 |---|---|
 | `/home/dev/projects/SmartSpecPro/python-backend/app/core/celery_app.py` | CeleryBeat `beat_schedule` remains during Phase A dual-run. Removed in Phase C (Section 4). |
 | `/home/dev/projects/SmartSpecPro/apps/web/server/services/scheduler.ts` | BullMQ scheduler code. Removed in Section 5 (BullMQ Migration). |
+
+---
+
+## Implementation Notes (Actual)
+
+### Deviations from Plan
+
+1. **No separate `periodic_tasks.py` router** — Periodic handlers were added directly to the existing `task_handlers.py` (created in Section 4) since they share the same `/tasks/` prefix and OIDC auth. This avoids a redundant router registration.
+
+2. **`cleanup_expired_edit_sessions` not refactored to async** — The sync Celery function is wrapped with `asyncio.to_thread()` instead, since the full Google Drive tasks refactor was out of scope.
+
+3. **`app/main.py` not modified** — Section 4 already registered the `task_handlers.router`, so no additional router inclusion was needed.
+
+### Code Review Fixes Applied
+
+- Fixed SQL column names in `process_dead_letters` handler (camelCase to match Drizzle schema)
+- Fixed SQL column names in `deliver_scheduled_fallback` handler (used actual schema columns)
+- Wrapped sync `cleanup_expired_edit_sessions()` with `asyncio.to_thread()` to prevent event loop blocking
+- Fixed Redis client resource leak (added `try/finally` with `await redis_client.close()`)
+- Removed `str(e)` from all error response bodies (information disclosure prevention)
+- Fixed `cleanup_redis_stale` to return 500 on transient errors (correct Cloud Tasks retry semantics)
+- Fixed `settings.CELERY_BROKER_URL` → `settings.REDIS_URL` (correct config attribute)
+- Added `/tasks/` to CSRF middleware `EXEMPT_PREFIXES` (Cloud Tasks uses OIDC, not cookies)
+- Added `X-Internal-Token` header support in test fixture for OIDC middleware dev mode
+
+### Actual Files Created
+
+| File | Purpose |
+|---|---|
+| `python-backend/tests/unit/test_periodic_handlers.py` | 38 tests: route registration, JSON responses, GET rejection, idempotency |
+| `python-backend/tests/unit/test_cleanup_redis_stale.py` | 8 tests: FakeRedis-based Redis stale cleanup logic |
+| `apps/web/server/__tests__/no-setinterval.test.ts` | 1 Vitest test: setInterval removal verification |
+| `scripts/create-cloud-scheduler-jobs.sh` | gcloud provisioning script for 12 Cloud Scheduler jobs |
+| `scripts/validate-cloud-scheduler.sh` | gcloud validation script for all 12 jobs |
+
+### Actual Files Modified
+
+| File | Change |
+|---|---|
+| `python-backend/app/api/v1/task_handlers.py` | Wired real business logic into 8 stub endpoints + added 3 new endpoints |
+| `python-backend/app/core/csrf.py` | Added `/tasks/` to EXEMPT_PREFIXES |
+| `apps/web/server/routers/mediaJobs.ts` | Removed setInterval block, added Cloud Scheduler reference comment |
+
+### Test Results
+
+- Python: 46 passed (38 handler + 8 Redis cleanup)
+- Vitest: 1 passed (no-setinterval verification)
+- Total: 47 tests all green

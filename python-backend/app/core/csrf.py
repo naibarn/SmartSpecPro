@@ -229,6 +229,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/oauth/",     # OAuth endpoints called server-to-server with Bearer token
         "/api/webhooks/",
         "/api/internal/",  # Internal endpoints use proxy token auth
+        "/tasks/",         # Cloud Tasks endpoints use OIDC token auth
     )
 
     async def dispatch(self, request: Request, call_next):
