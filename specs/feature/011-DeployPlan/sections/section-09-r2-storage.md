@@ -478,3 +478,31 @@ These are in addition to the existing `CLOUDFLARE_R2_*` variables used in local 
 9. Update `seed-production.ts` (Section 03) to seed an active `storage_settings` row for R2.
 10. Write and run tests (lifecycle integration, presigned URL unit, storage abstraction unit, cross-service integration).
 11. Verify lifecycle rules are applied by running the integration test against the staging bucket.
+
+---
+
+## Actual Implementation (Files Summary)
+
+| File | Status | Description |
+|------|--------|-------------|
+| `apps/web/server/storage.ts` | Modified | Added `storagePresignGet`, env-var fallback (Priority 4), presigned URL expiry clamping (max 86400s), local fallback caching |
+| `apps/web/server/__tests__/r2-presigned.test.ts` | New | 5 unit tests for presigned URL generation |
+| `apps/web/server/__tests__/r2-storage-abstraction.test.ts` | New | 4 unit tests for env-var fallback and storage ops |
+| `python-backend/app/core/r2_config.py` | Modified | `from_env()` fallback to `R2_*` env vars, default `public=False` for uploads |
+| `python-backend/app/services/generation/r2_storage.py` | Modified | 6 new StoragePath methods with `_safe_path_component()` validation |
+| `python-backend/tests/unit/services/test_r2_storage_abstraction.py` | New | 13 unit tests (config fallback, client ops, StoragePath paths) |
+| `scripts/setup-r2-lifecycle.ts` | New | One-time lifecycle rules setup script |
+
+## Deviations from Plan
+
+1. **Integration tests deferred**: `r2-lifecycle.integration.test.ts` and `r2-cross-service.integration.test.ts` were not created — they require live R2 credentials unavailable in this environment.
+2. **seed-production.ts not updated**: Env-var fallback (Approach B) is sufficient for Cloud Run deployment; DB seeding (Approach A) can be added when needed.
+3. **Security hardening added**: Presigned URL expiry clamped to max 86400s, R2Client default ACL changed to `public=False`, and `_safe_path_component()` path traversal prevention added — all from code review.
+4. **Config priority restructured**: `getActiveStorageConfig()` no longer returns `local` early when DB has no active setting — falls through to check R2 env vars first.
+5. **Local fallback cached**: Added `_configCache` assignment for the local fallback path to avoid repeated DB queries.
+
+## Test Results
+
+- **Python**: 13/13 pass (config fallback, client ops, StoragePath)
+- **Node.js**: 29/29 pass, 7 skipped (presigned URLs, storage abstraction, existing tests)
+- No regressions

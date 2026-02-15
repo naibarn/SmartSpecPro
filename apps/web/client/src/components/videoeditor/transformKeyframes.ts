@@ -107,3 +107,20 @@ export function upsertTransformKeyframe(
     keyframes,
   };
 }
+
+export function removeTransformKeyframe(
+  transform: ClipTransform | undefined,
+  normalizedTime: number,
+  epsilon = 0.01,
+): ClipTransform {
+  const source = transform ?? DEFAULT_CLIP_TRANSFORM;
+  const time = clamp01(normalizedTime);
+  const keyframes = [...(source.keyframes || [])]
+    .filter((kf) => Math.abs(kf.time - time) > epsilon)
+    .sort((a, b) => a.time - b.time);
+
+  return {
+    ...source,
+    keyframes,
+  };
+}

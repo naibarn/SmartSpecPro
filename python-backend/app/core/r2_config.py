@@ -34,12 +34,24 @@ class R2Config:
     
     @classmethod
     def from_env(cls) -> "R2Config":
-        """Create configuration from environment variables."""
+        """Create configuration from environment variables.
+
+        Checks both CLOUDFLARE_R2_* vars (local dev) and R2_* vars (Cloud Run / Secret Manager).
+        CLOUDFLARE_R2_* takes precedence when set and non-empty.
+        """
+        # Endpoint: prefer CLOUDFLARE_R2_ENDPOINT, fall back to constructing from R2_ACCOUNT_ID
+        cf_endpoint = os.getenv("CLOUDFLARE_R2_ENDPOINT", "")
+        if cf_endpoint:
+            endpoint = cf_endpoint
+        else:
+            account_id = os.getenv("R2_ACCOUNT_ID", "")
+            endpoint = f"https://{account_id}.r2.cloudflarestorage.com" if account_id else ""
+
         return cls(
-            access_key_id=os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID", ""),
-            secret_access_key=os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY", ""),
-            bucket_name=os.getenv("CLOUDFLARE_R2_BUCKET_NAME", "smartspec-media"),
-            endpoint_url=os.getenv("CLOUDFLARE_R2_ENDPOINT", ""),
+            access_key_id=os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID", "") or os.getenv("R2_ACCESS_KEY", ""),
+            secret_access_key=os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY", "") or os.getenv("R2_SECRET_KEY", ""),
+            bucket_name=os.getenv("CLOUDFLARE_R2_BUCKET_NAME", "") or os.getenv("R2_BUCKET_NAME", "smartspec-media"),
+            endpoint_url=endpoint,
             public_url=os.getenv("CLOUDFLARE_R2_PUBLIC_URL", ""),
             custom_domain=os.getenv("CLOUDFLARE_R2_CUSTOM_DOMAIN"),
             region=os.getenv("CLOUDFLARE_R2_REGION", "auto"),
@@ -103,7 +115,7 @@ class R2Client:
         key: str,
         content_type: Optional[str] = None,
         metadata: Optional[dict] = None,
-        public: bool = True,
+        public: bool = False,
     ) -> str:
         """
         Upload a file to R2.
@@ -144,7 +156,7 @@ class R2Client:
         key: str,
         content_type: Optional[str] = None,
         metadata: Optional[dict] = None,
-        public: bool = True,
+        public: bool = False,
     ) -> str:
         """
         Upload a file object to R2.

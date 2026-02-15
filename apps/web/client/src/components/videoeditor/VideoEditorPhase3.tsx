@@ -50,7 +50,7 @@ import {
 } from '../../types/videoEditor';
 import { processExportToTimeline } from './silenceExportUtils';
 import { createMediaJobClient } from '../../services/mediaJobClient';
-import { clamp01, DEFAULT_CLIP_TRANSFORM, resolveTransformAtTime, upsertTransformKeyframe } from './transformKeyframes';
+import { clamp01, DEFAULT_CLIP_TRANSFORM, removeTransformKeyframe, resolveTransformAtTime, upsertTransformKeyframe } from './transformKeyframes';
 
 export const VideoEditorPhase3: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -850,6 +850,46 @@ export const VideoEditorPhase3: React.FC = () => {
         },
       );
 
+      newProject.modifiedAt = new Date().toISOString();
+      historySnapshot = JSON.parse(JSON.stringify(newProject));
+      return newProject;
+    });
+
+    if (historySnapshot) {
+      addToHistory(historySnapshot);
+    }
+  }, [currentTime, addToHistory]);
+
+  const handleDeleteTransformKeyframeAtCurrentTime = useCallback((clipId: string) => {
+    let historySnapshot: VideoEditorProject | null = null;
+
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+      let targetClip: Clip | null = null;
+
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          targetClip = clip;
+          break;
+        }
+      }
+
+      if (!targetClip) return prevProject;
+
+      const normalizedTime = targetClip.duration > 0
+        ? clamp01((currentTime - targetClip.startTime) / targetClip.duration)
+        : 0;
+      const source = targetClip.transform || DEFAULT_CLIP_TRANSFORM;
+      const beforeCount = source.keyframes?.length || 0;
+      const updated = removeTransformKeyframe(source, normalizedTime, 0.01);
+      const afterCount = updated.keyframes?.length || 0;
+
+      if (afterCount === beforeCount) {
+        return prevProject;
+      }
+
+      targetClip.transform = updated;
       newProject.modifiedAt = new Date().toISOString();
       historySnapshot = JSON.parse(JSON.stringify(newProject));
       return newProject;
@@ -2235,6 +2275,7 @@ export const VideoEditorPhase3: React.FC = () => {
                 selectedClipId={selectedClipId}
                 onTransformChangeAtCurrentTime={handlePreviewTransformChangeAtCurrentTime}
                 onAddKeyframeAtCurrentTime={handleAddTransformKeyframeAtCurrentTime}
+                onDeleteKeyframeAtCurrentTime={handleDeleteTransformKeyframeAtCurrentTime}
                 onOpenKeyframePanel={() => setSidebarView('overlay')}
                 outputWidth={project.settings.width}
                 outputHeight={project.settings.height}

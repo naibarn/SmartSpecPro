@@ -1,5 +1,6 @@
 // Unified storage layer: resolves active provider from DB (storage_settings)
-// Priority: 1) FORGE_API_URL env (legacy) → 2) DB active config (R2/S3/local) → 3) local fallback
+// Priority: 1) FORGE_API_URL env (legacy) → 2) cache → 3) DB active config (R2/S3/local)
+//           → 4) R2 env vars (Cloud Run) → 5) local fallback
 
 import { ENV } from "./_core/env";
 import path from "path";
@@ -13,6 +14,9 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { eq } from "drizzle-orm";
+
+// Maximum presigned URL expiry: 24 hours (prevents indefinitely-valid URLs)
+const MAX_PRESIGN_EXPIRY_S = 86400;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,52 +72,79 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
       .where(eq(storageSettings.isActive, true))
       .limit(1);
 
-    if (!setting || setting.providerType === "local") {
+    if (setting && setting.providerType === "local") {
+      // Explicit local provider in DB — honor it
       const config: LocalConfig = { provider: "local" };
       _configCache = { config, fetchedAt: Date.now() };
       return config;
     }
 
-    // R2 or S3 — build S3Client
-    if (!setting.endpoint || !setting.accessKeyIdEncrypted || !setting.secretAccessKeyEncrypted) {
-      console.warn("[Storage] Active config missing endpoint or credentials, falling back to local");
-      const config: LocalConfig = { provider: "local" };
-      _configCache = { config, fetchedAt: Date.now() };
-      return config;
+    if (setting) {
+      // R2 or S3 — build S3Client from DB setting
+      if (!setting.endpoint || !setting.accessKeyIdEncrypted || !setting.secretAccessKeyEncrypted) {
+        console.warn("[Storage] Active config missing endpoint or credentials, falling back");
+        // Fall through to env-var fallback
+      } else {
+        const accessKeyId = decrypt(setting.accessKeyIdEncrypted);
+        const secretAccessKey = decrypt(setting.secretAccessKeyEncrypted);
+
+        if (!accessKeyId || !secretAccessKey) {
+          console.warn("[Storage] Failed to decrypt credentials, falling back");
+        } else {
+          const client = new S3Client({
+            endpoint: setting.endpoint,
+            region: setting.region || "auto",
+            credentials: { accessKeyId, secretAccessKey },
+            forcePathStyle: (setting.configJson as any)?.forcePathStyle ?? false,
+          });
+
+          const config: S3Config = {
+            provider: "s3",
+            client,
+            bucket: setting.bucket || "",
+            publicUrlPrefix: setting.publicUrlPrefix || null,
+          };
+
+          _configCache = { config, fetchedAt: Date.now() };
+          return config;
+        }
+      }
     }
+    // No active DB setting — fall through to env-var fallback (Priority 4)
+  } catch (error: any) {
+    console.warn("[Storage] Failed to load storage settings from DB:", error.message);
+    // Use stale cache if available
+    if (_configCache) return _configCache.config;
+  }
 
-    const accessKeyId = decrypt(setting.accessKeyIdEncrypted);
-    const secretAccessKey = decrypt(setting.secretAccessKeyEncrypted);
+  // Priority 4: Environment variable fallback (for Cloud Run)
+  const r2AccessKey = process.env.R2_ACCESS_KEY;
+  const r2SecretKey = process.env.R2_SECRET_KEY;
+  const r2AccountId = process.env.R2_ACCOUNT_ID;
+  const r2Bucket = process.env.R2_BUCKET_NAME;
 
-    if (!accessKeyId || !secretAccessKey) {
-      console.warn("[Storage] Failed to decrypt credentials, falling back to local");
-      const config: LocalConfig = { provider: "local" };
-      _configCache = { config, fetchedAt: Date.now() };
-      return config;
-    }
-
+  if (r2AccessKey && r2SecretKey && r2AccountId && r2Bucket) {
     const client = new S3Client({
-      endpoint: setting.endpoint,
-      region: setting.region || "auto",
-      credentials: { accessKeyId, secretAccessKey },
-      forcePathStyle: (setting.configJson as any)?.forcePathStyle ?? false,
+      endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`,
+      region: "auto",
+      credentials: { accessKeyId: r2AccessKey, secretAccessKey: r2SecretKey },
     });
 
     const config: S3Config = {
       provider: "s3",
       client,
-      bucket: setting.bucket || "",
-      publicUrlPrefix: setting.publicUrlPrefix || null,
+      bucket: r2Bucket,
+      publicUrlPrefix: null,
     };
 
     _configCache = { config, fetchedAt: Date.now() };
     return config;
-  } catch (error: any) {
-    console.warn("[Storage] Failed to load storage settings from DB:", error.message);
-    // Use stale cache if available
-    if (_configCache) return _configCache.config;
-    return { provider: "local" };
   }
+
+  // Priority 5: Local fallback (cached to avoid repeated DB queries)
+  const localConfig: LocalConfig = { provider: "local" };
+  _configCache = { config: localConfig, fetchedAt: Date.now() };
+  return localConfig;
 }
 
 /**
@@ -396,7 +427,33 @@ export async function storagePresignPut(
     ContentType: contentType,
     ContentLength: contentLength,
   });
-  const url = await getSignedUrl(config.client, cmd, { expiresIn });
+  const clampedExpiry = Math.min(Math.max(expiresIn, 60), MAX_PRESIGN_EXPIRY_S);
+  const url = await getSignedUrl(config.client, cmd, { expiresIn: clampedExpiry });
+  return { url, key };
+}
+
+/**
+ * Generate a presigned GET URL for direct download from S3/R2.
+ * Returns null if storage is local/forge (not S3-compatible).
+ *
+ * @param relKey - The object key relative to bucket root
+ * @param expiresIn - URL validity in seconds (default 3600 = 1 hour; use 86400 for admin)
+ * @returns Presigned GET URL and key, or null if not S3
+ */
+export async function storagePresignGet(
+  relKey: string,
+  expiresIn = 3600,
+): Promise<{ url: string; key: string } | null> {
+  const config = await getActiveStorageConfig();
+  if (config.provider !== "s3") return null;
+
+  const key = normalizeKey(relKey);
+  const cmd = new GetObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
+  });
+  const clampedExpiry = Math.min(Math.max(expiresIn, 60), MAX_PRESIGN_EXPIRY_S);
+  const url = await getSignedUrl(config.client, cmd, { expiresIn: clampedExpiry });
   return { url, key };
 }
 

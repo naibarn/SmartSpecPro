@@ -35,43 +35,91 @@ except ImportError:
 # STORAGE PATHS
 # =============================================================================
 
+def _safe_path_component(value: str) -> str:
+    """Validate and sanitize a path component for R2 keys.
+
+    Rejects values containing path traversal sequences, slashes, or null bytes.
+    """
+    if not value:
+        raise ValueError("Path component must not be empty")
+    if "\0" in value:
+        raise ValueError("Path component must not contain null bytes")
+    if ".." in value:
+        raise ValueError("Path component must not contain '..'")
+    if "/" in value or "\\" in value:
+        raise ValueError("Path component must not contain path separators")
+    return value
+
+
 class StoragePath:
     """Storage path builder for R2."""
-    
+
     @staticmethod
     def image_generated(user_id: str, task_id: str, ext: str = "png") -> str:
         """Path for generated images."""
         return f"images/generated/{user_id}/{task_id}.{ext}"
-    
+
     @staticmethod
     def image_gallery(gallery_id: str, image_id: str, ext: str = "png") -> str:
         """Path for gallery images."""
         return f"images/gallery/{gallery_id}/{image_id}.{ext}"
-    
+
     @staticmethod
     def image_thumbnail(image_id: str, size: str = "256", ext: str = "jpg") -> str:
         """Path for image thumbnails."""
         return f"images/thumbnails/{size}/{image_id}.{ext}"
-    
+
     @staticmethod
     def video_generated(user_id: str, task_id: str, ext: str = "mp4") -> str:
         """Path for generated videos."""
         return f"videos/generated/{user_id}/{task_id}.{ext}"
-    
+
     @staticmethod
     def video_gallery(gallery_id: str, video_id: str, ext: str = "mp4") -> str:
         """Path for gallery videos."""
         return f"videos/gallery/{gallery_id}/{video_id}.{ext}"
-    
+
     @staticmethod
     def video_thumbnail(video_id: str, ext: str = "jpg") -> str:
         """Path for video thumbnails."""
         return f"videos/thumbnails/{video_id}.{ext}"
-    
+
     @staticmethod
     def audio_generated(user_id: str, task_id: str, ext: str = "mp3") -> str:
         """Path for generated audio."""
         return f"audio/generated/{user_id}/{task_id}.{ext}"
+
+    # --- Production prefix paths (aligned with R2 lifecycle rules) ---
+
+    @staticmethod
+    def media_raw(user_id: str, job_id: str, ext: str = "png") -> str:
+        """Path for raw media results from Kie AI (temporary, 12-day lifecycle)."""
+        return f"temp/raw/{_safe_path_component(user_id)}/{_safe_path_component(job_id)}/result.{_safe_path_component(ext)}"
+
+    @staticmethod
+    def media_thumbnail(user_id: str, job_id: str, ext: str = "jpg") -> str:
+        """Path for generated thumbnails (temporary, 12-day lifecycle)."""
+        return f"temp/raw/{_safe_path_component(user_id)}/{_safe_path_component(job_id)}/thumbnail.{_safe_path_component(ext)}"
+
+    @staticmethod
+    def render_preview(render_hash: str) -> str:
+        """Path for preview renders (7-day lifecycle)."""
+        return f"renders/preview/{_safe_path_component(render_hash)}.mp4"
+
+    @staticmethod
+    def render_final(render_hash: str) -> str:
+        """Path for final renders (12-day lifecycle)."""
+        return f"renders/final/{_safe_path_component(render_hash)}.mp4"
+
+    @staticmethod
+    def gallery_item(gallery_id: str, item_id: str, ext: str = "png") -> str:
+        """Path for curated gallery content (permanent, no lifecycle expiry)."""
+        return f"gallery/{_safe_path_component(gallery_id)}/{_safe_path_component(item_id)}.{_safe_path_component(ext)}"
+
+    @staticmethod
+    def work_artifact(render_hash: str, stage: str, ext: str = "mp4") -> str:
+        """Path for intermediate work artifacts (12-day lifecycle)."""
+        return f"temp/work/{_safe_path_component(render_hash)}_{_safe_path_component(stage)}.{_safe_path_component(ext)}"
 
 
 # =============================================================================

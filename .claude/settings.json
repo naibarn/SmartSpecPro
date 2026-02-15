@@ -7,24 +7,12 @@
   },
   "enabledPlugins": {
     "context7@claude-plugins-official": true,
-    "coderabbit@claude-plugins-official": true,
-    "ultrathink@cc-marketplace": true,
-    "ralph-loop@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
     "deep-project@piercelamb-plugins": true,
     "deep-plan@piercelamb-plugins": true,
     "deep-implement@piercelamb-plugins": true,
-    "developer-essentials@claude-code-workflows": true,
     "error-debugging@claude-code-workflows": true,
-    "agent-orchestration@claude-code-workflows": true,
-    "error-diagnostics@claude-code-workflows": true,
     "backend-api-security@claude-code-workflows": true,
-    "seo-technical-optimization@claude-code-workflows": true,
-    "multi-platform-apps@claude-code-workflows": true,
-    "content-marketing@claude-code-workflows": true,
     "python-development@claude-code-workflows": true,
-    "ui-design@claude-code-workflows": true,
-    "ultrathink@ekstend": true
+    "developer-essentials@claude-code-workflows": true
   }
 }

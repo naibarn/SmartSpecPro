@@ -41,6 +41,7 @@ interface PreviewPlayerProps {
   selectedClipId?: string | null;
   onTransformChangeAtCurrentTime?: (clipId: string, updates: Partial<TransformKeyframe>, commit?: boolean) => void;
   onAddKeyframeAtCurrentTime?: (clipId: string) => void;
+  onDeleteKeyframeAtCurrentTime?: (clipId: string) => void;
   onOpenKeyframePanel?: () => void;
   outputWidth?: number;
   outputHeight?: number;
@@ -124,6 +125,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   selectedClipId = null,
   onTransformChangeAtCurrentTime,
   onAddKeyframeAtCurrentTime,
+  onDeleteKeyframeAtCurrentTime,
   onOpenKeyframePanel,
   outputWidth = 16,
   outputHeight = 9,
@@ -1040,6 +1042,17 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           background: #005a9e;
         }
 
+        .control-button.danger {
+          background: #5b2a2a;
+          border-color: #7a3a3a;
+          color: #ffd6d6;
+        }
+
+        .control-button.danger:hover:not(:disabled) {
+          background: #6e3333;
+          border-color: #9a4a4a;
+        }
+
         .time-display {
           font-size: 11px;
           font-family: 'Courier New', monospace;
@@ -1507,6 +1520,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                 aria-label="Add keyframe at current playhead"
               >
                 {hasActiveKeyframeAtPlayhead ? 'Update KF' : 'Add KF'}
+              </button>
+            )}
+            {canEditActiveTransform && onDeleteKeyframeAtCurrentTime && activeClip?.id && hasActiveKeyframeAtPlayhead && (
+              <button
+                className="control-button text-button keyframe-button danger"
+                onClick={() => onDeleteKeyframeAtCurrentTime(activeClip.id!)}
+                title="Delete keyframe at current playhead"
+                aria-label="Delete keyframe at current playhead"
+              >
+                Delete KF
               </button>
             )}
             <button
