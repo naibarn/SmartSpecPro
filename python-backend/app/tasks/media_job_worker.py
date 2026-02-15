@@ -75,6 +75,19 @@ def _to_int(val: Any, default: int = 0) -> int:
         return default
 
 
+def _to_float(val: Any, default: float = 0.0) -> float:
+    """Safely coerce a value to float. Handles None, str, and invalid types."""
+    if val is None:
+        return default
+    try:
+        num = float(val)
+        if num != num:  # NaN
+            return default
+        return num
+    except (ValueError, TypeError, OverflowError):
+        return default
+
+
 def _safe_float_for_ffmpeg(val: float, precision: int = 6) -> str:
     """Safely format a float for FFmpeg filter string interpolation.
 
@@ -95,6 +108,39 @@ def _safe_float_for_ffmpeg(val: float, precision: int = 6) -> str:
     if SHELL_METACHAR_RE.search(s):
         raise ValueError(f"Invalid FFmpeg value (contains shell metacharacters): {s}")
     return s
+
+
+def _resolve_clip_transform(clip: dict) -> tuple[float, float, float, float]:
+    """Read clip-level static transform with safe defaults and clamps.
+
+    Returns:
+        (x, y, scale_x, scale_y)
+    """
+    transform = clip.get("transform") or {}
+    x = min(1.0, max(0.0, _to_float(transform.get("x"), 0.5)))
+    y = min(1.0, max(0.0, _to_float(transform.get("y"), 0.5)))
+    scale_x = min(5.0, max(0.1, _to_float(transform.get("scaleX"), 1.0)))
+    scale_y = min(5.0, max(0.1, _to_float(transform.get("scaleY"), 1.0)))
+    return x, y, scale_x, scale_y
+
+
+def _clip_has_non_default_transform(clip: dict, eps: float = 1e-3) -> bool:
+    """Whether the clip has a non-default static transform or keyframes."""
+    transform = clip.get("transform")
+    if not isinstance(transform, dict):
+        return False
+
+    keyframes = transform.get("keyframes")
+    if isinstance(keyframes, list) and len(keyframes) > 0:
+        return True
+
+    x, y, scale_x, scale_y = _resolve_clip_transform(clip)
+    return (
+        abs(x - 0.5) > eps
+        or abs(y - 0.5) > eps
+        or abs(scale_x - 1.0) > eps
+        or abs(scale_y - 1.0) > eps
+    )
 
 
 def _safe_clip_id(clip: dict, max_len: int = 50) -> str:
@@ -357,8 +403,9 @@ def build_ffmpeg_command_for_render(spec: dict) -> list[str]:
     for track in tracks:
         if track.get("type") in ("video", "overlay"):
             video_clips.extend(track.get("clips", []))
+    has_clip_transforms = any(_clip_has_non_default_transform(clip) for clip in video_clips)
 
-    if len(video_clips) <= 1 and len(input_files) == 1:
+    if len(video_clips) <= 1 and len(input_files) == 1 and not has_clip_transforms:
         # Simple case: single input (ignore transitions on single clips)
         cmd.extend([
             "-c:v", "libx264", "-profile:v", "high", "-level", "4.0",
@@ -404,9 +451,9 @@ def build_ffmpeg_command_for_render(spec: dict) -> list[str]:
                 f"setsar=1,format=yuv420p"
             )
             if in_s > 0 or out_s > 0:
-                filters.append(f"[{idx}:v]trim=start={in_s}:end={out_s},setpts=PTS-STARTPTS,{normalize_chain}[v{i}]")
+                filters.append(f"[{idx}:v]trim=start={in_s}:end={out_s},setpts=PTS-STARTPTS,{normalize_chain}[vnorm{i}]")
             else:
-                filters.append(f"[{idx}:v]setpts=PTS-STARTPTS,{normalize_chain}[v{i}]")
+                filters.append(f"[{idx}:v]setpts=PTS-STARTPTS,{normalize_chain}[vnorm{i}]")
 
             # Audio filter — generate silence for inputs without audio streams
             if idx in silent_inputs:
@@ -418,6 +465,25 @@ def build_ffmpeg_command_for_render(spec: dict) -> list[str]:
                 filters.append(f"[{idx}:a]atrim=start={in_s}:end={out_s},asetpts=PTS-STARTPTS[a{i}]")
             else:
                 filters.append(f"[{idx}:a]asetpts=PTS-STARTPTS[a{i}]")
+
+            # Clip transform (static pan/zoom per clip)
+            # 1) Scale normalized clip by user zoom.
+            # 2) Composite onto a black frame at user-selected center position.
+            x, y, scale_x, scale_y = _resolve_clip_transform(clip)
+            scaled_w = max(2, int(round(proj_w * scale_x)))
+            scaled_h = max(2, int(round(proj_h * scale_y)))
+            x_s = _safe_float_for_ffmpeg(x)
+            y_s = _safe_float_for_ffmpeg(y)
+            d_s = _safe_float_for_ffmpeg(clip_seg_dur)
+
+            filters.append(f"[vnorm{i}]scale={scaled_w}:{scaled_h}[vscaled{i}]")
+            filters.append(f"color=c=black:s={proj_w}x{proj_h}:d={d_s}[vbg{i}]")
+            filters.append(
+                f"[vbg{i}][vscaled{i}]overlay="
+                f"x=(main_w*{x_s})-(overlay_w/2):"
+                f"y=(main_h*{y_s})-(overlay_h/2):"
+                f"shortest=1,format=yuv420p[v{i}]"
+            )
 
         n = len(video_clips)
 

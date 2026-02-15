@@ -217,6 +217,7 @@ export interface SilentRegion {
   selected: boolean;         // User can toggle selection to remove
   averageDb: number;         // Average dB level in this region
   skipped: boolean;          // true if too short after buffer
+  manual?: boolean;          // true when user manually marks a cut range
 }
 
 export interface SilenceDetectionConfig {
@@ -574,6 +575,19 @@ export function applyBufferToRegions(
 ): SilentRegion[] {
   const buf = Math.max(0, bufferSeconds);
   return regions.map((region) => {
+    // Manual ranges are explicit user intent and should not collapse due buffer.
+    if (region.manual) {
+      const adjustedStartTime = Math.max(0, region.startTime);
+      const adjustedEndTime = Math.max(adjustedStartTime, region.endTime);
+      return {
+        ...region,
+        adjustedStartTime,
+        adjustedEndTime,
+        adjustedDuration: Math.max(0, adjustedEndTime - adjustedStartTime),
+        skipped: false,
+      };
+    }
+
     const adjustedStartTime = Math.max(0, region.startTime + buf);
     const adjustedEndTime = region.endTime - buf;
     const skipped = adjustedEndTime <= adjustedStartTime;

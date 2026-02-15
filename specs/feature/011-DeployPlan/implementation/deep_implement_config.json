@@ -44,6 +44,22 @@
     "section-04-cloud-tasks": {
       "status": "complete",
       "commit_hash": "7f2abb5"
+    },
+    "section-05-bullmq-migration": {
+      "status": "complete",
+      "commit_hash": "ca66fe9"
+    },
+    "section-06-cloud-scheduler": {
+      "status": "complete",
+      "commit_hash": "846903a"
+    },
+    "section-07-kie-integration": {
+      "status": "complete",
+      "commit_hash": "c1e0ebc"
+    },
+    "section-08-media-pipeline": {
+      "status": "complete",
+      "commit_hash": "609b431"
     }
   },
   "pre_commit": {

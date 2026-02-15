@@ -5,17 +5,24 @@
 
 import React, { useState, useEffect } from 'react';
 import { type Clip, type ClipTransform, type TransformKeyframe } from '../../types/videoEditor';
+import { resolveTransformAtTime } from './transformKeyframes';
+
+const formatPercent = (v: number): string => `${Math.round(Math.max(0, Math.min(1, v)) * 100)}%`;
 
 interface OverlayPanelProps {
   selectedClip: Clip | null;
   onTransformChange: (clipId: string, transform: ClipTransform) => void;
   onGenerateOverlay?: (prompt: string, type: 'image' | 'video') => Promise<void>;
+  currentTime?: number;
+  onSeekToTime?: (time: number) => void;
 }
 
 export const OverlayPanel: React.FC<OverlayPanelProps> = ({
   selectedClip,
   onTransformChange,
-  onGenerateOverlay
+  onGenerateOverlay,
+  currentTime = 0,
+  onSeekToTime,
 }) => {
   // Default transform values
   const defaultTransform: ClipTransform = {
@@ -41,7 +48,18 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
     } else if (selectedClip) {
       setTransform(defaultTransform);
     }
+    setSelectedKeyframe(-1);
   }, [selectedClip]);
+
+  useEffect(() => {
+    if (!transform.keyframes || transform.keyframes.length === 0) {
+      if (selectedKeyframe !== -1) setSelectedKeyframe(-1);
+      return;
+    }
+    if (selectedKeyframe >= transform.keyframes.length) {
+      setSelectedKeyframe(transform.keyframes.length - 1);
+    }
+  }, [transform.keyframes, selectedKeyframe]);
 
   const handleTransformUpdate = (updates: Partial<ClipTransform>) => {
     if (!selectedClip) return;
@@ -51,22 +69,54 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
     onTransformChange(selectedClip.id, newTransform);
   };
 
+  const normalizedPlayhead = selectedClip && selectedClip.duration > 0
+    ? Math.max(0, Math.min(1, (currentTime - selectedClip.startTime) / selectedClip.duration))
+    : 0;
+  const editingKeyframe = selectedKeyframe >= 0 && !!transform.keyframes?.[selectedKeyframe]
+    ? transform.keyframes[selectedKeyframe]
+    : null;
+
+  const handleTransformFieldChange = (
+    field: 'x' | 'y' | 'scaleX' | 'scaleY' | 'rotation' | 'opacity',
+    value: number,
+  ) => {
+    if (editingKeyframe && transform.keyframes) {
+      handleUpdateKeyframe(selectedKeyframe, { [field]: value } as Partial<TransformKeyframe>);
+      return;
+    }
+    handleTransformUpdate({ [field]: value } as Partial<ClipTransform>);
+  };
+
   const handleAddKeyframe = () => {
     if (!selectedClip) return;
 
+    const keyframeTime = selectedClip.duration > 0
+      ? Math.max(0, Math.min(1, (currentTime - selectedClip.startTime) / selectedClip.duration))
+      : 0;
+    const resolvedAtPlayhead = resolveTransformAtTime(transform, keyframeTime);
+
     const newKeyframe: TransformKeyframe = {
-      time: 0.5, // Middle of clip
-      x: transform.x,
-      y: transform.y,
-      scaleX: transform.scaleX,
-      scaleY: transform.scaleY,
-      rotation: transform.rotation,
-      opacity: transform.opacity,
+      time: keyframeTime,
+      x: resolvedAtPlayhead.x,
+      y: resolvedAtPlayhead.y,
+      scaleX: resolvedAtPlayhead.scaleX,
+      scaleY: resolvedAtPlayhead.scaleY,
+      rotation: resolvedAtPlayhead.rotation,
+      opacity: resolvedAtPlayhead.opacity,
       easing: 'ease-in-out'
     };
 
-    const newKeyframes = [...(transform.keyframes || []), newKeyframe];
-    newKeyframes.sort((a, b) => a.time - b.time);
+    const existingIndex = (transform.keyframes || []).findIndex((kf) => Math.abs(kf.time - keyframeTime) <= 0.01);
+    const newKeyframes = [...(transform.keyframes || [])];
+
+    if (existingIndex >= 0) {
+      newKeyframes[existingIndex] = { ...newKeyframes[existingIndex], ...newKeyframe };
+      setSelectedKeyframe(existingIndex);
+    } else {
+      newKeyframes.push(newKeyframe);
+      newKeyframes.sort((a, b) => a.time - b.time);
+      setSelectedKeyframe(newKeyframes.findIndex((kf) => Math.abs(kf.time - keyframeTime) <= 0.01));
+    }
 
     handleTransformUpdate({ keyframes: newKeyframes });
   };
@@ -85,6 +135,14 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
     const newKeyframes = transform.keyframes.filter((_, i) => i !== index);
     handleTransformUpdate({ keyframes: newKeyframes });
     setSelectedKeyframe(-1);
+  };
+
+  const handleSelectKeyframe = (index: number) => {
+    setSelectedKeyframe(index);
+    if (!selectedClip || !onSeekToTime || !transform.keyframes?.[index]) return;
+    const keyframe = transform.keyframes[index];
+    const absoluteTime = selectedClip.startTime + (selectedClip.duration * keyframe.time);
+    onSeekToTime(absoluteTime);
   };
 
   const handleGenerate = async () => {
@@ -198,11 +256,19 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
       {/* Transform Controls */}
       <div className="section">
         <div className="section-title">Transform</div>
+        {editingKeyframe && (
+          <div className="editing-keyframe-banner">
+            Editing keyframe {selectedKeyframe + 1} at {(editingKeyframe.time * 100).toFixed(0)}%
+            <button className="clear-keyframe-edit" onClick={() => setSelectedKeyframe(-1)}>
+              Edit Base
+            </button>
+          </div>
+        )}
 
         <div className="control-group">
           <label className="control-label">
             Position X
-            <span className="control-value">{(transform.x * 100).toFixed(0)}%</span>
+            <span className="control-value">{((editingKeyframe?.x ?? transform.x) * 100).toFixed(0)}%</span>
           </label>
           <input
             type="range"
@@ -210,15 +276,15 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
             min="0"
             max="1"
             step="0.01"
-            value={transform.x}
-            onChange={(e) => handleTransformUpdate({ x: parseFloat(e.target.value) })}
+            value={editingKeyframe?.x ?? transform.x}
+            onChange={(e) => handleTransformFieldChange('x', parseFloat(e.target.value))}
           />
         </div>
 
         <div className="control-group">
           <label className="control-label">
             Position Y
-            <span className="control-value">{(transform.y * 100).toFixed(0)}%</span>
+            <span className="control-value">{((editingKeyframe?.y ?? transform.y) * 100).toFixed(0)}%</span>
           </label>
           <input
             type="range"
@@ -226,15 +292,15 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
             min="0"
             max="1"
             step="0.01"
-            value={transform.y}
-            onChange={(e) => handleTransformUpdate({ y: parseFloat(e.target.value) })}
+            value={editingKeyframe?.y ?? transform.y}
+            onChange={(e) => handleTransformFieldChange('y', parseFloat(e.target.value))}
           />
         </div>
 
         <div className="control-group">
           <label className="control-label">
             Scale X
-            <span className="control-value">{(transform.scaleX * 100).toFixed(0)}%</span>
+            <span className="control-value">{((editingKeyframe?.scaleX ?? transform.scaleX) * 100).toFixed(0)}%</span>
           </label>
           <input
             type="range"
@@ -242,15 +308,15 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
             min="0.1"
             max="3"
             step="0.01"
-            value={transform.scaleX}
-            onChange={(e) => handleTransformUpdate({ scaleX: parseFloat(e.target.value) })}
+            value={editingKeyframe?.scaleX ?? transform.scaleX}
+            onChange={(e) => handleTransformFieldChange('scaleX', parseFloat(e.target.value))}
           />
         </div>
 
         <div className="control-group">
           <label className="control-label">
             Scale Y
-            <span className="control-value">{(transform.scaleY * 100).toFixed(0)}%</span>
+            <span className="control-value">{((editingKeyframe?.scaleY ?? transform.scaleY) * 100).toFixed(0)}%</span>
           </label>
           <input
             type="range"
@@ -258,15 +324,15 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
             min="0.1"
             max="3"
             step="0.01"
-            value={transform.scaleY}
-            onChange={(e) => handleTransformUpdate({ scaleY: parseFloat(e.target.value) })}
+            value={editingKeyframe?.scaleY ?? transform.scaleY}
+            onChange={(e) => handleTransformFieldChange('scaleY', parseFloat(e.target.value))}
           />
         </div>
 
         <div className="control-group">
           <label className="control-label">
             Rotation
-            <span className="control-value">{transform.rotation.toFixed(0)}°</span>
+            <span className="control-value">{(editingKeyframe?.rotation ?? transform.rotation).toFixed(0)}°</span>
           </label>
           <input
             type="range"
@@ -274,15 +340,15 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
             min="0"
             max="360"
             step="1"
-            value={transform.rotation}
-            onChange={(e) => handleTransformUpdate({ rotation: parseFloat(e.target.value) })}
+            value={editingKeyframe?.rotation ?? transform.rotation}
+            onChange={(e) => handleTransformFieldChange('rotation', parseFloat(e.target.value))}
           />
         </div>
 
         <div className="control-group">
           <label className="control-label">
             Opacity
-            <span className="control-value">{(transform.opacity * 100).toFixed(0)}%</span>
+            <span className="control-value">{((editingKeyframe?.opacity ?? transform.opacity) * 100).toFixed(0)}%</span>
           </label>
           <input
             type="range"
@@ -290,8 +356,8 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
             min="0"
             max="1"
             step="0.01"
-            value={transform.opacity}
-            onChange={(e) => handleTransformUpdate({ opacity: parseFloat(e.target.value) })}
+            value={editingKeyframe?.opacity ?? transform.opacity}
+            onChange={(e) => handleTransformFieldChange('opacity', parseFloat(e.target.value))}
           />
         </div>
       </div>
@@ -300,10 +366,34 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
       <div className="section">
         <div className="section-header">
           <div className="section-title">Keyframes (Pan & Zoom)</div>
-          <button className="add-keyframe-btn" onClick={handleAddKeyframe}>
-            ➕ Add
+          <button className="add-keyframe-btn" onClick={handleAddKeyframe} title="Add keyframe at current playhead">
+            ➕ Add at Playhead
           </button>
         </div>
+
+        {selectedClip && (
+          <div className="keyframe-track-wrap">
+            <div className="keyframe-track-labels">
+              <span>{formatPercent(0)}</span>
+              <span>{formatPercent(normalizedPlayhead)}</span>
+              <span>{formatPercent(1)}</span>
+            </div>
+            <div className="keyframe-track" title="Click keyframe marker to jump and edit">
+              <div className="keyframe-playhead" style={{ left: `${normalizedPlayhead * 100}%` }} />
+              {(transform.keyframes || []).map((kf, index) => (
+                <button
+                  key={`${kf.time}-${index}`}
+                  className={`keyframe-marker ${selectedKeyframe === index ? 'selected' : ''}`}
+                  style={{ left: `${kf.time * 100}%` }}
+                  onClick={() => handleSelectKeyframe(index)}
+                  title={`Keyframe ${index + 1} at ${(kf.time * 100).toFixed(0)}%`}
+                >
+                  ◆
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {transform.keyframes && transform.keyframes.length > 0 ? (
           <div className="keyframes-list">
@@ -311,7 +401,7 @@ export const OverlayPanel: React.FC<OverlayPanelProps> = ({
               <div
                 key={index}
                 className={`keyframe-item ${selectedKeyframe === index ? 'selected' : ''}`}
-                onClick={() => setSelectedKeyframe(index)}
+                onClick={() => handleSelectKeyframe(index)}
               >
                 <div className="keyframe-header">
                   <span>Keyframe {index + 1}</span>
@@ -455,6 +545,30 @@ const styles = `
     margin-bottom: 16px;
   }
 
+  .editing-keyframe-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    border: 1px solid #3f5f86;
+    background: #213245;
+    color: #9fd1ff;
+    font-size: 11px;
+  }
+
+  .clear-keyframe-edit {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #4e657f;
+    background: #2c3e52;
+    color: #d7e7ff;
+    font-size: 10px;
+    cursor: pointer;
+  }
+
   .control-label {
     display: flex;
     justify-content: space-between;
@@ -506,6 +620,63 @@ const styles = `
     cursor: pointer;
     font-size: 11px;
     transition: background 0.2s;
+  }
+
+  .keyframe-track-wrap {
+    margin-bottom: 12px;
+  }
+
+  .keyframe-track-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    color: #7c8ca3;
+    font-size: 10px;
+  }
+
+  .keyframe-track {
+    position: relative;
+    height: 30px;
+    border: 1px solid #465163;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #2f3642, #242a34);
+    overflow: hidden;
+  }
+
+  .keyframe-playhead {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    width: 2px;
+    background: #ffb74d;
+    box-shadow: 0 0 6px rgba(255, 183, 77, 0.6);
+    transform: translateX(-1px);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .keyframe-marker {
+    position: absolute;
+    top: 4px;
+    transform: translateX(-50%);
+    border: none;
+    background: transparent;
+    color: #7fc1ff;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    z-index: 2;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+  }
+
+  .keyframe-marker:hover {
+    color: #a9d7ff;
+    transform: translateX(-50%) scale(1.15);
+  }
+
+  .keyframe-marker.selected {
+    color: #ffd166;
   }
 
   .add-keyframe-btn:hover {

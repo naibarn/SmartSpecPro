@@ -28,6 +28,7 @@ interface ToolbarProps {
   onAddText?: () => void;
   onOpenSilenceDetection?: () => void;
   onExtractAudio?: () => void;
+  onOpenKeyframes?: () => void;
 }
 
 const ZOOM_LEVELS = [10, 20, 30, 50, 75, 100, 150, 200];
@@ -55,6 +56,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onAddText,
   onOpenSilenceDetection,
   onExtractAudio,
+  onOpenKeyframes,
 }) => {
   const handleZoomIn = () => {
     if (onZoomIn) {
@@ -92,45 +94,47 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         .toolbar {
           display: flex;
           align-items: center;
-          gap: 6px;
-          padding: 4px 12px;
-          background: #252525;
+          gap: 8px;
+          padding: 6px 12px;
+          background: linear-gradient(180deg, #262626, #232323);
           border-bottom: 1px solid #333;
-          min-height: 36px;
+          min-height: 42px;
+          flex-wrap: wrap;
         }
 
         .toolbar-group {
           display: flex;
           align-items: center;
-          gap: 2px;
-          padding: 0 6px;
-          border-right: 1px solid #3a3a3a;
+          gap: 4px;
+          padding: 3px;
+          background: #1f1f1f;
+          border: 1px solid #343434;
+          border-radius: 8px;
         }
 
-        .toolbar-group:last-child {
-          border-right: none;
+        .toolbar-group.right {
           margin-left: auto;
         }
 
         .tb {
-          width: 28px;
-          height: 28px;
-          background: transparent;
-          border: 1px solid transparent;
-          border-radius: 3px;
+          width: 30px;
+          height: 30px;
+          background: #242424;
+          border: 1px solid #3a3a3a;
+          border-radius: 6px;
           color: #ccc;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 14px;
+          font-size: 13px;
           transition: all 0.15s;
           flex-shrink: 0;
         }
 
         .tb:hover:not(:disabled) {
-          background: #333;
-          border-color: #555;
+          background: #323232;
+          border-color: #4f4f4f;
           color: #fff;
         }
 
@@ -149,37 +153,33 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           color: #fff;
         }
 
-        .tb-label {
-          font-size: 10px;
-          color: #888;
-          margin-right: 2px;
-          white-space: nowrap;
-        }
-
         .zoom-display {
-          font-size: 10px;
+          font-size: 11px;
           color: #aaa;
-          min-width: 42px;
+          min-width: 56px;
           text-align: center;
           white-space: nowrap;
+          padding: 0 4px;
         }
 
         .tb-text {
           width: auto;
-          padding: 0 8px;
+          min-width: 56px;
+          padding: 0 10px;
           font-size: 11px;
-          gap: 4px;
+          gap: 6px;
+          font-weight: 600;
         }
 
         .tb-export {
           background: #0078d4;
           border-color: #0078d4;
           color: #fff;
-          padding: 0 12px;
-          height: 28px;
-          font-size: 12px;
+          padding: 0 14px;
+          height: 30px;
+          font-size: 13px;
           font-weight: 600;
-          border-radius: 4px;
+          border-radius: 6px;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -190,19 +190,27 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           background: #005a9e;
         }
 
-        .save-dot {
+        .save-state {
           font-size: 10px;
-          color: #888;
+          color: #8fc6a0;
+          border: 1px solid #3f5b48;
+          background: #1f2d24;
+          border-radius: 999px;
+          padding: 3px 8px;
+          line-height: 1;
         }
 
-        .save-dot.dirty {
-          color: #ffa500;
+        .save-state.dirty {
+          color: #ffcc7a;
+          border-color: #6a5531;
+          background: #30271b;
         }
 
         .sel-info {
-          font-size: 10px;
-          color: #0078d4;
+          font-size: 11px;
+          color: #7db8ff;
           white-space: nowrap;
+          padding: 0 6px;
         }
       `}</style>
 
@@ -236,7 +244,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button
             className={`tb ${rippleEditMode ? 'active' : ''}`}
             onClick={onToggleRippleEdit}
-            title={`Ripple Edit: ${rippleEditMode ? 'ON' : 'OFF'}`}
+            title={`Ripple Edit: ${rippleEditMode ? 'ON - close gaps while move/resize/delete' : 'OFF'}`}
           >
             &#127754;
           </button>
@@ -249,6 +257,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {onOpenSilenceDetection && (
           <button className="tb tb-text" onClick={onOpenSilenceDetection} title="Silence Detection - Cut Dead Air">
             🔇
+          </button>
+        )}
+        {onOpenKeyframes && (
+          <button className="tb tb-text" onClick={onOpenKeyframes} title="Open Keyframes Panel">
+            ◆ KF
           </button>
         )}
       </div>
@@ -272,10 +285,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       )}
 
       {/* Save + Export (right-aligned) */}
-      <div className="toolbar-group">
-        <button className="tb" onClick={onSave} title="Save Project (Ctrl+S)">&#128190;</button>
-        <span className={`save-dot ${isDirty ? 'dirty' : ''}`}>
-          {isDirty ? '●' : '✓'}
+      <div className="toolbar-group right">
+        <button className="tb tb-text" onClick={onSave} title="Save Project (Ctrl+S)">
+          <span>&#128190;</span>
+          <span>Save</span>
+        </button>
+        <span className={`save-state ${isDirty ? 'dirty' : ''}`}>
+          {isDirty ? 'Unsaved' : 'Saved'}
         </span>
         <button className="tb-export" onClick={onExport} title="Export Video">
           <span style={{ fontSize: '14px' }}>&#128228;</span>

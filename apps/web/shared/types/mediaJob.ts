@@ -1,6 +1,7 @@
 import type {
   VideoEditorProject,
   Clip,
+  ClipTransform,
   ClipTransition,
   Track,
 } from "../../client/src/types/videoEditor";
@@ -60,6 +61,7 @@ export interface MediaClip {
   volume?: number;
   mute?: boolean;
   inTransition?: { name: string; durationMs: number; alignment?: string };
+  transform?: ClipTransform;
 }
 
 // ========================================
@@ -287,6 +289,7 @@ export function projectToTimeline(
             playbackRate: clip.speed,
             volume: clip.volume,
             inTransition: clip.inTransition,
+            transform: clip.transform,
           }),
         ),
       }),
@@ -324,6 +327,7 @@ export function timelineToProject(
           speed: clip.playbackRate ?? 1.0,
           effects: [],
           inTransition: clip.inTransition as ClipTransition | undefined,
+          transform: clip.transform,
         }),
       ),
       muted: false,

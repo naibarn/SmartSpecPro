@@ -35,6 +35,7 @@ import {
   type ExportSettings,
   type DuckingConfig,
   type ClipTransform,
+  type TransformKeyframe,
   type ClipTransition,
   type TextConfig,
   type SilentRegion,
@@ -49,6 +50,7 @@ import {
 } from '../../types/videoEditor';
 import { processExportToTimeline } from './silenceExportUtils';
 import { createMediaJobClient } from '../../services/mediaJobClient';
+import { clamp01, DEFAULT_CLIP_TRANSFORM, resolveTransformAtTime, upsertTransformKeyframe } from './transformKeyframes';
 
 export const VideoEditorPhase3: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -79,6 +81,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [currentRenderJob, setCurrentRenderJob] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<Omit<ConfirmDialogProps, 'onConfirm' | 'onCancel'> | null>(null);
   const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
+  const [pendingDeleteClipId, setPendingDeleteClipId] = useState<string | null>(null);
 
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence' | 'text'>('library');
@@ -442,11 +445,13 @@ export const VideoEditorPhase3: React.FC = () => {
       // Find the clip and its source track type
       let clip: Clip | null = null;
       let sourceTrackType: string = '';
+      let sourceTrackId: string = '';
       for (const track of newProject.timeline.tracks) {
         const index = track.clips.findIndex((c: Clip) => c.id === clipId);
         if (index !== -1) {
           clip = track.clips.splice(index, 1)[0];
           sourceTrackType = track.type;
+          sourceTrackId = track.id;
           break;
         }
       }
@@ -564,17 +569,34 @@ export const VideoEditorPhase3: React.FC = () => {
       newTrack.clips.push(clip);
       newTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
 
+      if (rippleEditMode) {
+        const compactTrack = (track: any) => {
+          track.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+          let t = 0;
+          track.clips.forEach((c: Clip) => {
+            c.startTime = t;
+            t += c.duration;
+          });
+        };
+        compactTrack(newTrack);
+        if (sourceTrackId && sourceTrackId !== newTrack.id) {
+          const sourceTrack = newProject.timeline.tracks.find((t: any) => t.id === sourceTrackId);
+          if (sourceTrack) compactTrack(sourceTrack);
+        }
+      }
+
       newProject.settings.duration = calculateProjectDuration(newProject.timeline);
       newProject.modifiedAt = new Date().toISOString();
 
       addToHistory(newProject);
       return newProject;
     });
-  }, [addToHistory]);
+  }, [addToHistory, rippleEditMode]);
 
   const handleClipResize = useCallback((clipId: string, newDuration: number, newTrimIn: number) => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
+      let resizedTrack: any = null;
 
       for (const track of newProject.timeline.tracks) {
         const clip = track.clips.find((c: Clip) => c.id === clipId);
@@ -587,8 +609,18 @@ export const VideoEditorPhase3: React.FC = () => {
           clip.duration = newDuration;
           clip.trimIn = newTrimIn;
           clip.trimOut = newTrimIn + newDuration;
+          resizedTrack = track;
           break;
         }
+      }
+
+      if (rippleEditMode && resizedTrack) {
+        resizedTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+        let timeCursor = 0;
+        resizedTrack.clips.forEach((clip: Clip) => {
+          clip.startTime = timeCursor;
+          timeCursor += clip.duration;
+        });
       }
 
       newProject.settings.duration = calculateProjectDuration(newProject.timeline);
@@ -597,9 +629,10 @@ export const VideoEditorPhase3: React.FC = () => {
       // Don't add to history on every resize frame — just update the project
       return newProject;
     });
-  }, []);
+  }, [rippleEditMode]);
 
   const handleClipDelete = useCallback((clipId: string) => {
+    setPendingDeleteClipId(clipId);
     const clipCount = selectedClipIds.length > 0 ? selectedClipIds.length : 1;
     setConfirmDialog({
       title: 'Delete Clip',
@@ -658,6 +691,7 @@ export const VideoEditorPhase3: React.FC = () => {
       return newProject;
     });
     setConfirmDialog(null);
+    setPendingDeleteClipId(null);
   };
 
   // ========================================
@@ -719,6 +753,112 @@ export const VideoEditorPhase3: React.FC = () => {
       return newProject;
     });
   }, [addToHistory]);
+
+  const handlePreviewTransformChangeAtCurrentTime = useCallback((
+    clipId: string,
+    updates: Partial<TransformKeyframe>,
+    commit = false,
+  ) => {
+    let historySnapshot: VideoEditorProject | null = null;
+
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+      let targetClip: Clip | null = null;
+
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          targetClip = clip;
+          break;
+        }
+      }
+
+      if (!targetClip) return prevProject;
+
+      const normalizedTime = targetClip.duration > 0
+        ? clamp01((currentTime - targetClip.startTime) / targetClip.duration)
+        : 0;
+      const source = targetClip.transform || DEFAULT_CLIP_TRANSFORM;
+      const clampScale = (value: number) => Math.max(0.1, Math.min(5, value));
+      const clampOpacity = (value: number) => Math.max(0, Math.min(1, value));
+      const sanitizedUpdates: Partial<TransformKeyframe> = {
+        ...(typeof updates.x === 'number' ? { x: clamp01(updates.x) } : {}),
+        ...(typeof updates.y === 'number' ? { y: clamp01(updates.y) } : {}),
+        ...(typeof updates.scaleX === 'number' ? { scaleX: clampScale(updates.scaleX) } : {}),
+        ...(typeof updates.scaleY === 'number' ? { scaleY: clampScale(updates.scaleY) } : {}),
+        ...(typeof updates.rotation === 'number' ? { rotation: updates.rotation } : {}),
+        ...(typeof updates.opacity === 'number' ? { opacity: clampOpacity(updates.opacity) } : {}),
+      };
+
+      if ((source.keyframes || []).length > 0) {
+        // Keyframed clip: edit keyframe at current playhead (upsert if missing).
+        targetClip.transform = upsertTransformKeyframe(source, normalizedTime, sanitizedUpdates);
+      } else {
+        // Non-keyframed clip: edit static/base transform directly.
+        targetClip.transform = {
+          ...source,
+          ...(sanitizedUpdates as Partial<ClipTransform>),
+          keyframes: source.keyframes || [],
+        };
+      }
+      newProject.modifiedAt = new Date().toISOString();
+
+      if (commit) {
+        historySnapshot = JSON.parse(JSON.stringify(newProject));
+      }
+
+      return newProject;
+    });
+
+    if (commit && historySnapshot) {
+      addToHistory(historySnapshot);
+    }
+  }, [currentTime, addToHistory]);
+
+  const handleAddTransformKeyframeAtCurrentTime = useCallback((clipId: string) => {
+    let historySnapshot: VideoEditorProject | null = null;
+
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+      let targetClip: Clip | null = null;
+
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          targetClip = clip;
+          break;
+        }
+      }
+
+      if (!targetClip) return prevProject;
+
+      const normalizedTime = targetClip.duration > 0
+        ? clamp01((currentTime - targetClip.startTime) / targetClip.duration)
+        : 0;
+      const resolved = resolveTransformAtTime(targetClip.transform || DEFAULT_CLIP_TRANSFORM, normalizedTime);
+      targetClip.transform = upsertTransformKeyframe(
+        targetClip.transform || DEFAULT_CLIP_TRANSFORM,
+        normalizedTime,
+        {
+          x: resolved.x,
+          y: resolved.y,
+          scaleX: resolved.scaleX,
+          scaleY: resolved.scaleY,
+          rotation: resolved.rotation,
+          opacity: resolved.opacity,
+          easing: 'linear',
+        },
+      );
+
+      newProject.modifiedAt = new Date().toISOString();
+      historySnapshot = JSON.parse(JSON.stringify(newProject));
+      return newProject;
+    });
+
+    if (historySnapshot) {
+      addToHistory(historySnapshot);
+    }
+  }, [currentTime, addToHistory]);
 
   // ========================================
   // Clip Effects (filter, speed, etc.)
@@ -1055,7 +1195,7 @@ export const VideoEditorPhase3: React.FC = () => {
   }, [selectedClipIds, addToHistory]);
 
   // When selecting a clip that has a groupId, select all clips in the group
-  const handleClipSelectWithGroup = useCallback((clipId: string, isMultiSelect: boolean) => {
+  const handleClipSelectWithGroup = useCallback((clipId: string, isMultiSelect: boolean, clickTime?: number) => {
     // If razor tool is active, split the clip at playhead instead of selecting
     if (razorToolActive && !isMultiSelect) {
       setProject(prevProject => {
@@ -1066,16 +1206,19 @@ export const VideoEditorPhase3: React.FC = () => {
           const clipIndex = track.clips.findIndex((c: Clip) => c.id === clipId);
           if (clipIndex !== -1) {
             const originalClip = track.clips[clipIndex];
+            const splitTime = Number.isFinite(clickTime)
+              ? clickTime as number
+              : currentTime;
 
             // Check if playhead is within the clip
             const clipEndTime = originalClip.startTime + originalClip.duration;
-            if (currentTime <= originalClip.startTime || currentTime >= clipEndTime) {
-              alert('Move playhead within the clip to split it');
+            if (splitTime <= originalClip.startTime || splitTime >= clipEndTime) {
+              alert('Click inside the clip (or move playhead inside it) to split');
               return prevProject;
             }
 
             // Calculate split position relative to clip start
-            const splitOffset = currentTime - originalClip.startTime;
+            const splitOffset = splitTime - originalClip.startTime;
 
             // Create first part (before split)
             const firstClip: Clip = {
@@ -1088,7 +1231,7 @@ export const VideoEditorPhase3: React.FC = () => {
             const secondClip: Clip = {
               ...originalClip,
               id: generateId('clip'),
-              startTime: currentTime,
+              startTime: splitTime,
               duration: originalClip.duration - splitOffset,
               trimIn: originalClip.trimIn + splitOffset,
               trimOut: originalClip.trimOut,
@@ -1100,6 +1243,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
             // Select the second clip
             setSelectedClipId(secondClip.id);
+            setCurrentTime(splitTime);
 
             // Update project
             newProject.modifiedAt = new Date().toISOString();
@@ -1136,11 +1280,17 @@ export const VideoEditorPhase3: React.FC = () => {
       }
       setSelectedClipId(clipId);
       setSelectedClipIds(groupClipIds);
+      if (Number.isFinite(clickTime)) {
+        setCurrentTime(clickTime as number);
+      }
     } else if (isMultiSelect) {
       setSelectedClipIds(prev => prev.includes(clipId) ? prev.filter(id => id !== clipId) : [...prev, clipId]);
     } else {
       setSelectedClipId(clipId);
       setSelectedClipIds([]);
+      if (Number.isFinite(clickTime)) {
+        setCurrentTime(clickTime as number);
+      }
     }
   }, [project.timeline.tracks, razorToolActive, currentTime, addToHistory]);
 
@@ -1237,6 +1387,7 @@ export const VideoEditorPhase3: React.FC = () => {
           const asset = project.assets[clip.assetId];
           if (!asset || !asset.path) continue;
           return {
+            id: clip.id,
             videoUrl: asset.path,
             clipStartTime: clip.startTime,
             trimIn: clip.trimIn,
@@ -1845,8 +1996,11 @@ export const VideoEditorPhase3: React.FC = () => {
       confirmCallback();
     } else if (confirmDialog?.title === 'Unsaved Changes') {
       loadProject();
-    } else if (confirmDialog?.title === 'Delete Clip' && selectedClipId) {
-      confirmClipDelete(selectedClipId);
+    } else if (confirmDialog?.title === 'Delete Clip') {
+      const clipIdToDelete = pendingDeleteClipId || selectedClipId || selectedClipIds[0];
+      if (clipIdToDelete) {
+        confirmClipDelete(clipIdToDelete);
+      }
     } else if (confirmDialog?.title === 'Change Resolution') {
       // Extract width/height from message
       const match = confirmDialog.message.match(/(\d+)×(\d+)/);
@@ -1859,6 +2013,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const handleConfirmDialogCancel = () => {
     setConfirmDialog(null);
     setConfirmCallback(null);
+    setPendingDeleteClipId(null);
   };
 
   return (
@@ -2077,6 +2232,12 @@ export const VideoEditorPhase3: React.FC = () => {
                 outgoingClip={outgoingClip}
                 transitionName={activeTransitionName}
                 transitionProgress={transitionProgress}
+                selectedClipId={selectedClipId}
+                onTransformChangeAtCurrentTime={handlePreviewTransformChangeAtCurrentTime}
+                onAddKeyframeAtCurrentTime={handleAddTransformKeyframeAtCurrentTime}
+                onOpenKeyframePanel={() => setSidebarView('overlay')}
+                outputWidth={project.settings.width}
+                outputHeight={project.settings.height}
               />
             </div>
 
@@ -2102,6 +2263,7 @@ export const VideoEditorPhase3: React.FC = () => {
               onGroupClips={handleGroupClips}
               onUngroupClips={handleUngroupClips}
               onAddText={() => setSidebarView('text')}
+              onOpenKeyframes={() => setSidebarView('overlay')}
               onOpenSilenceDetection={handleOpenSilenceDetection}
               onExtractAudio={handleExtractAudio}
             />
@@ -2271,6 +2433,8 @@ export const VideoEditorPhase3: React.FC = () => {
                     : null
                   }
                   onTransformChange={handleTransformChange}
+                  currentTime={currentTime}
+                  onSeekToTime={handleTimeChange}
                 />
               )}
               {sidebarView === 'silence' && (

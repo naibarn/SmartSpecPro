@@ -21,7 +21,7 @@ interface TimelineProps {
   duration: number;
   zoom: number;  // pixels per second
   onTimeChange: (time: number) => void;
-  onClipSelect: (clipId: string, isMultiSelect: boolean) => void;
+  onClipSelect: (clipId: string, isMultiSelect: boolean, clickTime?: number) => void;
   onClipMove: (clipId: string, newStartTime: number, newTrackId: string) => void;
   onClipResize: (clipId: string, newDuration: number, newTrimIn: number) => void;
   onClipDelete: (clipId: string) => void;
@@ -206,9 +206,13 @@ export const Timeline: React.FC<TimelineProps> = ({
       });
     }
 
+    const timelineRect = timelineRef.current?.getBoundingClientRect();
+    const clickX = timelineRect ? e.clientX - timelineRect.left : timeToPixels(clip.startTime);
+    const clickTime = pixelsToTime(Math.max(0, clickX));
+
     // Multi-select with Shift or Ctrl key
     const isMultiSelect = e.shiftKey || e.ctrlKey;
-    onClipSelect(clip.id, isMultiSelect);
+    onClipSelect(clip.id, isMultiSelect, clickTime);
   };
 
   // Handle mouse move (drag or resize)
@@ -516,6 +520,7 @@ export const Timeline: React.FC<TimelineProps> = ({
     const isMultiSelected = selectedClipIds.includes(clip.id);
     const isOverlay = track.type === 'overlay' || track.type === 'text';
     const hasTransform = !!clip.transform;
+    const keyframes = clip.transform?.keyframes || [];
     const trackH = getTrackHeight(track);
     const isGrouped = !!clip.groupId;
     const isTextClip = !!clip.textConfig;
@@ -585,6 +590,29 @@ export const Timeline: React.FC<TimelineProps> = ({
             <div className="clip-group-badge" title="Grouped clip">🔗</div>
           )}
         </div>
+        {keyframes.length > 0 && (
+          <div className="clip-keyframes-row" title="Keyframes">
+            {keyframes.map((kf, index) => {
+              const absoluteTime = clip.startTime + (clip.duration * Math.max(0, Math.min(1, kf.time)));
+              return (
+                <button
+                  key={`${clip.id}-kf-${index}-${kf.time}`}
+                  className="clip-keyframe-dot"
+                  style={{ left: `${Math.max(0, Math.min(1, kf.time)) * 100}%` }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClipSelect(clip.id, false, absoluteTime);
+                    onTimeChange(absoluteTime);
+                  }}
+                  title={`Keyframe ${index + 1} @ ${formatTime(absoluteTime)}`}
+                >
+                  ◆
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="clip-resize-handle right" aria-label="Resize clip from end" role="button" tabIndex={-1} />
         {clip.inTransition && clip.inTransition.name !== 'none' && (
           <div
@@ -596,7 +624,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         )}
       </div>
     );
-  }, [assets, zoom, selectedClipId, selectedClipIds, hoveredClipId, draggingClip, resizingClip, timeToPixels, handleClipMouseDown]);
+  }, [assets, zoom, selectedClipId, selectedClipIds, hoveredClipId, draggingClip, resizingClip, timeToPixels, handleClipMouseDown, onClipSelect, onTimeChange]);
 
   return (
     <div className="timeline-container">
@@ -806,6 +834,36 @@ export const Timeline: React.FC<TimelineProps> = ({
           right: 4px;
           font-size: 14px;
           filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+        }
+
+        .clip-keyframes-row {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 2px;
+          height: 14px;
+          pointer-events: none;
+        }
+
+        .clip-keyframe-dot {
+          position: absolute;
+          top: 0;
+          transform: translateX(-50%);
+          border: none;
+          background: transparent;
+          color: #ffd166;
+          font-size: 11px;
+          line-height: 1;
+          padding: 0;
+          cursor: pointer;
+          pointer-events: auto;
+          text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+          transition: transform 0.12s ease, color 0.12s ease;
+        }
+
+        .clip-keyframe-dot:hover {
+          color: #ffe39d;
+          transform: translateX(-50%) scale(1.25);
         }
 
         .clip-transition-indicator {

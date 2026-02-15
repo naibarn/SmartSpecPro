@@ -250,6 +250,18 @@ function normalizeWaveformPeaks(value: unknown): number[] {
     .filter((v): v is number => v !== null);
 }
 
+function snapTimeOutOfSkipRanges(
+  time: number,
+  ranges: SilentRegion[],
+  boundaryGuardSec = 0.04,
+): number {
+  if (!Number.isFinite(time)) return time;
+  const active = findRegionAtTime(ranges, time);
+  if (!active) return time;
+  if (Math.abs(time - active.adjustedEndTime) <= boundaryGuardSec) return time;
+  return active.adjustedEndTime;
+}
+
 interface SilenceDetectionDialogProps {
   project: VideoEditorProject;
   selectedClipId?: string | null;
@@ -622,9 +634,12 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   // Playback handlers
   const handleTimeChange = useCallback((time: number) => {
     if (!Number.isFinite(time)) return;
+    const maybeSnapped = skipSilenceEnabled
+      ? snapTimeOutOfSkipRanges(time, skipRegions)
+      : time;
     const maxTime = Number.isFinite(duration) && duration > 0 ? duration : Infinity;
-    setPlaybackTime(Math.max(0, Math.min(maxTime, time)));
-  }, [duration]);
+    setPlaybackTime(Math.max(0, Math.min(maxTime, maybeSnapped)));
+  }, [duration, skipSilenceEnabled, skipRegions]);
 
   const handleWaveformSeek = useCallback((time: number) => {
     if (!Number.isFinite(time)) return;
@@ -687,6 +702,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       trackId: fallbackTrackId,
       selected: true,
       skipped: false,
+      manual: true,
     };
 
     setRawRegions((prev) => {
@@ -695,6 +711,12 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     });
     setSkipSilenceEnabled(true);
   }, [analysisComplete, selectedTrackIds, audioTracks, threshold]);
+
+  const handleAddCutAtPlayhead = useCallback(() => {
+    const time = Number.isFinite(playbackTime) ? Math.max(0, playbackTime) : 0;
+    const defaultSpan = 0.5;
+    handleManualRangeCreate(time, time + defaultSpan);
+  }, [playbackTime, handleManualRangeCreate]);
 
   const handlePlayPause = useCallback(() => {
     setIsPlaying((prev) => !prev);
@@ -957,6 +979,15 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     if (!activeRegionAtPlayhead) return;
     handleRegionToggle(activeRegionAtPlayhead.id);
   }, [activeRegionAtPlayhead, handleRegionToggle]);
+
+  useEffect(() => {
+    if (!isPlaying || !skipSilenceEnabled || skipRegions.length === 0) return;
+    const snapped = snapTimeOutOfSkipRanges(playbackTime, skipRegions);
+    if (!Number.isFinite(snapped)) return;
+    if (snapped > playbackTime + 0.01) {
+      setPlaybackTime(snapped);
+    }
+  }, [isPlaying, skipSilenceEnabled, playbackTime, skipRegions]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1869,6 +1900,13 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                       </button>
                       <button type="button" className="selection-action-btn" onClick={handleInvertSelection}>
                         Invert
+                      </button>
+                      <button
+                        type="button"
+                        className="selection-action-btn"
+                        onClick={handleAddCutAtPlayhead}
+                      >
+                        Add Cut @ Playhead
                       </button>
                       <button
                         type="button"

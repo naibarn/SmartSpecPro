@@ -272,6 +272,39 @@ describe("projectToTimeline", () => {
     expect(overlayTrack).toBeDefined();
     expect(overlayTrack!.type).toBe("video");
   });
+
+  it("includes clip transform when present", () => {
+    const project = createEmptyProject("Transform");
+    project.timeline.tracks[0].clips.push({
+      id: "clip-v1",
+      assetId: "asset-v1",
+      trackId: "track-v1",
+      startTime: 0,
+      duration: 5.0,
+      trimIn: 0,
+      trimOut: 5.0,
+      volume: 1.0,
+      speed: 1.0,
+      effects: [],
+      transform: {
+        x: 0.2,
+        y: 0.8,
+        scaleX: 1.5,
+        scaleY: 1.3,
+        rotation: 0,
+        opacity: 1,
+        keyframes: [],
+      },
+    });
+
+    const timeline = projectToTimeline(project);
+    expect(timeline.tracks[0].clips[0].transform).toMatchObject({
+      x: 0.2,
+      y: 0.8,
+      scaleX: 1.5,
+      scaleY: 1.3,
+    });
+  });
 });
 
 describe("timelineToProject", () => {
@@ -308,6 +341,47 @@ describe("timelineToProject", () => {
     expect(project.settings.width).toBe(1920);
     expect(project.settings.height).toBe(1080);
     expect(project.version).toBe("2.0");
+  });
+
+  it("restores clip transform from timeline", () => {
+    const timeline: MediaTimeline = {
+      projectId: "proj-transform",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      tracks: [
+        {
+          trackId: "t1",
+          type: "video",
+          clips: [
+            {
+              clipId: "c1",
+              assetId: "a1",
+              startMs: 0,
+              inMs: 0,
+              outMs: 2000,
+              transform: {
+                x: 0.7,
+                y: 0.4,
+                scaleX: 2.0,
+                scaleY: 1.6,
+                rotation: 0,
+                opacity: 1,
+                keyframes: [],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const project = timelineToProject(timeline);
+    expect(project.timeline.tracks[0].clips[0].transform).toMatchObject({
+      x: 0.7,
+      y: 0.4,
+      scaleX: 2.0,
+      scaleY: 1.6,
+    });
   });
 });
 

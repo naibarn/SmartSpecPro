@@ -6,8 +6,10 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { formatTime } from '../../types/videoEditor';
 import type { ClipTransform, TransformKeyframe, Effect, TransitionName } from '../../types/videoEditor';
+import { clamp01, DEFAULT_CLIP_TRANSFORM, resolveTransformAtTime } from './transformKeyframes';
 
 export interface ActiveClipInfo {
+  id?: string;
   videoUrl: string;
   clipStartTime: number;  // where the clip starts on the timeline
   trimIn: number;         // trim offset within the source file
@@ -36,54 +38,15 @@ interface PreviewPlayerProps {
   skipRanges?: Array<{ start: number; end: number }>;
   skipCooldownMs?: number;
   skipBoundaryGuardSec?: number;
+  selectedClipId?: string | null;
+  onTransformChangeAtCurrentTime?: (clipId: string, updates: Partial<TransformKeyframe>, commit?: boolean) => void;
+  onAddKeyframeAtCurrentTime?: (clipId: string) => void;
+  onOpenKeyframePanel?: () => void;
+  outputWidth?: number;
+  outputHeight?: number;
 }
 
 const ZOOM_PRESETS = [10, 25, 50, 75, 100, 125, 150, 200, 250, 300, 350, 400];
-
-/** Resolve transform values at a normalized time (0-1) within the clip, interpolating keyframes. */
-function resolveTransformAtTime(
-  t: ClipTransform,
-  normalizedTime: number,
-): { x: number; y: number; scaleX: number; scaleY: number; rotation: number; opacity: number } {
-  const base = { x: t.x, y: t.y, scaleX: t.scaleX, scaleY: t.scaleY, rotation: t.rotation, opacity: t.opacity };
-  if (!t.keyframes || t.keyframes.length === 0) return base;
-
-  const kfs = [...t.keyframes].sort((a, b) => a.time - b.time);
-  const time = Math.max(0, Math.min(1, normalizedTime));
-
-  // Before first keyframe — use first keyframe values
-  if (time <= kfs[0].time) return kfs[0];
-  // After last keyframe — use last keyframe values
-  if (time >= kfs[kfs.length - 1].time) return kfs[kfs.length - 1];
-
-  // Find the two keyframes to interpolate between
-  for (let i = 0; i < kfs.length - 1; i++) {
-    if (time >= kfs[i].time && time <= kfs[i + 1].time) {
-      const a = kfs[i];
-      const b = kfs[i + 1];
-      const segmentProgress = (time - a.time) / (b.time - a.time);
-      const eased = applyEasing(segmentProgress, b.easing || 'linear');
-      return {
-        x: a.x + (b.x - a.x) * eased,
-        y: a.y + (b.y - a.y) * eased,
-        scaleX: a.scaleX + (b.scaleX - a.scaleX) * eased,
-        scaleY: a.scaleY + (b.scaleY - a.scaleY) * eased,
-        rotation: a.rotation + (b.rotation - a.rotation) * eased,
-        opacity: a.opacity + (b.opacity - a.opacity) * eased,
-      };
-    }
-  }
-  return base;
-}
-
-function applyEasing(t: number, easing: string): number {
-  switch (easing) {
-    case 'ease-in': return t * t;
-    case 'ease-out': return t * (2 - t);
-    case 'ease-in-out': return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    default: return t; // linear
-  }
-}
 
 /** Returns CSS styles for outgoing and incoming clips during a transition. */
 function getTransitionStyles(
@@ -158,11 +121,18 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   skipRanges = [],
   skipCooldownMs = 100,
   skipBoundaryGuardSec = 0.05,
+  selectedClipId = null,
+  onTransformChangeAtCurrentTime,
+  onAddKeyframeAtCurrentTime,
+  onOpenKeyframePanel,
+  outputWidth = 16,
+  outputHeight = 9,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const outgoingVideoRef = useRef<HTMLVideoElement>(null);
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const [volume, setVolume] = useState(1.0);
   const [isMuted, setIsMuted] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -179,6 +149,12 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef<{ x: number; y: number; ox: number; oy: number }>({ x: 0, y: 0, ox: 0, oy: 0 });
   const lastTouchDistRef = useRef<number | null>(null);
+  const [transformEditMode, setTransformEditMode] = useState(false);
+  const [isTransformDragging, setIsTransformDragging] = useState(false);
+  const transformDragStartRef = useRef<{ x: number; y: number; ox: number; oy: number }>({ x: 0, y: 0, ox: 0, oy: 0 });
+  const transformDraftRef = useRef<Partial<TransformKeyframe> | null>(null);
+  const [previewStageSize, setPreviewStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [renderFramePreviewOnly, setRenderFramePreviewOnly] = useState(true);
 
   // Compute the effective video URL
   const effectiveUrl = activeClip?.videoUrl || previewVideoUrl;
@@ -195,6 +171,67 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         .sort((a, b) => a.start - b.start),
     [skipRanges],
   );
+  const normalizedClipTime = useMemo(() => {
+    if (!activeClip || activeClip.clipDuration <= 0) return 0;
+    return clamp01((safeCurrentTime - activeClip.clipStartTime) / activeClip.clipDuration);
+  }, [activeClip, safeCurrentTime]);
+  const hasSelectedActiveClip = !!selectedClipId && !!activeClip?.id && activeClip.id === selectedClipId;
+  const canEditActiveTransform =
+    !!onTransformChangeAtCurrentTime &&
+    !!activeClip?.id &&
+    activeClip.clipDuration > 0;
+  const resolvedActiveTransform = useMemo(() => {
+    if (!activeClip || !canEditActiveTransform) return null;
+    return resolveTransformAtTime(activeClip.transform || DEFAULT_CLIP_TRANSFORM, normalizedClipTime);
+  }, [activeClip, canEditActiveTransform, normalizedClipTime]);
+  const hasActiveKeyframeAtPlayhead = useMemo(() => {
+    const keyframes = activeClip?.transform?.keyframes;
+    if (!keyframes || keyframes.length === 0) return false;
+    return keyframes.some((kf) => Math.abs(kf.time - normalizedClipTime) <= 0.01);
+  }, [activeClip?.transform?.keyframes, normalizedClipTime]);
+  const outputAspectRatio = useMemo(() => {
+    const safeWidth = Number.isFinite(outputWidth) && outputWidth > 0 ? outputWidth : 16;
+    const safeHeight = Number.isFinite(outputHeight) && outputHeight > 0 ? outputHeight : 9;
+    return safeWidth / safeHeight;
+  }, [outputWidth, outputHeight]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateStageSize = () => {
+      const rect = viewport.getBoundingClientRect();
+      const maxW = Math.max(0, rect.width);
+      const maxH = Math.max(0, rect.height);
+      if (maxW === 0 || maxH === 0) {
+        setPreviewStageSize({ width: 0, height: 0 });
+        return;
+      }
+
+      let stageWidth = maxW;
+      let stageHeight = stageWidth / outputAspectRatio;
+      if (stageHeight > maxH) {
+        stageHeight = maxH;
+        stageWidth = stageHeight * outputAspectRatio;
+      }
+
+      setPreviewStageSize({
+        width: Math.max(1, Math.round(stageWidth)),
+        height: Math.max(1, Math.round(stageHeight)),
+      });
+    };
+
+    updateStageSize();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateStageSize);
+      observer.observe(viewport);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', updateStageSize);
+    return () => window.removeEventListener('resize', updateStageSize);
+  }, [outputAspectRatio]);
 
   // Track the previous URL so we know when the source changes
   const prevUrlRef = useRef<string | undefined>(undefined);
@@ -549,6 +586,14 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  useEffect(() => {
+    if (!canEditActiveTransform) {
+      setTransformEditMode(false);
+      setIsTransformDragging(false);
+      transformDraftRef.current = null;
+    }
+  }, [canEditActiveTransform]);
+
   // Reset pan when zoom returns to <= 100%
   useEffect(() => {
     if (previewZoom <= 100) {
@@ -556,35 +601,94 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     }
   }, [previewZoom]);
 
-  // Mouse drag panning (when zoomed > 100%)
+  useEffect(() => {
+    if (renderFramePreviewOnly) {
+      setPanOffset({ x: 0, y: 0 });
+    }
+  }, [renderFramePreviewOnly]);
+
   const handlePreviewMouseDown = useCallback((e: React.MouseEvent) => {
-    if (previewZoom <= 100) return;
+    if (transformEditMode && canEditActiveTransform && activeClip?.id && resolvedActiveTransform) {
+      e.preventDefault();
+      setIsTransformDragging(true);
+      transformDragStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        ox: resolvedActiveTransform.x,
+        oy: resolvedActiveTransform.y,
+      };
+      return;
+    }
+    if (renderFramePreviewOnly || previewZoom <= 100) return;
     e.preventDefault();
     setIsPanning(true);
     panStartRef.current = { x: e.clientX, y: e.clientY, ox: panOffset.x, oy: panOffset.y };
-  }, [previewZoom, panOffset]);
+  }, [renderFramePreviewOnly, previewZoom, panOffset, transformEditMode, canEditActiveTransform, activeClip?.id, resolvedActiveTransform]);
 
   const handlePreviewMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isTransformDragging && transformEditMode && canEditActiveTransform && activeClip?.id && onTransformChangeAtCurrentTime && viewportRef.current) {
+      const rect = viewportRef.current.getBoundingClientRect();
+      const dx = (e.clientX - transformDragStartRef.current.x) / Math.max(1, rect.width);
+      const dy = (e.clientY - transformDragStartRef.current.y) / Math.max(1, rect.height);
+      const updates: Partial<TransformKeyframe> = {
+        x: clamp01(transformDragStartRef.current.ox + dx),
+        y: clamp01(transformDragStartRef.current.oy + dy),
+      };
+      transformDraftRef.current = updates;
+      onTransformChangeAtCurrentTime(activeClip.id, updates, false);
+      return;
+    }
     if (!isPanning) return;
     const dx = e.clientX - panStartRef.current.x;
     const dy = e.clientY - panStartRef.current.y;
     setPanOffset({ x: panStartRef.current.ox + dx, y: panStartRef.current.oy + dy });
-  }, [isPanning]);
+  }, [isTransformDragging, transformEditMode, canEditActiveTransform, activeClip?.id, onTransformChangeAtCurrentTime, isPanning]);
 
   const handlePreviewMouseUp = useCallback(() => {
+    if (
+      isTransformDragging &&
+      transformEditMode &&
+      canEditActiveTransform &&
+      activeClip?.id &&
+      onTransformChangeAtCurrentTime &&
+      transformDraftRef.current
+    ) {
+      onTransformChangeAtCurrentTime(activeClip.id, transformDraftRef.current, true);
+    }
+    transformDraftRef.current = null;
+    setIsTransformDragging(false);
     setIsPanning(false);
-  }, []);
+  }, [isTransformDragging, transformEditMode, canEditActiveTransform, activeClip?.id, onTransformChangeAtCurrentTime]);
 
-  // Ctrl+Scroll zoom toward cursor
+  // Ctrl+Scroll zoom toward cursor.
+  // In transform edit mode, normal wheel controls clip zoom.
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
 
     const handleWheel = (e: WheelEvent) => {
+      if (
+        transformEditMode &&
+        canEditActiveTransform &&
+        activeClip?.id &&
+        onTransformChangeAtCurrentTime &&
+        !e.ctrlKey &&
+        !e.metaKey
+      ) {
+        e.preventDefault();
+        const source = resolvedActiveTransform || resolveTransformAtTime(activeClip.transform || DEFAULT_CLIP_TRANSFORM, normalizedClipTime);
+        const factor = e.deltaY < 0 ? 1.04 : 1 / 1.04;
+        const nextScaleX = Math.max(0.1, Math.min(5, source.scaleX * factor));
+        const nextScaleY = Math.max(0.1, Math.min(5, source.scaleY * factor));
+        onTransformChangeAtCurrentTime(activeClip.id, { scaleX: nextScaleX, scaleY: nextScaleY }, true);
+        return;
+      }
+
       if (!e.ctrlKey && !e.metaKey) return;
+      if (renderFramePreviewOnly) return;
       e.preventDefault();
 
-      const rect = container.getBoundingClientRect();
+      const rect = viewport.getBoundingClientRect();
       const cursorX = e.clientX - rect.left - rect.width / 2;
       const cursorY = e.clientY - rect.top - rect.height / 2;
 
@@ -600,16 +704,17 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       setPreviewZoom(newZoom);
     };
 
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, [previewZoom]);
+    viewport.addEventListener('wheel', handleWheel, { passive: false });
+    return () => viewport.removeEventListener('wheel', handleWheel);
+  }, [previewZoom, transformEditMode, canEditActiveTransform, activeClip, onTransformChangeAtCurrentTime, resolvedActiveTransform, normalizedClipTime, renderFramePreviewOnly]);
 
   // Pinch-to-zoom for touch devices
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
 
     const handleTouchMove = (e: TouchEvent) => {
+      if (renderFramePreviewOnly) return;
       if (e.touches.length === 2) {
         e.preventDefault();
         const dist = Math.hypot(
@@ -628,13 +733,13 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       lastTouchDistRef.current = null;
     };
 
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-    container.addEventListener('touchend', handleTouchEnd);
+    viewport.addEventListener('touchmove', handleTouchMove, { passive: false });
+    viewport.addEventListener('touchend', handleTouchEnd);
     return () => {
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('touchend', handleTouchEnd);
+      viewport.removeEventListener('touchmove', handleTouchMove);
+      viewport.removeEventListener('touchend', handleTouchEnd);
     };
-  }, []);
+  }, [renderFramePreviewOnly]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -675,10 +780,32 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [safeCurrentTime, safeDuration, onPlayPause, onTimeChange, toggleFullscreen]);
 
-  const zoomStyle: React.CSSProperties = (previewZoom !== 100 || panOffset.x !== 0 || panOffset.y !== 0) ? {
-    transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${previewZoom / 100})`,
+  const effectivePreviewZoom = renderFramePreviewOnly ? 100 : previewZoom;
+  const effectivePanOffset = renderFramePreviewOnly ? { x: 0, y: 0 } : panOffset;
+  const zoomStyle: React.CSSProperties = (effectivePreviewZoom !== 100 || effectivePanOffset.x !== 0 || effectivePanOffset.y !== 0) ? {
+    transform: `translate(${effectivePanOffset.x}px, ${effectivePanOffset.y}px) scale(${effectivePreviewZoom / 100})`,
     transformOrigin: 'center center',
   } : {};
+  const previewCursor =
+    transformEditMode && canEditActiveTransform
+      ? (isTransformDragging ? 'grabbing' : 'move')
+      : effectivePreviewZoom > 100
+        ? (isPanning ? 'grabbing' : 'grab')
+        : 'default';
+  const transformGuideStyle = useMemo<React.CSSProperties | null>(() => {
+    if (!transformEditMode || !canEditActiveTransform || !resolvedActiveTransform) return null;
+    return {
+      // Keep guide fixed to the stage bounds so output frame is constant.
+      left: '50%',
+      top: '50%',
+      width: '100%',
+      height: '100%',
+    };
+  }, [transformEditMode, canEditActiveTransform, resolvedActiveTransform]);
+  const previewStageStyle = useMemo<React.CSSProperties>(() => ({
+    width: `${Math.max(1, previewStageSize.width)}px`,
+    height: `${Math.max(1, previewStageSize.height)}px`,
+  }), [previewStageSize]);
 
   // ========================================
   // Compute clip effect styles (transitions, transform, filter effects)
@@ -788,6 +915,19 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           justify-content: center;
         }
 
+        .preview-video-stage {
+          position: relative;
+          background: #000;
+          overflow: hidden;
+          box-shadow: 0 0 0 1px #1f1f1f, 0 0 0 2px #0b0b0b;
+          max-width: 100%;
+          max-height: 100%;
+        }
+
+        .preview-video-stage.free-preview {
+          overflow: visible;
+        }
+
         .preview-video {
           width: 100%;
           height: 100%;
@@ -847,7 +987,8 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         .controls-row {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
+          flex-wrap: wrap;
         }
 
         .playback-controls {
@@ -871,6 +1012,20 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           flex-shrink: 0;
         }
 
+        .control-button.text-button {
+          width: auto;
+          min-width: 82px;
+          padding: 0 10px;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.1px;
+        }
+
+        .control-button.text-button.keyframe-button {
+          min-width: 74px;
+          padding: 0 8px;
+        }
+
         .control-button:hover {
           background: #333;
           border-color: #0078d4;
@@ -890,13 +1045,31 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           font-family: 'Courier New', monospace;
           color: #e0e0e0;
           white-space: nowrap;
+          padding: 2px 8px;
+          border-radius: 4px;
+          background: #262626;
+          border: 1px solid #353535;
+        }
+
+        .frame-display {
+          font-size: 10px;
+          color: #8a8a8a;
+          white-space: nowrap;
+          padding: 2px 7px;
+          border-radius: 4px;
+          background: #242424;
+          border: 1px solid #333;
         }
 
         .preview-zoom-controls {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           margin-left: auto;
+          background: #222;
+          border: 1px solid #343434;
+          border-radius: 7px;
+          padding: 4px;
         }
 
         .zoom-select {
@@ -908,10 +1081,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           padding: 4px 6px;
           cursor: pointer;
           outline: none;
+          min-width: 88px;
         }
 
         .zoom-select:focus {
           border-color: #0078d4;
+        }
+
+        .zoom-select:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
         }
 
         .volume-control {
@@ -982,18 +1161,76 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           z-index: 3;
           pointer-events: none;
         }
+
+        .transform-edit-guide {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          border: 2px solid #00d4aa;
+          box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+          background: rgba(0, 212, 170, 0.08);
+          pointer-events: none;
+          z-index: 4;
+        }
+
+        .transform-edit-guide::before,
+        .transform-edit-guide::after {
+          content: '';
+          position: absolute;
+          width: 8px;
+          height: 8px;
+          border: 2px solid #00d4aa;
+          background: #0f1f1b;
+        }
+
+        .transform-edit-guide::before {
+          top: -6px;
+          left: -6px;
+        }
+
+        .transform-edit-guide::after {
+          right: -6px;
+          bottom: -6px;
+        }
+
+        .transform-edit-hint {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          padding: 4px 8px;
+          border-radius: 4px;
+          background: rgba(0, 0, 0, 0.55);
+          color: #9cead8;
+          font-size: 11px;
+          z-index: 5;
+          pointer-events: none;
+        }
+
+        .output-frame-badge {
+          position: absolute;
+          right: 12px;
+          top: 12px;
+          padding: 4px 8px;
+          border-radius: 4px;
+          background: rgba(0, 0, 0, 0.55);
+          color: #f2d47a;
+          font-size: 11px;
+          z-index: 5;
+          pointer-events: none;
+          border: 1px solid rgba(242, 212, 122, 0.45);
+        }
       `}</style>
 
       {/* Video Container */}
       <div
         className="preview-video-container"
+        ref={viewportRef}
         role="region"
         aria-label="Media viewport"
         onMouseDown={handlePreviewMouseDown}
         onMouseMove={handlePreviewMouseMove}
         onMouseUp={handlePreviewMouseUp}
         onMouseLeave={handlePreviewMouseUp}
-        style={{ cursor: previewZoom > 100 ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
+        style={{ cursor: previewCursor }}
       >
         {videoError ? (
           <div className="preview-placeholder">
@@ -1025,98 +1262,121 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           </div>
         ) : activeClip?.isImage && effectiveUrl ? (
           <div className="preview-video-wrapper">
-            {/* Outgoing clip during transition */}
-            {outgoingClip && transitionName && transitionProgress !== undefined && (() => {
-              const tStyles = getTransitionStyles(transitionName, transitionProgress);
-              return outgoingClip.isImage ? (
-                <img
-                  src={outgoingClip.videoUrl}
-                  className="preview-video"
-                  style={{ ...zoomStyle, objectFit: 'contain', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
-                  alt="Outgoing clip"
-                  draggable={false}
-                />
-              ) : (
-                <video
-                  ref={outgoingVideoRef}
-                  className="preview-video"
-                  src={outgoingClip.videoUrl}
-                  preload="auto"
-                  playsInline
-                  muted
-                  style={{ ...zoomStyle, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
-                />
-              );
-            })()}
-            <img
-              src={effectiveUrl}
-              className="preview-video"
-              style={{ ...zoomStyle, objectFit: 'contain', ...clipEffectStyle,
-                // Merge zoom + clip transforms
-                transform: [zoomStyle.transform, clipEffectStyle.transform].filter(Boolean).join(' ') || undefined,
-                ...(outgoingClip && transitionName && transitionProgress !== undefined
-                  ? getTransitionStyles(transitionName, transitionProgress).incoming
-                  : {}),
-              }}
-              alt="Image preview"
-              draggable={false}
-            />
+            <div className={`preview-video-stage ${renderFramePreviewOnly ? '' : 'free-preview'}`} style={previewStageStyle}>
+              {/* Outgoing clip during transition */}
+              {outgoingClip && transitionName && transitionProgress !== undefined && (() => {
+                const tStyles = getTransitionStyles(transitionName, transitionProgress);
+                return outgoingClip.isImage ? (
+                  <img
+                    src={outgoingClip.videoUrl}
+                    className="preview-video"
+                    style={{ ...zoomStyle, objectFit: 'contain', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
+                    alt="Outgoing clip"
+                    draggable={false}
+                  />
+                ) : (
+                  <video
+                    ref={outgoingVideoRef}
+                    className="preview-video"
+                    src={outgoingClip.videoUrl}
+                    preload="auto"
+                    playsInline
+                    muted
+                    style={{ ...zoomStyle, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
+                  />
+                );
+              })()}
+              <img
+                src={effectiveUrl}
+                className="preview-video"
+                style={{ ...zoomStyle, objectFit: 'contain', ...clipEffectStyle,
+                  // Merge zoom + clip transforms
+                  transform: [zoomStyle.transform, clipEffectStyle.transform].filter(Boolean).join(' ') || undefined,
+                  ...(outgoingClip && transitionName && transitionProgress !== undefined
+                    ? getTransitionStyles(transitionName, transitionProgress).incoming
+                    : {}),
+                }}
+                alt="Image preview"
+                draggable={false}
+              />
+              {transformGuideStyle && (
+                <>
+                  <div className="transform-edit-guide" style={transformGuideStyle} />
+                  <div className="transform-edit-hint">Drag clip to reposition crop · Scroll to zoom</div>
+                  <div className="output-frame-badge">Output Frame (Render)</div>
+                </>
+              )}
+            </div>
           </div>
         ) : effectiveUrl ? (
           <div className="preview-video-wrapper">
-            {/* Outgoing clip during transition */}
-            {outgoingClip && transitionName && transitionProgress !== undefined && (() => {
-              const tStyles = getTransitionStyles(transitionName, transitionProgress);
-              return outgoingClip.isImage ? (
-                <img
-                  src={outgoingClip.videoUrl}
-                  className="preview-video"
-                  style={{ ...zoomStyle, objectFit: 'contain', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
-                  alt="Outgoing clip"
-                  draggable={false}
-                />
-              ) : (
-                <video
-                  ref={outgoingVideoRef}
-                  className="preview-video"
-                  src={outgoingClip.videoUrl}
-                  preload="auto"
-                  playsInline
-                  muted
-                  style={{ ...zoomStyle, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
-                />
-              );
-            })()}
-            <video
-              ref={videoRef}
-              className="preview-video"
-              src={effectiveUrl}
-              preload="auto"
-              playsInline
-              onLoadedData={handleLoadedData}
-              onTimeUpdate={handleTimeUpdate}
-              onEnded={() => {
-                // Advance to next clip instead of stopping
-                if (activeClip) {
-                  const nextTime = activeClip.clipStartTime + activeClip.clipDuration;
-                  if (!Number.isFinite(nextTime) || nextTime >= safeDuration) {
-                    onStop();
+            <div className={`preview-video-stage ${renderFramePreviewOnly ? '' : 'free-preview'}`} style={previewStageStyle}>
+              {/* Outgoing clip during transition */}
+              {outgoingClip && transitionName && transitionProgress !== undefined && (() => {
+                const tStyles = getTransitionStyles(transitionName, transitionProgress);
+                return outgoingClip.isImage ? (
+                  <img
+                    src={outgoingClip.videoUrl}
+                    className="preview-video"
+                    style={{ ...zoomStyle, objectFit: 'contain', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
+                    alt="Outgoing clip"
+                    draggable={false}
+                  />
+                ) : (
+                  <video
+                    ref={outgoingVideoRef}
+                    className="preview-video"
+                    src={outgoingClip.videoUrl}
+                    preload="auto"
+                    playsInline
+                    muted
+                    style={{ ...zoomStyle, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...tStyles.outgoing }}
+                  />
+                );
+              })()}
+              <video
+                ref={videoRef}
+                className="preview-video"
+                src={effectiveUrl}
+                preload="auto"
+                playsInline
+                onLoadedData={handleLoadedData}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={() => {
+                  // Advance to next clip instead of stopping
+                  if (activeClip) {
+                    const nextTime = activeClip.clipStartTime + activeClip.clipDuration;
+                    if (!Number.isFinite(nextTime) || nextTime >= safeDuration) {
+                      onStop();
+                    } else {
+                      onTimeChange(nextTime);
+                    }
                   } else {
-                    onTimeChange(nextTime);
+                    onStop();
                   }
-                } else {
-                  onStop();
-                }
-              }}
-              onError={handleVideoError}
-              muted={isMuted}
-              style={{ ...zoomStyle, ...clipEffectStyle,
-                transform: [zoomStyle.transform, clipEffectStyle.transform].filter(Boolean).join(' ') || undefined,
-                ...(outgoingClip && transitionName && transitionProgress !== undefined
-                  ? getTransitionStyles(transitionName, transitionProgress).incoming
-                  : {}),
-              }}
-            />
+                }}
+                onError={handleVideoError}
+                muted={isMuted}
+                style={{ ...zoomStyle, ...clipEffectStyle,
+                  transform: [zoomStyle.transform, clipEffectStyle.transform].filter(Boolean).join(' ') || undefined,
+                  ...(outgoingClip && transitionName && transitionProgress !== undefined
+                    ? getTransitionStyles(transitionName, transitionProgress).incoming
+                    : {}),
+                }}
+              />
+              {transformGuideStyle && (
+                <>
+                  <div className="transform-edit-guide" style={transformGuideStyle} />
+                  <div className="transform-edit-hint">Drag clip to reposition crop · Scroll to zoom</div>
+                  <div className="output-frame-badge">Output Frame (Render)</div>
+                </>
+              )}
+              {!videoLoaded && !videoError && (
+                <div className="preview-loading-overlay">
+                  {stalledLoading ? "Preview is taking longer to load..." : "Loading preview..."}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="preview-placeholder">
@@ -1125,11 +1385,6 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             <div style={{ fontSize: '12px', marginTop: '8px', color: '#888' }}>
               Add clips to timeline to preview
             </div>
-          </div>
-        )}
-        {effectiveUrl && !activeClip?.isImage && !videoLoaded && !videoError && (
-          <div className="preview-loading-overlay">
-            {stalledLoading ? "Preview is taking longer to load..." : "Loading preview..."}
           </div>
         )}
       </div>
@@ -1206,6 +1461,9 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           <div className="time-display">
             {formatTime(safeCurrentTime)} / {formatTime(safeDuration)}
           </div>
+          <div className="frame-display">
+            {Math.round(outputWidth)}x{Math.round(outputHeight)}
+          </div>
 
           {/* Volume Control */}
           <div className="volume-control">
@@ -1231,11 +1489,57 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
           {/* Preview Zoom + Fullscreen */}
           <div className="preview-zoom-controls">
+            {onOpenKeyframePanel && (
+              <button
+                className="control-button text-button keyframe-button"
+                onClick={onOpenKeyframePanel}
+                title="Open keyframes panel"
+                aria-label="Open keyframes panel"
+              >
+                Keyframes
+              </button>
+            )}
+            {canEditActiveTransform && onAddKeyframeAtCurrentTime && activeClip?.id && (
+              <button
+                className={`control-button text-button keyframe-button ${hasActiveKeyframeAtPlayhead ? 'primary' : ''}`}
+                onClick={() => onAddKeyframeAtCurrentTime(activeClip.id!)}
+                title={hasActiveKeyframeAtPlayhead ? 'Update keyframe at current playhead' : 'Add keyframe at current playhead'}
+                aria-label="Add keyframe at current playhead"
+              >
+                {hasActiveKeyframeAtPlayhead ? 'Update KF' : 'Add KF'}
+              </button>
+            )}
+            <button
+              className={`control-button text-button ${renderFramePreviewOnly ? 'primary' : ''}`}
+              onClick={() => setRenderFramePreviewOnly(prev => !prev)}
+              title={renderFramePreviewOnly
+                ? 'Preview Lock: show only final output frame'
+                : 'Free Preview: allow viewport pan/zoom'}
+              aria-label="Toggle preview lock mode"
+            >
+              Preview Lock
+            </button>
+            <button
+              className={`control-button text-button ${transformEditMode ? 'primary' : ''}`}
+              onClick={() => setTransformEditMode(prev => !prev)}
+              title={
+                canEditActiveTransform
+                  ? (hasSelectedActiveClip
+                    ? 'Transform edit mode: drag in preview to move, scroll to zoom clip'
+                    : 'Transform edit mode (active clip at playhead): drag to move, scroll to zoom clip')
+                  : 'Move playhead onto a clip to edit transform'
+              }
+              aria-label="Toggle transform edit mode"
+              disabled={!canEditActiveTransform}
+            >
+              Transform
+            </button>
             <select
               className="zoom-select"
               value={previewZoom}
               onChange={e => setPreviewZoom(Number(e.target.value))}
-              title="Preview zoom level"
+              title={renderFramePreviewOnly ? 'Disabled while Preview Lock is enabled' : 'Preview zoom level'}
+              disabled={renderFramePreviewOnly}
             >
               {ZOOM_PRESETS.map(z => (
                 <option key={z} value={z}>{z}%</option>
@@ -1254,7 +1558,9 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         </div>
 
         <div className="keyboard-hint">
-          Space: Play/Pause &bull; F: Fullscreen &bull; &larr;/&rarr;: Frame Step &bull; Ctrl+Scroll: Zoom &bull; Drag: Pan
+          {renderFramePreviewOnly
+            ? 'Preview Lock ON: frame-accurate view (viewport pan/zoom disabled)'
+            : 'Space: Play/Pause | F: Fullscreen | Left/Right: Frame Step | Ctrl+Scroll: Preview Zoom | Drag: Pan'}
         </div>
       </div>
     </div>
