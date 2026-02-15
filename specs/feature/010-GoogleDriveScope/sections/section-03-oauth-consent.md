@@ -310,3 +310,38 @@ The "Reconnect" button re-uses the same OAuth flow as initial connection (open p
 - The `prompt=consent` parameter ensures Google always shows the consent screen and always returns a `refresh_token`. Without this, Google only returns a `refresh_token` on the first authorization, which would break reconnection flows.
 - The redirect URI for Drive OAuth (`/auth/callback/google-drive`) is different from the login OAuth redirect URI (`/auth/callback/google`). This separation is important because the callback handling logic differs: login callbacks create sessions, while Drive callbacks just store tokens for an already-authenticated user.
 - Token encryption: while the existing OAuth model stores tokens as plaintext, the `GoogleTokenService` should encrypt Drive tokens. If adding `encrypt_smartspecweb()` to the crypto module is deferred, at minimum document this as a security TODO for section-15-security-hardening.
+
+---
+
+## Actual Implementation (Post-Review)
+
+### Deviations from Plan
+
+1. **Endpoint test file not created** (`test_oauth_drive_endpoint.py`): Service-layer unit tests provide sufficient coverage for MVP. Endpoint integration tests deferred.
+2. **Router test file not created** (`googleDrive.test.ts`): tRPC router is a thin proxy layer; testing the Python service layer is higher value.
+3. **Token encryption deferred**: TODO comment added in code; full implementation planned for section-15 (security hardening).
+4. **CSRF state validation added** (code review fix): `exchange_drive_code` now validates the `state` parameter via `state_serializer.loads(state, max_age=600)`.
+5. **Redirect URI key changed** (code review fix): Uses `googleDriveRedirectUri` config key (separate from login `googleRedirectUri`).
+6. **user_id type fix** (code review fix): Removed `str()` casts on `user_id` since `OAuthConnection.user_id` is `Integer`.
+7. **JWT jti added** (code review fix): `createDriveToken` now includes `jti: randomUUID()` for replay protection.
+8. **tenant_id populated** (code review fix): `exchange_drive_code` accepts and stores `tenant_id` on new connections.
+9. **Popup timer cleanup** (code review fix): `GoogleDrivePanel` uses `useRef` + `useEffect` cleanup for the interval timer.
+
+### Files Actually Created/Modified
+
+| File | Action | Tests |
+|------|--------|-------|
+| `python-backend/app/services/google_token_service.py` | Created | 9 unit tests |
+| `python-backend/app/api/oauth.py` | Modified (4 endpoints added) | -- |
+| `python-backend/tests/test_google_token_service.py` | Created | 9 tests passing |
+| `apps/web/server/routers/googleDrive.ts` | Created | -- |
+| `apps/web/server/routers.ts` | Modified | -- |
+| `apps/web/client/src/components/settings/GoogleDrivePanel.tsx` | Created | -- |
+| `apps/web/client/src/pages/GoogleDriveCallback.tsx` | Created | -- |
+| `apps/web/client/src/pages/Settings.tsx` | Modified | -- |
+| `apps/web/client/src/App.tsx` | Modified | -- |
+
+### Test Results
+- Python: 9/9 tests passing
+- TypeScript: compiles (4 pre-existing errors in unrelated video editor code)
+- Vitest: 14/14 Google Drive schema tests passing (from section-02)

@@ -13,6 +13,7 @@ import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 
+import { createWebhookRouter } from "../routes/webhooks";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
@@ -23,13 +24,14 @@ import { ENV } from "./env";
 import { debugError } from "./logger";
 import { sdk } from "./sdk";
 import { signBearerToken } from "./tokens";
-import { getUploadsDir } from "../storage";
+import { getUploadsDir, storageStreamFile } from "../storage";
 import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
 import { initializeScheduler } from "../services/scheduler";
 import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
+import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { initializeQueues } from "../services/llmQueue";
 import { PostgresAdapter } from "../services/postgresAdapter";
@@ -125,7 +127,9 @@ const csrfCheck = (req: any, res: any, next: any) => {
   // These are server-to-server callbacks and are validated by provider-specific logic.
   if (
     req.path === "/v1/media/callback/kie-ai" ||
-    req.originalUrl === "/api/v1/media/callback/kie-ai"
+    req.originalUrl === "/api/v1/media/callback/kie-ai" ||
+    req.path.startsWith("/webhooks/gdrive") ||
+    req.originalUrl.startsWith("/api/webhooks/gdrive")
   ) {
     return next();
   }
@@ -158,6 +162,64 @@ app.use('/uploads', express.static(uploadsDir, {
   },
 }));
 
+// Storage proxy: streams files from R2/S3 through the Node.js server.
+// This avoids broken R2 public URLs (SSL issues) and presigned URL expiration.
+// Supports HTTP Range requests for video seeking.
+app.get("/api/storage/files/*", async (req, res) => {
+  try {
+    const key = decodeURIComponent((req.params as any)[0] || "");
+    if (!key || key.includes("..")) {
+      res.status(400).json({ error: "Invalid storage key" });
+      return;
+    }
+
+    const range = req.headers.range;
+    const result = await storageStreamFile(key, range);
+    if (!result) {
+      res.status(404).json({ error: "File not found or storage not configured" });
+      return;
+    }
+
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    if (result.isPartial && result.rangeStart !== undefined && result.rangeEnd !== undefined) {
+      res.status(206);
+      const total = result.totalLength ?? "*";
+      res.setHeader("Content-Range", `bytes ${result.rangeStart}-${result.rangeEnd}/${total}`);
+      if (result.contentLength) res.setHeader("Content-Length", result.contentLength);
+    } else {
+      if (result.contentLength) res.setHeader("Content-Length", result.contentLength);
+    }
+
+    const nodeStream = result.stream as NodeJS.ReadableStream;
+    if (typeof (nodeStream as any).pipe === "function") {
+      (nodeStream as any).pipe(res);
+    } else {
+      const reader = (result.stream as ReadableStream).getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) { res.end(); break; }
+        res.write(value);
+      }
+    }
+  } catch (error: any) {
+    if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    debugError("StorageProxy", "Failed to stream file", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to stream file" });
+    }
+  }
+});
+
+// Webhook routes (before CSRF-protected routes, Google Drive sends raw POSTs)
+app.use("/api/webhooks", createWebhookRouter());
+
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);
@@ -180,6 +242,119 @@ app.get("/api/media/image-proxy", async (req, res) => {
 
     debugError("ImageProxy", `Failed to proxy ${raw}`, error);
     return res.status(502).json({ error: "Failed to fetch source image" });
+  }
+});
+
+// Internal credit billing endpoint (Python backend -> Node.js)
+app.post("/api/internal/credits/charge", async (req, res) => {
+  // Authenticate via gateway token
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+  const token = authHeader.slice(7);
+  if (token !== ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  try {
+    const { userId, amount, chunkCount, service, idempotencyKey, metadata } = req.body;
+    if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+    }
+    if (typeof service !== "string" || !service) {
+      return res.status(400).json({ success: false, error: "service is required" });
+    }
+    if (amount != null && (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0)) {
+      return res.status(400).json({ success: false, error: "amount must be a positive number" });
+    }
+    if (chunkCount != null && (typeof chunkCount !== "number" || !Number.isFinite(chunkCount) || chunkCount < 0)) {
+      return res.status(400).json({ success: false, error: "chunkCount must be a non-negative number" });
+    }
+
+    const { chargeForIndexing, chargeForRagQuery, deductCredits } = await import("../services/creditService");
+    type IndexingService = import("../services/creditService").IndexingService;
+
+    if (chunkCount != null) {
+      const result = await chargeForIndexing({
+        userId,
+        chunkCount,
+        service: service as IndexingService,
+        idempotencyKey,
+        metadata,
+      });
+      return res.json({ success: true, ...result });
+    }
+
+    if (amount != null) {
+      const result = await deductCredits({
+        userId,
+        amount,
+        description: `Service charge (${service})`,
+        idempotencyKey,
+        metadata: { ...metadata, service },
+      });
+      return res.json({ success: true, creditsUsed: result.creditsUsed, transactionId: result.transactionId });
+    }
+
+    return res.status(400).json({ success: false, error: "Either amount or chunkCount is required" });
+  } catch (err: any) {
+    const status = err.message?.includes("Insufficient credits") ? 402 : 500;
+    return res.status(status).json({ success: false, error: err.message });
+  }
+});
+
+// Internal Google Drive cleanup endpoint (Python backend -> Node.js)
+app.post("/api/internal/google-drive/cleanup", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+  const token = authHeader.slice(7);
+  if (token !== ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  try {
+    const { userId, tenantId } = req.body;
+    if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+    }
+    if (typeof tenantId !== "string" || !tenantId) {
+      return res.status(400).json({ success: false, error: "tenantId is required" });
+    }
+
+    const { removeGoogleDriveData } = await import("../services/libraryService");
+    const { googleDriveEditSessions, googleDriveSyncState } = await import("../../drizzle/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) {
+      return res.status(500).json({ success: false, error: "Database not available" });
+    }
+
+    // Delete edit sessions for this user
+    await db.delete(googleDriveEditSessions).where(eq(googleDriveEditSessions.userId, userId));
+
+    // Delete sync state for this user + tenant
+    await db.delete(googleDriveSyncState).where(
+      and(
+        eq(googleDriveSyncState.userId, userId),
+        eq(googleDriveSyncState.tenantId, tenantId),
+      ),
+    );
+
+    // Remove library items + cascaded chunks/links
+    const result = await removeGoogleDriveData(userId, tenantId);
+
+    return res.json({
+      status: "ok",
+      itemsDeleted: result.itemsDeleted,
+      chunksDeleted: result.chunksDeleted,
+      linksDeleted: result.linksDeleted,
+    });
+  } catch (err: any) {
+    debugError("GDriveCleanup", "Internal cleanup failed", err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -339,6 +514,13 @@ async function main() {
     console.error("[Startup] Failed to initialize trash purge job:", error);
   }
 
+  // Initialize Google Drive edit session cleanup (every 6h)
+  try {
+    await initializeGDriveCleanupJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
+  }
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -371,11 +553,13 @@ process.on("unhandledRejection", (reason, promise) => {
 
 // Graceful shutdown: flush audit logs and close queues
 process.on("SIGTERM", async () => {
+  await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await auditLogger.shutdown().catch(() => {});
 });
 process.on("SIGINT", async () => {
+  await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await auditLogger.shutdown().catch(() => {});

@@ -13,6 +13,7 @@ from app.core.vectordb import VectorCollection
 from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
 from app.services.embedding_service import EmbeddingService, get_embedding_service
 from app.services.library_observability import emit_metric, log_observability_event
+from app.services.credit_billing_client import charge_credits_post_deduct
 
 logger = structlog.get_logger()
 
@@ -596,6 +597,15 @@ async def process_library_index_job(
             library_item_id=job.library_item_id,
             chunk_count=len(chunks),
             attempt_count=job.attempt_count,
+        )
+
+        # Post-deduct credit billing for indexing
+        service_tag = "library.save_reindex" if job.job_type == "reindex" else "library.upload_index"
+        await charge_credits_post_deduct(
+            user_id=item.owner_user_id,
+            chunk_count=len(chunks),
+            service=service_tag,
+            idempotency_key=f"library-index:{job.id}",
         )
 
         return {

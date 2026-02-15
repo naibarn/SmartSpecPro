@@ -15,6 +15,11 @@ import {
   getUsageStats,
   type TransactionType,
 } from "../services/creditService";
+import {
+  getUserBudget,
+  setBudgetConfig,
+  removeBudget,
+} from "../services/budgetService";
 
 // Zod schemas
 const transactionTypeSchema = z.enum([
@@ -166,4 +171,49 @@ export const creditsRouter = router({
         type: filters.type as TransactionType | undefined,
       });
     }),
+
+  /**
+   * Get current user's budget status
+   */
+  getBudget: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) return null;
+    const budget = await getUserBudget(ctx.tenantId, ctx.user.id);
+    if (!budget) return null;
+    return {
+      monthlyLimit: budget.monthlyLimit,
+      creditsUsedThisMonth: budget.creditsUsedThisMonth,
+      budgetMonthKey: budget.budgetMonthKey,
+      alertThresholdPct: budget.alertThresholdPct,
+      alertSent: budget.alertSent,
+      hardCapReached: budget.hardCapReached,
+    };
+  }),
+
+  /**
+   * Set or update the user's monthly budget configuration
+   */
+  setBudget: protectedProcedure
+    .input(
+      z.object({
+        monthlyLimit: z.number().int().min(1),
+        alertThresholdPct: z.number().int().min(1).max(100).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new Error("Tenant context required");
+      await setBudgetConfig(ctx.tenantId, ctx.user.id, {
+        monthlyLimit: input.monthlyLimit,
+        alertThresholdPct: input.alertThresholdPct,
+      });
+      return { success: true };
+    }),
+
+  /**
+   * Remove the budget limit (set to unlimited)
+   */
+  resetBudget: protectedProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new Error("Tenant context required");
+    await removeBudget(ctx.tenantId, ctx.user.id);
+    return { success: true };
+  }),
 });

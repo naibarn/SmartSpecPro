@@ -57,6 +57,8 @@ from app.api import (
     csrf,  # CSRF Protection
     oauth,  # OAuth Social Login
     telegram_webhook,  # Telegram bot webhook for account linking
+    internal_mcp,  # Internal MCP tools API (Google Drive)
+    internal_gdrive,  # Internal Google Drive sync API
 )
 from app.api.v1 import (
     skills,
@@ -245,6 +247,8 @@ app.include_router(tenant_current.router, tags=["Tenant Current"])
 app.include_router(rbac.router, tags=["RBAC"])
 app.include_router(approvals.router, tags=["Approvals"])
 app.include_router(oauth.router, tags=["OAuth"])
+app.include_router(internal_mcp.router, tags=["Internal MCP"])
+app.include_router(internal_gdrive.router, tags=["Internal GDrive"])
 
 @app.get("/")
 async def root():

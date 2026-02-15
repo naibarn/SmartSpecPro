@@ -9,12 +9,13 @@ import { getDb } from "../db";
 import { systemSettings, invoiceConfig, tenants } from "../../drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
+import { validateGoogleOAuthFormat } from "../services/googleOAuthValidation";
 
 // ============================================================
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb"]);
+const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing"]);
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),
@@ -696,6 +697,72 @@ export const systemSettingsRouter = router({
     }
 
     return result;
+  }),
+
+  /**
+   * Test Google OAuth connection — validates format and Google endpoint reachability
+   */
+  testGoogleOAuthConnection: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) return { success: false, message: "Database not available" };
+
+    // Read Google OAuth settings from DB
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "oauth"));
+
+    let clientId = "";
+    let clientSecretEncrypted = "";
+
+    for (const setting of settings) {
+      if (setting.key === "googleClientId" && setting.value) {
+        clientId = setting.value;
+      } else if (setting.key === "googleClientSecret" && setting.value) {
+        clientSecretEncrypted = setting.value;
+      }
+    }
+
+    // Decrypt and validate credentials format
+    const clientSecret = clientSecretEncrypted ? decrypt(clientSecretEncrypted) : "";
+    if (clientSecretEncrypted && !clientSecret) {
+      return { success: false, message: "Failed to decrypt Google Client Secret — check LLM_ENCRYPTION_KEY" };
+    }
+
+    const validation = validateGoogleOAuthFormat(clientId, clientSecret);
+    if (!validation.valid) {
+      return { success: false, message: validation.message };
+    }
+
+    // Test Google OAuth endpoint reachability (with 10s timeout)
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const response = await fetch(
+          "https://accounts.google.com/.well-known/openid-configuration",
+          { signal: controller.signal }
+        );
+        if (!response.ok) {
+          return {
+            success: false,
+            message: `Google OAuth endpoints unreachable (HTTP ${response.status})`,
+          };
+        }
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      return {
+        success: true,
+        message: "Google OAuth credentials are configured and Google endpoints are reachable. Full credential validation will occur during the first user sign-in.",
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Cannot reach Google OAuth endpoints: ${error.message}`,
+      };
+    }
   }),
 
   // ============================================================

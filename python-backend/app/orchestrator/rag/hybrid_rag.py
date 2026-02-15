@@ -15,6 +15,8 @@ Features:
 """
 
 import asyncio
+import hashlib
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -289,16 +291,18 @@ class HybridRAGEngine:
         top_k: Optional[int] = None,
         mode: Optional[SearchMode] = None,
         filters: Optional[Dict[str, Any]] = None,
+        user_id: Optional[int] = None,
     ) -> RAGResult:
         """
         Retrieve relevant documents for a query.
-        
+
         Args:
             query: Search query
             top_k: Number of results to return
             mode: Search mode override
             filters: Metadata filters
-            
+            user_id: Optional user ID for credit billing (None = no billing)
+
         Returns:
             RAGResult with ranked documents
         """
@@ -398,7 +402,22 @@ class HybridRAGEngine:
                 results=result.final_count,
                 total_ms=result.total_time_ms,
             )
-            
+
+            # Bill for semantic/hybrid searches (BM25-only is free)
+            if user_id and mode in (SearchMode.SEMANTIC, SearchMode.HYBRID, SearchMode.FAST):
+                try:
+                    from app.services.credit_billing_client import charge_credits_post_deduct
+                    query_hash = hashlib.sha256(query.encode()).hexdigest()[:16]
+                    ts_minute = int(time.time()) // 60
+                    await charge_credits_post_deduct(
+                        user_id=user_id,
+                        amount=1,
+                        service="rag.semantic_search",
+                        idempotency_key=f"rag-search:{query_hash}:{user_id}:{ts_minute}",
+                    )
+                except Exception as billing_err:
+                    logger.warning("rag_billing_failed", error=str(billing_err))
+
             return result
             
         except Exception as e:

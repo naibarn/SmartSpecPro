@@ -165,6 +165,19 @@ export default function AdminSettings() {
     },
   });
 
+  const testGoogleOAuthMutation = trpc.systemSettings.testGoogleOAuthConnection.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err) => {
+      toast.error(`Test failed: ${err.message}`);
+    },
+  });
+
   // Registration settings query & mutation
   const { data: regSettings, refetch: refetchReg } =
     trpc.systemSettings.getRegistrationSettings.useQuery(undefined, {
@@ -878,7 +891,7 @@ export default function AdminSettings() {
                     <Label htmlFor="googleRedirectUri">Redirect URI</Label>
                     <Input
                       id="googleRedirectUri"
-                      placeholder="http://localhost:3000/auth/callback/google"
+                      placeholder="https://smartaihub.app/auth/callback/google"
                       value={oauthForm.googleRedirectUri || ""}
                       onChange={(e) =>
                         setOauthForm((prev) => ({ ...prev, googleRedirectUri: e.target.value }))
@@ -887,6 +900,111 @@ export default function AdminSettings() {
                     <p className="text-xs text-gray-500 mt-1">
                       Must match the authorized redirect URI in Google Cloud Console
                     </p>
+                  </div>
+
+                  {/* Google OAuth Setup Guide */}
+                  <details className="mt-4 group">
+                    <summary className="cursor-pointer flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors">
+                      <Info className="w-4 h-4" />
+                      Setup Guide: How to create Google OAuth credentials
+                      <ChevronLeft className="w-4 h-4 transition-transform group-open:-rotate-90" />
+                    </summary>
+                    <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <div className="text-sm text-blue-900 dark:text-blue-100 space-y-4">
+                        {/* Step 1 */}
+                        <div>
+                          <p className="font-semibold">Step 1: Create a Google Cloud Project</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            Go to{" "}
+                            <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-1">
+                              Google Cloud Console <ExternalLink className="w-3 h-3" />
+                            </a>
+                            {" "}and create a new project (or select an existing one).
+                          </p>
+                        </div>
+
+                        {/* Step 2 */}
+                        <div>
+                          <p className="font-semibold">Step 2: Enable required APIs</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            In your project, go to <strong>APIs & Services &gt; Library</strong> and enable:
+                          </p>
+                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
+                            <li>Google Drive API</li>
+                            <li>Google Docs API</li>
+                            <li>Google Sheets API</li>
+                            <li>Google Slides API</li>
+                          </ul>
+                        </div>
+
+                        {/* Step 3 */}
+                        <div>
+                          <p className="font-semibold">Step 3: Configure OAuth Consent Screen</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            Go to <strong>APIs & Services &gt; OAuth consent screen</strong>:
+                          </p>
+                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
+                            <li>User Type: <strong>External</strong> (or Internal for Google Workspace)</li>
+                            <li>Fill in App name, User support email, and Developer contact</li>
+                            <li>Add scopes: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">openid</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">email</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">profile</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.readonly</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.file</code></li>
+                            <li>Add test users if in Testing status</li>
+                          </ul>
+                        </div>
+
+                        {/* Step 4 */}
+                        <div>
+                          <p className="font-semibold">Step 4: Create OAuth Client ID</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            Go to <strong>APIs & Services &gt; Credentials</strong> &gt; <strong>Create Credentials</strong> &gt; <strong>OAuth client ID</strong>:
+                          </p>
+                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
+                            <li>Application type: <strong>Web application</strong></li>
+                            <li>
+                              Authorized redirect URIs &mdash; add both:
+                              <div className="ml-4 mt-1 space-y-1">
+                                <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
+                                  https://smartaihub.app/auth/callback/google
+                                </code>
+                                <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
+                                  https://smartaihub.app/auth/callback/google-drive
+                                </code>
+                              </div>
+                            </li>
+                          </ul>
+                        </div>
+
+                        {/* Step 5 */}
+                        <div>
+                          <p className="font-semibold">Step 5: Copy credentials here</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Google Cloud Console and paste them in the fields above. Then click <strong>Save Settings</strong>.
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
+                          <p className="text-blue-600 dark:text-blue-400 text-xs flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Client Secret is encrypted before storage. It will not be shown after saving.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+
+                  {/* Test Connection Button */}
+                  <div className="mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => testGoogleOAuthMutation.mutate()}
+                      disabled={testGoogleOAuthMutation.isPending || !oauthSettings?.googleClientId}
+                    >
+                      {testGoogleOAuthMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <TestTube className="w-4 h-4 mr-2" />
+                      )}
+                      Test Google Connection
+                    </Button>
                   </div>
                 </div>
 

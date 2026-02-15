@@ -4,15 +4,33 @@
  */
 
 import { db } from "../db";
-import { users, creditTransactions, creditPackages, modelProviderMap } from "../../drizzle/schema";
+import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { getRedisClient, isRedisAvailable } from "./redis";
 
 export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription";
+
+export class BudgetExceededError extends Error {
+  public readonly monthlyLimit: number;
+  public readonly creditsUsed: number;
+  public readonly budgetMonthKey: string;
+
+  constructor(monthlyLimit: number, creditsUsed: number, budgetMonthKey: string) {
+    super(`Monthly credit budget exceeded: ${creditsUsed}/${monthlyLimit} used in ${budgetMonthKey}`);
+    this.name = "BudgetExceededError";
+    this.monthlyLimit = monthlyLimit;
+    this.creditsUsed = creditsUsed;
+    this.budgetMonthKey = budgetMonthKey;
+  }
+}
 
 export interface DeductCreditsParams {
   userId: number;
   amount: number;
   description: string;
+  tenantId?: string;
+  idempotencyKey?: string;
+  skipBudgetCheck?: boolean;
   metadata?: {
     model?: string;
     provider?: string;
@@ -20,6 +38,7 @@ export interface DeductCreditsParams {
     costUsd?: number;
     endpoint?: string;
     traceId?: string;
+    service?: string;
     [key: string]: any;
   };
 }
@@ -95,54 +114,142 @@ export async function hasEnoughCredits(userId: number, amount: number): Promise<
  * This prevents TOCTOU race conditions and negative balances.
  */
 export async function deductCredits(params: DeductCreditsParams) {
-  const { userId, amount, description, metadata } = params;
+  const { userId, amount, description, metadata, idempotencyKey, tenantId, skipBudgetCheck } = params;
 
   if (amount <= 0) {
     throw new Error("Deduction amount must be positive");
   }
 
+  // Budget pre-check (only when tenantId is provided and not skipped)
+  let budgetAlert = false;
+  let budgetUsagePctValue: number | undefined;
+  if (tenantId && !skipBudgetCheck) {
+    const { checkBudget, getCurrentMonthKey } = await import("./budgetService");
+    const budgetResult = await checkBudget(tenantId, userId, amount);
+    if (!budgetResult.allowed) {
+      throw new BudgetExceededError(
+        budgetResult.monthlyLimit,
+        budgetResult.creditsUsed,
+        getCurrentMonthKey(),
+      );
+    }
+    if (budgetResult.alert) {
+      budgetAlert = true;
+    }
+    budgetUsagePctValue = budgetResult.usagePct;
+  }
+
+  // Redis fast-path check for idempotency
+  if (idempotencyKey && isRedisAvailable()) {
+    try {
+      const redis = getRedisClient();
+      const cached = await redis.get(`credit:idemp:${idempotencyKey}`);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {
+      // Redis unavailable -- fall through to DB check
+    }
+  }
+
   let transactionId: number = 0;
   let newBalance: number = 0;
 
-  await db.transaction(async (tx) => {
-    // Atomic deduction: balance check + decrement in one statement
-    const [result] = await tx
-      .update(users)
-      .set({ credits: sql`${users.credits} - ${amount}` })
-      .where(and(eq(users.id, userId), gte(users.credits, amount)))
-      .returning({ newBalance: users.credits });
+  try {
+    await db.transaction(async (tx) => {
+      // Atomic deduction: balance check + decrement in one statement
+      const [result] = await tx
+        .update(users)
+        .set({ credits: sql`${users.credits} - ${amount}` })
+        .where(and(eq(users.id, userId), gte(users.credits, amount)))
+        .returning({ newBalance: users.credits });
 
-    if (!result) {
-      // Either user not found or insufficient credits
-      const [user] = await tx
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.id, userId))
+      if (!result) {
+        // Either user not found or insufficient credits
+        const [user] = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+        if (!user) throw new Error("User not found");
+        throw new Error("Insufficient credits");
+      }
+
+      newBalance = result.newBalance;
+
+      const [txRecord] = await tx.insert(creditTransactions).values({
+        userId,
+        amount: -amount, // Negative for deductions
+        type: "usage",
+        description,
+        metadata,
+        balanceAfter: newBalance,
+        idempotencyKey: idempotencyKey ?? null,
+      }).returning({ id: creditTransactions.id });
+
+      transactionId = txRecord?.id || 0;
+    });
+  } catch (err: any) {
+    // Handle unique constraint violation on idempotencyKey (DB safety net)
+    if (idempotencyKey && err?.code === "23505" && err?.constraint?.includes("idempotency")) {
+      const existing = await db
+        .select({ id: creditTransactions.id, amount: creditTransactions.amount, balanceAfter: creditTransactions.balanceAfter })
+        .from(creditTransactions)
+        .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
         .limit(1);
-      if (!user) throw new Error("User not found");
-      throw new Error("Insufficient credits");
+      if (existing[0]) {
+        return {
+          success: true,
+          creditsUsed: Math.abs(existing[0].amount),
+          newBalance: existing[0].balanceAfter ?? 0,
+          transactionId: existing[0].id,
+        };
+      }
     }
+    throw err;
+  }
 
-    newBalance = result.newBalance;
-
-    const [txRecord] = await tx.insert(creditTransactions).values({
-      userId,
-      amount: -amount, // Negative for deductions
-      type: "usage",
-      description,
-      metadata,
-      balanceAfter: newBalance,
-    }).returning({ id: creditTransactions.id });
-
-    transactionId = txRecord?.id || 0;
-  });
-
-  return {
+  const result: {
+    success: boolean;
+    creditsUsed: number;
+    newBalance: number;
+    transactionId: number;
+    budgetAlert?: boolean;
+    budgetUsagePct?: number;
+  } = {
     success: true,
     creditsUsed: amount,
     newBalance,
     transactionId,
   };
+
+  // Budget post-update
+  if (tenantId) {
+    try {
+      const { incrementBudgetUsage } = await import("./budgetService");
+      const budgetResult = await incrementBudgetUsage(tenantId, userId, amount);
+      if (budgetAlert || budgetResult.alertTriggered) {
+        result.budgetAlert = true;
+      }
+      if (budgetUsagePctValue !== undefined) {
+        result.budgetUsagePct = budgetUsagePctValue;
+      }
+    } catch (budgetErr) {
+      console.error("[Budget] Failed to update budget usage", budgetErr);
+    }
+  }
+
+  // Cache result in Redis for fast dedup (24h TTL)
+  if (idempotencyKey && isRedisAvailable()) {
+    try {
+      const redis = getRedisClient();
+      await redis.set(`credit:idemp:${idempotencyKey}`, JSON.stringify(result), "EX", 86400);
+    } catch {
+      // Non-critical -- DB constraint is the safety net
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -506,4 +613,134 @@ export async function giveSignupBonus(userId: number, bonusAmount: number = 100)
     description: "Welcome bonus credits",
     metadata: { reason: "signup" },
   });
+}
+
+// ─── Credit Pricing Config ─────────────────────────────────────────
+
+interface CreditPricingConfig {
+  costPerChunk: number;
+  ragQueryCost: number;
+  mcpReadMaxCost: number;
+  mcpSheetMaxCost: number;
+}
+
+const PRICING_DEFAULTS: CreditPricingConfig = {
+  costPerChunk: 2,
+  ragQueryCost: 1,
+  mcpReadMaxCost: 5,
+  mcpSheetMaxCost: 3,
+};
+
+let _pricingCache: { config: CreditPricingConfig; expiresAt: number } | null = null;
+
+/**
+ * Load credit pricing from system_settings with 5-minute cache.
+ */
+export async function getCreditPricingConfig(): Promise<CreditPricingConfig> {
+  if (_pricingCache && Date.now() < _pricingCache.expiresAt) {
+    return _pricingCache.config;
+  }
+
+  const rows = await db
+    .select({ key: systemSettings.key, value: systemSettings.value })
+    .from(systemSettings)
+    .where(eq(systemSettings.category, "credit_pricing"));
+
+  const config: CreditPricingConfig = { ...PRICING_DEFAULTS };
+  for (const row of rows) {
+    const num = Number(row.value);
+    if (!isNaN(num) && num > 0) {
+      if (row.key === "costPerChunk") config.costPerChunk = num;
+      else if (row.key === "ragQueryCost") config.ragQueryCost = num;
+      else if (row.key === "mcpReadMaxCost") config.mcpReadMaxCost = num;
+      else if (row.key === "mcpSheetMaxCost") config.mcpSheetMaxCost = num;
+    }
+  }
+
+  _pricingCache = { config, expiresAt: Date.now() + 5 * 60_000 };
+  return config;
+}
+
+// ─── Service-Tagged Billing Functions ───────────────────────────────
+
+export type IndexingService = "library.upload_index" | "library.save_reindex" | "gdrive.index" | "gdrive.reindex";
+
+/**
+ * Charge credits for indexing operations.
+ * Formula: ceil(chunkCount) * costPerChunk (default 2).
+ */
+export async function chargeForIndexing(params: {
+  userId: number;
+  chunkCount: number;
+  service: IndexingService;
+  tenantId?: string;
+  idempotencyKey?: string;
+  metadata?: Record<string, any>;
+}): Promise<{ creditsUsed: number; transactionId: number }> {
+  const pricing = await getCreditPricingConfig();
+  const amount = Math.ceil(params.chunkCount) * pricing.costPerChunk;
+
+  if (amount <= 0) {
+    return { creditsUsed: 0, transactionId: 0 };
+  }
+
+  const result = await deductCredits({
+    userId: params.userId,
+    amount,
+    tenantId: params.tenantId,
+    description: `Indexing (${params.service}): ${params.chunkCount} chunks`,
+    idempotencyKey: params.idempotencyKey,
+    metadata: { ...params.metadata, service: params.service, chunkCount: params.chunkCount },
+  });
+
+  return { creditsUsed: result.creditsUsed, transactionId: result.transactionId };
+}
+
+export type RagService = "rag.semantic_search" | "rag.chat_context";
+
+/**
+ * Charge credits for a RAG query (semantic/hybrid search).
+ * Fixed cost per query (default 1 credit). BM25-only is free.
+ */
+export async function chargeForRagQuery(params: {
+  userId: number;
+  service: RagService;
+  tenantId?: string;
+  idempotencyKey?: string;
+  metadata?: Record<string, any>;
+}): Promise<{ creditsUsed: number; transactionId: number }> {
+  const pricing = await getCreditPricingConfig();
+  const amount = pricing.ragQueryCost;
+
+  if (amount <= 0) {
+    return { creditsUsed: 0, transactionId: 0 };
+  }
+
+  const result = await deductCredits({
+    userId: params.userId,
+    amount,
+    tenantId: params.tenantId,
+    description: `RAG query (${params.service})`,
+    idempotencyKey: params.idempotencyKey,
+    metadata: { ...params.metadata, service: params.service },
+  });
+
+  return { creditsUsed: result.creditsUsed, transactionId: result.transactionId };
+}
+
+/**
+ * Pre-flight estimation: estimate indexing cost without charging.
+ */
+export async function estimateIndexingCost(totalSizeBytes: number): Promise<{
+  estimatedChunks: number;
+  estimatedCredits: number;
+  costPerChunk: number;
+}> {
+  const pricing = await getCreditPricingConfig();
+  const estimatedChunks = Math.ceil(totalSizeBytes / 500);
+  return {
+    estimatedChunks,
+    estimatedCredits: estimatedChunks * pricing.costPerChunk,
+    costPerChunk: pricing.costPerChunk,
+  };
 }

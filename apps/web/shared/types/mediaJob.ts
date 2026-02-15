@@ -77,7 +77,9 @@ export type MediaJobType =
   | "concat"
   | "dead_air_detect"
   | "dead_air_cut"
-  | "generate_clip_from_api";
+  | "generate_clip_from_api"
+  | "transcode_h264"
+  | "extract_audio";
 
 export const VALID_JOB_TYPES: MediaJobType[] = [
   "probe",
@@ -91,6 +93,8 @@ export const VALID_JOB_TYPES: MediaJobType[] = [
   "dead_air_detect",
   "dead_air_cut",
   "generate_clip_from_api",
+  "transcode_h264",
+  "extract_audio",
 ];
 
 export interface MediaJobSpec {

@@ -14,6 +14,35 @@ The `tenants` table primary key is `varchar("id", { length: 36 })` -- it is a st
 
 This matches the pattern already used by `library_items`, `library_chunks`, `library_content_versions`, `library_permissions`, and `library_index_jobs`.
 
+## Files Modified (Actual)
+
+| File | Action | Description |
+|------|--------|-------------|
+| `apps/web/drizzle/schema.ts` | Modified | Added 2 enums, 3 new tables, modified 2 existing tables. Code review fixes: `jsonb` instead of `json`, `channelTokenHash` instead of `channelToken`, `idempotencyKey` in camelCase, FK on `library_links.tenantId` |
+| `python-backend/app/models/oauth.py` | Modified | Added `status`, `scopes`, `tenant_id` columns and `UniqueConstraint` |
+| `apps/web/drizzle/meta/_journal.json` | Modified | Fixed tag for migration 0022 (filename mismatch), added entry for 0024 |
+
+## Files Created (Actual)
+
+| File | Description |
+|------|-------------|
+| `apps/web/drizzle/0024_opposite_exiles.sql` | Drizzle migration SQL for all schema changes |
+| `apps/web/drizzle/meta/0024_snapshot.json` | Drizzle migration snapshot |
+| `apps/web/server/schema.googleDrive.test.ts` | Vitest tests for schema validation (14 tests) |
+| `python-backend/migrations/004_oauth_drive_extensions.py` | Python migration (numbered 004, not 003 as planned) |
+| `python-backend/tests/test_oauth_migration.py` | pytest tests for Python model (4 tests) |
+
+## Deviations from Plan
+
+1. **Python migration numbered 004** — `003` was already taken by an existing migration.
+2. **`json` changed to `jsonb`** — Code review caught that `folderSelections` and `fileTypeFilter` need `jsonb` for containment queries. Plan specified `jsonb` in column spec but stub code used `json`.
+3. **`channelToken` renamed to `channelTokenHash`** — Code review flagged plaintext storage of webhook validation token. User chose HMAC-SHA256 with pepper. Column renamed and length increased to 128.
+4. **`idempotencyKey` uses camelCase** — Code review caught snake_case inconsistency with the rest of `creditTransactions` table. User chose to fix to camelCase.
+5. **FK added to `library_links.tenantId`** — Code review caught missing foreign key reference. Added `.references(() => tenants.id, { onDelete: "cascade" })`.
+6. **Migration 0023 was pre-existing** — The `0023_lean_vermin.sql` migration had already been applied to the DB but not tracked. Had to manually register it in `__drizzle_migrations` before applying 0024.
+7. **`DROP INDEX library_links_source_unique` changed to `IF EXISTS`** — The old index didn't exist, causing initial migration failure. Updated to `DROP INDEX IF EXISTS`.
+8. **Backfill run manually** — `library_links.tenant_id` backfilled from default tenant for all 5 existing rows.
+
 ## Files to Create or Modify
 
 | File | Action |

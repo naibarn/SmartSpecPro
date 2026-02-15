@@ -46,24 +46,79 @@ SmartSpecPro/
 - Container name: `smartspec-nginx-dev`
 - Config: `nginx/conf.d/dev-host.conf`
 
-### Service Startup Rules
+### Service Management — SINGLE SOURCE OF TRUTH
 
-**ALWAYS use the service manager:**
+**Production services are managed by systemd. NO EXCEPTIONS.**
+
+Service files: `/etc/systemd/system/smartspec-{backend,web}.service`
+Source of truth: `docker/systemd/smartspec-{backend,web}.service`
+
+**Allowed commands:**
 ```bash
-./run-services.sh start    # Start all services (includes nginx)
-./run-services.sh status   # Check all services
-./run-services.sh restart  # Restart all services
+# Status
+./run-services.sh status                          # Check all services
+systemctl status smartspec-backend.service         # Backend status
+systemctl status smartspec-web.service             # Web status
+
+# Start / Stop / Restart (requires sudo)
+sudo systemctl start smartspec-backend.service     # Start backend
+sudo systemctl start smartspec-web.service         # Start web
+sudo systemctl stop smartspec-backend.service      # Stop backend
+sudo systemctl stop smartspec-web.service          # Stop web
+sudo systemctl restart smartspec-backend.service   # Restart backend
+sudo systemctl restart smartspec-web.service       # Restart web
+
+# After code changes that affect the server
+cd apps/web && npm run build                       # Rebuild frontend assets
+sudo systemctl restart smartspec-web.service       # Restart to pick up changes
+
+# Logs
+journalctl -u smartspec-web.service -f             # Live web logs
+journalctl -u smartspec-backend.service -f         # Live backend logs
 ```
 
-**NEVER start services manually** — this causes incomplete startup and domain access failures.
+### FORBIDDEN — Service Anti-Patterns
 
-**Sequential Startup Order:**
-1. Infrastructure (PostgreSQL, Redis)
-2. Nginx reverse proxy
-3. Validate infrastructure (health checks)
-4. Python Backend (with health check)
-5. Web Application
-6. Celery Workers
+**NEVER do any of the following. These cause port conflicts and restart loops.**
+
+| FORBIDDEN | Why | Do this instead |
+|---|---|---|
+| `screen -dmS ... uvicorn/tsx` | Conflicts with systemd | `sudo systemctl start` |
+| `nohup uvicorn ... &` | Orphan process blocks port | `sudo systemctl start` |
+| `pnpm dev` / `npm run dev` in background | Dev mode conflicts with prod | `sudo systemctl restart` |
+| `kill $(lsof -t -i:3000)` to "fix" port | Kills systemd-managed process, triggers restart loop | `sudo systemctl stop` first |
+| `./run-services.sh start` without sudo | Fails silently on systemctl calls | Use sudo systemctl directly |
+
+### Service Architecture
+
+```
+systemd
+├── smartspec-infra.service      # PostgreSQL + Redis (Docker)
+├── smartspec-backend.service    # Python FastAPI (uvicorn :8000)
+│   ├── KillMode=mixed           # Clean shutdown
+│   ├── Restart=on-failure       # Auto-recover from crashes only
+│   └── ExecStartPre             # Wait for port to be free
+├── smartspec-web.service        # Node.js + React (tsx :3000)
+│   ├── Requires=backend         # Starts after backend
+│   ├── KillMode=mixed
+│   └── Restart=on-failure
+└── smartspec.target             # Groups all services
+```
+
+**Sequential Startup Order (handled by systemd dependencies):**
+1. Infrastructure (PostgreSQL, Redis) — `smartspec-infra.service`
+2. Nginx reverse proxy — Docker container `smartspec-nginx-dev`
+3. Python Backend — `smartspec-backend.service`
+4. Web Application — `smartspec-web.service`
+5. Celery Workers — manual via `./run-services.sh` or screen
+
+### Modifying Service Files
+
+If you need to change service configuration:
+1. Edit source file in `docker/systemd/smartspec-*.service`
+2. Copy to systemd: `sudo cp docker/systemd/smartspec-*.service /etc/systemd/system/`
+3. Reload: `sudo systemctl daemon-reload`
+4. Restart: `sudo systemctl restart smartspec-backend.service smartspec-web.service`
 
 **Validation After ANY Config Change:**
 ```bash

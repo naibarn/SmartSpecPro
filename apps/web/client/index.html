@@ -32,9 +32,18 @@
     <script>
       // Enhanced script to remove all preview/staging mode banners
       function removePreviewBanners() {
+        function isAppElement(el) {
+          return !!(
+            el.closest('#root') ||
+            el.closest('[data-radix-portal]') ||
+            el.closest('[role="dialog"]')
+          );
+        }
+
         // Remove by ID patterns
         const idPatterns = ['manus', 'previewer', 'preview', 'staging', 'banner'];
         document.querySelectorAll('[id]').forEach(function(el) {
+          if (isAppElement(el)) return;
           const id = el.id.toLowerCase();
           if (idPatterns.some(p => id.includes(p))) {
             el.remove();
@@ -52,6 +61,7 @@
         ];
 
         document.querySelectorAll('*').forEach(function(el) {
+          if (isAppElement(el)) return;
           // Skip script/style/meta elements
           if (['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE'].includes(el.tagName)) return;
 
@@ -90,19 +100,19 @@
 
         // Remove by data attributes
         document.querySelectorAll('[data-loc*="Previewer"], [data-loc*="preview"], [data-preview-mode], [data-testid*="preview"], [data-testid*="banner"]').forEach(function(el) {
+          if (isAppElement(el)) return;
           el.remove();
         });
 
         // Remove by class patterns
         document.querySelectorAll('[class*="preview"], [class*="Preview"], [class*="banner"], [class*="Banner"], [class*="manus"], [class*="Manus"]').forEach(function(el) {
-          // Don't remove legitimate app elements (check if inside #root)
-          if (el.closest('#root')) return;
+          if (isAppElement(el)) return;
           el.remove();
         });
 
         // Remove fixed elements at bottom of screen (common for preview banners)
         document.querySelectorAll('body > div, body > aside, body > section').forEach(function(el) {
-          if (el.id === 'root') return;
+          if (el.id === 'root' || isAppElement(el)) return;
           const style = window.getComputedStyle(el);
           if (style.position === 'fixed' &&
               (style.bottom === '0px' || parseInt(style.bottom) < 50) &&

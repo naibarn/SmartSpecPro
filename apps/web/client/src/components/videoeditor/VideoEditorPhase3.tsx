@@ -48,6 +48,7 @@ import {
   formatTime,
 } from '../../types/videoEditor';
 import { processExportToTimeline } from './silenceExportUtils';
+import { createMediaJobClient } from '../../services/mediaJobClient';
 
 export const VideoEditorPhase3: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -1361,7 +1362,9 @@ export const VideoEditorPhase3: React.FC = () => {
     setCurrentTime(0);
   };
   const handleTimeChange = (time: number) => {
-    setCurrentTime(Math.max(0, Math.min(time, project.settings.duration)));
+    const dur = project.settings.duration || 0;
+    const clamped = Math.max(0, Math.min(time, dur));
+    setCurrentTime(Number.isFinite(clamped) ? clamped : 0);
   };
 
   // Timer-driven playback fallback: only ticks when no active video clip
@@ -1580,6 +1583,108 @@ export const VideoEditorPhase3: React.FC = () => {
   const handleOpenSilenceDetection = useCallback(() => {
     setShowSilenceDialog(true);
   }, []);
+
+  // Handle Extract Audio from video clip to A1
+  const handleExtractAudio = useCallback(async () => {
+    // Find the first selected clip that's on a video track
+    let sourceClip: Clip | null = null;
+    let sourceAsset: any = null;
+
+    for (const track of project.timeline.tracks) {
+      if (track.type !== 'video') continue;
+      for (const clip of track.clips) {
+        if (selectedClipIds.includes(clip.id)) {
+          const asset = project.assets[clip.assetId];
+          if (asset && asset.type === 'video') {
+            sourceClip = clip;
+            sourceAsset = asset;
+            break;
+          }
+        }
+      }
+      if (sourceClip) break;
+    }
+
+    if (!sourceClip || !sourceAsset) {
+      showToast('Select a video clip first', 'error');
+      return;
+    }
+
+    showToast('Extracting audio...', 'info', 10000);
+
+    try {
+      const client = await createMediaJobClient();
+      const result = await client.extractAudio(sourceAsset.path);
+
+      const audioUri = result.artifacts?.[0]?.uri;
+      if (!audioUri) {
+        showToast('Audio extraction failed — no output', 'error');
+        return;
+      }
+
+      const audioDuration = (result.derived?.duration as number) || sourceClip.duration;
+
+      setProject(prevProject => {
+        const newProject: VideoEditorProject = JSON.parse(JSON.stringify(prevProject));
+
+        // Create audio asset
+        const audioAssetId = generateId('asset');
+        newProject.assets[audioAssetId] = {
+          id: audioAssetId,
+          type: 'audio',
+          source: 'imported',
+          name: `${sourceAsset.name || 'video'} (audio)`,
+          path: audioUri,
+          filename: 'audio.m4a',
+          format: 'm4a',
+          duration: audioDuration,
+        };
+
+        // Find A1 track
+        const audioTrack = findTrackByType(newProject.timeline, 'audio');
+        if (!audioTrack) {
+          showToast('No audio track (A1) found', 'error');
+          return prevProject;
+        }
+
+        // Create audio clip matching source video clip position
+        const newClipId = generateId('clip');
+        audioTrack.clips.push({
+          id: newClipId,
+          assetId: audioAssetId,
+          trackId: audioTrack.id,
+          startTime: sourceClip!.startTime,
+          duration: sourceClip!.duration,
+          trimIn: sourceClip!.trimIn,
+          trimOut: sourceClip!.trimOut,
+          volume: 1.0,
+          speed: sourceClip!.speed || 1.0,
+          effects: [],
+        });
+
+        // Mute the source video clip's audio to avoid doubling
+        for (const track of newProject.timeline.tracks) {
+          if (track.type !== 'video') continue;
+          for (const clip of track.clips) {
+            if (clip.id === sourceClip!.id) {
+              clip.volume = 0;
+              break;
+            }
+          }
+        }
+
+        newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+        newProject.modifiedAt = new Date().toISOString();
+        addToHistory(newProject);
+        return newProject;
+      });
+
+      showToast('Audio extracted to A1', 'success');
+    } catch (err: any) {
+      console.error('Extract audio failed:', err);
+      showToast(`Audio extraction failed: ${err.message || 'Unknown error'}`, 'error');
+    }
+  }, [project, selectedClipIds, addToHistory]);
 
   // Handle zoom in/out
   const handleZoomIn = useCallback(() => {
@@ -1998,6 +2103,7 @@ export const VideoEditorPhase3: React.FC = () => {
               onUngroupClips={handleUngroupClips}
               onAddText={() => setSidebarView('text')}
               onOpenSilenceDetection={handleOpenSilenceDetection}
+              onExtractAudio={handleExtractAudio}
             />
 
             {/* Active render banner */}
@@ -2204,6 +2310,8 @@ export const VideoEditorPhase3: React.FC = () => {
         {showSilenceDialog && (
           <SilenceDetectionDialog
             project={project}
+            selectedClipId={selectedClipId}
+            selectedClipIds={selectedClipIds}
             onExportToTimeline={handleSilenceExportToTimeline}
             onClose={() => setShowSilenceDialog(false)}
           />
