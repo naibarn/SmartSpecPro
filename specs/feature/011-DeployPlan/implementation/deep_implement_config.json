@@ -80,6 +80,34 @@
     "section-13-sentry": {
       "status": "complete",
       "commit_hash": "597ef35"
+    },
+    "section-14-posthog": {
+      "status": "complete",
+      "commit_hash": "2aa2f3b"
+    },
+    "section-15-admin-dashboard": {
+      "status": "complete",
+      "commit_hash": "cc232c3"
+    },
+    "section-16-cloud-monitoring": {
+      "status": "complete",
+      "commit_hash": "ce426bc"
+    },
+    "section-17-cicd": {
+      "status": "complete",
+      "commit_hash": "18345b5"
+    },
+    "section-18-auth-hardening": {
+      "status": "complete",
+      "commit_hash": "e1170be"
+    },
+    "section-19-load-testing": {
+      "status": "complete",
+      "commit_hash": "cd313e8"
+    },
+    "section-20-prod-hardening": {
+      "status": "complete",
+      "commit_hash": "13d8af0"
     }
   },
   "pre_commit": {

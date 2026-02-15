@@ -66,7 +66,8 @@
       "Bash(tee *)",
       "Bash(git commit:*)",
       "Bash(JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 npx vitest:*)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(grep:*)"
     ],
     "deny": [
       "Bash(rm *)",
