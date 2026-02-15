@@ -110,3 +110,26 @@ def test_drawtext_filter_escapes_text_and_uses_whitelist_font_fallback():
     assert "font='Noto Sans'" in drawtext_filter
     assert "enable='between(t,1.0,4.0)'" in drawtext_filter
     assert ";" not in drawtext_filter
+
+
+def test_text_render_telemetry_includes_version_policy_and_font_resolution():
+    worker = _load_worker_module()
+    clip = _make_text_clip(font_family="Missing Font")
+    project = {
+        "contractVersion": "3.0",
+        "compatibilityPolicy": {"unsupportedContractPolicy": "gated_downgrade"},
+    }
+
+    telemetry = worker._build_text_render_telemetry(
+        project,
+        [clip],
+        strategy="ass",
+        fast_path={"eligible": False, "reason": "font_unresolved"},
+    )
+
+    assert telemetry["strategy"] == "ass"
+    assert telemetry["fastPathEligible"] is False
+    assert telemetry["fastPathReason"] == "font_unresolved"
+    assert telemetry["fontFallbackCount"] == 1
+    assert telemetry["fontResolution"][0]["resolved"] == "Noto Sans"
+    assert telemetry["versionPolicyOutcome"] == "unsupported_with_text_rejected"

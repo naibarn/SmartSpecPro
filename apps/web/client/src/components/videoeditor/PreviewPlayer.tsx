@@ -28,6 +28,18 @@ export interface ActiveTextClipInfo {
   transform?: ClipTransform;
 }
 
+export interface PreviewTextFontResolution {
+  clipId: string;
+  requested: string;
+  resolved: string;
+  fallback: boolean;
+}
+
+export interface PreviewTextDiagnostics {
+  fontResolution: PreviewTextFontResolution[];
+  fontFallbackCount: number;
+}
+
 interface PreviewPlayerProps {
   currentTime: number;
   duration: number;
@@ -52,6 +64,7 @@ interface PreviewPlayerProps {
   onAddKeyframeAtCurrentTime?: (clipId: string) => void;
   onDeleteKeyframeAtCurrentTime?: (clipId: string) => void;
   onOpenKeyframePanel?: () => void;
+  onTextDiagnostics?: (diagnostics: PreviewTextDiagnostics) => void;
   outputWidth?: number;
   outputHeight?: number;
 }
@@ -68,9 +81,11 @@ const PREVIEW_TEXT_FONT_WHITELIST = new Set([
   'Ubuntu',
 ]);
 
-function resolvePreviewTextFontFamily(fontFamily: string): string {
-  if (PREVIEW_TEXT_FONT_WHITELIST.has(fontFamily)) return fontFamily;
-  return 'Noto Sans';
+function resolvePreviewTextFont(fontFamily: string): { resolved: string; fallback: boolean } {
+  if (PREVIEW_TEXT_FONT_WHITELIST.has(fontFamily)) {
+    return { resolved: fontFamily, fallback: false };
+  }
+  return { resolved: 'Noto Sans', fallback: true };
 }
 
 function getTextEffectStyle(config: TextConfig): React.CSSProperties {
@@ -167,6 +182,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   onAddKeyframeAtCurrentTime,
   onDeleteKeyframeAtCurrentTime,
   onOpenKeyframePanel,
+  onTextDiagnostics,
   outputWidth = 16,
   outputHeight = 9,
 }) => {
@@ -237,16 +253,31 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     const safeHeight = Number.isFinite(outputHeight) && outputHeight > 0 ? outputHeight : 9;
     return safeWidth / safeHeight;
   }, [outputWidth, outputHeight]);
+  const textFontResolution = useMemo(
+    () =>
+      activeTextClips.map((clip) => {
+        const outcome = resolvePreviewTextFont(clip.textConfig.fontFamily);
+        return {
+          clipId: clip.id,
+          requested: clip.textConfig.fontFamily,
+          resolved: outcome.resolved,
+          fallback: outcome.fallback,
+        };
+      }),
+    [activeTextClips],
+  );
+  const textFontFallbackCount = useMemo(
+    () => textFontResolution.filter((item) => item.fallback).length,
+    [textFontResolution],
+  );
   const activeTextFontFamilies = useMemo(
     () =>
       Array.from(
         new Set(
-          activeTextClips.map((clip) =>
-            resolvePreviewTextFontFamily(clip.textConfig.fontFamily),
-          ),
+          textFontResolution.map((item) => item.resolved),
         ),
       ),
-    [activeTextClips],
+    [textFontResolution],
   );
   const activeTextFontKey = useMemo(
     () => activeTextFontFamilies.join('|'),
@@ -271,7 +302,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           transformParts.push(`rotate(${transform.rotation}deg)`);
         }
         const config = clip.textConfig;
-        const fontFamily = resolvePreviewTextFontFamily(config.fontFamily);
+        const fontFamily = resolvePreviewTextFont(config.fontFamily).resolved;
         return {
           id: clip.id,
           text: config.text,
@@ -304,6 +335,14 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       }),
     [activeTextClips, safeCurrentTime],
   );
+
+  useEffect(() => {
+    if (!onTextDiagnostics) return;
+    onTextDiagnostics({
+      fontResolution: textFontResolution,
+      fontFallbackCount: textFontFallbackCount,
+    });
+  }, [onTextDiagnostics, textFontResolution, textFontFallbackCount]);
 
   useEffect(() => {
     if (activeTextClips.length === 0) {

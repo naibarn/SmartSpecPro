@@ -388,6 +388,76 @@ def _build_subtitles_filter(ass_path: str) -> str:
     return f"subtitles='{escaped}'"
 
 
+def _parse_major_version(version: str | None) -> int | None:
+    if not isinstance(version, str):
+        return None
+    major_raw = version.split(".", 1)[0]
+    try:
+        parsed = int(major_raw)
+        if parsed < 0:
+            return None
+        return parsed
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_version_policy_outcome(project: dict, text_clip_count: int) -> str:
+    """Resolve compatibility telemetry outcome for render diagnostics."""
+    contract_version = str(project.get("contractVersion", "1.0"))
+    policy = (
+        project.get("compatibilityPolicy", {}).get("unsupportedContractPolicy")
+        if isinstance(project.get("compatibilityPolicy"), dict)
+        else "reject_with_clear_error"
+    ) or "reject_with_clear_error"
+    requested_major = _parse_major_version(contract_version)
+    supported_major = 1
+
+    if requested_major is None:
+        return "invalid_contract_version"
+    if requested_major <= supported_major:
+        return "supported"
+    if policy == "gated_downgrade" and text_clip_count == 0:
+        return "gated_downgrade_no_text"
+    if policy == "gated_downgrade" and text_clip_count > 0:
+        return "unsupported_with_text_rejected"
+    return "unsupported_rejected"
+
+
+def _build_text_render_telemetry(
+    project: dict,
+    text_clips: list[dict],
+    strategy: str,
+    fast_path: dict[str, Any],
+) -> dict[str, Any]:
+    """Build deterministic render telemetry for text-font and version policy outcomes."""
+    font_resolution: list[dict[str, Any]] = []
+    fallback_count = 0
+    for clip in text_clips:
+        cfg = clip.get("textConfig", {})
+        requested = cfg.get("fontFamily") if isinstance(cfg.get("fontFamily"), str) else ""
+        resolved, fallback = _resolve_render_font_family(requested)
+        if fallback:
+            fallback_count += 1
+        font_resolution.append(
+            {
+                "clipId": str(clip.get("clipId", "")),
+                "requested": requested,
+                "resolved": resolved,
+                "fallback": fallback,
+            }
+        )
+
+    return {
+        "strategy": strategy,
+        "fastPathEligible": bool(fast_path.get("eligible")),
+        "fastPathReason": str(fast_path.get("reason", "unknown")),
+        "fontFallbackCount": fallback_count,
+        "fontResolution": font_resolution,
+        "textClipCount": len(text_clips),
+        "versionPolicyOutcome": _resolve_version_policy_outcome(project, len(text_clips)),
+    }
+
+
 def parse_job_spec(spec_json: str) -> dict:
     """Parse and validate a MediaJobSpec JSON string."""
     spec = json.loads(spec_json)
@@ -1101,19 +1171,12 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
                     f"FFmpeg text burn-in failed: {_sanitize_stderr(ass_result.stderr or '')}"
                 )
 
-        font_fallback_count = 0
-        for clip in text_clips:
-            cfg = clip.get("textConfig", {})
-            _resolved, used_fallback = _resolve_render_font_family(cfg.get("fontFamily"))
-            if used_fallback:
-                font_fallback_count += 1
-        text_render_derived = {
-            "strategy": strategy,
-            "fastPathEligible": fast_path["eligible"],
-            "fastPathReason": fallback_reason,
-            "fontFallbackCount": font_fallback_count,
-            "textClipCount": len(text_clips),
-        }
+        text_render_derived = _build_text_render_telemetry(
+            project,
+            text_clips,
+            strategy=strategy,
+            fast_path={"eligible": fast_path["eligible"], "reason": fallback_reason},
+        )
 
     # Return serveable URL (Python backend serves this via /api/v1/media/files/renders/)
     serve_url = f"/api/v1/media/files/renders/{user_id}/{job_id}/{safe_filename}"

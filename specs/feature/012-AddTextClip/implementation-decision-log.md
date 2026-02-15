@@ -79,3 +79,15 @@
 - decision: `strict_equivalence_gate`
 - mode_used: `auto`
 - rationale: Conservative acceptance criteria avoids preview/render parity drift and ensures ASS remains canonical unless equivalence is explicit.
+
+- section: `section-06-compatibility-font-fallback`
+- options_considered: `silent_preview_font_fallback`, `emit_preview_font_diagnostics`
+- decision: `emit_preview_font_diagnostics`
+- mode_used: `auto`
+- rationale: Deterministic fallback diagnostics reduce triage ambiguity without changing preview rendering behavior.
+
+- section: `section-06-compatibility-font-fallback`
+- options_considered: `inline_render_telemetry_fields`, `centralized_telemetry_builder`
+- decision: `centralized_telemetry_builder`
+- mode_used: `auto`
+- rationale: Consolidating policy + font outcomes in one builder prevents drift across drawtext/ASS branches.

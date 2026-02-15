@@ -212,4 +212,43 @@ describe('PreviewPlayer text parity', () => {
     expect(overlay.style.whiteSpace).toBe('pre-wrap');
     expect(overlay.style.fontFamily).toContain('Noto Sans');
   });
+
+  it('emits deterministic font fallback diagnostics for unsupported fonts', async () => {
+    const onTextDiagnostics = vi.fn();
+    const clip = makeTextClip({
+      id: 'text-font-diagnostics',
+      textConfig: {
+        ...DEFAULT_TEXT_CONFIG,
+        text: 'Font telemetry',
+        fontFamily: 'Missing Preview Font',
+      },
+    });
+
+    render(
+      <PreviewPlayer
+        currentTime={1}
+        duration={20}
+        isPlaying={false}
+        onTimeChange={vi.fn()}
+        onPlayPause={vi.fn()}
+        onStop={vi.fn()}
+        previewVideoUrl="/test-video.mp4"
+        activeTextClips={[clip]}
+        onTextDiagnostics={onTextDiagnostics}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onTextDiagnostics).toHaveBeenCalled();
+    });
+
+    const diagnostics = onTextDiagnostics.mock.calls.at(-1)?.[0];
+    expect(diagnostics.fontFallbackCount).toBe(1);
+    expect(diagnostics.fontResolution[0]).toMatchObject({
+      clipId: 'text-font-diagnostics',
+      requested: 'Missing Preview Font',
+      resolved: 'Noto Sans',
+      fallback: true,
+    });
+  });
 });

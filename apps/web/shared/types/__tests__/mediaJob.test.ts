@@ -730,6 +730,45 @@ describe("projectToTimeline — additional cases", () => {
     expect(() => timelineToProject(timeline)).not.toThrow();
   });
 
+  it("rejects gated downgrade for unsupported future version when text semantics exist", () => {
+    const timeline: MediaTimeline = {
+      projectId: "text-unsafe",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      contractVersion: "3.0",
+      compatibilityPolicy: { unsupportedContractPolicy: "gated_downgrade" },
+      tracks: [
+        {
+          trackId: "t1",
+          type: "subtitle",
+          clips: [
+            {
+              clipId: "txt-1",
+              assetId: "a1",
+              startMs: 0,
+              inMs: 0,
+              outMs: 1000,
+              textConfig: {
+                text: "hello",
+                fontFamily: "Noto Sans",
+                fontSize: 32,
+                fontWeight: 700,
+                fontStyle: "normal",
+                color: "#FFFFFF",
+                backgroundColor: "transparent",
+                textAlign: "center",
+                effect: "none",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() => timelineToProject(timeline)).toThrow(/Unsupported media timeline contractVersion/i);
+  });
+
   it("round-trips through projectToTimeline and timelineToProject", () => {
     const project = createEmptyProject("Round Trip");
     project.timeline.tracks[0].clips.push({

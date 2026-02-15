@@ -50,12 +50,24 @@
 
 ## Section 05: render-pipeline-ass
 
-- commit: `pending`
+- commit: `32fbef7`
 - test_command: `cd apps/web && npm test -- shared/types/__tests__/mediaJob.test.ts && cd ../python-backend && UV_CACHE_DIR=/tmp/uv-cache PYTEST_ADDOPTS='--no-cov' uv run pytest tests/unit/test_media_job_text_render.py`
 - pass_fail_summary: `pass` (1 frontend file, 45 tests; 1 backend file, 5 tests)
 - notable_deviations:
   - Implemented canonical ASS burn-in as a deterministic second FFmpeg pass after base render output rather than in-graph composition.
   - Drawtext fast-path is gated conservatively and falls back to ASS on any rejection/runtime failure with explicit reason codes.
+- blocked_tasks_resolved_remaining:
+  - resolved: `none`
+  - remaining: `none`
+
+## Section 06: compatibility-font-fallback
+
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- client/src/components/videoeditor/__tests__/PreviewPlayer.textParity.test.tsx shared/types/__tests__/mediaJob.test.ts && cd ../python-backend && UV_CACHE_DIR=/tmp/uv-cache PYTEST_ADDOPTS='--no-cov' uv run pytest tests/unit/test_media_job_text_render.py`
+- pass_fail_summary: `pass` (2 frontend files, 52 tests; 1 backend file, 6 tests)
+- notable_deviations:
+  - Added deterministic preview diagnostics callback (`onTextDiagnostics`) rather than emitting to a centralized logging endpoint in this section.
+  - Added version policy outcome telemetry as render-derived metadata for operational consumers.
 - blocked_tasks_resolved_remaining:
   - resolved: `none`
   - remaining: `none`
