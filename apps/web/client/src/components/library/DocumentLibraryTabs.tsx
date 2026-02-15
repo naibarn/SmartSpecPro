@@ -1,5 +1,6 @@
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen, Share2, Trash2, Users } from "lucide-react";
+import type { ComponentType } from "react";
+import { Cloud, FolderOpen, Share2, Trash2, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { DocumentScopeTab } from "@/lib/documentManagementUi";
 
 interface DocumentLibraryTabsProps {
@@ -7,39 +8,80 @@ interface DocumentLibraryTabsProps {
   onChange: (value: DocumentScopeTab) => void;
 }
 
+interface TabDef {
+  value: Exclude<DocumentScopeTab, "trash">;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  activeClass: string;
+}
+
+const PRIMARY_TABS: TabDef[] = [
+  {
+    value: "my_library",
+    label: "My Library",
+    icon: FolderOpen,
+    activeClass: "border-sky-300 bg-sky-50 text-sky-800 shadow-sm",
+  },
+  {
+    value: "my_drive",
+    label: "My Drive",
+    icon: Cloud,
+    activeClass: "border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm",
+  },
+  {
+    value: "shared_with_me",
+    label: "Shared With Me",
+    icon: Share2,
+    activeClass: "border-teal-300 bg-teal-50 text-teal-800 shadow-sm",
+  },
+  {
+    value: "shared_groups",
+    label: "My Group",
+    icon: Users,
+    activeClass: "border-indigo-300 bg-indigo-50 text-indigo-800 shadow-sm",
+  },
+];
+
 export default function DocumentLibraryTabs({ value, onChange }: DocumentLibraryTabsProps) {
   return (
-    <Tabs value={value} onValueChange={(next) => onChange(next as DocumentScopeTab)}>
-      <TabsList className="grid h-14 w-full grid-cols-4 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
-        <TabsTrigger
-          value="my_library"
-          className="rounded-xl text-[13px] font-medium text-slate-700 data-[state=active]:border data-[state=active]:border-sky-200 data-[state=active]:bg-sky-50 data-[state=active]:text-sky-700 data-[state=active]:shadow-sm"
+    <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+      <div className="flex flex-wrap items-stretch gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+          {PRIMARY_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = value === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => onChange(tab.value)}
+                className={cn(
+                  "inline-flex min-h-10 min-w-[140px] items-center justify-center rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors",
+                  "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100",
+                  isActive && tab.activeClass,
+                )}
+              >
+                <Icon className="mr-1 h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onChange("trash")}
+          className={cn(
+            "inline-flex min-h-10 min-w-[110px] shrink-0 items-center justify-center rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors",
+            "border-slate-200 bg-slate-50 text-slate-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700",
+            value === "trash" && "border-red-300 bg-red-50 text-red-700 shadow-sm",
+          )}
+          title="Trash"
         >
-          <FolderOpen className="mr-1.5 h-4 w-4" />
-          My Library
-        </TabsTrigger>
-        <TabsTrigger
-          value="shared_with_me"
-          className="rounded-xl text-[13px] font-medium text-slate-700 data-[state=active]:border data-[state=active]:border-teal-200 data-[state=active]:bg-teal-50 data-[state=active]:text-teal-700 data-[state=active]:shadow-sm"
-        >
-          <Share2 className="mr-1.5 h-4 w-4" />
-          Shared With Me
-        </TabsTrigger>
-        <TabsTrigger
-          value="shared_groups"
-          className="rounded-xl text-[13px] font-medium text-slate-700 data-[state=active]:border data-[state=active]:border-indigo-200 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm"
-        >
-          <Users className="mr-1.5 h-4 w-4" />
-          My Group
-        </TabsTrigger>
-        <TabsTrigger
-          value="trash"
-          className="rounded-xl text-[13px] font-medium text-slate-700 data-[state=active]:border data-[state=active]:border-red-200 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:shadow-sm"
-        >
-          <Trash2 className="mr-1.5 h-4 w-4" />
+          <Trash2 className="mr-1 h-4 w-4" />
           Trash
-        </TabsTrigger>
-      </TabsList>
-    </Tabs>
+        </button>
+      </div>
+    </div>
   );
 }

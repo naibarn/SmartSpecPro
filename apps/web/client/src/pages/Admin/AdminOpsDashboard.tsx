@@ -22,7 +22,6 @@ import {
   Zap,
   Users,
 } from "lucide-react";
-import { Link } from "wouter";
 import TrafficPanel from "./panels/TrafficPanel";
 import ApiHealthPanel from "./panels/ApiHealthPanel";
 import JobsHealthPanel from "./panels/JobsHealthPanel";
@@ -63,85 +62,97 @@ export default function AdminOpsDashboard() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/settings">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">Ops Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              System health and operational metrics
-            </p>
+      <header className="bg-white/70 backdrop-blur-xl border-b sticky top-0 z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = "/dashboard")}
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">Ops Dashboard</h1>
+                  <p className="text-xs text-muted-foreground">System health and operational metrics</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant={refreshInterval ? "default" : "secondary"}>
+                {refreshInterval ? "Auto-refresh: 30s" : "Paused"}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleAutoRefresh}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshInterval ? "animate-spin" : ""}`} />
+                {refreshInterval ? "Pause" : "Resume"}
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={refreshInterval ? "default" : "secondary"}>
-            {refreshInterval ? "Auto-refresh: 30s" : "Paused"}
-          </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleAutoRefresh}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshInterval ? "animate-spin" : ""}`} />
-            {refreshInterval ? "Pause" : "Resume"}
-          </Button>
-        </div>
-      </div>
+      </header>
 
-      {/* Tabbed Panels */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="traffic" className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Traffic</span>
-          </TabsTrigger>
-          <TabsTrigger value="api" className="flex items-center gap-1">
-            <Activity className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">API</span>
-          </TabsTrigger>
-          <TabsTrigger value="jobs" className="flex items-center gap-1">
-            <Zap className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Jobs</span>
-          </TabsTrigger>
-          <TabsTrigger value="kie" className="flex items-center gap-1">
-            <Server className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Kie AI</span>
-          </TabsTrigger>
-          <TabsTrigger value="storage" className="flex items-center gap-1">
-            <HardDrive className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Storage</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center gap-1">
-            <Shield className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Security</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Main Content */}
+      <main className="px-4 sm:px-6 lg:px-8 py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="traffic" className="flex items-center gap-1">
+              <Users className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Traffic</span>
+            </TabsTrigger>
+            <TabsTrigger value="api" className="flex items-center gap-1">
+              <Activity className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">API</span>
+            </TabsTrigger>
+            <TabsTrigger value="jobs" className="flex items-center gap-1">
+              <Zap className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Jobs</span>
+            </TabsTrigger>
+            <TabsTrigger value="kie" className="flex items-center gap-1">
+              <Server className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Kie AI</span>
+            </TabsTrigger>
+            <TabsTrigger value="storage" className="flex items-center gap-1">
+              <HardDrive className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Storage</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-1">
+              <Shield className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Security</span>
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="traffic">
-          <TrafficPanel refreshInterval={refreshInterval} />
-        </TabsContent>
-        <TabsContent value="api">
-          <ApiHealthPanel refreshInterval={refreshInterval} />
-        </TabsContent>
-        <TabsContent value="jobs">
-          <JobsHealthPanel refreshInterval={refreshInterval} />
-        </TabsContent>
-        <TabsContent value="kie">
-          <KieAiHealthPanel refreshInterval={refreshInterval} />
-        </TabsContent>
-        <TabsContent value="storage">
-          <StoragePanel refreshInterval={refreshInterval} />
-        </TabsContent>
-        <TabsContent value="security">
-          <SecurityPanel refreshInterval={refreshInterval} />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="traffic">
+            <TrafficPanel refreshInterval={refreshInterval} />
+          </TabsContent>
+          <TabsContent value="api">
+            <ApiHealthPanel refreshInterval={refreshInterval} />
+          </TabsContent>
+          <TabsContent value="jobs">
+            <JobsHealthPanel refreshInterval={refreshInterval} />
+          </TabsContent>
+          <TabsContent value="kie">
+            <KieAiHealthPanel refreshInterval={refreshInterval} />
+          </TabsContent>
+          <TabsContent value="storage">
+            <StoragePanel refreshInterval={refreshInterval} />
+          </TabsContent>
+          <TabsContent value="security">
+            <SecurityPanel refreshInterval={refreshInterval} />
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   );
 }

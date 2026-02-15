@@ -26,6 +26,12 @@ describe("documentManagementUi", () => {
     ).toBe("scope=shared_groups&sort=created_desc&q=guide&type=md&status=ready");
   });
 
+  it("accepts my_drive scope in URL query state", () => {
+    const parsed = parseDocumentQueryState("?scope=my_drive&sort=updated_desc");
+    expect(parsed.scope).toBe("my_drive");
+    expect(buildDocumentQueryString(parsed)).toContain("scope=my_drive");
+  });
+
   it("supports editor mode with selected doc id in query", () => {
     const parsed = parseDocumentQueryState("?mode=editor&doc=42");
     expect(parsed.viewMode).toBe("editor");

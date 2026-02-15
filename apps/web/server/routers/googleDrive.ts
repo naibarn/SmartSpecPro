@@ -30,6 +30,9 @@ import {
 import { createGDriveRateLimitMiddleware } from "../services/googleDriveRateLimitMiddleware";
 import { auditLogger } from "../services/auditLogger";
 import { getRedisClient, isRedisAvailable } from "../services/redis";
+import { uploadLibraryFile } from "../services/libraryService";
+import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 
 // ── Input validation schemas ──────────────────────────────────────────────
 const driveFileIdSchema = z
@@ -38,11 +41,11 @@ const driveFileIdSchema = z
   .max(256)
   .regex(/^[a-zA-Z0-9_-]+$/, "Invalid file ID format");
 
-const searchQuerySchema = z
+const driveFolderIdSchema = z
   .string()
   .min(1)
-  .max(500)
-  .transform((s) => s.trim());
+  .max(256)
+  .regex(/^[a-zA-Z0-9_-]+$/, "Invalid folder ID format");
 
 // ── Feature flag helper ───────────────────────────────────────────────────
 let _driveReadonlyMemCache: { value: boolean; expiry: number } | null = null;
@@ -105,6 +108,28 @@ async function assertDriveReadonlyApproved(): Promise<void> {
   }
 }
 
+function resolveLibraryTenantId(
+  ctx: { tenantId: unknown; user: { currentTenantId?: unknown } },
+): string {
+  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+  if (!tenantId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Tenant context is required for library operations",
+    });
+  }
+  return tenantId;
+}
+
+function assertLibraryEnabled(tenantId: string): void {
+  if (!isLibraryEnabledForTenant(tenantId)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Library feature is disabled for this tenant",
+    });
+  }
+}
+
 const searchRateLimit = createGDriveRateLimitMiddleware(gdriveSearchLimiter);
 const readRateLimit = createGDriveRateLimitMiddleware(gdriveReadLimiter);
 const syncRateLimit = createGDriveRateLimitMiddleware(gdriveSyncLimiter);
@@ -127,6 +152,19 @@ function pyFetch(
     ...rest,
     signal: rest.signal ?? AbortSignal.timeout(timeoutMs ?? PY_TIMEOUT_MS),
   });
+}
+
+async function extractPyErrorMessage(response: Response): Promise<string> {
+  const raw = await response.text().catch(() => "");
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as { detail?: unknown; message?: unknown };
+    if (typeof parsed.detail === "string" && parsed.detail.trim()) return parsed.detail;
+    if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message;
+  } catch {
+    // fall through to raw text
+  }
+  return raw;
 }
 
 function createDriveToken(userId: number): string {
@@ -985,6 +1023,223 @@ export const googleDriveRouter = router({
         serviceTag: (r.metadata as any)?.service || null,
         metadata: r.metadata,
       }));
+    }),
+
+  /**
+   * Browse files and folders in Google Drive for Document Management import.
+   */
+  listDriveItems: protectedProcedure
+    .use(searchRateLimit)
+    .input(
+      z.object({
+        parentFolderId: z.union([z.literal("root"), driveFolderIdSchema]).nullable().default("root"),
+        includeAllFiles: z.boolean().default(false),
+        query: z.string().trim().max(200).optional(),
+        pageToken: z.string().max(512).optional(),
+        pageSize: z.number().int().min(1).max(200).default(100),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const token = createDriveToken(ctx.user.id);
+      const params = new URLSearchParams();
+      params.set("user_id", String(ctx.user.id));
+      params.set("page_size", String(input.pageSize));
+      if (input.includeAllFiles) {
+        params.set("all_files", "true");
+      } else if (input.parentFolderId) {
+        params.set("parent_id", input.parentFolderId);
+      }
+      if (input.query) {
+        params.set("q", input.query);
+      }
+      if (input.pageToken) {
+        params.set("page_token", input.pageToken);
+      }
+
+      const resp = await pyFetch(
+        `${PYTHON_BACKEND_URL}/api/internal/gdrive/list-items?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "x-proxy-token": process.env.SMARTSPEC_PROXY_TOKEN || "",
+          },
+        },
+      );
+
+      if (!resp.ok) {
+        const detail = await extractPyErrorMessage(resp);
+        throw new TRPCError({
+          code: resp.status === 401 ? "UNAUTHORIZED" : "INTERNAL_SERVER_ERROR",
+          message: detail || "Failed to list Google Drive items",
+        });
+      }
+
+      return resp.json() as Promise<{
+        items: Array<{
+          id: string;
+          name: string;
+          mimeType: string;
+          kind: "folder" | "file";
+          size: number;
+          modifiedTime: string | null;
+          parents: string[];
+          iconLink: string | null;
+          thumbnailLink: string | null;
+          webViewLink: string | null;
+        }>;
+        nextPageToken: string | null;
+      }>;
+    }),
+
+  /**
+   * Fetch preview payload for a Google Drive file without importing.
+   */
+  getDriveFilePreview: protectedProcedure
+    .use(readRateLimit)
+    .input(z.object({ fileId: driveFileIdSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const token = createDriveToken(ctx.user.id);
+      const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
+      const pyResp = await pyFetch(
+        `${PYTHON_BACKEND_URL}/api/internal/gdrive/import-file`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "x-proxy-token": proxyToken,
+          },
+          body: JSON.stringify({
+            file_id: input.fileId,
+            user_id: ctx.user.id,
+            purpose: "preview",
+            max_bytes: 8 * 1024 * 1024,
+          }),
+          timeoutMs: PY_UPLOAD_TIMEOUT_MS,
+        },
+      );
+
+      if (!pyResp.ok) {
+        const detail = await extractPyErrorMessage(pyResp);
+        throw new TRPCError({
+          code:
+            pyResp.status === 400
+              ? "BAD_REQUEST"
+              : pyResp.status === 401
+                ? "UNAUTHORIZED"
+                : pyResp.status === 404
+                  ? "NOT_FOUND"
+                  : "INTERNAL_SERVER_ERROR",
+          message: detail || "Failed to preview Google Drive file",
+        });
+      }
+
+      const payload = await pyResp.json() as {
+        fileName: string;
+        fileType: string;
+        fileBase64: string;
+        driveFile: Record<string, unknown>;
+      };
+
+      const normalizedType = payload.fileType.toLowerCase();
+      const isTextLike = normalizedType.startsWith("text/")
+        || normalizedType === "application/json"
+        || normalizedType === "application/xml"
+        || normalizedType === "application/x-ndjson"
+        || normalizedType === "application/csv";
+
+      let textPreview: string | null = null;
+      if (isTextLike) {
+        try {
+          textPreview = Buffer.from(payload.fileBase64, "base64")
+            .toString("utf8")
+            .slice(0, 80_000);
+        } catch {
+          textPreview = null;
+        }
+      }
+
+      return {
+        ...payload,
+        textPreview,
+      };
+    }),
+
+  /**
+   * Import a single Google Drive file into Document Management.
+   */
+  importDriveFile: protectedProcedure
+    .use(readRateLimit)
+    .input(z.object({ fileId: driveFileIdSchema }))
+    .mutation(async ({ ctx, input }) => {
+      // Gate behind drive.readonly scope approval
+      await assertDriveReadonlyApproved();
+
+      const tenantId = resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantId);
+
+      const token = createDriveToken(ctx.user.id);
+      const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
+      const pyResp = await pyFetch(
+        `${PYTHON_BACKEND_URL}/api/internal/gdrive/import-file`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "x-proxy-token": proxyToken,
+          },
+          body: JSON.stringify({
+            file_id: input.fileId,
+            user_id: ctx.user.id,
+            purpose: "import",
+          }),
+          timeoutMs: PY_UPLOAD_TIMEOUT_MS,
+        },
+      );
+
+      if (!pyResp.ok) {
+        const detail = await extractPyErrorMessage(pyResp);
+        throw new TRPCError({
+          code:
+            pyResp.status === 400
+              ? "BAD_REQUEST"
+              : pyResp.status === 401
+                ? "UNAUTHORIZED"
+                : pyResp.status === 404
+                  ? "NOT_FOUND"
+                  : "INTERNAL_SERVER_ERROR",
+          message: detail || "Failed to import Google Drive file",
+        });
+      }
+
+      const payload = await pyResp.json() as {
+        fileName: string;
+        fileType: string;
+        fileBase64: string;
+        driveFile: Record<string, unknown>;
+      };
+
+      const actor = {
+        userId: ctx.user.id,
+        tenantId,
+        role: ctx.user.role,
+      };
+      const uploadResult = await uploadLibraryFile(
+        {
+          fileName: payload.fileName,
+          fileType: payload.fileType,
+          fileBase64: payload.fileBase64,
+          title: payload.fileName,
+          visibility: "private",
+        },
+        actor,
+      );
+
+      return {
+        ...uploadResult,
+        driveFile: payload.driveFile,
+      };
     }),
 
   /**

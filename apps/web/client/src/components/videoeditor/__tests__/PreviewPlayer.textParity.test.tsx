@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import PreviewPlayer, { type ActiveTextClipInfo } from '../PreviewPlayer';
 import type { TextConfig } from '../../../types/videoEditor';
 
@@ -325,5 +325,41 @@ describe('PreviewPlayer text parity', () => {
       resolved: 'Noto Sans',
       fallback: true,
     });
+  });
+
+  it('enables transform edit mode for selected active text clip', async () => {
+    const clip = makeTextClip({
+      id: 'text-draggable',
+      clipStartTime: 0,
+      clipDuration: 5,
+      transform: {
+        x: 0.5,
+        y: 0.5,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
+        keyframes: [],
+      },
+    });
+
+    const { getByRole } = render(
+      <PreviewPlayer
+        currentTime={1}
+        duration={20}
+        isPlaying={false}
+        onTimeChange={vi.fn()}
+        onPlayPause={vi.fn()}
+        onStop={vi.fn()}
+        activeTextClips={[clip]}
+        selectedClipId="text-draggable"
+        onTransformChangeAtCurrentTime={vi.fn()}
+      />,
+    );
+
+    const transformButton = getByRole('button', { name: 'Toggle transform edit mode' }) as HTMLButtonElement;
+    expect(transformButton.disabled).toBe(false);
+    fireEvent.click(transformButton);
+    expect(transformButton.className).toContain('primary');
   });
 });

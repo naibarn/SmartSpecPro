@@ -51,6 +51,14 @@ const SNAP_THRESHOLD = 5; // pixels
 const PLAYHEAD_SNAP_DISTANCE = 0.2; // seconds - snap when within 0.2s of playhead
 const RESIZE_SNAP_DISTANCE = 0.15; // seconds - snap resize edges to other clip edges
 
+function isEditableShortcutTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  if (target.closest('[contenteditable="true"]')) return true;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+}
+
 function getTrackHeight(track: Track): number {
   if (track.height) return track.height;
   switch (track.type) {
@@ -379,12 +387,12 @@ export const Timeline: React.FC<TimelineProps> = ({
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedClipId) {
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-          e.preventDefault();
-          onClipDelete(selectedClipId);
-        }
-      }
+      if (!selectedClipId) return;
+      if (e.key !== 'Delete') return;
+      if (isEditableShortcutTarget(e.target)) return;
+
+      e.preventDefault();
+      onClipDelete(selectedClipId);
     };
 
     document.addEventListener('keydown', handleKeyDown);

@@ -1,0 +1,2106 @@
+/**
+ * InfrastructureSettingsPanel
+ *
+ * Admin panel for GCP configuration, Celery/Cloud Tasks toggle,
+ * Cloud Tasks queue status dashboard, Redis/cache provider configuration,
+ * and monitoring/observability settings (Sentry, PostHog, system health).
+ */
+
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { trpc } from "../../lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import {
+  Server,
+  Save,
+  Loader2,
+  RefreshCw,
+  AlertTriangle,
+  Activity,
+  Cloud,
+  Info,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  BookOpen,
+  Database,
+  Zap,
+  Wifi,
+  WifiOff,
+  TestTube,
+  Eye,
+  EyeOff,
+  Shield,
+  BarChart3,
+  Heart,
+  Cpu,
+  HardDrive,
+  MemoryStick,
+} from "lucide-react";
+
+// ============================================================
+// Types
+// ============================================================
+
+interface GcpConfigField {
+  value: string;
+  source: "db" | "env" | "none";
+}
+
+type GcpConfig = Record<string, GcpConfigField>;
+
+interface GcpForm {
+  gcp_project_id: string;
+  gcp_region: string;
+  cloud_run_python_url: string;
+  cloud_run_node_url: string;
+  cloud_run_sa_email: string;
+}
+
+interface QueueMetric {
+  queueName: string;
+  taskCount: number;
+  oldestTaskAge: number | null;
+  dispatchRate: number;
+}
+
+interface FailedTask {
+  id: number;
+  taskId: string;
+  queueName: string;
+  status: string;
+  attemptCount: number;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+interface RedisConfigField {
+  value: string;
+  maskedValue: string;
+  source: "db" | "env" | "none";
+}
+
+type RedisConfig = Record<string, RedisConfigField>;
+
+interface RedisForm {
+  redis_provider: string;
+  redis_local_url: string;
+  redis_upstash_url: string;
+  redis_memorystore_url: string;
+  redis_password: string;
+}
+
+interface MonitoringConfigField {
+  value: string;
+  maskedValue: string;
+  source: "db" | "env" | "none";
+}
+
+interface MonitoringForm {
+  sentry_dsn_node: string;
+  sentry_dsn_python: string;
+  analytics_provider: string;
+  posthog_api_key_node: string;
+  posthog_api_key_python: string;
+  posthog_host: string;
+  ga4_measurement_id: string;
+  ga4_api_secret: string;
+  firebase_api_key: string;
+  firebase_project_id: string;
+  log_level: string;
+  sentry_traces_sample_rate: string;
+  sentry_environment: string;
+}
+
+// ============================================================
+// Constants
+// ============================================================
+
+const GCP_REGIONS = [
+  "asia-southeast1",
+  "asia-east1",
+  "asia-northeast1",
+  "us-central1",
+  "us-east1",
+  "us-west1",
+  "europe-west1",
+  "europe-west3",
+  "australia-southeast1",
+];
+
+const QUEUE_LABELS: Record<string, string> = {
+  "media-jobs": "Media Jobs",
+  "video-jobs-short": "Video (Short)",
+  "video-jobs-long": "Video (Long)",
+  "workflow-tasks": "Workflow",
+  "polling-tasks": "Polling",
+  "periodic-tasks": "Periodic",
+};
+
+const EMPTY_FORM: GcpForm = {
+  gcp_project_id: "",
+  gcp_region: "",
+  cloud_run_python_url: "",
+  cloud_run_node_url: "",
+  cloud_run_sa_email: "",
+};
+
+// ============================================================
+// Component
+// ============================================================
+
+export default function InfrastructureSettingsPanel() {
+  const [gcpForm, setGcpForm] = useState<GcpForm>(EMPTY_FORM);
+  const [selectedMode, setSelectedMode] = useState<"celery" | "cloud_tasks">("celery");
+  const [showFailedTasks, setShowFailedTasks] = useState(false);
+  const [showGcpGuide, setShowGcpGuide] = useState(false);
+  const [showRedisGuide, setShowRedisGuide] = useState(false);
+  const [showRedisPasswords, setShowRedisPasswords] = useState(false);
+  const [redisForm, setRedisForm] = useState<RedisForm>({
+    redis_provider: "local",
+    redis_local_url: "",
+    redis_upstash_url: "",
+    redis_memorystore_url: "",
+    redis_password: "",
+  });
+  const [testUrl, setTestUrl] = useState("");
+  const [showMonitoringGuide, setShowMonitoringGuide] = useState(false);
+  const [showMonitoringSecrets, setShowMonitoringSecrets] = useState(false);
+  const [monitoringForm, setMonitoringForm] = useState<MonitoringForm>({
+    sentry_dsn_node: "",
+    sentry_dsn_python: "",
+    analytics_provider: "posthog",
+    posthog_api_key_node: "",
+    posthog_api_key_python: "",
+    posthog_host: "",
+    ga4_measurement_id: "",
+    ga4_api_secret: "",
+    firebase_api_key: "",
+    firebase_project_id: "",
+    log_level: "info",
+    sentry_traces_sample_rate: "0.05",
+    sentry_environment: "development",
+  });
+  const [, setLocation] = useLocation();
+
+  // --- Queries ---
+  const {
+    data: gcpConfig,
+    isLoading: gcpLoading,
+    refetch: refetchGcp,
+  } = trpc.infrastructure.getGcpConfig.useQuery();
+
+  const {
+    data: modeData,
+    isLoading: modeLoading,
+    refetch: refetchMode,
+  } = trpc.infrastructure.getTaskProcessingMode.useQuery();
+
+  const {
+    data: dashboard,
+    isLoading: dashboardLoading,
+    refetch: refetchDashboard,
+  } = trpc.infrastructure.getQueueDashboard.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+
+  const {
+    data: redisConfig,
+    isLoading: redisLoading,
+    refetch: refetchRedis,
+  } = trpc.infrastructure.getRedisConfig.useQuery();
+
+  const {
+    data: redisHealth,
+    isLoading: redisHealthLoading,
+    refetch: refetchRedisHealth,
+  } = trpc.infrastructure.getRedisHealth.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+
+  const {
+    data: monitoringConfig,
+    isLoading: monitoringConfigLoading,
+    refetch: refetchMonitoringConfig,
+  } = trpc.infrastructure.getMonitoringConfig.useQuery();
+
+  const {
+    data: monitoringStatus,
+    refetch: refetchMonitoringStatus,
+  } = trpc.infrastructure.getMonitoringStatus.useQuery();
+
+  const {
+    data: systemHealth,
+    isLoading: systemHealthLoading,
+    refetch: refetchSystemHealth,
+  } = trpc.infrastructure.getSystemHealth.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+
+  // --- Mutations ---
+  const updateRedisMutation = trpc.infrastructure.updateRedisConfig.useMutation({
+    onSuccess: () => {
+      toast.success("Redis configuration saved. Restart services to apply changes.");
+      refetchRedis();
+      refetchRedisHealth();
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`),
+  });
+
+  const testRedisMutation = trpc.infrastructure.testRedisConnection.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(`Connected! Redis ${data.version}, Memory: ${data.memory}`);
+      } else {
+        toast.error(`Connection failed: ${data.error}`);
+      }
+    },
+    onError: (err) => toast.error(`Test failed: ${err.message}`),
+  });
+
+  const updateMonitoringMutation = trpc.infrastructure.updateMonitoringConfig.useMutation({
+    onSuccess: () => {
+      toast.success("Monitoring configuration saved. Restart services to apply changes.");
+      refetchMonitoringConfig();
+      refetchMonitoringStatus();
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`),
+  });
+
+  const updateGcpMutation = trpc.infrastructure.updateGcpConfig.useMutation({
+    onSuccess: () => {
+      toast.success("GCP configuration saved");
+      refetchGcp();
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`),
+  });
+
+  const setModeMutation = trpc.infrastructure.setTaskProcessingMode.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Task processing switched to ${data.mode === "cloud_tasks" ? "Cloud Tasks" : "Celery"}`,
+      );
+      refetchMode();
+      refetchDashboard();
+    },
+    onError: (err) => toast.error(`Failed to switch: ${err.message}`),
+  });
+
+  // --- Populate form from query data ---
+  useEffect(() => {
+    if (gcpConfig) {
+      setGcpForm({
+        gcp_project_id: gcpConfig.gcp_project_id?.value ?? "",
+        gcp_region: gcpConfig.gcp_region?.value ?? "",
+        cloud_run_python_url: gcpConfig.cloud_run_python_url?.value ?? "",
+        cloud_run_node_url: gcpConfig.cloud_run_node_url?.value ?? "",
+        cloud_run_sa_email: gcpConfig.cloud_run_sa_email?.value ?? "",
+      });
+    }
+  }, [gcpConfig]);
+
+  useEffect(() => {
+    if (modeData) {
+      setSelectedMode(modeData.mode as "celery" | "cloud_tasks");
+    }
+  }, [modeData]);
+
+  useEffect(() => {
+    if (redisConfig) {
+      setRedisForm({
+        redis_provider: redisConfig.redis_provider?.value || "local",
+        redis_local_url: redisConfig.redis_local_url?.value || "",
+        redis_upstash_url: redisConfig.redis_upstash_url?.value || "",
+        redis_memorystore_url: redisConfig.redis_memorystore_url?.value || "",
+        redis_password: redisConfig.redis_password?.value || "",
+      });
+    }
+  }, [redisConfig]);
+
+  useEffect(() => {
+    if (monitoringConfig) {
+      setMonitoringForm({
+        sentry_dsn_node: monitoringConfig.sentry_dsn_node?.value || "",
+        sentry_dsn_python: monitoringConfig.sentry_dsn_python?.value || "",
+        analytics_provider: monitoringConfig.analytics_provider?.value || "posthog",
+        posthog_api_key_node: monitoringConfig.posthog_api_key_node?.value || "",
+        posthog_api_key_python: monitoringConfig.posthog_api_key_python?.value || "",
+        posthog_host: monitoringConfig.posthog_host?.value || "",
+        ga4_measurement_id: monitoringConfig.ga4_measurement_id?.value || "",
+        ga4_api_secret: monitoringConfig.ga4_api_secret?.value || "",
+        firebase_api_key: monitoringConfig.firebase_api_key?.value || "",
+        firebase_project_id: monitoringConfig.firebase_project_id?.value || "",
+        log_level: monitoringConfig.log_level?.value || "info",
+        sentry_traces_sample_rate: monitoringConfig.sentry_traces_sample_rate?.value || "0.05",
+        sentry_environment: monitoringConfig.sentry_environment?.value || "development",
+      });
+    }
+  }, [monitoringConfig]);
+
+  // --- Handlers ---
+  const handleSaveGcp = () => {
+    updateGcpMutation.mutate(gcpForm);
+  };
+
+  const handleSaveMode = () => {
+    setModeMutation.mutate({ mode: selectedMode });
+  };
+
+  const handleSaveRedis = () => {
+    updateRedisMutation.mutate(redisForm as any);
+  };
+
+  const handleTestRedis = () => {
+    const url = testUrl || (redisForm.redis_provider === "upstash" ? redisForm.redis_upstash_url : redisForm.redis_local_url);
+    if (!url) {
+      toast.error("Enter a Redis URL to test");
+      return;
+    }
+    testRedisMutation.mutate({ url });
+  };
+
+  const handleSaveMonitoring = () => {
+    updateMonitoringMutation.mutate(monitoringForm as any);
+  };
+
+  const hasGcpConfig = !!(gcpForm.gcp_project_id && gcpForm.gcp_region);
+
+  // --- Loading state ---
+  if (gcpLoading && modeLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* ============================================ */}
+      {/* CARD 1: GCP Configuration                   */}
+      {/* ============================================ */}
+      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Cloud className="w-5 h-5 text-purple-500" />
+            GCP Configuration
+          </CardTitle>
+          <CardDescription>
+            Google Cloud Platform project settings for Cloud Run and Cloud Tasks.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-6">
+          {/* Setup Guide (collapsible) */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowGcpGuide(!showGcpGuide)}
+              className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium text-blue-700 hover:bg-blue-100/50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Setup Guide — How to configure GCP for Cloud Tasks
+              </span>
+              {showGcpGuide ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+            {showGcpGuide && (
+              <div className="px-4 pb-4 text-sm text-blue-800 space-y-4 border-t border-blue-200">
+                {/* Step 1 */}
+                <div className="pt-3">
+                  <p className="font-semibold mb-1">Step 1: Create GCP Project</p>
+                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
+                    <li>
+                      Go to{" "}
+                      <a
+                        href="https://console.cloud.google.com/projectcreate"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline inline-flex items-center gap-0.5"
+                      >
+                        GCP Console → Create Project
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                    <li>Enter a project name (e.g. <code className="bg-blue-100 px-1 rounded">smartspecpro-mvp</code>)</li>
+                    <li>Copy the <strong>Project ID</strong> and paste it in the field below</li>
+                  </ol>
+                </div>
+
+                {/* Step 2 */}
+                <div>
+                  <p className="font-semibold mb-1">Step 2: Enable Required APIs</p>
+                  <p className="text-blue-700 mb-1">Run these commands in Google Cloud Shell or local gcloud CLI:</p>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+{`gcloud services enable \\
+  run.googleapis.com \\
+  cloudtasks.googleapis.com \\
+  cloudbuild.googleapis.com \\
+  artifactregistry.googleapis.com \\
+  --project=YOUR_PROJECT_ID`}
+                  </pre>
+                </div>
+
+                {/* Step 3 */}
+                <div>
+                  <p className="font-semibold mb-1">Step 3: Create Service Account</p>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+{`# Create the service account
+gcloud iam service-accounts create cloud-run-api \\
+  --display-name="Cloud Run API" \\
+  --project=YOUR_PROJECT_ID
+
+# Grant Cloud Tasks permissions
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \\
+  --member="serviceAccount:cloud-run-api@YOUR_PROJECT_ID.iam.gserviceaccount.com" \\
+  --role="roles/cloudtasks.enqueuer"
+
+# Grant Cloud Run invoker (for OIDC auth)
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \\
+  --member="serviceAccount:cloud-run-api@YOUR_PROJECT_ID.iam.gserviceaccount.com" \\
+  --role="roles/run.invoker"`}
+                  </pre>
+                </div>
+
+                {/* Step 4 */}
+                <div>
+                  <p className="font-semibold mb-1">Step 4: Create Cloud Tasks Queues</p>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+{`# Create all 6 queues (adjust region as needed)
+for QUEUE in media-jobs video-jobs-short video-jobs-long \\
+             workflow-tasks polling-tasks periodic-tasks; do
+  gcloud tasks queues create $QUEUE \\
+    --location=YOUR_REGION \\
+    --project=YOUR_PROJECT_ID
+done`}
+                  </pre>
+                </div>
+
+                {/* Step 5 */}
+                <div>
+                  <p className="font-semibold mb-1">Step 5: Deploy Cloud Run Services</p>
+                  <p className="text-blue-700">
+                    After deploying your services to Cloud Run, copy the service URLs
+                    from the{" "}
+                    <a
+                      href="https://console.cloud.google.com/run"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline inline-flex items-center gap-0.5"
+                    >
+                      Cloud Run Console
+                      <ExternalLink className="h-3 w-3" />
+                    </a>{" "}
+                    and paste them in the Python/Node Service URL fields below.
+                  </p>
+                </div>
+
+                {/* Step 6 */}
+                <div>
+                  <p className="font-semibold mb-1">Step 6: Fill in the form below</p>
+                  <ul className="list-disc ml-5 space-y-1 text-blue-700">
+                    <li><strong>Project ID</strong> — Your GCP project ID</li>
+                    <li><strong>Region</strong> — Where queues and services are deployed</li>
+                    <li><strong>Python Service URL</strong> — Cloud Run URL for the Python backend</li>
+                    <li><strong>Node Service URL</strong> — Cloud Run URL for the Node.js API</li>
+                    <li>
+                      <strong>Service Account Email</strong> — Format:{" "}
+                      <code className="bg-blue-100 px-1 rounded text-xs">
+                        cloud-run-api@PROJECT_ID.iam.gserviceaccount.com
+                      </code>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Project ID */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="gcp_project_id">Project ID</Label>
+              {gcpConfig?.gcp_project_id?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="gcp_project_id"
+              value={gcpForm.gcp_project_id}
+              onChange={(e) =>
+                setGcpForm({ ...gcpForm, gcp_project_id: e.target.value })
+              }
+              placeholder="e.g. smartspecpro-mvp"
+            />
+          </div>
+
+          {/* Region */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="gcp_region">Region</Label>
+              {gcpConfig?.gcp_region?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Select
+              value={gcpForm.gcp_region}
+              onValueChange={(val) => setGcpForm({ ...gcpForm, gcp_region: val })}
+            >
+              <SelectTrigger id="gcp_region">
+                <SelectValue placeholder="Select region" />
+              </SelectTrigger>
+              <SelectContent>
+                {GCP_REGIONS.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Python Service URL */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="cloud_run_python_url">Python Service URL</Label>
+              {gcpConfig?.cloud_run_python_url?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="cloud_run_python_url"
+              type="url"
+              value={gcpForm.cloud_run_python_url}
+              onChange={(e) =>
+                setGcpForm({ ...gcpForm, cloud_run_python_url: e.target.value })
+              }
+              placeholder="https://python-orchestrator-xxx.run.app"
+            />
+          </div>
+
+          {/* Node Service URL */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="cloud_run_node_url">Node Service URL</Label>
+              {gcpConfig?.cloud_run_node_url?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="cloud_run_node_url"
+              type="url"
+              value={gcpForm.cloud_run_node_url}
+              onChange={(e) =>
+                setGcpForm({ ...gcpForm, cloud_run_node_url: e.target.value })
+              }
+              placeholder="https://node-api-xxx.run.app"
+            />
+          </div>
+
+          {/* Service Account Email */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="cloud_run_sa_email">Service Account Email</Label>
+              {gcpConfig?.cloud_run_sa_email?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="cloud_run_sa_email"
+              type="email"
+              value={gcpForm.cloud_run_sa_email}
+              onChange={(e) =>
+                setGcpForm({ ...gcpForm, cloud_run_sa_email: e.target.value })
+              }
+              placeholder="cloud-run-api@project.iam.gserviceaccount.com"
+            />
+          </div>
+
+          {/* Info notice */}
+          <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+            <Info className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>
+              Changes to service URLs take effect on new task dispatches.
+              Running services may need a restart to pick up URL changes.
+            </span>
+          </div>
+
+          <Button
+            onClick={handleSaveGcp}
+            disabled={updateGcpMutation.isPending}
+          >
+            {updateGcpMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save GCP Configuration
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ============================================ */}
+      {/* CARD 2: Task Processing Backend              */}
+      {/* ============================================ */}
+      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Server className="w-5 h-5 text-purple-500" />
+            Task Processing Backend
+          </CardTitle>
+          <CardDescription>
+            Choose which system processes background tasks (media generation, workflows, periodic jobs).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-6">
+          {/* Mode selector */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Celery option */}
+            <button
+              type="button"
+              onClick={() => setSelectedMode("celery")}
+              className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                selectedMode === "celery"
+                  ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
+                  : "border-gray-200 hover:border-gray-300 bg-white"
+              }`}
+            >
+              {selectedMode === "celery" && (
+                <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+              )}
+              <div className="font-semibold text-base mb-1">Celery</div>
+              <p className="text-sm text-muted-foreground">
+                Redis-based task queue. Requires Celery workers running
+                (celery-media, celery-video, celery-beat).
+              </p>
+            </button>
+
+            {/* Cloud Tasks option */}
+            <button
+              type="button"
+              onClick={() => setSelectedMode("cloud_tasks")}
+              className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                selectedMode === "cloud_tasks"
+                  ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
+                  : "border-gray-200 hover:border-gray-300 bg-white"
+              }`}
+            >
+              {selectedMode === "cloud_tasks" && (
+                <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+              )}
+              <div className="font-semibold text-base mb-1">Cloud Tasks</div>
+              <p className="text-sm text-muted-foreground">
+                Google Cloud managed queue with OIDC auth. Requires GCP
+                configuration above.
+              </p>
+            </button>
+          </div>
+
+          {/* Source indicator */}
+          {modeData && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Current source:</span>
+              <Badge variant="outline" className="text-xs">
+                {modeData.source}
+              </Badge>
+            </div>
+          )}
+
+          {/* Warning if switching to Cloud Tasks without GCP config */}
+          {selectedMode === "cloud_tasks" && !hasGcpConfig && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                GCP Project ID and Region must be configured before enabling
+                Cloud Tasks. Save GCP configuration first.
+              </span>
+            </div>
+          )}
+
+          <Button
+            onClick={handleSaveMode}
+            disabled={
+              setModeMutation.isPending ||
+              modeData?.mode === selectedMode
+            }
+          >
+            {setModeMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {modeData?.mode === selectedMode
+              ? "No changes"
+              : `Switch to ${selectedMode === "cloud_tasks" ? "Cloud Tasks" : "Celery"}`}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ============================================ */}
+      {/* CARD 3: Queue Status Dashboard               */}
+      {/* ============================================ */}
+      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Activity className="w-5 h-5 text-purple-500" />
+                Queue Status
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Cloud Tasks queue metrics (auto-refreshes every 30s).
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetchDashboard()}
+              disabled={dashboardLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-1 ${dashboardLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {dashboardLoading && !dashboard ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Queue grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(dashboard?.queues ?? []).map((q: QueueMetric) => (
+                  <div
+                    key={q.queueName}
+                    className="rounded-xl border border-gray-200 p-4 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">
+                        {QUEUE_LABELS[q.queueName] ?? q.queueName}
+                      </span>
+                      <Badge
+                        variant={q.taskCount > 0 ? "default" : "secondary"}
+                        className="text-xs"
+                      >
+                        {q.taskCount} tasks
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                      <div>
+                        <span className="block text-gray-400">Oldest Task</span>
+                        <span className="font-mono">
+                          {q.oldestTaskAge !== null
+                            ? formatAge(q.oldestTaskAge)
+                            : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-gray-400">Dispatch Rate</span>
+                        <span className="font-mono">{q.dispatchRate}/sec</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Dead letter summary */}
+              <div className="flex items-center gap-3 rounded-xl border border-gray-200 p-4">
+                <span className="text-sm font-medium">Dead Letters</span>
+                <Badge
+                  variant={
+                    (dashboard?.deadLetterCount ?? 0) > 0
+                      ? "destructive"
+                      : "secondary"
+                  }
+                >
+                  {dashboard?.deadLetterCount ?? 0}
+                </Badge>
+                {(dashboard?.failedTasks?.length ?? 0) > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto text-xs"
+                    onClick={() => setShowFailedTasks(!showFailedTasks)}
+                  >
+                    {showFailedTasks ? "Hide" : "Show"} recent failures
+                  </Button>
+                )}
+              </div>
+
+              {/* Failed tasks table */}
+              {showFailedTasks &&
+                (dashboard?.failedTasks?.length ?? 0) > 0 && (
+                  <div className="overflow-x-auto rounded-lg border border-gray-200">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-left text-xs text-gray-500">
+                        <tr>
+                          <th className="px-3 py-2">Queue</th>
+                          <th className="px-3 py-2">Task ID</th>
+                          <th className="px-3 py-2">Attempts</th>
+                          <th className="px-3 py-2">Error</th>
+                          <th className="px-3 py-2">Time</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {(dashboard?.failedTasks ?? []).map((t: FailedTask) => (
+                          <tr key={t.id} className="text-xs">
+                            <td className="px-3 py-2 font-medium">
+                              {QUEUE_LABELS[t.queueName] ?? t.queueName}
+                            </td>
+                            <td className="px-3 py-2 font-mono max-w-[120px] truncate">
+                              {t.taskId}
+                            </td>
+                            <td className="px-3 py-2">{t.attemptCount}</td>
+                            <td className="px-3 py-2 max-w-[200px] truncate text-red-600">
+                              {t.errorMessage ?? "—"}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {t.createdAt
+                                ? new Date(t.createdAt).toLocaleString()
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+              {/* Task management quick links (Queue Status card) */}
+              <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+                <p className="text-sm font-medium">Task Management</p>
+                <p className="text-xs text-muted-foreground">
+                  View pending tasks, cancel stuck jobs, or manage queue rate limiters from the dedicated dashboards.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation("/tasks")}
+                  >
+                    <Activity className="h-3.5 w-3.5 mr-1.5" />
+                    Task Monitor
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation("/admin/queues")}
+                  >
+                    <Server className="h-3.5 w-3.5 mr-1.5" />
+                    Queue Dashboard
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation("/admin/queues/llm")}
+                  >
+                    LLM Queues
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation("/admin/queues/media")}
+                  >
+                    Media Queues
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1 pt-1">
+                  <p><strong>/tasks</strong> — View all tasks, cancel pending/stuck tasks, delete completed tasks</p>
+                  <p><strong>/admin/queues</strong> — System overview, failed job alerts, queue health</p>
+                  <p><strong>/admin/queues/llm</strong> — LLM rate limiters, reset queues, clear waiting jobs</p>
+                  <p><strong>/admin/queues/media</strong> — Media provider rate limiters and statistics</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ============================================ */}
+      {/* CARD 4: Cache / Redis Configuration          */}
+      {/* ============================================ */}
+      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Database className="w-5 h-5 text-purple-500" />
+                Cache / Redis
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Configure Redis provider for caching, rate limiting, feature flags, and pub/sub.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { refetchRedis(); refetchRedisHealth(); }}
+              disabled={redisLoading || redisHealthLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${redisLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-6">
+          {/* Health Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Cache Client</span>
+                {redisHealth?.cache.healthy ? (
+                  <Badge className="bg-green-100 text-green-700 text-xs">
+                    <Wifi className="h-3 w-3 mr-1" /> Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">
+                    <WifiOff className="h-3 w-3 mr-1" /> Disconnected
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                {redisHealth?.cache.provider === "upstash" ? "Upstash" : "Local Redis"}
+              </p>
+              {redisHealth?.cache.url && (
+                <p className="text-xs font-mono text-gray-400 truncate">{redisHealth.cache.url}</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Realtime Client</span>
+                {redisHealth?.realtime.healthy ? (
+                  <Badge className="bg-green-100 text-green-700 text-xs">
+                    <Wifi className="h-3 w-3 mr-1" /> Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">
+                    <WifiOff className="h-3 w-3 mr-1" /> Disconnected
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                {redisHealth?.realtime.provider === "memorystore" ? "Memorystore" : "Local Redis"}
+              </p>
+              {redisHealth?.realtime.url && (
+                <p className="text-xs font-mono text-gray-400 truncate">{redisHealth.realtime.url}</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Legacy Client</span>
+                {redisHealth?.legacy.healthy ? (
+                  <Badge className="bg-green-100 text-green-700 text-xs">
+                    <Wifi className="h-3 w-3 mr-1" /> Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">
+                    <WifiOff className="h-3 w-3 mr-1" /> Disconnected
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground truncate">BullMQ / Bottleneck</p>
+              {redisHealth?.legacy.url && (
+                <p className="text-xs font-mono text-gray-400 truncate">{redisHealth.legacy.url}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Setup Guide (collapsible) */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowRedisGuide(!showRedisGuide)}
+              className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium text-blue-700 hover:bg-blue-100/50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Setup Guide — Redis Provider Configuration
+              </span>
+              {showRedisGuide ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+            {showRedisGuide && (
+              <div className="px-4 pb-4 text-sm text-blue-800 space-y-4 border-t border-blue-200">
+                {/* Architecture overview */}
+                <div className="pt-3">
+                  <p className="font-semibold mb-1">Architecture: Split Redis</p>
+                  <p className="text-blue-700 mb-2">
+                    This system uses a <strong>split Redis architecture</strong> with two client types:
+                  </p>
+                  <ul className="list-disc ml-5 space-y-1 text-blue-700">
+                    <li><strong>Cache Client</strong> — Stateless operations: rate limiting, locks, dedup, feature flags. Can use Upstash (serverless) or local Redis.</li>
+                    <li><strong>Realtime Client</strong> — Connection-oriented: pub/sub, concurrency sets, Bottleneck state. Requires persistent TCP (Memorystore or local Redis).</li>
+                  </ul>
+                </div>
+
+                {/* Option A: Local Redis */}
+                <div>
+                  <p className="font-semibold mb-1">Option A: Local Redis (Development / Self-Hosted)</p>
+                  <p className="text-blue-700 mb-1">Both clients use a single local Redis instance.</p>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+{`# .env configuration
+REDIS_URL=redis://localhost:6379
+# Optional: password-protected
+REDIS_URL=redis://:your-password@localhost:6379
+REDIS_PASSWORD=your-password
+
+# Install Redis (Ubuntu/Debian)
+sudo apt-get install redis-server
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+
+# Verify
+redis-cli ping
+# → PONG`}
+                  </pre>
+                </div>
+
+                {/* Option B: Upstash */}
+                <div>
+                  <p className="font-semibold mb-1">Option B: Upstash (Serverless / Cloud)</p>
+                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
+                    <li>
+                      Go to{" "}
+                      <a
+                        href="https://console.upstash.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline inline-flex items-center gap-0.5"
+                      >
+                        Upstash Console
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                    <li>Create a new Redis database (choose region closest to your server)</li>
+                    <li>Enable <strong>TLS</strong> (required for <code className="bg-blue-100 px-1 rounded">rediss://</code> protocol)</li>
+                    <li>Copy the connection string (format: <code className="bg-blue-100 px-1 rounded text-xs">rediss://default:token@host:port</code>)</li>
+                  </ol>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre mt-2">
+{`# .env configuration for Upstash
+REDIS_UPSTASH_URL=rediss://default:AXxx...@us1-xxx.upstash.io:6379
+
+# Still need local/Memorystore for realtime (pub/sub)
+REDIS_URL=redis://localhost:6379
+# OR for Cloud Run:
+REDIS_MEMORYSTORE_URL=redis://10.0.0.3:6379`}
+                  </pre>
+                </div>
+
+                {/* Cloud Run / Production */}
+                <div>
+                  <p className="font-semibold mb-1">Cloud Run Production Setup</p>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+{`# Recommended production configuration:
+# Cache → Upstash (global, serverless, TLS)
+REDIS_UPSTASH_URL=rediss://default:token@host:6379
+
+# Realtime → Memorystore (low-latency, VPC, persistent)
+REDIS_MEMORYSTORE_URL=redis://10.0.0.3:6379
+
+# Legacy fallback (BullMQ/Bottleneck)
+REDIS_URL=redis://10.0.0.3:6379`}
+                  </pre>
+                </div>
+
+                {/* Redis usage categories */}
+                <div>
+                  <p className="font-semibold mb-1">What Uses Redis</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-blue-700">
+                    <div className="bg-blue-100/50 rounded p-2">
+                      <span className="font-medium">Cache Client:</span>
+                      <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                        <li>Feature flags</li>
+                        <li>Rate limiting (middleware)</li>
+                        <li>Deduplication locks</li>
+                        <li>Session caching</li>
+                      </ul>
+                    </div>
+                    <div className="bg-blue-100/50 rounded p-2">
+                      <span className="font-medium">Realtime Client:</span>
+                      <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                        <li>Pub/Sub notifications</li>
+                        <li>Bottleneck rate limiters</li>
+                        <li>BullMQ task queues</li>
+                        <li>Concurrency sets</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Provider Selector */}
+          <div className="space-y-1.5">
+            <Label>Cache Provider</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setRedisForm({ ...redisForm, redis_provider: "local" })}
+                className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                  redisForm.redis_provider === "local"
+                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+              >
+                {redisForm.redis_provider === "local" && (
+                  <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+                )}
+                <div className="flex items-center gap-2 font-semibold text-base mb-1">
+                  <Server className="h-4 w-4" />
+                  Local Redis
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Self-hosted Redis server. Good for development and single-server deployments.
+                </p>
+                {redisConfig?.redis_local_url?.source === "env" && (
+                  <Badge variant="outline" className="text-xs mt-2">from env</Badge>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRedisForm({ ...redisForm, redis_provider: "upstash" })}
+                className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                  redisForm.redis_provider === "upstash"
+                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+              >
+                {redisForm.redis_provider === "upstash" && (
+                  <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+                )}
+                <div className="flex items-center gap-2 font-semibold text-base mb-1">
+                  <Zap className="h-4 w-4" />
+                  Upstash
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Serverless Redis with TLS. Best for Cloud Run / distributed deployments.
+                </p>
+                {redisConfig?.redis_upstash_url?.source === "env" && (
+                  <Badge variant="outline" className="text-xs mt-2">from env</Badge>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Source indicator */}
+          {redisConfig?.redis_provider?.source && redisConfig.redis_provider.source !== "none" && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Provider source:</span>
+              <Badge variant="outline" className="text-xs">
+                {redisConfig.redis_provider.source}
+              </Badge>
+            </div>
+          )}
+
+          {/* Toggle password visibility */}
+          <div className="flex items-center justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowRedisPasswords(!showRedisPasswords)}
+              className="text-xs"
+            >
+              {showRedisPasswords ? (
+                <><EyeOff className="h-3.5 w-3.5 mr-1" /> Hide credentials</>
+              ) : (
+                <><Eye className="h-3.5 w-3.5 mr-1" /> Show credentials</>
+              )}
+            </Button>
+          </div>
+
+          {/* Local Redis URL */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="redis_local_url">Local Redis URL</Label>
+              {redisConfig?.redis_local_url?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="redis_local_url"
+              type={showRedisPasswords ? "text" : "password"}
+              value={redisForm.redis_local_url}
+              onChange={(e) => setRedisForm({ ...redisForm, redis_local_url: e.target.value })}
+              placeholder="redis://localhost:6379"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used as <code className="bg-gray-100 px-1 rounded">REDIS_URL</code>. Required for BullMQ, Bottleneck, and Celery broker.
+            </p>
+          </div>
+
+          {/* Upstash URL */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="redis_upstash_url">Upstash URL</Label>
+              {redisConfig?.redis_upstash_url?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="redis_upstash_url"
+              type={showRedisPasswords ? "text" : "password"}
+              value={redisForm.redis_upstash_url}
+              onChange={(e) => setRedisForm({ ...redisForm, redis_upstash_url: e.target.value })}
+              placeholder="rediss://default:token@host.upstash.io:6379"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used as <code className="bg-gray-100 px-1 rounded">REDIS_UPSTASH_URL</code>. Cache client connects here when set.
+            </p>
+          </div>
+
+          {/* Memorystore URL */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="redis_memorystore_url">Memorystore / Realtime URL</Label>
+              {redisConfig?.redis_memorystore_url?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="redis_memorystore_url"
+              type={showRedisPasswords ? "text" : "password"}
+              value={redisForm.redis_memorystore_url}
+              onChange={(e) => setRedisForm({ ...redisForm, redis_memorystore_url: e.target.value })}
+              placeholder="redis://10.0.0.3:6379"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used as <code className="bg-gray-100 px-1 rounded">REDIS_MEMORYSTORE_URL</code>. Realtime client for pub/sub. Falls back to Local Redis URL.
+            </p>
+          </div>
+
+          {/* Redis Password */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="redis_password">Redis Password (optional)</Label>
+              {redisConfig?.redis_password?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="redis_password"
+              type={showRedisPasswords ? "text" : "password"}
+              value={redisForm.redis_password}
+              onChange={(e) => setRedisForm({ ...redisForm, redis_password: e.target.value })}
+              placeholder="Leave empty if no password"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used as <code className="bg-gray-100 px-1 rounded">REDIS_PASSWORD</code>. Applies to local Redis connections.
+            </p>
+          </div>
+
+          {/* Info notice */}
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>
+              Redis URL changes require a <strong>service restart</strong> to take effect.
+              Current running connections will not update until services are restarted.
+              Credentials are encrypted before storage.
+            </span>
+          </div>
+
+          {/* Connection Test */}
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <TestTube className="h-4 w-4" />
+              Connection Test
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={testUrl}
+                onChange={(e) => setTestUrl(e.target.value)}
+                placeholder={redisForm.redis_provider === "upstash"
+                  ? "rediss://default:token@host:6379"
+                  : "redis://localhost:6379"}
+                type={showRedisPasswords ? "text" : "password"}
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                onClick={handleTestRedis}
+                disabled={testRedisMutation.isPending}
+              >
+                {testRedisMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Zap className="h-4 w-4 mr-1" />
+                )}
+                Test
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Enter a URL to test, or leave empty to test the active {redisForm.redis_provider === "upstash" ? "Upstash" : "Local Redis"} URL from the form above.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleSaveRedis}
+            disabled={updateRedisMutation.isPending}
+          >
+            {updateRedisMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save Redis Configuration
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ============================================ */}
+      {/* CARD 5: Monitoring & Observability           */}
+      {/* ============================================ */}
+      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Shield className="w-5 h-5 text-purple-500" />
+                Monitoring & Observability
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Sentry error tracking, analytics (PostHog / GA4), Firebase Remote Config, system health, and logging.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { refetchMonitoringConfig(); refetchMonitoringStatus(); refetchSystemHealth(); }}
+              disabled={monitoringConfigLoading || systemHealthLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${systemHealthLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-6">
+          {/* Status Overview */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Sentry (Node)</span>
+                {monitoringStatus?.sentry.nodeConfigured ? (
+                  <Badge className="bg-green-100 text-green-700 text-xs">Configured</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">Not set</Badge>
+                )}
+              </div>
+              {monitoringConfig?.sentry_dsn_node?.source && monitoringConfig.sentry_dsn_node.source !== "none" && (
+                <p className="text-xs text-muted-foreground">Source: {monitoringConfig.sentry_dsn_node.source}</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Sentry (Python)</span>
+                {monitoringStatus?.sentry.pythonConfigured ? (
+                  <Badge className="bg-green-100 text-green-700 text-xs">Configured</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">Not set</Badge>
+                )}
+              </div>
+              {monitoringConfig?.sentry_dsn_python?.source && monitoringConfig.sentry_dsn_python.source !== "none" && (
+                <p className="text-xs text-muted-foreground">Source: {monitoringConfig.sentry_dsn_python.source}</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">PostHog</span>
+                {monitoringStatus?.posthog.configured ? (
+                  <Badge className="bg-green-100 text-green-700 text-xs">Configured</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">Not set</Badge>
+                )}
+              </div>
+              {monitoringConfig?.posthog_api_key_node?.source && monitoringConfig.posthog_api_key_node.source !== "none" && (
+                <p className="text-xs text-muted-foreground">Source: {monitoringConfig.posthog_api_key_node.source}</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">GA4</span>
+                {monitoringStatus?.ga4?.configured ? (
+                  <Badge className="bg-green-100 text-green-700 text-xs">Configured</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">Not set</Badge>
+                )}
+              </div>
+              {monitoringStatus?.ga4?.measurementId && (
+                <p className="text-xs text-muted-foreground font-mono">{monitoringStatus.ga4.measurementId}</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Firebase</span>
+                {monitoringStatus?.firebase?.configured ? (
+                  <Badge className="bg-green-100 text-green-700 text-xs">Configured</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">Not set</Badge>
+                )}
+              </div>
+              {monitoringStatus?.firebase?.projectId && (
+                <p className="text-xs text-muted-foreground font-mono">{monitoringStatus.firebase.projectId}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Analytics Provider Selector */}
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics Provider
+            </p>
+            <p className="text-xs text-muted-foreground mb-2">
+              Choose which analytics platform to use for event tracking and product analytics.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {([
+                { value: "posthog", label: "PostHog", desc: "Full product analytics with session replay" },
+                { value: "ga4", label: "Google Analytics 4", desc: "GA4 Measurement Protocol for server-side events" },
+                { value: "both", label: "Both", desc: "Send events to both PostHog and GA4 simultaneously" },
+                { value: "none", label: "None", desc: "Disable analytics event tracking" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setMonitoringForm({ ...monitoringForm, analytics_provider: opt.value })}
+                  className={`relative rounded-xl border-2 p-3 text-left transition-all ${
+                    monitoringForm.analytics_provider === opt.value
+                      ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                >
+                  {monitoringForm.analytics_provider === opt.value && (
+                    <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-purple-500" />
+                  )}
+                  <div className="font-semibold text-sm mb-1">{opt.label}</div>
+                  <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+            {monitoringStatus?.analyticsProvider && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <span>Active provider:</span>
+                <Badge variant="outline" className="text-xs">{monitoringStatus.analyticsProvider}</Badge>
+              </div>
+            )}
+          </div>
+
+          {/* System Health from Python Backend */}
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Heart className="h-4 w-4" />
+                System Health
+              </p>
+              {systemHealth?.status && (
+                <Badge
+                  className={`text-xs ${
+                    systemHealth.status === "healthy"
+                      ? "bg-green-100 text-green-700"
+                      : systemHealth.status === "degraded"
+                        ? "bg-amber-100 text-amber-700"
+                        : systemHealth.status === "unreachable"
+                          ? "bg-gray-100 text-gray-500"
+                          : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {systemHealth.status}
+                </Badge>
+              )}
+            </div>
+
+            {systemHealth?.status === "unreachable" ? (
+              <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-500">
+                <WifiOff className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>Python backend is unreachable. System health data unavailable.</span>
+              </div>
+            ) : systemHealth?.services ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {/* Database */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Database className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-xs font-medium">Database</span>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${
+                      systemHealth.services.database?.status === "healthy"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {systemHealth.services.database?.status ?? "unknown"}
+                  </Badge>
+                  {systemHealth.services.database?.response_time_ms != null && (
+                    <p className="text-xs text-muted-foreground">
+                      {systemHealth.services.database.response_time_ms.toFixed(1)}ms
+                    </p>
+                  )}
+                </div>
+
+                {/* Redis */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-xs font-medium">Redis</span>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${
+                      systemHealth.services.redis?.status === "healthy"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {systemHealth.services.redis?.status ?? "unknown"}
+                  </Badge>
+                  {systemHealth.services.redis?.used_memory_mb != null && (
+                    <p className="text-xs text-muted-foreground">
+                      {systemHealth.services.redis.used_memory_mb} MB
+                    </p>
+                  )}
+                </div>
+
+                {/* CPU */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Cpu className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-xs font-medium">CPU</span>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${
+                      systemHealth.services.cpu?.status === "healthy"
+                        ? "bg-green-100 text-green-700"
+                        : systemHealth.services.cpu?.status === "degraded"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {systemHealth.services.cpu?.percent_used != null
+                      ? `${systemHealth.services.cpu.percent_used}%`
+                      : "unknown"}
+                  </Badge>
+                  {systemHealth.services.cpu?.cpu_count != null && (
+                    <p className="text-xs text-muted-foreground">
+                      {systemHealth.services.cpu.cpu_count} cores
+                    </p>
+                  )}
+                </div>
+
+                {/* Memory */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <MemoryStick className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-xs font-medium">Memory</span>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${
+                      systemHealth.services.memory?.status === "healthy"
+                        ? "bg-green-100 text-green-700"
+                        : systemHealth.services.memory?.status === "degraded"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {systemHealth.services.memory?.percent_used != null
+                      ? `${systemHealth.services.memory.percent_used}%`
+                      : "unknown"}
+                  </Badge>
+                  {systemHealth.services.memory?.total_gb != null && (
+                    <p className="text-xs text-muted-foreground">
+                      {systemHealth.services.memory.used_gb}/{systemHealth.services.memory.total_gb} GB
+                    </p>
+                  )}
+                </div>
+
+                {/* Disk */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <HardDrive className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-xs font-medium">Disk</span>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${
+                      systemHealth.services.disk?.status === "healthy"
+                        ? "bg-green-100 text-green-700"
+                        : systemHealth.services.disk?.status === "degraded"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {systemHealth.services.disk?.percent_used != null
+                      ? `${systemHealth.services.disk.percent_used}%`
+                      : "unknown"}
+                  </Badge>
+                  {systemHealth.services.disk?.total_gb != null && (
+                    <p className="text-xs text-muted-foreground">
+                      {systemHealth.services.disk.free_gb} GB free
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : systemHealthLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : null}
+          </div>
+
+          {/* Setup Guide (collapsible) */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowMonitoringGuide(!showMonitoringGuide)}
+              className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium text-blue-700 hover:bg-blue-100/50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Setup Guide — Sentry, PostHog, GA4 & Firebase
+              </span>
+              {showMonitoringGuide ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+            {showMonitoringGuide && (
+              <div className="px-4 pb-4 text-sm text-blue-800 space-y-4 border-t border-blue-200">
+                <div className="pt-3">
+                  <p className="font-semibold mb-1">Sentry — Error Tracking</p>
+                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
+                    <li>
+                      Go to{" "}
+                      <a
+                        href="https://sentry.io/organizations/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline inline-flex items-center gap-0.5"
+                      >
+                        Sentry Dashboard
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                    <li>Create a project for Node.js (Express) and one for Python (FastAPI)</li>
+                    <li>Navigate to Settings &rarr; Projects &rarr; Client Keys (DSN)</li>
+                    <li>Copy each DSN and paste below</li>
+                  </ol>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre mt-2">
+{`# .env configuration
+SENTRY_DSN_NODE=https://abc123@o123456.ingest.sentry.io/789
+SENTRY_DSN=https://def456@o123456.ingest.sentry.io/101
+ENVIRONMENT=production
+SENTRY_TRACES_SAMPLE_RATE=0.05`}
+                  </pre>
+                </div>
+
+                <div>
+                  <p className="font-semibold mb-1">PostHog — Product Analytics</p>
+                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
+                    <li>
+                      Go to{" "}
+                      <a
+                        href="https://app.posthog.com/project/settings"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline inline-flex items-center gap-0.5"
+                      >
+                        PostHog Project Settings
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                    <li>Copy your Project API Key</li>
+                    <li>Note the API host (default: <code className="bg-blue-100 px-1 rounded">https://us.i.posthog.com</code>)</li>
+                  </ol>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre mt-2">
+{`# .env configuration
+POSTHOG_API_KEY=phc_xxxxxxxxxxxxxxxxxxxx
+POSTHOG_HOST=https://us.i.posthog.com`}
+                  </pre>
+                </div>
+
+                <div>
+                  <p className="font-semibold mb-1">Google Analytics 4 (GA4) — Server-Side Events</p>
+                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
+                    <li>
+                      Go to{" "}
+                      <a
+                        href="https://analytics.google.com/analytics/web/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline inline-flex items-center gap-0.5"
+                      >
+                        Google Analytics Console
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                    <li>Create a GA4 property and a Web data stream</li>
+                    <li>Copy the <strong>Measurement ID</strong> (format: <code className="bg-blue-100 px-1 rounded">G-XXXXXXXXXX</code>)</li>
+                    <li>Go to Admin &rarr; Data Streams &rarr; your stream &rarr; Measurement Protocol API secrets</li>
+                    <li>Create an API secret and copy the value</li>
+                  </ol>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre mt-2">
+{`# .env configuration
+GA4_MEASUREMENT_ID=G-XXXXXXXXXX
+GA4_API_SECRET=your_api_secret_here
+ANALYTICS_PROVIDER=ga4  # or "both" for PostHog + GA4`}
+                  </pre>
+                </div>
+
+                <div>
+                  <p className="font-semibold mb-1">Firebase Remote Config — Feature Flags</p>
+                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
+                    <li>
+                      Go to{" "}
+                      <a
+                        href="https://console.firebase.google.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline inline-flex items-center gap-0.5"
+                      >
+                        Firebase Console
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                    <li>Create or select a project (can share GCP project)</li>
+                    <li>Go to Project Settings &rarr; General &rarr; Your apps &rarr; Web app</li>
+                    <li>Copy the <strong>API Key</strong> and <strong>Project ID</strong></li>
+                    <li>Enable Remote Config in the Firebase console sidebar</li>
+                  </ol>
+                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre mt-2">
+{`# .env configuration
+FIREBASE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXX
+FIREBASE_PROJECT_ID=your-project-id`}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Toggle secret visibility */}
+          <div className="flex items-center justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowMonitoringSecrets(!showMonitoringSecrets)}
+              className="text-xs"
+            >
+              {showMonitoringSecrets ? (
+                <><EyeOff className="h-3.5 w-3.5 mr-1" /> Hide secrets</>
+              ) : (
+                <><Eye className="h-3.5 w-3.5 mr-1" /> Show secrets</>
+              )}
+            </Button>
+          </div>
+
+          {/* Sentry Configuration */}
+          <div className="space-y-4">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Sentry Configuration
+            </p>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="sentry_dsn_node">Node.js DSN</Label>
+                {monitoringConfig?.sentry_dsn_node?.source && monitoringConfig.sentry_dsn_node.source !== "none" && (
+                  <Badge variant="outline" className="text-xs">from {monitoringConfig.sentry_dsn_node.source}</Badge>
+                )}
+              </div>
+              <Input
+                id="sentry_dsn_node"
+                type={showMonitoringSecrets ? "text" : "password"}
+                value={monitoringForm.sentry_dsn_node}
+                onChange={(e) => setMonitoringForm({ ...monitoringForm, sentry_dsn_node: e.target.value })}
+                placeholder="https://xxx@o123456.ingest.sentry.io/789"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="sentry_dsn_python">Python DSN</Label>
+                {monitoringConfig?.sentry_dsn_python?.source && monitoringConfig.sentry_dsn_python.source !== "none" && (
+                  <Badge variant="outline" className="text-xs">from {monitoringConfig.sentry_dsn_python.source}</Badge>
+                )}
+              </div>
+              <Input
+                id="sentry_dsn_python"
+                type={showMonitoringSecrets ? "text" : "password"}
+                value={monitoringForm.sentry_dsn_python}
+                onChange={(e) => setMonitoringForm({ ...monitoringForm, sentry_dsn_python: e.target.value })}
+                placeholder="https://xxx@o123456.ingest.sentry.io/101"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="sentry_environment">Environment</Label>
+                <Select
+                  value={monitoringForm.sentry_environment}
+                  onValueChange={(val) => setMonitoringForm({ ...monitoringForm, sentry_environment: val })}
+                >
+                  <SelectTrigger id="sentry_environment">
+                    <SelectValue placeholder="Select environment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="development">development</SelectItem>
+                    <SelectItem value="staging">staging</SelectItem>
+                    <SelectItem value="production">production</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="sentry_traces_sample_rate">Traces Sample Rate</Label>
+                <Input
+                  id="sentry_traces_sample_rate"
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={monitoringForm.sentry_traces_sample_rate}
+                  onChange={(e) => setMonitoringForm({ ...monitoringForm, sentry_traces_sample_rate: e.target.value })}
+                  placeholder="0.05"
+                />
+                <p className="text-xs text-muted-foreground">0.0 = no traces, 1.0 = all traces, 0.05 = 5% (recommended)</p>
+              </div>
+            </div>
+          </div>
+
+          {/* PostHog Configuration */}
+          <div className="space-y-4">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              PostHog Configuration
+            </p>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="posthog_api_key_node">Node.js API Key</Label>
+                {monitoringConfig?.posthog_api_key_node?.source && monitoringConfig.posthog_api_key_node.source !== "none" && (
+                  <Badge variant="outline" className="text-xs">from {monitoringConfig.posthog_api_key_node.source}</Badge>
+                )}
+              </div>
+              <Input
+                id="posthog_api_key_node"
+                type={showMonitoringSecrets ? "text" : "password"}
+                value={monitoringForm.posthog_api_key_node}
+                onChange={(e) => setMonitoringForm({ ...monitoringForm, posthog_api_key_node: e.target.value })}
+                placeholder="phc_xxxxxxxxxxxxxxxxxxxx"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="posthog_api_key_python">Python API Key</Label>
+                {monitoringConfig?.posthog_api_key_python?.source && monitoringConfig.posthog_api_key_python.source !== "none" && (
+                  <Badge variant="outline" className="text-xs">from {monitoringConfig.posthog_api_key_python.source}</Badge>
+                )}
+              </div>
+              <Input
+                id="posthog_api_key_python"
+                type={showMonitoringSecrets ? "text" : "password"}
+                value={monitoringForm.posthog_api_key_python}
+                onChange={(e) => setMonitoringForm({ ...monitoringForm, posthog_api_key_python: e.target.value })}
+                placeholder="phc_xxxxxxxxxxxxxxxxxxxx"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="posthog_host">PostHog Host</Label>
+                {monitoringConfig?.posthog_host?.source && monitoringConfig.posthog_host.source !== "none" && (
+                  <Badge variant="outline" className="text-xs">from {monitoringConfig.posthog_host.source}</Badge>
+                )}
+              </div>
+              <Input
+                id="posthog_host"
+                value={monitoringForm.posthog_host}
+                onChange={(e) => setMonitoringForm({ ...monitoringForm, posthog_host: e.target.value })}
+                placeholder="https://us.i.posthog.com"
+              />
+            </div>
+          </div>
+
+          {/* GA4 Configuration */}
+          {(monitoringForm.analytics_provider === "ga4" || monitoringForm.analytics_provider === "both") && (
+            <div className="space-y-4">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Google Analytics 4 Configuration
+              </p>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="ga4_measurement_id">Measurement ID</Label>
+                  {monitoringConfig?.ga4_measurement_id?.source && monitoringConfig.ga4_measurement_id.source !== "none" && (
+                    <Badge variant="outline" className="text-xs">from {monitoringConfig.ga4_measurement_id.source}</Badge>
+                  )}
+                </div>
+                <Input
+                  id="ga4_measurement_id"
+                  value={monitoringForm.ga4_measurement_id}
+                  onChange={(e) => setMonitoringForm({ ...monitoringForm, ga4_measurement_id: e.target.value })}
+                  placeholder="G-XXXXXXXXXX"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Found in GA4 Admin &rarr; Data Streams &rarr; Web stream details
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="ga4_api_secret">API Secret</Label>
+                  {monitoringConfig?.ga4_api_secret?.source && monitoringConfig.ga4_api_secret.source !== "none" && (
+                    <Badge variant="outline" className="text-xs">from {monitoringConfig.ga4_api_secret.source}</Badge>
+                  )}
+                </div>
+                <Input
+                  id="ga4_api_secret"
+                  type={showMonitoringSecrets ? "text" : "password"}
+                  value={monitoringForm.ga4_api_secret}
+                  onChange={(e) => setMonitoringForm({ ...monitoringForm, ga4_api_secret: e.target.value })}
+                  placeholder="Measurement Protocol API secret"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Admin &rarr; Data Streams &rarr; Measurement Protocol API secrets &rarr; Create
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Firebase Configuration */}
+          <div className="space-y-4">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <Cloud className="h-4 w-4" />
+              Firebase Remote Config
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Optional. Used for feature flags and remote configuration management.
+            </p>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="firebase_api_key">Firebase API Key</Label>
+                {monitoringConfig?.firebase_api_key?.source && monitoringConfig.firebase_api_key.source !== "none" && (
+                  <Badge variant="outline" className="text-xs">from {monitoringConfig.firebase_api_key.source}</Badge>
+                )}
+              </div>
+              <Input
+                id="firebase_api_key"
+                type={showMonitoringSecrets ? "text" : "password"}
+                value={monitoringForm.firebase_api_key}
+                onChange={(e) => setMonitoringForm({ ...monitoringForm, firebase_api_key: e.target.value })}
+                placeholder="AIzaSyXXXXXXXXXXXXXXXXXXXXX"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="firebase_project_id">Firebase Project ID</Label>
+                {monitoringConfig?.firebase_project_id?.source && monitoringConfig.firebase_project_id.source !== "none" && (
+                  <Badge variant="outline" className="text-xs">from {monitoringConfig.firebase_project_id.source}</Badge>
+                )}
+              </div>
+              <Input
+                id="firebase_project_id"
+                value={monitoringForm.firebase_project_id}
+                onChange={(e) => setMonitoringForm({ ...monitoringForm, firebase_project_id: e.target.value })}
+                placeholder="your-project-id"
+              />
+              <p className="text-xs text-muted-foreground">
+                Same as GCP Project ID if Firebase is linked to your GCP project
+              </p>
+            </div>
+          </div>
+
+          {/* Logging */}
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Logging
+            </p>
+            <Label htmlFor="log_level">Log Level</Label>
+            <Select
+              value={monitoringForm.log_level}
+              onValueChange={(val) => setMonitoringForm({ ...monitoringForm, log_level: val })}
+            >
+              <SelectTrigger id="log_level">
+                <SelectValue placeholder="Select log level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="debug">debug</SelectItem>
+                <SelectItem value="info">info</SelectItem>
+                <SelectItem value="warn">warn</SelectItem>
+                <SelectItem value="error">error</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Restart warning */}
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>
+              Monitoring settings are read at <strong>startup</strong>. Saved values are stored
+              for reference. Restart services to apply changes to Sentry/PostHog initialization.
+            </span>
+          </div>
+
+          <Button
+            onClick={handleSaveMonitoring}
+            disabled={updateMonitoringMutation.isPending}
+          >
+            {updateMonitoringMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save Monitoring Configuration
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function formatAge(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}

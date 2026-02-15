@@ -15,7 +15,7 @@ import { validateGoogleOAuthFormat } from "../services/googleOAuthValidation";
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing"]);
+const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing", "infrastructure"]);
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),

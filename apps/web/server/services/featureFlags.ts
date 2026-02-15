@@ -1,7 +1,7 @@
 /**
- * Feature flag reader for Cloud Tasks migration.
+ * Feature flags for Cloud Tasks migration.
  *
- * Reads flags from Redis with an env var fallback.
+ * Reads/writes flags via Redis with an env var fallback for reads.
  */
 
 import { getRedisClient } from "./redis";
@@ -31,4 +31,18 @@ export async function getFeatureFlag(flagName: string): Promise<boolean> {
   }
 
   return false;
+}
+
+/**
+ * Write a feature flag value to Redis.
+ *
+ * Sets Redis key `feature-flag:{flagName}` to "true" or "false".
+ * Throws if Redis is unavailable (caller should handle).
+ */
+export async function setFeatureFlag(
+  flagName: string,
+  value: boolean,
+): Promise<void> {
+  const redis = getRedisClient();
+  await redis.set(`feature-flag:${flagName}`, value ? "true" : "false");
 }

@@ -55,6 +55,11 @@ import { clamp01, DEFAULT_CLIP_TRANSFORM, removeTransformKeyframe, resolveTransf
 import { addTextClipToProject, canMoveClipToTrack, shouldAllowOverlap } from './textTimelineUtils';
 import { isTextClipRolloutEnabled } from './textRollout';
 
+const SIDEBAR_DEFAULT_WIDTH = 320;
+const SIDEBAR_MIN_WIDTH = 260;
+const SIDEBAR_MAX_WIDTH = 680;
+const EDITOR_MAIN_MIN_WIDTH = 520;
+
 export const VideoEditorPhase3: React.FC = () => {
   const [, setLocation] = useLocation();
 
@@ -89,6 +94,65 @@ export const VideoEditorPhase3: React.FC = () => {
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence' | 'text'>('library');
   const [textClipRolloutEnabled, setTextClipRolloutEnabled] = useState<boolean>(() => isTextClipRolloutEnabled());
+  const [sidebarWidth, setSidebarWidth] = useState<number>(SIDEBAR_DEFAULT_WIDTH);
+  const [isSidebarResizing, setIsSidebarResizing] = useState(false);
+  const editorLayoutRef = React.useRef<HTMLDivElement | null>(null);
+  const sidebarResizeRef = React.useRef<{ startX: number; startWidth: number }>({
+    startX: 0,
+    startWidth: SIDEBAR_DEFAULT_WIDTH,
+  });
+
+  const clampSidebarWidth = useCallback((value: number) => {
+    const layoutWidth = editorLayoutRef.current?.clientWidth ?? 0;
+    const maxByLayout = layoutWidth > 0
+      ? Math.max(SIDEBAR_MIN_WIDTH, layoutWidth - EDITOR_MAIN_MIN_WIDTH)
+      : SIDEBAR_MAX_WIDTH;
+    const upper = Math.min(SIDEBAR_MAX_WIDTH, maxByLayout);
+    return Math.max(SIDEBAR_MIN_WIDTH, Math.min(upper, value));
+  }, []);
+
+  const handleSidebarResizeStart = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    sidebarResizeRef.current = {
+      startX: event.clientX,
+      startWidth: sidebarWidth,
+    };
+    setIsSidebarResizing(true);
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!isSidebarResizing) return;
+
+    const onMouseMove = (event: MouseEvent) => {
+      const delta = sidebarResizeRef.current.startX - event.clientX;
+      const nextWidth = sidebarResizeRef.current.startWidth + delta;
+      setSidebarWidth(clampSidebarWidth(nextWidth));
+    };
+
+    const onMouseUp = () => {
+      setIsSidebarResizing(false);
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [clampSidebarWidth, isSidebarResizing]);
+
+  useEffect(() => {
+    const onResize = () => {
+      setSidebarWidth((prev) => clampSidebarWidth(prev));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [clampSidebarWidth]);
 
   useEffect(() => {
     const refreshRolloutState = () => {
@@ -1173,7 +1237,7 @@ export const VideoEditorPhase3: React.FC = () => {
     }
   }, [currentTime, project.timeline.tracks, selectedTextClip, sidebarView, textClipRolloutEnabled]);
 
-  const handleSaveTextClip = useCallback((textConfig: TextConfig, duration: number) => {
+  const handleSaveTextClip = useCallback((textConfig: TextConfig, duration: number, transform: ClipTransform) => {
     if (!textClipRolloutEnabled) {
       showToast('Text clip rollout is disabled for this cohort.', 'info', 3000);
       setSidebarView('library');
@@ -1189,12 +1253,14 @@ export const VideoEditorPhase3: React.FC = () => {
           clip.textConfig = textConfig;
           clip.duration = Math.max(0.5, duration);
           clip.trimOut = clip.trimIn + clip.duration;
+          clip.transform = transform;
           break;
         }
         newProject.settings.duration = calculateProjectDuration(newProject.timeline);
         newProject.modifiedAt = new Date().toISOString();
       } else {
         const addedClip = addTextClipToProject(newProject, textConfig, duration, currentTime);
+        addedClip.transform = transform;
         setSelectedClipId(addedClip.id);
         setSelectedClipIds([]);
         setCurrentTime(addedClip.startTime);
@@ -2211,10 +2277,36 @@ export const VideoEditorPhase3: React.FC = () => {
           }
 
           .sidebar {
-            width: 320px;
             border-left: 1px solid #333;
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
+            min-width: ${SIDEBAR_MIN_WIDTH}px;
+            max-width: ${SIDEBAR_MAX_WIDTH}px;
+          }
+
+          .sidebar-resize-handle {
+            width: 8px;
+            cursor: col-resize;
+            background: transparent;
+            position: relative;
+            flex-shrink: 0;
+          }
+
+          .sidebar-resize-handle::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 3px;
+            width: 2px;
+            background: #2c2c2c;
+            transition: background 0.15s ease;
+          }
+
+          .sidebar-resize-handle:hover::after,
+          .sidebar-resize-handle.active::after {
+            background: #0078d4;
           }
 
           .sidebar-tabs {
@@ -2321,7 +2413,7 @@ export const VideoEditorPhase3: React.FC = () => {
         </div>
 
         {/* Main Layout */}
-        <div className="editor-layout">
+        <div className="editor-layout" ref={editorLayoutRef}>
           {/* Editor Main */}
           <div className="editor-main">
             <div className="preview-container">
@@ -2431,8 +2523,18 @@ export const VideoEditorPhase3: React.FC = () => {
             </div>
           </div>
 
+          <div
+            className={`sidebar-resize-handle ${isSidebarResizing ? 'active' : ''}`}
+            onMouseDown={handleSidebarResizeStart}
+            onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT_WIDTH)}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            title="Drag to resize panel"
+          />
+
           {/* Sidebar */}
-          <div className="sidebar">
+          <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
             <div className="sidebar-tabs">
               <button
                 className={`sidebar-tab ${sidebarView === 'library' ? 'active' : ''}`}
@@ -2555,6 +2657,7 @@ export const VideoEditorPhase3: React.FC = () => {
                 <TextClipEditor
                   config={selectedTextClip?.textConfig}
                   duration={selectedTextClip?.duration ?? 5}
+                  transform={selectedTextClip?.transform}
                   onSave={handleSaveTextClip}
                   onCancel={() => setSidebarView('library')}
                 />

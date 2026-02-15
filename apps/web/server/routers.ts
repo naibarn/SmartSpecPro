@@ -59,6 +59,7 @@ import { groupsRouter } from "./routers/groups";
 import { googleDriveRouter } from "./routers/googleDrive";
 import { searchRouter } from "./routers/search";
 import { adminOpsRouter } from "./routers/adminOps";
+import { infrastructureRouter } from "./routers/infrastructure";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1250,6 +1251,9 @@ export const appRouter = router({
 
   // Queue management and monitoring (admin)
   queues: queuesRouter,
+
+  // Infrastructure settings — GCP, Cloud Tasks, task processing mode (admin)
+  infrastructure: infrastructureRouter,
 
   // Audit logging and cost audit (admin)
   audit: auditRouter,

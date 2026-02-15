@@ -213,7 +213,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const transformDragStartRef = useRef<{ x: number; y: number; ox: number; oy: number }>({ x: 0, y: 0, ox: 0, oy: 0 });
   const transformDraftRef = useRef<Partial<TransformKeyframe> | null>(null);
   const [previewStageSize, setPreviewStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
-  const [renderFramePreviewOnly, setRenderFramePreviewOnly] = useState(true);
+  const [renderFramePreviewOnly, setRenderFramePreviewOnly] = useState(false);
 
   // Compute the effective video URL
   const effectiveUrl = activeClip?.videoUrl || previewVideoUrl;
@@ -230,24 +230,54 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         .sort((a, b) => a.start - b.start),
     [skipRanges],
   );
-  const normalizedClipTime = useMemo(() => {
-    if (!activeClip || activeClip.clipDuration <= 0) return 0;
-    return clamp01((safeCurrentTime - activeClip.clipStartTime) / activeClip.clipDuration);
-  }, [activeClip, safeCurrentTime]);
-  const hasSelectedActiveClip = !!selectedClipId && !!activeClip?.id && activeClip.id === selectedClipId;
+  const selectedActiveTextClip = useMemo(
+    () => activeTextClips.find((clip) => clip.id === selectedClipId) || null,
+    [activeTextClips, selectedClipId],
+  );
+  const editableTransformTarget = useMemo(() => {
+    if (selectedActiveTextClip) {
+      return {
+        id: selectedActiveTextClip.id,
+        clipStartTime: selectedActiveTextClip.clipStartTime,
+        clipDuration: selectedActiveTextClip.clipDuration,
+        transform: selectedActiveTextClip.transform,
+      };
+    }
+    if (activeClip?.id) {
+      return {
+        id: activeClip.id,
+        clipStartTime: activeClip.clipStartTime,
+        clipDuration: activeClip.clipDuration,
+        transform: activeClip.transform,
+      };
+    }
+    return null;
+  }, [selectedActiveTextClip, activeClip]);
+  const normalizedEditableClipTime = useMemo(() => {
+    if (!editableTransformTarget || editableTransformTarget.clipDuration <= 0) return 0;
+    return clamp01(
+      (safeCurrentTime - editableTransformTarget.clipStartTime) / editableTransformTarget.clipDuration,
+    );
+  }, [editableTransformTarget, safeCurrentTime]);
+  const hasSelectedEditableClip =
+    !!selectedClipId && !!editableTransformTarget?.id && editableTransformTarget.id === selectedClipId;
+  const isDirectTextDragMode = !!selectedActiveTextClip;
   const canEditActiveTransform =
     !!onTransformChangeAtCurrentTime &&
-    !!activeClip?.id &&
-    activeClip.clipDuration > 0;
+    !!editableTransformTarget?.id &&
+    editableTransformTarget.clipDuration > 0;
   const resolvedActiveTransform = useMemo(() => {
-    if (!activeClip || !canEditActiveTransform) return null;
-    return resolveTransformAtTime(activeClip.transform || DEFAULT_CLIP_TRANSFORM, normalizedClipTime);
-  }, [activeClip, canEditActiveTransform, normalizedClipTime]);
+    if (!editableTransformTarget || !canEditActiveTransform) return null;
+    return resolveTransformAtTime(
+      editableTransformTarget.transform || DEFAULT_CLIP_TRANSFORM,
+      normalizedEditableClipTime,
+    );
+  }, [editableTransformTarget, canEditActiveTransform, normalizedEditableClipTime]);
   const hasActiveKeyframeAtPlayhead = useMemo(() => {
-    const keyframes = activeClip?.transform?.keyframes;
+    const keyframes = editableTransformTarget?.transform?.keyframes;
     if (!keyframes || keyframes.length === 0) return false;
-    return keyframes.some((kf) => Math.abs(kf.time - normalizedClipTime) <= 0.01);
-  }, [activeClip?.transform?.keyframes, normalizedClipTime]);
+    return keyframes.some((kf) => Math.abs(kf.time - normalizedEditableClipTime) <= 0.01);
+  }, [editableTransformTarget?.transform?.keyframes, normalizedEditableClipTime]);
   const outputAspectRatio = useMemo(() => {
     const safeWidth = Number.isFinite(outputWidth) && outputWidth > 0 ? outputWidth : 16;
     const safeHeight = Number.isFinite(outputHeight) && outputHeight > 0 ? outputHeight : 9;
@@ -803,7 +833,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   }, [renderFramePreviewOnly]);
 
   const handlePreviewMouseDown = useCallback((e: React.MouseEvent) => {
-    if (transformEditMode && canEditActiveTransform && activeClip?.id && resolvedActiveTransform) {
+    if ((transformEditMode || isDirectTextDragMode) && canEditActiveTransform && editableTransformTarget?.id && resolvedActiveTransform) {
       e.preventDefault();
       setIsTransformDragging(true);
       transformDragStartRef.current = {
@@ -818,10 +848,10 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     e.preventDefault();
     setIsPanning(true);
     panStartRef.current = { x: e.clientX, y: e.clientY, ox: panOffset.x, oy: panOffset.y };
-  }, [renderFramePreviewOnly, previewZoom, panOffset, transformEditMode, canEditActiveTransform, activeClip?.id, resolvedActiveTransform]);
+  }, [renderFramePreviewOnly, previewZoom, panOffset, transformEditMode, isDirectTextDragMode, canEditActiveTransform, editableTransformTarget?.id, resolvedActiveTransform]);
 
   const handlePreviewMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isTransformDragging && transformEditMode && canEditActiveTransform && activeClip?.id && onTransformChangeAtCurrentTime && viewportRef.current) {
+    if (isTransformDragging && (transformEditMode || isDirectTextDragMode) && canEditActiveTransform && editableTransformTarget?.id && onTransformChangeAtCurrentTime && viewportRef.current) {
       const rect = viewportRef.current.getBoundingClientRect();
       const dx = (e.clientX - transformDragStartRef.current.x) / Math.max(1, rect.width);
       const dy = (e.clientY - transformDragStartRef.current.y) / Math.max(1, rect.height);
@@ -830,30 +860,30 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         y: clamp01(transformDragStartRef.current.oy + dy),
       };
       transformDraftRef.current = updates;
-      onTransformChangeAtCurrentTime(activeClip.id, updates, false);
+      onTransformChangeAtCurrentTime(editableTransformTarget.id, updates, false);
       return;
     }
     if (!isPanning) return;
     const dx = e.clientX - panStartRef.current.x;
     const dy = e.clientY - panStartRef.current.y;
     setPanOffset({ x: panStartRef.current.ox + dx, y: panStartRef.current.oy + dy });
-  }, [isTransformDragging, transformEditMode, canEditActiveTransform, activeClip?.id, onTransformChangeAtCurrentTime, isPanning]);
+  }, [isTransformDragging, transformEditMode, isDirectTextDragMode, canEditActiveTransform, editableTransformTarget?.id, onTransformChangeAtCurrentTime, isPanning]);
 
   const handlePreviewMouseUp = useCallback(() => {
     if (
       isTransformDragging &&
-      transformEditMode &&
+      (transformEditMode || isDirectTextDragMode) &&
       canEditActiveTransform &&
-      activeClip?.id &&
+      editableTransformTarget?.id &&
       onTransformChangeAtCurrentTime &&
       transformDraftRef.current
     ) {
-      onTransformChangeAtCurrentTime(activeClip.id, transformDraftRef.current, true);
+      onTransformChangeAtCurrentTime(editableTransformTarget.id, transformDraftRef.current, true);
     }
     transformDraftRef.current = null;
     setIsTransformDragging(false);
     setIsPanning(false);
-  }, [isTransformDragging, transformEditMode, canEditActiveTransform, activeClip?.id, onTransformChangeAtCurrentTime]);
+  }, [isTransformDragging, transformEditMode, isDirectTextDragMode, canEditActiveTransform, editableTransformTarget?.id, onTransformChangeAtCurrentTime]);
 
   // Ctrl+Scroll zoom toward cursor.
   // In transform edit mode, normal wheel controls clip zoom.
@@ -863,19 +893,24 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
     const handleWheel = (e: WheelEvent) => {
       if (
-        transformEditMode &&
+        (transformEditMode || isDirectTextDragMode) &&
         canEditActiveTransform &&
-        activeClip?.id &&
+        editableTransformTarget?.id &&
         onTransformChangeAtCurrentTime &&
         !e.ctrlKey &&
         !e.metaKey
       ) {
         e.preventDefault();
-        const source = resolvedActiveTransform || resolveTransformAtTime(activeClip.transform || DEFAULT_CLIP_TRANSFORM, normalizedClipTime);
+        const source =
+          resolvedActiveTransform ||
+          resolveTransformAtTime(
+            editableTransformTarget.transform || DEFAULT_CLIP_TRANSFORM,
+            normalizedEditableClipTime,
+          );
         const factor = e.deltaY < 0 ? 1.04 : 1 / 1.04;
         const nextScaleX = Math.max(0.1, Math.min(5, source.scaleX * factor));
         const nextScaleY = Math.max(0.1, Math.min(5, source.scaleY * factor));
-        onTransformChangeAtCurrentTime(activeClip.id, { scaleX: nextScaleX, scaleY: nextScaleY }, true);
+        onTransformChangeAtCurrentTime(editableTransformTarget.id, { scaleX: nextScaleX, scaleY: nextScaleY }, true);
         return;
       }
 
@@ -901,7 +936,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
     viewport.addEventListener('wheel', handleWheel, { passive: false });
     return () => viewport.removeEventListener('wheel', handleWheel);
-  }, [previewZoom, transformEditMode, canEditActiveTransform, activeClip, onTransformChangeAtCurrentTime, resolvedActiveTransform, normalizedClipTime, renderFramePreviewOnly]);
+  }, [previewZoom, transformEditMode, isDirectTextDragMode, canEditActiveTransform, editableTransformTarget, onTransformChangeAtCurrentTime, resolvedActiveTransform, normalizedEditableClipTime, renderFramePreviewOnly]);
 
   // Pinch-to-zoom for touch devices
   useEffect(() => {
@@ -982,7 +1017,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     transformOrigin: 'center center',
   } : {};
   const previewCursor =
-    transformEditMode && canEditActiveTransform
+    (transformEditMode || isDirectTextDragMode) && canEditActiveTransform
       ? (isTransformDragging ? 'grabbing' : 'move')
       : effectivePreviewZoom > 100
         ? (isPanning ? 'grabbing' : 'grab')
@@ -1781,20 +1816,20 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                 Keyframes
               </button>
             )}
-            {canEditActiveTransform && onAddKeyframeAtCurrentTime && activeClip?.id && (
+            {canEditActiveTransform && onAddKeyframeAtCurrentTime && editableTransformTarget?.id && (
               <button
                 className="control-button text-button keyframe-button"
-                onClick={() => onAddKeyframeAtCurrentTime(activeClip.id!)}
+                onClick={() => onAddKeyframeAtCurrentTime(editableTransformTarget.id)}
                 title="Set keyframe at current playhead (create if missing, replace if exists)"
                 aria-label="Set keyframe at current playhead"
               >
                 Set KF
               </button>
             )}
-            {canEditActiveTransform && onDeleteKeyframeAtCurrentTime && activeClip?.id && hasActiveKeyframeAtPlayhead && (
+            {canEditActiveTransform && onDeleteKeyframeAtCurrentTime && editableTransformTarget?.id && hasActiveKeyframeAtPlayhead && (
               <button
                 className="control-button text-button keyframe-button danger"
-                onClick={() => onDeleteKeyframeAtCurrentTime(activeClip.id!)}
+                onClick={() => onDeleteKeyframeAtCurrentTime(editableTransformTarget.id)}
                 title="Delete keyframe at current playhead"
                 aria-label="Delete keyframe at current playhead"
               >
@@ -1816,7 +1851,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               onClick={() => setTransformEditMode(prev => !prev)}
               title={
                 canEditActiveTransform
-                  ? (hasSelectedActiveClip
+                  ? (hasSelectedEditableClip
                     ? 'Transform edit mode: drag in preview to move, scroll to zoom clip'
                     : 'Transform edit mode (active clip at playhead): drag to move, scroll to zoom clip')
                   : 'Move playhead onto a clip to edit transform'

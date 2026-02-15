@@ -3,8 +3,9 @@
  * Supports Google Fonts, colors, backgrounds, and text effects
  */
 
-import React, { useState, useEffect } from 'react';
-import type { TextConfig } from '../../types/videoEditor';
+import React, { useState, useEffect, useRef } from 'react';
+import type { ClipTransform, TextConfig } from '../../types/videoEditor';
+import { clamp01, DEFAULT_CLIP_TRANSFORM } from './transformKeyframes';
 import { STRICT_PARITY_SUPPORTED_TEXT_EFFECTS } from './textTimelineUtils';
 
 const POPULAR_FONTS = [
@@ -65,23 +66,46 @@ function loadGoogleFont(family: string, weight: number = 400) {
 interface TextClipEditorProps {
   config?: TextConfig;
   duration?: number;
-  onSave: (config: TextConfig, duration: number) => void;
+  transform?: ClipTransform;
+  onSave: (config: TextConfig, duration: number, transform: ClipTransform) => void;
   onCancel: () => void;
+}
+
+function normalizeTransform(transform?: ClipTransform): ClipTransform {
+  const source = transform || DEFAULT_CLIP_TRANSFORM;
+  const scaleX = Number.isFinite(source.scaleX) ? Math.max(0.1, Math.min(5, source.scaleX)) : 1;
+  const scaleY = Number.isFinite(source.scaleY) ? Math.max(0.1, Math.min(5, source.scaleY)) : 1;
+  const rotation = Number.isFinite(source.rotation) ? source.rotation : 0;
+  const opacity = Number.isFinite(source.opacity) ? Math.max(0, Math.min(1, source.opacity)) : 1;
+  return {
+    x: clamp01(source.x),
+    y: clamp01(source.y),
+    scaleX,
+    scaleY,
+    rotation,
+    opacity,
+    keyframes: source.keyframes || [],
+  };
 }
 
 export const TextClipEditor: React.FC<TextClipEditorProps> = ({
   config,
   duration: initialDuration = 5,
+  transform,
   onSave,
   onCancel,
 }) => {
   const [textConfig, setTextConfig] = useState<TextConfig>(config || getDefaultTextConfig());
   const [duration, setDuration] = useState(initialDuration);
+  const [textTransform, setTextTransform] = useState<ClipTransform>(() => normalizeTransform(transform));
+  const [isDraggingPreviewText, setIsDraggingPreviewText] = useState(false);
+  const previewCanvasRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setTextConfig(config || getDefaultTextConfig());
     setDuration(initialDuration);
-  }, [config, initialDuration]);
+    setTextTransform(normalizeTransform(transform));
+  }, [config, initialDuration, transform]);
 
   // Load the selected font
   useEffect(() => {
@@ -92,8 +116,58 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
     setTextConfig(prev => ({ ...prev, ...partial }));
   };
 
+  const updateTransform = (partial: Partial<ClipTransform>) => {
+    setTextTransform((prev) => {
+      const nextScaleX = partial.scaleX === undefined ? prev.scaleX : Math.max(0.1, Math.min(5, partial.scaleX));
+      const nextScaleY = partial.scaleY === undefined ? prev.scaleY : Math.max(0.1, Math.min(5, partial.scaleY));
+      return {
+        ...prev,
+        ...partial,
+        x: partial.x === undefined ? prev.x : clamp01(partial.x),
+        y: partial.y === undefined ? prev.y : clamp01(partial.y),
+        scaleX: nextScaleX,
+        scaleY: nextScaleY,
+      };
+    });
+  };
+
+  const updatePositionFromPointer = (clientX: number, clientY: number) => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const x = clamp01((clientX - rect.left) / rect.width);
+    const y = clamp01((clientY - rect.top) / rect.height);
+    updateTransform({ x, y });
+  };
+
+  useEffect(() => {
+    if (!isDraggingPreviewText) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      updatePositionFromPointer(event.clientX, event.clientY);
+    };
+    const handleMouseUp = () => {
+      setIsDraggingPreviewText(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingPreviewText]);
+
   const getPreviewStyle = (): React.CSSProperties => {
     const base: React.CSSProperties = {
+      position: 'absolute',
+      left: `${textTransform.x * 100}%`,
+      top: `${textTransform.y * 100}%`,
+      transform: `translate(-50%, -50%) scale(${textTransform.scaleX}, ${textTransform.scaleY})`,
+      transformOrigin: 'center center',
       fontFamily: `'${textConfig.fontFamily}', sans-serif`,
       fontSize: `${Math.min(textConfig.fontSize, 60)}px`,
       fontWeight: textConfig.fontWeight,
@@ -105,6 +179,8 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
       borderRadius: '4px',
       wordBreak: 'break-word',
       maxWidth: '100%',
+      cursor: isDraggingPreviewText ? 'grabbing' : 'grab',
+      userSelect: 'none',
     };
 
     if (textConfig.effect === 'shadow') {
@@ -150,11 +226,14 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
         .tce-preview {
           background: #000;
           border-radius: 6px;
-          min-height: 100px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          min-height: 180px;
           padding: 16px;
+          overflow: hidden;
+          position: relative;
+        }
+        .tce-preview-canvas {
+          position: absolute;
+          inset: 16px;
           overflow: hidden;
         }
         .tce-field {
@@ -289,9 +368,19 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
 
       <div className="tce-body">
         {/* Live Preview */}
-        <div className="tce-preview">
-          <div style={getPreviewStyle()}>
+        <div className="tce-preview" data-testid="text-preview-stage">
+          <div className="tce-preview-canvas" ref={previewCanvasRef}>
+            <div
+              data-testid="text-preview-draggable"
+              style={getPreviewStyle()}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsDraggingPreviewText(true);
+                updatePositionFromPointer(e.clientX, e.clientY);
+              }}
+            >
             {textConfig.text || 'Preview'}
+            </div>
           </div>
         </div>
 
@@ -344,6 +433,65 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
                 <option key={w.value} value={w.value}>{w.label}</option>
               ))}
             </select>
+          </div>
+        </div>
+
+        {/* Position + Scale */}
+        <div className="tce-row">
+          <div className="tce-field">
+            <div className="tce-label">Position X ({Math.round(textTransform.x * 100)}%)</div>
+            <input
+              aria-label="Text position X"
+              type="range"
+              className="tce-input"
+              min={0}
+              max={100}
+              step={1}
+              value={Math.round(textTransform.x * 100)}
+              onChange={(e) => updateTransform({ x: parseFloat(e.target.value) / 100 })}
+            />
+          </div>
+          <div className="tce-field">
+            <div className="tce-label">Position Y ({Math.round(textTransform.y * 100)}%)</div>
+            <input
+              aria-label="Text position Y"
+              type="range"
+              className="tce-input"
+              min={0}
+              max={100}
+              step={1}
+              value={Math.round(textTransform.y * 100)}
+              onChange={(e) => updateTransform({ y: parseFloat(e.target.value) / 100 })}
+            />
+          </div>
+        </div>
+
+        <div className="tce-row">
+          <div className="tce-field">
+            <div className="tce-label">Scale X</div>
+            <input
+              aria-label="Text scale X"
+              type="number"
+              className="tce-input"
+              min={0.1}
+              max={5}
+              step={0.1}
+              value={textTransform.scaleX}
+              onChange={(e) => updateTransform({ scaleX: parseFloat(e.target.value) || 1 })}
+            />
+          </div>
+          <div className="tce-field">
+            <div className="tce-label">Scale Y</div>
+            <input
+              aria-label="Text scale Y"
+              type="number"
+              className="tce-input"
+              min={0.1}
+              max={5}
+              step={0.1}
+              value={textTransform.scaleY}
+              onChange={(e) => updateTransform({ scaleY: parseFloat(e.target.value) || 1 })}
+            />
           </div>
         </div>
 
@@ -475,7 +623,7 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
         <button className="tce-cancel-btn" onClick={onCancel}>Cancel</button>
         <button
           className="tce-save-btn"
-          onClick={() => onSave(textConfig, duration)}
+          onClick={() => onSave(textConfig, duration, textTransform)}
           disabled={!textConfig.text.trim()}
         >
           {config ? 'Update Text' : 'Add to Timeline'}

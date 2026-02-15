@@ -25,6 +25,7 @@ import {
 import DocumentGridList from "@/components/library/DocumentGridList";
 import DocumentLibraryTabs from "@/components/library/DocumentLibraryTabs";
 import DocumentPreviewPanel from "@/components/library/DocumentPreviewPanel";
+import GoogleDriveBrowser from "@/components/library/GoogleDriveBrowser";
 import { TrashPanel } from "@/components/library/TrashPanel";
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +97,7 @@ export default function DocumentManagement() {
   const [isMarkdownPreviewPanelOpen, setIsMarkdownPreviewPanelOpen] = useState(true);
   const [isEditorPanelCollapsed, setIsEditorPanelCollapsed] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+  const [importingDriveFileId, setImportingDriveFileId] = useState<string | null>(null);
   const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -177,7 +179,10 @@ export default function DocumentManagement() {
     });
   }, [selectedId, queryState.viewMode]);
 
-  const listScope = queryState.scope === "trash" ? "my_library" : queryState.scope;
+  const shouldListDocuments = queryState.scope !== "trash" && queryState.scope !== "my_drive";
+  const listScope = queryState.scope === "trash" || queryState.scope === "my_drive"
+    ? "my_library"
+    : queryState.scope;
   const listInput = useMemo(() => ({
     scope: listScope,
     sort: queryState.sort,
@@ -190,8 +195,12 @@ export default function DocumentManagement() {
     },
   }), [debouncedQuery, listScope, queryState.sort, queryState.itemType, queryState.status]);
 
-  const { data: documentData, isLoading: listLoading } = trpc.library.listDocuments.useQuery(listInput, { enabled: queryState.scope !== "trash" });
-  const documents = (documentData?.results || []) as DocumentLibraryItem[];
+  const { data: documentData, isLoading: listLoading } = trpc.library.listDocuments.useQuery(listInput, {
+    enabled: shouldListDocuments,
+  });
+  const documents = shouldListDocuments
+    ? (documentData?.results || []) as DocumentLibraryItem[]
+    : [];
   const selectedFromList = selectedId ? (documents.find((item) => item.id === selectedId) || null) : null;
   const selectedNeedsDirectFetch = Boolean(selectedId && !selectedFromList && !provisionalSelectedItem);
   const selectedItemQuery = trpc.library.getItem.useQuery(
@@ -218,6 +227,7 @@ export default function DocumentManagement() {
   const uploadFileMutation = trpc.library.uploadFile.useMutation();
   const createItemMutation = trpc.library.createItem.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
+  const importDriveFileMutation = trpc.googleDrive.importDriveFile.useMutation();
 
   function isEditorTabDirty(tabId: number): boolean {
     const draft = markdownDraftByDocId[tabId];
@@ -413,12 +423,14 @@ export default function DocumentManagement() {
     if (tab.accessSource === "owner") return "My Library";
     if (tab.accessSource === "shared_direct") return "Shared With Me";
     if (tab.accessSource === "shared_group") return "My Group";
+    if (tab.openedFromScope === "my_drive") return "My Drive";
     if (tab.openedFromScope === "shared_with_me") return "Shared With Me";
     if (tab.openedFromScope === "shared_groups") return "My Group";
     return "My Library";
   }
 
   function getCurrentScopeLabel(scope: DocumentQueryState["scope"]): string {
+    if (scope === "my_drive") return "My Drive";
     if (scope === "shared_with_me") return "Shared With Me";
     if (scope === "shared_groups") return "My Group";
     if (scope === "trash") return "Trash";
@@ -559,6 +571,38 @@ export default function DocumentManagement() {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  }
+
+  async function handleImportFromDrive(fileId: string) {
+    try {
+      setImportingDriveFileId(fileId);
+      const result = await importDriveFileMutation.mutateAsync({ fileId });
+      const provisionalItem = toProvisionalDocumentItem(result.item as any);
+
+      setMarkdownError(undefined);
+      setPendingAutoSelectId(provisionalItem.id);
+      setSelectedId(provisionalItem.id);
+      setProvisionalSelectedItem(provisionalItem);
+      openEditorTab(provisionalItem, { scope: "my_library" });
+      setQueryState((prev) => ({
+        ...prev,
+        scope: "my_library",
+      }));
+
+      await Promise.all([
+        trpcUtils.library.listDocuments.invalidate(),
+        trpcUtils.library.getItem.invalidate({ id: provisionalItem.id }),
+      ]);
+
+      toast.success(`Imported "${provisionalItem.title}" from Google Drive.`);
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "Failed to import file from Google Drive";
+      toast.error(message);
+    } finally {
+      setImportingDriveFileId(null);
+    }
   }
 
   async function handleUploadFile(file: File) {
@@ -841,6 +885,13 @@ export default function DocumentManagement() {
                 <div className="min-h-[200px] max-h-[50vh] overflow-y-auto xl:max-h-none xl:min-h-0 xl:flex-1">
                   <TrashPanel />
                 </div>
+              ) : queryState.scope === "my_drive" ? (
+                <div className="min-h-[200px] max-h-[70vh] overflow-y-auto xl:max-h-none xl:min-h-0 xl:flex-1">
+                  <GoogleDriveBrowser
+                    onImportFile={handleImportFromDrive}
+                    importingFileId={importingDriveFileId}
+                  />
+                </div>
               ) : (
                 <>
                   <div className="mb-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
@@ -1000,7 +1051,7 @@ export default function DocumentManagement() {
                 );
               }) : (
                 <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                  No open documents. Open a file from My Library, Shared With Me, or My Group.
+                  No open documents. Open a file from My Library, My Drive, Shared With Me, or My Group.
                 </div>
               )}
             </div>

@@ -21,29 +21,29 @@ function renderPlayer() {
 }
 
 describe("PreviewPlayer render preview mode", () => {
-  it("enables frame-accurate render preview by default", () => {
+  it("starts in free preview mode so zoom is adjustable by default", () => {
     const { container, getByRole, getByText } = renderPlayer();
 
     const zoomSelect = getByRole("combobox") as HTMLSelectElement;
     const stage = container.querySelector(".preview-video-stage");
-    expect(zoomSelect.disabled).toBe(true);
-    expect(stage?.classList.contains("free-preview")).toBe(false);
+    expect(zoomSelect.disabled).toBe(false);
+    expect(stage?.classList.contains("free-preview")).toBe(true);
     expect(
-      getByText(/Preview Lock ON: frame-accurate view \(viewport pan\/zoom disabled\)/),
+      getByText(/Space: Play\/Pause \| F: Fullscreen \| Left\/Right: Frame Step/),
     ).toBeTruthy();
   });
 
-  it("allows free viewport zoom/pan when render preview is toggled off", () => {
+  it("can switch to preview lock mode which pins viewport zoom/pan", () => {
     const { container, getByRole } = renderPlayer();
 
     const renderToggle = getByRole("button", { name: "Toggle preview lock mode" });
     const zoomSelect = getByRole("combobox") as HTMLSelectElement;
     const stage = container.querySelector(".preview-video-stage");
-    expect(zoomSelect.disabled).toBe(true);
-    expect(stage?.classList.contains("free-preview")).toBe(false);
-
-    fireEvent.click(renderToggle);
     expect(zoomSelect.disabled).toBe(false);
     expect(stage?.classList.contains("free-preview")).toBe(true);
+
+    fireEvent.click(renderToggle);
+    expect(zoomSelect.disabled).toBe(true);
+    expect(stage?.classList.contains("free-preview")).toBe(false);
   });
 });

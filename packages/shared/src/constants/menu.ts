@@ -39,6 +39,9 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'settings',      label: 'Settings',        labelTh: 'ตั้งค่า',       icon: 'Settings',        path: '/settings',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 99 },
 
   // === Admin group ===
+  { id: 'admin-overview',       label: 'Admin Overview',    labelTh: 'ภาพรวมระบบ',     icon: 'LayoutDashboard', path: '/admin/dashboard',      platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 18 },
+  { id: 'admin-ops',            label: 'Ops Dashboard',     labelTh: 'ระบบปฏิบัติการ', icon: 'Activity',    path: '/admin/ops',                platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19 },
+  { id: 'admin-funnel',         label: 'Funnel Analytics',  labelTh: 'วิเคราะห์ Funnel', icon: 'TrendingUp', path: '/admin/funnel',             platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19.5 },
   { id: 'admin-tenants',        label: 'Tenants',           icon: 'Building2',   path: '/admin/tenants',            platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 20 },
   { id: 'admin-services',       label: 'Services',          icon: 'Server',      path: '/admin/services',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21 },
   { id: 'admin-queues',         label: 'Queue Dashboard',   icon: 'Gauge',       path: '/admin/queues',             platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.5 },

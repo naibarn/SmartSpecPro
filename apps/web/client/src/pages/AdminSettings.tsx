@@ -56,6 +56,7 @@ import {
   Cloud,
   RefreshCw,
   AlertTriangle,
+  Server,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -69,6 +70,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
 import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
+import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
 
 interface StripeSettings {
   secretKey?: string;
@@ -584,6 +586,7 @@ export default function AdminSettings() {
     { key: "ai", label: "AI / Memory", sublabel: "Summary Model", icon: Brain },
     { key: "vectordb", label: "Vector Database", sublabel: "RAG & Embeddings", icon: Database },
     { key: "storage", label: "Storage", sublabel: "Local / R2 / S3", icon: Cloud },
+    { key: "infrastructure", label: "Infrastructure", sublabel: "GCP / Redis / Tasks", icon: Server },
     { key: "menu", label: "Main Menu", sublabel: "Visibility Control", icon: Menu },
   ];
 
@@ -2651,6 +2654,10 @@ export default function AdminSettings() {
           {/* Main Menu Settings Tab */}
           <TabsContent value="storage">
             <StorageSettingsPanel />
+          </TabsContent>
+
+          <TabsContent value="infrastructure">
+            <InfrastructureSettingsPanel />
           </TabsContent>
 
           <TabsContent value="menu">
