@@ -53,6 +53,7 @@ import { processExportToTimeline } from './silenceExportUtils';
 import { createMediaJobClient } from '../../services/mediaJobClient';
 import { clamp01, DEFAULT_CLIP_TRANSFORM, removeTransformKeyframe, resolveTransformAtTime, upsertTransformKeyframe } from './transformKeyframes';
 import { addTextClipToProject, canMoveClipToTrack, shouldAllowOverlap } from './textTimelineUtils';
+import { isTextClipRolloutEnabled } from './textRollout';
 
 export const VideoEditorPhase3: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -87,6 +88,13 @@ export const VideoEditorPhase3: React.FC = () => {
 
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence' | 'text'>('library');
+  const textClipRolloutEnabled = useMemo(() => isTextClipRolloutEnabled(), []);
+
+  useEffect(() => {
+    if (!textClipRolloutEnabled && sidebarView === 'text') {
+      setSidebarView('library');
+    }
+  }, [sidebarView, textClipRolloutEnabled]);
 
   // DB project persistence
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
@@ -1110,6 +1118,12 @@ export const VideoEditorPhase3: React.FC = () => {
   // ========================================
 
   const handleAddTextClip = useCallback((textConfig: TextConfig, duration: number) => {
+    if (!textClipRolloutEnabled) {
+      showToast('Text clip rollout is disabled for this cohort.', 'info', 3000);
+      setSidebarView('library');
+      return;
+    }
+
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
       addTextClipToProject(newProject, textConfig, duration, currentTime);
@@ -1118,7 +1132,7 @@ export const VideoEditorPhase3: React.FC = () => {
     });
 
     setSidebarView('library');
-  }, [addToHistory, currentTime]);
+  }, [addToHistory, currentTime, textClipRolloutEnabled]);
 
   // ========================================
   // Compound Clips (Group/Ungroup)
@@ -2273,7 +2287,7 @@ export const VideoEditorPhase3: React.FC = () => {
               selectedCount={selectedClipIds.length}
               onGroupClips={handleGroupClips}
               onUngroupClips={handleUngroupClips}
-              onAddText={() => setSidebarView('text')}
+              onAddText={textClipRolloutEnabled ? () => setSidebarView('text') : undefined}
               onOpenKeyframes={() => setSidebarView('overlay')}
               onOpenSilenceDetection={handleOpenSilenceDetection}
               onExtractAudio={handleExtractAudio}
@@ -2380,12 +2394,14 @@ export const VideoEditorPhase3: React.FC = () => {
               >
                 🔇 Silence
               </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'text' ? 'active' : ''}`}
-                onClick={() => setSidebarView('text')}
-              >
-                🅃 Text
-              </button>
+              {textClipRolloutEnabled && (
+                <button
+                  className={`sidebar-tab ${sidebarView === 'text' ? 'active' : ''}`}
+                  onClick={() => setSidebarView('text')}
+                >
+                  🅃 Text
+                </button>
+              )}
             </div>
 
             <div className="sidebar-content">
@@ -2453,7 +2469,7 @@ export const VideoEditorPhase3: React.FC = () => {
                   onOpenDialog={() => setShowSilenceDialog(true)}
                 />
               )}
-              {sidebarView === 'text' && (
+              {sidebarView === 'text' && textClipRolloutEnabled && (
                 <TextClipEditor
                   onSave={handleAddTextClip}
                   onCancel={() => setSidebarView('library')}

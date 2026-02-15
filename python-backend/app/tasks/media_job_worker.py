@@ -428,6 +428,7 @@ def _build_text_render_telemetry(
     text_clips: list[dict],
     strategy: str,
     fast_path: dict[str, Any],
+    job_id: str,
 ) -> dict[str, Any]:
     """Build deterministic render telemetry for text-font and version policy outcomes."""
     font_resolution: list[dict[str, Any]] = []
@@ -448,13 +449,53 @@ def _build_text_render_telemetry(
         )
 
     return {
+        "jobId": job_id,
         "strategy": strategy,
+        "assApplied": strategy == "ass",
         "fastPathEligible": bool(fast_path.get("eligible")),
         "fastPathReason": str(fast_path.get("reason", "unknown")),
         "fontFallbackCount": fallback_count,
         "fontResolution": font_resolution,
         "textClipCount": len(text_clips),
         "versionPolicyOutcome": _resolve_version_policy_outcome(project, len(text_clips)),
+    }
+
+
+def _evaluate_text_render_alerts(window: dict[str, Any]) -> dict[str, Any]:
+    """Evaluate text-render alert triggers for a 15-minute observability window."""
+    failure_rate = float(window.get("failureRate15m", 0.0) or 0.0)
+    parity_error_rate = float(window.get("parityErrorRate15m", 0.0) or 0.0)
+    misclassification_count = int(window.get("fastPathMisclassificationCount15m", 0) or 0)
+
+    alerts: list[str] = []
+    if failure_rate > 0.005:
+        alerts.append("text_render_failure_rate_above_slo")
+    if parity_error_rate > 0.005:
+        alerts.append("text_render_parity_budget_exceeded")
+    if misclassification_count >= 3:
+        alerts.append("text_render_fast_path_misclassification_spike")
+
+    return {
+        "triggered": len(alerts) > 0,
+        "alerts": alerts,
+        "window": {
+            "failureRate15m": failure_rate,
+            "parityErrorRate15m": parity_error_rate,
+            "fastPathMisclassificationCount15m": misclassification_count,
+        },
+    }
+
+
+def _evaluate_text_rollback_health(indicators: dict[str, Any]) -> dict[str, Any]:
+    """Validate rollback checklist indicators for text-render incidents."""
+    checks = {
+        "legacy_projects_load_save_ok": bool(indicators.get("legacyProjectsLoadSaveOk")),
+        "non_text_render_success_rate_ok": bool(indicators.get("nonTextRenderSuccessRateOk")),
+        "text_feature_disabled": bool(indicators.get("textFeatureDisabled")),
+    }
+    return {
+        "healthy": all(checks.values()),
+        "checks": checks,
     }
 
 
@@ -1176,6 +1217,7 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
             text_clips,
             strategy=strategy,
             fast_path={"eligible": fast_path["eligible"], "reason": fallback_reason},
+            job_id=job_id,
         )
 
     # Return serveable URL (Python backend serves this via /api/v1/media/files/renders/)

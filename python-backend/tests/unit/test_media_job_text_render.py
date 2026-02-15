@@ -126,9 +126,12 @@ def test_text_render_telemetry_includes_version_policy_and_font_resolution():
         [clip],
         strategy="ass",
         fast_path={"eligible": False, "reason": "font_unresolved"},
+        job_id="job-telemetry-1",
     )
 
+    assert telemetry["jobId"] == "job-telemetry-1"
     assert telemetry["strategy"] == "ass"
+    assert telemetry["assApplied"] is True
     assert telemetry["fastPathEligible"] is False
     assert telemetry["fastPathReason"] == "font_unresolved"
     assert telemetry["fontFallbackCount"] == 1
@@ -172,6 +175,7 @@ def test_text_render_telemetry_version_policy_matrix_outcomes():
             clips,
             strategy="ass",
             fast_path={"eligible": False, "reason": "compatibility_matrix"},
+            job_id="job-matrix",
         )
         assert telemetry["versionPolicyOutcome"] == expected
 
@@ -216,3 +220,52 @@ def test_text_render_benchmark_ass_generation_under_threshold():
 
     assert "Dialogue: 0,0:00:00.00,0:00:03.00,Style0" in ass
     assert elapsed_ms < 800
+
+
+def test_text_render_alert_rules_trigger_on_synthetic_spikes():
+    worker = _load_worker_module()
+
+    healthy = worker._evaluate_text_render_alerts(
+        {
+            "failureRate15m": 0.003,
+            "parityErrorRate15m": 0.002,
+            "fastPathMisclassificationCount15m": 1,
+        }
+    )
+    assert healthy["triggered"] is False
+    assert healthy["alerts"] == []
+
+    spike = worker._evaluate_text_render_alerts(
+        {
+            "failureRate15m": 0.009,
+            "parityErrorRate15m": 0.006,
+            "fastPathMisclassificationCount15m": 4,
+        }
+    )
+    assert spike["triggered"] is True
+    assert "text_render_failure_rate_above_slo" in spike["alerts"]
+    assert "text_render_parity_budget_exceeded" in spike["alerts"]
+    assert "text_render_fast_path_misclassification_spike" in spike["alerts"]
+
+
+def test_text_rollback_health_checklist_validation():
+    worker = _load_worker_module()
+
+    healthy = worker._evaluate_text_rollback_health(
+        {
+            "legacyProjectsLoadSaveOk": True,
+            "nonTextRenderSuccessRateOk": True,
+            "textFeatureDisabled": True,
+        }
+    )
+    assert healthy["healthy"] is True
+
+    degraded = worker._evaluate_text_rollback_health(
+        {
+            "legacyProjectsLoadSaveOk": True,
+            "nonTextRenderSuccessRateOk": False,
+            "textFeatureDisabled": True,
+        }
+    )
+    assert degraded["healthy"] is False
+    assert degraded["checks"]["non_text_render_success_rate_ok"] is False

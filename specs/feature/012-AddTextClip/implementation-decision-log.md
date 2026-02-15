@@ -97,3 +97,15 @@
 - decision: `verification_matrix_expansion_tests_only`
 - mode_used: `auto`
 - rationale: Existing section 01-06 implementation already satisfied targeted hardening behavior; section objective is best served by expanding deterministic regression coverage without adding unnecessary runtime risk.
+
+- section: `section-08-rollout-observability-runbook`
+- options_considered: `env_only_rollout_gate`, `env_plus_runtime_canary_gate`
+- decision: `env_plus_runtime_canary_gate`
+- mode_used: `auto`
+- rationale: Supports staged rollout control at deploy-time and runtime cohort level without requiring destructive migrations or feature rewrites.
+
+- section: `section-08-rollout-observability-runbook`
+- options_considered: `external_monitoring_only`, `repo_local_alert_evaluation_helpers`
+- decision: `repo_local_alert_evaluation_helpers`
+- mode_used: `auto`
+- rationale: Provides deterministic, testable alert/rollback policy behavior in-repo while external dashboard wiring remains an ops follow-up.
