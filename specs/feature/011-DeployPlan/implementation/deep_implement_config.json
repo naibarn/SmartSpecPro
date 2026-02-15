@@ -32,6 +32,14 @@
     "section-01-gcp-bootstrap": {
       "status": "complete",
       "commit_hash": "f6e84aa"
+    },
+    "section-02-docker-images": {
+      "status": "complete",
+      "commit_hash": "f5b3fdd760f671266d75fbbc4f61fa601edb9b12"
+    },
+    "section-03-database": {
+      "status": "complete",
+      "commit_hash": "1cc1691"
     }
   },
   "pre_commit": {

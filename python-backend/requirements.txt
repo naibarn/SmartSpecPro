@@ -149,3 +149,6 @@ defusedxml>=0.7.1
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
 google-auth-httplib2>=0.2.0
+
+# Google Cloud Tasks (Section 04: Celery -> Cloud Tasks migration)
+google-cloud-tasks>=2.14.0

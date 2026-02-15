@@ -229,6 +229,10 @@ app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Manageme
 from app.api.v1 import media_jobs as media_jobs_api
 app.include_router(media_jobs_api.router, prefix="/api/v1", tags=["Media Jobs"])
 
+# Cloud Tasks handler endpoints (replaces Celery tasks)
+from app.api.v1 import task_handlers as cloud_tasks_api
+app.include_router(cloud_tasks_api.router, tags=["Cloud Tasks"])
+
 # OpenAI-compatible surface for desktop/runner/proxy (forwarded to SmartSpecWeb gateway)
 app.include_router(openai_compat.router)
 app.include_router(kilo_cli.router)

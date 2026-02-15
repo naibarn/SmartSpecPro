@@ -670,3 +670,50 @@ After the Cloud Tasks integration is validated (Phase B), remove all Celery infr
 10. Add polling task enqueue after Kie AI job submission in `mediaJobs.ts`.
 11. Run all tests: `cd /home/dev/projects/SmartSpecPro/python-backend && pytest tests/test_cloud_tasks*.py tests/test_oidc*.py tests/test_task_handlers.py tests/test_dead_letter*.py` and `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm vitest run server/services/__tests__/cloudTasks`.
 12. Validate with `pnpm check` (TypeScript) and `mypy app/` (Python).
+
+---
+
+## Implementation Notes (What Was Actually Built)
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `python-backend/app/services/cloud_tasks.py` | Cloud Tasks enqueue module with 6 queue configs, OIDC token, delay, dedup support. Uses `asyncio.to_thread()` for sync gRPC call. |
+| `python-backend/app/middleware/__init__.py` | Package init for middleware module |
+| `python-backend/app/middleware/oidc_auth.py` | OIDC validation middleware. Defaults to "production" (fail closed). Dev mode uses X-Internal-Token. |
+| `python-backend/app/api/v1/task_handlers.py` | 11 task handler endpoints under `/tasks/*` prefix. Currently stubs returning acknowledged status with TODOs for business logic. |
+| `apps/web/server/services/cloudTasks.ts` | Node.js Cloud Tasks enqueue module using @google-cloud/tasks |
+| `apps/web/server/services/featureFlags.ts` | Feature flag utility reading from Redis with env var fallback |
+| `python-backend/tests/test_cloud_tasks_enqueue.py` | 4 tests for enqueue function |
+| `python-backend/tests/test_oidc_middleware.py` | 5 tests for OIDC middleware |
+| `python-backend/tests/test_task_handlers.py` | 4 tests for task handler endpoints |
+| `python-backend/tests/test_dead_letter_queue.py` | 3 tests for DLQ helper |
+| `apps/web/server/services/__tests__/cloudTasks.test.ts` | 3 tests for Node.js enqueue |
+| `apps/web/server/services/__tests__/cloudTasksFlag.test.ts` | 4 tests for feature flag utility |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `python-backend/app/main.py` | Added task_handlers router import and registration |
+| `python-backend/app/core/middleware.py` | Added OIDCAuthMiddleware registration |
+| `python-backend/requirements.txt` | Added google-cloud-tasks>=2.14.0 |
+| `apps/web/package.json` | Added @google-cloud/tasks ^5.5.0 |
+| `apps/web/server/routers/mediaJobs.ts` | Added `dispatchJob()` function with feature flag routing; wired into both call sites (replaced direct `dispatchToCelery()` calls) |
+
+### Deviations from Plan
+
+1. **setInterval cleanup not removed** (plan item 9) - Deferred to when handler business logic is connected. Removing it now while handlers are stubs would break periodic cleanup.
+2. **Polling task enqueue after Kie AI submission not added** (plan item 10) - Depends on poll-job handler having actual business logic.
+3. **Task handlers are stubs** - All 11 endpoints return `{"status": "acknowledged"}` with TODO comments. Business logic connection deferred to when the feature flag is enabled in production.
+4. **DLQ `_check_dead_letter()` defined but not called from handlers** - Will be called when handlers have business logic.
+5. **Tests use `httpx.AsyncClient` with `ASGITransport`** instead of `TestClient` due to starlette/httpx version incompatibility in the project.
+6. **ENVIRONMENT default changed to "production"** (code review fix) - Plan implied "development" default; changed to "production" for fail-closed security.
+7. **`enqueue_task` uses `asyncio.to_thread()`** (code review fix) - Plan used direct sync call; wrapped for async safety.
+8. **Required env vars use `os.environ["KEY"]`** (code review fix) - Plan used `.get()` which silently produces None.
+
+### Test Results
+
+- Python: 16/16 passed (4 enqueue + 5 OIDC + 4 handlers + 3 DLQ)
+- Node.js: 7/7 passed (3 cloudTasks + 4 featureFlags)

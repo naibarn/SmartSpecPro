@@ -234,6 +234,26 @@ async function dispatchToCelery(
   }
 }
 
+/**
+ * Conditional dispatch: routes to Cloud Tasks or Celery based on feature flag.
+ */
+async function dispatchJob(specJson: string, userId: string, jobId: string) {
+  const { getFeatureFlag } = await import("../services/featureFlags");
+  const useCloudTasks = await getFeatureFlag("USE_CLOUD_TASKS");
+
+  if (useCloudTasks) {
+    const { enqueueTask } = await import("../services/cloudTasks");
+    const resolvedSpecJson = resolveRelativeUris(specJson);
+    await enqueueTask({
+      queueName: "media-jobs",
+      handlerPath: "/tasks/process-media",
+      payload: { spec_json: resolvedSpecJson, user_id: userId, job_id: jobId },
+    });
+  } else {
+    await dispatchToCelery(specJson, userId, jobId);
+  }
+}
+
 // ========================================
 // tRPC Router
 // ========================================
@@ -349,9 +369,9 @@ export const mediaJobsRouter = router({
       await addActiveJob(String(ctx.user.id), jobId);
       await addRecentJob(String(ctx.user.id), jobId);
 
-      // Dispatch to Python Celery worker
+      // Dispatch to worker (Cloud Tasks or Celery based on feature flag)
       try {
-        await dispatchToCelery(JSON.stringify(spec), String(ctx.user.id), jobId);
+        await dispatchJob(JSON.stringify(spec), String(ctx.user.id), jobId);
       } catch (e: unknown) {
         await setJobKey(jobId, "status", {
           status: "error",
@@ -954,11 +974,11 @@ export function registerMediaJobRoutes(app: Express) {
       await addRecentJob(userId, jobId);
 
       try {
-        await dispatchToCelery(JSON.stringify(fullSpec), userId, jobId);
+        await dispatchJob(JSON.stringify(fullSpec), userId, jobId);
       } catch (dispatchErr: any) {
         const detail = dispatchErr?.message || "unknown";
         const errMsg = `Failed to dispatch to worker: ${detail}`;
-        console.error("[MediaJobs] Celery dispatch failed:", detail);
+        console.error("[MediaJobs] dispatch failed:", detail);
         await setJobKey(jobId, "status", {
           status: "error",
           progress: 0,

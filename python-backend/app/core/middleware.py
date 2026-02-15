@@ -393,4 +393,8 @@ def setup_middleware(app):
     # 7. Request validation (innermost)
     app.add_middleware(RequestValidationMiddleware)
 
+    # 8. OIDC validation for /tasks/* endpoints (Cloud Tasks)
+    from app.middleware.oidc_auth import OIDCAuthMiddleware
+    app.add_middleware(OIDCAuthMiddleware)
+
     logger.info("All middleware configured successfully")
