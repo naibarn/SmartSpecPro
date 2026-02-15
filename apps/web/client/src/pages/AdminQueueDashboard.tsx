@@ -466,7 +466,7 @@ export default function AdminQueueDashboard() {
               Background Queues
             </CardTitle>
             <CardDescription>
-              BullMQ job queues for async processing
+              Cloud Tasks queues for async processing
             </CardDescription>
           </CardHeader>
           <CardContent>

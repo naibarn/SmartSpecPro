@@ -2,12 +2,11 @@
  * Telegram Notification Service
  *
  * Provides message formatting, Bot API client, eligibility filtering,
- * and BullMQ queue/worker infrastructure for reliable async delivery.
+ * and in-process delivery (migrated from BullMQ).
  */
 
-import { Queue, Worker, Job } from "bullmq";
 import type { DrizzleDB } from "../db";
-import { encrypt, decrypt } from "./crypto";
+import { decrypt } from "./crypto";
 import { users, systemSettings } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -37,8 +36,51 @@ interface TelegramSettings {
 // ============================================================================
 
 let cachedSettings: TelegramSettings | null = null;
-let telegramQueue: Queue<TelegramJobData> | null = null;
-let telegramWorker: Worker<TelegramJobData> | null = null;
+
+// Simple in-process rate limiter (25 messages/second, below Telegram's 30/sec limit)
+const RATE_LIMIT_WINDOW_MS = 1000;
+const RATE_LIMIT_MAX = 25;
+let rateLimitTokens = RATE_LIMIT_MAX;
+let rateLimitLastRefill = Date.now();
+
+function checkTelegramRateLimit(): boolean {
+  const now = Date.now();
+  const elapsed = now - rateLimitLastRefill;
+  if (elapsed >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitTokens = RATE_LIMIT_MAX;
+    rateLimitLastRefill = now;
+  }
+  if (rateLimitTokens > 0) {
+    rateLimitTokens--;
+    return true;
+  }
+  return false;
+}
+
+// Retry helper with exponential backoff
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 1000
+): Promise<T> {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      if (attempt === maxRetries) break;
+      // Don't retry if bot was blocked
+      if (err.blocked) throw err;
+      // Use retry-after from 429 if available
+      const delayMs = err.retryAfter
+        ? err.retryAfter * 1000
+        : baseDelayMs * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
 
 // ============================================================================
 // HTML Escaping
@@ -333,224 +375,79 @@ export async function enqueueTelegramNotification(
       return;
     }
 
-    // All checks passed — enqueue job
-    if (!telegramQueue) {
-      console.error("[Telegram] Queue not initialized");
-      return;
+    // All checks passed — send directly (in-process, fire-and-forget)
+    const { text, parseMode, replyMarkup } = formatTelegramMessage(
+      {
+        title: notification.title,
+        content: notification.content,
+        priority: notification.priority,
+        createdAt: notification.createdAt,
+      },
+      settings.appUrl
+    );
+
+    // Rate limit check
+    if (!checkTelegramRateLimit()) {
+      console.warn(
+        `[Telegram] Rate limited, deferring notification ${notification.notificationId}`
+      );
+      // Wait for rate limit window to reset, then retry once
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_WINDOW_MS));
     }
 
-    // Map priority to BullMQ job priority (lower number = higher priority)
-    const priorityMap: Record<string, number> = {
-      critical: 1,
-      high: 3,
-      normal: 5,
-      low: 7,
-    };
-    const jobPriority = priorityMap[priority] || 5;
-
-    const jobData: TelegramJobData = {
-      userId,
-      chatId: user.telegramChatId,
-      notificationId: notification.notificationId,
-      title: notification.title,
-      content: notification.content,
-      priority: notification.priority,
-      createdAt: notification.createdAt.toISOString(),
-    };
-
-    await telegramQueue.add("send", jobData, {
-      priority: jobPriority,
-      removeOnComplete: { count: 200 },
-      removeOnFail: { count: 100 },
-    });
+    // Send with retry (handles 429 and transient failures)
+    await withRetry(() =>
+      sendTelegramMessage(
+        settings.botToken,
+        user.telegramChatId,
+        text,
+        parseMode,
+        replyMarkup
+      )
+    );
 
     console.log(
-      `[Telegram] Enqueued notification ${notification.notificationId} for user ${userId}`
+      `[Telegram] Sent notification ${notification.notificationId} to user ${userId}`
     );
-  } catch (err) {
+  } catch (err: any) {
+    // Handle bot blocked — update user record
+    if (err.blocked) {
+      console.warn(
+        `[Telegram] Bot blocked by user ${userId}, marking deliveryFailing`
+      );
+      try {
+        await db
+          .update(users)
+          .set({ telegramVerified: false })
+          .where(eq(users.id, userId));
+      } catch (dbErr) {
+        console.error("[Telegram] Failed to update blocked user:", dbErr);
+      }
+      return;
+    }
     // Fire-and-forget — log error but don't throw
-    console.error("[Telegram] Failed to enqueue notification:", err);
+    console.error("[Telegram] Failed to send notification:", err);
   }
 }
 
 // ============================================================================
-// Queue & Worker Initialization
+// Initialization (no BullMQ — in-process delivery)
 // ============================================================================
 
 /**
- * Initializes BullMQ queue and worker for Telegram notifications.
- *
- * Queue configuration:
- * - Separate Redis connection (isolates failure domains)
- * - 3 retries with exponential backoff
- * - Rate limit: 25 messages/second (conservative, below Telegram's 30/sec limit)
- * - Concurrency: 5
- *
- * Worker error handling:
- * - 429 (rate limit): calls worker.rateLimit() with Telegram's retry-after value
- * - Bot blocked: increments failure counter, sets deliveryFailing flag after 5 failures
- * - Other errors: throws (triggers BullMQ retry)
+ * Initialize the Telegram service.
+ * No queue/worker needed — delivery is in-process.
  */
 export async function initializeTelegramQueue(
-  db: DrizzleDB,
-  redisConfig: { host: string; port: number; password?: string }
+  _db: DrizzleDB,
+  _redisConfig: { host: string; port: number; password?: string }
 ): Promise<void> {
-  telegramQueue = new Queue<TelegramJobData>("telegram-notifications", {
-    connection: redisConfig,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: {
-        type: "exponential",
-        delay: 2000,
-      },
-      removeOnComplete: { count: 200 },
-      removeOnFail: { count: 100 },
-    },
-  });
-
-  telegramWorker = new Worker<TelegramJobData>(
-    "telegram-notifications",
-    async (job: Job<TelegramJobData>) => {
-      const {
-        userId,
-        chatId,
-        title,
-        content,
-        priority,
-        createdAt,
-        notificationId,
-      } = job.data;
-
-      // Load bot token and app URL
-      const settings = await getTelegramSettings(db);
-      if (!settings) {
-        throw new Error("Telegram settings not available");
-      }
-
-      // Format message
-      const { text, parseMode, replyMarkup } = formatTelegramMessage(
-        {
-          title,
-          content,
-          priority,
-          createdAt: new Date(createdAt),
-        },
-        settings.appUrl
-      );
-
-      try {
-        // Send message via Bot API
-        const result = await sendTelegramMessage(
-          settings.botToken,
-          chatId,
-          text,
-          parseMode,
-          replyMarkup
-        );
-
-        console.log(
-          `[Telegram] Sent notification ${notificationId} to user ${userId}, message_id: ${result.messageId}`
-        );
-
-        // Check if user had previous failures — if so, reset counter
-        const redis = (telegramWorker as any).redisClient; // Access worker's Redis connection
-        const failureKey = `telegram:failures:${userId}`;
-        const failureCount = await redis.get(failureKey);
-
-        if (failureCount && parseInt(failureCount) > 0) {
-          await redis.del(failureKey);
-
-          // Clear deliveryFailing flag in userPreferences
-          const [user] = await db
-            .select({ userPreferences: users.userPreferences })
-            .from(users)
-            .where(eq(users.id, userId));
-          if ((user?.userPreferences as any)?.telegramDeliveryFailing) {
-            await db
-              .update(users)
-              .set({
-                userPreferences: {
-                  ...user.userPreferences,
-                  telegramDeliveryFailing: false,
-                } as any,
-              })
-              .where(eq(users.id, userId));
-          }
-
-          console.log(`[Telegram] Reset failure counter for user ${userId}`);
-        }
-      } catch (err: any) {
-        // Handle rate limiting
-        if (err.statusCode === 429) {
-          const retryAfter = err.retryAfter || 30;
-          await telegramWorker!.rateLimit(retryAfter * 1000);
-          throw Worker.RateLimitError;
-        }
-
-        // Handle bot blocked by user
-        if (err.blocked) {
-          const redis = (telegramWorker as any).redisClient;
-          const failureKey = `telegram:failures:${userId}`;
-          const newCount = await redis.incr(failureKey);
-          await redis.expire(failureKey, 86400 * 7); // 7 day TTL
-
-          console.warn(
-            `[Telegram] Bot blocked by user ${userId}, failure count: ${newCount}`
-          );
-
-          // After 5 consecutive failures, set deliveryFailing flag
-          if (newCount >= 5) {
-            const [user] = await db
-              .select({ userPreferences: users.userPreferences })
-              .from(users)
-              .where(eq(users.id, userId));
-            await db
-              .update(users)
-              .set({
-                userPreferences: {
-                  ...(user?.userPreferences || {}),
-                  telegramDeliveryFailing: true,
-                } as any,
-              })
-              .where(eq(users.id, userId));
-
-            console.warn(
-              `[Telegram] Set deliveryFailing flag for user ${userId}`
-            );
-          }
-
-          // Don't retry — user needs to unblock bot
-          return;
-        }
-
-        // Other errors — throw to trigger BullMQ retry
-        throw err;
-      }
-    },
-    {
-      connection: redisConfig,
-      concurrency: 5,
-      limiter: {
-        max: 25,
-        duration: 1000, // 25 messages per second
-      },
-    }
-  );
-
-  console.log("[Telegram] Queue and worker initialized");
+  console.log("[Telegram] Service initialized (in-process delivery)");
 }
 
 /**
- * Gracefully shuts down Telegram queue and worker.
- * Call this in SIGTERM/SIGINT handler.
+ * Gracefully shuts down the Telegram service.
  */
 export async function shutdownTelegramWorker(): Promise<void> {
-  if (telegramWorker) {
-    await telegramWorker.close();
-    console.log("[Telegram] Worker shut down");
-  }
-  if (telegramQueue) {
-    await telegramQueue.close();
-    console.log("[Telegram] Queue closed");
-  }
+  console.log("[Telegram] Service shut down");
 }

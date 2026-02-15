@@ -2,14 +2,12 @@
  * Trash Auto-Purge Background Job
  *
  * Permanently deletes library items that have been in trash for 90+ days.
- * Runs daily at 2 AM via BullMQ cron schedule.
+ * Runs daily at 2 AM via setInterval (interim; Cloud Scheduler in Section 06).
  *
  * Deletion cascade uses shared cascadeDeleteLibraryItem() helper.
  * Storage files are cleaned up after DB deletion (best-effort).
  */
 
-import { Queue, Worker, type Job } from "bullmq";
-import IORedis from "ioredis";
 import { and, eq, isNotNull, lt } from "drizzle-orm";
 
 import { getDb } from "../db";
@@ -18,40 +16,12 @@ import { auditLogger } from "../services/auditLogger";
 import { cascadeDeleteLibraryItem } from "../services/libraryService";
 import { storageDelete } from "../storage";
 
-const QUEUE_NAME = "trash-auto-purge";
 const TRASH_RETENTION_DAYS = 90;
 const MS_PER_DAY = 86_400_000;
 const BATCH_SIZE = 100;
 
-let connection: IORedis | null = null;
-let queue: Queue | null = null;
-let worker: Worker | null = null;
-
-function getRedisConnection(): IORedis {
-  if (!connection) {
-    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-    connection = new IORedis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    });
-  }
-  return connection;
-}
-
-function getQueue(): Queue {
-  if (!queue) {
-    queue = new Queue(QUEUE_NAME, {
-      connection: getRedisConnection(),
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 5000 },
-        removeOnComplete: { count: 50 },
-        removeOnFail: { count: 50 },
-      },
-    });
-  }
-  return queue;
-}
+let intervalId: NodeJS.Timeout | null = null;
+let initialTimeoutId: NodeJS.Timeout | null = null;
 
 /**
  * Execute the trash purge job. Finds all items older than TRASH_RETENTION_DAYS
@@ -128,76 +98,69 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
 }
 
 /**
- * Schedule the daily trash purge job at 2 AM.
- * Safe to call multiple times — upsertJobScheduler is idempotent.
+ * Schedule the daily trash purge.
+ * Uses setInterval as interim; Cloud Scheduler (Section 06) will replace this.
  */
 export async function initializeTrashPurgeJob(): Promise<void> {
-  const q = getQueue();
+  if (intervalId) return;
 
-  await q.upsertJobScheduler(
-    "trash-auto-purge-daily",
-    { pattern: "0 2 * * *" },
-    {
-      name: "purge-old-trash",
-      data: {},
-    },
-  );
+  // Calculate delay until next 2 AM
+  const now = new Date();
+  const next2AM = new Date(now);
+  next2AM.setHours(2, 0, 0, 0);
+  if (next2AM <= now) {
+    next2AM.setDate(next2AM.getDate() + 1);
+  }
+  const initialDelay = next2AM.getTime() - now.getTime();
 
-  // Create worker
-  worker = new Worker(
-    QUEUE_NAME,
-    async (job: Job) => {
-      const startTime = Date.now();
-      console.log(`[trash-purge] Starting job ${job.id}`);
+  // Start after initial delay, then repeat daily
+  initialTimeoutId = setTimeout(() => {
+    initialTimeoutId = null;
+    runPurge();
+    intervalId = setInterval(runPurge, 24 * 60 * 60 * 1000); // Daily
+  }, initialDelay);
 
-      const result = await executeTrashPurge();
+  console.log(`[trash-purge] Trash auto-purge scheduled (next run in ${Math.round(initialDelay / 60000)}min)`);
+}
 
-      const executionTimeMs = Date.now() - startTime;
-      console.log(`[trash-purge] Completed: ${result.purgedCount}/${result.totalFound} purged, ${result.storageDeleted} files cleaned, ${result.errors} errors (${executionTimeMs}ms)`);
+async function runPurge() {
+  const startTime = Date.now();
+  console.log("[trash-purge] Starting purge job");
 
-      auditLogger.log({
-        eventType: "library_mutation",
-        userId: null,
-        endpoint: "jobs.purgeOldTrashItems",
-        requestType: "job",
-        requestPayload: {
-          cutoffDays: TRASH_RETENTION_DAYS,
-        },
-        responsePayload: {
-          ...result,
-          executionTimeMs,
-        },
-      });
+  try {
+    const result = await executeTrashPurge();
+    const executionTimeMs = Date.now() - startTime;
 
-      return result;
-    },
-    {
-      connection: getRedisConnection(),
-      concurrency: 1,
-    },
-  );
+    console.log(`[trash-purge] Completed: ${result.purgedCount}/${result.totalFound} purged, ${result.storageDeleted} files cleaned, ${result.errors} errors (${executionTimeMs}ms)`);
 
-  worker.on("failed", (job, err) => {
-    console.error(`[trash-purge] Job ${job?.id} failed:`, err.message);
-  });
-
-  console.log("[trash-purge] Trash auto-purge job scheduled (daily at 2 AM)");
+    auditLogger.log({
+      eventType: "library_mutation",
+      userId: null,
+      endpoint: "jobs.purgeOldTrashItems",
+      requestType: "job",
+      requestPayload: {
+        cutoffDays: TRASH_RETENTION_DAYS,
+      },
+      responsePayload: {
+        ...result,
+        executionTimeMs,
+      },
+    });
+  } catch (error) {
+    console.error("[trash-purge] Job failed:", error instanceof Error ? error.message : error);
+  }
 }
 
 /**
- * Gracefully shut down the worker and close connections.
+ * Gracefully shut down.
  */
 export async function shutdownTrashPurgeWorker(): Promise<void> {
-  if (worker) {
-    await worker.close();
-    worker = null;
+  if (initialTimeoutId) {
+    clearTimeout(initialTimeoutId);
+    initialTimeoutId = null;
   }
-  if (queue) {
-    await queue.close();
-    queue = null;
-  }
-  if (connection) {
-    connection.disconnect();
-    connection = null;
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
   }
 }

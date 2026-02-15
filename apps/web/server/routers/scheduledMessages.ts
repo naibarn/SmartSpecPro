@@ -161,7 +161,7 @@ export const scheduledMessagesRouter = router({
         status: "active",
       }).returning();
 
-      // Create BullMQ job
+      // Create Cloud Tasks job
       try {
         const jobId = await createScheduledJob(
           schedule.id,
@@ -169,7 +169,7 @@ export const scheduledMessagesRouter = router({
           scheduledAtDate
         );
 
-        // Store BullMQ job ID
+        // Store Cloud Tasks task name (reuses bullmqJobId column)
         await db.update(scheduledMessages)
           .set({ bullmqJobId: jobId })
           .where(eq(scheduledMessages.id, schedule.id));

@@ -40,6 +40,10 @@
     "section-03-database": {
       "status": "complete",
       "commit_hash": "1cc1691"
+    },
+    "section-04-cloud-tasks": {
+      "status": "complete",
+      "commit_hash": "7f2abb5"
     }
   },
   "pre_commit": {

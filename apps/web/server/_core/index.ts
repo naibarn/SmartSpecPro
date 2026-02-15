@@ -28,12 +28,13 @@ import { getUploadsDir, storageStreamFile } from "../storage";
 import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
-import { initializeScheduler } from "../services/scheduler";
+// BullMQ scheduler/queue init removed — migrated to Cloud Tasks (Section 05)
 import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
-import { initializeQueues } from "../services/llmQueue";
+import { startHistoryCollection } from "../services/llmQueue";
+import { createTasksRouter } from "../routes/tasks";
 import { PostgresAdapter } from "../services/postgresAdapter";
 import { getUploadStaticHeaders } from "../services/uploadContentSafety";
 import { ImageProxySafetyError, proxyImageFromUrl } from "../services/imageProxySafety";
@@ -283,6 +284,9 @@ app.get("/api/storage/files/*", async (req, res) => {
 
 // Webhook routes (before CSRF-protected routes, Google Drive sends raw POSTs)
 app.use("/api/webhooks", createWebhookRouter());
+
+// Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
+app.use("/tasks", createTasksRouter());
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
@@ -539,11 +543,12 @@ async function main() {
     console.error("[Startup] Failed to initialize skill registry:", error);
   }
 
-  // Initialize scheduled messages worker (BullMQ + Redis)
+  // Scheduled messages now use Cloud Tasks (no BullMQ worker needed)
+  // History collection for in-memory queue stats (rate limiters, etc.)
   try {
-    initializeScheduler();
+    startHistoryCollection();
   } catch (error) {
-    console.error("[Startup] Failed to initialize scheduler:", error);
+    console.error("[Startup] Failed to start history collection:", error);
   }
 
   // Initialize Telegram notification queue
@@ -568,11 +573,11 @@ async function main() {
     console.error("[Startup] Failed to initialize provider health:", error);
   }
 
-  // Initialize LLM queue system (BullMQ workers for background tasks)
+  // LLM queues migrated to in-process + Cloud Tasks (no BullMQ workers needed)
   try {
-    await initializeQueues();
+    console.log("[Startup] LLM queue processing: in-process (credits/usage), Cloud Tasks (skills)");
   } catch (error) {
-    console.error("[Startup] Failed to initialize LLM queues:", error);
+    console.error("[Startup] Queue info log failed:", error);
   }
 
   // Initialize trash auto-purge job (daily at 2 AM)

@@ -5,8 +5,6 @@
  * queues from the Node.js API server.
  */
 
-import { CloudTasksClient } from "@google-cloud/tasks";
-
 const VALID_QUEUES = [
   "media-jobs",
   "video-jobs-short",
@@ -18,10 +16,18 @@ const VALID_QUEUES = [
 
 type QueueName = (typeof VALID_QUEUES)[number];
 
+type CloudTasksResponse = { name?: string };
+type CloudTasksClientLike = {
+  queuePath: (projectId: string, region: string, queueName: string) => string;
+  taskPath: (projectId: string, region: string, queueName: string, taskId: string) => string;
+  createTask: (request: { parent: string; task: Record<string, any> }) => Promise<[CloudTasksResponse]>;
+  deleteTask: (request: { name: string }) => Promise<unknown>;
+};
+
 export interface EnqueueTaskOptions {
   /** Which Cloud Tasks queue to use (e.g., 'media-jobs') */
   queueName: QueueName;
-  /** Endpoint path on the Python service (e.g., '/tasks/process-media') */
+  /** Endpoint path on the handler service (e.g., '/tasks/process-media') */
   handlerPath: string;
   /** JSON body for the task */
   payload: Record<string, unknown>;
@@ -29,13 +35,35 @@ export interface EnqueueTaskOptions {
   delaySeconds?: number;
   /** Optional deterministic task ID for deduplication (24h window) */
   taskId?: string;
+  /**
+   * Target service: 'python' (default) or 'node'.
+   * 'python' uses CLOUD_RUN_PYTHON_URL, 'node' uses CLOUD_RUN_NODE_URL.
+   */
+  targetService?: "python" | "node";
 }
 
-let _client: InstanceType<typeof CloudTasksClient> | null = null;
+let _client: CloudTasksClientLike | null = null;
+let _clientInitError: Error | null = null;
 
-function getClient(): InstanceType<typeof CloudTasksClient> {
+async function getClient(): Promise<CloudTasksClientLike> {
   if (!_client) {
-    _client = new CloudTasksClient();
+    if (_clientInitError) {
+      throw _clientInitError;
+    }
+    try {
+      const mod = await import("@google-cloud/tasks");
+      const CloudTasksClientCtor = (mod as { CloudTasksClient?: new () => CloudTasksClientLike }).CloudTasksClient;
+      if (!CloudTasksClientCtor) {
+        throw new Error("CloudTasksClient export was not found");
+      }
+      _client = new CloudTasksClientCtor();
+    } catch (err: any) {
+      const details = err?.message ? ` (${err.message})` : "";
+      _clientInitError = new Error(
+        `Google Cloud Tasks SDK is unavailable. Install '@google-cloud/tasks' to enable Cloud Tasks features.${details}`
+      );
+      throw _clientInitError;
+    }
   }
   return _client;
 }
@@ -51,25 +79,27 @@ function getClient(): InstanceType<typeof CloudTasksClient> {
 export async function enqueueTask(
   options: EnqueueTaskOptions
 ): Promise<string> {
-  const { queueName, handlerPath, payload, delaySeconds, taskId } = options;
+  const { queueName, handlerPath, payload, delaySeconds, taskId, targetService = "python" } = options;
 
   const projectId = process.env.GCP_PROJECT_ID!;
   const region = process.env.GCP_REGION!;
-  const pythonUrl = process.env.CLOUD_RUN_PYTHON_URL!;
+  const serviceUrl = targetService === "node"
+    ? process.env.CLOUD_RUN_NODE_URL!
+    : process.env.CLOUD_RUN_PYTHON_URL!;
   const saEmail = process.env.CLOUD_RUN_SA_EMAIL!;
 
-  const client = getClient();
+  const client = await getClient();
   const parent = client.queuePath(projectId, region, queueName);
 
   const task: Record<string, any> = {
     httpRequest: {
       httpMethod: "POST" as const,
-      url: `${pythonUrl}${handlerPath}`,
+      url: `${serviceUrl}${handlerPath}`,
       headers: { "Content-Type": "application/json" },
       body: Buffer.from(JSON.stringify(payload)).toString("base64"),
       oidcToken: {
         serviceAccountEmail: saEmail,
-        audience: pythonUrl,
+        audience: serviceUrl,
       },
     },
   };
@@ -87,4 +117,22 @@ export async function enqueueTask(
   const [response] = await client.createTask({ parent, task });
 
   return response.name!;
+}
+
+/**
+ * Delete a Cloud Tasks task by its full resource name.
+ *
+ * Used to cancel scheduled tasks (e.g., scheduled message delivery).
+ * Silently succeeds if the task is already deleted or completed.
+ */
+export async function deleteTask(taskName: string): Promise<void> {
+  const client = await getClient();
+  try {
+    await client.deleteTask({ name: taskName });
+  } catch (err: any) {
+    // 404 = task already completed or deleted — not an error
+    if (err?.code !== 5) {
+      throw err;
+    }
+  }
 }

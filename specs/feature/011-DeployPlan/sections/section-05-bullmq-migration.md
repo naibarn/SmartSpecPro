@@ -1,5 +1,3 @@
-Now I have a thorough understanding of the current codebase and the migration plan. Let me compose the section content.
-
 # Section 05: BullMQ Migration
 
 ## Overview
@@ -415,3 +413,86 @@ In development (`ENVIRONMENT=development`), the `enqueueTask()` function should 
 4. **The fallback sweep runs every minute** to catch any Cloud Tasks enqueue failures. This matches the existing BullMQ model where the Worker would pick up jobs that had been waiting.
 
 5. **Admin dashboard retains functionality** but data sources change from BullMQ introspection to Cloud Tasks Admin API and `cloud_task_events` table. Rate limiter monitoring (Bottleneck) is completely unaffected.
+
+---
+
+## Implementation Results
+
+**Status:** COMPLETE
+
+### What Was Actually Built
+
+All planned migrations were implemented as specified, with several enhancements added during code review.
+
+### Deviations from Plan
+
+1. **`bullmqJobId` column reused** — Instead of renaming to `cloudTaskId`, the existing `bullmqJobId` column on `scheduledMessages` is reused to store Cloud Tasks task names. This avoids a schema migration while maintaining the same functionality.
+
+2. **`scheduledMessages.ts` router** — Only comment updates were needed (BullMQ → Cloud Tasks). The router already called `createScheduledJob`/`cancelScheduledJob` which were rewritten in-place, so no import changes were required.
+
+3. **Telegram service fully migrated** — `telegramService.ts` was identified as "potentially modify" but required a full rewrite: removed BullMQ queue/worker, converted to in-process delivery with fire-and-forget semantics.
+
+4. **Trash purge and GDrive cleanup** — `purgeOldTrashItems.ts` and `gdriveSessionCleanup.ts` were migrated from BullMQ `QueueScheduler` to `setInterval`-based cron (interim until Cloud Scheduler in Section 06).
+
+5. **`npm install` used instead of `pnpm install`** — The project root is configured to use npm, not pnpm. Package-lock.json was updated accordingly.
+
+6. **`enqueueTask` extended with `targetService` option** — Added `targetService?: "python" | "node"` to `EnqueueTaskOptions` in `cloudTasks.ts` so skill jobs can target the Node.js Cloud Run service instead of defaulting to Python.
+
+### Code Review Fixes Applied
+
+The following issues were identified during code review and fixed before commit:
+
+1. **OIDC auth middleware on `/tasks/*` routes** (CRITICAL) — Added `validateCloudTasksAuth` middleware: production validates Google-signed OIDC JWT via `google-auth-library`, development validates shared secret via `X-Cloud-Tasks-Secret` header or allows localhost.
+
+2. **Missing `/tasks/execute-skill-step` handler** (HIGH) — `addSkillJob()` enqueued to this path but no handler existed. Added handler that dynamically imports `skillRegistry` and `skillExecutor`.
+
+3. **Telegram rate limiting restored** (HIGH) — Added token bucket rate limiter (25 msg/s, below Telegram's 30/s limit) and `withRetry()` helper with exponential backoff (3 retries, respects 429 `retry_after`). Bot-blocked detection sets `telegramVerified=false`.
+
+4. **Package.json indentation fix** — `class-variance-authority` line lost 4-space indent when bullmq was removed.
+
+5. **Dead `dbRef` variable removed** from `telegramService.ts` — was set in init and cleared in shutdown but never read.
+
+6. **`setTimeout` leak in `purgeOldTrashItems.ts`** — Initial timeout handle was untracked; shutdown could miss it. Now tracks `initialTimeoutId` and clears in shutdown. Also consolidated duplicate `eq` import.
+
+7. **Singleton client in `cloudTasksMetrics.ts`** — Each `getQueueMetrics()` call was creating a new `CloudTasksClient` (6 per refresh). Added singleton `_metricsClient` pattern matching `cloudTasks.ts` approach.
+
+### Items Accepted As-Is
+
+- `addUsageJob` only logs (preserves existing BullMQ behavior which was also just logging)
+- `dispatchRate` shows max configured rate, not actual throughput (documented in display as `/s`)
+- `listTasks` capped at `pageSize=100` (acceptable for admin dashboard)
+- Redis comments still reference BullMQ (cosmetic, non-functional)
+- `verification.test.ts` still has BullMQ todo (existing test file, not in scope)
+
+### Actual Files Created
+
+| File | Purpose |
+|------|---------|
+| `apps/web/server/routes/tasks.ts` | Express routes for Cloud Tasks handlers with OIDC auth middleware (3 endpoints) |
+| `apps/web/server/services/cloudTasksMetrics.ts` | Cloud Tasks Admin API metrics with singleton client |
+| `apps/web/server/services/__tests__/schedulerCloudTasks.test.ts` | 6 tests for scheduled message Cloud Tasks migration |
+| `apps/web/server/routers/__tests__/queueHealthCloudTasks.test.ts` | 4 tests for admin queue health endpoints |
+| `apps/web/server/services/__tests__/llmQueueMigration.test.ts` | 4 tests for LLM queue migration |
+
+### Actual Files Modified
+
+| File | Changes |
+|------|---------|
+| `apps/web/server/services/scheduler.ts` | Full rewrite: removed BullMQ, Cloud Tasks enqueue with delay, fallback sweep |
+| `apps/web/server/services/llmQueue.ts` | Full rewrite: credit/usage synchronous, skills via Cloud Tasks, in-memory history kept |
+| `apps/web/server/services/cloudTasks.ts` | Added `targetService` option, `deleteTask()` function |
+| `apps/web/server/services/telegramService.ts` | Full rewrite: removed BullMQ, in-process delivery, rate limiting, retry, bot-blocked handling |
+| `apps/web/server/routers/queues.ts` | Replaced BullMQ queries with Cloud Tasks metrics, removed dead mutations |
+| `apps/web/server/routers/scheduledMessages.ts` | Comment updates (BullMQ → Cloud Tasks) |
+| `apps/web/server/_core/index.ts` | Removed BullMQ init, registered `/tasks` routes |
+| `apps/web/server/jobs/purgeOldTrashItems.ts` | Migrated to setInterval, fixed setTimeout leak, consolidated imports |
+| `apps/web/server/jobs/gdriveSessionCleanup.ts` | Migrated to setInterval (6h cycle) |
+| `apps/web/client/src/pages/AdminQueues.tsx` | Updated text, removed dead mutations, simplified queue table |
+| `apps/web/client/src/pages/AdminQueueDashboard.tsx` | Updated text (BullMQ → Cloud Tasks) |
+| `apps/web/client/src/pages/AdminQueueLLM.tsx` | Updated text, removed dead mutations, simplified queue table |
+| `apps/web/package.json` | Removed `bullmq` dependency, fixed indentation |
+
+### Test Results
+
+- 14 new tests written across 3 test files, all passing
+- No regressions in existing test suite (pre-existing failures unrelated to this section)

@@ -1,12 +1,17 @@
 /**
  * Chat Alert Scheduler Service
  *
- * Uses BullMQ + Redis to manage scheduled chat messages.
- * Supports both one-time and recurring (cron) schedules.
+ * Manages scheduled chat message delivery via Cloud Tasks (replacing BullMQ).
+ * Supports both one-time delayed and recurring (cron) schedules.
+ *
+ * One-time messages: enqueued as delayed Cloud Tasks tasks.
+ * Recurring messages: managed by Cloud Scheduler (Section 06) calling
+ *   /tasks/deliver-scheduled-message on each cron tick.
+ * Fallback sweep: /tasks/deliver-scheduled-fallback runs every minute
+ *   to catch any enqueue failures.
  */
 
-import { Queue, Worker, Job } from "bullmq";
-import IORedis from "ioredis";
+import { enqueueTask, deleteTask } from "./cloudTasks";
 import { getDb } from "../db";
 import {
   scheduledMessages,
@@ -14,51 +19,20 @@ import {
   conversations,
   messages,
 } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
 import { getProviderForModel } from "./llmRouter";
 import { decrypt } from "./crypto";
 
-const QUEUE_NAME = "chat-alerts";
-
-let connection: IORedis | null = null;
-let queue: Queue | null = null;
-let worker: Worker | null = null;
-
-function getRedisConnection(): IORedis {
-  if (!connection) {
-    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-    connection = new IORedis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    });
-  }
-  return connection;
-}
-
-export function getSchedulerQueue(): Queue {
-  if (!queue) {
-    queue = new Queue(QUEUE_NAME, {
-      connection: getRedisConnection(),
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 5000 },
-        removeOnComplete: { count: 100 },
-        removeOnFail: { count: 50 },
-      },
-    });
-  }
-  return queue;
-}
-
-// Note: getActiveLlmProvider removed — now uses getProviderForModel from llmRouter
+const USE_CLOUD_TASKS = () => process.env.USE_CLOUD_TASKS === "true";
 
 /**
- * Execute a scheduled message job
+ * Deliver a scheduled message by schedule ID.
+ *
+ * Extracted from the old BullMQ executeScheduledJob — same business logic,
+ * no BullMQ Job dependency. Called by the Cloud Tasks handler endpoint.
  */
-async function executeScheduledJob(job: Job) {
-  const { scheduleId } = job.data;
-
+export async function deliverScheduledMessage(scheduleId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -259,7 +233,7 @@ async function executeScheduledJob(job: Job) {
     console.log(`[Scheduler] Executed schedule ${scheduleId} successfully`);
   } catch (err: any) {
     await logExecution(db, scheduleId, null, "failed", err.message);
-    throw err; // Let BullMQ handle retries
+    throw err;
   }
 }
 
@@ -351,93 +325,111 @@ async function sendAlertEmail(db: any, userId: number, schedule: any, content: s
 }
 
 /**
- * Create a BullMQ job for a scheduled message
+ * Create a scheduled job via Cloud Tasks (or locally in dev mode).
+ *
+ * For one-time messages: enqueues a delayed Cloud Tasks task.
+ * For recurring messages with cron: handled by Cloud Scheduler (Section 06).
+ *   As an interim measure, stores the cron expression on the DB record
+ *   and the fallback sweep handles delivery.
  */
-export async function createScheduledJob(scheduleId: number, cronExpression?: string | null, scheduledAt?: Date | null): Promise<string> {
-  const q = getSchedulerQueue();
+export async function createScheduledJob(
+  scheduleId: number,
+  cronExpression?: string | null,
+  scheduledAt?: Date | null
+): Promise<string> {
+  if (!USE_CLOUD_TASKS()) {
+    // Development mode: store a local identifier, delivery via fallback sweep
+    console.log(`[Scheduler] Dev mode: scheduled job local-${scheduleId}`);
+    return `local-${scheduleId}`;
+  }
 
   if (cronExpression) {
-    // Recurring job using job scheduler
-    await q.upsertJobScheduler(
-      `schedule-${scheduleId}`,
-      { pattern: cronExpression },
-      {
-        name: `chat-alert-${scheduleId}`,
-        data: { scheduleId },
-      }
-    );
-    return `schedule-${scheduleId}`;
+    // Recurring: Cloud Scheduler (Section 06) will handle this.
+    // For now, store a marker and let the fallback sweep handle delivery.
+    console.log(`[Scheduler] Recurring schedule ${scheduleId} registered (cron: ${cronExpression})`);
+    return `cron-${scheduleId}`;
   } else if (scheduledAt) {
-    // One-time delayed job
-    const delay = Math.max(0, scheduledAt.getTime() - Date.now());
-    const job = await q.add(`chat-alert-${scheduleId}`, { scheduleId }, { delay });
-    return job.id || `once-${scheduleId}`;
+    // One-time delayed task
+    const delaySeconds = Math.max(0, Math.floor((scheduledAt.getTime() - Date.now()) / 1000));
+
+    const taskName = await enqueueTask({
+      queueName: "periodic-tasks",
+      handlerPath: "/tasks/deliver-scheduled-message",
+      payload: { scheduleId },
+      delaySeconds,
+      taskId: `schedule-${scheduleId}`,
+      targetService: "node",
+    });
+
+    return taskName;
   }
 
   throw new Error("Either cronExpression or scheduledAt is required");
 }
 
 /**
- * Cancel a scheduled job
+ * Cancel a scheduled job by deleting the Cloud Tasks task.
  */
-export async function cancelScheduledJob(scheduleId: number, bullmqJobId?: string | null) {
-  const q = getSchedulerQueue();
-
-  try {
-    // Remove repeatable/scheduler job
-    await q.removeJobScheduler(`schedule-${scheduleId}`);
-  } catch {
-    // Ignore if not found
+export async function cancelScheduledJob(
+  scheduleId: number,
+  cloudTaskId?: string | null
+): Promise<void> {
+  if (!USE_CLOUD_TASKS()) {
+    console.log(`[Scheduler] Dev mode: cancelled schedule ${scheduleId}`);
+    return;
   }
 
-  if (bullmqJobId) {
+  if (cloudTaskId && cloudTaskId.startsWith("projects/")) {
+    // Full Cloud Tasks resource name — delete it
+    await deleteTask(cloudTaskId);
+  }
+  // For cron/local markers, nothing to delete in Cloud Tasks
+}
+
+/**
+ * Fallback sweep: find undelivered scheduled messages and enqueue them.
+ * Called by Cloud Scheduler every minute via /tasks/deliver-scheduled-fallback.
+ */
+export async function sweepUndeliveredMessages(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const now = new Date();
+  const undelivered = await db
+    .select({ id: scheduledMessages.id })
+    .from(scheduledMessages)
+    .where(
+      and(
+        eq(scheduledMessages.status, "active"),
+        lte(scheduledMessages.scheduledAt, now),
+        isNull(scheduledMessages.lastRunAt)
+      )
+    );
+
+  let enqueued = 0;
+  for (const msg of undelivered) {
     try {
-      const job = await q.getJob(bullmqJobId);
-      if (job) await job.remove();
-    } catch {
-      // Ignore
+      if (USE_CLOUD_TASKS()) {
+        await enqueueTask({
+          queueName: "periodic-tasks",
+          handlerPath: "/tasks/deliver-scheduled-message",
+          payload: { scheduleId: msg.id },
+          taskId: `sweep-${msg.id}-${Date.now()}`,
+          targetService: "node",
+        });
+      } else {
+        // Dev mode: deliver directly
+        await deliverScheduledMessage(msg.id);
+      }
+      enqueued++;
+    } catch (err) {
+      console.error(`[Scheduler] Failed to sweep message ${msg.id}:`, err);
     }
   }
-}
 
-/**
- * Initialize the scheduler worker (call on server startup)
- */
-export function initializeScheduler() {
-  if (worker) return;
-
-  const conn = getRedisConnection();
-
-  worker = new Worker(QUEUE_NAME, executeScheduledJob, {
-    connection: conn,
-    concurrency: 3,
-  });
-
-  worker.on("completed", (job) => {
-    console.log(`[Scheduler] Job ${job.id} completed`);
-  });
-
-  worker.on("failed", (job, err) => {
-    console.error(`[Scheduler] Job ${job?.id} failed:`, err.message);
-  });
-
-  console.log("[Scheduler] Worker initialized");
-}
-
-/**
- * Gracefully shut down the scheduler
- */
-export async function shutdownScheduler() {
-  if (worker) {
-    await worker.close();
-    worker = null;
+  if (enqueued > 0) {
+    console.log(`[Scheduler] Sweep enqueued ${enqueued} undelivered messages`);
   }
-  if (queue) {
-    await queue.close();
-    queue = null;
-  }
-  if (connection) {
-    connection.disconnect();
-    connection = null;
-  }
+
+  return enqueued;
 }

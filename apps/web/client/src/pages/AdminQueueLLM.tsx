@@ -91,38 +91,6 @@ export default function AdminQueueLLM() {
   });
 
   // Mutations
-  const pauseQueueMutation = trpc.queues.pauseQueue.useMutation({
-    onSuccess: () => {
-      toast.success("Queue paused");
-      queueStatus.refetch();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const resumeQueueMutation = trpc.queues.resumeQueue.useMutation({
-    onSuccess: () => {
-      toast.success("Queue resumed");
-      queueStatus.refetch();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const retryJobsMutation = trpc.queues.retryJobs.useMutation({
-    onSuccess: (data) => {
-      toast.success(`Retried ${data.retried} jobs`);
-      queueStatus.refetch();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const clearStaleMutation = trpc.queues.clearStaleJobs.useMutation({
-    onSuccess: (data) => {
-      toast.success(`Cleared ${data.cleared} stale jobs`);
-      queueStatus.refetch();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
   const resetLimiterMutation = trpc.queues.resetLimiter.useMutation({
     onSuccess: () => {
       toast.success("Limiter reset");
@@ -458,7 +426,7 @@ export default function AdminQueueLLM() {
               <CardHeader>
                 <CardTitle>Background Job Queues</CardTitle>
                 <CardDescription>
-                  BullMQ queues for async processing
+                  Cloud Tasks queues for async processing
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -482,12 +450,8 @@ export default function AdminQueueLLM() {
                       <TableRow>
                         <TableHead>Queue</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Waiting</TableHead>
-                        <TableHead className="text-right">Active</TableHead>
-                        <TableHead className="text-right">Delayed</TableHead>
-                        <TableHead className="text-right">Failed</TableHead>
-                        <TableHead className="text-right">Completed</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="text-right">Tasks</TableHead>
+                        <TableHead className="text-right">Dispatch Rate</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -495,81 +459,11 @@ export default function AdminQueueLLM() {
                         <TableRow key={queue.name}>
                           <TableCell className="font-medium">{queue.name}</TableCell>
                           <TableCell>
-                            {queue.paused ? (
-                              <Badge variant="secondary">Paused</Badge>
-                            ) : (
-                              <Badge variant="default">Active</Badge>
-                            )}
+                            <Badge variant="default">Active</Badge>
                           </TableCell>
                           <TableCell className="text-right">{queue.counts.waiting}</TableCell>
-                          <TableCell className="text-right">{queue.counts.active}</TableCell>
-                          <TableCell className="text-right">{queue.counts.delayed}</TableCell>
                           <TableCell className="text-right">
-                            <span className={cn(queue.counts.failed > 0 && "text-red-600 font-medium")}>
-                              {queue.counts.failed}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right text-green-600">
-                            {queue.counts.completed}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {queue.paused ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => resumeQueueMutation.mutate({ queue: queue.name })}
-                                  disabled={resumeQueueMutation.isPending}
-                                >
-                                  <Play className="h-3 w-3" />
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => pauseQueueMutation.mutate({ queue: queue.name })}
-                                  disabled={pauseQueueMutation.isPending}
-                                >
-                                  <Pause className="h-3 w-3" />
-                                </Button>
-                              )}
-
-                              {queue.counts.failed > 0 && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => retryJobsMutation.mutate({ queue: queue.name })}
-                                  disabled={retryJobsMutation.isPending}
-                                  title="Retry all failed jobs"
-                                >
-                                  <RotateCcw className="h-3 w-3" />
-                                </Button>
-                              )}
-
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="outline" size="sm" title="Clear stale jobs">
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Clear Stale Jobs</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will move jobs older than 5 minutes to failed.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => clearStaleMutation.mutate({ queue: queue.name })}
-                                    >
-                                      Clear Stale
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
+                            {queue.cloudTasks?.dispatchRate ?? 0}/s
                           </TableCell>
                         </TableRow>
                       ))}

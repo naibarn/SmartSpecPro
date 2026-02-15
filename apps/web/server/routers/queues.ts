@@ -2,10 +2,9 @@
  * Queue Management tRPC Router
  *
  * Provides admin endpoints for:
- * - Queue status monitoring
- * - Rate limiter status
- * - Failed job management
- * - Queue pause/resume
+ * - Cloud Tasks queue metrics
+ * - Rate limiter status (Bottleneck — unchanged)
+ * - Failed task management via cloud_task_events
  * - Statistics and history
  */
 
@@ -32,17 +31,15 @@ import {
 } from '../services/llmRateLimiter';
 import {
   QUEUE_NAMES,
-  getQueueCounts,
   getAllQueueStats,
-  getFailedJobs,
-  retryFailedJobs,
-  clearStaleJobs,
-  pauseQueue,
-  resumeQueue,
-  isQueuePaused,
   getQueueHistory,
   getAggregatedHistory,
 } from '../services/llmQueue';
+import {
+  getAllQueueMetrics,
+  getDeadLetterCount,
+  getFailedTaskEvents,
+} from '../services/cloudTasksMetrics';
 
 export const queuesRouter = router({
   /**
@@ -52,6 +49,14 @@ export const queuesRouter = router({
     const redis = getRedisStatus();
     const limiterStats = getAllLimiterStats();
     const queueStats = getAllQueueStats();
+
+    // Get Cloud Tasks queue metrics
+    let cloudTasksMetrics: Awaited<ReturnType<typeof getAllQueueMetrics>> = [];
+    try {
+      cloudTasksMetrics = await getAllQueueMetrics();
+    } catch {
+      // Cloud Tasks not available
+    }
 
     return {
       redis,
@@ -66,6 +71,10 @@ export const queuesRouter = router({
         count: queueStats.length,
         totalCompleted: queueStats.reduce((sum, s) => sum + s.completed, 0),
         totalFailed: queueStats.reduce((sum, s) => sum + s.failed, 0),
+      },
+      cloudTasks: {
+        queues: cloudTasksMetrics.length,
+        totalTasks: cloudTasksMetrics.reduce((sum, m) => sum + m.taskCount, 0),
       },
       timestamp: new Date().toISOString(),
     };
@@ -101,40 +110,50 @@ export const queuesRouter = router({
   }),
 
   /**
-   * Get all queue statuses
+   * Get Cloud Tasks queue statuses (replaces BullMQ queue status)
    */
   getQueueStatus: adminProcedure.query(async () => {
-    if (!isRedisAvailable()) {
+    try {
+      const metrics = await getAllQueueMetrics();
+      const deadLetterCount = await getDeadLetterCount();
+      const inMemoryStats = getAllQueueStats();
+
+      return {
+        available: true,
+        queues: metrics.map(m => ({
+          name: m.queueName,
+          counts: {
+            waiting: m.taskCount,
+            active: 0,
+            delayed: 0,
+            failed: 0,
+            completed: 0,
+          },
+          cloudTasks: m,
+          stats: inMemoryStats.find(s => s.name === m.queueName) || null,
+          paused: false,
+        })),
+        deadLetterCount,
+      };
+    } catch {
+      // Fallback to in-memory stats if Cloud Tasks API is unavailable
+      const queueNames = Object.values(QUEUE_NAMES);
       return {
         available: false,
-        queues: [],
+        queues: queueNames.map(name => ({
+          name,
+          counts: { waiting: 0, active: 0, delayed: 0, failed: 0, completed: 0 },
+          cloudTasks: null,
+          stats: getAllQueueStats().find(s => s.name === name) || null,
+          paused: false,
+        })),
+        deadLetterCount: 0,
       };
     }
-
-    const queueNames = Object.values(QUEUE_NAMES);
-    const queues = await Promise.all(
-      queueNames.map(async (name) => {
-        const counts = await getQueueCounts(name);
-        const stats = getAllQueueStats().find(s => s.name === name);
-        const paused = await isQueuePaused(name);
-
-        return {
-          name,
-          counts: counts || { waiting: 0, active: 0, delayed: 0, failed: 0, completed: 0 },
-          stats: stats || null,
-          paused,
-        };
-      })
-    );
-
-    return {
-      available: true,
-      queues,
-    };
   }),
 
   /**
-   * Get failed jobs from a queue
+   * Get failed tasks from cloud_task_events table
    */
   getFailedJobs: adminProcedure
     .input(z.object({
@@ -143,73 +162,21 @@ export const queuesRouter = router({
       end: z.number().default(20),
     }))
     .query(async ({ input }) => {
-      const jobs = await getFailedJobs(input.queue, input.start, input.end);
-      if (!jobs) {
-        return { jobs: [] };
-      }
-
+      const events = await getFailedTaskEvents(input.end);
       return {
-        jobs: jobs.map(job => ({
-          id: job.id,
-          name: job.name,
-          data: job.data,
-          failedReason: job.failedReason,
-          attemptsMade: job.attemptsMade,
-          timestamp: job.timestamp,
-          processedOn: job.processedOn,
-          finishedOn: job.finishedOn,
-        })),
+        jobs: events
+          .filter(e => !input.queue || e.queueName === input.queue)
+          .map(e => ({
+            id: e.taskId,
+            name: e.queueName,
+            data: e.payload,
+            failedReason: e.errorMessage,
+            attemptsMade: e.attemptCount,
+            timestamp: e.createdAt,
+            processedOn: e.createdAt,
+            finishedOn: e.completedAt,
+          })),
       };
-    }),
-
-  /**
-   * Retry failed jobs
-   */
-  retryJobs: adminProcedure
-    .input(z.object({
-      queue: z.string(),
-      jobIds: z.array(z.string()).optional(),
-    }))
-    .mutation(async ({ input }) => {
-      const retried = await retryFailedJobs(input.queue, input.jobIds);
-      return { retried };
-    }),
-
-  /**
-   * Clear stale/stuck jobs
-   */
-  clearStaleJobs: adminProcedure
-    .input(z.object({
-      queue: z.string(),
-      olderThanMs: z.number().default(300000), // 5 minutes default
-    }))
-    .mutation(async ({ input }) => {
-      const cleared = await clearStaleJobs(input.queue, input.olderThanMs);
-      return { cleared };
-    }),
-
-  /**
-   * Pause a queue
-   */
-  pauseQueue: adminProcedure
-    .input(z.object({
-      queue: z.string(),
-    }))
-    .mutation(async ({ input }) => {
-      const success = await pauseQueue(input.queue);
-      return { success };
-    }),
-
-  /**
-   * Resume a queue
-   */
-  resumeQueue: adminProcedure
-    .input(z.object({
-      queue: z.string(),
-    }))
-    .mutation(async ({ input }) => {
-      const success = await resumeQueue(input.queue);
-      return { success };
     }),
 
   /**

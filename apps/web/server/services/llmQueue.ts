@@ -1,18 +1,19 @@
 /**
  * LLM Queue Service
  *
- * BullMQ-based background job processing for:
- * - Credit deduction after LLM calls
- * - Usage logging to database
- * - Multi-step skill processing (future)
- * - Media generation (future)
+ * Handles background job processing for:
+ * - Credit deduction after LLM calls (in-process, synchronous)
+ * - Usage logging to database (in-process, synchronous)
+ * - Multi-step skill processing (via Cloud Tasks)
+ *
+ * Migrated from BullMQ to in-process + Cloud Tasks.
+ * Credit and usage jobs are fast DB operations (<50ms) and
+ * don't need async queue semantics.
  */
 
-import { Queue, Worker, Job, QueueEvents } from 'bullmq';
-import { createRedisConnection, isRedisAvailable } from './redis';
 import { debugLog, debugError } from '../_core/logger';
 
-// Queue names
+// Queue names (kept for backward compatibility with admin dashboard)
 export const QUEUE_NAMES = {
   CREDITS: 'llm:credits',
   USAGE: 'llm:usage',
@@ -66,22 +67,7 @@ export interface SkillJob {
   updatedAt: Date;
 }
 
-// Queue instances (lazy initialization)
-let creditQueue: Queue<CreditJob> | null = null;
-let usageQueue: Queue<UsageJob> | null = null;
-let skillQueue: Queue<SkillJob> | null = null;
-
-// Workers
-let creditWorker: Worker<CreditJob> | null = null;
-let usageWorker: Worker<UsageJob> | null = null;
-let skillWorker: Worker<SkillJob> | null = null;
-
-// Queue events for monitoring
-let creditEvents: QueueEvents | null = null;
-let usageEvents: QueueEvents | null = null;
-let skillEvents: QueueEvents | null = null;
-
-// Statistics
+// Statistics (in-memory counters)
 export interface QueueStats {
   name: string;
   completed: number;
@@ -96,26 +82,28 @@ export interface QueueStats {
 
 const queueStats: Map<string, QueueStats> = new Map();
 
-/**
- * Initialize queue statistics
- */
+// Initialize stats on module load
 function initQueueStats(name: string): void {
-  queueStats.set(name, {
-    name,
-    completed: 0,
-    failed: 0,
-    waiting: 0,
-    active: 0,
-    delayed: 0,
-    lastProcessedAt: null,
-    avgProcessingTime: 0,
-    processingTimes: [],
-  });
+  if (!queueStats.has(name)) {
+    queueStats.set(name, {
+      name,
+      completed: 0,
+      failed: 0,
+      waiting: 0,
+      active: 0,
+      delayed: 0,
+      lastProcessedAt: null,
+      avgProcessingTime: 0,
+      processingTimes: [],
+    });
+  }
 }
 
-/**
- * Update queue statistics
- */
+// Initialize all queue stats
+for (const name of Object.values(QUEUE_NAMES)) {
+  initQueueStats(name);
+}
+
 function updateQueueStats(
   name: string,
   event: 'completed' | 'failed',
@@ -144,384 +132,83 @@ function updateQueueStats(
 }
 
 /**
- * Get the credit deduction queue
- */
-export function getCreditQueue(): Queue<CreditJob> | null {
-  if (!isRedisAvailable()) {
-    return null;
-  }
-
-  if (!creditQueue) {
-    const connection = createRedisConnection();
-    creditQueue = new Queue<CreditJob>(QUEUE_NAMES.CREDITS, {
-      connection,
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
-        removeOnComplete: {
-          age: 3600, // Keep for 1 hour
-          count: 1000, // Keep last 1000
-        },
-        removeOnFail: {
-          age: 86400, // Keep for 24 hours
-        },
-      },
-    });
-
-    initQueueStats(QUEUE_NAMES.CREDITS);
-    debugLog('Queue', `Credit queue initialized`);
-  }
-
-  return creditQueue;
-}
-
-/**
- * Get the usage logging queue
- */
-export function getUsageQueue(): Queue<UsageJob> | null {
-  if (!isRedisAvailable()) {
-    return null;
-  }
-
-  if (!usageQueue) {
-    const connection = createRedisConnection();
-    usageQueue = new Queue<UsageJob>(QUEUE_NAMES.USAGE, {
-      connection,
-      defaultJobOptions: {
-        attempts: 2,
-        backoff: {
-          type: 'fixed',
-          delay: 500,
-        },
-        removeOnComplete: {
-          age: 1800, // Keep for 30 minutes
-          count: 500,
-        },
-        removeOnFail: {
-          age: 43200, // Keep for 12 hours
-        },
-      },
-    });
-
-    initQueueStats(QUEUE_NAMES.USAGE);
-    debugLog('Queue', `Usage queue initialized`);
-  }
-
-  return usageQueue;
-}
-
-/**
- * Get the skill processing queue
- */
-export function getSkillQueue(): Queue<SkillJob> | null {
-  if (!isRedisAvailable()) {
-    return null;
-  }
-
-  if (!skillQueue) {
-    const connection = createRedisConnection();
-    skillQueue = new Queue<SkillJob>(QUEUE_NAMES.SKILLS, {
-      connection,
-      defaultJobOptions: {
-        attempts: 5,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
-        removeOnComplete: {
-          age: 7200, // Keep for 2 hours
-          count: 200,
-        },
-        removeOnFail: {
-          age: 172800, // Keep for 48 hours
-        },
-      },
-    });
-
-    initQueueStats(QUEUE_NAMES.SKILLS);
-    debugLog('Queue', `Skill queue initialized`);
-  }
-
-  return skillQueue;
-}
-
-/**
- * Start the credit deduction worker
- */
-export async function startCreditWorker(): Promise<void> {
-  if (!isRedisAvailable() || creditWorker) {
-    return;
-  }
-
-  const connection = createRedisConnection();
-
-  creditWorker = new Worker<CreditJob>(
-    QUEUE_NAMES.CREDITS,
-    async (job: Job<CreditJob>) => {
-      const startTime = Date.now();
-      const { userId, model, provider, inputTokens, outputTokens, costUsd } = job.data;
-
-      debugLog('Queue', `Processing credit job ${job.id}`, { userId, model });
-
-      try {
-        const { deductCreditsForModel } = await import('./creditService');
-        await deductCreditsForModel({
-          userId,
-          model,
-          provider,
-          inputTokens,
-          outputTokens,
-          costUsd,
-        });
-
-        const processingTime = Date.now() - startTime;
-        updateQueueStats(QUEUE_NAMES.CREDITS, 'completed', processingTime);
-
-        debugLog('Queue', `Credit job ${job.id} completed in ${processingTime}ms`);
-        return { success: true, processingTime };
-      } catch (error: any) {
-        debugError('Queue', `Credit job ${job.id} failed`, error);
-        updateQueueStats(QUEUE_NAMES.CREDITS, 'failed');
-        throw error;
-      }
-    },
-    {
-      connection,
-      concurrency: 5,
-    }
-  );
-
-  creditWorker.on('failed', (job, err) => {
-    console.error(`[Queue] Credit job ${job?.id} failed:`, err.message);
-  });
-
-  debugLog('Queue', 'Credit worker started');
-}
-
-/**
- * Start the usage logging worker
- */
-export async function startUsageWorker(): Promise<void> {
-  if (!isRedisAvailable() || usageWorker) {
-    return;
-  }
-
-  const connection = createRedisConnection();
-
-  usageWorker = new Worker<UsageJob>(
-    QUEUE_NAMES.USAGE,
-    async (job: Job<UsageJob>) => {
-      const startTime = Date.now();
-      const { userId, conversationId, messageId, model, provider, inputTokens, outputTokens, creditsUsed } = job.data;
-
-      debugLog('Queue', `Processing usage job ${job.id}`);
-
-      try {
-        // Log usage to database (implement as needed)
-        // For now, just log to console
-        debugLog('Queue', `Usage: user=${userId} conv=${conversationId} model=${model} in=${inputTokens} out=${outputTokens} credits=${creditsUsed}`);
-
-        const processingTime = Date.now() - startTime;
-        updateQueueStats(QUEUE_NAMES.USAGE, 'completed', processingTime);
-
-        return { success: true, processingTime };
-      } catch (error: any) {
-        debugError('Queue', `Usage job ${job.id} failed`, error);
-        updateQueueStats(QUEUE_NAMES.USAGE, 'failed');
-        throw error;
-      }
-    },
-    {
-      connection,
-      concurrency: 10,
-    }
-  );
-
-  debugLog('Queue', 'Usage worker started');
-}
-
-/**
- * Start the skill processing worker
- */
-export async function startSkillWorker(): Promise<void> {
-  if (!isRedisAvailable() || skillWorker) {
-    return;
-  }
-
-  const connection = createRedisConnection();
-
-  skillWorker = new Worker<SkillJob>(
-    QUEUE_NAMES.SKILLS,
-    async (job: Job<SkillJob>) => {
-      const startTime = Date.now();
-      const { userId, skillId, skillName, steps, currentStep, context } = job.data;
-
-      debugLog('Queue', `Processing skill job ${job.id}: ${skillName} step ${currentStep}/${steps.length}`);
-
-      try {
-        // Process current step
-        const step = steps[currentStep];
-        if (!step) {
-          return { success: true, completed: true };
-        }
-
-        // Mark step as running
-        step.status = 'running';
-        await job.updateProgress({ currentStep, stepStatus: 'running' });
-
-        // Execute step based on type
-        let result: any;
-        switch (step.type) {
-          case 'llm':
-            // Execute LLM call
-            result = await executeSkillLLMStep(step, context);
-            break;
-          case 'code':
-            // Execute code step (sandboxed)
-            result = await executeSkillCodeStep(step, context);
-            break;
-          case 'api':
-            // Execute API call
-            result = await executeSkillApiStep(step, context);
-            break;
-          case 'wait':
-            // Wait for specified duration
-            await new Promise(resolve => setTimeout(resolve, step.config.durationMs || 1000));
-            result = { waited: true };
-            break;
-        }
-
-        step.status = 'completed';
-        step.result = result;
-
-        // Check if more steps
-        if (currentStep < steps.length - 1) {
-          // Queue next step
-          const queue = getSkillQueue();
-          if (queue) {
-            await queue.add(`${skillId}-step-${currentStep + 1}`, {
-              ...job.data,
-              currentStep: currentStep + 1,
-              context: { ...context, [`step_${step.id}_result`]: result },
-              updatedAt: new Date(),
-            });
-          }
-        }
-
-        const processingTime = Date.now() - startTime;
-        updateQueueStats(QUEUE_NAMES.SKILLS, 'completed', processingTime);
-
-        return { success: true, step: currentStep, result, processingTime };
-      } catch (error: any) {
-        debugError('Queue', `Skill job ${job.id} step ${currentStep} failed`, error);
-        updateQueueStats(QUEUE_NAMES.SKILLS, 'failed');
-
-        const step = steps[currentStep];
-        if (step) {
-          step.status = 'failed';
-          step.error = error.message;
-        }
-
-        throw error;
-      }
-    },
-    {
-      connection,
-      concurrency: 3,
-    }
-  );
-
-  debugLog('Queue', 'Skill worker started');
-}
-
-// Skill step execution helpers (placeholders - implement as needed)
-async function executeSkillLLMStep(step: SkillStep, context: Record<string, any>): Promise<any> {
-  // TODO: Implement LLM step execution
-  debugLog('Queue', `Executing LLM step: ${step.id}`);
-  return { type: 'llm', config: step.config };
-}
-
-async function executeSkillCodeStep(step: SkillStep, context: Record<string, any>): Promise<any> {
-  // TODO: Implement sandboxed code execution
-  debugLog('Queue', `Executing code step: ${step.id}`);
-  return { type: 'code', config: step.config };
-}
-
-async function executeSkillApiStep(step: SkillStep, context: Record<string, any>): Promise<any> {
-  // TODO: Implement API call execution
-  debugLog('Queue', `Executing API step: ${step.id}`);
-  return { type: 'api', config: step.config };
-}
-
-/**
- * Add a credit deduction job
+ * Add a credit deduction job — processes synchronously (in-process).
  */
 export async function addCreditJob(data: CreditJob): Promise<string | null> {
-  const queue = getCreditQueue();
-  if (!queue) {
-    // Fallback: process synchronously
-    debugLog('Queue', 'Redis unavailable, processing credit synchronously');
-    try {
-      const { deductCreditsForModel } = await import('./creditService');
-      await deductCreditsForModel(data);
-      return 'sync';
-    } catch (error: any) {
-      debugError('Queue', 'Synchronous credit deduction failed', error);
-      return null;
-    }
-  }
-
-  const job = await queue.add('deduct', data);
-  return job.id || null;
-}
-
-/**
- * Add a usage logging job
- */
-export async function addUsageJob(data: UsageJob): Promise<string | null> {
-  const queue = getUsageQueue();
-  if (!queue) {
-    // Fallback: just log
-    debugLog('Queue', 'Redis unavailable, logging usage locally');
-    return 'local';
-  }
-
-  const job = await queue.add('log', data);
-  return job.id || null;
-}
-
-/**
- * Add a skill processing job
- */
-export async function addSkillJob(data: SkillJob): Promise<string | null> {
-  const queue = getSkillQueue();
-  if (!queue) {
+  const startTime = Date.now();
+  try {
+    const { deductCreditsForModel } = await import('./creditService');
+    await deductCreditsForModel(data);
+    updateQueueStats(QUEUE_NAMES.CREDITS, 'completed', Date.now() - startTime);
+    debugLog('Queue', `Credit deduction processed in-process for user ${data.userId}`);
+    return 'sync';
+  } catch (error: any) {
+    updateQueueStats(QUEUE_NAMES.CREDITS, 'failed');
+    debugError('Queue', 'Synchronous credit deduction failed', error);
     return null;
   }
-
-  const job = await queue.add(`${data.skillId}-start`, data);
-  return job.id || null;
 }
 
 /**
- * Get queue statistics
+ * Add a usage logging job — processes synchronously (in-process).
+ */
+export async function addUsageJob(data: UsageJob): Promise<string | null> {
+  const startTime = Date.now();
+  try {
+    debugLog('Queue', `Usage: user=${data.userId} conv=${data.conversationId} model=${data.model} in=${data.inputTokens} out=${data.outputTokens} credits=${data.creditsUsed}`);
+    updateQueueStats(QUEUE_NAMES.USAGE, 'completed', Date.now() - startTime);
+    return 'sync';
+  } catch (error: any) {
+    updateQueueStats(QUEUE_NAMES.USAGE, 'failed');
+    debugError('Queue', 'Usage logging failed', error);
+    return null;
+  }
+}
+
+/**
+ * Add a skill processing job — enqueues to Cloud Tasks workflow-tasks queue.
+ */
+export async function addSkillJob(data: SkillJob): Promise<string | null> {
+  try {
+    const { enqueueTask } = await import('./cloudTasks');
+    const taskName = await enqueueTask({
+      queueName: 'workflow-tasks',
+      handlerPath: '/tasks/execute-skill-step',
+      payload: {
+        userId: data.userId,
+        skillId: data.skillId,
+        skillName: data.skillName,
+        conversationId: data.conversationId,
+        steps: data.steps,
+        currentStep: data.currentStep,
+        context: data.context,
+      },
+    });
+    debugLog('Queue', `Skill job enqueued to Cloud Tasks: ${taskName}`);
+    return taskName;
+  } catch (error: any) {
+    debugError('Queue', 'Failed to enqueue skill job to Cloud Tasks', error);
+    return null;
+  }
+}
+
+/**
+ * Get queue statistics (in-memory counters).
  */
 export function getQueueStats(queueName: string): QueueStats | null {
   return queueStats.get(queueName) || null;
 }
 
 /**
- * Get all queue statistics
+ * Get all queue statistics.
  */
 export function getAllQueueStats(): QueueStats[] {
   return Array.from(queueStats.values());
 }
 
 /**
- * Get queue counts (waiting, active, delayed, failed)
+ * Get queue counts — returns in-memory counters.
+ * Cloud Tasks queue depth is available via cloudTasksMetrics service.
  */
 export async function getQueueCounts(queueName: string): Promise<{
   waiting: number;
@@ -530,231 +217,16 @@ export async function getQueueCounts(queueName: string): Promise<{
   failed: number;
   completed: number;
 } | null> {
-  let queue: Queue | null = null;
+  const stats = queueStats.get(queueName);
+  if (!stats) return null;
 
-  switch (queueName) {
-    case QUEUE_NAMES.CREDITS:
-      queue = getCreditQueue();
-      break;
-    case QUEUE_NAMES.USAGE:
-      queue = getUsageQueue();
-      break;
-    case QUEUE_NAMES.SKILLS:
-      queue = getSkillQueue();
-      break;
-  }
-
-  if (!queue) {
-    return null;
-  }
-
-  const counts = await queue.getJobCounts();
   return {
-    waiting: counts.waiting || 0,
-    active: counts.active || 0,
-    delayed: counts.delayed || 0,
-    failed: counts.failed || 0,
-    completed: counts.completed || 0,
+    waiting: stats.waiting,
+    active: stats.active,
+    delayed: stats.delayed,
+    failed: stats.failed,
+    completed: stats.completed,
   };
-}
-
-/**
- * Get failed jobs from a queue
- */
-export async function getFailedJobs(queueName: string, start = 0, end = 20): Promise<Job[] | null> {
-  let queue: Queue | null = null;
-
-  switch (queueName) {
-    case QUEUE_NAMES.CREDITS:
-      queue = getCreditQueue();
-      break;
-    case QUEUE_NAMES.USAGE:
-      queue = getUsageQueue();
-      break;
-    case QUEUE_NAMES.SKILLS:
-      queue = getSkillQueue();
-      break;
-  }
-
-  if (!queue) {
-    return null;
-  }
-
-  return queue.getFailed(start, end);
-}
-
-/**
- * Retry failed jobs
- */
-export async function retryFailedJobs(queueName: string, jobIds?: string[]): Promise<number> {
-  let queue: Queue | null = null;
-
-  switch (queueName) {
-    case QUEUE_NAMES.CREDITS:
-      queue = getCreditQueue();
-      break;
-    case QUEUE_NAMES.USAGE:
-      queue = getUsageQueue();
-      break;
-    case QUEUE_NAMES.SKILLS:
-      queue = getSkillQueue();
-      break;
-  }
-
-  if (!queue) {
-    return 0;
-  }
-
-  const failed = await queue.getFailed();
-  let retried = 0;
-
-  for (const job of failed) {
-    if (!jobIds || jobIds.includes(job.id!)) {
-      await job.retry();
-      retried++;
-    }
-  }
-
-  return retried;
-}
-
-/**
- * Clear stuck/stale jobs
- */
-export async function clearStaleJobs(queueName: string, olderThanMs = 300000): Promise<number> {
-  let queue: Queue | null = null;
-
-  switch (queueName) {
-    case QUEUE_NAMES.CREDITS:
-      queue = getCreditQueue();
-      break;
-    case QUEUE_NAMES.USAGE:
-      queue = getUsageQueue();
-      break;
-    case QUEUE_NAMES.SKILLS:
-      queue = getSkillQueue();
-      break;
-  }
-
-  if (!queue) {
-    return 0;
-  }
-
-  const active = await queue.getActive();
-  const now = Date.now();
-  let cleared = 0;
-
-  for (const job of active) {
-    const processedOn = job.processedOn || 0;
-    if (now - processedOn > olderThanMs) {
-      await job.moveToFailed(new Error('Job stale - cleared by admin'), 'stale');
-      cleared++;
-    }
-  }
-
-  return cleared;
-}
-
-/**
- * Pause a queue
- */
-export async function pauseQueue(queueName: string): Promise<boolean> {
-  let queue: Queue | null = null;
-
-  switch (queueName) {
-    case QUEUE_NAMES.CREDITS:
-      queue = getCreditQueue();
-      break;
-    case QUEUE_NAMES.USAGE:
-      queue = getUsageQueue();
-      break;
-    case QUEUE_NAMES.SKILLS:
-      queue = getSkillQueue();
-      break;
-  }
-
-  if (!queue) {
-    return false;
-  }
-
-  await queue.pause();
-  return true;
-}
-
-/**
- * Resume a queue
- */
-export async function resumeQueue(queueName: string): Promise<boolean> {
-  let queue: Queue | null = null;
-
-  switch (queueName) {
-    case QUEUE_NAMES.CREDITS:
-      queue = getCreditQueue();
-      break;
-    case QUEUE_NAMES.USAGE:
-      queue = getUsageQueue();
-      break;
-    case QUEUE_NAMES.SKILLS:
-      queue = getSkillQueue();
-      break;
-  }
-
-  if (!queue) {
-    return false;
-  }
-
-  await queue.resume();
-  return true;
-}
-
-/**
- * Check if a queue is paused
- */
-export async function isQueuePaused(queueName: string): Promise<boolean> {
-  let queue: Queue | null = null;
-
-  switch (queueName) {
-    case QUEUE_NAMES.CREDITS:
-      queue = getCreditQueue();
-      break;
-    case QUEUE_NAMES.USAGE:
-      queue = getUsageQueue();
-      break;
-    case QUEUE_NAMES.SKILLS:
-      queue = getSkillQueue();
-      break;
-  }
-
-  if (!queue) {
-    return false;
-  }
-
-  return queue.isPaused();
-}
-
-/**
- * Initialize all queues and workers
- */
-export async function initializeQueues(): Promise<void> {
-  if (!isRedisAvailable()) {
-    console.log('[Queue] Redis not available, queues disabled');
-    return;
-  }
-
-  // Initialize queues
-  getCreditQueue();
-  getUsageQueue();
-  getSkillQueue();
-
-  // Start workers
-  await startCreditWorker();
-  await startUsageWorker();
-  await startSkillWorker();
-
-  // Start history collection
-  startHistoryCollection();
-
-  console.log('[Queue] All queues and workers initialized');
 }
 
 // ─── History Tracking ────────────────────────────────────────────────────────
@@ -798,12 +270,8 @@ const HISTORY_INTERVAL_MS = 60000; // 1 minute
 const queueHistory: QueueHistoryEntry[] = [];
 let historyIntervalId: NodeJS.Timeout | null = null;
 
-/**
- * Take a snapshot of current queue/limiter state for history
- */
 async function takeHistorySnapshot(): Promise<void> {
   try {
-    // Get queue stats
     const queueData = getAllQueueStats().map(s => ({
       name: s.name,
       completed: s.completed,
@@ -812,7 +280,6 @@ async function takeHistorySnapshot(): Promise<void> {
       active: s.active,
     }));
 
-    // Get limiter stats (import dynamically to avoid circular dependency)
     let limiterData: { provider: string; running: number; queued: number; done: number; failed: number }[] = [];
     let modelData: { model: string; provider: string; requests: number; completed: number; failed: number; inputTokens: number; outputTokens: number }[] = [];
     try {
@@ -850,7 +317,6 @@ async function takeHistorySnapshot(): Promise<void> {
       },
     };
 
-    // Enforce hard limit before push (defense in depth)
     if (queueHistory.length >= MAX_HISTORY_ENTRIES) {
       queueHistory.splice(0, queueHistory.length - MAX_HISTORY_ENTRIES + 1);
     }
@@ -860,16 +326,10 @@ async function takeHistorySnapshot(): Promise<void> {
   }
 }
 
-/**
- * Start periodic history collection
- */
 export function startHistoryCollection(): void {
   if (historyIntervalId) return;
 
-  // Take initial snapshot
   takeHistorySnapshot();
-
-  // Schedule periodic snapshots
   historyIntervalId = setInterval(() => {
     takeHistorySnapshot();
   }, HISTORY_INTERVAL_MS);
@@ -877,9 +337,6 @@ export function startHistoryCollection(): void {
   debugLog('Queue', 'History collection started');
 }
 
-/**
- * Stop history collection
- */
 export function stopHistoryCollection(): void {
   if (historyIntervalId) {
     clearInterval(historyIntervalId);
@@ -888,22 +345,14 @@ export function stopHistoryCollection(): void {
   }
 }
 
-/**
- * Get queue history for a time range
- * @param minutes - Number of minutes of history to return (default: 60 = last hour)
- */
 export function getQueueHistory(minutes: number = 60): QueueHistoryEntry[] {
   const cutoff = new Date(Date.now() - minutes * 60 * 1000);
   return queueHistory.filter(entry => entry.timestamp >= cutoff);
 }
 
-/**
- * Get aggregated history stats for charting
- * Groups data into buckets for easier visualization
- */
 export function getAggregatedHistory(
   minutes: number = 60,
-  bucketSize: number = 5 // minutes per bucket
+  bucketSize: number = 5
 ): {
   buckets: {
     timestamp: Date;
@@ -936,7 +385,6 @@ export function getAggregatedHistory(
     };
   }
 
-  // Group into buckets
   const bucketMs = bucketSize * 60 * 1000;
   const bucketMap = new Map<number, QueueHistoryEntry[]>();
 
@@ -948,7 +396,6 @@ export function getAggregatedHistory(
     bucketMap.get(bucketKey)!.push(entry);
   }
 
-  // Aggregate buckets
   const buckets = Array.from(bucketMap.entries())
     .sort(([a], [b]) => a - b)
     .map(([timestamp, entries]) => {
@@ -967,7 +414,6 @@ export function getAggregatedHistory(
       };
     });
 
-  // Calculate summary
   const firstTotal = history[0]?.totals || { totalCompleted: 0, totalFailed: 0, totalWaiting: 0, totalActive: 0 };
   const lastTotal = history[history.length - 1]?.totals || firstTotal;
 
@@ -984,45 +430,3 @@ export function getAggregatedHistory(
     },
   };
 }
-
-/**
- * Graceful shutdown
- */
-export async function shutdownQueues(): Promise<void> {
-  console.log('[Queue] Shutting down queues...');
-  stopHistoryCollection();
-
-  const closePromises: Promise<void>[] = [];
-
-  if (creditWorker) {
-    closePromises.push(creditWorker.close());
-  }
-  if (usageWorker) {
-    closePromises.push(usageWorker.close());
-  }
-  if (skillWorker) {
-    closePromises.push(skillWorker.close());
-  }
-
-  if (creditQueue) {
-    closePromises.push(creditQueue.close());
-  }
-  if (usageQueue) {
-    closePromises.push(usageQueue.close());
-  }
-  if (skillQueue) {
-    closePromises.push(skillQueue.close());
-  }
-
-  await Promise.all(closePromises);
-  console.log('[Queue] All queues shut down');
-}
-
-// Handle process shutdown
-process.on('SIGTERM', async () => {
-  await shutdownQueues();
-});
-
-process.on('SIGINT', async () => {
-  await shutdownQueues();
-});
