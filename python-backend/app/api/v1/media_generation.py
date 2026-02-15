@@ -816,6 +816,141 @@ async def fetch_task_result(
         )
 
 
+# ==================== Video Render Pipeline (Cloud Run Job) ====================
+
+
+class VideoRenderRequest(BaseModel):
+    """Request model for video render task from Cloud Tasks."""
+    render_spec: dict
+    queue_name: Optional[str] = None
+
+
+@router.post("/tasks/process-video")
+async def process_video_task(request: Request):
+    """Handle video render task from Cloud Tasks.
+
+    Launches a Cloud Run Job execution with the render spec
+    passed as an environment variable.
+
+    This endpoint is protected by OIDC validation middleware
+    (see Section 04).
+    """
+    try:
+        body = await request.json()
+        render_spec = body.get("render_spec") or body.get("renderSpec")
+        if not render_spec:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing render_spec in request body",
+            )
+
+        # Validate required fields
+        render_hash = render_spec.get("renderHash")
+        profile = render_spec.get("profile", "standard")
+        if not render_hash:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing renderHash in render spec",
+            )
+        if profile not in ("preview", "standard", "high"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid profile: {profile}. Must be preview, standard, or high.",
+            )
+
+        queue_name = body.get("queue_name", "video-jobs-short")
+
+        # Determine CPU/memory based on queue
+        if queue_name == "video-jobs-long":
+            cpu = "4"
+            memory = "16Gi"
+            timeout = "1800s"
+        else:
+            cpu = "2"
+            memory = "8Gi"
+            timeout = "600s"
+
+        logger.info(
+            "process_video_task_received",
+            render_hash=render_hash,
+            profile=profile,
+            queue=queue_name,
+            cpu=cpu,
+            memory=memory,
+        )
+
+        # In production, this would launch a Cloud Run Job execution.
+        # For now, we execute the pipeline inline using the entrypoint logic.
+        try:
+            gcp_project = os.environ.get("GCP_PROJECT_ID")
+            gcp_region = os.environ.get("GCP_REGION", "us-central1")
+
+            if gcp_project:
+                # Cloud Run Jobs API - launch async execution
+                from google.cloud import run_v2
+
+                client = run_v2.JobsClient()
+                job_name = f"projects/{gcp_project}/locations/{gcp_region}/jobs/video-job-runner"
+
+                execution = client.run_job(
+                    request=run_v2.RunJobRequest(
+                        name=job_name,
+                        overrides=run_v2.RunJobRequest.Overrides(
+                            container_overrides=[
+                                run_v2.RunJobRequest.Overrides.ContainerOverride(
+                                    env=[
+                                        run_v2.EnvVar(
+                                            name="RENDER_SPEC",
+                                            value=json.dumps(render_spec),
+                                        ),
+                                    ],
+                                ),
+                            ],
+                            timeout=timeout,
+                        ),
+                    ),
+                )
+                logger.info(
+                    "cloud_run_job_launched",
+                    render_hash=render_hash,
+                    execution_name=execution.metadata.name if hasattr(execution, 'metadata') else "unknown",
+                )
+            else:
+                logger.info(
+                    "cloud_run_not_configured_inline_render",
+                    render_hash=render_hash,
+                )
+                # Fallback: call entrypoint directly with spec as argument
+                from app.video.entrypoint import main as render_main
+                import threading
+                spec_copy = dict(render_spec)
+                thread = threading.Thread(target=render_main, args=(spec_copy,), daemon=True)
+                thread.start()
+
+        except ImportError:
+            logger.warning("google_cloud_run_sdk_not_available", render_hash=render_hash)
+            # Fallback to inline execution
+            from app.video.entrypoint import main as render_main
+            import threading
+            spec_copy = dict(render_spec)
+            thread = threading.Thread(target=render_main, args=(spec_copy,), daemon=True)
+            thread.start()
+
+        return JSONResponse(
+            status_code=200,
+            content={"success": True, "render_hash": render_hash, "profile": profile},
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("process_video_task_error", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process video task: {str(e)}",
+        )
+
+
 # ==================== Batch Generation ====================
 
 async def process_batch_task(

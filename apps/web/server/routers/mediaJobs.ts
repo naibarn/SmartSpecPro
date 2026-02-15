@@ -364,7 +364,134 @@ const jobSpecInputSchema = z.object({
     .optional(),
 });
 
+// ========================================
+// Render submission schema
+// ========================================
+
+const renderSubmitSchema = z.object({
+  project: z.object({
+    settings: z.object({
+      width: z.number(),
+      height: z.number(),
+      fps: z.number(),
+      sampleRate: z.number(),
+    }).passthrough(),
+    timeline: z.object({
+      tracks: z.array(z.object({
+        type: z.string(),
+        name: z.string(),
+        clips: z.array(z.any()),
+      }).passthrough()),
+    }),
+  }).passthrough(),
+  profile: z.enum(["preview", "standard", "high"]),
+  inputAssetKeys: z.record(z.string(), z.string()),
+});
+
 export const mediaJobsRouter = router({
+  submitRender: protectedProcedure
+    .input(renderSubmitSchema)
+    .mutation(async ({ input, ctx }) => {
+      const { computeRenderHash } = await import("../services/renderHash");
+      const { routeVideoJob } = await import("../services/videoJobRouter");
+
+      const project = input.project;
+      const profile = input.profile;
+      const inputAssetKeys = input.inputAssetKeys;
+
+      // Compute render hash
+      const renderHash = computeRenderHash(project, inputAssetKeys, profile);
+      const outputKey = `renders/${profile}/${renderHash}.mp4`;
+
+      // Check R2 cache — if the render already exists, return it immediately
+      try {
+        const { storageResolveUrl } = await import("../storage");
+        const existingUrl = await storageResolveUrl(outputKey);
+        if (existingUrl) {
+          return { cached: true, url: existingUrl, renderHash };
+        }
+      } catch {
+        // Fail-open: proceed with rendering if cache check fails
+      }
+
+      // Determine queue
+      const queueName = routeVideoJob(project);
+      const jobId = `render-${nanoid(21)}`;
+
+      // Build render spec
+      const renderSpec = {
+        project,
+        profile,
+        renderHash,
+        outputKey,
+        inputAssetKeys,
+        jobId,
+      };
+
+      // Store job in Redis for tracking
+      await setJobKey(jobId, "meta", {
+        userId: String(ctx.user.id),
+        submittedAt: Date.now(),
+      });
+      await setJobKey(jobId, "status", {
+        status: "queued",
+        progress: 0,
+        jobId,
+      });
+      await addActiveJob(String(ctx.user.id), jobId);
+      await addRecentJob(String(ctx.user.id), jobId);
+
+      // Enqueue to Cloud Tasks
+      try {
+        const { getFeatureFlag } = await import("../services/featureFlags");
+        const useCloudTasks = await getFeatureFlag("USE_CLOUD_TASKS");
+
+        if (useCloudTasks) {
+          const { enqueueTask } = await import("../services/cloudTasks");
+          await enqueueTask({
+            queueName,
+            handlerPath: "/tasks/process-video",
+            payload: {
+              render_spec: renderSpec,
+              queue_name: queueName,
+            },
+          });
+        } else {
+          // Dispatch via direct HTTP to Python backend
+          const { ENV } = await import("../_core/env");
+          const pythonUrl =
+            ENV.pythonBackendUrl ||
+            process.env.PYTHON_BACKEND_URL ||
+            "http://localhost:8000";
+          const resp = await fetch(`${pythonUrl}/api/v1/media/tasks/process-video`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              render_spec: renderSpec,
+              queue_name: queueName,
+            }),
+          });
+          if (!resp.ok) {
+            throw new Error(`Python backend returned ${resp.status}: ${resp.statusText}`);
+          }
+        }
+      } catch (e: unknown) {
+        await setJobKey(jobId, "status", {
+          status: "error",
+          progress: 0,
+          jobId,
+          message: "Failed to dispatch render job",
+        });
+        await removeActiveJob(String(ctx.user.id), jobId);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to dispatch render job",
+        });
+      }
+
+      return { cached: false, jobId, renderHash, queueName };
+    }),
+
   submitJob: protectedProcedure
     .input(jobSpecInputSchema)
     .mutation(async ({ input, ctx }) => {

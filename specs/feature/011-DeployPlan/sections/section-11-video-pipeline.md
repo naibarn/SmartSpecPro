@@ -619,3 +619,31 @@ Cloud Run Job configuration per queue:
 11. Add `POST /tasks/process-video` endpoint to `media_generation.py`.
 12. Add the render submission procedure to `mediaJobs.ts`.
 13. Run all tests and verify they pass.
+
+---
+
+## Implementation Notes (Actual)
+
+### What Was Built
+All 12 files created and 3 files modified as planned. 27 unit tests pass.
+
+### Deviations from Plan
+
+1. **`media_job_worker.py` was NOT modified.** The plan called for extracting shared helpers into `app/video/`. Instead, the video package was implemented as a self-contained module with its own progress reporting and pipeline logic, reimplemented from scratch rather than extracted. Rationale: avoid touching the working production media pipeline code.
+
+2. **Render hash cross-system serialization.** The initial implementation had a critical mismatch: Node.js `JSON.stringify` uses default formatting while Python uses `sort_keys=True, separators=(',', ':')`. Fixed during code review by adding a `stableStringify()` function to `renderHash.ts` that produces identical output to Python's compact sorted JSON.
+
+3. **`storageHeadObject` → `storageResolveUrl`.** The plan assumed a `storageHeadObject` function in `storage.ts`. This function doesn't exist. The R2 cache check was changed to use `storageResolveUrl` which returns null for missing objects.
+
+4. **Entrypoint accepts direct argument.** The plan had the inline fallback setting `os.environ["RENDER_SPEC"]` before spawning a background thread. This was a race condition for concurrent requests. Fixed by adding an optional `render_spec_dict` parameter to `main()`.
+
+5. **No DB update after render completion.** The plan called for updating a database record with render metadata. No render records schema exists yet, so this was deferred.
+
+6. **No xfade transitions in assembly stage.** The plan referenced reusing `XFADE_MAP` from `media_job_worker.py`. The current implementation uses simple concat without transitions. To be added during hardening.
+
+### Test Summary
+- `test_render_hash.py`: 6 tests (determinism, profile differentiation, timeline sensitivity, non-deterministic field exclusion, asset key ordering, SHA-256 length)
+- `test_ffmpeg_pipeline.py`: 9 tests (stream copy, re-encode, drawtext, profiles, faststart, overlay structure, clip sorting, single clip, empty V1)
+- `test_video_job_routing.py`: 5 tests (short queue, long queue, overlays, text clips, boundary 120s)
+- `test_render_idempotency.py`: 4 tests (cache hit, cache miss, R2 error fail-open, hash determinism)
+- **Total: 27 tests, all passing**

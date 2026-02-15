@@ -1514,12 +1514,12 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             )}
             {canEditActiveTransform && onAddKeyframeAtCurrentTime && activeClip?.id && (
               <button
-                className={`control-button text-button keyframe-button ${hasActiveKeyframeAtPlayhead ? 'primary' : ''}`}
+                className="control-button text-button keyframe-button"
                 onClick={() => onAddKeyframeAtCurrentTime(activeClip.id!)}
-                title={hasActiveKeyframeAtPlayhead ? 'Update keyframe at current playhead' : 'Add keyframe at current playhead'}
-                aria-label="Add keyframe at current playhead"
+                title="Set keyframe at current playhead (create if missing, replace if exists)"
+                aria-label="Set keyframe at current playhead"
               >
-                {hasActiveKeyframeAtPlayhead ? 'Update KF' : 'Add KF'}
+                Set KF
               </button>
             )}
             {canEditActiveTransform && onDeleteKeyframeAtCurrentTime && activeClip?.id && hasActiveKeyframeAtPlayhead && (
@@ -1582,8 +1582,8 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
         <div className="keyboard-hint">
           {renderFramePreviewOnly
-            ? 'Preview Lock ON: frame-accurate view (viewport pan/zoom disabled)'
-            : 'Space: Play/Pause | F: Fullscreen | Left/Right: Frame Step | Ctrl+Scroll: Preview Zoom | Drag: Pan'}
+            ? 'Preview Lock ON: frame-accurate view (viewport pan/zoom disabled) | KF edits apply immediately'
+            : 'Space: Play/Pause | F: Fullscreen | Left/Right: Frame Step | Ctrl+Scroll: Preview Zoom | Drag: Pan | KF edits apply immediately'}
         </div>
       </div>
     </div>

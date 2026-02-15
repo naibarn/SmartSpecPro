@@ -306,6 +306,21 @@ export interface RenderJob {
 }
 
 // ========================================
+// Render Spec (Cloud Run Job)
+// ========================================
+
+export type RenderProfile = 'preview' | 'standard' | 'high';
+
+export interface RenderSpec {
+  project: VideoEditorProject;       // Existing editor state (tracks, clips, assets)
+  profile: RenderProfile;
+  renderHash: string;                // sha256(inputs + timeline + profile)
+  outputKey: string;                 // R2 path: renders/{profile}/{renderHash}.mp4
+  inputAssetKeys: Record<string, string>;  // assetId -> R2 object key mapping
+  jobId?: string;                    // For progress tracking
+}
+
+// ========================================
 // Media Library
 // ========================================
 
