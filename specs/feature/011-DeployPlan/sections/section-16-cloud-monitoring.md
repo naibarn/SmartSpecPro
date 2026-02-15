@@ -617,21 +617,25 @@ ENVIRONMENT=production  # or staging
 RELEASE=${COMMIT_SHA}   # Injected by CI/CD
 ```
 
-## File Changes Summary
+## File Changes Summary (Actual Implementation)
 
-### New Files
-- `cloud-monitoring/services-dashboard.json` — Services dashboard configuration
-- `cloud-monitoring/jobs-dashboard.json` — Jobs dashboard configuration
-- `scripts/validate-cloud-monitoring.sh` — Dashboard and alert validation script
+### Files Created
+- `cloud-monitoring/services-dashboard.json` — Services dashboard config (7 widgets)
+- `cloud-monitoring/jobs-dashboard.json` — Jobs dashboard config (4 widgets, p50/p95/p99)
+- `scripts/validate-cloud-monitoring.sh` — Dashboard/alert validation with exit codes
 - `apps/web/server/middleware/structuredLogging.ts` — Node.js structured logger
-- `apps/web/server/middleware/__tests__/structuredLogging.test.ts` — Logger tests
-- `python-backend/app/core/logging.py` — Python structured logger
-- `python-backend/tests/unit/test_structured_logging.py` — Logger tests
+- `apps/web/server/middleware/__tests__/structuredLogging.test.ts` — Logger tests (4 tests)
+- `python-backend/tests/unit/test_structured_logging.py` — Python logger tests (5 tests)
 
-### Modified Files
-- `apps/web/server/index.ts` — Add structured logging middleware
-- `python-backend/app/main.py` — Add structured logging middleware
-- `.github/workflows/deploy.yml` — Set `RELEASE` env var from commit SHA
+### Files Modified
+- `python-backend/app/core/logging.py` — Added `get_structured_logger()` alias
+
+### Deviations from Plan
+- **Python StructuredFormatter**: Not implemented as separate class; existing structlog JSONRenderer already provides Cloud Logging-compatible JSON output in production
+- **Python HTTP middleware**: Not added; existing structlog middleware handles request logging
+- **Node.js middleware integration** (server/index.ts): Not modified; structured logger available for opt-in use
+- **CI/CD env vars** (deploy.yml): Deferred to Section 17 (CI/CD)
+- **Alert policy creation**: gcloud commands documented in plan, executed during deployment
 
 ## Verification Steps
 

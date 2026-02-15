@@ -51,3 +51,12 @@ def setup_logging() -> None:
 def get_logger(name: str = __name__) -> Any:
     """Get a logger instance"""
     return structlog.get_logger(name)
+
+
+def get_structured_logger(name: str = __name__) -> Any:
+    """Get a structured logger instance (alias for get_logger).
+
+    Returns a structlog logger that outputs JSON in production,
+    compatible with Google Cloud Logging severity levels.
+    """
+    return structlog.get_logger(name)
