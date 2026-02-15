@@ -18,7 +18,15 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 import structlog
 
-from app.services.cloud_tasks import QUEUE_CONFIGS
+from app.core.database import AsyncSessionLocal
+from app.services.cloud_tasks import QUEUE_CONFIGS, enqueue_task
+from app.services.media_task_service import MediaTaskService
+from app.api.v1.media_generation import (
+    _normalize_kie_task_state,
+    _extract_first_kie_result_url,
+    _extract_model_query_endpoint,
+)
+from app.models.media_task import TaskStatus
 
 logger = structlog.get_logger()
 
@@ -60,23 +68,197 @@ async def _check_dead_letter(
 # ── On-demand task handlers (from Section 4) ──────────────────────────────
 
 
+# Polling constants
+POLL_INITIAL_DELAY_SECONDS = 120  # 2 minutes
+POLL_MAX_DELAY_SECONDS = 1800  # 30 minutes
+POLL_TIMEOUT_MS = 24 * 3600 * 1000  # 24 hours in ms
+
+
 @router.post("/poll-job")
 async def poll_job(request: Request):
-    """Poll Kie AI for a specific job status.
+    """Poll Kie AI for a specific job status. Called by Cloud Tasks with retry.
 
-    Payload: {"job_id": str, "kie_job_id": str, "attempt": int}
+    Payload: {"job_id": str, "kie_job_id": str, "attempt": int, "submitted_at": int}
+
+    Returns 200 on success or permanent failure (stop retries).
+    Returns 5xx on transient errors (Cloud Tasks will retry).
     """
     body = await request.json()
     job_id = body.get("job_id")
     kie_job_id = body.get("kie_job_id")
     attempt = body.get("attempt", 0)
+    submitted_at = body.get("submitted_at", 0)
 
     logger.info("poll_job_handler", job_id=job_id, kie_job_id=kie_job_id, attempt=attempt)
 
-    return JSONResponse(
-        status_code=200,
-        content={"status": "acknowledged", "job_id": job_id},
-    )
+    # 1. Look up job and check if already terminal
+    async with AsyncSessionLocal() as db:
+        task = await MediaTaskService.get_task_by_external_id(db, kie_job_id)
+        if not task:
+            logger.warning("poll_job_task_not_found", kie_job_id=kie_job_id)
+            return JSONResponse(
+                status_code=200,
+                content={"status": "not_found", "job_id": job_id},
+            )
+
+        if task.status in (
+            TaskStatus.COMPLETED.value,
+            TaskStatus.FAILED.value,
+            TaskStatus.CANCELLED.value,
+        ):
+            return JSONResponse(
+                status_code=200,
+                content={"status": "already_completed", "job_id": job_id},
+            )
+
+        # 2. Call Kie AI status API
+        from app.services.media_provider_service import initialize_kie_ai_client
+
+        kie_client = await initialize_kie_ai_client()
+        if not kie_client:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "error", "message": "Kie AI client not available"},
+            )
+
+        # Resolve model-specific query endpoint
+        preferred_query_endpoint = None
+        if isinstance(task.parameters, dict):
+            api_cfg = task.parameters.get("api_config")
+            if isinstance(api_cfg, dict):
+                preferred_query_endpoint = (
+                    api_cfg.get("query_endpoint")
+                    or api_cfg.get("status_endpoint")
+                )
+        if not preferred_query_endpoint and task.model:
+            try:
+                from sqlalchemy import text
+
+                model_result = await db.execute(
+                    text(
+                        'SELECT "configJson" FROM media_models '
+                        'WHERE "modelId" = :model_id LIMIT 1'
+                    ),
+                    {"model_id": task.model},
+                )
+                model_row = model_result.fetchone()
+                if model_row:
+                    preferred_query_endpoint = _extract_model_query_endpoint(model_row[0])
+            except Exception as e:
+                logger.warning("poll_model_endpoint_lookup_failed", error=str(e))
+
+        try:
+            status_response = await kie_client.get_task_status(
+                kie_job_id,
+                preferred_status_endpoint=preferred_query_endpoint,
+            )
+        except Exception as e:
+            # Transient error — return 5xx so Cloud Tasks retries
+            logger.error(
+                "poll_job_kie_api_error",
+                job_id=job_id,
+                kie_job_id=kie_job_id,
+                error=str(e),
+            )
+            return JSONResponse(
+                status_code=500,
+                content={"status": "error", "message": f"Kie API error: {str(e)}"},
+            )
+
+        normalized_state, raw_state = _normalize_kie_task_state(status_response)
+        logger.info(
+            "poll_job_kie_status",
+            job_id=job_id,
+            kie_job_id=kie_job_id,
+            state=normalized_state,
+            raw_state=raw_state,
+        )
+
+        # 3. Handle completed
+        if normalized_state == "success":
+            result_url = _extract_first_kie_result_url(status_response)
+            await MediaTaskService.update_task_by_external_id(
+                db,
+                kie_job_id,
+                TaskStatus.COMPLETED,
+                result_url=result_url,
+                result_data={"kie_response": status_response},
+            )
+            if result_url:
+                await enqueue_task(
+                    queue_name="media-jobs",
+                    handler_path="/tasks/process-media",
+                    payload={
+                        "job_id": task.id,
+                        "kie_job_id": kie_job_id,
+                        "result_url": result_url,
+                        "media_type": task.media_type,
+                    },
+                    task_id=f"process-{task.id}",
+                )
+            return JSONResponse(
+                status_code=200,
+                content={"status": "completed", "job_id": job_id},
+            )
+
+        # 4. Handle permanent failure
+        if normalized_state == "fail":
+            error_msg = (
+                status_response.get("failMsg")
+                or status_response.get("data", {}).get("errorMessage")
+                or "Task failed on Kie AI"
+            )
+            await MediaTaskService.update_task_by_external_id(
+                db,
+                kie_job_id,
+                TaskStatus.FAILED,
+                error_message=error_msg,
+            )
+            return JSONResponse(
+                status_code=200,
+                content={"status": "failed", "job_id": job_id, "error": error_msg},
+            )
+
+        # 5. Still processing — check timeout
+        now_ms = int(time.time() * 1000)
+        if submitted_at and (now_ms - submitted_at) > POLL_TIMEOUT_MS:
+            await MediaTaskService.update_task_by_external_id(
+                db,
+                kie_job_id,
+                TaskStatus.FAILED,
+                error_message="Polling timeout: job did not complete within 24 hours",
+            )
+            return JSONResponse(
+                status_code=200,
+                content={"status": "timeout", "job_id": job_id},
+            )
+
+        # 6. Re-enqueue with exponential backoff
+        next_attempt = attempt + 1
+        delay = min(POLL_INITIAL_DELAY_SECONDS * (2**attempt), POLL_MAX_DELAY_SECONDS)
+
+        await enqueue_task(
+            queue_name="polling-tasks",
+            handler_path="/tasks/poll-job",
+            payload={
+                "job_id": job_id,
+                "kie_job_id": kie_job_id,
+                "attempt": next_attempt,
+                "submitted_at": submitted_at,
+            },
+            delay_seconds=delay,
+            task_id=f"poll-{job_id}-{next_attempt}",
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "polling",
+                "job_id": job_id,
+                "next_attempt": next_attempt,
+                "delay_seconds": delay,
+            },
+        )
 
 
 @router.post("/process-media")

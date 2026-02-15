@@ -210,7 +210,7 @@ async function dispatchToCelery(
   specJson: string,
   userId: string,
   jobId: string,
-) {
+): Promise<{ kie_job_id?: string }> {
   const { ENV } = await import("../_core/env");
   const pythonUrl =
     ENV.pythonBackendUrl || process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
@@ -232,10 +232,35 @@ async function dispatchToCelery(
     const body = await res.text().catch(() => "");
     throw new Error(`Celery dispatch failed: ${res.status} ${body}`);
   }
+
+  const body = await res.json().catch(() => ({}));
+  return { kie_job_id: body?.task_id || body?.kie_job_id };
+}
+
+/**
+ * Enqueue a Cloud Tasks polling task for Kie AI job status.
+ * The polling handler (Python /tasks/poll-job) will check Kie AI status
+ * with exponential backoff (2min, 4min, 8min, ... capped at 30min).
+ */
+async function enqueuePollingTask(jobId: string, kieJobId: string) {
+  const { enqueueTask } = await import("../services/cloudTasks");
+  await enqueueTask({
+    queueName: "polling-tasks",
+    handlerPath: "/tasks/poll-job",
+    payload: {
+      job_id: jobId,
+      kie_job_id: kieJobId,
+      attempt: 0,
+      submitted_at: Date.now(),
+    },
+    delaySeconds: 120, // First poll after 2 minutes
+    taskId: `poll-${jobId}-0`,
+  });
 }
 
 /**
  * Conditional dispatch: routes to Cloud Tasks or Celery based on feature flag.
+ * When using Cloud Tasks, also enqueues a polling task for Kie AI status checks.
  */
 async function dispatchJob(specJson: string, userId: string, jobId: string) {
   const { getFeatureFlag } = await import("../services/featureFlags");
@@ -250,7 +275,16 @@ async function dispatchJob(specJson: string, userId: string, jobId: string) {
       payload: { spec_json: resolvedSpecJson, user_id: userId, job_id: jobId },
     });
   } else {
-    await dispatchToCelery(specJson, userId, jobId);
+    const result = await dispatchToCelery(specJson, userId, jobId);
+    // If the Python backend returned a kie_job_id, enqueue polling as a safety net
+    if (result.kie_job_id) {
+      try {
+        await enqueuePollingTask(jobId, result.kie_job_id);
+      } catch (e) {
+        // Polling is a safety net; don't fail the submission
+        console.warn("Failed to enqueue polling task:", e);
+      }
+    }
   }
 }
 

@@ -405,30 +405,39 @@ This section follows the phased migration strategy from Section 4:
 
 ---
 
-## File Summary
+## File Summary (Actual Implementation)
 
 | File | Action | Description |
 |------|--------|-------------|
-| `python-backend/app/api/v1/media_generation.py` | Modify | Add `POST /api/webhooks/kie` with Redis dedup and Cloud Tasks enqueue |
-| `python-backend/app/api/v1/task_handlers.py` | Create | New file with `POST /tasks/poll-job` handler |
-| `python-backend/app/services/webhook_dedup.py` | Create | Redis-based webhook dedup service |
-| `apps/web/server/routers/mediaJobs.ts` | Modify | Add Cloud Tasks polling enqueue after Kie AI submission |
-| `apps/web/server/services/cloudTasks.ts` | Dependency | `enqueueTask()` function (from Section 4) |
-| `python-backend/tests/unit/api/test_kie_webhook_handler.py` | Create | Webhook handler tests |
-| `python-backend/tests/unit/api/test_kie_poll_handler.py` | Create | Polling handler tests |
-| `apps/web/server/routers/__tests__/mediaJobs.kie.test.ts` | Create | Job submission Cloud Tasks tests |
+| `python-backend/app/api/v1/kie_webhooks.py` | **Create** | `POST /api/webhooks/kie` — dedicated public webhook router with HMAC, Redis dedup, Cloud Tasks enqueue |
+| `python-backend/app/api/v1/task_handlers.py` | **Modify** | Added full `POST /tasks/poll-job` handler with exponential backoff and 24h timeout |
+| `python-backend/app/services/webhook_dedup.py` | **Create** | Redis-based webhook dedup service (24h TTL keys) |
+| `python-backend/app/main.py` | **Modify** | Registered `kie_webhooks.router` on app |
+| `apps/web/server/routers/mediaJobs.ts` | **Modify** | Added `enqueuePollingTask()`, updated `dispatchToCelery` to return `kie_job_id`, Cloud Tasks polling in `dispatchJob` |
+| `python-backend/tests/unit/api/test_kie_webhook_handler.py` | **Create** | 7 webhook handler tests |
+| `python-backend/tests/unit/api/test_kie_poll_handler.py` | **Create** | 6 polling handler tests |
+| `apps/web/server/routers/__tests__/mediaJobs.kie.test.ts` | **Create** | 3 Node.js job submission tests |
+
+### Deviations from Plan
+
+1. **Webhook in separate file**: The plan called for adding the webhook to `media_generation.py`. Code review identified that `/api/webhooks/kie` is a public endpoint that should NOT be behind the `/tasks/*` OIDC middleware, so it was placed in a new dedicated `kie_webhooks.py` with its own `APIRouter(prefix="/api/webhooks")`.
+
+2. **`task_handlers.py` already existed**: The plan listed this as "Create" but it was already created in Section 4 with a stub `poll_job` handler. The stub was replaced with the full implementation.
+
+3. **Feature flag gating deferred**: The `USE_CLOUD_TASKS` feature flag gating in the webhook handler was deferred — the webhook itself doesn't need a flag since it only processes incoming calls. The Node.js `dispatchJob` already has feature flag gating from Section 5.
+
+4. **`job_events` recording deferred**: The plan called for recording `job_events` entries. This was deferred as the `job_events` table/service doesn't exist yet and is not critical for the Cloud Tasks migration.
+
+5. **JSON parse error handling added**: Code review identified that `request.body()` parsing needed explicit `try/except` for malformed payloads (returns 400).
+
+6. **`enqueue_task` wrapped in try/except**: Code review identified that the media-processing enqueue in the webhook handler should be best-effort to avoid failing the entire webhook on transient Cloud Tasks errors.
+
+7. **Dead code bug fixed in Node.js**: Code review found that `useCloudTasks && result.kie_job_id` in the else branch of `dispatchJob` was dead code (always false). Fixed by removing the `useCloudTasks &&` guard.
 
 ---
 
-## Implementation Checklist
+## Test Results
 
-1. Write tests for webhook handler (signature validation, dedup, enqueue)
-2. Write tests for polling handler (completed, in-progress, timeout, idempotency)
-3. Write tests for Node.js job submission (polling enqueue, concurrency limit)
-4. Create `webhook_dedup.py` with Upstash Redis integration
-5. Create `task_handlers.py` with `POST /tasks/poll-job` handler
-6. Add `POST /api/webhooks/kie` endpoint to `media_generation.py`
-7. Update `mediaJobs.ts` to enqueue polling task after Kie AI submission
-8. Add feature flag gating (`USE_CLOUD_TASKS`) for gradual rollout
-9. Verify all tests pass
-10. Update Kie AI webhook configuration to point to new endpoint URL
+- **Python**: 13 tests passing (7 webhook + 6 polling)
+- **Node.js**: 3 tests passing
+- **Total**: 16 tests, all green

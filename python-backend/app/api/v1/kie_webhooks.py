@@ -1,0 +1,167 @@
+"""Kie AI webhook handler.
+
+Public endpoint for receiving Kie AI completion callbacks.
+Validates HMAC signature, checks Redis dedup, updates DB,
+and enqueues media-processing Cloud Tasks.
+
+This is NOT behind the OIDC middleware (unlike /tasks/* handlers),
+because it needs to accept external calls from Kie AI.
+"""
+
+import hashlib
+import hmac
+import json
+import os
+
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+import structlog
+
+from app.core.database import AsyncSessionLocal
+from app.services.cloud_tasks import enqueue_task
+from app.services.media_task_service import MediaTaskService
+from app.services.webhook_dedup import WebhookDedupService
+from app.api.v1.media_generation import (
+    _normalize_kie_task_state,
+    _extract_first_kie_result_url,
+)
+from app.models.media_task import TaskStatus
+
+logger = structlog.get_logger()
+
+router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
+
+
+@router.post("/kie")
+async def kie_webhook_handler(request: Request):
+    """Receive Kie AI completion callbacks. Public endpoint with HMAC validation.
+
+    This endpoint is the Cloud Tasks-era replacement for /callback/kie-ai.
+    It validates HMAC, checks Redis dedup, updates DB, and enqueues
+    a media-processing Cloud Task.
+    """
+    # 1. Validate HMAC signature
+    kie_webhook_secret = os.environ.get("KIE_AI_WEBHOOK_SECRET", "")
+    body_bytes = await request.body()
+
+    if kie_webhook_secret:
+        sig = request.headers.get("x-signature", "")
+        expected = hmac.new(
+            kie_webhook_secret.encode(), body_bytes, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            logger.warning("kie_webhook_invalid_signature")
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "error": "Invalid signature"},
+            )
+    else:
+        logger.warning("kie_webhook_no_secret_configured")
+
+    # 2. Parse body
+    try:
+        body = json.loads(body_bytes)
+    except (json.JSONDecodeError, ValueError):
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": "Invalid JSON payload"},
+        )
+
+    kie_job_id = body.get("taskId") or body.get("task_id")
+    if not kie_job_id:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": "Missing taskId"},
+        )
+
+    logger.info("kie_webhook_received", kie_job_id=kie_job_id)
+
+    # 3. Redis dedup check
+    dedup = WebhookDedupService()
+    if await dedup.is_duplicate(kie_job_id):
+        return JSONResponse(
+            status_code=200,
+            content={"success": True, "duplicate": True, "kie_job_id": kie_job_id},
+        )
+
+    # 4. Parse status and result URL
+    normalized_state, raw_state = _normalize_kie_task_state(body)
+    result_url = _extract_first_kie_result_url(body)
+
+    # 5. Look up job in DB
+    async with AsyncSessionLocal() as db:
+        task = await MediaTaskService.get_task_by_external_id(db, kie_job_id)
+        if not task:
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "error": "Job not found", "kie_job_id": kie_job_id},
+            )
+
+        # 6. Idempotency: already in terminal state
+        if task.status in (
+            TaskStatus.COMPLETED.value,
+            TaskStatus.FAILED.value,
+            TaskStatus.CANCELLED.value,
+        ):
+            await dedup.mark_processed(kie_job_id)
+            return JSONResponse(
+                status_code=200,
+                content={"success": True, "already_terminal": True, "kie_job_id": kie_job_id},
+            )
+
+        # 7. Handle completed
+        if normalized_state == "success" and result_url:
+            await MediaTaskService.update_task_by_external_id(
+                db,
+                kie_job_id,
+                TaskStatus.COMPLETED,
+                result_url=result_url,
+                result_data={"webhook_payload": body},
+            )
+            # Enqueue media processing (best-effort)
+            try:
+                await enqueue_task(
+                    queue_name="media-jobs",
+                    handler_path="/tasks/process-media",
+                    payload={
+                        "job_id": task.id,
+                        "kie_job_id": kie_job_id,
+                        "result_url": result_url,
+                        "media_type": task.media_type,
+                    },
+                    task_id=f"process-{task.id}",
+                )
+            except Exception as e:
+                logger.error(
+                    "kie_webhook_enqueue_media_failed",
+                    kie_job_id=kie_job_id,
+                    job_id=task.id,
+                    error=str(e),
+                )
+
+        # 8. Handle failed
+        elif normalized_state == "fail":
+            error_msg = (
+                body.get("failMsg")
+                or body.get("data", {}).get("errorMessage")
+                or body.get("error")
+                or "Task failed on Kie AI"
+            )
+            await MediaTaskService.update_task_by_external_id(
+                db,
+                kie_job_id,
+                TaskStatus.FAILED,
+                error_message=error_msg,
+            )
+
+    # 9. Store dedup key
+    await dedup.mark_processed(kie_job_id)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "success": True,
+            "kie_job_id": kie_job_id,
+            "state": normalized_state,
+        },
+    )
