@@ -6,10 +6,15 @@
 - Environment gate: `VITE_ENABLE_TEXT_CLIP_T1`.
   - Disable values: `0`, `false`, `off`, `disabled`, `no`.
 - Runtime canary override: `window.__SMARTSPEC_FEATURES__.textClipT1` (`true`/`false`).
+- Server admission gate:
+  - `TEXT_CLIP_T1_ENABLED` (default `true`)
+  - `TEXT_CLIP_T1_ENABLED_TENANTS` (optional comma-separated tenant allowlist)
+  - When allowlist is configured, missing tenant context fails closed for text-bearing jobs.
 
 When disabled:
 - Add Text entry points are hidden from toolbar/sidebar.
 - Existing non-text editing and export flows remain unchanged.
+- Direct media job submission with text semantics is rejected server-side.
 
 ## Required Telemetry Fields
 

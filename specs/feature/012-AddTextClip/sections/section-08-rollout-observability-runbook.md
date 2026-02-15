@@ -89,3 +89,4 @@ Finalize production readiness for Text Clip rollout with explicit feature gating
 ### Follow-Ups
 
 - Wire alert helpers to production monitoring pipeline dashboards/queries if/when infra-managed alert config is brought into this repository.
+- `fix_now` hardening follow-up applied post-section: backend submission paths now enforce tenant-aware text rollout admission to prevent API bypass of UI-only gating.

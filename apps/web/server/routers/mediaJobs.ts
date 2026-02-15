@@ -7,6 +7,7 @@ import { validateWebJobSpec } from "../../shared/types/mediaJobValidation";
 import { nanoid } from "nanoid";
 import type { Express, Request, Response } from "express";
 import { authorizeRequest } from "../_core/authz";
+import type { TenantRequest } from "../_core/tenant";
 import { rateLimit } from "../_core/limits";
 import multer from "multer";
 import { storagePut } from "../storage";
@@ -14,6 +15,7 @@ import { eq } from "drizzle-orm";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
+import { assertTextClipRolloutEnabledForSpec } from "../services/textClipRollout";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -181,6 +183,10 @@ async function checkConcurrencyLimit(userId: string): Promise<boolean> {
   }
   const currentCount = (await getActiveJobIds(userId)).length;
   return currentCount < MAX_CONCURRENT_JOBS;
+}
+
+function resolveTenantIdForContext(ctx: { tenantId?: unknown; user?: { currentTenantId?: unknown } }): unknown {
+  return ctx.tenantId ?? ctx.user?.currentTenantId ?? null;
 }
 
 // ========================================
@@ -402,6 +408,19 @@ export const mediaJobsRouter = router({
       const project = input.project;
       const profile = input.profile;
       const inputAssetKeys = input.inputAssetKeys;
+      const tenantId = resolveTenantIdForContext(ctx);
+
+      try {
+        assertTextClipRolloutEnabledForSpec(
+          { inputs: { project: project as any } } as MediaJobSpec,
+          tenantId,
+        );
+      } catch (error) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: error instanceof Error ? error.message : "Text clip rollout is disabled",
+        });
+      }
 
       // Compute render hash
       const renderHash = computeRenderHash(project, inputAssetKeys, profile);
@@ -503,6 +522,7 @@ export const mediaJobsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const jobId = input.jobId || nanoid(21);
       const spec: MediaJobSpec = { ...input, jobId } as MediaJobSpec;
+      const tenantId = resolveTenantIdForContext(ctx);
 
       // Validate (includes SSRF, codec allowlist, resolution/bitrate limits)
       const validation = validateWebJobSpec(spec, "web_backend");
@@ -510,6 +530,14 @@ export const mediaJobsRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: `Invalid job spec: ${validation.errors.join("; ")}`,
+        });
+      }
+      try {
+        assertTextClipRolloutEnabledForSpec(spec, tenantId);
+      } catch (error) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: error instanceof Error ? error.message : "Text clip rollout is disabled",
         });
       }
 
@@ -826,7 +854,7 @@ export function registerMediaJobRoutes(app: Express) {
   async function authenticateMediaJobRequest(
     req: Request,
     res: Response,
-  ): Promise<{ userId: string } | null> {
+  ): Promise<{ userId: string; tenantId: string | null } | null> {
     const auth = await authorizeRequest(req, {
       allowBearer: true,
       allowSession: true,
@@ -835,7 +863,9 @@ export function registerMediaJobRoutes(app: Express) {
       res.status(401).json({ error: auth.error });
       return null;
     }
-    return { userId: auth.sub };
+
+    const tenantReq = req as TenantRequest;
+    return { userId: auth.sub, tenantId: tenantReq.tenant?.id ?? null };
   }
 
   // ========================================
@@ -1129,6 +1159,15 @@ export function registerMediaJobRoutes(app: Express) {
       const validation = validateWebJobSpec(fullSpec, "web_backend");
       if (!validation.valid) {
         res.status(400).json({ error: validation.errors.join("; ") });
+        return;
+      }
+      try {
+        assertTextClipRolloutEnabledForSpec(fullSpec, authResult.tenantId);
+      } catch (error) {
+        res.status(403).json({
+          error:
+            error instanceof Error ? error.message : "Text clip rollout is disabled for this tenant cohort",
+        });
         return;
       }
 

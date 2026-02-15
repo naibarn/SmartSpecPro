@@ -109,3 +109,15 @@
 - decision: `repo_local_alert_evaluation_helpers`
 - mode_used: `auto`
 - rationale: Provides deterministic, testable alert/rollback policy behavior in-repo while external dashboard wiring remains an ops follow-up.
+
+- section: `post-implementation-hardening`
+- options_considered: `plan_now`, `fix_now`, `defer`
+- decision: `fix_now`
+- mode_used: `asked`
+- rationale: User selected immediate remediation for critical/high findings after mandatory security re-review.
+
+- section: `post-implementation-hardening`
+- options_considered: `frontend_gate_only`, `server_admission_gate_with_tenant_policy`
+- decision: `server_admission_gate_with_tenant_policy`
+- mode_used: `auto`
+- rationale: Enforcing rollout policy at backend submission boundaries closes direct API bypass risk and makes the feature gate authoritative.
