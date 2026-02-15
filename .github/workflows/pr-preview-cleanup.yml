@@ -1,0 +1,40 @@
+name: PR Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cleanup-preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Delete preview Cloud Run service
+        run: |
+          SERVICE_NAME="node-api-pr-${{ github.event.pull_request.number }}"
+          if gcloud run services describe "$SERVICE_NAME" --region=${{ secrets.GCP_REGION }} --quiet 2>/dev/null; then
+            gcloud run services delete "$SERVICE_NAME" \
+              --region=${{ secrets.GCP_REGION }} \
+              --quiet
+            echo "Deleted preview service: $SERVICE_NAME"
+          else
+            echo "Preview service $SERVICE_NAME not found, skipping."
+          fi
+
+      - name: Delete preview image
+        run: |
+          IMAGE="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:pr-${{ github.event.pull_request.number }}"
+          gcloud artifacts docker images delete "$IMAGE" --quiet 2>/dev/null || echo "Preview image not found, skipping."

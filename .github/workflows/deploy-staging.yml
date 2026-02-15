@@ -1,0 +1,144 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+      - name: Set image tags
+        id: tags
+        run: |
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - name: Build and push node-api image
+        run: |
+          docker build \
+            -f docker/Dockerfile.node-api \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.COMMIT_SHA }} \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:latest \
+            .
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.COMMIT_SHA }}
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:latest
+
+      - name: Build and push python-orchestrator image
+        run: |
+          docker build \
+            -f docker/Dockerfile.python-orchestrator \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:${{ steps.tags.outputs.COMMIT_SHA }} \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:latest \
+            .
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:${{ steps.tags.outputs.COMMIT_SHA }}
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:latest
+
+      - name: Build and push video-job-runner image
+        run: |
+          docker build \
+            -f docker/Dockerfile.video-job-runner \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:${{ steps.tags.outputs.COMMIT_SHA }} \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:latest \
+            .
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:${{ steps.tags.outputs.COMMIT_SHA }}
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:latest
+
+      - name: Run database migrations (Drizzle)
+        run: |
+          cd apps/web
+          npm install
+          DATABASE_URL="${{ secrets.NEON_STAGING_DB_URL }}" npm run db:push
+
+      - name: Deploy node-api to Cloud Run (canary 10%)
+        run: |
+          gcloud run deploy node-api-staging \
+            --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.COMMIT_SHA }} \
+            --platform=managed \
+            --region=${{ secrets.GCP_REGION }} \
+            --service-account=cloud-run-api@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --allow-unauthenticated \
+            --tag=canary-${{ steps.tags.outputs.COMMIT_SHA }} \
+            --no-traffic \
+            --set-env-vars="ENVIRONMENT=staging,RELEASE=${{ steps.tags.outputs.COMMIT_SHA }}"
+
+          gcloud run services update-traffic node-api-staging \
+            --to-revisions=canary-${{ steps.tags.outputs.COMMIT_SHA }}=10 \
+            --region=${{ secrets.GCP_REGION }}
+
+      - name: Deploy python-orchestrator to Cloud Run (canary 10%)
+        run: |
+          gcloud run deploy python-orchestrator-staging \
+            --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:${{ steps.tags.outputs.COMMIT_SHA }} \
+            --platform=managed \
+            --region=${{ secrets.GCP_REGION }} \
+            --service-account=cloud-run-api@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --no-allow-unauthenticated \
+            --tag=canary-${{ steps.tags.outputs.COMMIT_SHA }} \
+            --no-traffic \
+            --set-env-vars="ENVIRONMENT=staging,RELEASE=${{ steps.tags.outputs.COMMIT_SHA }}"
+
+          gcloud run services update-traffic python-orchestrator-staging \
+            --to-revisions=canary-${{ steps.tags.outputs.COMMIT_SHA }}=10 \
+            --region=${{ secrets.GCP_REGION }}
+
+      - name: Update Cloud Run Job (video-job-runner)
+        run: |
+          gcloud run jobs update video-job-runner-staging \
+            --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:${{ steps.tags.outputs.COMMIT_SHA }} \
+            --region=${{ secrets.GCP_REGION }}
+
+      - name: Run smoke tests
+        id: smoke-test
+        continue-on-error: true
+        run: |
+          bash scripts/smoke-test.sh https://node-api-staging-canary-${{ steps.tags.outputs.COMMIT_SHA }}---${{ secrets.GCP_REGION }}.run.app
+
+      - name: Shift 100% traffic on success
+        if: steps.smoke-test.outcome == 'success'
+        run: |
+          gcloud run services update-traffic node-api-staging \
+            --to-latest \
+            --region=${{ secrets.GCP_REGION }}
+
+          gcloud run services update-traffic python-orchestrator-staging \
+            --to-latest \
+            --region=${{ secrets.GCP_REGION }}
+
+      - name: Rollback on failure
+        if: steps.smoke-test.outcome == 'failure'
+        run: |
+          echo "Smoke tests failed. Rolling back canary traffic."
+          gcloud run services update-traffic node-api-staging \
+            --clear-tags \
+            --to-latest \
+            --region=${{ secrets.GCP_REGION }}
+
+          gcloud run services update-traffic python-orchestrator-staging \
+            --clear-tags \
+            --to-latest \
+            --region=${{ secrets.GCP_REGION }}
+
+          exit 1

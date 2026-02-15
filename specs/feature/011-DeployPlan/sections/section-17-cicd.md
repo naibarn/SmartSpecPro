@@ -619,46 +619,37 @@ Follow the Expand → Migrate → Contract pattern (see section-03-database). If
 - Monitor Cloud Run request latency (p95 should not increase)
 - Verify PostHog events continue flowing
 
-## File Modifications Required
+## Actual Implementation
 
-### New Files to Create
+### Files Created
 
-1. `.github/workflows/deploy-staging.yml` — Staging deployment workflow
-2. `.github/workflows/deploy-production.yml` — Production deployment workflow
-3. `.github/workflows/pr-preview.yml` — PR preview deployment workflow
-4. `scripts/smoke-test.sh` — Smoke test script for canary validation
-5. `scripts/test-docker-builds.sh` — Local Docker build validation
-6. `.github/workflows/tests/workflow-validation.test.sh` — Workflow YAML validation
+1. `.github/workflows/deploy-staging.yml` — Staging deployment workflow (canary 10% → 100% with rollback)
+2. `.github/workflows/deploy-production.yml` — Production deployment workflow (10% → 50% → manual approval → 100%)
+3. `.github/workflows/pr-preview.yml` — PR preview deployment workflow (unique Cloud Run service per PR)
+4. `.github/workflows/pr-preview-cleanup.yml` — PR preview cleanup on PR close (added via code review)
+5. `scripts/smoke-test.sh` — Smoke test script for canary validation (health, ready, login, static assets)
+6. `.github/workflows/tests/workflow-validation.test.sh` — Workflow YAML validation (actionlint)
+7. `apps/web/server/__tests__/ci-deployment.test.ts` — Vitest tests for deployment config logic (9 tests)
 
-### Existing Files to Modify
+### Deviations from Plan
 
-1. **`apps/web/package.json`** — Add migration script:
-   ```json
-   {
-     "scripts": {
-       "db:push": "drizzle-kit generate && drizzle-kit migrate"
-     }
-   }
-   ```
+1. **Dockerfile naming** — Plan used `docker/node-api.Dockerfile` but actual project uses `docker/Dockerfile.node-api` format. Corrected in all workflows.
+2. **Production URL** — Plan used `app.smartaihub.app` but production domain is `smartaihub.app`. Corrected.
+3. **`test-docker-builds.sh` not created** — `scripts/test-docker-images.sh` already existed with equivalent functionality.
+4. **`alembic.ini` not modified** — Python backend has alembic as a dependency but no migrations directory or alembic.ini yet. Alembic step removed from workflows since no migrations exist to run.
+5. **`.dockerignore` not modified** — Already comprehensive with all necessary exclusions.
+6. **`apps/web/package.json` not modified** — `db:push` script already existed.
+7. **PR preview cleanup workflow added** — Not in original plan. Code review identified resource leak: preview Cloud Run services and images accumulate without cleanup. Added workflow triggered on PR close.
+8. **Rollback logic fixed** — Code review found staging rollback used `--to-revisions=LATEST=100` which routes to the broken canary. Fixed to use `--clear-tags --to-latest`.
+9. **Production rollback added** — Plan had rollback procedures documented but production workflow had no rollback step. Added conditional rollback with `continue-on-error: true` on smoke test.
+10. **Production smoke test URL** — Plan tested against main domain which hits old code 90% of time. Fixed to dynamically resolve canary revision URL.
+11. **`github.TOKEN` case fix** — Plan used `${{ github.TOKEN }}` (incorrect) changed to `${{ github.token }}`.
 
-2. **`python-backend/alembic.ini`** — Ensure DATABASE_URL from env is used:
-   ```ini
-   sqlalchemy.url = env:DATABASE_URL
-   ```
+### Existing Files NOT Modified
 
-3. **`.dockerignore`** (if not already comprehensive) — Exclude unnecessary files:
-   ```
-   .git/
-   node_modules/
-   python-backend/.venv/
-   .env
-   .env.local
-   *.log
-   .turbo/
-   .next/
-   dist/
-   build/
-   ```
+- `apps/web/package.json` — `db:push` already exists
+- `.dockerignore` — Already comprehensive
+- `python-backend/alembic.ini` — Does not exist yet (no Alembic migrations)
 
 ## Success Criteria
 

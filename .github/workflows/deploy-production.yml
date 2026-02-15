@@ -1,0 +1,155 @@
+name: Deploy to Production
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://smartaihub.app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+      - name: Set image tags
+        id: tags
+        run: |
+          echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push all images
+        run: |
+          docker build -f docker/Dockerfile.node-api \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.RELEASE_TAG }} \
+            .
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.RELEASE_TAG }}
+
+          docker build -f docker/Dockerfile.python-orchestrator \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:${{ steps.tags.outputs.RELEASE_TAG }} \
+            .
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:${{ steps.tags.outputs.RELEASE_TAG }}
+
+          docker build -f docker/Dockerfile.video-job-runner \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:${{ steps.tags.outputs.RELEASE_TAG }} \
+            .
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:${{ steps.tags.outputs.RELEASE_TAG }}
+
+      - name: Run database migrations (Production)
+        run: |
+          cd apps/web
+          npm install
+          DATABASE_URL="${{ secrets.NEON_PROD_DB_URL }}" npm run db:push
+
+      - name: Deploy node-api to Cloud Run (10% canary)
+        run: |
+          gcloud run deploy node-api \
+            --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.RELEASE_TAG }} \
+            --platform=managed \
+            --region=${{ secrets.GCP_REGION }} \
+            --service-account=cloud-run-api@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --allow-unauthenticated \
+            --tag=release-${{ steps.tags.outputs.RELEASE_TAG }} \
+            --no-traffic \
+            --set-env-vars="ENVIRONMENT=production,RELEASE=${{ steps.tags.outputs.RELEASE_TAG }}"
+
+          gcloud run services update-traffic node-api \
+            --to-revisions=release-${{ steps.tags.outputs.RELEASE_TAG }}=10 \
+            --region=${{ secrets.GCP_REGION }}
+
+      - name: Deploy python-orchestrator to Cloud Run (10% canary)
+        run: |
+          gcloud run deploy python-orchestrator \
+            --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:${{ steps.tags.outputs.RELEASE_TAG }} \
+            --platform=managed \
+            --region=${{ secrets.GCP_REGION }} \
+            --service-account=cloud-run-api@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --no-allow-unauthenticated \
+            --tag=release-${{ steps.tags.outputs.RELEASE_TAG }} \
+            --no-traffic \
+            --set-env-vars="ENVIRONMENT=production,RELEASE=${{ steps.tags.outputs.RELEASE_TAG }}"
+
+          gcloud run services update-traffic python-orchestrator \
+            --to-revisions=release-${{ steps.tags.outputs.RELEASE_TAG }}=10 \
+            --region=${{ secrets.GCP_REGION }}
+
+      - name: Update Cloud Run Job (video-job-runner)
+        run: |
+          gcloud run jobs update video-job-runner \
+            --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:${{ steps.tags.outputs.RELEASE_TAG }} \
+            --region=${{ secrets.GCP_REGION }}
+
+      - name: Smoke test (10% canary)
+        id: smoke-test
+        continue-on-error: true
+        run: |
+          CANARY_URL=$(gcloud run services describe node-api \
+            --region=${{ secrets.GCP_REGION }} \
+            --format='value(status.traffic[tag=release-${{ steps.tags.outputs.RELEASE_TAG }}].url)')
+          bash scripts/smoke-test.sh "${CANARY_URL}"
+
+      - name: Rollback on smoke test failure
+        if: steps.smoke-test.outcome == 'failure'
+        run: |
+          echo "Smoke tests failed. Rolling back canary traffic."
+          gcloud run services update-traffic node-api \
+            --clear-tags \
+            --to-latest \
+            --region=${{ secrets.GCP_REGION }}
+
+          gcloud run services update-traffic python-orchestrator \
+            --clear-tags \
+            --to-latest \
+            --region=${{ secrets.GCP_REGION }}
+
+          exit 1
+
+      - name: Shift to 50% traffic
+        if: steps.smoke-test.outcome == 'success'
+        run: |
+          gcloud run services update-traffic node-api \
+            --to-revisions=release-${{ steps.tags.outputs.RELEASE_TAG }}=50 \
+            --region=${{ secrets.GCP_REGION }}
+
+          gcloud run services update-traffic python-orchestrator \
+            --to-revisions=release-${{ steps.tags.outputs.RELEASE_TAG }}=50 \
+            --region=${{ secrets.GCP_REGION }}
+
+      - name: Wait for manual approval
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.token }}
+          approvers: admin-user1,admin-user2
+          minimum-approvals: 1
+          issue-title: "Approve production deployment to 100%"
+
+      - name: Shift to 100% traffic
+        run: |
+          gcloud run services update-traffic node-api \
+            --to-latest \
+            --region=${{ secrets.GCP_REGION }}
+
+          gcloud run services update-traffic python-orchestrator \
+            --to-latest \
+            --region=${{ secrets.GCP_REGION }}
