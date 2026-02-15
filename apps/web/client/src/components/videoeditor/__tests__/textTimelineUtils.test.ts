@@ -37,6 +37,55 @@ describe('textTimelineUtils', () => {
     expect(clip.startTime).toBe(2);
   });
 
+  it('adds text clip at current playhead time even when text track already has clips', () => {
+    const project = createEmptyProject('Existing T1');
+    const textTrack = project.timeline.tracks.find((track) => track.type === 'text');
+    expect(textTrack).toBeDefined();
+
+    textTrack!.clips.push({
+      id: 'existing-text',
+      assetId: 'text-existing-asset',
+      trackId: textTrack!.id,
+      startTime: 12,
+      duration: 4,
+      trimIn: 0,
+      trimOut: 4,
+      volume: 0,
+      speed: 1,
+      effects: [],
+      textConfig: {
+        text: 'Existing',
+        fontFamily: 'Noto Sans',
+        fontSize: 42,
+        fontWeight: 700,
+        fontStyle: 'normal',
+        color: '#ffffff',
+        backgroundColor: 'transparent',
+        textAlign: 'center',
+        effect: 'none',
+      },
+    });
+
+    const clip = addTextClipToProject(
+      project,
+      {
+        text: 'Now',
+        fontFamily: 'Noto Sans',
+        fontSize: 48,
+        fontWeight: 700,
+        fontStyle: 'normal',
+        color: '#ffffff',
+        backgroundColor: 'transparent',
+        textAlign: 'center',
+        effect: 'none',
+      },
+      5,
+      3.5,
+    );
+
+    expect(clip.startTime).toBe(3.5);
+  });
+
   it('rejects unsupported strict-parity text effects', () => {
     const project = createEmptyProject('Strict');
 

@@ -78,6 +78,11 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
   const [textConfig, setTextConfig] = useState<TextConfig>(config || getDefaultTextConfig());
   const [duration, setDuration] = useState(initialDuration);
 
+  useEffect(() => {
+    setTextConfig(config || getDefaultTextConfig());
+    setDuration(initialDuration);
+  }, [config, initialDuration]);
+
   // Load the selected font
   useEffect(() => {
     loadGoogleFont(textConfig.fontFamily, textConfig.fontWeight);
@@ -279,7 +284,7 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
       `}</style>
 
       <div className="tce-header">
-        <span>Add Text Overlay</span>
+        <span>{config ? 'Edit Text Overlay' : 'Add Text Overlay'}</span>
       </div>
 
       <div className="tce-body">

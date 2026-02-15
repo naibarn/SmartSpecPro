@@ -1136,7 +1136,18 @@ export const VideoEditorPhase3: React.FC = () => {
   // Text Clip Management
   // ========================================
 
-  const handleAddTextClip = useCallback((textConfig: TextConfig, duration: number) => {
+  const selectedTextClip = useMemo((): Clip | null => {
+    if (!selectedClipId) return null;
+    for (const track of project.timeline.tracks) {
+      const clip = track.clips.find((candidate) => candidate.id === selectedClipId);
+      if (clip?.textConfig) {
+        return clip;
+      }
+    }
+    return null;
+  }, [project.timeline.tracks, selectedClipId]);
+
+  const handleSaveTextClip = useCallback((textConfig: TextConfig, duration: number) => {
     if (!textClipRolloutEnabled) {
       showToast('Text clip rollout is disabled for this cohort.', 'info', 3000);
       setSidebarView('library');
@@ -1145,13 +1156,28 @@ export const VideoEditorPhase3: React.FC = () => {
 
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
-      addTextClipToProject(newProject, textConfig, duration, currentTime);
+      if (selectedTextClip) {
+        for (const track of newProject.timeline.tracks) {
+          const clip = track.clips.find((candidate: Clip) => candidate.id === selectedTextClip.id);
+          if (!clip) continue;
+          clip.textConfig = textConfig;
+          clip.duration = Math.max(0.5, duration);
+          clip.trimOut = clip.trimIn + clip.duration;
+          break;
+        }
+        newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+        newProject.modifiedAt = new Date().toISOString();
+      } else {
+        const addedClip = addTextClipToProject(newProject, textConfig, duration, currentTime);
+        setSelectedClipId(addedClip.id);
+        setSelectedClipIds([]);
+      }
       addToHistory(newProject);
       return newProject;
     });
 
-    setSidebarView('library');
-  }, [addToHistory, currentTime, textClipRolloutEnabled]);
+    setSidebarView('text');
+  }, [addToHistory, currentTime, selectedTextClip, textClipRolloutEnabled]);
 
   // ========================================
   // Compound Clips (Group/Ungroup)
@@ -2490,7 +2516,9 @@ export const VideoEditorPhase3: React.FC = () => {
               )}
               {sidebarView === 'text' && textClipRolloutEnabled && (
                 <TextClipEditor
-                  onSave={handleAddTextClip}
+                  config={selectedTextClip?.textConfig}
+                  duration={selectedTextClip?.duration ?? 5}
+                  onSave={handleSaveTextClip}
                   onCancel={() => setSidebarView('library')}
                 />
               )}

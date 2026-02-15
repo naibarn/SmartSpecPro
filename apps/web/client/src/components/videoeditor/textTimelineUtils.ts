@@ -76,8 +76,7 @@ export function addTextClipToProject(
     duration,
   };
 
-  const lastClip = textTrack.clips[textTrack.clips.length - 1];
-  const startTime = lastClip ? lastClip.startTime + lastClip.duration : currentTime;
+  const startTime = Number.isFinite(currentTime) ? Math.max(0, currentTime) : 0;
 
   const newClip: Clip = {
     id: generateId('clip'),
