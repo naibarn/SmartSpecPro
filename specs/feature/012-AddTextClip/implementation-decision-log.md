@@ -67,3 +67,15 @@
 - decision: `render_text_on_empty_preview_stage`
 - mode_used: `auto`
 - rationale: Preserves text preview behavior for text-only timelines and avoids misleading blank preview states.
+
+- section: `section-05-render-pipeline-ass`
+- options_considered: `single_pass_filter_graph_integration`, `two_pass_text_burnin_after_base_render`
+- decision: `two_pass_text_burnin_after_base_render`
+- mode_used: `auto`
+- rationale: Lower integration risk for this section while still enforcing canonical ASS output and deterministic fallback behavior.
+
+- section: `section-05-render-pipeline-ass`
+- options_considered: `broad_drawtext_eligibility`, `strict_equivalence_gate`
+- decision: `strict_equivalence_gate`
+- mode_used: `auto`
+- rationale: Conservative acceptance criteria avoids preview/render parity drift and ensures ASS remains canonical unless equivalence is explicit.

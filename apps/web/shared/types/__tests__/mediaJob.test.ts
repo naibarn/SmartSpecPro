@@ -779,3 +779,105 @@ describe("msToSeconds / secondsToMs — additional edge cases", () => {
     expect(msToSeconds(333)).toBeCloseTo(0.333, 3);
   });
 });
+
+describe("projectToTimeline — text semantics", () => {
+  it("preserves text payload and deterministic z-order metadata", () => {
+    const project = createEmptyProject("Text Render");
+    const textTrack = project.timeline.tracks.find((track) => track.type === "text");
+    expect(textTrack).toBeDefined();
+
+    textTrack!.clips.push(
+      {
+        id: "txt-1",
+        assetId: "asset-text-1",
+        trackId: textTrack!.id,
+        startTime: 1.0,
+        duration: 3.0,
+        trimIn: 0,
+        trimOut: 3.0,
+        volume: 0,
+        speed: 1,
+        effects: [],
+        transform: {
+          x: 0.25,
+          y: 0.35,
+          scaleX: 1.0,
+          scaleY: 1.0,
+          rotation: 0,
+          opacity: 1,
+          keyframes: [
+            {
+              time: 0,
+              x: 0.25,
+              y: 0.35,
+              scaleX: 1,
+              scaleY: 1,
+              rotation: 0,
+              opacity: 1,
+              easing: "linear",
+            },
+          ],
+        },
+        textConfig: {
+          text: "Hello",
+          fontFamily: "Noto Sans",
+          fontSize: 48,
+          fontWeight: 700,
+          fontStyle: "normal",
+          color: "#FFFFFF",
+          backgroundColor: "transparent",
+          textAlign: "center",
+          effect: "none",
+        },
+      },
+      {
+        id: "txt-2",
+        assetId: "asset-text-2",
+        trackId: textTrack!.id,
+        startTime: 1.5,
+        duration: 2.0,
+        trimIn: 0,
+        trimOut: 2.0,
+        volume: 0,
+        speed: 1,
+        effects: [],
+        transform: {
+          x: 0.6,
+          y: 0.7,
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+          opacity: 1,
+          keyframes: [],
+        },
+        textConfig: {
+          text: "World",
+          fontFamily: "Roboto",
+          fontSize: 36,
+          fontWeight: 400,
+          fontStyle: "italic",
+          color: "#FFCC00",
+          backgroundColor: "transparent",
+          textAlign: "left",
+          effect: "shadow",
+          effectColor: "#000000",
+        },
+      },
+    );
+
+    const timeline = projectToTimeline(project);
+    const subtitleTrack = timeline.tracks.find((track) => track.type === "subtitle");
+    expect(subtitleTrack).toBeDefined();
+    expect(subtitleTrack!.clips).toHaveLength(2);
+
+    expect(subtitleTrack!.clips[0].clipId).toBe("txt-1");
+    expect(subtitleTrack!.clips[0].zOrder).toBe(0);
+    expect(subtitleTrack!.clips[0].textConfig?.text).toBe("Hello");
+    expect(subtitleTrack!.clips[0].transform?.keyframes?.[0].easing).toBe("linear");
+
+    expect(subtitleTrack!.clips[1].clipId).toBe("txt-2");
+    expect(subtitleTrack!.clips[1].zOrder).toBe(1);
+    expect(subtitleTrack!.clips[1].textConfig?.fontFamily).toBe("Roboto");
+    expect(subtitleTrack!.clips[1].textConfig?.effect).toBe("shadow");
+  });
+});

@@ -63,6 +63,19 @@ SHELL_METACHAR_RE = re.compile(r"[;|&`$(){}><]")
 
 # Strip all ASCII control characters (0x00-0x1f, 0x7f) for safe log/error output
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
+_HEX_COLOR_RE = re.compile(r"^#?([0-9a-fA-F]{6})$")
+
+_RENDER_FONT_WHITELIST = {
+    "Noto Sans": "Noto Sans",
+    "Noto Sans Thai": "Noto Sans Thai",
+    "Roboto": "Roboto",
+    "Open Sans": "Open Sans",
+    "Lato": "Lato",
+    "Montserrat": "Montserrat",
+    "Poppins": "Poppins",
+    "Ubuntu": "Ubuntu",
+}
+_DEFAULT_RENDER_FONT = "Noto Sans"
 
 
 def _to_int(val: Any, default: int = 0) -> int:
@@ -147,6 +160,232 @@ def _safe_clip_id(clip: dict, max_len: int = 50) -> str:
     """Return a log-safe clip ID stripped of all control characters."""
     raw = str(clip.get("clipId", "?"))[:max_len]
     return _CONTROL_CHAR_RE.sub("", raw)
+
+
+def _resolve_render_font_family(font_family: str | None) -> tuple[str, bool]:
+    """Resolve to strict whitelist for deterministic render parity."""
+    if isinstance(font_family, str) and font_family in _RENDER_FONT_WHITELIST:
+        return _RENDER_FONT_WHITELIST[font_family], False
+    return _DEFAULT_RENDER_FONT, True
+
+
+def _ass_escape_text(text: str) -> str:
+    """Escape ASS dialogue text safely."""
+    return (
+        text.replace("\\", "\\\\")
+        .replace("{", r"\{")
+        .replace("}", r"\}")
+        .replace(",", r"\,")
+        .replace("\r", "")
+        .replace("\n", r"\N")
+    )
+
+
+def _drawtext_escape_text(text: str) -> str:
+    """Escape drawtext text value safely."""
+    return (
+        text.replace("\\", r"\\")
+        .replace(":", r"\:")
+        .replace("'", r"\'")
+        .replace("[", r"\[")
+        .replace("]", r"\]")
+        .replace("%", r"\%")
+        .replace("\r", "")
+        .replace("\n", r"\n")
+    )
+
+
+def _ass_color_from_hex(hex_color: str | None) -> str:
+    """Convert #RRGGBB to ASS BGR format (&H00BBGGRR)."""
+    if not isinstance(hex_color, str):
+        return "&H00FFFFFF"
+    m = _HEX_COLOR_RE.match(hex_color)
+    if not m:
+        return "&H00FFFFFF"
+    raw = m.group(1)
+    r = int(raw[0:2], 16)
+    g = int(raw[2:4], 16)
+    b = int(raw[4:6], 16)
+    return f"&H00{b:02X}{g:02X}{r:02X}"
+
+
+def _seconds_to_ass_timestamp(seconds: float) -> str:
+    """Format seconds as H:MM:SS.CS for ASS."""
+    cs_total = max(0, int(round(seconds * 100)))
+    h = cs_total // 360000
+    rem = cs_total % 360000
+    m = rem // 6000
+    rem = rem % 6000
+    s = rem // 100
+    cs = rem % 100
+    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+
+
+def _extract_text_clips_for_render(project: dict) -> list[dict]:
+    """Extract ordered text clips from subtitle/text-capable tracks."""
+    tracks = project.get("tracks", []) if isinstance(project, dict) else []
+    ordered: list[tuple[int, int, int, dict]] = []
+    for track_idx, track in enumerate(tracks):
+        track_type = track.get("type")
+        if track_type not in ("subtitle", "text", "video", "overlay"):
+            continue
+        clips = track.get("clips", [])
+        for clip_idx, clip in enumerate(clips):
+            if not isinstance(clip.get("textConfig"), dict):
+                continue
+            start_ms = _to_int(clip.get("startMs"), default=0)
+            out_ms = _to_int(clip.get("outMs"), default=0)
+            z_order = _to_int(clip.get("zOrder"), default=clip_idx)
+            normalized = dict(clip)
+            normalized["startMs"] = max(0, start_ms)
+            normalized["outMs"] = max(normalized["startMs"] + 1, out_ms)
+            ordered.append((normalized["startMs"], z_order, track_idx * 100000 + clip_idx, normalized))
+    ordered.sort(key=lambda item: (item[0], item[1], item[2]))
+    return [item[3] for item in ordered]
+
+
+def _evaluate_drawtext_fast_path(text_clips: list[dict]) -> dict[str, Any]:
+    """Strict equivalence gate for drawtext fast-path."""
+    if not text_clips:
+        return {"eligible": False, "reason": "no_text_clips"}
+
+    for clip in text_clips:
+        config = clip.get("textConfig")
+        if not isinstance(config, dict):
+            return {"eligible": False, "reason": "missing_text_config"}
+
+        text = str(config.get("text", ""))
+        if "\n" in text or "\r" in text:
+            return {"eligible": False, "reason": "multiline_text"}
+
+        if config.get("effect", "none") != "none":
+            return {"eligible": False, "reason": "unsupported_effect"}
+
+        _font, used_fallback = _resolve_render_font_family(config.get("fontFamily"))
+        if used_fallback:
+            return {"eligible": False, "reason": "font_unresolved"}
+
+        transform = clip.get("transform") or {}
+        keyframes = transform.get("keyframes")
+        if isinstance(keyframes, list) and len(keyframes) > 0:
+            return {"eligible": False, "reason": "animated_transform"}
+
+        scale_x = _to_float(transform.get("scaleX"), 1.0)
+        scale_y = _to_float(transform.get("scaleY"), 1.0)
+        rotation = _to_float(transform.get("rotation"), 0.0)
+        opacity = _to_float(transform.get("opacity"), 1.0)
+        if abs(scale_x - 1.0) > 1e-3 or abs(scale_y - 1.0) > 1e-3:
+            return {"eligible": False, "reason": "unsupported_scale"}
+        if abs(rotation) > 1e-3:
+            return {"eligible": False, "reason": "unsupported_rotation"}
+        if opacity < 0.999:
+            return {"eligible": False, "reason": "unsupported_opacity"}
+
+        background_color = str(config.get("backgroundColor", "transparent")).lower()
+        if background_color not in ("transparent", "none", ""):
+            return {"eligible": False, "reason": "unsupported_background"}
+
+    return {"eligible": True, "reason": "accepted_equivalent"}
+
+
+def _generate_ass_document(text_clips: list[dict], width: int, height: int) -> str:
+    """Generate deterministic ASS content for canonical text render path."""
+    header = [
+        "[Script Info]",
+        "ScriptType: v4.00+",
+        "WrapStyle: 2",
+        "ScaledBorderAndShadow: yes",
+        f"PlayResX: {max(1, width)}",
+        f"PlayResY: {max(1, height)}",
+        "",
+        "[V4+ Styles]",
+        "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,"
+        "Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,"
+        "Alignment,MarginL,MarginR,MarginV,Encoding",
+    ]
+
+    styles: list[str] = []
+    dialogues: list[str] = []
+
+    for idx, clip in enumerate(text_clips):
+        cfg = clip.get("textConfig", {})
+        transform = clip.get("transform") or {}
+        font_name, _ = _resolve_render_font_family(cfg.get("fontFamily"))
+        style_name = f"Style{idx}"
+        font_size = max(8, min(256, _to_int(cfg.get("fontSize"), default=48)))
+        bold = 1 if _to_int(cfg.get("fontWeight"), default=400) >= 600 else 0
+        italic = 1 if str(cfg.get("fontStyle", "normal")).lower() == "italic" else 0
+        primary = _ass_color_from_hex(cfg.get("color"))
+        effect = str(cfg.get("effect", "none"))
+        if effect == "outline":
+            outline = 2
+            shadow = 0
+        elif effect == "shadow":
+            outline = 1
+            shadow = 2
+        else:
+            outline = 0
+            shadow = 0
+        align_map = {"left": 1, "center": 2, "right": 3}
+        alignment = align_map.get(str(cfg.get("textAlign", "center")).lower(), 2)
+        styles.append(
+            f"Style: {style_name},{font_name},{font_size},{primary},{primary},&H00000000,&H00000000,"
+            f"{bold},{italic},0,0,100,100,0,0,1,{outline},{shadow},{alignment},20,20,20,1"
+        )
+
+        start_s = _to_int(clip.get("startMs"), default=0) / 1000.0
+        end_s = _to_int(clip.get("outMs"), default=0) / 1000.0
+        if end_s <= start_s:
+            end_s = start_s + 0.001
+        start_ts = _seconds_to_ass_timestamp(start_s)
+        end_ts = _seconds_to_ass_timestamp(end_s)
+        x = int(round(max(0.0, min(1.0, _to_float(transform.get("x"), 0.5))) * width))
+        y = int(round(max(0.0, min(1.0, _to_float(transform.get("y"), 0.5))) * height))
+        text = _ass_escape_text(str(cfg.get("text", "")))
+        dialogues.append(
+            f"Dialogue: 0,{start_ts},{end_ts},{style_name},,0,0,0,,{{\\pos({x},{y})}}{text}"
+        )
+
+    event_header = [
+        "",
+        "[Events]",
+        "Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text",
+    ]
+    return "\n".join(header + styles + event_header + dialogues) + "\n"
+
+
+def _build_drawtext_filter(text_clips: list[dict], width: int, height: int) -> str:
+    """Build deterministic drawtext filter chain for strict fast-path inputs."""
+    filters: list[str] = []
+    for clip in text_clips:
+        cfg = clip.get("textConfig", {})
+        transform = clip.get("transform") or {}
+        font_name, _ = _resolve_render_font_family(cfg.get("fontFamily"))
+        text = _drawtext_escape_text(str(cfg.get("text", "")))
+        start_s = _to_int(clip.get("startMs"), default=0) / 1000.0
+        end_s = _to_int(clip.get("outMs"), default=0) / 1000.0
+        if end_s <= start_s:
+            end_s = start_s + 0.001
+        x = int(round(max(0.0, min(1.0, _to_float(transform.get("x"), 0.5))) * width))
+        y = int(round(max(0.0, min(1.0, _to_float(transform.get("y"), 0.5))) * height))
+        size = max(8, min(256, _to_int(cfg.get("fontSize"), default=48)))
+        color = cfg.get("color") if isinstance(cfg.get("color"), str) else "#FFFFFF"
+        filters.append(
+            "drawtext="
+            f"font='{font_name}':"
+            f"text='{text}':"
+            f"x={x}:y={y}:"
+            f"fontsize={size}:"
+            f"fontcolor={color}:"
+            f"enable='between(t,{start_s:.1f},{end_s:.1f})'"
+        )
+    return ",".join(filters)
+
+
+def _build_subtitles_filter(ass_path: str) -> str:
+    """Build subtitles filter with ffmpeg-safe path escaping."""
+    escaped = ass_path.replace("\\", r"\\").replace(":", r"\:").replace("'", r"\'")
+    return f"subtitles='{escaped}'"
 
 
 def parse_job_spec(spec_json: str) -> dict:
@@ -725,8 +964,17 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
     os.makedirs(render_dir, exist_ok=True)
     output_path = os.path.join(render_dir, safe_filename)
 
+    project = spec.get("inputs", {}).get("project") or {}
+    text_clips = _extract_text_clips_for_render(project)
+    base_output_path = output_path
+    if text_clips:
+        base_output_path = os.path.join(
+            render_dir,
+            f"{os.path.splitext(safe_filename)[0]}_base.mp4",
+        )
+
     # Override output target in spec so FFmpeg writes to the correct location
-    spec.setdefault("output", {})["target"] = output_path
+    spec.setdefault("output", {})["target"] = base_output_path
 
     cmd = build_ffmpeg_command_for_render(spec)
 
@@ -745,11 +993,136 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
         _render_log.error("ffmpeg_render_failed", job_id=job_id, returncode=process.returncode, stderr=stderr[-2000:])
         raise RuntimeError(f"FFmpeg render failed: {_sanitize_stderr(stderr)}")
 
+    text_render_derived: dict[str, Any] | None = None
+    if text_clips:
+        report_progress(job_id, 0.75, "text_burnin", "Applying text overlay")
+        proj_w = _to_int(project.get("width"), default=1920) or 1920
+        proj_h = _to_int(project.get("height"), default=1080) or 1080
+        fast_path = _evaluate_drawtext_fast_path(text_clips)
+        drawtext_result = None
+        strategy = "ass"
+        fallback_reason = fast_path["reason"]
+
+        if fast_path["eligible"]:
+            drawtext_filter = _build_drawtext_filter(text_clips, proj_w, proj_h)
+            drawtext_cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                base_output_path,
+                "-vf",
+                drawtext_filter,
+                "-c:v",
+                "libx264",
+                "-profile:v",
+                "high",
+                "-level",
+                "4.0",
+                "-pix_fmt",
+                "yuv420p",
+                "-crf",
+                "18",
+                "-movflags",
+                "+faststart",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-ar",
+                "48000",
+                output_path,
+            ]
+            _render_log.info("ffmpeg_text_fastpath_cmd", job_id=job_id, cmd=" ".join(drawtext_cmd))
+            drawtext_result = subprocess.run(
+                drawtext_cmd,
+                capture_output=True,
+                text=True,
+                timeout=1800,
+            )
+            if drawtext_result.returncode == 0:
+                strategy = "drawtext"
+                fallback_reason = "accepted_equivalent"
+            else:
+                fallback_reason = "drawtext_runtime_fallback"
+                _render_log.warning(
+                    "ffmpeg_text_fastpath_fallback",
+                    job_id=job_id,
+                    reason=fallback_reason,
+                    stderr=(drawtext_result.stderr or "")[-1500:],
+                )
+
+        if strategy != "drawtext":
+            ass_path = os.path.join(render_dir, "text_overlay.ass")
+            ass_doc = _generate_ass_document(text_clips, proj_w, proj_h)
+            with open(ass_path, "w", encoding="utf-8") as fh:
+                fh.write(ass_doc)
+            ass_cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                base_output_path,
+                "-vf",
+                _build_subtitles_filter(ass_path),
+                "-c:v",
+                "libx264",
+                "-profile:v",
+                "high",
+                "-level",
+                "4.0",
+                "-pix_fmt",
+                "yuv420p",
+                "-crf",
+                "18",
+                "-movflags",
+                "+faststart",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-ar",
+                "48000",
+                output_path,
+            ]
+            _render_log.info("ffmpeg_text_ass_cmd", job_id=job_id, cmd=" ".join(ass_cmd))
+            ass_result = subprocess.run(
+                ass_cmd,
+                capture_output=True,
+                text=True,
+                timeout=1800,
+            )
+            if ass_result.returncode != 0:
+                _render_log.error(
+                    "ffmpeg_text_ass_failed",
+                    job_id=job_id,
+                    reason=fallback_reason,
+                    stderr=(ass_result.stderr or "")[-2000:],
+                )
+                raise RuntimeError(
+                    f"FFmpeg text burn-in failed: {_sanitize_stderr(ass_result.stderr or '')}"
+                )
+
+        font_fallback_count = 0
+        for clip in text_clips:
+            cfg = clip.get("textConfig", {})
+            _resolved, used_fallback = _resolve_render_font_family(cfg.get("fontFamily"))
+            if used_fallback:
+                font_fallback_count += 1
+        text_render_derived = {
+            "strategy": strategy,
+            "fastPathEligible": fast_path["eligible"],
+            "fastPathReason": fallback_reason,
+            "fontFallbackCount": font_fallback_count,
+            "textClipCount": len(text_clips),
+        }
+
     # Return serveable URL (Python backend serves this via /api/v1/media/files/renders/)
     serve_url = f"/api/v1/media/files/renders/{user_id}/{job_id}/{safe_filename}"
-    return {
+    result: dict[str, Any] = {
         "artifacts": [{"kind": "video", "uri": serve_url, "mime": "video/mp4"}],
     }
+    if text_render_derived:
+        result["derived"] = {"textRender": text_render_derived}
+    return result
 
 
 def handle_waveform_peaks(spec: dict, tmp_dir: str) -> dict:
