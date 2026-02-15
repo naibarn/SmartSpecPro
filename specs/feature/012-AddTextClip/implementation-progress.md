@@ -98,7 +98,7 @@
 
 ## Post-Implementation Hardening (`fix_now`)
 
-- commit: `pending`
+- commit: `ff50b3c`
 - test_command: `cd apps/web && npm test -- server/services/textClipRollout.test.ts client/src/components/videoeditor/__tests__/textRollout.test.ts client/src/components/videoeditor/__tests__/Toolbar.textRollout.test.tsx client/src/components/videoeditor/__tests__/PreviewPlayer.textParity.test.tsx && cd ../python-backend && UV_CACHE_DIR=/tmp/uv-cache PYTEST_ADDOPTS='--no-cov' uv run pytest tests/unit/test_media_job_text_render.py`
 - pass_fail_summary: `pass` (4 frontend files, 19 tests; 1 backend file, 12 tests)
 - notable_deviations:

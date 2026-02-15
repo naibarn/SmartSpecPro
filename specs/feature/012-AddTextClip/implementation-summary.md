@@ -18,7 +18,7 @@
 ## Post-Implementation Hardening (`fix_now`)
 
 - status: applied
-- commit: `pending`
+- commit: `ff50b3c`
 - action: enforced backend text-rollout admission gating for text-bearing media job submissions.
 - files:
   - `apps/web/server/services/textClipRollout.ts`
