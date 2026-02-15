@@ -7,8 +7,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool
-import structlog
+import os
 import re
+
+import structlog
 
 from app.core.config import settings
 
@@ -32,12 +34,14 @@ if settings.DATABASE_URL.startswith("sqlite"):
 else:
     # NOTE: pool_pre_ping=False because it's incompatible with asyncpg
     # (causes MissingGreenlet error). Use pool_recycle instead.
+    _pool_size = int(os.environ.get("DB_POOL_SIZE", "5"))
+    _max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "5"))
     engine = create_async_engine(
         settings.DATABASE_URL,
         echo=settings.DEBUG,
         pool_pre_ping=False,
-        pool_size=10,
-        max_overflow=20,
+        pool_size=_pool_size,
+        max_overflow=_max_overflow,
         pool_recycle=300,  # Recycle connections every 5 minutes
     )
 

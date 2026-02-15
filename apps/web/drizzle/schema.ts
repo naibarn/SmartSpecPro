@@ -3091,3 +3091,40 @@ export const workflowPolicyRules = pgTable("workflow_policy_rules", {
 
 export type WorkflowPolicyRule = typeof workflowPolicyRules.$inferSelect;
 export type InsertWorkflowPolicyRule = typeof workflowPolicyRules.$inferInsert;
+
+// Cloud Task Events — Tracks Cloud Tasks execution for observability and DLQ
+export const cloudTaskEvents = pgTable("cloud_task_events", {
+  id: serial("id").primaryKey(),
+
+  /** Cloud Tasks task ID (from X-CloudTasks-TaskName header) */
+  taskId: varchar("taskId", { length: 512 }).notNull(),
+
+  /** Queue name (e.g., 'media-jobs', 'video-jobs-short') */
+  queueName: varchar("queueName", { length: 128 }).notNull(),
+
+  /** Application-level job ID (links to media_tasks or other job tables) */
+  jobId: varchar("jobId", { length: 128 }),
+
+  /** Task status: queued, processing, completed, failed, dead_letter */
+  status: varchar("status", { length: 32 }).notNull().default("queued"),
+
+  /** Number of retry attempts (from X-CloudTasks-TaskRetryCount) */
+  attemptCount: integer("attemptCount").default(0).notNull(),
+
+  /** Task payload (JSON body sent to the handler) */
+  payload: json("payload").$type<Record<string, unknown>>(),
+
+  /** Error message on failure */
+  errorMessage: text("errorMessage"),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+}, (t) => [
+  index("cloud_task_events_task_id_idx").on(t.taskId),
+  index("cloud_task_events_status_idx").on(t.status),
+  index("cloud_task_events_queue_name_idx").on(t.queueName),
+  index("cloud_task_events_job_id_idx").on(t.jobId),
+]);
+
+export type CloudTaskEvent = typeof cloudTaskEvents.$inferSelect;
+export type InsertCloudTaskEvent = typeof cloudTaskEvents.$inferInsert;

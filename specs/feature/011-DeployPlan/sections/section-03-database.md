@@ -450,7 +450,7 @@ This is optional for MVP but recommended as a safety net. No code changes are re
 | `/home/dev/projects/SmartSpecPro/apps/web/server/__tests__/cloudTaskEvents.schema.test.ts` | Create | Schema validation tests for `cloud_task_events` |
 | `/home/dev/projects/SmartSpecPro/apps/web/server/__tests__/connectionPool.test.ts` | Create | Connection pooling configuration tests |
 | `/home/dev/projects/SmartSpecPro/apps/web/server/__tests__/migrationOrdering.test.ts` | Create | Migration ordering validation tests |
-| `/home/dev/projects/SmartSpecPro/apps/web/scripts/__tests__/seedProduction.test.ts` | Create | Seed script idempotency tests |
+| `/home/dev/projects/SmartSpecPro/apps/web/server/__tests__/seedProduction.test.ts` | Create | Seed script idempotency tests (placed in server/__tests__ to match vitest include pattern) |
 | `/home/dev/projects/SmartSpecPro/python-backend/app/models/media_task.py` | Modify | Add `cloud_task_id` column to `MediaTask` model |
 | `/home/dev/projects/SmartSpecPro/python-backend/migrations/005_add_cloud_task_id.py` | Create | Alembic migration to add `cloud_task_id` column |
 | `/home/dev/projects/SmartSpecPro/python-backend/app/core/database.py` | Modify | Make pool size configurable via environment variables |
@@ -460,12 +460,21 @@ This is optional for MVP but recommended as a safety net. No code changes are re
 
 ## Implementation Checklist
 
-1. Add `cloudTaskEvents` table definition to `schema.ts` and run `pnpm db:push`
-2. Add `cloud_task_id` column to Python `MediaTask` model and create Alembic migration
-3. Update `db.ts` to accept pool size from environment variable
-4. Update `database.py` to accept pool size from environment variable
-5. Create `seed-production.ts` with idempotent inserts for admin, tenant, and settings
-6. Write all test files listed above
-7. Run `pnpm test` to verify schema tests pass
-8. Run `pytest` to verify Python migration tests pass
-9. Verify migration ordering: Drizzle first, then Alembic, no conflicts
+1. [x] Add `cloudTaskEvents` table definition to `schema.ts` (migration deferred to deployment)
+2. [x] Add `cloud_task_id` column to Python `MediaTask` model and create migration script
+3. [x] Update `db.ts` to accept pool size from environment variable (read inside getDb() at connection time)
+4. [x] Update `database.py` to accept pool size from environment variable (DB_POOL_SIZE, DB_MAX_OVERFLOW)
+5. [x] Create `seed-production.ts` with idempotent inserts (SELECT-before-INSERT for settings, email check for admin)
+6. [x] Write all test files: 15 tests across 4 Vitest files + 3 pytest tests
+7. [x] Run `pnpm test` — 15/15 pass
+8. [x] Run `pytest` — 3/3 pass
+9. [x] Verify migration ordering via migrationOrdering.test.ts
+
+## Deviations from Plan
+
+- **Seed test location**: Placed in `server/__tests__/seedProduction.test.ts` instead of `scripts/__tests__/` to match vitest include pattern
+- **Seed idempotency**: Changed from `onConflictDoNothing` (which requires unique constraints) to SELECT-before-INSERT for admin user and system settings, since `users.email` and `systemSettings(category,key)` lack unique constraints
+- **Temp password**: Reads from `ADMIN_TEMP_PASSWORD` env var or generates random UUID (not hardcoded)
+- **Pool size**: Read inside `getDb()` at connection time, not at module load, to support dynamic env injection
+- **Python migration**: Standalone script (not Alembic revision), matching existing project convention (004_oauth_drive_extensions.py)
+- **Pool size defaults**: Python reduced from hardcoded 10/20 to configurable 5/5 to match Neon connection limits

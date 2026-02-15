@@ -13,7 +13,12 @@ export type DrizzleDB = ReturnType<typeof drizzle>;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _client = postgres(process.env.DATABASE_URL);
+      const poolSize = parseInt(process.env.DB_POOL_SIZE || "5", 10);
+      _client = postgres(process.env.DATABASE_URL, {
+        max: poolSize,
+        idle_timeout: 20,       // Close idle connections after 20s
+        connect_timeout: 10,    // Timeout connection attempts after 10s
+      });
       _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);

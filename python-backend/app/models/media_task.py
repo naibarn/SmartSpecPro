@@ -34,6 +34,7 @@ class MediaTask(Base):
     id = Column(String(36), primary_key=True)
     task_id = Column(String(64), nullable=True, index=True)  # External provider task ID (e.g., Kie.ai task ID)
     celery_task_id = Column(String(36), nullable=True, index=True)  # Internal Celery task UUID for tracking/monitoring
+    cloud_task_id = Column(String(512), nullable=True, index=True)  # Cloud Tasks task name for tracking
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     # Use String instead of Enum to match existing database schema (varchar columns)
     media_type = Column(String(20), nullable=False)
@@ -76,6 +77,7 @@ class MediaTask(Base):
             "id": self.id,
             "task_id": self.task_id,
             "celery_task_id": self.celery_task_id,
+            "cloud_task_id": self.cloud_task_id,
             "user_id": self.user_id,
             "media_type": get_value(self.media_type),
             "status": get_value(self.status),
