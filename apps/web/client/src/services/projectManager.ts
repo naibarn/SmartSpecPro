@@ -4,7 +4,13 @@
  * Platform-aware: uses Tauri APIs on desktop, web APIs on browser.
  */
 
-import type { TextConfig, TransformKeyframe, VideoEditorProject } from '../types/videoEditor';
+import type {
+  TextConfig,
+  TransformEasing,
+  TransformKeyframe,
+  TransformKeyframeProperty,
+  VideoEditorProject,
+} from '../types/videoEditor';
 import { migrateProjectV1ToV2 } from '../types/videoEditor';
 
 // ========================================
@@ -44,6 +50,15 @@ export const STRICT_PARITY_TEXT_CAPABILITY_MATRIX = Object.freeze({
 });
 
 const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+const VALID_TRANSFORM_EASINGS: TransformEasing[] = ['linear', 'ease-in', 'ease-out', 'ease-in-out'];
+const VALID_TRANSFORM_EASING_PROPERTIES: TransformKeyframeProperty[] = [
+  'x',
+  'y',
+  'scaleX',
+  'scaleY',
+  'rotation',
+  'opacity',
+];
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
@@ -55,6 +70,29 @@ function sanitizeColor(value: unknown, fallback: string): string {
   if (value === 'transparent') return value;
   if (!HEX_COLOR_RE.test(value)) return fallback;
   return value.toLowerCase();
+}
+
+function normalizeTransformEasing(value: unknown, fallback: TransformEasing = 'linear'): TransformEasing {
+  if (typeof value !== 'string') return fallback;
+  return (VALID_TRANSFORM_EASINGS as string[]).includes(value) ? (value as TransformEasing) : fallback;
+}
+
+function normalizeTransformEasingOverrides(
+  value: unknown,
+): Partial<Record<TransformKeyframeProperty, TransformEasing>> | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+
+  const raw = value as Record<string, unknown>;
+  const normalized: Partial<Record<TransformKeyframeProperty, TransformEasing>> = {};
+
+  for (const property of VALID_TRANSFORM_EASING_PROPERTIES) {
+    const easing = normalizeTransformEasing(raw[property], 'linear');
+    if (typeof raw[property] === 'string' && easing === raw[property]) {
+      normalized[property] = easing;
+    }
+  }
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
 function hasTextSemantics(projectData: any): boolean {
@@ -104,6 +142,9 @@ function validateTransformKeyframes(rawKeyframes: any): TransformKeyframe[] {
     if (time < 0 || time > 1) {
       throw new Error('Text keyframe time must be between 0 and 1');
     }
+    const easing = normalizeTransformEasing(keyframe.easing, 'linear');
+    const easingOverrides = normalizeTransformEasingOverrides(keyframe.easingOverrides);
+
     return {
       time,
       x: clampNumber(keyframe.x, 0, 1, 0.5),
@@ -112,7 +153,8 @@ function validateTransformKeyframes(rawKeyframes: any): TransformKeyframe[] {
       scaleY: clampNumber(keyframe.scaleY, 0.1, 3, 1),
       rotation: clampNumber(keyframe.rotation, -360, 360, 0),
       opacity: clampNumber(keyframe.opacity, 0, 1, 1),
-      easing: typeof keyframe.easing === 'string' ? keyframe.easing : 'linear',
+      easing,
+      ...(easingOverrides ? { easingOverrides } : {}),
     } satisfies TransformKeyframe;
   });
 

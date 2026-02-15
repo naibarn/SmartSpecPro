@@ -499,6 +499,57 @@ describe("validateProjectStructure — clips", () => {
 
     expect(() => validateProjectStructure(p)).toThrow("unique time markers");
   });
+
+  it("normalizes and preserves per-property easing overrides on text keyframes", () => {
+    const p = validProject();
+    getTrack(p, "track-t1").clips.push({
+      id: "text-1",
+      assetId: "text-asset-1",
+      trackId: "track-t1",
+      startTime: 0,
+      duration: 3,
+      trimIn: 0,
+      trimOut: 3,
+      textConfig: {
+        text: "Hello",
+      },
+      transform: {
+        x: 0.5,
+        y: 0.5,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
+        keyframes: [
+          {
+            time: 0.5,
+            x: 0.5,
+            y: 0.5,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            rotation: 15,
+            opacity: 0.8,
+            easing: "ease-in-out",
+            easingOverrides: {
+              x: "ease-out",
+              scaleX: "ease-in",
+              opacity: "invalid-mode",
+              unknownProperty: "ease-in",
+            },
+          },
+        ],
+      },
+    });
+
+    const result = validateProjectStructure(p);
+    const keyframe = getTrack(result, "track-t1").clips[0].transform.keyframes[0] as any;
+
+    expect(keyframe.easing).toBe("ease-in-out");
+    expect(keyframe.easingOverrides).toEqual({
+      x: "ease-out",
+      scaleX: "ease-in",
+    });
+  });
 });
 
 // ========================================

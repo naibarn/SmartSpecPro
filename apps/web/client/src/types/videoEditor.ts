@@ -190,6 +190,18 @@ export interface ClipTransform {
   keyframes?: TransformKeyframe[];
 }
 
+export type TransformEasing = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+
+export type TransformKeyframeProperty =
+  | 'x'
+  | 'y'
+  | 'scaleX'
+  | 'scaleY'
+  | 'rotation'
+  | 'opacity';
+
+export type TransformEasingOverrides = Partial<Record<TransformKeyframeProperty, TransformEasing>>;
+
 export interface TransformKeyframe {
   time: number;              // Time in clip duration (0 - 1 normalized)
   x: number;
@@ -198,7 +210,8 @@ export interface TransformKeyframe {
   scaleY: number;
   rotation: number;
   opacity: number;
-  easing?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+  easing?: TransformEasing;
+  easingOverrides?: TransformEasingOverrides;
 }
 
 // ========================================

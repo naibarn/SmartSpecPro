@@ -37,3 +37,15 @@
 - decision: `strict_parity_effect_controls_only`
 - mode_used: `auto`
 - rationale: Keeps editor interaction layer aligned with capability matrix and prevents unsupported options from entering timeline state.
+
+- section: `section-03-text-authoring-keyframes`
+- options_considered: `ui_plus_schema_easing_overrides`, `schema_first_with_existing_ui`
+- decision: `schema_first_with_existing_ui`
+- mode_used: `auto`
+- rationale: Section objective can be met with deterministic persistence/interpolation semantics first, while keeping UI complexity controlled and parity-safe.
+
+- section: `section-03-text-authoring-keyframes`
+- options_considered: `reject_invalid_property_overrides`, `drop_invalid_and_fallback_to_segment`
+- decision: `drop_invalid_and_fallback_to_segment`
+- mode_used: `auto`
+- rationale: This preserves backward compatibility for malformed payloads while guaranteeing deterministic behavior.

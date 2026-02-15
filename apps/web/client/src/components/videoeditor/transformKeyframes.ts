@@ -1,4 +1,11 @@
-import type { ClipTransform, TransformKeyframe } from '../../types/videoEditor';
+import type {
+  ClipTransform,
+  TransformEasing,
+  TransformKeyframe,
+  TransformKeyframeProperty,
+} from '../../types/videoEditor';
+
+const VALID_EASINGS: TransformEasing[] = ['linear', 'ease-in', 'ease-out', 'ease-in-out'];
 
 export const DEFAULT_CLIP_TRANSFORM: ClipTransform = {
   x: 0.5,
@@ -15,7 +22,21 @@ export function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-export function applyTransformEasing(t: number, easing: string): number {
+function normalizeTransformEasing(value: unknown, fallback: TransformEasing = 'linear'): TransformEasing {
+  if (typeof value !== 'string') return fallback;
+  return (VALID_EASINGS as string[]).includes(value) ? (value as TransformEasing) : fallback;
+}
+
+function resolveEasingForProperty(
+  keyframe: TransformKeyframe,
+  property: TransformKeyframeProperty,
+  segmentEasing: TransformEasing,
+): TransformEasing {
+  const override = keyframe.easingOverrides?.[property];
+  return normalizeTransformEasing(override, segmentEasing);
+}
+
+export function applyTransformEasing(t: number, easing: TransformEasing): number {
   switch (easing) {
     case 'ease-in':
       return t * t;
@@ -57,16 +78,23 @@ export function resolveTransformAtTime(
     const b = keyframes[i + 1];
     if (time >= a.time && time <= b.time) {
       const progress = (time - a.time) / Math.max(0.000001, b.time - a.time);
-      const eased = applyTransformEasing(progress, b.easing || 'linear');
+      const segmentEasing = normalizeTransformEasing(b.easing, 'linear');
+      const easedX = applyTransformEasing(progress, resolveEasingForProperty(b, 'x', segmentEasing));
+      const easedY = applyTransformEasing(progress, resolveEasingForProperty(b, 'y', segmentEasing));
+      const easedScaleX = applyTransformEasing(progress, resolveEasingForProperty(b, 'scaleX', segmentEasing));
+      const easedScaleY = applyTransformEasing(progress, resolveEasingForProperty(b, 'scaleY', segmentEasing));
+      const easedRotation = applyTransformEasing(progress, resolveEasingForProperty(b, 'rotation', segmentEasing));
+      const easedOpacity = applyTransformEasing(progress, resolveEasingForProperty(b, 'opacity', segmentEasing));
       return {
         time,
-        x: a.x + (b.x - a.x) * eased,
-        y: a.y + (b.y - a.y) * eased,
-        scaleX: a.scaleX + (b.scaleX - a.scaleX) * eased,
-        scaleY: a.scaleY + (b.scaleY - a.scaleY) * eased,
-        rotation: a.rotation + (b.rotation - a.rotation) * eased,
-        opacity: a.opacity + (b.opacity - a.opacity) * eased,
-        easing: b.easing || 'linear',
+        x: a.x + (b.x - a.x) * easedX,
+        y: a.y + (b.y - a.y) * easedY,
+        scaleX: a.scaleX + (b.scaleX - a.scaleX) * easedScaleX,
+        scaleY: a.scaleY + (b.scaleY - a.scaleY) * easedScaleY,
+        rotation: a.rotation + (b.rotation - a.rotation) * easedRotation,
+        opacity: a.opacity + (b.opacity - a.opacity) * easedOpacity,
+        easing: segmentEasing,
+        ...(b.easingOverrides ? { easingOverrides: { ...b.easingOverrides } } : {}),
       };
     }
   }

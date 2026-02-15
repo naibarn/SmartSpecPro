@@ -74,4 +74,63 @@ describe('transformKeyframes utilities', () => {
     expect(updated.keyframes?.[0].time).toBeCloseTo(0.1, 5);
     expect(updated.keyframes?.[1].time).toBeCloseTo(0.9, 5);
   });
+
+  it('applies per-property easing overrides when present', () => {
+    const transform = {
+      ...DEFAULT_CLIP_TRANSFORM,
+      keyframes: [
+        { time: 0, x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 0, easing: 'linear' as const },
+        {
+          time: 1,
+          x: 1,
+          y: 1,
+          scaleX: 3,
+          scaleY: 3,
+          rotation: 100,
+          opacity: 1,
+          easing: 'linear' as const,
+          easingOverrides: {
+            x: 'ease-in' as const,
+            y: 'ease-out' as const,
+          },
+        },
+      ],
+    };
+
+    const result = resolveTransformAtTime(transform, 0.5);
+    expect(result.x).toBeCloseTo(0.25, 5);
+    expect(result.y).toBeCloseTo(0.75, 5);
+    expect(result.scaleX).toBeCloseTo(2, 5);
+    expect(result.scaleY).toBeCloseTo(2, 5);
+    expect(result.rotation).toBeCloseTo(50, 5);
+    expect(result.opacity).toBeCloseTo(0.5, 5);
+  });
+
+  it('falls back to segment easing when per-property override is absent', () => {
+    const transform = {
+      ...DEFAULT_CLIP_TRANSFORM,
+      keyframes: [
+        { time: 0, x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 0, easing: 'linear' as const },
+        {
+          time: 1,
+          x: 1,
+          y: 1,
+          scaleX: 3,
+          scaleY: 3,
+          rotation: 100,
+          opacity: 1,
+          easing: 'ease-in-out' as const,
+          easingOverrides: {
+            x: 'ease-out' as const,
+          },
+        },
+      ],
+    };
+
+    const result = resolveTransformAtTime(transform, 0.5);
+    expect(result.x).toBeCloseTo(0.75, 5);
+    expect(result.y).toBeCloseTo(0.5, 5);
+    expect(result.scaleX).toBeCloseTo(2, 5);
+    expect(result.rotation).toBeCloseTo(50, 5);
+  });
 });
