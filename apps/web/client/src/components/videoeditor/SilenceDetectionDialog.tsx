@@ -632,15 +632,69 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     setPlaybackTime(Math.max(0, Math.min(maxTime, time)));
   }, [duration]);
 
+  const applyRegionSelectionUpdate = useCallback(
+    (updater: (region: SilentRegion) => SilentRegion) => {
+      setRawRegions((prev) => prev.map(updater));
+      setRegions((prev) => prev.map(updater));
+    },
+    [],
+  );
+
   const handleRegionToggle = useCallback((regionId: string) => {
-    setRegions((prev) =>
-      prev.map((region) =>
-        region.id === regionId && !region.skipped
-          ? { ...region, selected: !region.selected }
-          : region
-      )
+    applyRegionSelectionUpdate((region) =>
+      region.id === regionId && !region.skipped
+        ? { ...region, selected: !region.selected }
+        : region
     );
-  }, []);
+  }, [applyRegionSelectionUpdate]);
+
+  const handleSelectAllCut = useCallback(() => {
+    applyRegionSelectionUpdate((region) =>
+      !region.skipped ? { ...region, selected: true } : region
+    );
+  }, [applyRegionSelectionUpdate]);
+
+  const handleSelectAllKeep = useCallback(() => {
+    applyRegionSelectionUpdate((region) =>
+      !region.skipped ? { ...region, selected: false } : region
+    );
+  }, [applyRegionSelectionUpdate]);
+
+  const handleInvertSelection = useCallback(() => {
+    applyRegionSelectionUpdate((region) =>
+      !region.skipped ? { ...region, selected: !region.selected } : region
+    );
+  }, [applyRegionSelectionUpdate]);
+
+  const handleManualRangeCreate = useCallback((startTime: number, endTime: number) => {
+    if (!analysisComplete) return;
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return;
+
+    const start = Math.max(0, Math.min(startTime, endTime));
+    const end = Math.max(start, Math.max(startTime, endTime));
+    if (end - start < 0.05) return;
+
+    const fallbackTrackId = selectedTrackIds[0] || audioTracks[0]?.id || 'manual-track';
+    const region: SilentRegion = {
+      id: generateId('region'),
+      startTime: start,
+      endTime: end,
+      duration: end - start,
+      adjustedStartTime: 0,
+      adjustedEndTime: 0,
+      adjustedDuration: 0,
+      averageDb: threshold,
+      trackId: fallbackTrackId,
+      selected: true,
+      skipped: false,
+    };
+
+    setRawRegions((prev) => {
+      const next = [...prev, region].sort((a, b) => a.startTime - b.startTime);
+      return next;
+    });
+    setSkipSilenceEnabled(true);
+  }, [analysisComplete, selectedTrackIds, audioTracks, threshold]);
 
   const handlePlayPause = useCallback(() => {
     setIsPlaying((prev) => !prev);
@@ -858,9 +912,27 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     );
   };
 
-  const selectedRegionCount = regions.filter((r) => r.selected && !r.skipped).length;
+  const editableRegions = useMemo(() => (
+    regions
+      .filter((r) => !r.skipped)
+      .sort((a, b) => a.adjustedStartTime - b.adjustedStartTime)
+  ), [regions]);
+  const selectedRegionCount = editableRegions.filter((r) => r.selected).length;
+  const keepRegionCount = Math.max(0, editableRegions.length - selectedRegionCount);
+  const activeRegionAtPlayhead = useMemo(
+    () => findRegionAtTime(editableRegions, playbackTime),
+    [editableRegions, playbackTime],
+  );
+  const activeRegionId = activeRegionAtPlayhead?.id ?? null;
   const exportDisabled = !analysisComplete || selectedRegionCount === 0;
   const hasWaveform = Array.isArray(waveformData) && waveformData.length > 0;
+  const effectiveTimelineDuration = useMemo(() => {
+    if (Number.isFinite(duration) && duration > 0) return duration;
+    const maxRegionEnd = regions.reduce((max, region) => (
+      Math.max(max, region.endTime, region.adjustedEndTime)
+    ), 0);
+    return Math.max(1, projectDuration, maxRegionEnd);
+  }, [duration, regions, projectDuration]);
   const timelineReady = timelineViewportSize.width > 0 && timelineViewportSize.height > 0;
   const timelineContentWidth = timelineReady
     ? Math.max(
@@ -880,6 +952,38 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     const selectedRegions = regions.filter((r) => r.selected && !r.skipped);
     onExportToTimeline(selectedRegions, applyToAllTracks);
   };
+
+  const handleToggleCurrentRegion = useCallback(() => {
+    if (!activeRegionAtPlayhead) return;
+    handleRegionToggle(activeRegionAtPlayhead.id);
+  }, [activeRegionAtPlayhead, handleRegionToggle]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!analysisComplete) return;
+      if (event.key !== 'x' && event.key !== 'X') return;
+
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tagName = target.tagName;
+        if (
+          tagName === 'INPUT' ||
+          tagName === 'TEXTAREA' ||
+          tagName === 'SELECT' ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+
+      if (!activeRegionAtPlayhead) return;
+      event.preventDefault();
+      handleRegionToggle(activeRegionAtPlayhead.id);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [analysisComplete, activeRegionAtPlayhead, handleRegionToggle]);
 
   return (
     <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -1399,6 +1503,105 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               font-weight: 600;
               color: #fff;
             }
+            .selection-actions {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 8px;
+            }
+            .selection-action-btn {
+              background: #252525;
+              border: 1px solid #4a4a4a;
+              color: #ddd;
+              border-radius: 4px;
+              padding: 7px 10px;
+              font-size: 12px;
+              cursor: pointer;
+            }
+            .selection-action-btn:hover:not(:disabled) {
+              background: #2f2f2f;
+            }
+            .selection-action-btn:disabled {
+              opacity: 0.55;
+              cursor: not-allowed;
+            }
+            .selection-summary {
+              display: flex;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: 10px;
+              color: #aeb8c2;
+              font-size: 12px;
+            }
+            .region-list {
+              border: 1px solid #3f3f3f;
+              border-radius: 6px;
+              max-height: 230px;
+              overflow-y: auto;
+              background: #1f1f1f;
+            }
+            .region-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 8px;
+              padding: 8px 10px;
+              border-bottom: 1px solid #2f2f2f;
+              cursor: pointer;
+            }
+            .region-row:last-child {
+              border-bottom: none;
+            }
+            .region-row.active {
+              outline: 1px solid #5aa4ff;
+              outline-offset: -1px;
+            }
+            .region-row.cut {
+              background: rgba(255, 59, 59, 0.1);
+            }
+            .region-row.keep {
+              background: rgba(56, 211, 110, 0.08);
+            }
+            .region-row-main {
+              display: flex;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: 8px;
+              min-width: 0;
+            }
+            .region-row-index {
+              color: #9fb0bf;
+              font-size: 12px;
+              min-width: 30px;
+            }
+            .region-row-times {
+              color: #f0f4f8;
+              font-size: 12px;
+              font-weight: 600;
+              white-space: nowrap;
+            }
+            .region-row-meta {
+              color: #9fb0bf;
+              font-size: 11px;
+              white-space: nowrap;
+            }
+            .region-toggle-btn {
+              border: 1px solid #4a4a4a;
+              border-radius: 999px;
+              padding: 5px 10px;
+              font-size: 11px;
+              line-height: 1;
+              cursor: pointer;
+            }
+            .region-toggle-btn.cut {
+              background: rgba(255, 59, 59, 0.22);
+              border-color: #ff6b6b;
+              color: #ffd5d5;
+            }
+            .region-toggle-btn.keep {
+              background: rgba(56, 211, 110, 0.22);
+              border-color: #4ade80;
+              color: #d8ffe3;
+            }
             .analysis-error {
               padding: 12px;
               background: rgba(255, 0, 0, 0.1);
@@ -1423,6 +1626,11 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               }
               .stats-grid {
                 grid-template-columns: 1fr;
+              }
+              .selection-summary {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
               }
             }
           `}</style>
@@ -1652,6 +1860,79 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                         </div>
                       </div>
                     </div>
+                    <div className="selection-actions" data-testid="selection-actions">
+                      <button type="button" className="selection-action-btn" onClick={handleSelectAllCut}>
+                        Cut All
+                      </button>
+                      <button type="button" className="selection-action-btn" onClick={handleSelectAllKeep}>
+                        Keep All
+                      </button>
+                      <button type="button" className="selection-action-btn" onClick={handleInvertSelection}>
+                        Invert
+                      </button>
+                      <button
+                        type="button"
+                        className="selection-action-btn"
+                        onClick={handleToggleCurrentRegion}
+                        disabled={!activeRegionAtPlayhead}
+                        title={activeRegionAtPlayhead ? 'Toggle region at playhead (shortcut: X)' : 'Move playhead into a region first'}
+                      >
+                        Toggle at Playhead (X)
+                      </button>
+                    </div>
+                    <div className="selection-summary">
+                      <span>Cut: {selectedRegionCount}</span>
+                      <span>Keep: {keepRegionCount}</span>
+                      <span>
+                        Playhead:{' '}
+                        {activeRegionAtPlayhead
+                          ? `${formatTime(activeRegionAtPlayhead.adjustedStartTime)}-${formatTime(activeRegionAtPlayhead.adjustedEndTime)}`
+                          : 'Outside silence region'}
+                      </span>
+                    </div>
+                    {editableRegions.length > 0 && (
+                      <div className="region-list" data-testid="region-list">
+                        {editableRegions.map((region, index) => {
+                          const isActive = activeRegionId === region.id;
+                          return (
+                            <div
+                              key={region.id}
+                              className={`region-row ${region.selected ? 'cut' : 'keep'} ${isActive ? 'active' : ''}`}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => handleWaveformSeek(region.adjustedStartTime)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleWaveformSeek(region.adjustedStartTime);
+                                }
+                              }}
+                              title="Click row to seek to this range"
+                            >
+                              <div className="region-row-main">
+                                <div className="region-row-index">#{index + 1}</div>
+                                <div className="region-row-times">
+                                  {formatTime(region.adjustedStartTime)} - {formatTime(region.adjustedEndTime)}
+                                </div>
+                                <div className="region-row-meta">
+                                  {formatTime(region.adjustedDuration)} | {region.averageDb.toFixed(1)} dB
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className={`region-toggle-btn ${region.selected ? 'cut' : 'keep'}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRegionToggle(region.id);
+                                }}
+                              >
+                                {region.selected ? 'Cut' : 'Keep'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1713,6 +1994,9 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                   <span className="legend-swatch too-short" />
                   <span>Too Short</span>
                 </div>
+                <div className="legend-item">
+                  <span>Drag to add cut range</span>
+                </div>
               </div>
             </div>
             <div className="silence-timeline-scroll" ref={timelineViewportRef}>
@@ -1761,15 +2045,17 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                   currentTime={playbackTime}
                   onSeek={handleWaveformSeek}
                   onRegionClick={handleRegionToggle}
+                  onRangeCreate={handleManualRangeCreate}
+                  enableRangeSelection={true}
                   regions={regions}
-                  duration={duration}
+                  duration={effectiveTimelineDuration}
                   width={timelineContentWidth}
                   height={timelineViewportSize.height}
                   isPlaying={isPlaying}
                 />
                 <div className="silence-waveform-help">
                   {hasWaveform
-                    ? 'Click a segment to toggle between Cut/Skip and Keep'
+                    ? 'Click segment = toggle Cut/Keep, drag = add manual cut range'
                     : 'Waveform unavailable: showing silence map only'}
                 </div>
               </div>

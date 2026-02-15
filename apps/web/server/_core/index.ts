@@ -38,6 +38,8 @@ import { PostgresAdapter } from "../services/postgresAdapter";
 import { getUploadStaticHeaders } from "../services/uploadContentSafety";
 import { ImageProxySafetyError, proxyImageFromUrl } from "../services/imageProxySafety";
 import { getDb } from "../db";
+import { getRedisClient } from "../services/redis";
+import { sql } from "drizzle-orm";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
 export const dbAdapter = new PostgresAdapter();
@@ -110,6 +112,68 @@ app.use((err: any, req: any, res: any, next: any) => {
 });
 app.use(express.urlencoded({ limit: "100mb", extended: true }));
 app.use(cookieParser(ENV.cookieSecret));
+
+// ============================================================================
+// HEALTH CHECK ENDPOINTS (before auth/audit middleware for Cloud Run probes)
+// ============================================================================
+
+/**
+ * GET /healthz - Liveness/startup probe
+ * Returns 200 if the process is alive and accepting requests
+ * No dependency checks - purely "is the server running?"
+ */
+app.get("/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
+/**
+ * GET /readyz - Readiness probe
+ * Performs shallow checks of DB and Redis connections
+ * Returns 200 if ready to serve traffic, 503 if not ready
+ */
+app.get("/readyz", async (_req, res) => {
+  const checks: Record<string, string> = {};
+  let allHealthy = true;
+
+  // Check database connection (2 second timeout)
+  try {
+    const db = await getDb();
+    if (!db) {
+      checks.db = "unavailable";
+      allHealthy = false;
+    } else {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 2000)
+      );
+      const queryPromise = db.execute(sql`SELECT 1`);
+      await Promise.race([queryPromise, timeoutPromise]);
+      checks.db = "ok";
+    }
+  } catch (error: any) {
+    checks.db = error?.message === "timeout" ? "timeout" : "error";
+    allHealthy = false;
+  }
+
+  // Check Redis connection (1 second timeout - aligns with Cloud Run probe timeout)
+  try {
+    const redis = getRedisClient();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 1000)
+    );
+    const pingPromise = redis.ping();
+    await Promise.race([pingPromise, timeoutPromise]);
+    checks.redis = "ok";
+  } catch (error: any) {
+    checks.redis = error?.message === "timeout" ? "timeout" : "error";
+    allHealthy = false;
+  }
+
+  if (allHealthy) {
+    res.json({ status: "ready", checks });
+  } else {
+    res.status(503).json({ status: "not_ready", checks });
+  }
+});
 
 // Audit trace context — generates traceId for every request
 initAuditLogger();
@@ -461,8 +525,12 @@ app.use((err: any, req: any, res: any, next: any) => {
   }
 });
 
+// Store server reference for graceful shutdown
+let httpServer: ReturnType<typeof createServer> | null = null;
+
 async function main() {
   const server = createServer(app);
+  httpServer = server;
 
   // Initialize skill registry - auto-sync skills from folder to database
   try {
@@ -551,18 +619,71 @@ process.on("unhandledRejection", (reason, promise) => {
   debugError("Process", "Unhandled Rejection", reason);
 });
 
-// Graceful shutdown: flush audit logs and close queues
+// Graceful shutdown: stop accepting new connections, flush logs, close queues and connections
 process.on("SIGTERM", async () => {
+  console.log("[Shutdown] SIGTERM received, starting graceful shutdown...");
+
+  // 1. Stop accepting new connections
+  if (httpServer) {
+    httpServer.close(() => {
+      console.log("[Shutdown] HTTP server closed");
+    });
+  }
+
+  // 2. Flush audit logs
+  await auditLogger.shutdown().catch(() => {});
+
+  // 3. Shut down background workers
   await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
-  await auditLogger.shutdown().catch(() => {});
+
+  // 4. Flush PostHog event batch (if initialized)
+  // TODO: Add in Section 14 (Observability)
+  // await posthog.shutdown();
+
+  // 5. Flush Sentry events (if initialized)
+  // TODO: Add in Section 13 (Error Tracking)
+  // await Sentry.close(2000);
+
+  // 6. Close Redis connections
+  try {
+    const redis = getRedisClient();
+    await redis.quit();
+    console.log("[Shutdown] Redis connection closed");
+  } catch {}
+
+  // 7. Close DB connection pool
+  // postgres.js automatically closes connections on process exit
+  // TODO: If we switch to pg-pool, add pool.end() here
+
+  console.log("[Shutdown] Graceful shutdown complete");
+  process.exit(0);
 });
+
 process.on("SIGINT", async () => {
+  console.log("[Shutdown] SIGINT received, starting graceful shutdown...");
+
+  // Same shutdown sequence as SIGTERM
+  if (httpServer) {
+    httpServer.close(() => {
+      console.log("[Shutdown] HTTP server closed");
+    });
+  }
+
+  await auditLogger.shutdown().catch(() => {});
   await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
-  await auditLogger.shutdown().catch(() => {});
+
+  try {
+    const redis = getRedisClient();
+    await redis.quit();
+    console.log("[Shutdown] Redis connection closed");
+  } catch {}
+
+  console.log("[Shutdown] Graceful shutdown complete");
+  process.exit(0);
 });
 
 main().catch((err) => {

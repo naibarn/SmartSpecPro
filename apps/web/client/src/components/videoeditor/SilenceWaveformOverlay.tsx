@@ -9,6 +9,8 @@ const HATCH_PATTERN_SIZE = 10;
 const SELECTED_BORDER_DASH = [4, 4] as const;
 const PLAYHEAD_LINE_WIDTH = 2;
 const THROTTLE_MS = 16; // ~60fps for mousemove throttling
+const DRAG_THRESHOLD_PX = 4;
+const REGION_HIT_SLOP_PX = 6;
 
 // ============================================================================
 // Pure Helper Functions (exported for testability)
@@ -101,16 +103,29 @@ export function hitTestRegion(
   // Convert client coordinates to canvas-relative position
   const x = clientX - canvasRect.left;
 
-  // Convert pixel position to time
-  const time = pixelToTime(x, duration, canvasWidth, pixelsPerSecond, visibleStartTime);
-
-  // Filter to non-skipped regions that contain this time
+  // Filter to non-skipped regions that contain this X, with hit slop to make
+  // narrow silence segments easier to click.
   const hits = regions
     .filter(region => !region.skipped)
-    .filter(region =>
-      time >= region.adjustedStartTime &&
-      time <= region.adjustedEndTime
-    );
+    .filter((region) => {
+      const startX = timeToPixel(
+        region.adjustedStartTime,
+        duration,
+        canvasWidth,
+        pixelsPerSecond,
+        visibleStartTime,
+      );
+      const endX = timeToPixel(
+        region.adjustedEndTime,
+        duration,
+        canvasWidth,
+        pixelsPerSecond,
+        visibleStartTime,
+      );
+      const minX = Math.min(startX, endX) - REGION_HIT_SLOP_PX;
+      const maxX = Math.max(startX, endX) + REGION_HIT_SLOP_PX;
+      return x >= minX && x <= maxX;
+    });
 
   if (hits.length === 0) {
     return null;
@@ -151,6 +166,10 @@ interface SilenceWaveformOverlayProps {
   onSeek: (time: number) => void;
   /** Optional hover callback for tooltip display */
   onRegionHover?: (regionId: string | null) => void;
+  /** Optional callback to create a manual cut range by dragging */
+  onRangeCreate?: (startTime: number, endTime: number) => void;
+  /** Enable drag-to-create range behavior */
+  enableRangeSelection?: boolean;
 }
 
 // ============================================================================
@@ -194,6 +213,8 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
     onRegionClick,
     onSeek,
     onRegionHover,
+    onRangeCreate,
+    enableRangeSelection = false,
   } = props;
 
   // Two canvas refs: one for regions, one for playhead
@@ -208,6 +229,7 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
 
   // Track last mousemove time for throttling
   const lastMouseMoveRef = useRef<number>(0);
+  const dragStartRef = useRef<{ clientX: number; time: number } | null>(null);
 
   // ---- Memoize hatch pattern (doesn't depend on props) ----
 
@@ -274,7 +296,7 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
         ctx.setLineDash([]);
       }
     }
-  }, [regions, duration, width, height, pixelsPerSecond]);
+  }, [regions, duration, width, height, pixelsPerSecond, visibleStartTime, hatchPattern]);
 
   // ---- Draw playhead canvas (animates with currentTime when playing) ----
 
@@ -326,13 +348,40 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
     }
   }, [currentTime, duration, width, height, pixelsPerSecond, visibleStartTime, isPlaying]);
 
-  // ---- Click handler ----
+  // ---- Click/drag handlers ----
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!enableRangeSelection) return;
+    const canvas = playheadCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const time = pixelToTime(x, duration, width, pixelsPerSecond, visibleStartTime);
+    dragStartRef.current = { clientX: e.clientX, time };
+  };
+
+  const handleCanvasMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = playheadCanvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
+    const dragStart = dragStartRef.current;
+    dragStartRef.current = null;
+
+    if (enableRangeSelection && dragStart && onRangeCreate) {
+      const deltaX = Math.abs(e.clientX - dragStart.clientX);
+      if (deltaX >= DRAG_THRESHOLD_PX) {
+        const endX = e.clientX - rect.left;
+        const endTime = pixelToTime(endX, duration, width, pixelsPerSecond, visibleStartTime);
+        const rangeStart = Math.min(dragStart.time, endTime);
+        const rangeEnd = Math.max(dragStart.time, endTime);
+        if (Number.isFinite(rangeStart) && Number.isFinite(rangeEnd) && rangeEnd - rangeStart > 0.01) {
+          onRangeCreate(rangeStart, rangeEnd);
+          return;
+        }
+      }
+    }
+
     const regionId = hitTestRegion(
       e.clientX,
       rect,
@@ -355,6 +404,9 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
   // ---- Hover handler (throttled for performance) ----
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (dragStartRef.current) {
+      return;
+    }
     if (!onRegionHover) return;
 
     // Throttle hit testing to ~60fps (16ms)
@@ -413,7 +465,9 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
       />
       <canvas
         ref={playheadCanvasRef}
-        onClick={handleCanvasClick}
+        onMouseDown={handleCanvasMouseDown}
+        onMouseUp={handleCanvasMouseUp}
+        onMouseLeave={() => { dragStartRef.current = null; }}
         onMouseMove={handleMouseMove}
         style={{
           position: 'absolute',

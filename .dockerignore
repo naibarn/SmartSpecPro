@@ -1,0 +1,67 @@
+# Dependencies (will be installed inside container)
+**/node_modules
+**/__pycache__
+**/.venv
+**/.uv
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# Build artifacts and caches
+.turbo
+**/dist
+**/.next
+**/coverage
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/htmlcov
+**/.tsbuildinfo
+
+# Environment and secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Database backups
+.db-backups
+*.sql
+
+# Documentation and planning
+planning
+specs
+docs
+README.md
+CHANGELOG.md
+LICENSE
+
+# Temporary and test files
+tmp-workspace
+**/tmp
+**/*.test.ts
+**/*.test.tsx
+**/*.test.py
+**/*.test.js
+**/tests
+**/__tests__
+
+# Docker-specific
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Tauri desktop app (not needed for cloud)
+apps/tauri-shell
+
+# Misc
+*.log
+.claude

@@ -1,0 +1,72 @@
+# SmartSpec Video Job Runner - Cloud Run Job Dockerfile
+# Multi-stage build including python-orchestrator stages + FFmpeg
+# This image runs as a Cloud Run Job (runs to completion, not a long-running server)
+
+# Stage 1: Builder (same as python-orchestrator)
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    make \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY python-backend/requirements.txt .
+
+# Install Python dependencies to user-local path
+RUN pip install --no-cache-dir --upgrade pip && \
+    (pip install uv && uv pip install --system -r requirements.txt) || \
+    pip install --no-cache-dir --user -r requirements.txt
+
+# Stage 2: Video Job Runner (extends runtime with FFmpeg)
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install runtime dependencies including FFmpeg and fonts
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    tini \
+    ffmpeg \
+    fontconfig \
+    fonts-dejavu-core \
+    fonts-liberation \
+    fonts-freefont-ttf \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -fv
+
+# Create non-root user
+RUN useradd -m -u 1001 appuser
+
+# Copy Python dependencies from builder
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Copy application code
+COPY python-backend/app ./app
+COPY python-backend/alembic ./alembic
+COPY python-backend/alembic.ini ./
+
+# Fix permissions
+RUN chown -R appuser:appuser /app /home/appuser/.local
+
+# Set Python path and environment
+ENV PATH=/home/appuser/.local/bin:$PATH
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+USER appuser
+
+# No EXPOSE - this is a Job, not a Service
+# No HEALTHCHECK - Jobs run to completion
+
+# Use tini as init process for proper signal handling
+ENTRYPOINT ["tini", "--"]
+# Entrypoint for video rendering job (reads RENDER_SPEC_JSON env var)
+# Implementation in Section 11 (Video Pipeline)
+CMD ["python", "-m", "app.jobs.video_render"]

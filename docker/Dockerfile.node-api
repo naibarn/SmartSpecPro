@@ -1,0 +1,78 @@
+# SmartSpec Web - Cloud Run Production Dockerfile
+# Build context must be the repository root (.)
+# Multi-stage build for optimized image size
+
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Copy root workspace files
+COPY package.json package-lock.json* pnpm-lock.yaml* ./
+
+# Copy package.json for workspace packages
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/db/package.json ./packages/db/
+COPY packages/skills/package.json ./packages/skills/
+COPY packages/ui/package.json ./packages/ui/
+COPY apps/web/package.json ./apps/web/
+
+# Install dependencies (prefer pnpm, fallback to npm)
+RUN if [ -f pnpm-lock.yaml ]; then \
+      corepack enable && corepack prepare pnpm@latest --activate && \
+      pnpm install --frozen-lockfile; \
+    else \
+      npm ci || npm install; \
+    fi
+
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copy deps from stage 1
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source
+COPY packages/ ./packages/
+COPY apps/web/ ./apps/web/
+COPY package.json turbo.json tsconfig.base.json ./
+
+# Build (Vite production build)
+RUN cd apps/web && \
+    if [ -f ../pnpm-lock.yaml ]; then \
+      corepack enable && pnpm build; \
+    else \
+      npm run build; \
+    fi
+
+# Stage 3: Production Runner
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Install tini for proper signal handling
+RUN apk add --no-cache tini
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 smartspec
+
+# Copy built app + workspace packages (needed at runtime for @smartspec/* imports)
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/dist ./dist
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/package.json ./package.json
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/drizzle ./drizzle
+COPY --from=builder --chown=smartspec:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=smartspec:nodejs /app/packages ./packages
+
+USER smartspec
+
+# Docker health check (Cloud Run ignores this, but useful for local testing)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/healthz || exit 1
+
+EXPOSE 3000
+
+# Use tini as init process for proper signal handling
+ENTRYPOINT ["tini", "--"]
+CMD ["node", "dist/index.js"]
