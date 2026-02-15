@@ -31,6 +31,11 @@ interface PreviewPlayerProps {
   outgoingClip?: ActiveClipInfo | null;
   transitionName?: string;
   transitionProgress?: number;
+  allowSeekingWhilePlaying?: boolean;
+  skipSilencePreview?: boolean;
+  skipRanges?: Array<{ start: number; end: number }>;
+  skipCooldownMs?: number;
+  skipBoundaryGuardSec?: number;
 }
 
 const ZOOM_PRESETS = [10, 25, 50, 75, 100, 125, 150, 200, 250, 300, 350, 400];
@@ -148,6 +153,11 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   outgoingClip,
   transitionName,
   transitionProgress,
+  allowSeekingWhilePlaying = false,
+  skipSilencePreview = false,
+  skipRanges = [],
+  skipCooldownMs = 100,
+  skipBoundaryGuardSec = 0.05,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const outgoingVideoRef = useRef<HTMLVideoElement>(null);
@@ -159,6 +169,10 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const [previewZoom, setPreviewZoom] = useState(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [stalledLoading, setStalledLoading] = useState(false);
+  const safeCurrentTime = Number.isFinite(currentTime) ? currentTime : 0;
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
+  const lastSkipTimestampRef = useRef(0);
 
   // Pan state for zoomed preview
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -168,6 +182,19 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
   // Compute the effective video URL
   const effectiveUrl = activeClip?.videoUrl || previewVideoUrl;
+  const normalizedSkipRanges = useMemo(
+    () =>
+      skipRanges
+        .map((range) => {
+          const start = Number.isFinite(range.start) ? range.start : NaN;
+          const end = Number.isFinite(range.end) ? range.end : NaN;
+          if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+          return { start, end };
+        })
+        .filter((r): r is { start: number; end: number } => r !== null)
+        .sort((a, b) => a.start - b.start),
+    [skipRanges],
+  );
 
   // Track the previous URL so we know when the source changes
   const prevUrlRef = useRef<string | undefined>(undefined);
@@ -177,6 +204,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     if (effectiveUrl !== prevUrlRef.current) {
       setVideoLoaded(false);
       setVideoError(null);
+      setStalledLoading(false);
       prevUrlRef.current = effectiveUrl;
       // Force the video element to load the new source
       if (videoRef.current && effectiveUrl) {
@@ -189,23 +217,37 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const handleLoadedData = useCallback(() => {
     setVideoLoaded(true);
     setVideoError(null);
+    setStalledLoading(false);
   }, []);
 
-  // Sync video element with current time — only when NOT playing
-  // During playback, the video element drives the time via onTimeUpdate
+  // If media loading stalls without error, surface status instead of a blank black pane.
+  useEffect(() => {
+    if (!effectiveUrl || activeClip?.isImage || videoLoaded || videoError) return;
+    const timer = window.setTimeout(() => {
+      if (!videoLoaded) {
+        setStalledLoading(true);
+      }
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [effectiveUrl, activeClip?.isImage, videoLoaded, videoError]);
+
+  // Sync video element with current time.
+  // By default we do not seek while playing to avoid churn, but some callers
+  // (e.g., skip-silence preview) intentionally drive seeks during playback.
   useEffect(() => {
     if (!videoRef.current || !effectiveUrl || !videoLoaded) return;
-    if (isPlaying) return; // Don't seek while playing — video drives time
+    if (isPlaying && !allowSeekingWhilePlaying) return;
 
     let targetTime: number;
     if (activeClip) {
-      targetTime = activeClip.trimIn + (currentTime - activeClip.clipStartTime);
+      targetTime = activeClip.trimIn + (safeCurrentTime - activeClip.clipStartTime);
     } else {
-      targetTime = currentTime;
+      targetTime = safeCurrentTime;
     }
 
     // Clamp to valid range
     targetTime = Math.max(0, targetTime);
+    if (!Number.isFinite(targetTime)) return;
 
     if (Math.abs(videoRef.current.currentTime - targetTime) > 0.05) {
       try {
@@ -214,7 +256,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         console.error('Failed to set current time:', err);
       }
     }
-  }, [currentTime, activeClip, effectiveUrl, isPlaying, videoLoaded]);
+  }, [safeCurrentTime, activeClip, effectiveUrl, isPlaying, videoLoaded, allowSeekingWhilePlaying]);
 
   // Sync outgoing video element during transition playback
   useEffect(() => {
@@ -227,8 +269,9 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     // Wait for video to have enough data before seeking
     if (video.readyState < 2) return;
 
-    const targetTime = outgoingClip.trimIn + (currentTime - outgoingClip.clipStartTime);
+    const targetTime = outgoingClip.trimIn + (safeCurrentTime - outgoingClip.clipStartTime);
     const clamped = Math.max(0, targetTime);
+    if (!Number.isFinite(clamped)) return;
     if (Math.abs(video.currentTime - clamped) > 0.05) {
       try { video.currentTime = clamped; } catch { /* seek error on unloaded video */ }
     }
@@ -243,7 +286,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     } else if (!isPlaying && !video.paused) {
       video.pause();
     }
-  }, [currentTime, outgoingClip, isPlaying]);
+  }, [safeCurrentTime, outgoingClip, isPlaying]);
 
   // Handle play/pause — re-triggers when videoLoaded changes so play() is called
   // after the video element finishes loading (prevents black screen deadlock)
@@ -253,7 +296,8 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     if (isPlaying) {
       // Seek to correct position before playing
       if (activeClip) {
-        const targetTime = activeClip.trimIn + (currentTime - activeClip.clipStartTime);
+        const targetTime = activeClip.trimIn + (safeCurrentTime - activeClip.clipStartTime);
+        if (!Number.isFinite(targetTime)) return;
         if (Math.abs(videoRef.current.currentTime - targetTime) > 0.1) {
           videoRef.current.currentTime = Math.max(0, targetTime);
         }
@@ -273,7 +317,88 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     }
     // Intentionally excludes activeClip, currentTime, onPlayPause —
     // those change every frame and would cause play() thrashing
-  }, [isPlaying, videoLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isPlaying, safeCurrentTime, videoLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Skip-silence engine: checks real playback time every frame and seeks immediately.
+  useEffect(() => {
+    if (!isPlaying || !skipSilencePreview) return;
+    if (!videoLoaded || normalizedSkipRanges.length === 0) return;
+    if (!videoRef.current) return;
+
+    let rafId = 0;
+
+    const findContainingRange = (time: number) => {
+      let lo = 0;
+      let hi = normalizedSkipRanges.length - 1;
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        const range = normalizedSkipRanges[mid];
+        if (time < range.start) {
+          hi = mid - 1;
+        } else if (time > range.end) {
+          lo = mid + 1;
+        } else {
+          return range;
+        }
+      }
+      return null;
+    };
+
+    const tick = () => {
+      const video = videoRef.current;
+      if (!video) {
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
+
+      const sourceNow = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      const timelineNow = activeClip
+        ? activeClip.clipStartTime + (sourceNow - activeClip.trimIn)
+        : sourceNow;
+
+      if (Number.isFinite(timelineNow)) {
+        const nowMs = performance.now();
+        if (nowMs - lastSkipTimestampRef.current >= skipCooldownMs) {
+          const activeRange = findContainingRange(timelineNow);
+          if (
+            activeRange &&
+            Math.abs(timelineNow - activeRange.end) > skipBoundaryGuardSec
+          ) {
+            const targetTimeline = activeRange.end;
+            const targetSource = activeClip
+              ? activeClip.trimIn + (targetTimeline - activeClip.clipStartTime)
+              : targetTimeline;
+            if (
+              Number.isFinite(targetSource) &&
+              targetSource > sourceNow + 0.01
+            ) {
+              try {
+                video.currentTime = Math.max(0, targetSource);
+              } catch (err) {
+                console.warn("Skip-silence seek failed:", err);
+              }
+              onTimeChange(targetTimeline);
+              lastSkipTimestampRef.current = nowMs;
+            }
+          }
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [
+    isPlaying,
+    skipSilencePreview,
+    videoLoaded,
+    normalizedSkipRanges,
+    activeClip,
+    onTimeChange,
+    skipCooldownMs,
+    skipBoundaryGuardSec,
+  ]);
 
   // Sync audio elements with playback state
   useEffect(() => {
@@ -283,7 +408,8 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         audioEl.pause();
         return;
       }
-      const targetTime = clip.trimIn + (currentTime - clip.clipStartTime);
+      const targetTime = clip.trimIn + (safeCurrentTime - clip.clipStartTime);
+      if (!Number.isFinite(targetTime)) return;
       if (isPlaying) {
         if (Math.abs(audioEl.currentTime - targetTime) > 0.3) {
           audioEl.currentTime = Math.max(0, targetTime);
@@ -299,7 +425,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         audioEl.currentTime = Math.max(0, targetTime);
       }
     });
-  }, [isPlaying, currentTime, activeAudioClips, volume, isMuted]);
+  }, [isPlaying, safeCurrentTime, activeAudioClips, volume, isMuted]);
 
   // Clean up stale audio elements when clips change
   useEffect(() => {
@@ -319,27 +445,31 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
     if (activeClip) {
       const timelineTime = activeClip.clipStartTime + (videoRef.current.currentTime - activeClip.trimIn);
+      if (!Number.isFinite(timelineTime)) return;
       // Only update if within clip bounds
       if (timelineTime >= activeClip.clipStartTime && timelineTime <= activeClip.clipStartTime + activeClip.clipDuration) {
         onTimeChange(timelineTime);
       } else if (timelineTime > activeClip.clipStartTime + activeClip.clipDuration) {
         // Reached end of clip — advance to next clip or stop at timeline end
         const nextTime = activeClip.clipStartTime + activeClip.clipDuration;
-        if (nextTime >= duration) {
+        if (!Number.isFinite(nextTime) || nextTime >= safeDuration) {
           onPlayPause(); // End of timeline
         } else {
           onTimeChange(nextTime); // Advance to next clip/gap
         }
       }
     } else if (effectiveUrl) {
-      onTimeChange(videoRef.current.currentTime);
+      if (Number.isFinite(videoRef.current.currentTime)) {
+        onTimeChange(videoRef.current.currentTime);
+      }
     }
-  }, [activeClip, effectiveUrl, isPlaying, onTimeChange, onPlayPause]);
+  }, [activeClip, effectiveUrl, isPlaying, onTimeChange, onPlayPause, safeDuration]);
 
   // Handle seek
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
-    onTimeChange(time);
+    if (!Number.isFinite(time)) return;
+    onTimeChange(Math.max(0, Math.min(safeDuration || Infinity, time)));
   };
 
   // Handle volume change
@@ -517,12 +647,12 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       // Left arrow = -1 frame (assuming 30fps)
       else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        onTimeChange(Math.max(0, currentTime - 1/30));
+        onTimeChange(Math.max(0, safeCurrentTime - 1 / 30));
       }
       // Right arrow = +1 frame
       else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        onTimeChange(Math.min(duration, currentTime + 1/30));
+        onTimeChange(Math.min(safeDuration || Infinity, safeCurrentTime + 1 / 30));
       }
       // Home = beginning
       else if (e.key === 'Home') {
@@ -532,7 +662,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       // End = end
       else if (e.key === 'End') {
         e.preventDefault();
-        onTimeChange(duration);
+        onTimeChange(safeDuration);
       }
       // F = fullscreen
       else if (e.key === 'f' && !e.ctrlKey && !e.metaKey && e.target === document.body) {
@@ -543,7 +673,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [currentTime, duration, onPlayPause, onTimeChange, toggleFullscreen]);
+  }, [safeCurrentTime, safeDuration, onPlayPause, onTimeChange, toggleFullscreen]);
 
   const zoomStyle: React.CSSProperties = (previewZoom !== 100 || panOffset.x !== 0 || panOffset.y !== 0) ? {
     transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${previewZoom / 100})`,
@@ -563,7 +693,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     let opacity = 1;
 
     // Time elapsed within this clip
-    const clipElapsed = currentTime - activeClip.clipStartTime;
+    const clipElapsed = safeCurrentTime - activeClip.clipStartTime;
 
     // --- Fade transitions ---
     const fadeIn = activeClip.transitions?.fadeIn || 0;
@@ -625,7 +755,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     style.transition = 'opacity 0.05s linear, filter 0.05s linear';
 
     return style;
-  }, [activeClip, currentTime]);
+  }, [activeClip, safeCurrentTime]);
 
   return (
     <div className="preview-player" ref={containerRef}>
@@ -837,6 +967,21 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           margin-top: 4px;
           text-align: center;
         }
+
+        .preview-loading-overlay {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(0, 0, 0, 0.65);
+          border: 1px solid #333;
+          border-radius: 6px;
+          padding: 8px 12px;
+          color: #d0d0d0;
+          font-size: 12px;
+          z-index: 3;
+          pointer-events: none;
+        }
       `}</style>
 
       {/* Video Container */}
@@ -954,7 +1099,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                 // Advance to next clip instead of stopping
                 if (activeClip) {
                   const nextTime = activeClip.clipStartTime + activeClip.clipDuration;
-                  if (nextTime >= duration) {
+                  if (!Number.isFinite(nextTime) || nextTime >= safeDuration) {
                     onStop();
                   } else {
                     onTimeChange(nextTime);
@@ -982,6 +1127,11 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             </div>
           </div>
         )}
+        {effectiveUrl && !activeClip?.isImage && !videoLoaded && !videoError && (
+          <div className="preview-loading-overlay">
+            {stalledLoading ? "Preview is taking longer to load..." : "Loading preview..."}
+          </div>
+        )}
       </div>
 
       {/* Hidden audio elements for timeline audio tracks */}
@@ -1007,9 +1157,9 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             type="range"
             className="seek-bar"
             min="0"
-            max={duration || 1}
+            max={safeDuration || 1}
             step="0.01"
-            value={currentTime}
+            value={safeCurrentTime}
             onChange={handleSeek}
             aria-label="Seek video position"
           />
@@ -1020,7 +1170,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           <div className="playback-controls">
             <button
               className="control-button"
-              onClick={() => onTimeChange(Math.max(0, currentTime - 1/30))}
+              onClick={() => onTimeChange(Math.max(0, safeCurrentTime - 1 / 30))}
               title="Previous Frame"
               aria-label="Go to previous frame"
             >
@@ -1044,7 +1194,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             </button>
             <button
               className="control-button"
-              onClick={() => onTimeChange(Math.min(duration, currentTime + 1/30))}
+              onClick={() => onTimeChange(Math.min(safeDuration || Infinity, safeCurrentTime + 1 / 30))}
               title="Next Frame"
               aria-label="Go to next frame"
             >
@@ -1054,7 +1204,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
           {/* Time Display */}
           <div className="time-display">
-            {formatTime(currentTime)} / {formatTime(duration)}
+            {formatTime(safeCurrentTime)} / {formatTime(safeDuration)}
           </div>
 
           {/* Volume Control */}

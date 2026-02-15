@@ -421,6 +421,9 @@ export function generateId(prefix: string = 'id'): string {
  * Format time in seconds to MM:SS or HH:MM:SS
  */
 export function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds)) {
+    return '0:00.00';
+  }
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
@@ -586,11 +589,11 @@ export function applyBufferToRegions(
 
 /**
  * Convert a dB value to a percentage for display purposes.
- * Maps the range [-60dB, -20dB] to [0%, 100%].
+ * Maps the range [-60dB, -10dB] to [0%, 100%].
  * Values outside this range are NOT clamped.
  */
 export function dbToPercent(db: number): number {
-  return ((db + 60) / 40) * 100;
+  return ((db + 60) / 50) * 100;
 }
 
 // ========================================
@@ -691,6 +694,9 @@ export function migrateProjectV1ToV2(project: any): any {
  * Format milliseconds as MM:SS.CC or HH:MM:SS.CC
  */
 export function formatTimeMs(ms: number): string {
+  if (!Number.isFinite(ms)) {
+    return '0:00.00';
+  }
   const totalSeconds = ms / 1000;
   const hours = Math.floor(totalSeconds / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);

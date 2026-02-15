@@ -40,6 +40,8 @@ VALID_JOB_TYPES = {
     "dead_air_detect",
     "dead_air_cut",
     "generate_clip_from_api",
+    "transcode_h264",
+    "extract_audio",
 }
 
 
@@ -159,7 +161,7 @@ def report_done(job_id: str, result: dict):
         except (json.JSONDecodeError, TypeError):
             pass
     redis_client.set(f"media-job:{job_id}:result", json.dumps(result), ex=JOB_TTL)
-    done_status = {"jobId": job_id, "status": "done", "progress": 1.0}
+    done_status = {"jobId": job_id, "status": "done", "progress": 1.0, "result": result}
     redis_client.set(f"media-job:{job_id}:status", json.dumps(done_status), ex=JOB_TTL)
     redis_client.publish(f"media-job-progress:{job_id}", json.dumps(done_status))
 
@@ -536,13 +538,13 @@ def build_ffmpeg_command_for_silence(spec: dict) -> list[str]:
     params = spec.get("params", {})
     # Cast to numeric to prevent FFmpeg filter injection via string values
     try:
-        threshold_db = float(params.get("thresholdDb", -40))
+        threshold_db = float(params.get("thresholdDb", -30))
     except (ValueError, TypeError):
-        threshold_db = -40.0
+        threshold_db = -30.0
     try:
-        min_silence_ms = float(params.get("minSilenceMs", 500))
+        min_silence_ms = float(params.get("minSilenceMs", 300))
     except (ValueError, TypeError):
-        min_silence_ms = 500.0
+        min_silence_ms = 300.0
     min_duration = min_silence_ms / 1000.0
 
     af = f"silencedetect=noise={threshold_db}dB:d={min_duration}"
@@ -710,13 +712,36 @@ def handle_waveform_peaks(spec: dict, tmp_dir: str) -> dict:
 
 def handle_dead_air_detect(spec: dict, tmp_dir: str) -> dict:
     """Detect silence segments in audio."""
+    import structlog
+
+    logger = structlog.get_logger()
     job_id = spec["jobId"]
     cmd = build_ffmpeg_command_for_silence(spec)
 
+    logger.info("silence_detect_start", job_id=job_id, cmd=" ".join(cmd))
     report_progress(job_id, 0.1, "detecting_silence")
 
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+
+    if result.returncode != 0:
+        logger.error(
+            "silence_detect_ffmpeg_error",
+            job_id=job_id,
+            returncode=result.returncode,
+            stderr=result.stderr[:2000],
+        )
+        raise RuntimeError(
+            f"FFmpeg silencedetect failed (exit {result.returncode}): "
+            + result.stderr[:500]
+        )
+
     segments = parse_silence_output(result.stderr)
+    logger.info(
+        "silence_detect_done",
+        job_id=job_id,
+        segments_found=len(segments),
+        stderr_lines=result.stderr.count("\n"),
+    )
 
     return {
         "artifacts": [],
@@ -1196,6 +1221,214 @@ def handle_dead_air_cut(spec: dict, tmp_dir: str) -> dict:
 
 
 # ========================================
+# Transcode to H.264 (browser-compatible)
+# ========================================
+
+# Codecs that browsers can play natively in <video> elements
+_BROWSER_COMPATIBLE_VIDEO_CODECS = {"h264", "vp8", "vp9", "av1"}
+
+
+def _detect_video_codec(uri: str) -> str | None:
+    """Probe a file and return its video codec name (lowercase), or None."""
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+             "-show_entries", "stream=codec_name", "-of", "csv=p=0", uri],
+            capture_output=True, text=True, timeout=30,
+        )
+        codec = result.stdout.strip().lower()
+        return codec if codec else None
+    except Exception:
+        return None
+
+
+def handle_transcode_h264(spec: dict, tmp_dir: str) -> dict:
+    """Transcode a video file to H.264/AAC MP4 for browser playback.
+
+    Probes the input first — if already H.264, returns the original URI
+    without re-encoding (no quality loss). Otherwise, transcodes to
+    H.264 High profile with CRF 23 (good quality/size balance).
+
+    Output is stored in media_storage/transcoded/{userId}/{jobId}/.
+    """
+    job_id = spec["jobId"]
+    user_id = str(spec.get("_userId", "unknown"))
+
+    assets = spec.get("inputs", {}).get("assets", [])
+    if not assets:
+        raise ValueError("No assets provided for transcode_h264")
+
+    asset_uri = assets[0]["uri"]
+    report_progress(job_id, 0.05, "probing", "Checking video codec")
+
+    # Probe codec to decide if transcoding is needed
+    codec = _detect_video_codec(asset_uri)
+
+    if codec and codec in _BROWSER_COMPATIBLE_VIDEO_CODECS:
+        # Already browser-compatible — return original URI
+        report_progress(job_id, 1.0, "done", f"Already {codec} — no transcode needed")
+        return {
+            "artifacts": [{"kind": "video", "uri": asset_uri, "mime": "video/mp4"}],
+            "derived": {"transcoded": False, "originalCodec": codec},
+        }
+
+    report_progress(job_id, 0.1, "downloading", "Preparing input file")
+
+    # Download remote file to tmp
+    input_path = _resolve_asset_path(asset_uri, tmp_dir)
+
+    # Probe media info for progress reporting
+    media_info = _probe_media_info(input_path)
+    total_duration_us = int(media_info["duration_s"] * 1_000_000)
+
+    # Build output path
+    media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
+    transcode_dir = os.path.join(media_storage_path, "transcoded", user_id, job_id)
+    os.makedirs(transcode_dir, exist_ok=True)
+
+    # Use original filename with _h264 suffix
+    original_name = os.path.splitext(os.path.basename(input_path))[0]
+    output_filename = f"{original_name}_h264.mp4"
+    output_path = os.path.join(transcode_dir, output_filename)
+
+    # Build FFmpeg transcode command
+    params = spec.get("params", {}) or {}
+    crf = str(max(18, min(int(params.get("crf", 23)), 35)))
+    preset = params.get("preset", "medium")
+    if preset not in ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow"):
+        preset = "medium"
+
+    cmd = [
+        "ffmpeg", "-i", input_path,
+        "-c:v", "libx264", "-profile:v", "high", "-level", "4.0",
+        "-pix_fmt", "yuv420p",
+        "-crf", crf, "-preset", preset,
+        "-movflags", "+faststart",
+        "-c:a", "aac", "-b:a", "128k", "-ar", "48000",
+        "-progress", "pipe:1",
+        "-y", output_path,
+    ]
+
+    report_progress(job_id, 0.15, "transcoding", f"Transcoding from {codec or 'unknown'} to H.264")
+
+    process = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    )
+
+    # Parse progress from FFmpeg stdout
+    if process.stdout:
+        for line in process.stdout:
+            line = line.strip()
+            pct = parse_ffmpeg_progress(line, total_duration_us)
+            if pct is not None:
+                # Map 0-1 range into 0.15-0.90 for UI
+                mapped = 0.15 + pct * 0.75
+                report_progress(job_id, mapped, "transcoding", f"Transcoding: {int(pct * 100)}%")
+
+    _, stderr = process.communicate(timeout=1800)
+
+    if process.returncode != 0:
+        raise RuntimeError(f"Transcode failed: {_sanitize_stderr(stderr)}")
+
+    if not os.path.exists(output_path):
+        raise RuntimeError("Transcode succeeded but output file was not created")
+
+    report_progress(job_id, 0.95, "finalizing", "Finalizing transcoded file")
+
+    # Return serveable URL
+    serve_url = f"/api/v1/media/files/transcoded/{user_id}/{job_id}/{output_filename}"
+    return {
+        "artifacts": [{"kind": "video", "uri": serve_url, "mime": "video/mp4"}],
+        "derived": {
+            "transcoded": True,
+            "originalCodec": codec or "unknown",
+            "outputCodec": "h264",
+        },
+    }
+
+
+# ========================================
+# Extract Audio from Video
+# ========================================
+
+
+def handle_extract_audio(spec: dict, tmp_dir: str) -> dict:
+    """Extract audio track from a video file to AAC/M4A.
+
+    Uses FFmpeg to copy or re-encode the audio stream without the video.
+    Output is stored in media_storage/audio_extracts/{userId}/{jobId}/.
+    """
+    job_id = spec["jobId"]
+    user_id = str(spec.get("_userId", "unknown"))
+
+    assets = spec.get("inputs", {}).get("assets", [])
+    if not assets:
+        raise ValueError("No assets provided for extract_audio")
+
+    asset_uri = assets[0]["uri"]
+    report_progress(job_id, 0.05, "downloading", "Preparing input file")
+
+    # Download remote file to tmp
+    input_path = _resolve_asset_path(asset_uri, tmp_dir)
+
+    # Probe media info
+    media_info = _probe_media_info(input_path)
+    if not media_info["has_audio"]:
+        raise ValueError("Input file has no audio stream to extract")
+
+    report_progress(job_id, 0.2, "extracting", "Extracting audio stream")
+
+    # Build output path
+    media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
+    extract_dir = os.path.join(media_storage_path, "audio_extracts", user_id, job_id)
+    os.makedirs(extract_dir, exist_ok=True)
+    output_filename = "audio.m4a"
+    output_path = os.path.join(extract_dir, output_filename)
+
+    # FFmpeg: extract audio, re-encode to AAC
+    cmd = [
+        "ffmpeg", "-i", input_path,
+        "-vn",
+        "-acodec", "aac", "-b:a", "192k", "-ar", "48000",
+        "-y", output_path,
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Audio extraction failed: {_sanitize_stderr(result.stderr)}")
+
+    if not os.path.exists(output_path):
+        raise RuntimeError("Audio extraction succeeded but output file was not created")
+
+    report_progress(job_id, 0.8, "probing", "Probing output duration")
+
+    # Probe output for duration
+    probe_result = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", output_path],
+        capture_output=True, text=True, timeout=30,
+    )
+    output_duration = 0.0
+    if probe_result.returncode == 0:
+        try:
+            probe_data = json.loads(probe_result.stdout)
+            output_duration = float(probe_data.get("format", {}).get("duration", 0))
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    report_progress(job_id, 0.95, "finalizing", "Finalizing extracted audio")
+
+    serve_url = f"/api/v1/media/files/audio_extracts/{user_id}/{job_id}/{output_filename}"
+    return {
+        "artifacts": [{"kind": "audio", "uri": serve_url, "mime": "audio/mp4"}],
+        "derived": {
+            "duration": output_duration,
+            "format": "m4a",
+        },
+    }
+
+
+# ========================================
 # Main Celery Task
 # ========================================
 
@@ -1219,6 +1452,8 @@ HANDLER_MAP = {
     "concat": _not_implemented_handler,
     "dead_air_cut": handle_dead_air_cut,
     "generate_clip_from_api": _not_implemented_handler,
+    "transcode_h264": handle_transcode_h264,
+    "extract_audio": handle_extract_audio,
 }
 
 

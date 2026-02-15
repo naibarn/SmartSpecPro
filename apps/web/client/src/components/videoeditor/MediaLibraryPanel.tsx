@@ -11,6 +11,7 @@ import {
 } from '../../services/videoEditorService';
 import { showToast } from './Toast';
 import { WebAssetResolver } from '../../services/webAssetResolver';
+import { createMediaJobClient, type MediaJobClient } from '../../services/mediaJobClient';
 import { trpc } from '../../lib/trpc';
 import type { Asset } from '../../types/videoEditor';
 
@@ -51,6 +52,52 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   const [currentFileProgress, setCurrentFileProgress] = useState<{ fileName: string; percent: number } | null>(null);
   const [currentUploadAbort, setCurrentUploadAbort] = useState<(() => void) | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaJobClientRef = useRef<MediaJobClient | null>(null);
+  const [transcodingIds, setTranscodingIds] = useState<Map<string, number>>(new Map()); // assetId -> progress %
+
+  // Mutation to register uploaded files in the library system
+  const createLibraryItem = trpc.library.createItem.useMutation();
+
+  // Initialize media job client
+  useEffect(() => {
+    createMediaJobClient().then(client => {
+      mediaJobClientRef.current = client;
+    });
+  }, []);
+
+  // Transcode uploaded video to H.264 for browser playback
+  const transcodeToH264 = async (assetId: string, assetUri: string) => {
+    const client = mediaJobClientRef.current;
+    if (!client) return;
+
+    setTranscodingIds(prev => new Map(prev).set(assetId, 0));
+
+    try {
+      const result = await client.transcodeH264(assetUri, (progress) => {
+        const pct = Math.round(progress.progress * 100);
+        setTranscodingIds(prev => new Map(prev).set(assetId, pct));
+      });
+
+      // If transcoded, update the asset URL to the new H.264 file
+      const transcodedUri = result.artifacts?.[0]?.uri;
+      const wasTranscoded = (result.derived as any)?.transcoded;
+
+      if (transcodedUri && wasTranscoded) {
+        setVideos(prev => prev.map(v =>
+          v.id === assetId ? { ...v, url: transcodedUri, format: 'mp4' } : v
+        ));
+        showToast('Video transcoded to H.264 for browser playback', 'success', 3000);
+      }
+    } catch (err) {
+      console.warn('Transcode failed (non-fatal):', err);
+    } finally {
+      setTranscodingIds(prev => {
+        const next = new Map(prev);
+        next.delete(assetId);
+        return next;
+      });
+    }
+  };
 
   // Library search state
   const [sourceMode, setSourceMode] = useState<'generated' | 'library'>('generated');
@@ -204,6 +251,36 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         setAudio(prev => [newAsset, ...prev]);
       }
 
+      // Register in library system so it appears in Library search
+      try {
+        await createLibraryItem.mutateAsync({
+          itemType: newAsset.type,
+          source: 'video_editor_upload',
+          title: file.name,
+          sourceUrl: uri,
+          thumbnailUrl: isImage ? uri : undefined,
+          metadata: {
+            file_size_bytes: file.size,
+            extension: newAsset.format,
+            file_type: file.type,
+          },
+          sourceLink: {
+            linkType: 'upload_key',
+            linkId: assetId,
+          },
+        });
+        // Invalidate library query so new item appears
+        libraryQuery.refetch();
+      } catch (libErr) {
+        // Non-fatal: file is uploaded, just not indexed in library
+        console.warn('Failed to register in library (non-fatal):', libErr);
+      }
+
+      // Auto-transcode video uploads to H.264 for browser compatibility
+      if (isVideo) {
+        transcodeToH264(assetId, uri);
+      }
+
       setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
       return file.name;
     };
@@ -301,7 +378,8 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
 
     try {
       // Platform-aware: desktop downloads to workspace, web uses URL directly
-      const localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
+      let localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
+      let needsTranscode = false;
 
       // Probe file to get actual metadata
       try {
@@ -311,7 +389,65 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           asset.resolution = `${fileInfo.width}x${fileInfo.height}`;
         }
       } catch (probeErr) {
-        console.warn('Failed to probe file (non-fatal):', probeErr);
+        // Browser probe failed — likely HEVC or other unsupported codec
+        if (asset.type === 'video') {
+          needsTranscode = true;
+        } else {
+          console.warn('Failed to probe file (non-fatal):', probeErr);
+        }
+      }
+
+      // If browser can't read the video, use server-side probe + transcode
+      if (needsTranscode && asset.type === 'video') {
+        const client = mediaJobClientRef.current;
+        if (client) {
+          try {
+            // Server-side probe to get metadata + check codec
+            const probeResult = await client.probe(localPath);
+            const streams = (probeResult.derived as any)?.streams || [];
+            const videoStream = streams.find((s: any) => s.codec_type === 'video');
+            const codec = videoStream?.codec_name?.toLowerCase() || '';
+            const durationMs = (probeResult.derived as any)?.durationMs || 0;
+
+            if (durationMs > 0) {
+              asset.duration = durationMs / 1000;
+            }
+            if (videoStream?.width && videoStream?.height) {
+              asset.resolution = `${videoStream.width}x${videoStream.height}`;
+            }
+
+            const browserCodecs = new Set(['h264', 'vp8', 'vp9', 'av1']);
+            if (codec && !browserCodecs.has(codec)) {
+              showToast(`Transcoding ${codec.toUpperCase()} to H.264 for browser playback...`, 'info', 8000);
+              setTranscodingIds(prev => new Map(prev).set(asset.id, 0));
+
+              const transcodeResult = await client.transcodeH264(localPath, (progress) => {
+                const pct = Math.round(progress.progress * 100);
+                setTranscodingIds(prev => new Map(prev).set(asset.id, pct));
+              });
+
+              setTranscodingIds(prev => {
+                const next = new Map(prev);
+                next.delete(asset.id);
+                return next;
+              });
+
+              const transcodedUri = transcodeResult.artifacts?.[0]?.uri;
+              if (transcodedUri && (transcodeResult.derived as any)?.transcoded) {
+                asset = { ...asset, url: transcodedUri, format: 'mp4' };
+                localPath = transcodedUri;
+                // Update the media library list too
+                setVideos(prev => prev.map(v =>
+                  v.id === asset.id ? { ...v, url: transcodedUri, format: 'mp4' } : v
+                ));
+              }
+            }
+          } catch (transcodeErr) {
+            console.error('Server-side probe/transcode failed:', transcodeErr);
+            showToast('Video codec not supported and transcoding failed', 'error', 4000);
+            return; // Don't add unsupported video to timeline
+          }
+        }
       }
 
       // Generate thumbnail if video and not exists (desktop only)
@@ -733,6 +869,25 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           color: #888;
           margin-bottom: 8px;
         }
+
+        .transcode-badge {
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          background: rgba(255, 152, 0, 0.9);
+          color: white;
+          font-size: 9px;
+          font-weight: 600;
+          padding: 2px 6px;
+          border-radius: 3px;
+          z-index: 2;
+          animation: transcode-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes transcode-pulse {
+          0%, 100% { opacity: 0.8; }
+          50% { opacity: 1; }
+        }
       `}</style>
 
       {/* Hidden file input for web upload */}
@@ -1002,10 +1157,15 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
                   <div
                     key={asset.id}
                     className={`media-item ${downloadingIds.has(asset.id) ? 'downloading' : ''}`}
-                    draggable={!downloadingIds.has(asset.id)}
+                    draggable={!downloadingIds.has(asset.id) && !transcodingIds.has(asset.id)}
                     onDragStart={handleDragStart(asset)}
                   >
                     <div className="media-thumbnail">
+                      {transcodingIds.has(asset.id) && (
+                        <div className="transcode-badge">
+                          Transcoding {transcodingIds.get(asset.id)}%
+                        </div>
+                      )}
                       {asset.type === 'video' ? (
                         asset.url ? (
                           <video
@@ -1059,9 +1219,9 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
                       <button
                         className="add-button"
                         onClick={() => handleAddToTimeline(asset)}
-                        disabled={downloadingIds.has(asset.id)}
+                        disabled={downloadingIds.has(asset.id) || transcodingIds.has(asset.id)}
                       >
-                        {downloadingIds.has(asset.id) ? '⏳ Loading...' : '➕ Add'}
+                        {downloadingIds.has(asset.id) ? '⏳ Loading...' : transcodingIds.has(asset.id) ? '⏳ Transcoding...' : '➕ Add'}
                       </button>
                     </div>
                   </div>

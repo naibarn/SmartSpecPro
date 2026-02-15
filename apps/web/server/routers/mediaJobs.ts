@@ -507,26 +507,13 @@ export function registerMediaJobRoutes(app: Express) {
   app.get("/api/media-jobs/:id/events", async (req: Request, res: Response) => {
     const jobId = req.params.id;
 
-    // Auth: extract user from cookie/session
-    let userId: string | null = null;
-    try {
-      const { COOKIE_NAME } = await import("../../shared/const");
-      const cookieValue = req.cookies?.[COOKIE_NAME];
-      if (cookieValue) {
-        const { sdk } = await import("../_core/sdk");
-        const session = await sdk.verifySession(cookieValue);
-        if (session?.openId) {
-          userId = session.openId;
-        }
-      }
-    } catch {
-      // Auth failed
-    }
-
-    if (!userId) {
+    // Auth: use authorizeRequest for consistent userId (numeric DB ID)
+    const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+    if (!auth.ok) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
+    const userId = auth.sub;
 
     // Verify ownership
     const meta = await getJobKey(jobId, "meta");
@@ -558,17 +545,24 @@ export function registerMediaJobRoutes(app: Express) {
       const channel = `media-job-progress:${jobId}`;
 
       await subRedis.subscribe(channel);
-      subRedis.on("message", (_ch: string, message: string) => {
+      subRedis.on("message", async (_ch: string, message: string) => {
         if (closed) return;
         try {
-          const data = JSON.parse(message);
+          let data = JSON.parse(message);
+          // Enrich "done" events with result data from Redis if missing
+          if (data.status === "done" && !data.result) {
+            try {
+              const result = await getJobKey(jobId, "result");
+              if (result) data = { ...data, result };
+            } catch { /* ignore enrichment failure */ }
+          }
           const eventType =
             data.status === "done"
               ? "done"
               : data.status === "error"
                 ? "error"
                 : "progress";
-          res.write(`event: ${eventType}\ndata: ${message}\n\n`);
+          res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
 
           if (data.status === "done" || data.status === "error" || data.status === "canceled") {
             cleanup();
@@ -585,8 +579,13 @@ export function registerMediaJobRoutes(app: Express) {
     const pollInterval = setInterval(async () => {
       if (closed) return;
       try {
-        const status = await getJobKey(jobId, "status");
+        let status = await getJobKey(jobId, "status");
         if (status) {
+          // Enrich done/error with result/error data
+          if (status.status === "done" && !status.result) {
+            const result = await getJobKey(jobId, "result");
+            if (result) status = { ...status, result };
+          }
           const eventType =
             status.status === "done"
               ? "done"

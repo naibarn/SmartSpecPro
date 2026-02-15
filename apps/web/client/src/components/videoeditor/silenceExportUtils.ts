@@ -279,17 +279,37 @@ export function processExportToTimeline(
   // Determine target tracks
   const targetTrackIds = new Set<string>();
 
+  // Always include analyzed tracks
+  for (const trackId of analyzedTrackIds) {
+    targetTrackIds.add(trackId);
+  }
+
+  // Always link video ↔ audio tracks to prevent desync.
+  // If any audio or video track is analyzed, include ALL video + audio tracks.
+  const analyzedTypes = new Set(
+    analyzedTrackIds
+      .map((id) => newProject.timeline.tracks.find((t) => t.id === id)?.type)
+      .filter(Boolean),
+  );
+  if (analyzedTypes.has('audio') || analyzedTypes.has('video')) {
+    for (const track of newProject.timeline.tracks) {
+      if (
+        (track.type === 'video' || track.type === 'audio') &&
+        !track.locked &&
+        !track.muted &&
+        track.clips.length > 0
+      ) {
+        targetTrackIds.add(track.id);
+      }
+    }
+  }
+
   if (applyToAllTracks) {
-    // All tracks except locked/muted
+    // Also include overlay and text tracks
     for (const track of newProject.timeline.tracks) {
       if (!track.locked && !track.muted && track.clips.length > 0) {
         targetTrackIds.add(track.id);
       }
-    }
-  } else {
-    // Only analyzed tracks
-    for (const trackId of analyzedTrackIds) {
-      targetTrackIds.add(trackId);
     }
   }
 

@@ -204,14 +204,8 @@ async function s3StoragePut(
     }),
   );
 
-  const url = config.publicUrlPrefix
-    ? `${config.publicUrlPrefix.replace(/\/$/, "")}/${key}`
-    : await getSignedUrl(
-        config.client,
-        new GetObjectCommand({ Bucket: config.bucket, Key: key }),
-        { expiresIn: 3600 },
-      );
-
+  // Always use proxy URL to avoid R2 public URL SSL issues and presigned URL expiration
+  const url = `/api/storage/files/${encodeURI(key)}`;
   return { key, url };
 }
 
@@ -220,15 +214,7 @@ async function s3StorageGet(
   relKey: string,
 ): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-
-  const url = config.publicUrlPrefix
-    ? `${config.publicUrlPrefix.replace(/\/$/, "")}/${key}`
-    : await getSignedUrl(
-        config.client,
-        new GetObjectCommand({ Bucket: config.bucket, Key: key }),
-        { expiresIn: 3600 },
-      );
-
+  const url = `/api/storage/files/${encodeURI(key)}`;
   return { key, url };
 }
 
@@ -416,6 +402,8 @@ export async function storagePresignPut(
 
 /**
  * Resolve a storage key to its public/accessible URL.
+ * For S3/R2: returns a proxy URL through the Node.js server (/api/storage/files/...).
+ * For local: returns /uploads/... path.
  */
 export async function storageResolveUrl(relKey: string): Promise<string | null> {
   const config = await getActiveStorageConfig();
@@ -423,17 +411,65 @@ export async function storageResolveUrl(relKey: string): Promise<string | null> 
 
   switch (config.provider) {
     case "s3":
-      if (config.publicUrlPrefix) {
-        return `${config.publicUrlPrefix.replace(/\/$/, "")}/${key}`;
-      }
-      return getSignedUrl(
-        config.client,
-        new GetObjectCommand({ Bucket: config.bucket, Key: key }),
-        { expiresIn: 3600 },
-      );
+      // Use server-side proxy to avoid public URL SSL issues and presigned URL expiration
+      return `/api/storage/files/${encodeURI(key)}`;
     case "local":
       return `/uploads/${key}`;
     default:
       return null;
   }
+}
+
+/**
+ * Stream a file from S3/R2 storage. Returns null if not using S3 provider.
+ * Used by the storage proxy endpoint. Supports range requests for video seeking.
+ */
+export async function storageStreamFile(
+  relKey: string,
+  range?: string,
+): Promise<{
+  stream: ReadableStream | NodeJS.ReadableStream;
+  contentType: string;
+  contentLength?: number;
+  totalLength?: number;
+  rangeStart?: number;
+  rangeEnd?: number;
+  isPartial: boolean;
+} | null> {
+  const config = await getActiveStorageConfig();
+  if (config.provider !== "s3") return null;
+
+  const key = normalizeKey(relKey);
+  const cmd: any = { Bucket: config.bucket, Key: key };
+  if (range) {
+    cmd.Range = range;
+  }
+
+  const response = await config.client.send(new GetObjectCommand(cmd));
+  if (!response.Body) return null;
+
+  const isPartial = response.$metadata.httpStatusCode === 206;
+  let rangeStart: number | undefined;
+  let rangeEnd: number | undefined;
+  let totalLength: number | undefined;
+
+  if (isPartial && response.ContentRange) {
+    // Parse "bytes 0-999/5000"
+    const match = response.ContentRange.match(/bytes (\d+)-(\d+)\/(\d+|\*)/);
+    if (match) {
+      rangeStart = parseInt(match[1], 10);
+      rangeEnd = parseInt(match[2], 10);
+      totalLength = match[3] !== "*" ? parseInt(match[3], 10) : undefined;
+    }
+  }
+
+  return {
+    stream: response.Body as NodeJS.ReadableStream,
+    contentType: response.ContentType || "application/octet-stream",
+    contentLength: response.ContentLength,
+    totalLength,
+    rangeStart,
+    rangeEnd,
+    isPartial,
+  };
 }

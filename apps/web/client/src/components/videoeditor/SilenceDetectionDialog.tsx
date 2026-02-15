@@ -28,6 +28,7 @@ import {
 import { createMediaJobClient } from '../../services/mediaJobClient';
 import PreviewPlayer, { type ActiveClipInfo } from './PreviewPlayer';
 import SilenceWaveformOverlay from './SilenceWaveformOverlay';
+import WaveformCanvas from './WaveformCanvas';
 
 /**
  * Pure functions for skip-silence logic (exported for testing)
@@ -111,12 +112,148 @@ export function shouldSkipSilence(params: {
 }
 
 interface AssetWithWaveform {
-  path: string;
+  type?: 'video' | 'audio' | 'image';
+  path?: string;
+  originalPath?: string;
+  url?: string;
+  uri?: string;
   waveformData?: number[];
+}
+
+function resolveAssetUri(asset?: AssetWithWaveform | null): string {
+  if (!asset) return '';
+  const candidate = asset.path || asset.originalPath || asset.url || asset.uri || '';
+  return typeof candidate === 'string' ? candidate.trim() : '';
+}
+
+function toSeconds(value: unknown, fallback = 0): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  return fallback;
+}
+
+function toSafeTime(value: number, fallback = 0): number {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function toSecondsFromMs(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value / 1000;
+  }
+  return null;
+}
+
+function getClipStartSeconds(clip: any): number {
+  return toSeconds(clip?.startTime, toSecondsFromMs(clip?.startMs) ?? 0);
+}
+
+function getClipDurationSeconds(clip: any): number {
+  return toSeconds(clip?.duration, toSecondsFromMs(clip?.durationMs) ?? 0);
+}
+
+function getClipTrimInSeconds(clip: any): number {
+  return toSeconds(clip?.trimIn, toSecondsFromMs(clip?.inMs) ?? 0);
+}
+
+function getProjectDurationSeconds(project: VideoEditorProject): number {
+  const duration = project.settings?.duration;
+  if (typeof duration === 'number' && Number.isFinite(duration) && duration > 0) {
+    return duration;
+  }
+  const durationMs = (project.settings as any)?.durationMs;
+  if (typeof durationMs === 'number' && Number.isFinite(durationMs) && durationMs > 0) {
+    return durationMs / 1000;
+  }
+  return 0;
+}
+
+function toMs(value: unknown, fallback = 0): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  return fallback;
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function normalizeProgressPercent(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  if (value <= 1) return clampPercent(value * 100);
+  return clampPercent(value);
+}
+
+function mapMediaStageToAnalysisStage(stage?: string): AnalysisStage | null {
+  const normalized = (stage || '').toLowerCase();
+  if (!normalized) return null;
+
+  if (
+    normalized.includes('start') ||
+    normalized.includes('prepare') ||
+    normalized.includes('queue')
+  ) {
+    return 'preparing';
+  }
+  if (
+    normalized.includes('scan') ||
+    normalized.includes('probe') ||
+    normalized.includes('download')
+  ) {
+    return 'scanning';
+  }
+  if (normalized.includes('detect')) {
+    return 'detecting';
+  }
+  if (
+    normalized.includes('apply') ||
+    normalized.includes('buffer') ||
+    normalized.includes('finaliz') ||
+    normalized === 'done'
+  ) {
+    return 'applying_buffer';
+  }
+  return null;
+}
+
+function getAnalysisStageLabel(stage: AnalysisStage): string {
+  switch (stage) {
+    case 'preparing':
+      return 'Preparing analysis...';
+    case 'scanning':
+      return 'Scanning audio...';
+    case 'detecting':
+      return 'Detecting silence...';
+    case 'applying_buffer':
+      return 'Applying buffer...';
+    case 'done':
+      return 'Analysis complete';
+    case 'error':
+      return 'Analysis failed';
+    default:
+      return 'Analyzing...';
+  }
+}
+
+function humanizeStageText(stage?: string): string {
+  if (!stage) return '';
+  return stage
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (s) => s.toUpperCase());
+}
+
+function normalizeWaveformPeaks(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((v) => {
+      if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+      return Math.max(0, Math.min(1, Math.abs(v)));
+    })
+    .filter((v): v is number => v !== null);
 }
 
 interface SilenceDetectionDialogProps {
   project: VideoEditorProject;
+  selectedClipId?: string | null;
+  selectedClipIds?: string[];
   onExportToTimeline: (
     selectedRegions: SilentRegion[],
     applyToAllTracks: boolean,
@@ -126,12 +263,14 @@ interface SilenceDetectionDialogProps {
 
 const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   project,
+  selectedClipId,
+  selectedClipIds = [],
   onExportToTimeline,
   onClose,
 }) => {
   // Slider state
-  const [threshold, setThreshold] = useState(-40);
-  const [minDuration, setMinDuration] = useState(0.5);
+  const [threshold, setThreshold] = useState(-30);
+  const [minDuration, setMinDuration] = useState(0.3);
   const [softeningBuffer, setSofteningBuffer] = useState(0.2);
 
   // Track selection
@@ -143,6 +282,8 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>('idle');
+  const [analysisProgressPct, setAnalysisProgressPct] = useState(0);
+  const [analysisProgressLabel, setAnalysisProgressLabel] = useState('');
   const [totalSilence, setTotalSilence] = useState(0);
   const [totalActive, setTotalActive] = useState(0);
   const [projectDuration, setProjectDuration] = useState(0); // Store at analysis time to prevent re-renders
@@ -158,14 +299,15 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   // Preview player state
   const [isPlaying, setIsPlaying] = useState(false);
   const [skipSilenceEnabled, setSkipSilenceEnabled] = useState(false);
-  const lastSkipRef = useRef(0);
-  const playbackTimeRef = useRef(playbackTime);
-  playbackTimeRef.current = playbackTime;
+  const [analyzedPreviewClip, setAnalyzedPreviewClip] = useState<ActiveClipInfo | null>(null);
 
   // Waveform state
   const [waveformData, setWaveformData] = useState<number[] | null>(null);
   const [waveformLoading, setWaveformLoading] = useState(false);
   const [waveformError, setWaveformError] = useState(false);
+  const [timelineViewportNode, setTimelineViewportNode] = useState<HTMLDivElement | null>(null);
+  const [timelineViewportSize, setTimelineViewportSize] = useState({ width: 0, height: 0 });
+  const previewSeededRef = useRef(false);
 
   // Pre-compute skeleton bar heights to avoid Math.random() in render
   const skeletonHeights = useMemo(
@@ -180,43 +322,94 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     return () => { mountedRef.current = false; };
   }, []);
 
+  const timelineViewportRef = useCallback((node: HTMLDivElement | null) => {
+    setTimelineViewportNode(node);
+  }, []);
+
   // Waveform data availability check
   useEffect(() => {
-    const audioTracks = project.timeline.tracks.filter(
-      (t) => t.type === 'audio' && t.clips.length > 0,
-    );
-    if (audioTracks.length === 0) return;
+    let cancelled = false;
 
-    const firstClip = audioTracks[0].clips[0];
-    const asset = project.assets[firstClip.assetId] as AssetWithWaveform | undefined;
-    if (!asset) return;
+    const findWaveformSource = (): { assetUri: string; peaks: number[] | null } => {
+      if (analyzedPreviewClip?.videoUrl) {
+        return { assetUri: analyzedPreviewClip.videoUrl, peaks: null };
+      }
 
-    if (asset.waveformData && asset.waveformData.length > 0) {
-      setWaveformData(asset.waveformData);
-      return;
+      const pickFromTrack = (trackId: string): { assetUri: string; peaks: number[] | null } | null => {
+        const track = project.timeline.tracks.find((t) => t.id === trackId);
+        if (!track) return null;
+        for (const clip of track.clips) {
+          const asset = project.assets[clip.assetId] as AssetWithWaveform | undefined;
+          if (!asset || asset.type === 'image') continue;
+          const assetUri = resolveAssetUri(asset);
+          if (!assetUri) continue;
+          const peaks = normalizeWaveformPeaks(asset.waveformData);
+          return { assetUri, peaks: peaks.length > 0 ? peaks : null };
+        }
+        return null;
+      };
+
+      for (const trackId of selectedTrackIds) {
+        const selected = pickFromTrack(trackId);
+        if (selected) return selected;
+      }
+
+      for (const track of project.timeline.tracks) {
+        if ((track.type !== 'audio' && track.type !== 'video') || track.clips.length === 0) {
+          continue;
+        }
+        const fallback = pickFromTrack(track.id);
+        if (fallback) return fallback;
+      }
+
+      return { assetUri: '', peaks: null };
+    };
+
+    const source = findWaveformSource();
+    setWaveformError(false);
+
+    if (source.peaks && source.peaks.length > 0) {
+      setWaveformLoading(false);
+      setWaveformData(source.peaks);
+      return () => {
+        cancelled = true;
+      };
     }
 
-    // Waveform data missing -- trigger generation
+    if (!source.assetUri) {
+      setWaveformLoading(false);
+      setWaveformData(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Waveform data missing -- trigger generation from backend
     setWaveformLoading(true);
+    setWaveformData(null);
     const fetchWaveform = async () => {
       try {
         const client = await createMediaJobClient();
-        const result = await client.getWaveformPeaks(asset.path);
-        if (!mountedRef.current) return;
-        const peaks = (result as { derived?: { peaks?: number[] } }).derived?.peaks || [];
-        setWaveformData(peaks);
+        const result = await client.getWaveformPeaks(source.assetUri);
+        if (!mountedRef.current || cancelled) return;
+        const peaks = normalizeWaveformPeaks((result as { derived?: { peaks?: unknown } }).derived?.peaks);
+        setWaveformData(peaks.length > 0 ? peaks : null);
       } catch (err) {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || cancelled) return;
         console.error('Waveform generation failed:', err);
         setWaveformError(true);
       } finally {
-        if (mountedRef.current) {
+        if (mountedRef.current && !cancelled) {
           setWaveformLoading(false);
         }
       }
     };
     fetchWaveform();
-  }, [project]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project, selectedTrackIds, analyzedPreviewClip?.videoUrl]);
 
   // Abort controller and stage timers cleanup
   useEffect(() => {
@@ -228,10 +421,10 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     };
   }, []);
 
-  // Auto-select first audio track
+  // Auto-select first track with audio (audio or video tracks)
   useEffect(() => {
     const audioTracks = project.timeline.tracks.filter(
-      (t) => t.type === 'audio' && t.clips.length > 0
+      (t) => (t.type === 'audio' || t.type === 'video') && t.clips.length > 0
     );
     if (audioTracks.length > 0 && selectedTrackIds.length === 0) {
       setSelectedTrackIds([audioTracks[0].id]);
@@ -263,86 +456,190 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       .sort((a, b) => a.adjustedStartTime - b.adjustedStartTime);
   }, [regions]);
 
-  // Skip-silence effect during playback
-  useEffect(() => {
-    if (!isPlaying || !skipSilenceEnabled || skipRegions.length === 0) {
-      return;
-    }
-
-    let rafId: number;
-
-    const tick = () => {
-      const target = shouldSkipSilence({
-        enabled: true,
-        currentTime: playbackTimeRef.current,
-        regions: skipRegions,
-        lastSkipTimestamp: lastSkipRef.current,
-        cooldownMs: 100,
-        boundaryGuardMs: 0.05,
-      });
-
-      if (target !== null) {
-        setPlaybackTime(target);
-        lastSkipRef.current = performance.now();
-      }
-
-      rafId = requestAnimationFrame(tick);
-    };
-
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [isPlaying, skipSilenceEnabled, skipRegions, setPlaybackTime]);
-
-  // Get audio tracks for UI
+  // Get tracks with audio content (audio tracks + video tracks which contain audio)
   const audioTracks = useMemo(() =>
-    project.timeline.tracks.filter((t) => t.type === 'audio' && t.clips.length > 0),
+    project.timeline.tracks.filter((t) => (t.type === 'audio' || t.type === 'video') && t.clips.length > 0),
     [project]
   );
 
-  // Resolve preview asset from first selected track
+  // Resolve preview asset with priority:
+  // 1) currently selected timeline clip, 2) selected analysis tracks, 3) any visual clip in project.
   const { previewUrl, activeClip, duration } = useMemo(() => {
-    if (selectedTrackIds.length === 0) {
-      return { previewUrl: '', activeClip: null, duration: 0 };
-    }
+    type ClipCandidate = { clip: any; asset: any };
+    const timelineDuration = getProjectDurationSeconds(project);
+    const selectedIds = selectedClipId
+      ? [selectedClipId, ...selectedClipIds.filter((id) => id !== selectedClipId)]
+      : selectedClipIds;
 
-    const firstTrack = project.timeline.tracks.find(
-      (t) => t.id === selectedTrackIds[0],
-    );
-    if (!firstTrack || firstTrack.clips.length === 0) {
-      return { previewUrl: '', activeClip: null, duration: 0 };
-    }
+    const findSelectedClipCandidate = (): ClipCandidate | null => {
+      if (selectedIds.length === 0) return null;
+      for (const selectedId of selectedIds) {
+        for (const track of project.timeline.tracks) {
+          const clip = track.clips.find((c) => c.id === selectedId);
+          if (!clip) continue;
+          const asset = project.assets[clip.assetId] as AssetWithWaveform | undefined;
+          if (!asset) continue;
+          const assetUri = resolveAssetUri(asset);
+          if (!assetUri) continue;
+          return { clip, asset: { ...asset, path: assetUri } };
+        }
+      }
+      return null;
+    };
 
-    const firstClip = firstTrack.clips[0];
-    const asset = project.assets[firstClip.assetId];
-    if (!asset || !asset.path) {
-      return { previewUrl: '', activeClip: null, duration: 0 };
-    }
+    const findFirstVisualClipInTracks = (trackIds: string[]): ClipCandidate | null => {
+      for (const trackId of trackIds) {
+        const track = project.timeline.tracks.find((t) => t.id === trackId);
+        if (!track) continue;
+        for (const clip of track.clips) {
+          const asset = project.assets[clip.assetId] as AssetWithWaveform | undefined;
+          if (!asset) continue;
+          const assetUri = resolveAssetUri(asset);
+          if (!assetUri) continue;
+          // Selected track can be legacy/migrated where asset.type may be missing.
+          // If it's on a visual track, prefer it as preview source.
+          if (track.type === 'video' || track.type === 'overlay' || asset.type === 'video' || asset.type === 'image' || !asset.type) {
+            return { clip, asset: { ...asset, path: assetUri } };
+          }
+        }
+      }
+      return null;
+    };
 
-    // Build ActiveClipInfo if clip has trim points
-    let clipInfo: ActiveClipInfo | null = null;
-    if (firstClip.trimIn != null || firstClip.trimOut != null) {
-      clipInfo = {
-        videoUrl: asset.path,
-        clipStartTime: firstClip.startTime,
-        trimIn: firstClip.trimIn ?? 0,
-        clipDuration: firstClip.duration || 0,
+    const findFirstVisualClipInProject = (): ClipCandidate | null => {
+      for (const track of project.timeline.tracks) {
+        if (track.type !== 'video' && track.type !== 'overlay') continue;
+        for (const clip of track.clips) {
+          const asset = project.assets[clip.assetId] as AssetWithWaveform | undefined;
+          if (!asset) continue;
+          const assetUri = resolveAssetUri(asset);
+          if (!assetUri) continue;
+          return { clip, asset: { ...asset, path: assetUri } };
+        }
+      }
+      return null;
+    };
+
+    // After analysis, always preview the exact clip source that was analyzed.
+    // This avoids edge-cases where selection/project scan points at a non-playable clip.
+    if (analysisComplete && analyzedPreviewClip?.videoUrl) {
+      const clipStart = toSeconds(analyzedPreviewClip.clipStartTime, 0);
+      const clipDuration = Math.max(0, toSeconds(analyzedPreviewClip.clipDuration, 0));
+      const trimIn = Math.max(0, toSeconds(analyzedPreviewClip.trimIn, 0));
+      const normalizedUrl = analyzedPreviewClip.videoUrl.trim();
+      const fallbackDuration = clipStart + clipDuration;
+      return {
+        previewUrl: normalizedUrl,
+        activeClip: {
+          ...analyzedPreviewClip,
+          videoUrl: normalizedUrl,
+          clipStartTime: clipStart,
+          clipDuration,
+          trimIn,
+        },
+        duration: Math.max(timelineDuration, fallbackDuration),
       };
     }
+
+    const selectedClipCandidate = findSelectedClipCandidate();
+    const preferred =
+      (selectedClipCandidate && (selectedClipCandidate.asset.type === 'video' || selectedClipCandidate.asset.type === 'image')
+        ? selectedClipCandidate
+        : null) ||
+      findFirstVisualClipInTracks(selectedTrackIds) ||
+      findFirstVisualClipInProject() ||
+      selectedClipCandidate;
+
+    if (!preferred) {
+      if (analyzedPreviewClip) {
+        const fallbackDuration = analyzedPreviewClip.clipStartTime + analyzedPreviewClip.clipDuration;
+        return {
+          previewUrl: analyzedPreviewClip.videoUrl,
+          activeClip: analyzedPreviewClip,
+          duration: Math.max(timelineDuration, fallbackDuration),
+        };
+      }
+      return { previewUrl: '', activeClip: null, duration: 0 };
+    }
+
+    const { clip, asset } = preferred;
+    const clipStart = getClipStartSeconds(clip);
+    const clipDuration = getClipDurationSeconds(clip);
+    const trimIn = getClipTrimInSeconds(clip);
+    const clipInfo: ActiveClipInfo = {
+      videoUrl: asset.path,
+      clipStartTime: clipStart,
+      trimIn,
+      clipDuration,
+      isImage: asset.type === 'image',
+    };
+
+    const fallbackDuration = clipStart + clipDuration;
 
     return {
       previewUrl: asset.path,
       activeClip: clipInfo,
-      duration: project.settings.duration || firstClip.duration || 0,
+      duration: Math.max(timelineDuration, fallbackDuration),
     };
-  }, [project, selectedTrackIds]);
+  }, [project, selectedTrackIds, selectedClipId, selectedClipIds, analyzedPreviewClip, analysisComplete]);
+
+  useEffect(() => {
+    if (!timelineViewportNode) return;
+
+    const measure = () => {
+      const width = Math.max(0, Math.floor(timelineViewportNode.clientWidth));
+      const height = Math.max(0, Math.floor(timelineViewportNode.clientHeight));
+      setTimelineViewportSize((prev) =>
+        prev.width === width && prev.height === height ? prev : { width, height }
+      );
+    };
+
+    measure();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(measure);
+      ro.observe(timelineViewportNode);
+      return () => ro.disconnect();
+    }
+
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [timelineViewportNode]);
+
+  // Seed preview at the selected clip's timeline start so users don't land on source-time 0.
+  useEffect(() => {
+    if (!activeClip) return;
+    if (previewSeededRef.current) return;
+    setPlaybackTime(Math.max(0, toSafeTime(activeClip.clipStartTime, 0)));
+    previewSeededRef.current = true;
+  }, [activeClip?.videoUrl, activeClip?.clipStartTime]);
+
+  // Re-seed when selection changes.
+  useEffect(() => {
+    previewSeededRef.current = false;
+  }, [selectedClipId, selectedClipIds.join('|')]);
 
   // Playback handlers
   const handleTimeChange = useCallback((time: number) => {
-    setPlaybackTime(time);
-  }, []);
+    if (!Number.isFinite(time)) return;
+    const maxTime = Number.isFinite(duration) && duration > 0 ? duration : Infinity;
+    setPlaybackTime(Math.max(0, Math.min(maxTime, time)));
+  }, [duration]);
 
   const handleWaveformSeek = useCallback((time: number) => {
-    setPlaybackTime(time);
+    if (!Number.isFinite(time)) return;
+    const maxTime = Number.isFinite(duration) && duration > 0 ? duration : Infinity;
+    setPlaybackTime(Math.max(0, Math.min(maxTime, time)));
+  }, [duration]);
+
+  const handleRegionToggle = useCallback((regionId: string) => {
+    setRegions((prev) =>
+      prev.map((region) =>
+        region.id === regionId && !region.skipped
+          ? { ...region, selected: !region.selected }
+          : region
+      )
+    );
   }, []);
 
   const handlePlayPause = useCallback(() => {
@@ -374,15 +671,26 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     // Reset state
     setIsAnalyzing(true);
     setAnalysisStage('preparing');
+    setAnalysisProgressPct(0);
+    setAnalysisProgressLabel(getAnalysisStageLabel('preparing'));
     setAnalysisComplete(false);
     setAnalysisError(null);
     setRegions([]);
     setRawRegions([]);
 
     // Stage timers for visual feedback
+    stageTimersRef.current.forEach(clearTimeout);
     stageTimersRef.current = [];
-    stageTimersRef.current.push(setTimeout(() => setAnalysisStage('scanning'), 1000));
-    stageTimersRef.current.push(setTimeout(() => setAnalysisStage('detecting'), 3000));
+    stageTimersRef.current.push(setTimeout(() => {
+      setAnalysisStage('scanning');
+      setAnalysisProgressLabel(getAnalysisStageLabel('scanning'));
+      setAnalysisProgressPct((prev) => Math.max(prev, 12));
+    }, 1000));
+    stageTimersRef.current.push(setTimeout(() => {
+      setAnalysisStage('detecting');
+      setAnalysisProgressLabel(getAnalysisStageLabel('detecting'));
+      setAnalysisProgressPct((prev) => Math.max(prev, 25));
+    }, 3000));
 
     try {
       // Find asset URI
@@ -392,18 +700,56 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       }
 
       const firstClip = firstTrack.clips[0];
-      const asset = project.assets[firstClip.assetId];
-      if (!asset || !asset.path) {
+      const asset = project.assets[firstClip.assetId] as AssetWithWaveform | undefined;
+      const assetUri = resolveAssetUri(asset);
+      if (!asset || !assetUri) {
         throw new Error('Asset not found');
       }
 
+      setAnalyzedPreviewClip({
+        videoUrl: assetUri,
+        clipStartTime: getClipStartSeconds(firstClip),
+        trimIn: getClipTrimInSeconds(firstClip),
+        clipDuration: getClipDurationSeconds(firstClip),
+        isImage: asset.type === 'image',
+      });
+
       setAnalysisStage('detecting');
+      setAnalysisProgressLabel(getAnalysisStageLabel('detecting'));
 
       // Call backend
       const client = await createMediaJobClient();
-      const result = await client.detectDeadAir(asset.path, {
+      const result = await client.detectDeadAir(assetUri, {
         thresholdDb: threshold,
         minSilenceMs: minDuration * 1000,
+      }, (progress) => {
+        if (abortController.signal.aborted || !mountedRef.current) return;
+
+        const mappedStage = mapMediaStageToAnalysisStage(progress.stage);
+        if (mappedStage) {
+          setAnalysisStage((prev) => (
+            prev === 'applying_buffer' || prev === 'done' || prev === 'error'
+              ? prev
+              : mappedStage
+          ));
+        }
+
+        const progressPct = normalizeProgressPercent(progress.progress);
+        setAnalysisProgressPct((prev) => Math.max(prev, progressPct));
+
+        if (typeof progress.message === 'string' && progress.message.trim()) {
+          setAnalysisProgressLabel(progress.message.trim());
+          return;
+        }
+
+        if (mappedStage) {
+          setAnalysisProgressLabel(getAnalysisStageLabel(mappedStage));
+          return;
+        }
+
+        if (progress.stage) {
+          setAnalysisProgressLabel(humanizeStageText(progress.stage));
+        }
       });
 
       // Check if aborted
@@ -412,22 +758,57 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       }
 
       setAnalysisStage('applying_buffer');
+      setAnalysisProgressLabel(getAnalysisStageLabel('applying_buffer'));
+      setAnalysisProgressPct((prev) => Math.max(prev, 92));
 
       // Map segments to regions
       const silenceSegments = result.derived?.silenceSegments || [];
-      const rawRegions: SilentRegion[] = silenceSegments.map((seg: any) => ({
-        id: generateId('region'),
-        startTime: seg.startMs / 1000,
-        endTime: seg.endMs / 1000,
-        duration: (seg.endMs - seg.startMs) / 1000,
-        adjustedStartTime: 0,
-        adjustedEndTime: 0,
-        adjustedDuration: 0,
-        averageDb: seg.averageDb || threshold,
-        trackId: firstTrack.id,
-        selected: true,
-        skipped: false,
-      }));
+      const clipStart = getClipStartSeconds(firstClip);
+      const clipTrimIn = getClipTrimInSeconds(firstClip);
+      const clipDuration = getClipDurationSeconds(firstClip);
+      const clipSourceEnd = clipDuration > 0
+        ? clipTrimIn + clipDuration
+        : Number.POSITIVE_INFINITY;
+
+      const rawRegions: SilentRegion[] = silenceSegments
+        .map((seg: any): SilentRegion | null => {
+          const startMs = toMs(seg?.startMs, toMs(seg?.start, 0) * 1000);
+          const endMs = toMs(seg?.endMs, toMs(seg?.end, 0) * 1000);
+          if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+            return null;
+          }
+
+          const sourceStart = Math.max(0, startMs / 1000);
+          const sourceEnd = Math.max(sourceStart, endMs / 1000);
+
+          const visibleSourceStart = Math.max(sourceStart, clipTrimIn);
+          const visibleSourceEnd = Math.min(sourceEnd, clipSourceEnd);
+          if (!Number.isFinite(visibleSourceStart) || !Number.isFinite(visibleSourceEnd) || visibleSourceEnd <= visibleSourceStart) {
+            return null;
+          }
+
+          const timelineStart = clipStart + (visibleSourceStart - clipTrimIn);
+          const timelineEnd = clipStart + (visibleSourceEnd - clipTrimIn);
+          const regionDuration = timelineEnd - timelineStart;
+          if (!Number.isFinite(timelineStart) || !Number.isFinite(timelineEnd) || regionDuration <= 0) {
+            return null;
+          }
+
+          return {
+            id: generateId('region'),
+            startTime: timelineStart,
+            endTime: timelineEnd,
+            duration: regionDuration,
+            adjustedStartTime: 0,
+            adjustedEndTime: 0,
+            adjustedDuration: 0,
+            averageDb: toSeconds(seg?.averageDb, threshold),
+            trackId: firstTrack.id,
+            selected: true,
+            skipped: false,
+          };
+        })
+        .filter((region): region is SilentRegion => region !== null);
 
       // Store raw regions for re-buffering
       setRawRegions(rawRegions);
@@ -439,15 +820,18 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       const silenceDuration = bufferedRegions
         .filter((r) => !r.skipped)
         .reduce((sum, r) => sum + r.adjustedDuration, 0);
-      const duration = project.settings.duration || 0;
+      const duration = getProjectDurationSeconds(project);
       const activeDuration = duration > 0 ? Math.max(0, duration - silenceDuration) : 0;
 
       setRegions(bufferedRegions);
       setTotalSilence(silenceDuration);
       setTotalActive(activeDuration);
       setProjectDuration(duration); // Store for later re-calculations
+      setSkipSilenceEnabled(bufferedRegions.some((r) => r.selected && !r.skipped));
       setAnalysisComplete(true);
       setAnalysisStage('done');
+      setAnalysisProgressLabel(getAnalysisStageLabel('done'));
+      setAnalysisProgressPct(100);
     } catch (err) {
       // Check abort signal even in catch block to handle race condition:
       // If network error occurs and then user closes dialog, ignore the error
@@ -456,6 +840,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       }
       console.error('Analysis failed:', err);
       setAnalysisStage('error');
+      setAnalysisProgressLabel(getAnalysisStageLabel('error'));
       setAnalysisError(err instanceof Error ? err.message : 'Analysis failed - try again or adjust settings');
     } finally {
       stageTimersRef.current.forEach(clearTimeout);
@@ -475,6 +860,21 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
 
   const selectedRegionCount = regions.filter((r) => r.selected && !r.skipped).length;
   const exportDisabled = !analysisComplete || selectedRegionCount === 0;
+  const hasWaveform = Array.isArray(waveformData) && waveformData.length > 0;
+  const timelineReady = timelineViewportSize.width > 0 && timelineViewportSize.height > 0;
+  const timelineContentWidth = timelineReady
+    ? Math.max(
+      timelineViewportSize.width,
+      Math.floor(timelineViewportSize.width * (timelineZoom / 100)),
+    )
+    : 0;
+  const timelineSkipRanges = useMemo(
+    () => skipRegions.map((region) => ({
+      start: region.adjustedStartTime,
+      end: region.adjustedEndTime,
+    })),
+    [skipRegions],
+  );
 
   const handleExport = () => {
     const selectedRegions = regions.filter((r) => r.selected && !r.skipped);
@@ -600,6 +1000,140 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               height: 200px;
               border-top: 1px solid #444;
               background: #1e1e1e;
+              position: relative;
+              padding: 8px 12px 10px 12px;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+            .silence-timeline-toolbar {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 10px;
+              min-height: 28px;
+            }
+            .silence-timeline-zoom {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .silence-timeline-zoom-btn {
+              background: #2f2f2f;
+              border: 1px solid #4b4b4b;
+              color: #ddd;
+              min-width: 28px;
+              height: 24px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 13px;
+              line-height: 1;
+            }
+            .silence-timeline-zoom-btn:hover {
+              background: #3a3a3a;
+            }
+            .silence-timeline-zoom-range {
+              width: 140px;
+            }
+            .silence-timeline-zoom-text {
+              color: #b7c6d5;
+              font-size: 12px;
+              min-width: 44px;
+            }
+            .silence-timeline-legend {
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              color: #b7c6d5;
+              font-size: 11px;
+            }
+            .legend-item {
+              display: flex;
+              align-items: center;
+              gap: 5px;
+              white-space: nowrap;
+            }
+            .legend-swatch {
+              width: 14px;
+              height: 8px;
+              border-radius: 2px;
+              border: 1px solid rgba(255, 255, 255, 0.35);
+            }
+            .legend-swatch.cut {
+              background: rgba(255, 59, 59, 0.45);
+              border-color: #ff6b6b;
+            }
+            .legend-swatch.keep {
+              background: rgba(56, 211, 110, 0.32);
+              border-color: #4ade80;
+            }
+            .legend-swatch.too-short {
+              background:
+                repeating-linear-gradient(
+                  135deg,
+                  rgba(150, 150, 150, 0.35) 0px,
+                  rgba(150, 150, 150, 0.35) 2px,
+                  rgba(90, 90, 90, 0.35) 2px,
+                  rgba(90, 90, 90, 0.35) 4px
+                );
+              border-color: #9a9a9a;
+            }
+            .silence-timeline-scroll {
+              flex: 1;
+              min-height: 0;
+              overflow-x: auto;
+              overflow-y: hidden;
+            }
+            .silence-waveform-stack {
+              position: relative;
+              width: 100px;
+              height: 100%;
+            }
+            .waveform-fallback-bg {
+              width: 100%;
+              height: 100%;
+              background:
+                linear-gradient(180deg, rgba(76, 194, 255, 0.18), rgba(76, 194, 255, 0.05)),
+                repeating-linear-gradient(
+                  90deg,
+                  rgba(255, 255, 255, 0.07) 0px,
+                  rgba(255, 255, 255, 0.07) 1px,
+                  transparent 1px,
+                  transparent 12px
+                );
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .waveform-fallback-label {
+              font-size: 13px;
+              color: #b6c7d4;
+              background: rgba(0, 0, 0, 0.45);
+              border: 1px solid #3b4d5a;
+              border-radius: 6px;
+              padding: 6px 10px;
+            }
+            .waveform-pending {
+              color: #8ea1af;
+              font-size: 13px;
+            }
+            .silence-waveform-help {
+              position: absolute;
+              right: 10px;
+              top: 8px;
+              z-index: 3;
+              font-size: 11px;
+              color: #aaa;
+              background: rgba(0, 0, 0, 0.45);
+              border: 1px solid #3a3a3a;
+              border-radius: 4px;
+              padding: 3px 6px;
+              pointer-events: none;
+            }
+            .timeline-empty-state {
+              width: 100%;
+              height: 100%;
               display: flex;
               align-items: center;
               justify-content: center;
@@ -796,6 +1330,41 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               color: #888;
               cursor: not-allowed;
             }
+            .analysis-progress {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+              padding: 10px 12px;
+              border: 1px solid #3f3f3f;
+              border-radius: 6px;
+              background: #232323;
+            }
+            .analysis-progress-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 12px;
+              font-size: 13px;
+              color: #d0d0d0;
+            }
+            .analysis-progress-track {
+              width: 100%;
+              height: 8px;
+              background: #111;
+              border: 1px solid #3a3a3a;
+              border-radius: 999px;
+              overflow: hidden;
+            }
+            .analysis-progress-fill {
+              height: 100%;
+              width: 0%;
+              background: linear-gradient(90deg, #1f9bff, #46c2ff);
+              transition: width 180ms ease-out;
+            }
+            .analysis-progress-note {
+              font-size: 12px;
+              color: #9a9a9a;
+            }
             .stats-section {
               display: flex;
               flex-direction: column;
@@ -861,20 +1430,16 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
           {/* Header */}
           <div className="silence-dialog-header" data-testid="silence-dialog-header">
             <div className="silence-dialog-header-left">
-              <DialogClose asChild>
-                <button className="silence-dialog-back-btn" aria-label="Back">
-                  Back
-                </button>
-              </DialogClose>
+              <button className="silence-dialog-back-btn" aria-label="Back" onClick={onClose}>
+                Back
+              </button>
               <DialogTitle className="silence-dialog-title">
                 Silence Detection
               </DialogTitle>
             </div>
-            <DialogClose asChild>
-              <button className="silence-dialog-close-btn" aria-label="Close" data-testid="silence-dialog-close">
-                X
-              </button>
-            </DialogClose>
+            <button className="silence-dialog-close-btn" aria-label="Close" data-testid="silence-dialog-close" onClick={onClose}>
+              X
+            </button>
           </div>
 
           {/* Main Content: Preview (left) + Settings (right) */}
@@ -884,7 +1449,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                 {previewUrl ? (
                   <>
                     <PreviewPlayer
-                      currentTime={playbackTime}
+                      currentTime={toSafeTime(playbackTime, 0)}
                       duration={duration}
                       isPlaying={isPlaying}
                       onTimeChange={handleTimeChange}
@@ -892,6 +1457,9 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                       onStop={handleStop}
                       previewVideoUrl={previewUrl}
                       activeClip={activeClip}
+                      allowSeekingWhilePlaying={true}
+                      skipSilencePreview={skipSilenceEnabled}
+                      skipRanges={timelineSkipRanges}
                     />
                     <label htmlFor="skip-silence-toggle" className="skip-silence-toggle">
                       <input
@@ -904,8 +1472,10 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                     </label>
                   </>
                 ) : (
-                  <div className="preview-placeholder">
-                    Select a track with clips to preview
+                  <div className="preview-placeholder" data-testid="preview-placeholder">
+                    {analysisComplete
+                      ? 'No playable preview source was found for the analyzed track'
+                      : 'Select a track with clips to preview'}
                   </div>
                 )}
               </div>
@@ -930,7 +1500,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                     <input
                       type="range"
                       min="-60"
-                      max="-20"
+                      max="-10"
                       step="1"
                       value={threshold}
                       onChange={(e) => setThreshold(Number(e.target.value))}
@@ -938,7 +1508,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                       className="slider"
                       data-testid="threshold-slider"
                     />
-                    <span className="slider-endpoint">-20</span>
+                    <span className="slider-endpoint">-10</span>
                   </div>
                 </div>
 
@@ -997,10 +1567,10 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
 
                 {/* Track Selection */}
                 <div className="track-selection">
-                  <h4 className="track-selection-heading">Audio Tracks</h4>
+                  <h4 className="track-selection-heading">Tracks</h4>
                   {audioTracks.length === 0 ? (
                     <div className="track-empty-state">
-                      No audio tracks with clips found
+                      No tracks with audio clips found
                     </div>
                   ) : (
                     audioTracks.map((track) => (
@@ -1025,17 +1595,34 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                   data-testid="analyze-btn"
                 >
                   {isAnalyzing
-                    ? analysisStage === 'preparing'
-                      ? 'Preparing...'
-                      : analysisStage === 'scanning'
-                      ? 'Scanning audio...'
-                      : analysisStage === 'detecting'
-                      ? 'Detecting silence...'
-                      : analysisStage === 'applying_buffer'
-                      ? 'Applying buffer...'
-                      : 'Analyzing...'
+                    ? getAnalysisStageLabel(analysisStage)
                     : 'Analyze'}
                 </button>
+
+                {isAnalyzing && (
+                  <div className="analysis-progress" data-testid="analysis-progress">
+                    <div className="analysis-progress-header">
+                      <span>{analysisProgressLabel || getAnalysisStageLabel(analysisStage)}</span>
+                      <span>{analysisProgressPct}%</span>
+                    </div>
+                    <div
+                      className="analysis-progress-track"
+                      role="progressbar"
+                      aria-label="Analysis progress"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={analysisProgressPct}
+                    >
+                      <div
+                        className="analysis-progress-fill"
+                        style={{ width: `${analysisProgressPct}%` }}
+                      />
+                    </div>
+                    <div className="analysis-progress-note">
+                      Processing may take a while for longer videos.
+                    </div>
+                  </div>
+                )}
 
                 {/* Stats Display */}
                 {analysisComplete && !analysisError && (
@@ -1079,7 +1666,56 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
           </div>
 
           {/* Timeline Zone */}
-          <div className="silence-dialog-timeline" data-testid="silence-dialog-timeline">
+          <div
+            className="silence-dialog-timeline"
+            data-testid="silence-dialog-timeline"
+          >
+            <div className="silence-timeline-toolbar">
+              <div className="silence-timeline-zoom">
+                <button
+                  className="silence-timeline-zoom-btn"
+                  type="button"
+                  aria-label="Zoom out waveform"
+                  onClick={() => setTimelineZoom((prev) => Math.max(100, prev - 25))}
+                >
+                  -
+                </button>
+                <input
+                  className="silence-timeline-zoom-range"
+                  type="range"
+                  min="100"
+                  max="600"
+                  step="25"
+                  value={timelineZoom}
+                  onChange={(e) => setTimelineZoom(Number(e.target.value))}
+                  aria-label="Waveform zoom"
+                />
+                <button
+                  className="silence-timeline-zoom-btn"
+                  type="button"
+                  aria-label="Zoom in waveform"
+                  onClick={() => setTimelineZoom((prev) => Math.min(600, prev + 25))}
+                >
+                  +
+                </button>
+                <span className="silence-timeline-zoom-text">{timelineZoom}%</span>
+              </div>
+              <div className="silence-timeline-legend">
+                <div className="legend-item">
+                  <span className="legend-swatch cut" />
+                  <span>Cut/Skip</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch keep" />
+                  <span>Keep</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch too-short" />
+                  <span>Too Short</span>
+                </div>
+              </div>
+            </div>
+            <div className="silence-timeline-scroll" ref={timelineViewportRef}>
             {waveformLoading && (
               <div className="waveform-skeleton" data-testid="waveform-loading">
                 {skeletonHeights.map((h, i) => (
@@ -1095,22 +1731,50 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               </div>
             )}
             {waveformError && (
-              <div className="waveform-error" data-testid="waveform-error">
+              <div className="timeline-empty-state waveform-error" data-testid="waveform-error">
                 Waveform unavailable
               </div>
             )}
-            {!waveformLoading && !waveformError && waveformData && (
-              <SilenceWaveformOverlay
-                currentTime={playbackTime}
-                onSeek={handleWaveformSeek}
-                regions={regions}
-                duration={duration}
-                waveformData={waveformData}
-              />
+            {!waveformLoading && !waveformError && !timelineReady && (
+              <div className="timeline-empty-state waveform-pending" data-testid="waveform-pending">
+                Preparing waveform viewport...
+              </div>
             )}
-            {!waveformLoading && !waveformError && !waveformData && (
-              <span>No waveform data available</span>
-            )}
+            {!waveformLoading && !waveformError && timelineReady ? (
+              <div
+                className="silence-waveform-stack"
+                style={{ width: `${timelineContentWidth}px` }}
+              >
+                {hasWaveform ? (
+                  <WaveformCanvas
+                    waveformData={waveformData}
+                    width={timelineContentWidth}
+                    height={timelineViewportSize.height}
+                    color="#4cc2ff"
+                  />
+                ) : (
+                  <div className="waveform-fallback-bg">
+                    <div className="waveform-fallback-label">No waveform data from source</div>
+                  </div>
+                )}
+                <SilenceWaveformOverlay
+                  currentTime={playbackTime}
+                  onSeek={handleWaveformSeek}
+                  onRegionClick={handleRegionToggle}
+                  regions={regions}
+                  duration={duration}
+                  width={timelineContentWidth}
+                  height={timelineViewportSize.height}
+                  isPlaying={isPlaying}
+                />
+                <div className="silence-waveform-help">
+                  {hasWaveform
+                    ? 'Click a segment to toggle between Cut/Skip and Keep'
+                    : 'Waveform unavailable: showing silence map only'}
+                </div>
+              </div>
+            ) : null}
+            </div>
           </div>
 
           {/* Footer */}
@@ -1122,7 +1786,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                   checked={applyToAllTracks}
                   onChange={(e) => setApplyToAllTracks(e.target.checked)}
                 />
-                Apply to all tracks
+                Also apply to overlay &amp; text tracks
               </label>
             </div>
             <button

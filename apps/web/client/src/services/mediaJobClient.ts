@@ -263,6 +263,7 @@ export class MediaJobClient {
   async detectDeadAir(
     assetUri: string,
     params?: DeadAirParams,
+    onProgress?: (progress: MediaJobProgress) => void,
   ): Promise<MediaJobResult> {
     const jobId = generateJobId();
     const spec: MediaJobSpec = {
@@ -273,13 +274,13 @@ export class MediaJobClient {
         assets: [{ assetId: "input", kind: "audio", uri: assetUri }],
       },
       params: {
-        thresholdDb: params?.thresholdDb ?? -40,
-        minSilenceMs: params?.minSilenceMs ?? 500,
+        thresholdDb: params?.thresholdDb ?? -30,
+        minSilenceMs: params?.minSilenceMs ?? 300,
       },
       output: { mode: "memory", target: "" },
     };
     await this.submitJob(spec);
-    return this.waitForCompletion(jobId);
+    return this.waitForCompletion(jobId, onProgress);
   }
 
   async cutDeadAir(
@@ -332,6 +333,44 @@ export class MediaJobClient {
     };
     await this.submitJob(spec);
     return this.waitForCompletion(jobId);
+  }
+
+  async transcodeH264(
+    assetUri: string,
+    onProgress?: (progress: MediaJobProgress) => void,
+  ): Promise<MediaJobResult> {
+    const jobId = generateJobId();
+    const spec: MediaJobSpec = {
+      specVersion: "0.1",
+      jobId,
+      jobType: "transcode_h264",
+      inputs: {
+        assets: [{ assetId: "input", kind: "video", uri: assetUri }],
+      },
+      params: { crf: 23, preset: "medium" },
+      output: { mode: "file", target: "" },
+    };
+    await this.submitJob(spec);
+    return this.waitForCompletion(jobId, onProgress);
+  }
+
+  async extractAudio(
+    assetUri: string,
+    onProgress?: (progress: MediaJobProgress) => void,
+  ): Promise<MediaJobResult> {
+    const jobId = generateJobId();
+    const spec: MediaJobSpec = {
+      specVersion: "0.1",
+      jobId,
+      jobType: "extract_audio",
+      inputs: {
+        assets: [{ assetId: "input", kind: "video", uri: assetUri }],
+      },
+      params: { format: "aac" },
+      output: { mode: "file", target: "" },
+    };
+    await this.submitJob(spec);
+    return this.waitForCompletion(jobId, onProgress);
   }
 
   async concat(

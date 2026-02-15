@@ -226,7 +226,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     # Path prefixes exempt from CSRF (Bearer token auth, server-to-server)
     EXEMPT_PREFIXES = (
         "/api/v1/",        # All v1 API endpoints use Bearer token auth
+        "/api/oauth/",     # OAuth endpoints called server-to-server with Bearer token
         "/api/webhooks/",
+        "/api/internal/",  # Internal endpoints use proxy token auth
     )
 
     async def dispatch(self, request: Request, call_next):

@@ -250,21 +250,28 @@ function SilenceWaveformOverlayInner(props: SilenceWaveformOverlayProps) {
         } else {
           ctx.fillStyle = 'rgba(128, 128, 128, 0.2)';
         }
-        ctx.fillRect(x, 0, regionWidth, height)
+        ctx.fillRect(x, 0, regionWidth, height);
+        ctx.strokeStyle = 'rgba(180, 180, 180, 0.75)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, 0.5, Math.max(0, regionWidth - 1), Math.max(0, height - 1));
       } else if (region.selected) {
-        // Draw selected region: semi-transparent red with dashed cyan border
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+        // Selected = will be cut/skipped
+        ctx.fillStyle = 'rgba(255, 59, 59, 0.42)';
         ctx.fillRect(x, 0, regionWidth, height);
 
-        ctx.strokeStyle = 'cyan';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash(SELECTED_BORDER_DASH);
+        ctx.strokeStyle = '#ff6b6b';
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([]);
         ctx.strokeRect(x, 0, regionWidth, height);
-        ctx.setLineDash([]); // Reset
       } else {
-        // Draw deselected region: lower opacity red
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+        // Deselected = keep (do not cut/skip)
+        ctx.fillStyle = 'rgba(56, 211, 110, 0.30)';
         ctx.fillRect(x, 0, regionWidth, height);
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash(SELECTED_BORDER_DASH);
+        ctx.strokeRect(x + 0.5, 0.5, Math.max(0, regionWidth - 1), Math.max(0, height - 1));
+        ctx.setLineDash([]);
       }
     }
   }, [regions, duration, width, height, pixelsPerSecond]);
