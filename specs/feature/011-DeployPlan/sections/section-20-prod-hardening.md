@@ -626,22 +626,25 @@ gcloud run services update-traffic node-api \
 
 ---
 
-## File Paths Reference
+## Files Created/Modified
 
-### Files Modified in This Section
+### Files Modified
+- `scripts/validate-gcp-setup.sh` — Extended with Cloud Run health, custom domain TLS (`status.certificateStatus`), Cloud Scheduler enabled state, and Cloud Monitoring alert policy checks. Uses `gcloud beta` for monitoring stability.
 
-**DNS and domain configuration:**
-- No code changes — all via `gcloud` commands and DNS registrar/Cloudflare dashboard.
+### Files Created
+- `scripts/test-rollback.sh` — Automated rollback test: deploys broken revision, shifts 10% traffic, rolls back, verifies. Exits non-zero on any failure. Requires pre-built broken Docker image in Artifact Registry.
+- `docs/runbooks/rollback-procedure.md` — Covers Cloud Run rollback (node-api + python-orchestrator), database migration rollback (expand-contract, reverse migration, Neon PITR), and Cloud Tasks rollback. All commands include explicit `--project` flags.
+- `docs/launch-checklist.md` — Step-by-step launch sequence with inline rollback commands at each abort point. Canary deployment for both node-api and python-orchestrator. Uses Secret Manager for DATABASE_URL instead of plaintext.
 
-**Hardening verification scripts:**
-- `scripts/validate-gcp-setup.sh` — Extended to check Cloud Run custom domain mappings and TLS certificate status.
-- `scripts/test-rollback.sh` — New script to automate rollback testing (deploy broken revision, shift traffic, rollback, verify).
+## Implementation Deviations from Plan
 
-**Rollback procedures:**
-- `docs/runbooks/rollback-procedure.md` — Create a new runbook documenting all rollback scenarios and commands.
-
-**Launch sequence checklist:**
-- `docs/launch-checklist.md` — Create a step-by-step launch checklist (copy of the launch sequence section above for operational use).
+1. **TLS certificate check**: Plan used `status.conditions[0].status`. Implementation uses `status.certificateStatus` which is the correct field for TLS status specifically.
+2. **Artifact Registry**: Plan used deprecated `gcr.io`. Implementation uses `${REGION}-docker.pkg.dev` consistent with the rest of the infrastructure.
+3. **Test rollback exits non-zero**: Plan script used `|| true` to suppress failures. Implementation exits 1 on deploy or traffic-split failure to avoid false-pass results.
+4. **Python orchestrator included**: Plan focused on node-api only. Launch checklist and runbook now include canary deployment for python-orchestrator as well.
+5. **Secret Manager for DB URL**: Plan showed `DATABASE_URL="<PROD_URL>"` in shell commands. Implementation uses `gcloud secrets versions access` to avoid shell history exposure.
+6. **Cloud Scheduler state**: Plan only checked existence. Implementation verifies ENABLED state.
+7. **Duplicate secretAccessor check removed**: Plan had a section 13 check that duplicated section 4 (line 88-91). Removed.
 
 ### Scripts to Create
 

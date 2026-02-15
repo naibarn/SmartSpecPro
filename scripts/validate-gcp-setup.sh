@@ -192,7 +192,50 @@ for SECRET_NAME in "${SECRETS[@]}"; do
     gcloud secrets describe "$SECRET_NAME" --project="$PROJECT_ID" --format="value(name)"
 done
 
-# --- 8. Docker authentication ---
+# --- 8. Cloud Run services health ---
+check "Cloud Run service: node-api" \
+  gcloud run services describe node-api --region="$REGION" --project="$PROJECT_ID" --format="value(status.url)"
+
+check "Cloud Run service: python-orchestrator" \
+  gcloud run services describe python-orchestrator --region="$REGION" --project="$PROJECT_ID" --format="value(status.url)"
+
+# --- 9. Custom domain mapping and TLS certificate ---
+CERT_STATUS=$(gcloud run domain-mappings describe --domain=app.smartaihub.app --region="$REGION" --project="$PROJECT_ID" --format="value(status.certificateStatus)" 2>/dev/null || echo "NOT_FOUND")
+if [[ "$CERT_STATUS" == "ACTIVE" ]]; then
+  echo "PASS: Custom domain app.smartaihub.app has active TLS certificate"
+else
+  ERRORS+=("FAIL: TLS certificate for app.smartaihub.app: $CERT_STATUS (expected: ACTIVE)")
+fi
+
+# --- 10. Cloud Scheduler jobs are enabled ---
+SCHEDULER_JOBS=$(gcloud scheduler jobs list --location="$REGION" --project="$PROJECT_ID" --format="csv[no-heading](name,state)" 2>/dev/null || echo "")
+if [[ -n "$SCHEDULER_JOBS" ]]; then
+  JOB_COUNT=$(echo "$SCHEDULER_JOBS" | wc -l)
+  echo "PASS: Cloud Scheduler has $JOB_COUNT jobs configured"
+  # Check key jobs exist and are enabled
+  for JOB in process-dead-letters cleanup-temp-storage daily-usage-report; do
+    JOB_LINE=$(echo "$SCHEDULER_JOBS" | grep "$JOB" || echo "")
+    if [[ -z "$JOB_LINE" ]]; then
+      ERRORS+=("FAIL: Cloud Scheduler job missing: $JOB")
+    elif echo "$JOB_LINE" | grep -q "ENABLED"; then
+      echo "PASS: Cloud Scheduler job enabled: $JOB"
+    else
+      ERRORS+=("FAIL: Cloud Scheduler job $JOB is not ENABLED")
+    fi
+  done
+else
+  ERRORS+=("FAIL: No Cloud Scheduler jobs found")
+fi
+
+# --- 11. Cloud Monitoring alert policies ---
+ALERT_COUNT=$(gcloud beta monitoring policies list --project="$PROJECT_ID" --format="value(name)" 2>/dev/null | wc -l || echo "0")
+if [[ "$ALERT_COUNT" -gt 0 ]]; then
+  echo "PASS: Cloud Monitoring has $ALERT_COUNT alert policies"
+else
+  ERRORS+=("FAIL: No Cloud Monitoring alert policies configured")
+fi
+
+# --- 12. Docker authentication ---
 if [[ -f "$HOME/.docker/config.json" ]] && grep -q "${REGION}-docker.pkg.dev" "$HOME/.docker/config.json" 2>/dev/null; then
   echo "PASS: Docker authenticated for Artifact Registry"
 else
