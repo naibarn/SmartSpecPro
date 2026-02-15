@@ -394,20 +394,69 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 ---
 
+## Implementation Notes (Actual)
+
+### Deviations from Plan
+
+1. **Sentry v10 API:** Plan referenced v7 API (`Sentry.Handlers.requestHandler()`, `Sentry.Handlers.errorHandler()`). Actual implementation uses v10 API: `Sentry.setupExpressErrorHandler(app)` and `expressIntegration()` (auto-handles request instrumentation).
+
+2. **Scope isolation:** Plan used `getCurrentScope()`. Actual uses `getIsolationScope()` to prevent tag bleed between concurrent requests (v10 best practice).
+
+3. **Source maps:** Plan used `sourcemap: true`. Actual uses `sourcemap: "hidden"` to upload maps to Sentry without exposing source code to browsers.
+
+4. **Python settings:** Plan specified `SENTRY_DSN_PYTHON` env var. Actual uses existing `settings.SENTRY_DSN` from Pydantic settings model (`app/core/config.py` already had this field).
+
+5. **Python PII scrubbing:** Added JSON string body parsing to `before_send` (plan only mentioned dict bodies).
+
+6. **structlog context isolation:** Added `structlog.contextvars.clear_contextvars()` at request start to prevent context leaking between concurrent requests.
+
+7. **X-Request-ID forwarding:** Added to `mediaJobs.ts` (`dispatchToCelery`, `dispatchJob`, and video render fetch). Catch-all proxy in `_core/index.ts` already forwards it.
+
+### Test Results
+
+- **Node.js (Vitest):** 9 tests passing
+  - `sentry.test.ts`: 5 tests (PII scrubbing for headers, body fields, JSON body; no-DSN skip; init with DSN)
+  - `correlationId.test.ts`: 4 tests (generate ID, preserve incoming, set response header, set Sentry isolation scope tag)
+- **Python (pytest):** 12 tests passing
+  - `test_sentry.py`: 10 tests (PII header scrubbing x3, body dict, body JSON string, no-request, empty-headers, DSN skip, DSN init, SentryTagMiddleware)
+  - `test_correlation_id.py`: 2 tests (generate when missing, use incoming)
+
+### Files Created
+- `apps/web/server/services/sentry.ts`
+- `apps/web/server/middleware/correlationId.ts`
+- `apps/web/server/__tests__/sentry.test.ts`
+- `apps/web/server/__tests__/correlationId.test.ts`
+- `python-backend/app/core/sentry_config.py`
+- `python-backend/tests/unit/test_sentry.py`
+- `python-backend/tests/unit/test_correlation_id.py`
+
+### Files Modified
+- `apps/web/client/src/main.tsx` (Sentry.init + PII scrubbing)
+- `apps/web/client/src/components/ErrorBoundary.tsx` (componentDidCatch + captureException)
+- `apps/web/server/_core/index.ts` (initSentry, correlationId middleware, setupExpressErrorHandler, user scope, shutdown flush)
+- `apps/web/vite.config.ts` (sentryVitePlugin conditional, sourcemap: "hidden")
+- `apps/web/server/routers/mediaJobs.ts` (X-Request-ID forwarding in dispatchToCelery, dispatchJob, video render fetch)
+- `python-backend/app/main.py` (init_sentry, sentry_sdk.flush on shutdown)
+- `python-backend/app/core/middleware.py` (SentryTagMiddleware class)
+- `python-backend/app/core/request_logging.py` (clear_contextvars, prefer incoming X-Request-ID, bind_contextvars)
+- `apps/web/package.json` (@sentry/react, @sentry/node, @sentry/vite-plugin)
+
+---
+
 ## Implementation Checklist
 
-1. Install `@sentry/react`, `@sentry/node`, and `@sentry/vite-plugin` in `apps/web/package.json`.
-2. Install `sentry-sdk[fastapi]` in Python backend dependencies.
-3. Write all test files (4 test files listed above).
-4. Create `/home/dev/projects/SmartSpecPro/apps/web/server/services/sentry.ts` with `initSentry()`, `beforeSend` PII scrubbing, and exports for Express middleware.
-5. Create `/home/dev/projects/SmartSpecPro/apps/web/server/middleware/correlationId.ts` with the correlation ID middleware.
-6. Create `/home/dev/projects/SmartSpecPro/python-backend/app/core/sentry_config.py` with `init_sentry()` and Python `before_send` PII scrubbing.
-7. Modify `apps/web/client/src/main.tsx` to initialize Sentry before React rendering.
-8. Modify `apps/web/client/src/components/ErrorBoundary.tsx` to call `Sentry.captureException` in `componentDidCatch`.
-9. Modify `apps/web/server/_core/index.ts` to call `initSentry()` at startup, add Sentry request/error handler middleware, add correlation ID middleware, and flush Sentry on shutdown.
-10. Modify `apps/web/vite.config.ts` to add build-time Sentry defines and optionally the Sentry Vite plugin for source map uploads.
-11. Modify `python-backend/app/main.py` to call `init_sentry()` before app creation and `sentry_sdk.flush()` on shutdown.
-12. Modify `python-backend/app/core/request_logging.py` to prefer incoming `X-Request-ID` header and bind it to structlog context.
-13. Modify `python-backend/app/core/middleware.py` to set Sentry tags (`request_id`, `job_id`, `user_id`) within the request lifecycle.
-14. Verify all outgoing Node.js-to-Python HTTP calls forward the `X-Request-ID` header.
-15. Run all tests and verify they pass.
+1. [x] Install `@sentry/react`, `@sentry/node`, and `@sentry/vite-plugin` in `apps/web/package.json`.
+2. [x] Install `sentry-sdk[fastapi]` in Python backend dependencies.
+3. [x] Write all test files (4 test files, 21 total tests).
+4. [x] Create `apps/web/server/services/sentry.ts` with `initSentry()`, `beforeSend` PII scrubbing.
+5. [x] Create `apps/web/server/middleware/correlationId.ts` with the correlation ID middleware.
+6. [x] Create `python-backend/app/core/sentry_config.py` with `init_sentry()` and Python `before_send` PII scrubbing.
+7. [x] Modify `apps/web/client/src/main.tsx` to initialize Sentry before React rendering.
+8. [x] Modify `apps/web/client/src/components/ErrorBoundary.tsx` to call `Sentry.captureException` in `componentDidCatch`.
+9. [x] Modify `apps/web/server/_core/index.ts` — initSentry, setupExpressErrorHandler (v10), correlationId middleware, user scope via getIsolationScope, Sentry.close on shutdown.
+10. [x] Modify `apps/web/vite.config.ts` — sentryVitePlugin (conditional), `sourcemap: "hidden"`.
+11. [x] Modify `python-backend/app/main.py` — init_sentry() before app, sentry_sdk.flush() on shutdown.
+12. [x] Modify `python-backend/app/core/request_logging.py` — prefer incoming X-Request-ID, clear_contextvars, bind_contextvars.
+13. [x] Modify `python-backend/app/core/middleware.py` — SentryTagMiddleware sets request_id, job_id, user_id tags.
+14. [x] Forward X-Request-ID in mediaJobs.ts (dispatchToCelery, dispatchJob, video render fetch) and catch-all proxy.
+15. [x] All tests passing (21/21).

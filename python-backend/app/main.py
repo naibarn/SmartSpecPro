@@ -72,6 +72,10 @@ from app.api.v1 import (
     webhooks,
 )
 
+# Initialize Sentry before anything else (captures startup errors)
+from app.core.sentry_config import init_sentry
+init_sentry()
+
 # Setup logging
 setup_logging()
 logger = structlog.get_logger()
@@ -146,6 +150,14 @@ async def lifespan(app: FastAPI):
 
     # Cleanup
     logger.info("Shutting down SmartSpec Pro Python Backend")
+
+    # Flush Sentry events
+    try:
+        import sentry_sdk
+        sentry_sdk.flush(timeout=2.0)
+        logger.info("Sentry events flushed")
+    except Exception as e:
+        logger.warning("Sentry flush failed", error=str(e))
 
     # Close checkpointer connection pool
     try:

@@ -5,9 +5,24 @@ import fs from "node:fs";
 import path from "path";
 import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+
+// Conditionally add Sentry source map upload plugin (CI builds only)
+if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG) {
+  plugins.push(
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT || "smartspecpro-frontend",
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      release: {
+        name: process.env.VITE_RELEASE || process.env.GIT_COMMIT_SHA,
+      },
+    }),
+  );
+}
 
 export default defineConfig({
   plugins,
@@ -25,6 +40,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    sourcemap: "hidden",
   },
   server: {
     host: true,

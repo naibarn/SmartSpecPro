@@ -210,6 +210,7 @@ async function dispatchToCelery(
   specJson: string,
   userId: string,
   jobId: string,
+  requestId?: string,
 ): Promise<{ kie_job_id?: string }> {
   const { ENV } = await import("../_core/env");
   const pythonUrl =
@@ -219,12 +220,15 @@ async function dispatchToCelery(
   const resolvedSpecJson = resolveRelativeUris(specJson);
 
   const internalToken = process.env.MEDIA_JOB_INTERNAL_TOKEN || "";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "x-internal-token": internalToken,
+  };
+  if (requestId) headers["x-request-id"] = requestId;
+
   const res = await fetch(`${pythonUrl}/api/v1/media-jobs/execute`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-token": internalToken,
-    },
+    headers,
     body: JSON.stringify({ spec_json: resolvedSpecJson, user_id: userId, job_id: jobId }),
   });
 
@@ -262,7 +266,7 @@ async function enqueuePollingTask(jobId: string, kieJobId: string) {
  * Conditional dispatch: routes to Cloud Tasks or Celery based on feature flag.
  * When using Cloud Tasks, also enqueues a polling task for Kie AI status checks.
  */
-async function dispatchJob(specJson: string, userId: string, jobId: string) {
+async function dispatchJob(specJson: string, userId: string, jobId: string, requestId?: string) {
   const { getFeatureFlag } = await import("../services/featureFlags");
   const useCloudTasks = await getFeatureFlag("USE_CLOUD_TASKS");
 
@@ -272,10 +276,10 @@ async function dispatchJob(specJson: string, userId: string, jobId: string) {
     await enqueueTask({
       queueName: "media-jobs",
       handlerPath: "/tasks/process-media",
-      payload: { spec_json: resolvedSpecJson, user_id: userId, job_id: jobId },
+      payload: { spec_json: resolvedSpecJson, user_id: userId, job_id: jobId, request_id: requestId },
     });
   } else {
-    const result = await dispatchToCelery(specJson, userId, jobId);
+    const result = await dispatchToCelery(specJson, userId, jobId, requestId);
     // If the Python backend returned a kie_job_id, enqueue polling as a safety net
     if (result.kie_job_id) {
       try {
@@ -463,9 +467,11 @@ export const mediaJobsRouter = router({
             ENV.pythonBackendUrl ||
             process.env.PYTHON_BACKEND_URL ||
             "http://localhost:8000";
+          const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (ctx.req.requestId) headers["x-request-id"] = ctx.req.requestId;
           const resp = await fetch(`${pythonUrl}/api/v1/media/tasks/process-video`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({
               render_spec: renderSpec,
               queue_name: queueName,
@@ -532,7 +538,7 @@ export const mediaJobsRouter = router({
 
       // Dispatch to worker (Cloud Tasks or Celery based on feature flag)
       try {
-        await dispatchJob(JSON.stringify(spec), String(ctx.user.id), jobId);
+        await dispatchJob(JSON.stringify(spec), String(ctx.user.id), jobId, ctx.req.requestId);
       } catch (e: unknown) {
         await setJobKey(jobId, "status", {
           status: "error",
@@ -1135,7 +1141,7 @@ export function registerMediaJobRoutes(app: Express) {
       await addRecentJob(userId, jobId);
 
       try {
-        await dispatchJob(JSON.stringify(fullSpec), userId, jobId);
+        await dispatchJob(JSON.stringify(fullSpec), userId, jobId, req.requestId);
       } catch (dispatchErr: any) {
         const detail = dispatchErr?.message || "unknown";
         const errMsg = `Failed to dispatch to worker: ${detail}`;

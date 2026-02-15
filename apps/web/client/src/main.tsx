@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,6 +9,47 @@ import { toast } from "sonner";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
+
+// Initialize Sentry for frontend error tracking (only when DSN is configured)
+if (import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE || "production",
+    release: import.meta.env.VITE_RELEASE || undefined,
+    tracesSampleRate: 0.05,
+    replaysSessionSampleRate: 0.01,
+    replaysOnErrorSampleRate: 1.0,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({
+        maskAllInputs: true,
+        maskAllText: false,
+      }),
+    ],
+    beforeSend(event) {
+      const scrubObj = (obj: Record<string, unknown>) => {
+        for (const key of Object.keys(obj)) {
+          if (/password|token|secret|apiKey/i.test(key)) {
+            obj[key] = "[FILTERED]";
+          }
+        }
+      };
+      // Scrub breadcrumbs
+      if (event.breadcrumbs) {
+        for (const crumb of event.breadcrumbs) {
+          if (crumb.data && typeof crumb.data === "object") {
+            scrubObj(crumb.data as Record<string, unknown>);
+          }
+        }
+      }
+      // Scrub extra data
+      if (event.extra && typeof event.extra === "object") {
+        scrubObj(event.extra as Record<string, unknown>);
+      }
+      return event;
+    },
+  });
+}
 
 const queryClient = new QueryClient();
 

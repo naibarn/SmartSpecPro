@@ -152,3 +152,4 @@ google-auth-httplib2>=0.2.0
 
 # Google Cloud Tasks (Section 04: Celery -> Cloud Tasks migration)
 google-cloud-tasks>=2.14.0
+sentry-sdk[fastapi]

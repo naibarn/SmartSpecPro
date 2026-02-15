@@ -16,6 +16,7 @@ from starlette.middleware.cors import CORSMiddleware
 import time
 import structlog
 
+import sentry_sdk
 from app.core.security import rate_limiter
 from app.core.errors import SmartSpecError, to_http_exception, RateLimitError
 from app.core.request_validator import RequestValidationMiddleware
@@ -170,14 +171,35 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 
+class SentryTagMiddleware(BaseHTTPMiddleware):
+    """Set Sentry scope tags for request correlation."""
+
+    async def dispatch(self, request: Request, call_next):
+        request_id = getattr(request.state, "request_id", None)
+        if request_id:
+            sentry_sdk.set_tag("request_id", request_id)
+
+        user_id = getattr(request.state, "user_id", None)
+        if user_id:
+            sentry_sdk.set_tag("user_id", str(user_id))
+            sentry_sdk.set_user({"id": str(user_id)})
+
+        # Check for job_id in path params or query
+        job_id = request.path_params.get("job_id") or request.query_params.get("job_id")
+        if job_id:
+            sentry_sdk.set_tag("job_id", str(job_id))
+
+        return await call_next(request)
+
+
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     """Global error handling middleware"""
-    
+
     async def dispatch(self, request: Request, call_next):
         try:
             response = await call_next(request)
             return response
-        
+
         except SmartSpecError as e:
             # Convert SmartSpec errors to HTTP exceptions
             http_exc = to_http_exception(e)
@@ -185,7 +207,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 status_code=http_exc.status_code,
                 content=http_exc.detail
             )
-        
+
         except Exception as e:
             # Log unexpected errors
             logger.error(
@@ -195,7 +217,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
                 exc_info=e
             )
-            
+
             # Return generic error response
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -368,6 +390,9 @@ def setup_middleware(app):
 
     # 1. Error handling (outermost - catches all errors)
     app.add_middleware(ErrorHandlingMiddleware)
+
+    # 1.5. Sentry tags (set request_id, user_id, job_id as Sentry tags)
+    app.add_middleware(SentryTagMiddleware)
 
     # 2. Request and audit logging
     from app.core.request_logging import setup_request_logging

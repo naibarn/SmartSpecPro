@@ -72,6 +72,10 @@
     "section-11-video-pipeline": {
       "status": "complete",
       "commit_hash": "2c43845"
+    },
+    "section-12-vectorize": {
+      "status": "complete",
+      "commit_hash": "58e5949"
     }
   },
   "pre_commit": {

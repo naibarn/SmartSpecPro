@@ -10,6 +10,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import structlog
+import structlog.contextvars
 
 logger = structlog.get_logger()
 
@@ -33,9 +34,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and log details"""
         
-        # Generate request ID
-        request_id = str(uuid.uuid4())
+        # Clear structlog context from previous request (defensive against context leak)
+        structlog.contextvars.clear_contextvars()
+
+        # Use existing X-Request-ID if provided by upstream service, otherwise generate
+        request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         request.state.request_id = request_id
+
+        # Bind request_id to structlog context for all log entries in this request
+        structlog.contextvars.bind_contextvars(request_id=request_id)
         
         # Extract request details
         method = request.method

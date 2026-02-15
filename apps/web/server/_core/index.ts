@@ -1,4 +1,9 @@
 import "dotenv/config";
+import { initSentry, Sentry } from "../services/sentry";
+
+// Initialize Sentry BEFORE Express app creation (captures startup errors)
+initSentry();
+
 import express from "express";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -28,6 +33,7 @@ import { getUploadsDir, storageStreamFile } from "../storage";
 import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
+import { correlationIdMiddleware } from "../middleware/correlationId";
 // BullMQ scheduler/queue init removed — migrated to Cloud Tasks (Section 05)
 import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
@@ -50,6 +56,11 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.disable("x-powered-by");
+
+// Sentry: expressIntegration() (registered in initSentry) handles request instrumentation automatically in v10+
+
+// Correlation ID middleware — generates or propagates X-Request-ID
+app.use(correlationIdMiddleware);
 
 // Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For) from nginx
 // This is required for secure cookies to work behind HTTPS proxy
@@ -179,6 +190,15 @@ app.get("/readyz", async (_req, res) => {
 // Audit trace context — generates traceId for every request
 initAuditLogger();
 app.use(auditMiddleware());
+
+// Sentry user context — set user_id tag after auth is resolved (v10 isolation scope)
+app.use((req: any, _res: any, next: any) => {
+  if (req.user?.id) {
+    Sentry.getIsolationScope().setTag("user_id", String(req.user.id));
+    Sentry.getIsolationScope().setUser({ id: String(req.user.id) });
+  }
+  next();
+});
 
 // Multi-tenant middleware - identifies tenant from domain
 app.use(tenantMiddleware);
@@ -455,6 +475,11 @@ app.all("/api/v1/*", async (req, res) => {
     if (typeof val === "string") headers[key] = val;
   }
 
+  // Forward correlation ID for cross-service tracing
+  if (req.requestId) {
+    headers["x-request-id"] = req.requestId;
+  }
+
   // If the request already has a Bearer token, forward it as-is.
   // Otherwise, authenticate via session cookie and generate a JWT.
   const existingAuth = req.headers.authorization;
@@ -520,6 +545,9 @@ app.use(
     },
   })
 );
+
+// Sentry error handler — captures exceptions before the global error handler (v10 API)
+Sentry.setupExpressErrorHandler(app);
 
 // Global error handler - must be last
 app.use((err: any, req: any, res: any, next: any) => {
@@ -647,9 +675,8 @@ process.on("SIGTERM", async () => {
   // TODO: Add in Section 14 (Observability)
   // await posthog.shutdown();
 
-  // 5. Flush Sentry events (if initialized)
-  // TODO: Add in Section 13 (Error Tracking)
-  // await Sentry.close(2000);
+  // 5. Flush Sentry events
+  await Sentry.close(2000).catch(() => {});
 
   // 6. Close Redis connections
   try {
