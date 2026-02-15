@@ -617,19 +617,35 @@ If load tests reveal bottlenecks, adjust the following:
 
 7. **Document results:** Fill in the success criteria table with actual values. If any target is missed, apply remediation and re-test.
 
-## Files to Create
+## Files Created
 
 | File Path | Purpose |
 |-----------|---------|
-| `load-tests/scenario-1-api-load.js` | k6 script for API load test |
-| `load-tests/scenario-2-job-burst.js` | k6 script for job burst test |
-| `load-tests/scenario-3-sustained-load.js` | k6 script for sustained load test |
-| `load-tests/setup-test-users.sh` | Create test user accounts |
-| `load-tests/cleanup-test-users.sh` | Remove test users after test |
+| `load-tests/scenario-1-api-load.js` | k6 script for API load test (100 VUs, 5min) |
+| `load-tests/scenario-2-job-burst.js` | k6 script for job burst test (500 jobs) |
+| `load-tests/scenario-3-sustained-load.js` | k6 script for sustained load test (1000 jobs/hr) |
+| `load-tests/setup-test-users.sh` | Create test user accounts via tRPC register |
+| `load-tests/cleanup-test-users.sh` | Remove test users with full FK cleanup |
 | `load-tests/collect-metrics.sh` | Query Cloud Monitoring metrics |
 | `load-tests/monitor-db-connections.sh` | Monitor Postgres connections in real-time |
-| `load-tests/test-users.json` | Generated test user credentials (gitignored) |
+| `load-tests/smoke-test.sh` | Validate test scripts work (1 VU, 1 iteration) |
+| `load-tests/REPORT.md` | Test results report template |
 | `load-tests/README.md` | Documentation for running load tests |
+| `load-tests/test-users.json` | Generated test user credentials (gitignored) |
+| `.github/workflows/load-test.yml` | GitHub Actions workflow for on-demand load testing |
+| `.gitignore` | Updated with load-tests/test-users.json and metrics patterns |
+
+## Implementation Deviations from Plan
+
+1. **API endpoints corrected**: Plan used REST-style paths (`/api/auth/login`). Actual app uses tRPC at `/trpc/login`, `/trpc/register`, `/trpc/mediaJobs.submitJob`. All scripts updated.
+2. **Cookie name corrected**: Plan used `SMARTSPEC_SESSIONID`. Actual cookie is `app_session_id` (from `shared/const.ts`).
+3. **CSRF Origin header added**: Server requires Origin header on all POST requests to `/trpc`. Added to all k6 scripts.
+4. **tRPC wire format**: Body format uses `{"json": {...}}` per tRPC v11 convention.
+5. **Pre-auth strategy**: Instead of logging in per iteration (wastes rate limit budget), k6 `setup()` pre-authenticates all users and shares session cookies across VUs.
+6. **Comprehensive FK cleanup**: Cleanup script handles `credit_transactions`, `provider_usage_log`, `workflow_executions` (no cascade), and SET NULL on `api_audit_events`, `registration_events` (nullable FK). Tables with ON DELETE CASCADE auto-clean.
+7. **Dashboard endpoint**: `dashboard.getStats` doesn't exist. Replaced with `me` query (publicProcedure).
+8. **GHA smoke test**: Added smoke-test step before full load tests.
+9. **GHA scenario 3**: Now included in 'all' runs with 75-min timeout.
 
 ## Post-Test Analysis
 

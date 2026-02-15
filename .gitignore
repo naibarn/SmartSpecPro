@@ -177,3 +177,10 @@ apps/web/tmp-workspace-*/
 # ============================================================================
 apps/tauri-shell/binaries/ffmpeg-*
 apps/tauri-shell/binaries/ffprobe-*
+
+# ============================================================================
+# Load testing (generated data, not committed)
+# ============================================================================
+load-tests/test-users.json
+load-tests/test-users.jsonl
+load-tests/metrics-*.json

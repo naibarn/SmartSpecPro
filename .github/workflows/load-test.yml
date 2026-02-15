@@ -1,0 +1,89 @@
+name: Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      scenario:
+        description: 'Which scenario to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - scenario-1
+          - scenario-2
+          - scenario-3
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ github.event.inputs.environment == 'staging' && 'https://app-staging.smartaihub.app' || 'https://smartaihub.app' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Setup test users
+        run: |
+          cd load-tests
+          chmod +x setup-test-users.sh
+          ./setup-test-users.sh
+
+      - name: Smoke test
+        run: |
+          cd load-tests
+          chmod +x smoke-test.sh
+          ./smoke-test.sh
+
+      - name: Run Scenario 1 - API Load
+        if: ${{ github.event.inputs.scenario == 'all' || github.event.inputs.scenario == 'scenario-1' }}
+        run: |
+          cd load-tests
+          k6 run --env BASE_URL="$BASE_URL" scenario-1-api-load.js
+
+      - name: Run Scenario 2 - Job Burst
+        if: ${{ github.event.inputs.scenario == 'all' || github.event.inputs.scenario == 'scenario-2' }}
+        run: |
+          cd load-tests
+          k6 run --env BASE_URL="$BASE_URL" scenario-2-job-burst.js
+
+      # Scenario 3 runs for 60 minutes - only when explicitly selected or 'all'
+      - name: Run Scenario 3 - Sustained Load
+        if: ${{ github.event.inputs.scenario == 'all' || github.event.inputs.scenario == 'scenario-3' }}
+        timeout-minutes: 75
+        run: |
+          cd load-tests
+          k6 run --env BASE_URL="$BASE_URL" scenario-3-sustained-load.js
+
+      - name: Cleanup test users
+        if: always()
+        env:
+          NEON_STAGING_DB_URL: ${{ secrets.NEON_STAGING_DB_URL }}
+        run: |
+          cd load-tests
+          chmod +x cleanup-test-users.sh
+          ./cleanup-test-users.sh
+
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results-${{ github.run_id }}
+          path: |
+            load-tests/metrics-*.json
+          retention-days: 30
