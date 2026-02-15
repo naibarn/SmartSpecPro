@@ -60,6 +60,14 @@
     "section-08-media-pipeline": {
       "status": "complete",
       "commit_hash": "609b431"
+    },
+    "section-09-r2-storage": {
+      "status": "complete",
+      "commit_hash": "9a840c4"
+    },
+    "section-10-redis-ratelimit": {
+      "status": "complete",
+      "commit_hash": "a069bb0"
     }
   },
   "pre_commit": {
