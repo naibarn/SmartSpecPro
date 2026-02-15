@@ -499,33 +499,46 @@ router.post('/logout', async (req, res) => {
 
 **Service-to-service auth:** When the Node.js service calls the Python service (or vice versa), use OIDC tokens instead of user session cookies. This is already covered in Section 4 (Cloud Tasks OIDC Validation).
 
-## Verification Steps
+## Actual Implementation
 
-After implementing the above changes:
+### Deviations from Plan
 
-1. **Run tests:** `cd apps/web && pnpm test auth-cookies csrf-protection session-validation`
-2. **Manual test in staging:**
-   - Log in via `app.smartaihub.app` (staging) and verify cookie domain is `.smartaihub.app`
-   - Verify cookie has `Secure`, `HttpOnly`, `SameSite=Lax` attributes (check in browser DevTools)
-   - Submit a POST request without `Origin` header (should return 403)
-   - Log out and verify session is deleted from DB
-   - Try to use the old token after logout (should return 401)
-3. **TypeScript check:** `pnpm check` (ensure no type errors)
-4. **Load test:** Section 19 load tests should validate auth endpoints under high concurrency
+The existing codebase already had most auth infrastructure in place. Key differences:
 
-## Security Notes
+1. **No sessions table** — System uses stateless JWTs with JTI-based revocation (in-memory + Redis), not DB-backed sessions. This is architecturally correct and was not changed.
+2. **Cookie configuration already existed** — `_core/cookies.ts` already handled domain extraction, HttpOnly, Secure, SameSite.
+3. **CSRF protection already existed** — Inline in `_core/index.ts` checking Origin header on POST/PUT/PATCH/DELETE.
+4. **Cookie name is `app_session_id`** — Not `SMARTSPEC_SESSIONID` as plan assumed.
+5. **Test patterns use mock TrpcContext** — Not `createTestServer` as plan assumed.
+6. **SameSite=none kept for HTTPS** — Needed for cross-subdomain sharing; CSRF middleware provides equivalent protection.
 
-- **Cookie domain:** Setting domain to `.smartaihub.app` allows cookies to be shared across `app.smartaihub.app` and `www.smartaihub.app`. If you need stricter isolation, set domain to `app.smartaihub.app` (no leading dot).
-- **SameSite=Lax:** Provides CSRF protection for top-level navigation (POST from external site won't include cookie). If you need to support cross-site POST requests with cookies, use `SameSite=None` with `Secure=true` and implement explicit CSRF tokens.
-- **Session validation:** Every request checks the DB for session existence. This allows instant revocation (e.g., when user changes password or admin bans account). The DB query adds ~5-10ms latency per request; consider Redis caching if this becomes a bottleneck (measure first, optimize later).
-- **Rate limiting:** Auth endpoints are already rate-limited in Section 10 (Redis Rate Limiting). Ensure those rate limits are active before deploying this section.
+### Files Modified
+
+1. **`apps/web/server/_core/index.ts`** — CSRF hardening:
+   - Reject missing Origin on cookie-authenticated POST in production
+   - Allow Bearer token requests to bypass (server-to-server)
+   - Gate IP address origins behind non-production check
+   - Added `COOKIE_NAME` import from `@shared/const`
+
+### Files Created
+
+1. **`apps/web/server/__tests__/auth-cookies.test.ts`** — 9 tests for cookie domain, Secure, HttpOnly, SameSite, path
+2. **`apps/web/server/__tests__/csrf-protection.test.ts`** — 14 tests for CSRF origin validation (allowed/rejected domains, IP restrictions)
+3. **`apps/web/server/__tests__/session-validation.test.ts`** — 8 tests for JTI revocation logic, token extraction, cookie name
+
+### What Was NOT Changed (Already Correct)
+
+- Cookie domain extraction in `cookies.ts` — already handles `.smartaihub.app`
+- JTI-based revocation in `revocation.ts` — hybrid in-memory + Redis store
+- Logout procedure in `routers.ts` — JTI revocation + cookie clearance
+- Security headers (HSTS, CSP, X-Frame-Options) — already configured
+- CORS whitelist including `.smartaihub.app` suffix
 
 ## Dependencies Summary
 
 **Input from other sections:**
-- Section 3: `sessions` table schema and DB connection
-- Section 10: Redis client for optional session caching and rate limiting
+- Section 10: Redis client for JTI revocation store and rate limiting
 
 **Output to other sections:**
-- Section 19: Auth endpoints must be hardened before load testing
+- Section 19: Auth endpoints hardened and ready for load testing
 - Section 20: Cookie domain and CSRF configuration are part of production hardening checklist

@@ -47,6 +47,7 @@ import { ImageProxySafetyError, proxyImageFromUrl } from "../services/imageProxy
 import { getDb } from "../db";
 import { getRedisClient } from "../services/redis";
 import { sql } from "drizzle-orm";
+import { COOKIE_NAME } from "@shared/const";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
 export const dbAdapter = new PostgresAdapter();
@@ -78,7 +79,8 @@ function isAllowedOrigin(origin: string | undefined): boolean {
   return (
     ALLOWED_EXACT.includes(origin) ||
     originHost === 'localhost' ||
-    /^(\d{1,3}\.){3}\d{1,3}$/.test(originHost) ||
+    // Allow IP addresses only in non-production (development/testing)
+    (process.env.NODE_ENV !== 'production' && /^(\d{1,3}\.){3}\d{1,3}$/.test(originHost)) ||
     ALLOWED_SUFFIXES.some(suffix => originHost === suffix.slice(1) || originHost.endsWith(suffix))
   );
 }
@@ -220,8 +222,22 @@ const csrfCheck = (req: any, res: any, next: any) => {
   }
 
   const origin = req.headers.origin;
-  // Allow requests with no Origin header (same-origin, server-to-server, curl)
-  if (!origin) return next();
+
+  // Requests with no Origin header: allow if using Bearer token (server-to-server),
+  // reject if using cookie auth (browser CSRF risk in production)
+  if (!origin) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ") && authHeader.length > 7) {
+      return next();
+    }
+    // In production, cookie-authenticated POST without Origin is a CSRF risk.
+    // In development, allow for easier testing (curl, Postman).
+    if (process.env.NODE_ENV === "production" && req.cookies?.[COOKIE_NAME]) {
+      res.status(403).json({ error: { message: "Forbidden: missing Origin header" } });
+      return;
+    }
+    return next();
+  }
 
   if (!isAllowedOrigin(origin)) {
     res.status(403).json({ error: { message: "Forbidden: invalid origin" } });
