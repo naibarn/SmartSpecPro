@@ -720,6 +720,16 @@ describe("projectToTimeline — additional cases", () => {
     ).toBe(true);
   });
 
+  it("rejects malformed contract versions outside X.Y format", () => {
+    const spec = makeRenderSpec();
+    spec.inputs.project!.contractVersion = "1beta.0";
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some((e) => /Invalid media timeline contractVersion format/i.test(e)),
+    ).toBe(true);
+  });
+
   it("allows gated downgrade for unsupported future version without text semantics", () => {
     const timeline: MediaTimeline = {
       projectId: "legacy-safe",

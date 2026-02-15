@@ -106,6 +106,7 @@ function hasTextSemantics(projectData: any): boolean {
 }
 
 function majorVersion(value: string): number | null {
+  if (!/^\d+\.\d+$/.test(value)) return null;
   const [majorRaw] = value.split('.');
   const parsed = Number.parseInt(majorRaw, 10);
   if (!Number.isFinite(parsed)) return null;

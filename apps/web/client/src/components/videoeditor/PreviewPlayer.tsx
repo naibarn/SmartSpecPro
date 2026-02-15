@@ -295,6 +295,8 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         .join('|'),
     [activeTextFontRequests],
   );
+  const activeTextFontRequestsRef = useRef(activeTextFontRequests);
+  activeTextFontRequestsRef.current = activeTextFontRequests;
   const resolvedTextOverlays = useMemo(
     () =>
       activeTextClips.map((clip, index) => {
@@ -370,8 +372,9 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
     let cancelled = false;
     setTextFontsReady(false);
+    const requests = activeTextFontRequestsRef.current;
     Promise.all(
-      activeTextFontRequests.map((request) =>
+      requests.map((request) =>
         fontSet
           .load(`${request.style} ${request.weight} 16px "${request.family}"`)
           .catch(() => undefined),
@@ -385,7 +388,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [activeTextClips.length, activeTextFontRequests, activeTextFontKey]);
+  }, [activeTextClips.length, activeTextFontKey]);
 
   useEffect(() => {
     const viewport = viewportRef.current;

@@ -212,6 +212,60 @@ describe('PreviewPlayer text parity', () => {
     expect(fontLoadMock).toHaveBeenCalledWith('italic 600 16px "Roboto"');
   });
 
+  it('does not restart font loading on time updates when font requirements are unchanged', async () => {
+    const clip = makeTextClip({
+      id: 'text-font-stable',
+      textConfig: {
+        ...DEFAULT_TEXT_CONFIG,
+        fontFamily: 'Roboto',
+        fontStyle: 'normal',
+        fontWeight: 700,
+      },
+    });
+
+    const { rerender } = render(
+      <PreviewPlayer
+        currentTime={0.5}
+        duration={20}
+        isPlaying
+        onTimeChange={vi.fn()}
+        onPlayPause={vi.fn()}
+        onStop={vi.fn()}
+        previewVideoUrl="/test-video.mp4"
+        activeTextClips={[clip]}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(fontLoadMock).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <PreviewPlayer
+        currentTime={1.0}
+        duration={20}
+        isPlaying
+        onTimeChange={vi.fn()}
+        onPlayPause={vi.fn()}
+        onStop={vi.fn()}
+        previewVideoUrl="/test-video.mp4"
+        activeTextClips={[
+          makeTextClip({
+            id: 'text-font-stable',
+            textConfig: {
+              ...DEFAULT_TEXT_CONFIG,
+              fontFamily: 'Roboto',
+              fontStyle: 'normal',
+              fontWeight: 700,
+            },
+          }),
+        ]}
+      />,
+    );
+
+    expect(fontLoadMock).toHaveBeenCalledTimes(1);
+  });
+
   it('renders i18n fixture text and falls back to whitelisted preview font', async () => {
     const clip = makeTextClip({
       id: 'text-i18n',
