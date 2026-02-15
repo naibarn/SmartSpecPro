@@ -1,15 +1,23 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 BASE_URL="${BASE_URL:-https://app-staging.smartaihub.app}"
 USER_COUNT="${USER_COUNT:-100}"
 OUTPUT_FILE="test-users.json"
-PASSWORD="LoadTest123A"
+PASSWORD="${LOAD_TEST_PASSWORD:-$(openssl rand -base64 16)}"
+
+# Validate BASE_URL format
+if [[ ! "$BASE_URL" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]]; then
+  echo "Error: Invalid BASE_URL format: $BASE_URL"
+  exit 1
+fi
 
 echo "Creating $USER_COUNT test users against $BASE_URL..."
+echo "Using password from LOAD_TEST_PASSWORD env var (set it for reproducible runs)"
 
 # Create temp file for JSONL
 TEMP_JSONL=$(mktemp)
+chmod 600 "$TEMP_JSONL"
 trap 'rm -f "$TEMP_JSONL"' EXIT
 
 CREATED=0

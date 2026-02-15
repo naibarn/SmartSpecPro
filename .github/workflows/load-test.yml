@@ -52,12 +52,16 @@ jobs:
 
       - name: Run Scenario 1 - API Load
         if: ${{ github.event.inputs.scenario == 'all' || github.event.inputs.scenario == 'scenario-1' }}
+        timeout-minutes: 15
+        continue-on-error: false
         run: |
           cd load-tests
           k6 run --env BASE_URL="$BASE_URL" scenario-1-api-load.js
 
       - name: Run Scenario 2 - Job Burst
         if: ${{ github.event.inputs.scenario == 'all' || github.event.inputs.scenario == 'scenario-2' }}
+        timeout-minutes: 15
+        continue-on-error: false
         run: |
           cd load-tests
           k6 run --env BASE_URL="$BASE_URL" scenario-2-job-burst.js
@@ -66,6 +70,7 @@ jobs:
       - name: Run Scenario 3 - Sustained Load
         if: ${{ github.event.inputs.scenario == 'all' || github.event.inputs.scenario == 'scenario-3' }}
         timeout-minutes: 75
+        continue-on-error: false
         run: |
           cd load-tests
           k6 run --env BASE_URL="$BASE_URL" scenario-3-sustained-load.js
@@ -79,6 +84,17 @@ jobs:
           chmod +x cleanup-test-users.sh
           ./cleanup-test-users.sh
 
+      - name: Sanitize k6 results
+        if: always()
+        run: |
+          cd load-tests
+          for file in metrics-*.json; do
+            [ -f "$file" ] || continue
+            if command -v jq &>/dev/null; then
+              jq 'walk(if type == "object" then del(.cookies, .headers.Cookie, .headers.Authorization, .headers.cookie) else . end)' "$file" > "${file}.clean" && mv "${file}.clean" "$file"
+            fi
+          done
+
       - name: Upload k6 results
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,4 +102,4 @@ jobs:
           name: load-test-results-${{ github.run_id }}
           path: |
             load-tests/metrics-*.json
-          retention-days: 30
+          retention-days: 7

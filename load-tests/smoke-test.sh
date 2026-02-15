@@ -1,7 +1,13 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 BASE_URL="${BASE_URL:-https://app-staging.smartaihub.app}"
+
+# Validate BASE_URL format
+if [[ ! "$BASE_URL" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]]; then
+  echo "Error: Invalid BASE_URL format: $BASE_URL"
+  exit 1
+fi
 
 echo "Running smoke test (1 VU, 1 iteration) against $BASE_URL..."
 

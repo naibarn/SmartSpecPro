@@ -12,7 +12,19 @@ if [[ -z "$PROJECT_ID" ]]; then
   echo "Usage: $0 PROJECT_ID [REGION]"
   exit 1
 fi
+
+if [[ ! "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]; then
+  echo "ERROR: Invalid PROJECT_ID format: $PROJECT_ID"
+  exit 1
+fi
+
 REGION="${2:-asia-southeast1}"
+
+if [[ ! "$REGION" =~ ^[a-z]+-[a-z]+[0-9]+$ ]]; then
+  echo "ERROR: Invalid REGION format: $REGION"
+  exit 1
+fi
+
 ERRORS=()
 
 # --- Helper ---

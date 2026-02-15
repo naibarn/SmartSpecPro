@@ -20,7 +20,23 @@ set -euo pipefail
 
 SERVICE="${1:-node-api}"
 REGION="${2:-asia-southeast1}"
-PROJECT_ID="${3:-$(gcloud config get-value project 2>/dev/null || echo "smartspecpro-mvp")}"
+PROJECT_ID="${3:-$(gcloud config get-value project 2>/dev/null)}"
+
+if [[ -z "$PROJECT_ID" ]]; then
+  echo "ERROR: PROJECT_ID required. Pass as argument or set via gcloud config."
+  exit 1
+fi
+
+if [[ ! "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]; then
+  echo "ERROR: Invalid PROJECT_ID format: $PROJECT_ID"
+  exit 1
+fi
+
+if [[ ! "$REGION" =~ ^[a-z]+-[a-z]+[0-9]+$ ]]; then
+  echo "ERROR: Invalid REGION format: $REGION"
+  exit 1
+fi
+
 IMAGE_REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/smartspecpro"
 
 echo "=== Cloud Run Rollback Test ==="

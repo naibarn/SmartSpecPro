@@ -1,0 +1,27 @@
+name: Cleanup Orphaned Test Users
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2:00 UTC
+  workflow_dispatch:       # Manual trigger
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Cleanup staging test users
+        env:
+          NEON_STAGING_DB_URL: ${{ secrets.NEON_STAGING_DB_URL }}
+        run: |
+          cd load-tests
+          chmod +x cleanup-test-users.sh
+          ./cleanup-test-users.sh
+
+      - name: Report cleanup status
+        if: failure()
+        run: echo "::warning::Test user cleanup failed. Manual cleanup may be required."

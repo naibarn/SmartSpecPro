@@ -3,6 +3,8 @@ version: '3.8'
 # SmartSpec Pro - Docker Compose Configuration
 # This file sets up the required infrastructure services
 #
+# IMPORTANT: Copy .env.example to .env and set required values before starting
+#
 # Services:
 # - PostgreSQL: Primary database
 # - Redis: Shared cache
@@ -14,11 +16,12 @@ services:
     image: postgres:15-alpine
     container_name: smartspec-postgres
     environment:
-      POSTGRES_USER: smartspec
-      POSTGRES_PASSWORD: smartspec123
-      POSTGRES_DB: smartspec
+      POSTGRES_USER: ${POSTGRES_USER:-smartspec}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-smartspec}
     ports:
-      - "5432:5432"
+      # Bound to localhost only — not accessible from external network
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./python-backend/migrations:/docker-entrypoint-initdb.d:ro
@@ -28,13 +31,22 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
 
   # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: smartspec-redis
     ports:
-      - "6379:6379"
+      # Bound to localhost only — not accessible from external network
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -43,19 +55,36 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
 
   # ChromaDB Vector Store (optional - for RAG features)
   chromadb:
     image: chromadb/chroma:latest
     container_name: smartspec-chromadb
     ports:
-      - "8001:8000"
+      # Bound to localhost only — not accessible from external network
+      - "127.0.0.1:8001:8000"
     volumes:
       - chroma_data:/chroma/chroma
     environment:
       - IS_PERSISTENT=TRUE
       - ANONYMIZED_TELEMETRY=FALSE
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
 
 volumes:
   postgres_data:

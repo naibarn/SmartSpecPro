@@ -91,16 +91,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - name: Generate test JWT secret
+        id: jwt-secret
+        run: echo "value=$(openssl rand -base64 32)" >> "$GITHUB_OUTPUT"
       - name: Test SmartSpecWeb (coverage + socket suites)
         env:
           RUN_SOCKET_TESTS: "true"
-          JWT_SECRET: "test-jwt-secret-32-chars-minimum-1234567890"
+          JWT_SECRET: ${{ steps.jwt-secret.outputs.value }}
         run: bash scripts/ci/node_tests.sh apps/web
       - name: Run SmartSpecWeb DB integration suite
         env:
           DATABASE_URL: postgresql://smartspec:smartspec123@localhost:5432/smartspec_test
           RUN_DB_INTEGRATION_TESTS: "true"
-          JWT_SECRET: "test-jwt-secret-32-chars-minimum-1234567890"
+          JWT_SECRET: ${{ steps.jwt-secret.outputs.value }}
         run: |
           cd apps/web
           npm run db:migrate

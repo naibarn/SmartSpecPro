@@ -1,7 +1,9 @@
 version: '3.8'
 # SmartSpec Pro - Full Docker Compose Configuration
 # This file sets up the complete infrastructure and application services
-# 
+#
+# IMPORTANT: Copy .env.example to .env and set required values before starting
+#
 # Infrastructure Services:
 # - PostgreSQL: Primary database
 # - Redis: Shared cache
@@ -29,10 +31,11 @@ services:
     container_name: smartspec-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-smartspec}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartspec123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-smartspec}
     ports:
-      - "5432:5432"
+      # Bound to localhost only — not accessible from external network
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./python-backend/migrations:/docker-entrypoint-initdb.d:ro
@@ -42,15 +45,24 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
     networks:
-      - smartspec-network
+      - data
 
   # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: smartspec-redis
     ports:
-      - "6379:6379"
+      # Bound to localhost only — not accessible from external network
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -59,23 +71,39 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
     networks:
-      - smartspec-network
+      - data
 
   # ChromaDB Vector Store (for RAG features)
   chromadb:
     image: chromadb/chroma:latest
     container_name: smartspec-chromadb
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     volumes:
       - chroma_data:/chroma/chroma
     environment:
       - IS_PERSISTENT=TRUE
       - ANONYMIZED_TELEMETRY=FALSE
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
     networks:
-      - smartspec-network
+      - data
 
   # ============================================
   # APPLICATION SERVICES
@@ -88,7 +116,7 @@ services:
       dockerfile: Dockerfile
     container_name: smartspec-python-backend
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspec}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
       - REDIS_URL=redis://redis:6379
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
@@ -96,7 +124,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,8 +138,17 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
     networks:
-      - smartspec-network
+      - backend
+      - data
 
   # SmartSpec Web Application
   smartspec-web:
@@ -122,12 +159,13 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspec}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
       - REDIS_URL=redis://redis:6379
       - BACKEND_URL=http://python-backend:8000
-      - SESSION_SECRET=${SESSION_SECRET:-your-session-secret-change-in-production}
+      # CRITICAL: Override SESSION_SECRET in production with a strong random value
+      - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET must be set to a strong random value}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -141,8 +179,17 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
     networks:
-      - smartspec-network
+      - frontend
+      - backend
 
   # Docker Status Monitor
   docker-status:
@@ -153,9 +200,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspec}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
@@ -167,8 +214,17 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
     networks:
-      - smartspec-network
+      - frontend
+      - backend
 
   # Control Plane Service
   control-plane:
@@ -178,15 +234,24 @@ services:
     container_name: smartspec-control-plane
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:-smartspec123}@postgres:5432/${POSTGRES_DB:-smartspec}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
     ports:
-      - "7070:7070"
+      - "127.0.0.1:7070:7070"
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
     networks:
-      - smartspec-network
+      - frontend
+      - backend
 
   # API Generator (Optional - run on demand)
   api-generator:
@@ -198,8 +263,16 @@ services:
       - ./api-generator/output:/app/output
     profiles:
       - tools
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
     networks:
-      - smartspec-network
+      - backend
 
 # ============================================
 # VOLUMES
@@ -216,6 +289,14 @@ volumes:
 # NETWORKS
 # ============================================
 networks:
-  smartspec-network:
-    name: smartspec-network
+  frontend:
+    name: smartspec-frontend
     driver: bridge
+  backend:
+    name: smartspec-backend
+    driver: bridge
+    internal: true
+  data:
+    name: smartspec-data
+    driver: bridge
+    internal: true

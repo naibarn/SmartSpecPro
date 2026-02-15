@@ -1,10 +1,20 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 DB_URL="${NEON_STAGING_DB_URL:-$DATABASE_URL}"
 
-if [ -z "$DB_URL" ]; then
+if [[ -z "$DB_URL" ]]; then
   echo "Error: Set NEON_STAGING_DB_URL or DATABASE_URL environment variable"
+  exit 1
+fi
+
+if [[ ! "$DB_URL" =~ ^postgres(ql)?:// ]]; then
+  echo "Error: Invalid database URL format (must start with postgres:// or postgresql://)"
+  exit 1
+fi
+
+if [[ "$DB_URL" =~ "prod" ]] && [[ ! "${ALLOW_PROD_CLEANUP:-}" == "true" ]]; then
+  echo "Error: Refusing to run cleanup on production database. Set ALLOW_PROD_CLEANUP=true to override."
   exit 1
 fi
 
@@ -22,7 +32,7 @@ fi
 # Delete in dependency order to respect foreign keys.
 # Tables with ON DELETE CASCADE are handled automatically when users are deleted.
 # Tables WITHOUT cascade need explicit deletion first.
-psql "$DB_URL" <<'EOF'
+if ! psql "$DB_URL" <<'EOF'
 BEGIN;
 
 -- Tables without ON DELETE CASCADE (must delete explicitly)
@@ -56,5 +66,9 @@ DELETE FROM users WHERE email LIKE 'loadtest-user-%@example.com';
 
 COMMIT;
 EOF
+then
+  echo "Error: Transaction failed"
+  exit 1
+fi
 
 echo "Test users cleaned up successfully"

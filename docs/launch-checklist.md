@@ -170,8 +170,84 @@ gcloud run services update-traffic node-api \
   --to-revisions=<HEALTHY_REVISION>=100 --region=asia-southeast1
 ```
 
+### 11. Incident Response Ready
+- [ ] Incident Response Plan reviewed by team (`docs/incident-response-plan.md`)
+- [ ] On-call schedule established (PagerDuty/Slack rotations)
+- [ ] Escalation contacts identified and verified (phone numbers tested)
+- [ ] Alert response runbooks reviewed (`docs/runbooks/alert-response.md`)
+- [ ] Incident channel naming convention agreed (`#incident-YYYYMMDD-HHmm-description`)
+- [ ] Postmortem template ready for use
+- [ ] Team trained on rollback procedures (simulated in staging)
+
+### 12. Backup & Recovery Verified
+- [ ] Backup restore test completed on staging (`docs/runbooks/backup-restore-testing.md`)
+- [ ] PostgreSQL PITR restore tested (Neon branch restore < 30 min)
+- [ ] RTO target (30 min) achievable and documented
+- [ ] RPO target (1 hour) verified with Neon PITR granularity
+- [ ] Application connectivity tested with restored database
+- [ ] Encrypted data decryptable after restore (LLM_ENCRYPTION_KEY verified)
+- [ ] Monthly backup test scheduled (first Tuesday of each month)
+
+### 13. Auto-Rollback Configured
+- [ ] Canary monitoring script created (`scripts/canary-monitor.sh`)
+- [ ] Auto-rollback thresholds documented and agreed (5% error rate, 2000ms latency)
+- [ ] Rollback triggers tested in staging (forced errors, forced latency)
+- [ ] Manual override procedure documented (`docs/runbooks/auto-rollback.md`)
+- [ ] Slack webhook configured for rollback alerts
+- [ ] PagerDuty integration tested (alert fires on rollback)
+- [ ] GitHub Actions workflow includes canary stages (10% → 50% → 100%)
+
+### 14. Secret Rotation Schedule
+- [ ] Secret rotation schedule documented (`docs/runbooks/secret-rotation.md`)
+- [ ] JWT_SECRET rotation procedure tested (dual-key overlap)
+- [ ] DATABASE_URL rotation procedure tested (password change + service restart)
+- [ ] Calendar reminders set for quarterly JWT rotation
+- [ ] LLM_ENCRYPTION_KEY backup stored offline (encrypted USB drive)
+- [ ] External API key rotation contacts identified (OpenAI, Anthropic, etc.)
+
+### 15. SLA Monitoring Active
+- [ ] SLA targets documented and published (`docs/sla-targets.md`)
+- [ ] Uptime target: 99.5% monthly (allows 3.65 hours downtime)
+- [ ] Latency targets: p95 < 500ms, p99 < 2000ms
+- [ ] Error rate target: < 1% (5xx errors, 1-hour window)
+- [ ] Cloud Monitoring dashboard tracks SLA metrics in real-time
+- [ ] Weekly SLA report scheduled (Cloud Function + email)
+- [ ] Monthly SLA review meeting scheduled (first Monday of month)
+- [ ] Customer SLA credit calculation procedure documented
+
 ## Post-Launch Monitoring
 
-**Daily:** Admin dashboard, Sentry errors, alert emails
-**Weekly:** PostHog dashboards, R2 storage, Cloud Monitoring trends
-**Monthly:** Database size, queue performance, Sentry/PostHog usage/cost
+**Real-Time (During Launch):**
+- Cloud Monitoring dashboard (error rate, latency, instance count)
+- Sentry real-time errors (filter by release tag)
+- PostHog live events (user activity, client errors)
+- Slack #alerts channel (Cloud Monitoring notifications)
+
+**Daily (First Week):**
+- Admin dashboard review
+- Sentry error trends (group by error type)
+- Alert email summary
+- Support ticket volume
+- SLA metrics (uptime %, error rate, p95 latency)
+
+**Weekly (Ongoing):**
+- PostHog dashboards (user engagement, feature usage)
+- R2 storage usage and costs
+- Cloud Monitoring trends (7-day view)
+- Queue performance (backlog, failure rate)
+- Database growth rate
+
+**Monthly (Ongoing):**
+- Database size and query performance
+- Sentry/PostHog usage vs. quota
+- Cloud costs analysis (Cloud Run, Neon, Upstash, R2)
+- SLA review meeting (see `docs/sla-targets.md`)
+- Backup test execution (see `docs/runbooks/backup-restore-testing.md`)
+- Incident retrospective (review all P1/P2 incidents)
+
+**Quarterly (Strategic Review):**
+- Disaster recovery simulation (full restore test)
+- Infrastructure capacity planning
+- Secret rotation (JWT_SECRET)
+- Security audit and penetration testing
+- Dependency updates and vulnerability scanning
