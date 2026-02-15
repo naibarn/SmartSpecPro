@@ -26,6 +26,7 @@ const MAX_VIDEO_BITRATE_KBPS = 50_000;
 const MAX_AUDIO_BITRATE_KBPS = 320;
 const MAX_PIXEL_COUNT = 3840 * 2160;
 const MAX_DIMENSION = 7680;
+const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
 
 const ALLOWED_CODECS = new Set([
   "libx264",
@@ -253,6 +254,42 @@ export function validateResolutionLimits(
   return { valid: errors.length === 0, errors };
 }
 
+function validateTextClipColorFields(spec: MediaJobSpec): string[] {
+  const errors: string[] = [];
+  const tracks = spec.inputs?.project?.tracks;
+  if (!Array.isArray(tracks)) return errors;
+
+  const isHexColor = (value: unknown): boolean =>
+    typeof value === "string" && HEX_COLOR_RE.test(value);
+
+  for (const track of tracks) {
+    const clips = Array.isArray(track?.clips) ? track.clips : [];
+    for (const clip of clips) {
+      const textConfig = clip?.textConfig;
+      if (typeof textConfig !== "object" || textConfig === null) continue;
+      const clipId = typeof clip?.clipId === "string" ? clip.clipId : "unknown";
+
+      if (!isHexColor((textConfig as Record<string, unknown>).color)) {
+        errors.push(`Clip "${clipId}": textConfig.color must be a #RRGGBB string`);
+      }
+
+      const backgroundColor = (textConfig as Record<string, unknown>).backgroundColor;
+      if (backgroundColor !== "transparent" && !isHexColor(backgroundColor)) {
+        errors.push(
+          `Clip "${clipId}": textConfig.backgroundColor must be "transparent" or #RRGGBB`,
+        );
+      }
+
+      const effectColor = (textConfig as Record<string, unknown>).effectColor;
+      if (effectColor !== undefined && !isHexColor(effectColor)) {
+        errors.push(`Clip "${clipId}": textConfig.effectColor must be a #RRGGBB string`);
+      }
+    }
+  }
+
+  return errors;
+}
+
 // ========================================
 // validateWebJobSpec (orchestrator)
 // ========================================
@@ -283,6 +320,9 @@ export function validateWebJobSpec(
       }
     }
   }
+
+  // 2.5 Validate text clip color fields to prevent FFmpeg filter argument injection.
+  errors.push(...validateTextClipColorFields(spec));
 
   // 3. Validate output.target for path traversal
   if (spec.output?.target) {

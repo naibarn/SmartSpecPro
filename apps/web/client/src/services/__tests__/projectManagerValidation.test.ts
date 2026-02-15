@@ -81,6 +81,14 @@ describe("validateProjectStructure — top-level", () => {
     );
   });
 
+  it("rejects invalid negative text contract versions", () => {
+    const p = validProject();
+    p.contractVersion = "-1.0";
+    expect(() => validateProjectStructure(p)).toThrow(
+      "Invalid text contractVersion format (expected: X.Y)",
+    );
+  });
+
   it("allows gated downgrade for unsupported contract only when text semantics are absent", () => {
     const p = validProject();
     p.contractVersion = "3.0";

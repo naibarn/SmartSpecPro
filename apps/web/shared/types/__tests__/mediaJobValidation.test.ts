@@ -179,6 +179,96 @@ describe("validateWebJobSpec (path traversal)", () => {
   });
 });
 
+describe("validateWebJobSpec (text color sanitization)", () => {
+  it("rejects invalid text color values in project clips", () => {
+    const spec = makeSpec({
+      jobType: "render_mp4_h264",
+      inputs: {
+        assets: [{ assetId: "a1", kind: "video", uri: "https://cdn.example.com/clip.mp4" }],
+        project: {
+          projectId: "proj-text-color",
+          fps: 30,
+          width: 1920,
+          height: 1080,
+          tracks: [
+            {
+              trackId: "t1",
+              type: "subtitle",
+              clips: [
+                {
+                  clipId: "txt-1",
+                  assetId: "a1",
+                  startMs: 0,
+                  outMs: 1000,
+                  textConfig: {
+                    text: "hello",
+                    fontFamily: "Noto Sans",
+                    fontSize: 40,
+                    fontWeight: 700,
+                    fontStyle: "normal",
+                    color: "red:fontsize=500",
+                    backgroundColor: "transparent",
+                    textAlign: "center",
+                    effect: "none",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      } as MediaJobSpec["inputs"],
+    });
+
+    const result = validateWebJobSpec(spec, "web_backend");
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => /textConfig\.color/i.test(e))).toBe(true);
+  });
+
+  it("accepts valid #RRGGBB text color fields", () => {
+    const spec = makeSpec({
+      jobType: "render_mp4_h264",
+      inputs: {
+        assets: [{ assetId: "a1", kind: "video", uri: "https://cdn.example.com/clip.mp4" }],
+        project: {
+          projectId: "proj-valid-color",
+          fps: 30,
+          width: 1920,
+          height: 1080,
+          tracks: [
+            {
+              trackId: "t1",
+              type: "subtitle",
+              clips: [
+                {
+                  clipId: "txt-1",
+                  assetId: "a1",
+                  startMs: 0,
+                  outMs: 1000,
+                  textConfig: {
+                    text: "hello",
+                    fontFamily: "Noto Sans",
+                    fontSize: 40,
+                    fontWeight: 700,
+                    fontStyle: "normal",
+                    color: "#FFFFFF",
+                    backgroundColor: "#000000",
+                    textAlign: "center",
+                    effect: "none",
+                    effectColor: "#111111",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      } as MediaJobSpec["inputs"],
+    });
+
+    const result = validateWebJobSpec(spec, "web_backend");
+    expect(result.valid).toBe(true);
+  });
+});
+
 // ========================================
 // validateCodecAllowlist
 // ========================================

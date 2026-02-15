@@ -55,12 +55,14 @@ function renderPlayer(activeTextClips: ActiveTextClipInfo[], currentTime = 0) {
 
 describe('PreviewPlayer text parity', () => {
   const originalFonts = Object.getOwnPropertyDescriptor(document, 'fonts');
+  let fontLoadMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    fontLoadMock = vi.fn().mockResolvedValue([]);
     Object.defineProperty(document, 'fonts', {
       configurable: true,
       value: {
-        load: vi.fn().mockResolvedValue([]),
+        load: fontLoadMock,
       },
     });
   });
@@ -189,6 +191,25 @@ describe('PreviewPlayer text parity', () => {
     await waitFor(() => {
       expect(queryByTestId('preview-text-clip-text-font-wait')).toBeTruthy();
     });
+  });
+
+  it('loads preview fonts using clip style and weight variants', async () => {
+    const clip = makeTextClip({
+      id: 'text-font-variant',
+      textConfig: {
+        ...DEFAULT_TEXT_CONFIG,
+        fontStyle: 'italic',
+        fontWeight: 600,
+      },
+    });
+
+    renderPlayer([clip], 1);
+
+    await waitFor(() => {
+      expect(fontLoadMock).toHaveBeenCalled();
+    });
+
+    expect(fontLoadMock).toHaveBeenCalledWith('italic 600 16px "Roboto"');
   });
 
   it('renders i18n fixture text and falls back to whitelisted preview font', async () => {

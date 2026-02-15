@@ -88,7 +88,26 @@ export const VideoEditorPhase3: React.FC = () => {
 
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence' | 'text'>('library');
-  const textClipRolloutEnabled = useMemo(() => isTextClipRolloutEnabled(), []);
+  const [textClipRolloutEnabled, setTextClipRolloutEnabled] = useState<boolean>(() => isTextClipRolloutEnabled());
+
+  useEffect(() => {
+    const refreshRolloutState = () => {
+      setTextClipRolloutEnabled(isTextClipRolloutEnabled());
+    };
+    refreshRolloutState();
+
+    if (typeof window === 'undefined') return;
+    const onRuntimeFlagUpdate = () => refreshRolloutState();
+    window.addEventListener('smartspec:feature-flags-updated', onRuntimeFlagUpdate as EventListener);
+    window.addEventListener('focus', onRuntimeFlagUpdate);
+    document.addEventListener('visibilitychange', onRuntimeFlagUpdate);
+
+    return () => {
+      window.removeEventListener('smartspec:feature-flags-updated', onRuntimeFlagUpdate as EventListener);
+      window.removeEventListener('focus', onRuntimeFlagUpdate);
+      document.removeEventListener('visibilitychange', onRuntimeFlagUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     if (!textClipRolloutEnabled && sidebarView === 'text') {

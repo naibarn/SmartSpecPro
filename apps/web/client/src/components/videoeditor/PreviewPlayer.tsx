@@ -270,18 +270,30 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     () => textFontResolution.filter((item) => item.fallback).length,
     [textFontResolution],
   );
-  const activeTextFontFamilies = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          textFontResolution.map((item) => item.resolved),
-        ),
-      ),
-    [textFontResolution],
+  const activeTextFontRequests = useMemo(
+    () => {
+      const unique = new Map<string, { family: string; style: 'normal' | 'italic'; weight: number }>();
+      for (const clip of activeTextClips) {
+        const font = resolvePreviewTextFont(clip.textConfig.fontFamily).resolved;
+        const style = clip.textConfig.fontStyle === 'italic' ? 'italic' : 'normal';
+        const weight = Number.isFinite(clip.textConfig.fontWeight)
+          ? Math.max(100, Math.min(900, Math.round(clip.textConfig.fontWeight / 100) * 100))
+          : 400;
+        const key = `${style}:${weight}:${font}`;
+        if (!unique.has(key)) {
+          unique.set(key, { family: font, style, weight });
+        }
+      }
+      return Array.from(unique.values());
+    },
+    [activeTextClips],
   );
   const activeTextFontKey = useMemo(
-    () => activeTextFontFamilies.join('|'),
-    [activeTextFontFamilies],
+    () =>
+      activeTextFontRequests
+        .map((request) => `${request.style}:${request.weight}:${request.family}`)
+        .join('|'),
+    [activeTextFontRequests],
   );
   const resolvedTextOverlays = useMemo(
     () =>
@@ -359,8 +371,10 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     let cancelled = false;
     setTextFontsReady(false);
     Promise.all(
-      activeTextFontFamilies.map((family) =>
-        fontSet.load(`400 16px "${family}"`).catch(() => undefined),
+      activeTextFontRequests.map((request) =>
+        fontSet
+          .load(`${request.style} ${request.weight} 16px "${request.family}"`)
+          .catch(() => undefined),
       ),
     ).finally(() => {
       if (!cancelled) {
@@ -371,7 +385,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [activeTextClips.length, activeTextFontFamilies, activeTextFontKey]);
+  }, [activeTextClips.length, activeTextFontRequests, activeTextFontKey]);
 
   useEffect(() => {
     const viewport = viewportRef.current;

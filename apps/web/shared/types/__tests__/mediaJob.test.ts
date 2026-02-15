@@ -710,6 +710,16 @@ describe("projectToTimeline — additional cases", () => {
     expect(result.errors.some((e) => /Unsupported media timeline contractVersion/i.test(e))).toBe(true);
   });
 
+  it("rejects invalid negative contract major versions", () => {
+    const spec = makeRenderSpec();
+    spec.inputs.project!.contractVersion = "-1.0";
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some((e) => /Invalid media timeline contractVersion format/i.test(e)),
+    ).toBe(true);
+  });
+
   it("allows gated downgrade for unsupported future version without text semantics", () => {
     const timeline: MediaTimeline = {
       projectId: "legacy-safe",
@@ -767,6 +777,37 @@ describe("projectToTimeline — additional cases", () => {
     };
 
     expect(() => timelineToProject(timeline)).toThrow(/Unsupported media timeline contractVersion/i);
+  });
+
+  it("treats null textConfig as non-text semantics for gated downgrade", () => {
+    const spec = makeRenderSpec();
+    spec.inputs.project = {
+      projectId: "null-text-config",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      contractVersion: "3.0",
+      compatibilityPolicy: { unsupportedContractPolicy: "gated_downgrade" },
+      tracks: [
+        {
+          trackId: "v1",
+          type: "video",
+          clips: [
+            {
+              clipId: "v-1",
+              assetId: "a1",
+              startMs: 0,
+              inMs: 0,
+              outMs: 1200,
+              textConfig: null as unknown as MediaClip["textConfig"],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(true);
   });
 
   it("round-trips through projectToTimeline and timelineToProject", () => {

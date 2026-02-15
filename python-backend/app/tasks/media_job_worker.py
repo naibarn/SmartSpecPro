@@ -209,6 +209,16 @@ def _ass_color_from_hex(hex_color: str | None) -> str:
     return f"&H00{b:02X}{g:02X}{r:02X}"
 
 
+def _resolve_drawtext_color(hex_color: Any) -> str:
+    """Resolve drawtext color to strict #RRGGBB format."""
+    if not isinstance(hex_color, str):
+        return "#FFFFFF"
+    match = _HEX_COLOR_RE.match(hex_color)
+    if not match:
+        return "#FFFFFF"
+    return f"#{match.group(1).upper()}"
+
+
 def _seconds_to_ass_timestamp(seconds: float) -> str:
     """Format seconds as H:MM:SS.CS for ASS."""
     cs_total = max(0, int(round(seconds * 100)))
@@ -369,7 +379,7 @@ def _build_drawtext_filter(text_clips: list[dict], width: int, height: int) -> s
         x = int(round(max(0.0, min(1.0, _to_float(transform.get("x"), 0.5))) * width))
         y = int(round(max(0.0, min(1.0, _to_float(transform.get("y"), 0.5))) * height))
         size = max(8, min(256, _to_int(cfg.get("fontSize"), default=48)))
-        color = cfg.get("color") if isinstance(cfg.get("color"), str) else "#FFFFFF"
+        color = _resolve_drawtext_color(cfg.get("color"))
         filters.append(
             "drawtext="
             f"font='{font_name}':"
@@ -463,16 +473,48 @@ def _build_text_render_telemetry(
 
 def _evaluate_text_render_alerts(window: dict[str, Any]) -> dict[str, Any]:
     """Evaluate text-render alert triggers for a 15-minute observability window."""
+    def _read_env_float(name: str, default: float, minimum: float = 0.0) -> float:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return default
+        if value < minimum:
+            return default
+        return value
+
+    def _read_env_int(name: str, default: int, minimum: int = 0) -> int:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return default
+        if value < minimum:
+            return default
+        return value
+
+    thresholds = {
+        "failureRate15m": _read_env_float("TEXT_RENDER_ALERT_FAILURE_RATE_15M", 0.005),
+        "parityErrorRate15m": _read_env_float("TEXT_RENDER_ALERT_PARITY_ERROR_RATE_15M", 0.005),
+        "fastPathMisclassificationCount15m": _read_env_int(
+            "TEXT_RENDER_ALERT_FASTPATH_MISCLASSIFICATION_COUNT_15M", 3
+        ),
+    }
+
     failure_rate = float(window.get("failureRate15m", 0.0) or 0.0)
     parity_error_rate = float(window.get("parityErrorRate15m", 0.0) or 0.0)
     misclassification_count = int(window.get("fastPathMisclassificationCount15m", 0) or 0)
 
     alerts: list[str] = []
-    if failure_rate > 0.005:
+    if failure_rate > thresholds["failureRate15m"]:
         alerts.append("text_render_failure_rate_above_slo")
-    if parity_error_rate > 0.005:
+    if parity_error_rate > thresholds["parityErrorRate15m"]:
         alerts.append("text_render_parity_budget_exceeded")
-    if misclassification_count >= 3:
+    if misclassification_count >= thresholds["fastPathMisclassificationCount15m"]:
         alerts.append("text_render_fast_path_misclassification_spike")
 
     return {
@@ -483,6 +525,7 @@ def _evaluate_text_render_alerts(window: dict[str, Any]) -> dict[str, Any]:
             "parityErrorRate15m": parity_error_rate,
             "fastPathMisclassificationCount15m": misclassification_count,
         },
+        "thresholds": thresholds,
     }
 
 

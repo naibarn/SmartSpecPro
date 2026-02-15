@@ -200,6 +200,16 @@ def test_drawtext_filter_escapes_percent_brackets_quotes_and_colons():
     assert ";" not in drawtext_filter
 
 
+def test_drawtext_filter_falls_back_to_safe_color_for_invalid_values():
+    worker = _load_worker_module()
+    clip = _make_text_clip(text="Color check")
+    clip["textConfig"]["color"] = "red:fontsize=500"
+
+    drawtext_filter = worker._build_drawtext_filter([clip], width=1920, height=1080)
+
+    assert "fontcolor=#FFFFFF" in drawtext_filter
+
+
 def test_text_render_benchmark_ass_generation_under_threshold():
     worker = _load_worker_module()
     clips = []
@@ -246,6 +256,28 @@ def test_text_render_alert_rules_trigger_on_synthetic_spikes():
     assert "text_render_failure_rate_above_slo" in spike["alerts"]
     assert "text_render_parity_budget_exceeded" in spike["alerts"]
     assert "text_render_fast_path_misclassification_spike" in spike["alerts"]
+
+
+def test_text_render_alert_rules_respect_env_threshold_overrides(monkeypatch):
+    worker = _load_worker_module()
+    monkeypatch.setenv("TEXT_RENDER_ALERT_FAILURE_RATE_15M", "0.02")
+    monkeypatch.setenv("TEXT_RENDER_ALERT_PARITY_ERROR_RATE_15M", "0.02")
+    monkeypatch.setenv("TEXT_RENDER_ALERT_FASTPATH_MISCLASSIFICATION_COUNT_15M", "10")
+
+    result = worker._evaluate_text_render_alerts(
+        {
+            "failureRate15m": 0.009,
+            "parityErrorRate15m": 0.006,
+            "fastPathMisclassificationCount15m": 4,
+        }
+    )
+    assert result["triggered"] is False
+    assert result["alerts"] == []
+    assert result["thresholds"] == {
+        "failureRate15m": 0.02,
+        "parityErrorRate15m": 0.02,
+        "fastPathMisclassificationCount15m": 10,
+    }
 
 
 def test_text_rollback_health_checklist_validation():

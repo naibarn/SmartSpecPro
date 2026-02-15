@@ -179,6 +179,7 @@ function parseMajorVersion(value: string): number | null {
   const [majorRaw] = value.split(".");
   const parsed = Number.parseInt(majorRaw, 10);
   if (!Number.isFinite(parsed)) return null;
+  if (parsed < 0) return null;
   return parsed;
 }
 
@@ -186,7 +187,7 @@ function hasTextSemantics(timeline: MediaTimeline): boolean {
   return timeline.tracks.some(
     (track) =>
       track.type === "subtitle" ||
-      track.clips.some((clip) => typeof clip.textConfig === "object"),
+      track.clips.some((clip) => typeof clip.textConfig === "object" && clip.textConfig !== null),
   );
 }
 

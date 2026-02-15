@@ -109,6 +109,7 @@ function majorVersion(value: string): number | null {
   const [majorRaw] = value.split('.');
   const parsed = Number.parseInt(majorRaw, 10);
   if (!Number.isFinite(parsed)) return null;
+  if (parsed < 0) return null;
   return parsed;
 }
 
