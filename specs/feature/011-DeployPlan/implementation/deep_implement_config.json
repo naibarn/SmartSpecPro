@@ -68,6 +68,10 @@
     "section-10-redis-ratelimit": {
       "status": "complete",
       "commit_hash": "a069bb0"
+    },
+    "section-11-video-pipeline": {
+      "status": "complete",
+      "commit_hash": "2c43845"
     }
   },
   "pre_commit": {

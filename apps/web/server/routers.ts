@@ -57,6 +57,7 @@ import { libraryOpsRouter } from "./routers/libraryOps";
 import { factoryRouter } from "./routers/factory";
 import { groupsRouter } from "./routers/groups";
 import { googleDriveRouter } from "./routers/googleDrive";
+import { searchRouter } from "./routers/search";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1586,6 +1587,8 @@ export const appRouter = router({
         return getGalleryAnalytics(input?.days || 30);
       }),
   }),
+
+  search: searchRouter,
 });
 
 export type AppRouter = typeof appRouter;
