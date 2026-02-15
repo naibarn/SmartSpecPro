@@ -205,9 +205,12 @@ def get_distributed_rate_limiter() -> DistributedRateLimiter:
         try:
             import redis.asyncio as redis
             from app.core.config import settings
+            from app.core.redis_client import _resolve_cache_url
 
+            # Prefer Upstash URL for distributed rate limiting
+            redis_url = _resolve_cache_url() or settings.REDIS_URL
             redis_client = redis.from_url(
-                settings.REDIS_URL,
+                redis_url,
                 encoding="utf-8",
                 decode_responses=True
             )

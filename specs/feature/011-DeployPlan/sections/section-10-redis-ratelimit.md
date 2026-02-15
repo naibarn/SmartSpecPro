@@ -365,3 +365,32 @@ After implementation, verify each of the following:
 8. The SSE progress endpoint in `mediaJobs.ts` continues to receive real-time updates via Memorystore pub/sub.
 9. Bottleneck LLM rate limiters in `llmRateLimiter.ts` continue to function with Memorystore IORedis.
 10. Local development with only `REDIS_URL` set works identically to current behavior (both clients use the single local Redis).
+
+---
+
+## Actual Implementation (Files Summary)
+
+| File | Status | Description |
+|------|--------|-------------|
+| `apps/web/server/services/redisClients.ts` | New | Split Redis adapter: cache (Upstash) + realtime (Memorystore), fallback to REDIS_URL for dev |
+| `apps/web/server/middleware/distributedRateLimit.ts` | New | Redis-backed distributed rate limiter with sorted set sliding window, fail-open, key sanitization |
+| `apps/web/server/services/__tests__/redisClients.test.ts` | New | 7 tests for split Redis adapter |
+| `apps/web/server/services/__tests__/distributedRateLimit.test.ts` | New | 9 tests for rate limiter |
+| `python-backend/app/core/redis_client.py` | Modified | Added `get_cache_redis()`, `get_realtime_redis()`, URL resolution functions |
+| `python-backend/app/core/distributed_rate_limiter.py` | Modified | Uses `_resolve_cache_url()` to prefer Upstash URL |
+| `python-backend/tests/unit/test_redis_rate_limit.py` | New | 8 tests for Python split clients and rate limiting |
+
+## Deviations from Plan
+
+1. **IORedis used instead of @upstash/redis**: IORedis connects to Upstash via `rediss://` protocol — simpler, works correctly, no new dependency.
+2. **Existing Redis callers not migrated**: The 9+ files importing from `redis.ts` are unchanged. New `redisClients.ts` is ready for incremental adoption.
+3. **Existing rate limiters not updated**: `rateLimiter.ts`, `rateLimitedProcedure.ts`, `limits.ts` still use in-memory rate limiting. Distributed middleware is available for new routes.
+4. **pubsub.test.ts not created**: Pub/sub testing deferred; requires live Redis for meaningful test.
+5. **Python pub/sub not updated**: `media_job_worker.py` still uses REDIS_URL for pub/sub. Routing to Memorystore deferred.
+6. **Redis key sanitization added**: Code review identified key injection risk. Added `sanitizeKeyComponent()` to strip dangerous characters from Redis keys.
+
+## Test Results
+
+- **Node.js**: 16/16 pass (7 redisClients + 9 distributedRateLimit)
+- **Python**: 8/8 pass (4 redis clients + 4 rate limiting)
+- No regressions (all 62 existing Node.js tests pass)
