@@ -398,26 +398,38 @@ No new environment variables required. Uses existing:
 
 No feature flags required. Dashboard is always available to admins.
 
-## File Paths Summary
+## File Paths Summary (Actual Implementation)
 
-### Files to Create
+### Files Created
 
-1. `apps/web/client/src/pages/Admin/AdminDashboard.tsx` — Main dashboard page
+1. `apps/web/client/src/pages/Admin/AdminOpsDashboard.tsx` — Main dashboard page (plan: AdminDashboard.tsx)
 2. `apps/web/client/src/pages/Admin/panels/TrafficPanel.tsx` — Traffic & Auth panel
 3. `apps/web/client/src/pages/Admin/panels/ApiHealthPanel.tsx` — API Health panel
 4. `apps/web/client/src/pages/Admin/panels/JobsHealthPanel.tsx` — Jobs Health panel
 5. `apps/web/client/src/pages/Admin/panels/KieAiHealthPanel.tsx` — Kie AI Health panel
 6. `apps/web/client/src/pages/Admin/panels/StoragePanel.tsx` — Storage panel
 7. `apps/web/client/src/pages/Admin/panels/SecurityPanel.tsx` — Security panel
-8. `python-backend/app/api/internal/admin_alerts.py` — Alert checking endpoint
-9. `apps/web/server/routers/__tests__/admin.dashboard.test.ts` — Frontend endpoint tests
-10. `python-backend/tests/api/test_admin_alerts.py` — Alert tests
+8. `apps/web/server/routers/adminOps.ts` — tRPC router with 6 admin procedures
+9. `python-backend/app/api/admin_alerts.py` — Alert checking endpoint (plan: internal/admin_alerts.py)
+10. `apps/web/server/routers/__tests__/adminOps.test.ts` — Router structure tests
+11. `python-backend/tests/api/test_admin_alerts.py` — Alert dedup/threshold tests
 
-### Files to Modify
+### Files Modified
 
-1. `apps/web/server/routers/admin.ts` — Add 6 new tRPC procedures
-2. `apps/web/client/src/App.tsx` — Add `/admin` route with guard
-3. `apps/web/drizzle/schema.ts` — Add indexes if not present (optional, can be migration)
+1. `apps/web/server/routers.ts` — Import and register `adminOpsRouter`
+2. `apps/web/client/src/App.tsx` — Add `/admin/ops` route (plan: `/admin`)
+3. `python-backend/app/main.py` — Import and register `admin_alerts` router
+
+### Deviations from Plan
+
+- **Route**: `/admin/ops` instead of `/admin` (avoids conflict with existing admin routes)
+- **File naming**: `AdminOpsDashboard.tsx` instead of `AdminDashboard.tsx` (clearer purpose)
+- **Router**: Separate `adminOps.ts` instead of modifying existing `admin.ts` (cleaner separation)
+- **Auth**: Uses `domainAdminProcedure` (admin + domain_admin) instead of `adminProcedure` (admin only)
+- **Alert auth**: Uses `X-Proxy-Token` header instead of OIDC (matches existing internal endpoint pattern)
+- **Error rate**: Counts 5xx only (not 4xx) per plan specification
+- **Indexes**: Not added (tables already have adequate indexes from earlier sections)
+- **Login counts**: Not implemented (no auth event log table exists in current schema)
 
 ## Implementation Approach
 

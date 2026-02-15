@@ -58,6 +58,7 @@ import { factoryRouter } from "./routers/factory";
 import { groupsRouter } from "./routers/groups";
 import { googleDriveRouter } from "./routers/googleDrive";
 import { searchRouter } from "./routers/search";
+import { adminOpsRouter } from "./routers/adminOps";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1589,6 +1590,7 @@ export const appRouter = router({
   }),
 
   search: searchRouter,
+  adminOps: adminOpsRouter,
 });
 
 export type AppRouter = typeof appRouter;
