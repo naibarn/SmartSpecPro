@@ -147,6 +147,7 @@ class Settings(BaseSettings):
     # Monitoring
     ENABLE_TELEMETRY: bool = True
     SENTRY_DSN: str = ""
+    POSTHOG_API_KEY: str = ""
 
     # LangSmith (Optional - for debugging and tracing)
     # Set LANGSMITH_ENABLED=true to enable tracing

@@ -566,6 +566,17 @@ export const mediaJobsRouter = router({
         // Best-effort
       }
 
+      // PostHog: job_submitted event (best-effort)
+      try {
+        const { captureServerEvent } = await import("../services/posthog");
+        captureServerEvent(String(ctx.user.id), "job_submitted", {
+          job_type: spec.jobType,
+          job_id: jobId,
+        });
+      } catch {
+        // Best-effort
+      }
+
       return { jobId };
     }),
 

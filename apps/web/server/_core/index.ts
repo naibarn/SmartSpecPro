@@ -671,9 +671,14 @@ process.on("SIGTERM", async () => {
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
 
-  // 4. Flush PostHog event batch (if initialized)
-  // TODO: Add in Section 14 (Observability)
-  // await posthog.shutdown();
+  // 4. Flush PostHog event batch
+  try {
+    const { shutdownPostHog } = await import("../services/posthog");
+    await shutdownPostHog();
+    console.log("[Shutdown] PostHog events flushed");
+  } catch (e) {
+    console.warn("[Shutdown] PostHog flush failed:", e);
+  }
 
   // 5. Flush Sentry events
   await Sentry.close(2000).catch(() => {});

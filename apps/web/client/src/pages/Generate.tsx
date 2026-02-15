@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { getPostHog } from '@/lib/posthog';
 import { Button } from '@/components/ui/button';
 import {
   Sparkles,
@@ -69,7 +70,8 @@ export default function Generate() {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
-    
+
+    getPostHog()?.capture("job_create_clicked", { job_type: activeTab });
     setIsGenerating(true);
     // Simulate generation
     setTimeout(() => {

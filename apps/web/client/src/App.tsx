@@ -7,9 +7,11 @@ import TerminalPage from "@/pages/TerminalPage";
 import CLIPage from "@/pages/CLIPage";
 import Factory from "@/pages/Factory";
 import VideoEditorPage from "@/pages/VideoEditorPage";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import { HelmetProvider } from "react-helmet-async";
+import { useEffect, useRef } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { getPostHog } from "@/lib/posthog";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
@@ -78,9 +80,25 @@ import TaskQueueMonitor from "./pages/TaskQueueMonitor";
 import Workflows from "./pages/Workflows";
 import WorkflowEditor from "./pages/WorkflowEditor";
 
+function PostHogPageViewTracker() {
+  const [location] = useLocation();
+  const prevPath = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (location !== prevPath.current) {
+      prevPath.current = location;
+      getPostHog()?.capture("$pageview", { $current_url: window.location.href });
+    }
+  }, [location]);
+
+  return null;
+}
+
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
+    <>
+    <PostHogPageViewTracker />
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/pricing" component={Pricing} />
@@ -157,6 +175,7 @@ function Router() {
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 

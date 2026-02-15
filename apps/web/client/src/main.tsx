@@ -51,6 +51,10 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
+// Initialize PostHog for product analytics (only when API key is configured)
+import { initPostHog } from "@/lib/posthog";
+initPostHog();
+
 const queryClient = new QueryClient();
 
 let isRedirectingToLogin = false;

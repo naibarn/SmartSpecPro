@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'wouter';
 import { generateFingerprint } from '@/lib/fingerprint';
+import { getPostHog } from '@/lib/posthog';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,6 +97,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    getPostHog()?.capture("login_started", { auth_method: "email" });
     setIsLoading(true);
 
     try {
@@ -124,12 +126,19 @@ export default function Login() {
       }
 
       if (result?.success) {
+        const loginUserId = result.userId || result.id;
+        if (loginUserId) getPostHog()?.identify(String(loginUserId));
+        getPostHog()?.capture("login_succeeded", { auth_method: "email" });
         toast.success('Login successful! Redirecting...');
         setNeedsVerification(false);
         const redirectUrl = getReturnUrl();
         window.location.href = redirectUrl;
       } else {
         const errorMessage = result?.message || data.error?.json?.message || 'Invalid email or password';
+        const reason = errorMessage.toLowerCase().includes('verify') ? 'email_not_verified'
+          : errorMessage.toLowerCase().includes('locked') ? 'account_locked'
+          : 'invalid_credentials';
+        getPostHog()?.capture("login_failed", { failure_reason: reason, auth_method: "email" });
         if (errorMessage.toLowerCase().includes('verify your email')) {
           setNeedsVerification(true);
         }
@@ -137,6 +146,7 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Login error:', error);
+      getPostHog()?.capture("login_failed", { failure_reason: "network_error", auth_method: "email" });
       toast.error('Login failed. Please try again.');
     } finally {
       setIsLoading(false);

@@ -159,6 +159,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Sentry flush failed", error=str(e))
 
+    # Flush PostHog events
+    try:
+        from app.services.posthog_service import shutdown_posthog
+        shutdown_posthog()
+        logger.info("PostHog events flushed")
+    except Exception as e:
+        logger.warning("PostHog flush failed", error=str(e))
+
     # Close checkpointer connection pool
     try:
         from app.core.checkpointer import cleanup_checkpointers

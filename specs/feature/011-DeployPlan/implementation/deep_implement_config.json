@@ -76,6 +76,10 @@
     "section-12-vectorize": {
       "status": "complete",
       "commit_hash": "58e5949"
+    },
+    "section-13-sentry": {
+      "status": "complete",
+      "commit_hash": "597ef35"
     }
   },
   "pre_commit": {

@@ -485,5 +485,51 @@ For **unit tests**, mock the PostHog SDK entirely using `vi.mock('posthog-node')
 | `/home/dev/projects/SmartSpecPro/apps/web/server/routers/mediaJobs.ts` | Emit `job_submitted` event |
 | `/home/dev/projects/SmartSpecPro/python-backend/app/core/config.py` | Add `POSTHOG_API_KEY` setting |
 | `/home/dev/projects/SmartSpecPro/python-backend/app/main.py` | Add PostHog shutdown to lifespan |
-| `/home/dev/projects/SmartSpecPro/python-backend/app/api/v1/media_generation.py` | Emit `kie_submit_succeeded` event |
+| `/home/dev/projects/SmartSpecPro/python-backend/app/api/v1/media_generation.py` | Emit `kie_submit_succeeded` event (DEFERRED - not wired yet) |
 | `/home/dev/projects/SmartSpecPro/apps/web/.env.example` | Add `VITE_POSTHOG_API_KEY` |
+| `/home/dev/projects/SmartSpecPro/apps/web/client/src/pages/Generate.tsx` | Add `job_create_clicked` event |
+| `/home/dev/projects/SmartSpecPro/apps/web/server/_core/index.ts` | PostHog shutdown in SIGTERM handler |
+
+---
+
+## Implementation Notes (Actual)
+
+### Deviations from Plan
+
+1. **Package location**: `posthog-js` and `posthog-node` installed in `apps/web/package.json` (correct), initially installed in root `package.json` then fixed during review.
+2. **Initial pageview tracking**: `PostHogPageViewTracker` uses `useRef<string | null>(null)` to capture the first page load (review fix #2).
+3. **PII protection**: `login_failed` event uses enumerated `failure_reason` values instead of raw error messages (review fix #3).
+4. **Identity safety**: Login `identify` call skips if no `userId`/`id` in response (review fix #8).
+5. **`signup_started` timing**: Fires on component mount via `useEffect`, not on form submit (review fix #7).
+6. **Deferred integrations**: `dashboard_viewed`, `rate_limited`, and `capture_kie_submit` wiring not implemented - SDK infrastructure is in place.
+7. **Python release property**: `capture_event` includes `release` from settings.APP_VERSION (review fix #16).
+
+### Test Results
+
+- **Node.js (Vitest):** 7 tests passing
+  - `posthogIdentity.test.ts`: 3 tests (alias, identify, capture with userId)
+  - `posthogEvents.test.ts`: 4 tests (event props, environment, no-op without key, shutdown)
+- **Python (pytest):** 4 tests passing
+  - `test_posthog_events.py`: 4 tests (kie_submit, media_completed, media_failed, no-op)
+
+### Files Created
+- `apps/web/client/src/lib/posthog.ts`
+- `apps/web/server/services/posthog.ts`
+- `apps/web/server/services/__tests__/posthogIdentity.test.ts`
+- `apps/web/server/services/__tests__/posthogEvents.test.ts`
+- `python-backend/app/services/posthog_service.py`
+- `python-backend/tests/test_posthog_events.py`
+
+### Files Modified
+- `apps/web/client/src/main.tsx` (PostHog init)
+- `apps/web/client/src/App.tsx` (PostHogPageViewTracker, useLocation import)
+- `apps/web/client/src/pages/Generate.tsx` (job_create_clicked event)
+- `apps/web/client/src/pages/Login.tsx` (login_started/succeeded/failed, identify)
+- `apps/web/client/src/pages/Signup.tsx` (signup_started on mount, signup_completed, alias/identify)
+- `apps/web/server/routers/mediaJobs.ts` (job_submitted event)
+- `apps/web/server/_core/index.ts` (PostHog shutdown in SIGTERM/SIGINT)
+- `apps/web/package.json` (posthog-js, posthog-node)
+- `apps/web/.env.example` (VITE_POSTHOG_API_KEY, POSTHOG_API_KEY)
+- `python-backend/app/core/config.py` (POSTHOG_API_KEY setting)
+- `python-backend/app/main.py` (PostHog shutdown in lifespan)
+- `python-backend/requirements.txt` (posthog>=3.0.0)

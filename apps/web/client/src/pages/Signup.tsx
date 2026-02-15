@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'wouter';
 import { generateFingerprint } from '@/lib/fingerprint';
+import { getPostHog } from '@/lib/posthog';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,6 +80,9 @@ export default function Signup() {
 
   // Generate device fingerprint on mount (stored as __fp cookie)
   useEffect(() => { generateFingerprint().catch(() => {}); }, []);
+
+  // Track signup page render
+  useEffect(() => { getPostHog()?.capture("signup_started"); }, []);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -132,6 +136,12 @@ export default function Signup() {
       const errorMsg = data.error?.json?.message;
 
       if (result?.success) {
+        const ph = getPostHog();
+        const anonId = ph?.get_distinct_id();
+        const userId = result.userId || result.id || formData.email;
+        if (anonId) ph?.alias(anonId, String(userId));
+        ph?.identify(String(userId), { email: formData.email, plan: selectedPlan });
+        ph?.capture("signup_completed", { plan: selectedPlan, auth_method: "email" });
         toast.success('Account created! Please verify your email.');
         navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
       } else {
