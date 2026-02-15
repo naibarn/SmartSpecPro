@@ -1,0 +1,46 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/011-DeployPlan/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/011-DeployPlan/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-gcp-bootstrap",
+    "section-02-docker-images",
+    "section-03-database",
+    "section-04-cloud-tasks",
+    "section-05-bullmq-migration",
+    "section-06-cloud-scheduler",
+    "section-07-kie-integration",
+    "section-08-media-pipeline",
+    "section-09-r2-storage",
+    "section-10-redis-ratelimit",
+    "section-11-video-pipeline",
+    "section-12-vectorize",
+    "section-13-sentry",
+    "section-14-posthog",
+    "section-15-admin-dashboard",
+    "section-16-cloud-monitoring",
+    "section-17-cicd",
+    "section-18-auth-hardening",
+    "section-19-load-testing",
+    "section-20-prod-hardening"
+  ],
+  "sections_state": {
+    "section-01-gcp-bootstrap": {
+      "status": "complete",
+      "commit_hash": "f6e84aa"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-15T00:24:48.345769+00:00"
+}
