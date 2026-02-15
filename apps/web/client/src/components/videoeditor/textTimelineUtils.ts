@@ -65,6 +65,8 @@ export function addTextClipToProject(
   }
 
   const textTrack = ensureTextTrack(project);
+  // Ensure newly added text is visible in preview even if user previously hid T1.
+  textTrack.visible = true;
   const textAssetId = generateId('text-asset');
   project.assets[textAssetId] = {
     id: textAssetId,

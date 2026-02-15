@@ -86,6 +86,32 @@ describe('textTimelineUtils', () => {
     expect(clip.startTime).toBe(3.5);
   });
 
+  it('forces T1 visible when adding new text clip', () => {
+    const project = createEmptyProject('Hidden T1');
+    const textTrack = project.timeline.tracks.find((track) => track.type === 'text');
+    expect(textTrack).toBeDefined();
+    textTrack!.visible = false;
+
+    addTextClipToProject(
+      project,
+      {
+        text: 'Visible now',
+        fontFamily: 'Noto Sans',
+        fontSize: 40,
+        fontWeight: 700,
+        fontStyle: 'normal',
+        color: '#ffffff',
+        backgroundColor: 'transparent',
+        textAlign: 'center',
+        effect: 'none',
+      },
+      5,
+      0,
+    );
+
+    expect(textTrack!.visible).toBe(true);
+  });
+
   it('rejects unsupported strict-parity text effects', () => {
     const project = createEmptyProject('Strict');
 

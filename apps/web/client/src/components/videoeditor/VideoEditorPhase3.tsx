@@ -1147,6 +1147,32 @@ export const VideoEditorPhase3: React.FC = () => {
     return null;
   }, [project.timeline.tracks, selectedClipId]);
 
+  useEffect(() => {
+    if (!textClipRolloutEnabled || sidebarView !== 'text' || selectedTextClip) {
+      return;
+    }
+
+    const textClips = project.timeline.tracks
+      .filter((track) => track.type === 'text')
+      .flatMap((track) => track.clips)
+      .filter((clip) => !!clip.textConfig);
+    if (textClips.length === 0) {
+      return;
+    }
+
+    const activeTextClip = textClips.find(
+      (clip) => currentTime >= clip.startTime && currentTime < clip.startTime + clip.duration,
+    );
+    const fallbackClip = textClips[textClips.length - 1];
+    const clipToEdit = activeTextClip || fallbackClip;
+
+    setSelectedClipId(clipToEdit.id);
+    setSelectedClipIds([]);
+    if (currentTime < clipToEdit.startTime || currentTime >= clipToEdit.startTime + clipToEdit.duration) {
+      setCurrentTime(clipToEdit.startTime);
+    }
+  }, [currentTime, project.timeline.tracks, selectedTextClip, sidebarView, textClipRolloutEnabled]);
+
   const handleSaveTextClip = useCallback((textConfig: TextConfig, duration: number) => {
     if (!textClipRolloutEnabled) {
       showToast('Text clip rollout is disabled for this cohort.', 'info', 3000);
@@ -1171,6 +1197,7 @@ export const VideoEditorPhase3: React.FC = () => {
         const addedClip = addTextClipToProject(newProject, textConfig, duration, currentTime);
         setSelectedClipId(addedClip.id);
         setSelectedClipIds([]);
+        setCurrentTime(addedClip.startTime);
       }
       addToHistory(newProject);
       return newProject;
@@ -1299,6 +1326,10 @@ export const VideoEditorPhase3: React.FC = () => {
     }
 
     // Normal selection behavior
+    const clickedClip = project.timeline.tracks
+      .flatMap((track) => track.clips)
+      .find((clip) => clip.id === clipId);
+
     // Find if this clip belongs to a group
     let groupId: string | undefined;
     for (const track of project.timeline.tracks) {
@@ -1324,6 +1355,9 @@ export const VideoEditorPhase3: React.FC = () => {
       if (Number.isFinite(clickTime)) {
         setCurrentTime(clickTime as number);
       }
+      if (textClipRolloutEnabled && clickedClip?.textConfig) {
+        setSidebarView('text');
+      }
     } else if (isMultiSelect) {
       setSelectedClipIds(prev => prev.includes(clipId) ? prev.filter(id => id !== clipId) : [...prev, clipId]);
     } else {
@@ -1332,8 +1366,11 @@ export const VideoEditorPhase3: React.FC = () => {
       if (Number.isFinite(clickTime)) {
         setCurrentTime(clickTime as number);
       }
+      if (textClipRolloutEnabled && clickedClip?.textConfig) {
+        setSidebarView('text');
+      }
     }
-  }, [project.timeline.tracks, razorToolActive, currentTime, addToHistory]);
+  }, [project.timeline.tracks, razorToolActive, currentTime, addToHistory, textClipRolloutEnabled]);
 
   // ========================================
   // Track Controls
