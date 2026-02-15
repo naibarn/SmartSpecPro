@@ -71,3 +71,15 @@
 - blocked_tasks_resolved_remaining:
   - resolved: `none`
   - remaining: `none`
+
+## Section 07: verification-hardening
+
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- client/src/services/__tests__/projectManagerValidation.test.ts shared/types/__tests__/mediaJob.test.ts && cd ../python-backend && UV_CACHE_DIR=/tmp/uv-cache PYTEST_ADDOPTS='--no-cov' uv run pytest tests/unit/test_media_job_text_render.py`
+- pass_fail_summary: `pass` (2 frontend files, 111 tests; 1 backend file, 10 tests)
+- notable_deviations:
+  - Extended compatibility and legacy safeguards through targeted snapshot/matrix tests instead of additional runtime logic changes.
+  - Added deterministic unit-level benchmark threshold on ASS generation to guard text-heavy regressions.
+- blocked_tasks_resolved_remaining:
+  - resolved: `none`
+  - remaining: `none`

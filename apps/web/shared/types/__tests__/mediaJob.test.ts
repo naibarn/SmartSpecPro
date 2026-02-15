@@ -798,6 +798,99 @@ describe("projectToTimeline — additional cases", () => {
   });
 });
 
+describe("media timeline compatibility matrix", () => {
+  it.each([
+    {
+      name: "supported contract remains valid",
+      contractVersion: "1.0",
+      policy: "reject_with_clear_error" as const,
+      includeText: true,
+      valid: true,
+    },
+    {
+      name: "unsupported contract rejects by default",
+      contractVersion: "3.0",
+      policy: "reject_with_clear_error" as const,
+      includeText: false,
+      valid: false,
+      expectedError: "Unsupported media timeline contractVersion",
+    },
+    {
+      name: "unsupported contract allows gated downgrade without text semantics",
+      contractVersion: "3.0",
+      policy: "gated_downgrade" as const,
+      includeText: false,
+      valid: true,
+    },
+    {
+      name: "unsupported contract rejects gated downgrade when text semantics exist",
+      contractVersion: "3.0",
+      policy: "gated_downgrade" as const,
+      includeText: true,
+      valid: false,
+      expectedError: "Unsupported media timeline contractVersion",
+    },
+  ])("$name", ({ contractVersion, policy, includeText, valid, expectedError }) => {
+    const spec = makeRenderSpec();
+    spec.inputs.project = {
+      projectId: "compat-matrix",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      contractVersion,
+      compatibilityPolicy: { unsupportedContractPolicy: policy },
+      tracks: includeText
+        ? [
+            {
+              trackId: "t1",
+              type: "subtitle",
+              clips: [
+                {
+                  clipId: "txt-1",
+                  assetId: "a1",
+                  startMs: 0,
+                  inMs: 0,
+                  outMs: 1200,
+                  textConfig: {
+                    text: "matrix",
+                    fontFamily: "Noto Sans",
+                    fontSize: 32,
+                    fontWeight: 700,
+                    fontStyle: "normal",
+                    color: "#FFFFFF",
+                    backgroundColor: "transparent",
+                    textAlign: "center",
+                    effect: "none",
+                  },
+                },
+              ],
+            },
+          ]
+        : [
+            {
+              trackId: "v1",
+              type: "video",
+              clips: [
+                {
+                  clipId: "v-1",
+                  assetId: "a1",
+                  startMs: 0,
+                  inMs: 0,
+                  outMs: 1200,
+                },
+              ],
+            },
+          ],
+    };
+
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(valid);
+    if (!valid && expectedError) {
+      expect(result.errors.some((error) => error.includes(expectedError))).toBe(true);
+    }
+  });
+});
+
 // ========================================
 // msToSeconds / secondsToMs additional cases
 // ========================================

@@ -451,6 +451,61 @@ describe("validateProjectStructure — clips", () => {
     expect(clip.textConfig.effect).toBe("none");
   });
 
+  it("normalizes legacy text payload snapshot for backward-compatible load/save", () => {
+    const p = validProject();
+    getTrack(p, "track-t1").clips.push({
+      id: "text-legacy-1",
+      assetId: "text-asset-legacy",
+      trackId: "track-t1",
+      startTime: 1.25,
+      duration: 2.5,
+      trimIn: 0,
+      trimOut: 2.5,
+      textConfig: {
+        text: "  Legacy HELLO  ",
+        color: "#ABCDEF",
+      },
+    });
+
+    const result = validateProjectStructure(p);
+    const clip = getTrack(result, "track-t1").clips[0] as any;
+
+    expect({
+      id: clip.id,
+      trackId: clip.trackId,
+      startTime: clip.startTime,
+      duration: clip.duration,
+      trimIn: clip.trimIn,
+      trimOut: clip.trimOut,
+      volume: clip.volume,
+      speed: clip.speed,
+      textConfig: clip.textConfig,
+    }).toMatchInlineSnapshot(`
+      {
+        "duration": 2.5,
+        "id": "text-legacy-1",
+        "speed": 1,
+        "startTime": 1.25,
+        "textConfig": {
+          "backgroundColor": "transparent",
+          "color": "#abcdef",
+          "effect": "none",
+          "effectColor": "#000000",
+          "fontFamily": "Noto Sans",
+          "fontSize": 48,
+          "fontStyle": "normal",
+          "fontWeight": 700,
+          "text": "Legacy HELLO",
+          "textAlign": "center",
+        },
+        "trackId": "track-t1",
+        "trimIn": 0,
+        "trimOut": 2.5,
+        "volume": 0,
+      }
+    `);
+  });
+
   it("rejects unsupported text effects under strict parity", () => {
     const p = validProject();
     getTrack(p, "track-t1").clips.push({

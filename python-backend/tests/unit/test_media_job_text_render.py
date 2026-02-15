@@ -1,4 +1,5 @@
 import importlib
+import time
 
 
 def _load_worker_module():
@@ -133,3 +134,85 @@ def test_text_render_telemetry_includes_version_policy_and_font_resolution():
     assert telemetry["fontFallbackCount"] == 1
     assert telemetry["fontResolution"][0]["resolved"] == "Noto Sans"
     assert telemetry["versionPolicyOutcome"] == "unsupported_with_text_rejected"
+
+
+def test_text_render_telemetry_version_policy_matrix_outcomes():
+    worker = _load_worker_module()
+    cases = [
+        (
+            {"contractVersion": "1.0", "compatibilityPolicy": {"unsupportedContractPolicy": "reject_with_clear_error"}},
+            [],
+            "supported",
+        ),
+        (
+            {"contractVersion": "3.0", "compatibilityPolicy": {"unsupportedContractPolicy": "reject_with_clear_error"}},
+            [],
+            "unsupported_rejected",
+        ),
+        (
+            {"contractVersion": "3.0", "compatibilityPolicy": {"unsupportedContractPolicy": "gated_downgrade"}},
+            [],
+            "gated_downgrade_no_text",
+        ),
+        (
+            {"contractVersion": "3.0", "compatibilityPolicy": {"unsupportedContractPolicy": "gated_downgrade"}},
+            [_make_text_clip()],
+            "unsupported_with_text_rejected",
+        ),
+        (
+            {"contractVersion": "bad.version"},
+            [],
+            "invalid_contract_version",
+        ),
+    ]
+
+    for project, clips, expected in cases:
+        telemetry = worker._build_text_render_telemetry(
+            project,
+            clips,
+            strategy="ass",
+            fast_path={"eligible": False, "reason": "compatibility_matrix"},
+        )
+        assert telemetry["versionPolicyOutcome"] == expected
+
+
+def test_generate_ass_document_preserves_i18n_fixture_text():
+    worker = _load_worker_module()
+    clip = _make_text_clip(text="Hello\nภาษาไทย مرحبا שלום ﬁ")
+
+    ass = worker._generate_ass_document([clip], width=1920, height=1080)
+
+    assert r"Hello\Nภาษาไทย مرحبا שלום ﬁ" in ass
+    assert "Dialogue: 0,0:00:01.00,0:00:04.00,Style0" in ass
+
+
+def test_drawtext_filter_escapes_percent_brackets_quotes_and_colons():
+    worker = _load_worker_module()
+    clip = _make_text_clip(text="100% [safe] 'quote':value")
+
+    drawtext_filter = worker._build_drawtext_filter([clip], width=1920, height=1080)
+
+    assert r"100\% \[safe\] \'quote\'\:value" in drawtext_filter
+    assert ";" not in drawtext_filter
+
+
+def test_text_render_benchmark_ass_generation_under_threshold():
+    worker = _load_worker_module()
+    clips = []
+    for idx in range(220):
+        clips.append(
+            _make_text_clip(
+                text=f"Benchmark {idx}",
+                font_family="Noto Sans",
+            )
+        )
+        clips[-1]["clipId"] = f"txt-{idx}"
+        clips[-1]["startMs"] = idx * 10
+        clips[-1]["outMs"] = clips[-1]["startMs"] + 3000
+
+    started = time.perf_counter()
+    ass = worker._generate_ass_document(clips, width=1920, height=1080)
+    elapsed_ms = (time.perf_counter() - started) * 1000
+
+    assert "Dialogue: 0,0:00:00.00,0:00:03.00,Style0" in ass
+    assert elapsed_ms < 800

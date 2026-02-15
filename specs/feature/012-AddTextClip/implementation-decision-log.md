@@ -91,3 +91,9 @@
 - decision: `centralized_telemetry_builder`
 - mode_used: `auto`
 - rationale: Consolidating policy + font outcomes in one builder prevents drift across drawtext/ASS branches.
+
+- section: `section-07-verification-hardening`
+- options_considered: `new_production_hardening_logic`, `verification_matrix_expansion_tests_only`
+- decision: `verification_matrix_expansion_tests_only`
+- mode_used: `auto`
+- rationale: Existing section 01-06 implementation already satisfied targeted hardening behavior; section objective is best served by expanding deterministic regression coverage without adding unnecessary runtime risk.
