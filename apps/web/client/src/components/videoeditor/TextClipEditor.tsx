@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { TextConfig } from '../../types/videoEditor';
+import { STRICT_PARITY_SUPPORTED_TEXT_EFFECTS } from './textTimelineUtils';
 
 const POPULAR_FONTS = [
   'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald',
@@ -23,7 +24,7 @@ const FONT_WEIGHTS = [
   { label: 'Extra Bold', value: 800 },
 ];
 
-const TEXT_EFFECTS = [
+const ALL_TEXT_EFFECTS = [
   { label: 'None', value: 'none' as const },
   { label: 'Shadow', value: 'shadow' as const },
   { label: 'Outline', value: 'outline' as const },
@@ -31,6 +32,10 @@ const TEXT_EFFECTS = [
   { label: 'Typewriter', value: 'typewriter' as const },
   { label: 'Fade In Word', value: 'fade-in-word' as const },
 ];
+
+const TEXT_EFFECTS = ALL_TEXT_EFFECTS.filter((effect) =>
+  STRICT_PARITY_SUPPORTED_TEXT_EFFECTS.includes(effect.value as (typeof STRICT_PARITY_SUPPORTED_TEXT_EFFECTS)[number]),
+);
 
 function getDefaultTextConfig(): TextConfig {
   return {

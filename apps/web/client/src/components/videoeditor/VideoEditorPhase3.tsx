@@ -31,6 +31,7 @@ import {
   type VideoEditorProject,
   type MediaLibraryAsset,
   type Clip,
+  type Track,
   type Effect,
   type ExportSettings,
   type DuckingConfig,
@@ -51,6 +52,7 @@ import {
 import { processExportToTimeline } from './silenceExportUtils';
 import { createMediaJobClient } from '../../services/mediaJobClient';
 import { clamp01, DEFAULT_CLIP_TRANSFORM, removeTransformKeyframe, resolveTransformAtTime, upsertTransformKeyframe } from './transformKeyframes';
+import { addTextClipToProject, canMoveClipToTrack, shouldAllowOverlap } from './textTimelineUtils';
 
 export const VideoEditorPhase3: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -444,14 +446,16 @@ export const VideoEditorPhase3: React.FC = () => {
 
       // Find the clip and its source track type
       let clip: Clip | null = null;
-      let sourceTrackType: string = '';
+      let sourceTrackType: Track['type'] | null = null;
       let sourceTrackId: string = '';
+      let sourceTrackClipIndex = -1;
       for (const track of newProject.timeline.tracks) {
         const index = track.clips.findIndex((c: Clip) => c.id === clipId);
         if (index !== -1) {
           clip = track.clips.splice(index, 1)[0];
           sourceTrackType = track.type;
           sourceTrackId = track.id;
+          sourceTrackClipIndex = index;
           break;
         }
       }
@@ -461,39 +465,11 @@ export const VideoEditorPhase3: React.FC = () => {
       const newTrack = newProject.timeline.tracks.find((t: any) => t.id === newTrackId);
       if (!newTrack) return prevProject;
 
-      // Track type restrictions:
-      // - Text clips can only go on text tracks
-      // - Video/image clips cannot go on audio tracks
-      // - Audio clips cannot go on video/overlay/text tracks
-      const isTextClip = !!clip.textConfig;
-      const clipMediaType = isTextClip ? 'text' : sourceTrackType;
-
-      if (isTextClip && newTrack.type !== 'text') {
-        // Text clips can only go to T1
-        newTrack.clips.length; // no-op, put clip back
-        const origTrack = newProject.timeline.tracks.find((t: any) => t.type === 'text');
-        if (origTrack) {
-          clip.trackId = origTrack.id;
-          origTrack.clips.push(clip);
-          origTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
-        }
-        return prevProject;
-      }
-      if ((clipMediaType === 'video' || clipMediaType === 'overlay') && newTrack.type === 'audio') {
-        // Video clips can't go on audio track — revert
-        const origTrack = newProject.timeline.tracks.find((t: any) => t.type === sourceTrackType);
-        if (origTrack) {
-          origTrack.clips.push(clip);
-          origTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
-        }
-        return prevProject;
-      }
-      if (clipMediaType === 'audio' && (newTrack.type === 'video' || newTrack.type === 'overlay' || newTrack.type === 'text')) {
-        // Audio clips can't go on video/overlay/text tracks — revert
-        const origTrack = newProject.timeline.tracks.find((t: any) => t.type === 'audio');
-        if (origTrack) {
-          origTrack.clips.push(clip);
-          origTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+      if (!sourceTrackType || !canMoveClipToTrack(clip, sourceTrackType, newTrack.type)) {
+        const sourceTrack = newProject.timeline.tracks.find((t: any) => t.id === sourceTrackId);
+        if (sourceTrack) {
+          const insertAt = Math.max(0, Math.min(sourceTrackClipIndex, sourceTrack.clips.length));
+          sourceTrack.clips.splice(insertAt, 0, clip);
         }
         return prevProject;
       }
@@ -522,14 +498,16 @@ export const VideoEditorPhase3: React.FC = () => {
         snapped = 0;
       }
 
-      // Overlap prevention: check if placing clip at snapped position would overlap
+      const allowOverlap = shouldAllowOverlap(newTrack.type, clip);
+
+      // Overlap prevention: enabled only for non-text semantics.
       const clipEnd = snapped + clip.duration;
-      const hasOverlap = otherClips.some((other: Clip) => {
+      const hasOverlap = !allowOverlap && otherClips.some((other: Clip) => {
         const otherEnd = other.startTime + other.duration;
         return snapped < otherEnd && clipEnd > other.startTime;
       });
 
-      if (hasOverlap) {
+      if (!allowOverlap && hasOverlap) {
         // Find the nearest non-overlapping position
         // Try inserting after each clip
         let bestPos = snapped;
@@ -567,10 +545,13 @@ export const VideoEditorPhase3: React.FC = () => {
       clip.startTime = Math.max(0, snapped);
       clip.trackId = newTrackId;
       newTrack.clips.push(clip);
-      newTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+      if (!allowOverlap) {
+        newTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+      }
 
       if (rippleEditMode) {
         const compactTrack = (track: any) => {
+          if (track.type === 'text') return;
           track.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
           let t = 0;
           track.clips.forEach((c: Clip) => {
@@ -614,7 +595,7 @@ export const VideoEditorPhase3: React.FC = () => {
         }
       }
 
-      if (rippleEditMode && resizedTrack) {
+      if (rippleEditMode && resizedTrack && resizedTrack.type !== 'text') {
         resizedTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
         let timeCursor = 0;
         resizedTrack.clips.forEach((clip: Clip) => {
@@ -672,6 +653,7 @@ export const VideoEditorPhase3: React.FC = () => {
       // Handle ripple edit mode - close gaps after deletion
       if (rippleEditMode) {
         for (const track of newProject.timeline.tracks) {
+          if (track.type === 'text') continue;
           let currentTime = 0;
           track.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
 
@@ -1130,47 +1112,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const handleAddTextClip = useCallback((textConfig: TextConfig, duration: number) => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
-
-      // Create a virtual text asset
-      const textAssetId = generateId('text-asset');
-      newProject.assets[textAssetId] = {
-        id: textAssetId,
-        type: 'image',
-        source: 'generated',
-        path: '',
-        filename: textConfig.text.slice(0, 20) || 'Text',
-        format: 'text',
-        duration,
-      };
-
-      // Find the T1 text track
-      const textTrack = newProject.timeline.tracks.find((t: any) => t.type === 'text');
-      if (!textTrack) return prevProject;
-
-      // Place after last clip on T1
-      const lastClip = textTrack.clips[textTrack.clips.length - 1];
-      const startTime = lastClip ? lastClip.startTime + lastClip.duration : currentTime;
-
-      const newClip: Clip = {
-        id: generateId('clip'),
-        assetId: textAssetId,
-        trackId: textTrack.id,
-        startTime,
-        duration,
-        trimIn: 0,
-        trimOut: duration,
-        volume: 0,
-        speed: 1.0,
-        effects: [],
-        textConfig,
-      };
-
-      textTrack.clips.push(newClip);
-      textTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
-
-      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
-      newProject.modifiedAt = new Date().toISOString();
-
+      addTextClipToProject(newProject, textConfig, duration, currentTime);
       addToHistory(newProject);
       return newProject;
     });

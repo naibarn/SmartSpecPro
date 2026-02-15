@@ -19,3 +19,21 @@
 - decision: `proceed_on_dirty_tree`
 - mode_used: `asked`
 - rationale: User explicitly instructed to proceed on top of existing workspace changes.
+
+- section: `section-02-editor-timeline-t1`
+- options_considered: `inline_component_logic`, `shared_text_timeline_utility`
+- decision: `shared_text_timeline_utility`
+- mode_used: `auto`
+- rationale: Consolidating T1 creation, move-guard, and overlap rules into a pure utility made section behavior testable without brittle component-level drag tests.
+
+- section: `section-02-editor-timeline-t1`
+- options_considered: `prevent_overlap_all_tracks`, `allow_text_overlap_only`
+- decision: `allow_text_overlap_only`
+- mode_used: `auto`
+- rationale: Section objective requires overlap-allowed text behavior with deterministic array ordering while preserving non-text anti-overlap safeguards.
+
+- section: `section-02-editor-timeline-t1`
+- options_considered: `show_all_effect_controls`, `strict_parity_effect_controls_only`
+- decision: `strict_parity_effect_controls_only`
+- mode_used: `auto`
+- rationale: Keeps editor interaction layer aligned with capability matrix and prevents unsupported options from entering timeline state.
