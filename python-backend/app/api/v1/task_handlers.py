@@ -12,8 +12,11 @@ All endpoints:
 """
 
 import json
+import shutil
+import tempfile
 import time
 
+import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 import structlog
@@ -21,6 +24,13 @@ import structlog
 from app.core.database import AsyncSessionLocal
 from app.services.cloud_tasks import QUEUE_CONFIGS, enqueue_task
 from app.services.media_task_service import MediaTaskService
+from app.services.media_pipeline import (
+    download_media,
+    generate_thumbnail,
+    extract_metadata,
+    upload_to_r2,
+    MediaPipelineError,
+)
 from app.api.v1.media_generation import (
     _normalize_kie_task_state,
     _extract_first_kie_result_url,
@@ -263,19 +273,171 @@ async def poll_job(request: Request):
 
 @router.post("/process-media")
 async def process_media(request: Request):
-    """Trigger media-job processing (download, thumbnail, R2 upload, DB update).
+    """Process a completed Kie AI media job.
 
-    Payload: {"job_id": str, "kie_job_id": str}
+    Pipeline: download -> thumbnail -> metadata -> R2 upload -> DB update.
+
+    Idempotent: if the job already has R2 keys, returns 200 immediately.
+    Returns 200 on success or permanent failure (prevents retry).
+    Returns 5xx on transient failure (triggers Cloud Tasks retry).
+
+    Payload: {"job_id": str, "kie_job_id": str, "result_url": str, "media_type": str}
     """
     body = await request.json()
     job_id = body.get("job_id")
+    kie_job_id = body.get("kie_job_id", "")
+    result_url = body.get("result_url", "")
+    media_type = body.get("media_type", "image")
 
-    logger.info("process_media_handler", job_id=job_id)
+    if not job_id or not result_url:
+        return JSONResponse(
+            status_code=200,
+            content={"status": "invalid_payload", "error": "Missing job_id or result_url"},
+        )
 
-    return JSONResponse(
-        status_code=200,
-        content={"status": "acknowledged", "job_id": job_id},
-    )
+    logger.info("process_media_handler", job_id=job_id, kie_job_id=kie_job_id)
+    start_time = time.time()
+
+    # 1. Look up job in DB
+    async with AsyncSessionLocal() as db:
+        task = await MediaTaskService.get_task(db, job_id)
+        if not task:
+            logger.warning("process_media_job_not_found", job_id=job_id)
+            return JSONResponse(
+                status_code=200,
+                content={"status": "not_found", "job_id": job_id},
+            )
+
+        # 2. Idempotency: already processed?
+        if (
+            task.result_data
+            and isinstance(task.result_data, dict)
+            and task.result_data.get("r2_keys")
+        ):
+            logger.info("process_media_already_processed", job_id=job_id)
+            return JSONResponse(
+                status_code=200,
+                content={"status": "completed", "already_processed": True, "job_id": job_id},
+            )
+
+    # 3. Run the pipeline in a temp directory
+    tmp_dir = tempfile.mkdtemp(prefix=f"media_pipeline_{job_id}_")
+    try:
+        # Download
+        file_path, file_size, content_type = await download_media(result_url, tmp_dir)
+
+        # Thumbnail
+        thumb_path = await generate_thumbnail(file_path, media_type, tmp_dir)
+
+        # Metadata
+        metadata = await extract_metadata(file_path, media_type)
+
+        # Upload to R2
+        user_id = str(task.user_id) if task.user_id else "0"
+        r2_info = await upload_to_r2(user_id, job_id, file_path, thumb_path, media_type)
+
+        # Update DB with results
+        result_data = {
+            "r2_keys": {
+                "result": r2_info["result_key"],
+                "thumbnail": r2_info.get("thumbnail_key"),
+            },
+            "urls": {
+                "result": r2_info["result_url"],
+                "thumbnail": r2_info.get("thumbnail_url"),
+            },
+            "metadata": metadata,
+        }
+
+        async with AsyncSessionLocal() as db:
+            await MediaTaskService.update_task_by_external_id(
+                db,
+                kie_job_id or task.task_id,
+                TaskStatus.COMPLETED,
+                result_url=r2_info["result_url"],
+                result_data=result_data,
+            )
+
+        duration_ms = int((time.time() - start_time) * 1000)
+        logger.info(
+            "process_media_completed",
+            job_id=job_id,
+            duration_ms=duration_ms,
+            file_size=file_size,
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "completed",
+                "job_id": job_id,
+                "result_url": r2_info["result_url"],
+                "duration_ms": duration_ms,
+            },
+        )
+
+    except httpx.HTTPStatusError as e:
+        # Permanent error (4xx from Kie AI) - don't retry
+        if e.response.status_code < 500:
+            logger.warning(
+                "process_media_permanent_error",
+                job_id=job_id,
+                status_code=e.response.status_code,
+            )
+            async with AsyncSessionLocal() as db:
+                await MediaTaskService.update_task_by_external_id(
+                    db,
+                    kie_job_id or job_id,
+                    TaskStatus.FAILED,
+                    error_message=f"Download failed: HTTP {e.response.status_code}",
+                )
+            return JSONResponse(
+                status_code=200,
+                content={"status": "failed", "job_id": job_id, "error": str(e)},
+            )
+        # 5xx from Kie AI - transient, retry
+        raise
+
+    except (httpx.TimeoutException, httpx.ConnectError, OSError) as e:
+        # Transient error - check if final retry
+        is_dead_letter = await _check_dead_letter(
+            request, "media-jobs", body, error_message=str(e)
+        )
+        if is_dead_letter:
+            async with AsyncSessionLocal() as db:
+                await MediaTaskService.update_task_by_external_id(
+                    db,
+                    kie_job_id or job_id,
+                    TaskStatus.FAILED,
+                    error_message=f"Dead letter: {e}",
+                )
+            return JSONResponse(
+                status_code=200,
+                content={"status": "dead_letter", "job_id": job_id, "error": str(e)},
+            )
+        logger.warning("process_media_transient_error", job_id=job_id, error=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "job_id": job_id, "error": str(e)},
+        )
+
+    except MediaPipelineError as e:
+        # Permanent pipeline error
+        logger.error("process_media_pipeline_error", job_id=job_id, error=str(e))
+        async with AsyncSessionLocal() as db:
+            await MediaTaskService.update_task_by_external_id(
+                db,
+                kie_job_id or job_id,
+                TaskStatus.FAILED,
+                error_message=str(e),
+            )
+        return JSONResponse(
+            status_code=200,
+            content={"status": "failed", "job_id": job_id, "error": str(e)},
+        )
+
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 @router.post("/process-video")

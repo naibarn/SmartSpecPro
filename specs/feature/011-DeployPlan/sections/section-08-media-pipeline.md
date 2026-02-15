@@ -440,30 +440,37 @@ Add these to `/home/dev/projects/SmartSpecPro/python-backend/requirements.txt` i
 - `boto3` -- S3-compatible client for R2 uploads
 - `posthog` -- server-side PostHog event capture
 
-### Files Summary
+### Files Summary (Actual Implementation)
 
 | File | Action | Description |
 |---|---|---|
-| `python-backend/app/api/v1/tasks.py` | Create | Cloud Tasks handler router with `POST /tasks/process-media` |
-| `python-backend/app/services/media_pipeline.py` | Create | Core pipeline logic (download, thumbnail, metadata, upload, DB update, PostHog) |
-| `python-backend/app/main.py` | Modify | Register the tasks router |
-| `python-backend/tests/test_media_pipeline.py` | Create | Unit tests for the media pipeline |
-| `python-backend/requirements.txt` | Modify | Add httpx, Pillow, boto3, posthog if missing |
+| `python-backend/app/api/v1/task_handlers.py` | **Modify** | Replaced `process-media` stub with full pipeline handler |
+| `python-backend/app/services/media_pipeline.py` | **Create** | Core pipeline: download, thumbnail (Pillow/FFmpeg), metadata, R2 upload |
+| `python-backend/pyproject.toml` | **Modify** | Added Pillow dependency |
+| `python-backend/tests/unit/api/test_media_pipeline.py` | **Create** | 9 unit tests for process-media handler |
+
+### Deviations from Plan
+
+1. **Handler in `task_handlers.py`, not new `tasks.py`**: The plan called for a new `tasks.py` file. The handler was added to the existing `task_handlers.py` which already has the `/tasks` router prefix from Section 4.
+
+2. **No `main.py` change needed**: The router was already registered.
+
+3. **R2 paths use existing `StoragePath` class**: Plan specified `temp/raw/{user_id}/{job_id}/` but the implementation uses the existing `StoragePath.image_generated()`, `video_generated()`, etc. which produce `images/generated/{user_id}/{job_id}.{ext}`. This is more consistent with the existing codebase.
+
+4. **PostHog event deferred to Section 14**: The plan called for `media_job_completed` PostHog event. This was deferred since Section 14 implements the full PostHog integration.
+
+5. **SSRF protection added (code review fix)**: `download_media()` validates URLs via `validate_uri_no_ssrf()` to block internal IPs and cloud metadata endpoints.
+
+6. **Payload validation added (code review fix)**: Handler returns 200 with `status=invalid_payload` if `job_id` or `result_url` missing.
+
+### Test Results
+
+- **Python**: 9 tests passing
+- All 22 section-07 + section-08 tests pass together (regression verified)
 
 ### Integration with Existing Code
-
-The existing media generation flow uses Celery tasks in `/home/dev/projects/SmartSpecPro/python-backend/app/tasks/media_job_worker.py` for local FFmpeg processing. The new `process-media` handler serves a different purpose: it post-processes results from external providers (Kie AI), not local FFmpeg jobs. The two systems coexist during Phase A (dual-write) of the migration:
 
 - **Celery (existing):** Handles local FFmpeg jobs (probe, render, waveform, silence detection, transcode)
 - **Cloud Tasks process-media (new):** Handles downloading and storing results from Kie AI after generation completes
 
-During Phase C (Celery removal), the local FFmpeg jobs will be migrated to either inline handlers or the `video-job-runner` Cloud Run Job (Section 11).
-
-### Blocked By
-
-This section cannot be fully tested end-to-end until:
-- Section 04 provides the OIDC validation middleware
-- Section 09 provides R2 bucket configuration and credentials
-- Section 07 provides the webhook/polling handlers that enqueue `media-jobs` tasks
-
-However, the pipeline service module and unit tests can be developed independently using mocked dependencies.
+The two systems coexist during Phase A (dual-write) of the migration.

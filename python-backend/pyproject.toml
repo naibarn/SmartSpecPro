@@ -17,6 +17,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+dependencies = [
+    "pillow>=12.1.1",
+]
 
 # Dependencies are managed via requirements.txt for now
 # This file is primarily for tool configuration
