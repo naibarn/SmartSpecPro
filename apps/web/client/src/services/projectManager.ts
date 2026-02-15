@@ -4,7 +4,7 @@
  * Platform-aware: uses Tauri APIs on desktop, web APIs on browser.
  */
 
-import type { VideoEditorProject } from '../types/videoEditor';
+import type { TextConfig, TransformKeyframe, VideoEditorProject } from '../types/videoEditor';
 import { migrateProjectV1ToV2 } from '../types/videoEditor';
 
 // ========================================
@@ -34,6 +34,144 @@ async function getTauriApis() {
 // Validation
 // ========================================
 
+export const TEXT_CONTRACT_VERSION = '1.0';
+
+export const STRICT_PARITY_TEXT_CAPABILITY_MATRIX = Object.freeze({
+  mode: 'strict_parity',
+  supportedEffects: ['none', 'shadow', 'outline'] as const,
+  unsupportedEffects: ['glow', 'typewriter', 'fade-in-word'] as const,
+  supportsPerPropertyEasingOverride: false,
+});
+
+const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+  return Math.max(min, Math.min(max, value));
+}
+
+function sanitizeColor(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  if (value === 'transparent') return value;
+  if (!HEX_COLOR_RE.test(value)) return fallback;
+  return value.toLowerCase();
+}
+
+function hasTextSemantics(projectData: any): boolean {
+  const tracks = projectData?.timeline?.tracks;
+  if (!Array.isArray(tracks)) return false;
+  return tracks.some((track: any) => {
+    if (track?.type === 'text') return true;
+    if (!Array.isArray(track?.clips)) return false;
+    return track.clips.some((clip: any) => !!clip?.textConfig);
+  });
+}
+
+function majorVersion(value: string): number | null {
+  const [majorRaw] = value.split('.');
+  const parsed = Number.parseInt(majorRaw, 10);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
+function validateTextContractVersion(projectData: any): void {
+  if (typeof projectData.contractVersion !== 'string') return;
+
+  const projectMajor = majorVersion(projectData.contractVersion);
+  const supportedMajor = majorVersion(TEXT_CONTRACT_VERSION);
+  if (projectMajor === null || supportedMajor === null) {
+    throw new Error('Invalid text contractVersion format (expected: X.Y)');
+  }
+  if (projectMajor <= supportedMajor) return;
+
+  const policy = projectData.compatibilityPolicy?.unsupportedContractPolicy ?? 'reject_with_clear_error';
+  if (policy === 'gated_downgrade' && !hasTextSemantics(projectData)) {
+    return;
+  }
+  throw new Error(
+    `Unsupported text contractVersion "${projectData.contractVersion}" (policy: ${policy})`,
+  );
+}
+
+function validateTransformKeyframes(rawKeyframes: any): TransformKeyframe[] {
+  if (!Array.isArray(rawKeyframes)) return [];
+
+  const normalized = rawKeyframes.map((keyframe: any) => {
+    if (typeof keyframe !== 'object' || keyframe === null) {
+      throw new Error('Text keyframe must be an object');
+    }
+    const time = clampNumber(keyframe.time, 0, 1, -1);
+    if (time < 0 || time > 1) {
+      throw new Error('Text keyframe time must be between 0 and 1');
+    }
+    return {
+      time,
+      x: clampNumber(keyframe.x, 0, 1, 0.5),
+      y: clampNumber(keyframe.y, 0, 1, 0.5),
+      scaleX: clampNumber(keyframe.scaleX, 0.1, 3, 1),
+      scaleY: clampNumber(keyframe.scaleY, 0.1, 3, 1),
+      rotation: clampNumber(keyframe.rotation, -360, 360, 0),
+      opacity: clampNumber(keyframe.opacity, 0, 1, 1),
+      easing: typeof keyframe.easing === 'string' ? keyframe.easing : 'linear',
+    } satisfies TransformKeyframe;
+  });
+
+  normalized.sort((a, b) => a.time - b.time);
+  for (let i = 1; i < normalized.length; i++) {
+    if (Math.abs(normalized[i].time - normalized[i - 1].time) <= 0.000001) {
+      throw new Error('Text keyframes must use unique time markers');
+    }
+  }
+  return normalized;
+}
+
+export function validateTextCapabilityMatrixCompliance(config: TextConfig): void {
+  const supported = new Set(STRICT_PARITY_TEXT_CAPABILITY_MATRIX.supportedEffects);
+  if (!supported.has(config.effect)) {
+    throw new Error(
+      `Text effect "${config.effect}" is not supported in ${STRICT_PARITY_TEXT_CAPABILITY_MATRIX.mode} mode`,
+    );
+  }
+}
+
+function normalizeTextConfig(rawConfig: any): TextConfig {
+  if (typeof rawConfig !== 'object' || rawConfig === null) {
+    throw new Error('Text clip must include textConfig object');
+  }
+
+  const text = typeof rawConfig.text === 'string' ? rawConfig.text.trim() : '';
+  if (!text) {
+    throw new Error('Text clip text must be non-empty');
+  }
+
+  const normalized: TextConfig = {
+    text,
+    fontFamily:
+      typeof rawConfig.fontFamily === 'string' && rawConfig.fontFamily.trim().length > 0
+        ? rawConfig.fontFamily.trim()
+        : 'Noto Sans',
+    fontSize: clampNumber(rawConfig.fontSize, 8, 256, 48),
+    fontWeight: clampNumber(rawConfig.fontWeight, 100, 900, 700),
+    fontStyle: rawConfig.fontStyle === 'italic' ? 'italic' : 'normal',
+    color: sanitizeColor(rawConfig.color, '#ffffff'),
+    backgroundColor: sanitizeColor(rawConfig.backgroundColor, 'transparent'),
+    textAlign: rawConfig.textAlign === 'left' || rawConfig.textAlign === 'right' ? rawConfig.textAlign : 'center',
+    effect:
+      rawConfig.effect === 'none' ||
+      rawConfig.effect === 'shadow' ||
+      rawConfig.effect === 'outline' ||
+      rawConfig.effect === 'glow' ||
+      rawConfig.effect === 'typewriter' ||
+      rawConfig.effect === 'fade-in-word'
+        ? rawConfig.effect
+        : 'none',
+    effectColor: sanitizeColor(rawConfig.effectColor, '#000000'),
+  };
+
+  validateTextCapabilityMatrixCompliance(normalized);
+  return normalized;
+}
+
 /**
  * Validate project structure to prevent malicious data.
  * Exported for testing.
@@ -51,6 +189,8 @@ export function validateProjectStructure(data: any): VideoEditorProject {
   if (typeof data.name !== 'string' || data.name.length === 0 || data.name.length > 256) {
     throw new Error('Project name must be 1-256 characters');
   }
+
+  validateTextContractVersion(data);
 
   // Validate settings
   if (typeof data.settings !== 'object') {
@@ -96,9 +236,8 @@ export function validateProjectStructure(data: any): VideoEditorProject {
       throw new Error('Track name must be valid string');
     }
 
-    // BUG FIX: was missing 'overlay' — Phase 3 uses overlay tracks
-    if (!['video', 'audio', 'overlay'].includes(track.type)) {
-      throw new Error('Track type must be "video", "audio", or "overlay"');
+    if (!['video', 'audio', 'overlay', 'text'].includes(track.type)) {
+      throw new Error('Track type must be "video", "audio", "overlay", or "text"');
     }
 
     if (!Array.isArray(track.clips)) {
@@ -136,8 +275,32 @@ export function validateProjectStructure(data: any): VideoEditorProject {
         }
       }
 
-      if (typeof clip.volume !== 'number' || clip.volume < 0 || clip.volume > 2) {
+      if (typeof clip.volume !== 'number') {
+        clip.volume = track.type === 'text' ? 0 : 1;
+      }
+      if (clip.volume < 0 || clip.volume > 2) {
         throw new Error('Clip volume must be 0-2');
+      }
+      if (typeof clip.speed !== 'number') {
+        clip.speed = 1;
+      }
+      if (!Array.isArray(clip.effects)) {
+        clip.effects = [];
+      }
+      if (track.type === 'text' || clip.textConfig) {
+        clip.textConfig = normalizeTextConfig(clip.textConfig);
+        if (typeof clip.transform !== 'object' || clip.transform === null) {
+          clip.transform = {
+            x: 0.5,
+            y: 0.5,
+            scaleX: 1,
+            scaleY: 1,
+            rotation: 0,
+            opacity: 1,
+            keyframes: [],
+          };
+        }
+        clip.transform.keyframes = validateTransformKeyframes(clip.transform.keyframes);
       }
     }
   }
@@ -163,12 +326,13 @@ export function validateProjectStructure(data: any): VideoEditorProject {
       throw new Error('Asset type must be "video", "audio", or "image"');
     }
 
-    if (typeof a.path !== 'string' || a.path.length === 0) {
+    const isGeneratedTextPlaceholder = a.source === 'generated' && a.format === 'text';
+    if (!isGeneratedTextPlaceholder && (typeof a.path !== 'string' || a.path.length === 0)) {
       throw new Error('Asset must have valid path');
     }
 
     // Security: Check for path traversal attempts
-    if (a.path.includes('..') || a.path.includes('\0')) {
+    if (typeof a.path === 'string' && a.path.length > 0 && (a.path.includes('..') || a.path.includes('\0'))) {
       throw new Error('Invalid asset path detected');
     }
   }

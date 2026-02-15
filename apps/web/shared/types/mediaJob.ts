@@ -3,6 +3,7 @@ import type {
   Clip,
   ClipTransform,
   ClipTransition,
+  TextConfig,
   Track,
 } from "../../client/src/types/videoEditor";
 import { createEmptyProject } from "../../client/src/types/videoEditor";
@@ -42,6 +43,11 @@ export interface MediaTimeline {
   fps: number;
   width: number;
   height: number;
+  contractVersion?: string;
+  capabilityMode?: "strict_parity";
+  compatibilityPolicy?: {
+    unsupportedContractPolicy: UnsupportedContractPolicy;
+  };
   tracks: MediaTrack[];
 }
 
@@ -62,6 +68,8 @@ export interface MediaClip {
   mute?: boolean;
   inTransition?: { name: string; durationMs: number; alignment?: string };
   transform?: ClipTransform;
+  textConfig?: TextConfig;
+  zOrder?: number;
 }
 
 // ========================================
@@ -162,6 +170,48 @@ export interface MediaArtifact {
   mime?: string;
 }
 
+export const MEDIA_TIMELINE_CONTRACT_VERSION = "1.0";
+export type UnsupportedContractPolicy =
+  | "reject_with_clear_error"
+  | "gated_downgrade";
+
+function parseMajorVersion(value: string): number | null {
+  const [majorRaw] = value.split(".");
+  const parsed = Number.parseInt(majorRaw, 10);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
+function hasTextSemantics(timeline: MediaTimeline): boolean {
+  return timeline.tracks.some(
+    (track) =>
+      track.type === "subtitle" ||
+      track.clips.some((clip) => typeof clip.textConfig === "object"),
+  );
+}
+
+function resolveCompatibilityOutcome(
+  contractVersion: string,
+  policy: UnsupportedContractPolicy,
+  timeline: MediaTimeline,
+): "supported" | "gated_downgrade" {
+  const supportedMajor = parseMajorVersion(MEDIA_TIMELINE_CONTRACT_VERSION);
+  const requestedMajor = parseMajorVersion(contractVersion);
+
+  if (supportedMajor === null || requestedMajor === null) {
+    throw new Error('Invalid media timeline contractVersion format (expected: X.Y)');
+  }
+  if (requestedMajor <= supportedMajor) {
+    return "supported";
+  }
+  if (policy === "gated_downgrade" && !hasTextSemantics(timeline)) {
+    return "gated_downgrade";
+  }
+  throw new Error(
+    `Unsupported media timeline contractVersion "${contractVersion}" (policy: ${policy})`,
+  );
+}
+
 // ========================================
 // Validation
 // ========================================
@@ -212,6 +262,16 @@ export function validateJobSpec(
 
   // Clip validation: outMs > inMs
   if (spec.inputs?.project?.tracks) {
+    const project = spec.inputs.project;
+    const contractVersion = project.contractVersion ?? MEDIA_TIMELINE_CONTRACT_VERSION;
+    const policy =
+      project.compatibilityPolicy?.unsupportedContractPolicy ??
+      "reject_with_clear_error";
+    try {
+      resolveCompatibilityOutcome(contractVersion, policy, project);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "Invalid project contract");
+    }
     for (const track of spec.inputs.project.tracks) {
       for (const clip of track.clips) {
         if (
@@ -270,6 +330,11 @@ export function projectToTimeline(
     fps: project.settings.fps,
     width: project.settings.width,
     height: project.settings.height,
+    contractVersion: MEDIA_TIMELINE_CONTRACT_VERSION,
+    capabilityMode: "strict_parity",
+    compatibilityPolicy: {
+      unsupportedContractPolicy: "reject_with_clear_error",
+    },
     tracks: project.timeline.tracks.map(
       (track: Track): MediaTrack => ({
         trackId: track.id,
@@ -280,7 +345,7 @@ export function projectToTimeline(
               ? "subtitle"
               : track.type,
         clips: track.clips.map(
-          (clip: Clip): MediaClip => ({
+          (clip: Clip, index: number): MediaClip => ({
             clipId: clip.id,
             assetId: clip.assetId,
             startMs: secondsToMs(clip.startTime),
@@ -290,6 +355,8 @@ export function projectToTimeline(
             volume: clip.volume,
             inTransition: clip.inTransition,
             transform: clip.transform,
+            textConfig: clip.textConfig,
+            zOrder: index,
           }),
         ),
       }),
@@ -297,9 +364,21 @@ export function projectToTimeline(
   };
 }
 
+export interface TimelineToProjectOptions {
+  unsupportedContractPolicy?: UnsupportedContractPolicy;
+}
+
 export function timelineToProject(
   timeline: MediaTimeline,
+  options: TimelineToProjectOptions = {},
 ): VideoEditorProject {
+  const policy =
+    options.unsupportedContractPolicy ??
+    timeline.compatibilityPolicy?.unsupportedContractPolicy ??
+    "reject_with_clear_error";
+  const contractVersion = timeline.contractVersion ?? MEDIA_TIMELINE_CONTRACT_VERSION;
+  resolveCompatibilityOutcome(contractVersion, policy, timeline);
+
   const base = createEmptyProject(timeline.projectId);
 
   base.version = "2.0";
@@ -310,7 +389,7 @@ export function timelineToProject(
   base.timeline.tracks = timeline.tracks.map(
     (track: MediaTrack): Track => ({
       id: track.trackId,
-      type: track.type === "subtitle" ? "video" : track.type,
+      type: track.type === "subtitle" ? "text" : track.type,
       name: track.trackId,
       clips: track.clips.map(
         (clip: MediaClip): Clip => ({
@@ -328,6 +407,7 @@ export function timelineToProject(
           effects: [],
           inTransition: clip.inTransition as ClipTransition | undefined,
           transform: clip.transform,
+          textConfig: clip.textConfig,
         }),
       ),
       muted: false,

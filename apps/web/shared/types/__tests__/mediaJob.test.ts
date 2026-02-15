@@ -5,6 +5,7 @@ import {
   timelineToProject,
   msToSeconds,
   secondsToMs,
+  MEDIA_TIMELINE_CONTRACT_VERSION,
   VALID_JOB_TYPES,
 } from "../mediaJob";
 import type {
@@ -213,7 +214,9 @@ describe("projectToTimeline", () => {
 
   it("preserves all track and clip data", () => {
     const project = createEmptyProject("Multi");
-    project.timeline.tracks[0].clips.push({
+    const videoTrack = project.timeline.tracks.find((t) => t.id === "track-v1")!;
+    const audioTrack = project.timeline.tracks.find((t) => t.id === "track-a1")!;
+    videoTrack.clips.push({
       id: "clip-v1",
       assetId: "asset-v1",
       trackId: "track-v1",
@@ -225,7 +228,7 @@ describe("projectToTimeline", () => {
       speed: 1.5,
       effects: [],
     });
-    project.timeline.tracks[1].clips.push({
+    audioTrack.clips.push({
       id: "clip-a1",
       assetId: "asset-a1",
       trackId: "track-a1",
@@ -240,18 +243,22 @@ describe("projectToTimeline", () => {
 
     const timeline = projectToTimeline(project);
 
-    expect(timeline.tracks).toHaveLength(2);
-    expect(timeline.tracks[0].trackId).toBe("track-v1");
-    expect(timeline.tracks[0].type).toBe("video");
-    expect(timeline.tracks[0].clips[0].clipId).toBe("clip-v1");
-    expect(timeline.tracks[0].clips[0].assetId).toBe("asset-v1");
-    expect(timeline.tracks[0].clips[0].playbackRate).toBe(1.5);
-    expect(timeline.tracks[0].clips[0].volume).toBe(1.0);
+    const mappedVideoTrack = timeline.tracks.find((t) => t.trackId === "track-v1");
+    const mappedAudioTrack = timeline.tracks.find((t) => t.trackId === "track-a1");
 
-    expect(timeline.tracks[1].trackId).toBe("track-a1");
-    expect(timeline.tracks[1].type).toBe("audio");
-    expect(timeline.tracks[1].clips[0].clipId).toBe("clip-a1");
-    expect(timeline.tracks[1].clips[0].volume).toBe(0.6);
+    expect(timeline.contractVersion).toBe(MEDIA_TIMELINE_CONTRACT_VERSION);
+    expect(timeline.tracks.length).toBeGreaterThanOrEqual(4);
+    expect(mappedVideoTrack).toBeDefined();
+    expect(mappedVideoTrack!.type).toBe("video");
+    expect(mappedVideoTrack!.clips[0].clipId).toBe("clip-v1");
+    expect(mappedVideoTrack!.clips[0].assetId).toBe("asset-v1");
+    expect(mappedVideoTrack!.clips[0].playbackRate).toBe(1.5);
+    expect(mappedVideoTrack!.clips[0].volume).toBe(1.0);
+
+    expect(mappedAudioTrack).toBeDefined();
+    expect(mappedAudioTrack!.type).toBe("audio");
+    expect(mappedAudioTrack!.clips[0].clipId).toBe("clip-a1");
+    expect(mappedAudioTrack!.clips[0].volume).toBe(0.6);
   });
 
   it("maps overlay track type to video", () => {
@@ -419,6 +426,8 @@ describe("VALID_JOB_TYPES", () => {
       "dead_air_detect",
       "dead_air_cut",
       "generate_clip_from_api",
+      "transcode_h264",
+      "extract_audio",
     ];
     for (const type of expected) {
       expect(VALID_JOB_TYPES).toContain(type);
@@ -581,7 +590,7 @@ describe("validateJobSpec — additional edge cases", () => {
 // ========================================
 
 describe("timelineToProject — additional cases", () => {
-  it("maps subtitle track type to video", () => {
+  it("maps subtitle track type to text", () => {
     const timeline: MediaTimeline = {
       projectId: "p1",
       fps: 30,
@@ -597,7 +606,7 @@ describe("timelineToProject — additional cases", () => {
     };
 
     const project = timelineToProject(timeline);
-    expect(project.timeline.tracks[0].type).toBe("video");
+    expect(project.timeline.tracks[0].type).toBe("text");
   });
 
   it("handles clips with undefined inMs/outMs", () => {
@@ -688,9 +697,37 @@ describe("projectToTimeline — additional cases", () => {
   it("converts empty project without errors", () => {
     const project = createEmptyProject();
     const timeline = projectToTimeline(project);
-    expect(timeline.tracks).toHaveLength(2);
+    expect(timeline.tracks).toHaveLength(4);
     expect(timeline.tracks[0].clips).toHaveLength(0);
     expect(timeline.tracks[1].clips).toHaveLength(0);
+  });
+
+  it("rejects unsupported future contract version by default", () => {
+    const spec = makeRenderSpec();
+    spec.inputs.project!.contractVersion = "3.0";
+    const result = validateJobSpec(spec);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => /Unsupported media timeline contractVersion/i.test(e))).toBe(true);
+  });
+
+  it("allows gated downgrade for unsupported future version without text semantics", () => {
+    const timeline: MediaTimeline = {
+      projectId: "legacy-safe",
+      fps: 30,
+      width: 1920,
+      height: 1080,
+      contractVersion: "3.0",
+      compatibilityPolicy: { unsupportedContractPolicy: "gated_downgrade" },
+      tracks: [
+        {
+          trackId: "v1",
+          type: "video",
+          clips: [],
+        },
+      ],
+    };
+
+    expect(() => timelineToProject(timeline)).not.toThrow();
   });
 
   it("round-trips through projectToTimeline and timelineToProject", () => {

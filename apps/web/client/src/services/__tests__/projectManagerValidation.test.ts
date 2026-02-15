@@ -72,6 +72,42 @@ describe("validateProjectStructure — top-level", () => {
       "name must be 1-256 characters",
     );
   });
+
+  it("rejects unsupported text contract version by default", () => {
+    const p = validProject();
+    p.contractVersion = "3.0";
+    expect(() => validateProjectStructure(p)).toThrow(
+      'Unsupported text contractVersion "3.0" (policy: reject_with_clear_error)',
+    );
+  });
+
+  it("allows gated downgrade for unsupported contract only when text semantics are absent", () => {
+    const p = validProject();
+    p.contractVersion = "3.0";
+    p.compatibilityPolicy = { unsupportedContractPolicy: "gated_downgrade" };
+    p.timeline.tracks = [
+      {
+        id: "track-v1",
+        type: "video",
+        name: "V1",
+        clips: [],
+        muted: false,
+        locked: false,
+        visible: true,
+      },
+      {
+        id: "track-a1",
+        type: "audio",
+        name: "A1",
+        clips: [],
+        muted: false,
+        locked: false,
+        visible: true,
+      },
+    ];
+
+    expect(() => validateProjectStructure(p)).not.toThrow();
+  });
 });
 
 // ========================================
@@ -203,8 +239,22 @@ describe("validateProjectStructure — timeline & tracks", () => {
     const p = validProject();
     p.timeline.tracks[0].type = "subtitle";
     expect(() => validateProjectStructure(p)).toThrow(
-      'Track type must be "video", "audio", or "overlay"',
+      'Track type must be "video", "audio", "overlay", or "text"',
     );
+  });
+
+  it("accepts text track type", () => {
+    const p = validProject();
+    p.timeline.tracks.push({
+      id: "track-t2",
+      type: "text",
+      name: "T2",
+      clips: [],
+      muted: false,
+      locked: false,
+      visible: true,
+    });
+    expect(() => validateProjectStructure(p)).not.toThrow();
   });
 
   it("accepts overlay track type", () => {
@@ -234,9 +284,15 @@ describe("validateProjectStructure — timeline & tracks", () => {
 // ========================================
 
 describe("validateProjectStructure — clips", () => {
+  function getTrack(project: any, trackId: string): any {
+    const track = project.timeline.tracks.find((t: any) => t.id === trackId);
+    if (!track) throw new Error(`Missing track ${trackId}`);
+    return track;
+  }
+
   function projectWithClip(clipOverrides: any = {}): any {
     const p = validProject();
-    p.timeline.tracks[0].clips.push({
+    getTrack(p, "track-v1").clips.push({
       id: "clip-1",
       assetId: "a1",
       trackId: "track-v1",
@@ -317,14 +373,14 @@ describe("validateProjectStructure — clips", () => {
       speed: 1,
       effects: [],
     }));
-    p.timeline.tracks[0].clips = clips;
+    getTrack(p, "track-v1").clips = clips;
     expect(() => validateProjectStructure(p)).toThrow("Too many clips");
   });
 
   it("validates V2 ms-based clips correctly", () => {
     const p = validProject();
     p.version = "2.0";
-    p.timeline.tracks[0].clips.push({
+    getTrack(p, "track-v1").clips.push({
       id: "c1",
       assetId: "a1",
       trackId: "track-v1",
@@ -342,7 +398,7 @@ describe("validateProjectStructure — clips", () => {
   it("rejects V2 clip with negative startMs", () => {
     const p = validProject();
     p.version = "2.0";
-    p.timeline.tracks[0].clips.push({
+    getTrack(p, "track-v1").clips.push({
       id: "c1",
       assetId: "a1",
       trackId: "track-v1",
@@ -357,7 +413,7 @@ describe("validateProjectStructure — clips", () => {
   it("rejects V2 clip with durationMs > 7200000", () => {
     const p = validProject();
     p.version = "2.0";
-    p.timeline.tracks[0].clips.push({
+    getTrack(p, "track-v1").clips.push({
       id: "c1",
       assetId: "a1",
       trackId: "track-v1",
@@ -369,6 +425,79 @@ describe("validateProjectStructure — clips", () => {
     expect(() => validateProjectStructure(p)).toThrow(
       "durationMs must be 0-7200000",
     );
+  });
+
+  it("defaults missing text clip fields on validation", () => {
+    const p = validProject();
+    getTrack(p, "track-t1").clips.push({
+      id: "text-1",
+      assetId: "text-asset-1",
+      trackId: "track-t1",
+      startTime: 0,
+      duration: 3,
+      trimIn: 0,
+      trimOut: 3,
+      textConfig: {
+        text: "Hello",
+      },
+    });
+
+    const result = validateProjectStructure(p);
+    const clip = getTrack(result, "track-t1").clips[0] as any;
+    expect(clip.volume).toBe(0);
+    expect(clip.speed).toBe(1);
+    expect(Array.isArray(clip.effects)).toBe(true);
+    expect(clip.textConfig.fontFamily).toBe("Noto Sans");
+    expect(clip.textConfig.effect).toBe("none");
+  });
+
+  it("rejects unsupported text effects under strict parity", () => {
+    const p = validProject();
+    getTrack(p, "track-t1").clips.push({
+      id: "text-1",
+      assetId: "text-asset-1",
+      trackId: "track-t1",
+      startTime: 0,
+      duration: 3,
+      trimIn: 0,
+      trimOut: 3,
+      textConfig: {
+        text: "Hello",
+        effect: "typewriter",
+      },
+    });
+
+    expect(() => validateProjectStructure(p)).toThrow("not supported in strict_parity mode");
+  });
+
+  it("rejects duplicate text keyframe timestamps", () => {
+    const p = validProject();
+    getTrack(p, "track-t1").clips.push({
+      id: "text-1",
+      assetId: "text-asset-1",
+      trackId: "track-t1",
+      startTime: 0,
+      duration: 3,
+      trimIn: 0,
+      trimOut: 3,
+      textConfig: {
+        text: "Hello",
+      },
+      transform: {
+        x: 0.5,
+        y: 0.5,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
+        keyframes: [
+          { time: 0.5, x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1 },
+          { time: 0.5, x: 0.6, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1 },
+        ],
+      },
+    });
+
+    expect(() => validateProjectStructure(p)).toThrow("unique time markers");
   });
 });
 
@@ -479,6 +608,20 @@ describe("validateProjectStructure — assets", () => {
       filename: "image.png",
       format: "png",
       duration: 0,
+    };
+    expect(() => validateProjectStructure(p)).not.toThrow();
+  });
+
+  it("accepts generated text placeholder asset with empty path", () => {
+    const p = validProject();
+    p.assets["txt1"] = {
+      id: "txt1",
+      type: "image",
+      source: "generated",
+      path: "",
+      filename: "Text",
+      format: "text",
+      duration: 5,
     };
     expect(() => validateProjectStructure(p)).not.toThrow();
   });
