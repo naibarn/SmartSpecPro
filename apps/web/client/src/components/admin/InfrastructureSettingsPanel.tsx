@@ -213,6 +213,7 @@ export default function InfrastructureSettingsPanel() {
     sentry_environment: "development",
   });
   const [selectedTier, setSelectedTier] = useState<"starter" | "growth" | "pro" | "business" | "enterprise">("starter");
+  const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudrun">("localhost");
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [applyResults, setApplyResults] = useState<any[] | null>(null);
   const [, setLocation] = useLocation();
@@ -275,6 +276,18 @@ export default function InfrastructureSettingsPanel() {
     data: scaleTierData,
     refetch: refetchScaleTier,
   } = trpc.infrastructure.getScaleTier.useQuery();
+
+  const { data: deployModeInfo, refetch: refetchDeployMode } =
+    trpc.infrastructure.getDeployModeInfo.useQuery();
+
+  const setDeployModeMutation = trpc.infrastructure.setDeployModeInfo.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Deploy mode switched to ${data.mode === "cloudrun" ? "Cloud Run" : "Localhost"}`);
+      refetchDeployMode();
+      refetchScaleTier();
+    },
+    onError: (err: any) => toast.error(`Failed to switch: ${err.message}`),
+  });
 
   // --- Mutations ---
   const updateRedisMutation = trpc.infrastructure.updateRedisConfig.useMutation({
@@ -396,6 +409,15 @@ export default function InfrastructureSettingsPanel() {
       setSelectedTier(scaleTierData.tier);
     }
   }, [scaleTierData]);
+
+  // Sync deploy mode — deployModeInfo is the authoritative source
+  useEffect(() => {
+    if (deployModeInfo?.mode) {
+      setSelectedDeployMode(deployModeInfo.mode as "localhost" | "cloudrun");
+    } else if (scaleTierData?.deployMode) {
+      setSelectedDeployMode(scaleTierData.deployMode as "localhost" | "cloudrun");
+    }
+  }, [deployModeInfo, scaleTierData]);
 
   // --- Handlers ---
   const handleSaveGcp = () => {
@@ -2161,6 +2183,74 @@ FIREBASE_PROJECT_ID=your-project-id`}
             </div>
           )}
 
+          {/* Deploy Mode Toggle */}
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Server className="h-4 w-4" />
+                Deploy Mode
+              </p>
+              {deployModeInfo && (
+                <Badge variant="outline" className="text-xs">
+                  source: {deployModeInfo.source}
+                </Badge>
+              )}
+            </div>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setSelectedDeployMode("localhost")}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                  selectedDeployMode === "localhost"
+                    ? "bg-purple-100 text-purple-700 border-r border-purple-200"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
+                }`}
+              >
+                <Server className="h-4 w-4" />
+                Localhost (Self-hosted)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDeployMode("cloudrun")}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                  selectedDeployMode === "cloudrun"
+                    ? "bg-purple-100 text-purple-700"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <Cloud className="h-4 w-4" />
+                Cloud Run (GCP)
+              </button>
+            </div>
+            {selectedDeployMode === "cloudrun" && deployModeInfo && !deployModeInfo.gcpConfigured && (
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  GCP is not configured. Please fill in the <strong>GCP Configuration</strong> section above
+                  before applying Cloud Run mode.
+                </span>
+              </div>
+            )}
+            {selectedDeployMode !== (deployModeInfo?.mode ?? "localhost") && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setDeployModeMutation.mutate({ mode: selectedDeployMode })}
+                disabled={
+                  setDeployModeMutation.isPending ||
+                  (selectedDeployMode === "cloudrun" && deployModeInfo !== undefined && !deployModeInfo.gcpConfigured)
+                }
+              >
+                {setDeployModeMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Save Deploy Mode
+              </Button>
+            )}
+          </div>
+
           {/* Tier Selector Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {(scaleTierData?.allTiers ?? [
@@ -2217,12 +2307,83 @@ FIREBASE_PROJECT_ID=your-project-id`}
               <p className="text-sm font-medium flex items-center gap-2">
                 <Info className="h-4 w-4" />
                 Configuration Preview — {(scaleTierData.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier}
+                <Badge variant="outline" className="text-xs ml-auto">
+                  {selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"}
+                </Badge>
               </p>
               {(() => {
                 const config = selectedTier === scaleTierData.tier
                   ? scaleTierData.config
                   : (scaleTierData.allTiers ?? []).find((t: any) => t.id === selectedTier);
                 if (!config) return null;
+
+                if (selectedDeployMode === "cloudrun") {
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      <div className="rounded-lg bg-blue-50 p-3 space-y-1">
+                        <span className="text-xs text-blue-600 block">Node Instances</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.cloudRunNodeMinInstances ?? 0}–{config.cloudRunNodeMaxInstances ?? "—"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-blue-50 p-3 space-y-1">
+                        <span className="text-xs text-blue-600 block">Node CPU / Memory</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.cloudRunNodeCpu ?? "—"} / {config.cloudRunNodeMemory ?? "—"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-blue-50 p-3 space-y-1">
+                        <span className="text-xs text-blue-600 block">Node Concurrency</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.cloudRunNodeConcurrency ?? "—"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-green-50 p-3 space-y-1">
+                        <span className="text-xs text-green-600 block">Python Instances</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.cloudRunPythonMinInstances ?? 0}–{config.cloudRunPythonMaxInstances ?? "—"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-green-50 p-3 space-y-1">
+                        <span className="text-xs text-green-600 block">Python CPU / Memory</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.cloudRunPythonCpu ?? "—"} / {config.cloudRunPythonMemory ?? "—"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-green-50 p-3 space-y-1">
+                        <span className="text-xs text-green-600 block">Python Concurrency</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.cloudRunPythonConcurrency ?? "—"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                        <span className="text-xs text-gray-500 block">DB Pool</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.nodeDbPoolSize ?? "—"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                        <span className="text-xs text-gray-500 block">LLM Rate Limit</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.nodeLlmRpm ?? "—"} rpm
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-purple-50 p-3 space-y-1">
+                        <span className="text-xs text-purple-600 block">Media Queue</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.cloudRunMediaQueueConcurrency ?? "—"} concurrent
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-purple-50 p-3 space-y-1">
+                        <span className="text-xs text-purple-600 block">Workflow Queue</span>
+                        <span className="text-sm font-mono font-medium">
+                          {config.cloudRunWorkflowQueueConcurrency ?? "—"} concurrent
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <div className="rounded-lg bg-gray-50 p-3 space-y-1">
@@ -2291,15 +2452,26 @@ FIREBASE_PROJECT_ID=your-project-id`}
             </div>
           )}
 
-          {/* Info notice */}
-          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>
-              Applying a scale tier will update <strong>.env files</strong>, <strong>Nginx config</strong>,
-              and <strong>Redis settings</strong>, then restart backend and web services.
-              Expect <strong>10-30 seconds of downtime</strong> during the restart.
-            </span>
-          </div>
+          {/* Info notice — mode-aware */}
+          {selectedDeployMode === "cloudrun" ? (
+            <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+              <Cloud className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                Applying will update <strong>Cloud Run service configs</strong> (instances, CPU, memory)
+                and <strong>Cloud Tasks queue concurrency</strong> via <code className="bg-blue-100 px-1 rounded text-xs">gcloud</code> CLI.
+                <strong> Zero-downtime</strong> rolling updates via new Cloud Run revisions.
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                Applying a scale tier will update <strong>.env files</strong>, <strong>Nginx config</strong>,
+                and <strong>Redis settings</strong>, then restart backend and web services.
+                Expect <strong>10-30 seconds of downtime</strong> during the restart.
+              </span>
+            </div>
+          )}
 
           {/* Apply Button */}
           <Button
@@ -2309,17 +2481,20 @@ FIREBASE_PROJECT_ID=your-project-id`}
             }}
             disabled={
               applyScaleTierMutation.isPending ||
-              (scaleTierData?.tier === selectedTier && !applyResults)
+              (scaleTierData?.tier === selectedTier && selectedDeployMode === (deployModeInfo?.mode ?? "localhost") && !applyResults) ||
+              (selectedDeployMode === "cloudrun" && deployModeInfo !== undefined && !deployModeInfo.gcpConfigured)
             }
           >
             {applyScaleTierMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : selectedDeployMode === "cloudrun" ? (
+              <Cloud className="h-4 w-4 mr-2" />
             ) : (
               <Zap className="h-4 w-4 mr-2" />
             )}
             {scaleTierData?.tier === selectedTier
-              ? "Re-apply Current Tier"
-              : `Apply ${(scaleTierData?.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier} & Restart Services`}
+              ? `Re-apply Current Tier (${selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"})`
+              : `Apply ${(scaleTierData?.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier} — ${selectedDeployMode === "cloudrun" ? "Cloud Run" : "Restart Services"}`}
           </Button>
 
           {/* Apply Results */}
@@ -2328,6 +2503,11 @@ FIREBASE_PROJECT_ID=your-project-id`}
               <p className="text-sm font-medium flex items-center gap-2">
                 <Activity className="h-4 w-4" />
                 Apply Results
+                {applyResults[0]?.mode && (
+                  <Badge variant="outline" className="text-xs ml-auto">
+                    {applyResults[0].mode === "cloudrun" ? "Cloud Run" : "Localhost"}
+                  </Badge>
+                )}
               </p>
               <div className="space-y-2">
                 {applyResults.map((result: any, idx: number) => (
@@ -2346,11 +2526,16 @@ FIREBASE_PROJECT_ID=your-project-id`}
                     >
                       {result.status}
                     </Badge>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <span className="font-medium text-gray-700">{result.step}</span>
                       <p className="text-xs text-muted-foreground mt-0.5 break-all">
                         {result.message}
                       </p>
+                      {result.command && (
+                        <pre className="text-xs bg-gray-100 rounded px-2 py-1 mt-1 overflow-x-auto font-mono text-gray-600">
+                          {result.command}
+                        </pre>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -2364,12 +2549,17 @@ FIREBASE_PROJECT_ID=your-project-id`}
       <AlertDialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Apply Scale Tier Configuration</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              Apply Scale Tier Configuration
+              <Badge variant="outline" className="text-xs font-normal">
+                {selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"}
+              </Badge>
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
                   This will apply the <strong className="capitalize">{selectedTier}</strong> tier
-                  configuration and restart services.
+                  configuration{selectedDeployMode === "cloudrun" ? " to Cloud Run services." : " and restart services."}
                 </p>
                 {scaleTierData?.tier && scaleTierData.tier !== selectedTier && (
                   <div className="flex items-center gap-2 text-sm">
@@ -2378,21 +2568,39 @@ FIREBASE_PROJECT_ID=your-project-id`}
                     <Badge className="bg-purple-100 text-purple-700 capitalize">{selectedTier}</Badge>
                   </div>
                 )}
-                <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
-                  <strong>Warning:</strong> This will restart the backend and web services.
-                  Users will experience approximately 10-30 seconds of downtime.
-                </div>
-                <p className="text-sm">The following changes will be made:</p>
-                <ul className="list-disc ml-5 space-y-1 text-sm text-muted-foreground">
-                  <li>Update Node.js .env (DB pool, rate limits)</li>
-                  <li>Update Python .env (DB pool, workers, rate limits)</li>
-                  <li>Update systemd service (uvicorn workers)</li>
-                  <li>Update Nginx config (connections, keepalive)</li>
-                  <li>Set Redis maxmemory (hot-reload)</li>
-                  <li>Reload Nginx (graceful)</li>
-                  <li>Restart Python backend</li>
-                  <li>Restart Node.js web service</li>
-                </ul>
+                {selectedDeployMode === "cloudrun" ? (
+                  <>
+                    <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+                      <strong>Cloud Run:</strong> Zero-downtime rolling updates via new revisions.
+                      No service interruption for users.
+                    </div>
+                    <p className="text-sm">The following changes will be made:</p>
+                    <ul className="list-disc ml-5 space-y-1 text-sm text-muted-foreground">
+                      <li>Update Node API Cloud Run service (instances, CPU, memory, env vars)</li>
+                      <li>Update Python Orchestrator Cloud Run service (instances, CPU, memory, env vars)</li>
+                      <li>Update Cloud Tasks queue concurrency (media-jobs, workflow-tasks)</li>
+                      <li>Redis: skipped (Upstash memory is per-plan)</li>
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+                      <strong>Warning:</strong> This will restart the backend and web services.
+                      Users will experience approximately 10-30 seconds of downtime.
+                    </div>
+                    <p className="text-sm">The following changes will be made:</p>
+                    <ul className="list-disc ml-5 space-y-1 text-sm text-muted-foreground">
+                      <li>Update Node.js .env (DB pool, rate limits)</li>
+                      <li>Update Python .env (DB pool, workers, rate limits)</li>
+                      <li>Update systemd service (uvicorn workers)</li>
+                      <li>Update Nginx config (connections, keepalive)</li>
+                      <li>Set Redis maxmemory (hot-reload)</li>
+                      <li>Reload Nginx (graceful)</li>
+                      <li>Restart Python backend</li>
+                      <li>Restart Node.js web service</li>
+                    </ul>
+                  </>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -2403,17 +2611,23 @@ FIREBASE_PROJECT_ID=your-project-id`}
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                applyScaleTierMutation.mutate({ tier: selectedTier });
+                applyScaleTierMutation.mutate({ tier: selectedTier, mode: selectedDeployMode });
               }}
               disabled={applyScaleTierMutation.isPending}
               className="bg-purple-600 hover:bg-purple-700"
             >
               {applyScaleTierMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : selectedDeployMode === "cloudrun" ? (
+                <Cloud className="h-4 w-4 mr-2" />
               ) : (
                 <Zap className="h-4 w-4 mr-2" />
               )}
-              {applyScaleTierMutation.isPending ? "Applying..." : "Apply & Restart"}
+              {applyScaleTierMutation.isPending
+                ? "Applying..."
+                : selectedDeployMode === "cloudrun"
+                  ? "Apply to Cloud Run"
+                  : "Apply & Restart"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

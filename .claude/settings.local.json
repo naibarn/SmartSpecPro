@@ -81,7 +81,8 @@
       "WebFetch(domain:www.freetiers.com)",
       "WebFetch(domain:www.prosperops.com)",
       "WebFetch(domain:hamy.xyz)",
-      "WebFetch(domain:www.bytebase.com)"
+      "WebFetch(domain:www.bytebase.com)",
+      "mcp__plugin_context7_context7__resolve-library-id"
     ],
     "deny": [
       "Bash(rm *)",

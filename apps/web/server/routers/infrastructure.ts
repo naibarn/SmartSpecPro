@@ -25,8 +25,10 @@ import {
   SCALE_TIER_IDS,
   applyScaleTier as applyTierConfig,
   detectCurrentTier,
+  getDeployMode,
+  setDeployMode,
 } from "../services/scaleTier";
-import type { ScaleTierId, ApplyStepResult } from "../services/scaleTier";
+import type { ScaleTierId, DeployMode, ApplyStepResult } from "../services/scaleTier";
 
 // ============================================================
 // Constants
@@ -692,11 +694,15 @@ export const infrastructureRouter = router({
       }
     }
 
+    const deployModeResult = await getDeployMode();
+
     return {
       tier,
       appliedAt,
       config: SCALE_TIERS[tier],
       allTiers: Object.values(SCALE_TIERS),
+      deployMode: deployModeResult.mode,
+      deployModeSource: deployModeResult.source,
     };
   }),
 
@@ -719,6 +725,7 @@ export const infrastructureRouter = router({
     .input(
       z.object({
         tier: z.enum(["starter", "growth", "pro", "business", "enterprise"]),
+        mode: z.enum(["localhost", "cloudrun"]).optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -728,8 +735,11 @@ export const infrastructureRouter = router({
       // 1. Persist the tier selection
       await upsertSetting(db, "scale_tier", input.tier, ctx.user?.id);
 
-      // 2. Apply configuration across all services
-      const results: ApplyStepResult[] = await applyTierConfig(input.tier as ScaleTierId);
+      // 2. Apply configuration across all services (mode-aware)
+      const results: ApplyStepResult[] = await applyTierConfig(
+        input.tier as ScaleTierId,
+        input.mode as DeployMode | undefined,
+      );
 
       // 3. Record the timestamp of the last successful apply
       await upsertSetting(
@@ -740,5 +750,40 @@ export const infrastructureRouter = router({
       );
 
       return { success: true as const, results };
+    }),
+
+  // ----------------------------------------------------------
+  // Deploy Mode Management
+  // ----------------------------------------------------------
+
+  getDeployModeInfo: adminProcedure.query(async () => {
+    const result = await getDeployMode();
+    let gcpConfigured = false;
+    try {
+      const { resolveGcpConfig } = await import("../services/scaleTier");
+      await resolveGcpConfig();
+      gcpConfigured = true;
+    } catch { /* GCP not configured */ }
+    return { ...result, gcpConfigured };
+  }),
+
+  setDeployModeInfo: adminProcedure
+    .input(z.object({ mode: z.enum(["localhost", "cloudrun"]) }))
+    .mutation(async ({ input, ctx }) => {
+      // Validate GCP config before allowing cloudrun mode
+      if (input.mode === "cloudrun") {
+        try {
+          const { resolveGcpConfig } = await import("../services/scaleTier");
+          await resolveGcpConfig();
+        } catch (err: unknown) {
+          const { TRPCError } = await import("@trpc/server");
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `Cannot switch to Cloud Run: ${err instanceof Error ? err.message : "GCP configuration incomplete"}. Configure GCP settings first.`,
+          });
+        }
+      }
+      await setDeployMode(input.mode as DeployMode, ctx.user?.id);
+      return { success: true, mode: input.mode };
     }),
 });
