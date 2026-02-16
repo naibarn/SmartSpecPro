@@ -9,6 +9,7 @@ import {
 import { funnelEvents } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { auditLogger } from "../services/auditLogger";
+import { isFunnelEnabled } from "../services/funnelRollout";
 
 // ── Constants ──
 
@@ -231,6 +232,16 @@ function resolveScope(ctx: {
   return scope;
 }
 
+async function checkFunnelEnabled(role: string | null) {
+  const enabled = await isFunnelEnabled(role);
+  if (!enabled) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Funnel dashboard not available for your role in current rollout phase",
+    });
+  }
+}
+
 async function getRedis() {
   try {
     const { getRedisClient } = await import("../services/redis");
@@ -326,6 +337,9 @@ export const funnelAnalyticsRouter = router({
   summary: domainAdminProcedure
     .input(dateRangeInput)
     .query(async ({ ctx, input }) => {
+      // Check feature flag rollout phase
+      await checkFunnelEnabled(ctx.user.role);
+
       const db = await getDb();
       if (!db) return { stages: [], rangeClamped: false, cached: false };
 

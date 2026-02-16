@@ -89,7 +89,9 @@
       "WebFetch(domain:upendravarma.com)",
       "WebFetch(domain:docs.google.com)",
       "WebFetch(domain:chimbu.medium.com)",
-      "Bash(dpkg:*)"
+      "Bash(dpkg:*)",
+      "Bash(claude tasks list:*)",
+      "Bash(psql:*)"
     ],
     "deny": [
       "Bash(rm *)",

@@ -190,6 +190,13 @@
       "when": 1771275000000,
       "tag": "0026_add_funnel_events",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1771256822169,
+      "tag": "0027_outgoing_purple_man",
+      "breakpoints": true
     }
   ]
 }
