@@ -36,3 +36,21 @@
 
 ### Rationale
 - Keeps migration additive with lower lock/write overhead while covering core funnel milestone query paths.
+
+---
+
+### Section / Step
+- Section 02 side-channel execution policy
+
+### Options Considered
+- Block primary insert on side-channel failures
+- Keep primary insert authoritative; side channels best-effort only
+
+### Decision Taken
+- Keep side channels non-blocking and record failures via telemetry
+
+### Mode Used
+- `auto` (`smart_auto`, low-impact)
+
+### Rationale
+- Protects auth/usage flows from analytics provider outages while preserving first-event persistence guarantees.
