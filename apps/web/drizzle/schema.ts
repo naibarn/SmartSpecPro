@@ -3170,3 +3170,98 @@ export const funnelEvents = pgTable("funnel_events", {
 
 export type FunnelEvent = typeof funnelEvents.$inferSelect;
 export type InsertFunnelEvent = typeof funnelEvents.$inferInsert;
+
+/**
+ * Funnel Backfill Run Status
+ */
+export const backfillRunStatusEnum = pgEnum("backfill_run_status", [
+  "running",
+  "paused",
+  "aborted",
+  "completed",
+  "failed",
+]);
+
+export const reconciliationStatusEnum = pgEnum("reconciliation_status", [
+  "pending",
+  "passed",
+  "failed",
+]);
+
+/**
+ * Funnel Backfill Runs
+ * Tracks historical milestone backfill execution with operational controls
+ */
+export const funnelBackfillRuns = pgTable("funnel_backfill_runs", {
+  id: serial("id").primaryKey(),
+
+  /** Unique run identifier for idempotent resume */
+  runId: varchar("runId", { length: 64 }).notNull().unique(),
+
+  /** Optional tenant filter (null = all tenants) */
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Current execution status */
+  status: backfillRunStatusEnum("status").notNull().default("running"),
+
+  /** Date range to backfill (inclusive) */
+  startDate: timestamp("startDate", { withTimezone: true }).notNull(),
+  endDate: timestamp("endDate", { withTimezone: true }).notNull(),
+
+  /** Source filter: which data source to backfill from */
+  sourceFilter: varchar("sourceFilter", { length: 128 }),
+
+  /** Batch size for controlled processing */
+  batchSize: integer("batchSize").notNull().default(1000),
+
+  /** Dry-run mode: compute counts without persisting */
+  dryRun: boolean("dryRun").notNull().default(false),
+
+  /** Progress counters */
+  totalRecordsProcessed: integer("totalRecordsProcessed").notNull().default(0),
+  totalEventsInserted: integer("totalEventsInserted").notNull().default(0),
+
+  /** Reconciliation gate results */
+  reconciliationStatus: reconciliationStatusEnum("reconciliationStatus").notNull().default("pending"),
+  reconciliationReport: jsonb("reconciliationReport").$type<Record<string, unknown>>(),
+
+  /** Operator action timestamps */
+  startedAt: timestamp("startedAt", { withTimezone: true }).notNull(),
+  pausedAt: timestamp("pausedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  abortedAt: timestamp("abortedAt", { withTimezone: true }),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("funnel_backfill_runs_status_idx").on(t.status),
+  index("funnel_backfill_runs_tenant_idx").on(t.tenantId),
+]);
+
+export type FunnelBackfillRun = typeof funnelBackfillRuns.$inferSelect;
+export type InsertFunnelBackfillRun = typeof funnelBackfillRuns.$inferInsert;
+
+/**
+ * Funnel Backfill Checkpoints
+ * Stores resumable position markers within a backfill run
+ */
+export const funnelBackfillCheckpoints = pgTable("funnel_backfill_checkpoints", {
+  id: serial("id").primaryKey(),
+
+  /** Reference to parent run */
+  runId: varchar("runId", { length: 64 }).notNull().references(() => funnelBackfillRuns.runId, { onDelete: "cascade" }),
+
+  /** Flexible position marker (e.g., {date: "2024-01-15", batch: 5}) */
+  checkpointPosition: jsonb("checkpointPosition").$type<Record<string, unknown>>().notNull(),
+
+  /** Progress at this checkpoint */
+  recordsProcessed: integer("recordsProcessed").notNull(),
+  eventsInserted: integer("eventsInserted").notNull(),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("funnel_backfill_checkpoints_run_idx").on(t.runId),
+]);
+
+export type FunnelBackfillCheckpoint = typeof funnelBackfillCheckpoints.$inferSelect;
+export type InsertFunnelBackfillCheckpoint = typeof funnelBackfillCheckpoints.$inferInsert;
