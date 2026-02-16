@@ -41,6 +41,7 @@ import { executeSkill, estimateSkillCost, canAutoExecute } from "../services/ski
 import { signBearerToken } from "../_core/tokens";
 import { skillDetectionLimiter, skillExecutionLimiter } from "../services/rateLimiter";
 import { debugLog, debugError } from "../_core/logger";
+import { ENABLE_FUNNEL_TRACKING, trackFirstConversation } from "../services/funnelMilestones";
 
 // Helper to create secure token for skill execution
 function createSkillToken(userId: number): string {
@@ -119,6 +120,19 @@ export const chatRouter = router({
         systemPrompt: input.systemPrompt,
         projectId: input.projectId,
       });
+
+      // Track first conversation milestone (non-blocking, behind feature flag)
+      if (ENABLE_FUNNEL_TRACKING) {
+        trackFirstConversation({
+          tenantId: ctx.user.registeredDomain || "default",
+          domain: ctx.user.registeredDomain || undefined,
+          userId: ctx.user.id,
+          source: "chat.createConversation",
+          channel: "web",
+        }).catch((err) => {
+          console.warn("[Funnel] trackFirstConversation failed:", err);
+        });
+      }
 
       return {
         id: conversation.id,

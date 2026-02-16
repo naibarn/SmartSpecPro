@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { giveSignupBonus } from "../services/creditService";
 import { analyzeEmail } from "../services/emailAnalysis";
+import { ENABLE_FUNNEL_TRACKING, trackSignupCompleted } from "../services/funnelMilestones";
 import { registrationLimiter } from "../services/rateLimiter";
 import { evaluateRegistration, logRegistrationEvent, recordDeviceFingerprint } from "../services/trustScoring";
 import { getSessionCookieOptions } from "./cookies";
@@ -146,6 +147,21 @@ export function registerOAuthRoutes(app: Express) {
             }
           } else {
             console.log(`[OAuth] Withheld signup bonus for user ${newUser.id} (trust score: ${trustScore})`);
+          }
+
+          // Track signup milestone (non-blocking, behind feature flag)
+          if (ENABLE_FUNNEL_TRACKING) {
+            trackSignupCompleted({
+              tenantId: hostname,
+              domain: hostname,
+              userId: newUser.id,
+              source: "oauth.callback",
+              plan: "free",
+              channel: userInfo.loginMethod ?? userInfo.platform ?? "oauth",
+              attribution: { isFirstUser, trustScore },
+            }).catch((err) => {
+              console.warn("[Funnel] trackSignupCompleted failed:", err);
+            });
           }
         }
       }
