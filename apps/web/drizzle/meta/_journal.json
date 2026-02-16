@@ -176,6 +176,20 @@
       "when": 1771055133024,
       "tag": "0024_opposite_exiles",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1771230569335,
+      "tag": "0025_add_cloud_task_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1771275000000,
+      "tag": "0026_add_funnel_events",
+      "breakpoints": true
     }
   ]
 }

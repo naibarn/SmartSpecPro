@@ -223,6 +223,7 @@ export const creditTransactions = pgTable("credit_transactions", {
   uniqueIndex("credit_transactions_idempotency_key_unique")
     .on(t.idempotencyKey)
     .where(sql`"idempotencyKey" IS NOT NULL`),
+  index("credit_transactions_type_created_idx").on(t.type, t.createdAt),
 ]);
 
 export type CreditTransaction = typeof creditTransactions.$inferSelect;
@@ -1161,7 +1162,9 @@ export const messages = pgTable("messages", {
   parentMessageId: integer("parentMessageId"),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("messages_created_at_idx").on(t.createdAt),
+]);
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
@@ -2419,7 +2422,9 @@ export const registrationEvents = pgTable("registration_events", {
   outcome: varchar("outcome", { length: 20 }).notNull(), // allowed, flagged, blocked
   metadata: json("metadata").$type<Record<string, any>>(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("registration_events_created_user_idx").on(t.createdAt, t.userId),
+]);
 
 /** Links browser fingerprint hashes to users */
 export const deviceFingerprints = pgTable("device_fingerprints", {
@@ -3128,3 +3133,40 @@ export const cloudTaskEvents = pgTable("cloud_task_events", {
 
 export type CloudTaskEvent = typeof cloudTaskEvents.$inferSelect;
 export type InsertCloudTaskEvent = typeof cloudTaskEvents.$inferInsert;
+
+// Funnel Events — Canonical milestone analytics stream
+export const funnelEvents = pgTable("funnel_events", {
+  id: serial("id").primaryKey(),
+
+  /** Tenant scope for analytics isolation and query performance */
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** Domain scope for domain-admin fallback and attribution compatibility */
+  domain: varchar("domain", { length: 255 }),
+
+  /** User scope for first-event semantics and per-user drilldown */
+  userId: integer("userId").references(() => users.id, { onDelete: "set null" }),
+
+  /** Canonical milestone event name */
+  eventName: varchar("eventName", { length: 128 }).notNull(),
+
+  /** Canonical UTC timestamp used for all aggregations */
+  eventTime: timestamp("eventTime", { withTimezone: true }).notNull(),
+
+  /** Deterministic dedup key used for insert-once contract */
+  eventKey: varchar("eventKey", { length: 255 }).notNull(),
+
+  /** Flexible metadata payload for drilldown and export */
+  properties: jsonb("properties").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("funnel_events_event_key_unique").on(t.eventKey),
+  index("funnel_events_tenant_event_time_idx").on(t.tenantId, t.eventTime),
+  index("funnel_events_domain_event_time_idx").on(t.domain, t.eventTime),
+  index("funnel_events_name_event_time_idx").on(t.eventName, t.eventTime),
+  index("funnel_events_user_name_time_idx").on(t.userId, t.eventName, t.eventTime),
+]);
+
+export type FunnelEvent = typeof funnelEvents.$inferSelect;
+export type InsertFunnelEvent = typeof funnelEvents.$inferInsert;
