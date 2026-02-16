@@ -235,3 +235,9 @@
 - decision: `defer`
 - mode: `auto`
 - rationale: No critical/high findings; remaining items are medium-risk hardening and test-depth improvements recorded in `implementation-security-review.md`.
+
+- step: security_hardening_followup
+- options: keep `defer` vs implement medium findings now
+- decision: implement now (`fix_now`)
+- mode: `auto`
+- rationale: User requested production-close completeness; implemented endpoint-level admin cutover/health tests and lock-protected Chroma writes to remove medium findings.

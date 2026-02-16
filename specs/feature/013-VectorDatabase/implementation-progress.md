@@ -76,7 +76,7 @@
 
 - section: `completion-remediation`
 - commit: `pending`
-- test_command_used: `npm --workspace @smartspec/web test -- server/services/__tests__/vectorProvider.test.ts server/__tests__/vectorize-search.test.ts server/__tests__/vectorize-indexing.test.ts && cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_backfill_service.py tests/unit/services/test_library_vector_observability_service.py tests/unit/services/test_library_rollout_validation.py tests/unit/services/test_library_cutover_service.py && .venv/bin/python -m py_compile app/api/admin.py app/services/library_indexing_service.py app/services/library_backfill_service.py app/services/library_vector_observability_service.py`
-- pass_fail_summary: `PASS (Node 15 tests; Python 42 tests; compile checks)`
-- notable_deviations: `endpoint-level auth/contract tests for new provider-switch admin routes deferred`
+- test_command_used: `npm --workspace @smartspec/web test -- server/services/__tests__/vectorProvider.test.ts server/__tests__/vectorize-search.test.ts server/__tests__/vectorize-indexing.test.ts server/routers/systemSettings.vectordbGuard.test.ts && cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_backfill_service.py tests/unit/services/test_library_vector_observability_service.py tests/unit/services/test_library_rollout_validation.py tests/unit/services/test_library_cutover_service.py tests/unit/api/test_admin_vectordb_cutover_api.py && .venv/bin/python -m py_compile app/api/admin.py tests/unit/api/test_admin_vectordb_cutover_api.py`
+- pass_fail_summary: `PASS (Node 20 tests; Python 49 tests; compile checks)`
+- notable_deviations: `none`
 - blocked_tasks_resolved_remaining: `none`

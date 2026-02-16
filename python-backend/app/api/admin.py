@@ -228,6 +228,13 @@ class CutoverRollbackPayload(BaseModel):
     expected_version: Optional[int] = None
 
 
+def _status_for_cutover_runtime_error(exc: RuntimeError) -> int:
+    message = str(exc)
+    if "switch_state_version_conflict" in message:
+        return status.HTTP_409_CONFLICT
+    return status.HTTP_400_BAD_REQUEST
+
+
 # ============================================================
 # User Management
 # ============================================================
@@ -941,7 +948,7 @@ async def request_vectordb_provider_cutover(
             expected_version=payload.expected_version,
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=_status_for_cutover_runtime_error(exc), detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -976,7 +983,7 @@ async def approve_vectordb_provider_cutover(
             expected_version=payload.expected_version,
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=_status_for_cutover_runtime_error(exc), detail=str(exc)) from exc
 
     return result
 
@@ -999,7 +1006,7 @@ async def rollback_vectordb_provider_cutover(
             expected_version=payload.expected_version,
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=_status_for_cutover_runtime_error(exc), detail=str(exc)) from exc
 
     return result
 
@@ -1109,8 +1116,16 @@ async def get_vectordb_health(
         }
     elif provider == "cloudflare_vectorize":
         provider_config = {
-            "account_id": os.getenv("VECTORIZE_ACCOUNT_ID") or os.getenv("CF_ACCOUNT_ID"),
-            "api_token": os.getenv("VECTORIZE_API_TOKEN") or os.getenv("CF_VECTORIZE_API_TOKEN"),
+            "account_id": (
+                os.getenv("VECTORIZE_ACCOUNT_ID")
+                or os.getenv("CF_ACCOUNT_ID")
+                or os.getenv("CLOUDFLARE_ACCOUNT_ID")
+            ),
+            "api_token": (
+                os.getenv("VECTORIZE_API_TOKEN")
+                or os.getenv("CF_VECTORIZE_API_TOKEN")
+                or os.getenv("CLOUDFLARE_AI_API_KEY")
+            ),
             "index_name": os.getenv("VECTORIZE_INDEX_NAME") or os.getenv("CF_VECTORIZE_INDEX"),
         }
         connection_health = {

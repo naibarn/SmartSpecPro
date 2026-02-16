@@ -1,7 +1,12 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { PoolConfig } from "pg";
+
+import { getDb } from "../db";
+import { systemSettings } from "../../drizzle/schema";
+import { decrypt } from "./crypto";
 
 export type VectorProvider = "chromadb" | "pgvector" | "cloudflare_vectorize";
 export type VectorOperation = "index" | "delete" | "search";
@@ -94,11 +99,30 @@ const PROVIDER_CAPABILITIES: Record<VectorProvider, VectorProviderCapabilities> 
 
 const overrideAdapters: Partial<Record<VectorProvider, VectorProviderAdapter>> = {};
 const CHROMA_INDEX_FILE_SUFFIX = ".json";
+const CHROMA_LOCK_FILE_SUFFIX = ".lock";
 const CHROMA_DEFAULT_PERSIST_DIR = join(tmpdir(), "smartspec-chromadb");
+const CHROMA_LOCK_RETRY_MS = 20;
+const CHROMA_LOCK_MAX_WAIT_MS = 5_000;
 const PGVECTOR_TABLE_NAME = "smartspec_vector_entries";
 const MAX_PGVECTOR_SEARCH_SCAN = 5000;
 const pgPoolCache = new Map<string, PgPoolLike>();
 const pgSchemaReady = new Set<string>();
+const EFFECTIVE_CONFIG_CACHE_TTL_MS = 5_000;
+const VECTORDB_SETTING_KEYS = [
+  "provider",
+  "currentReadProvider",
+  "targetProvider",
+  "mirrorWrites",
+  "chromaPersistDir",
+  "pgvectorHost",
+  "pgvectorPort",
+  "pgvectorDatabase",
+  "pgvectorUser",
+  "pgvectorPassword",
+  "vectorizeAccountId",
+  "vectorizeApiToken",
+] as const;
+const effectiveConfigCache = new Map<string, { expiresAt: number; value: VectorProviderConfig }>();
 
 type VectorFilter = Record<string, string | number | boolean>;
 
@@ -110,6 +134,12 @@ type PgQueryResult = {
 type PgPoolLike = {
   query(text: string, values?: unknown[]): Promise<PgQueryResult>;
   end?: () => Promise<void> | void;
+};
+
+type SwitchStateRow = {
+  current_read_provider?: string | null;
+  target_provider?: string | null;
+  mirror_writes?: boolean | null;
 };
 
 function isProvider(value: string | undefined | null): value is VectorProvider {
@@ -162,6 +192,136 @@ function normalizeProviderError(provider: VectorProvider, code: string, error: u
   });
 }
 
+function extractRows(result: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(result)) return result as Array<Record<string, unknown>>;
+  if (result && typeof result === "object" && Array.isArray((result as { rows?: unknown[] }).rows)) {
+    return (result as { rows: Array<Record<string, unknown>> }).rows;
+  }
+  return [];
+}
+
+function parseBoolean(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return undefined;
+    if (["1", "true", "yes", "on"].includes(normalized)) return true;
+    if (["0", "false", "no", "off"].includes(normalized)) return false;
+  }
+  return undefined;
+}
+
+function applyDefinedSettings(target: VectorProviderConfig, patch: Partial<VectorProviderConfig>): VectorProviderConfig {
+  const next: VectorProviderConfig = { ...target };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) {
+      (next as Record<string, unknown>)[key] = value;
+    }
+  }
+  return next;
+}
+
+function decodeSettingValue(value: string | null, isSensitive: boolean | null): string | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (!isSensitive) {
+    return trimmed;
+  }
+  try {
+    return decrypt(trimmed) || trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+async function loadStoredVectorProviderConfig(params?: { tenantId?: string }): Promise<Partial<VectorProviderConfig>> {
+  const db = await getDb();
+  if (!db) {
+    return {};
+  }
+
+  const settingRows = await db
+    .select({
+      key: systemSettings.key,
+      value: systemSettings.value,
+      isSensitive: systemSettings.isSensitive,
+    })
+    .from(systemSettings)
+    .where(
+      and(
+        eq(systemSettings.category, "vectordb"),
+        inArray(systemSettings.key, [...VECTORDB_SETTING_KEYS]),
+      ),
+    );
+
+  const settingsMap = new Map<string, string>();
+  for (const row of settingRows) {
+    const decoded = decodeSettingValue(row.value, row.isSensitive ?? false);
+    if (decoded !== undefined) {
+      settingsMap.set(String(row.key), decoded);
+    }
+  }
+
+  const fromSettings: Partial<VectorProviderConfig> = {
+    provider: settingsMap.get("provider"),
+    currentReadProvider: settingsMap.get("currentReadProvider"),
+    targetProvider: settingsMap.get("targetProvider"),
+    mirrorWrites: parseBoolean(settingsMap.get("mirrorWrites")),
+    chromaPersistDir: settingsMap.get("chromaPersistDir"),
+    pgvectorHost: settingsMap.get("pgvectorHost"),
+    pgvectorPort: settingsMap.get("pgvectorPort"),
+    pgvectorDatabase: settingsMap.get("pgvectorDatabase"),
+    pgvectorUser: settingsMap.get("pgvectorUser"),
+    pgvectorPassword: settingsMap.get("pgvectorPassword"),
+    vectorizeAccountId: settingsMap.get("vectorizeAccountId"),
+    vectorizeApiToken: settingsMap.get("vectorizeApiToken"),
+  };
+
+  try {
+    const tenantId = params?.tenantId?.trim();
+    let switchResult: unknown;
+    if (tenantId) {
+      switchResult = await db.execute(sql`
+        SELECT current_read_provider, target_provider, mirror_writes
+        FROM library_provider_switch_states
+        WHERE tenant_id = ${tenantId} OR tenant_id IS NULL
+        ORDER BY CASE WHEN tenant_id = ${tenantId} THEN 0 ELSE 1 END, updated_at DESC, id DESC
+        LIMIT 1
+      `);
+    } else {
+      switchResult = await db.execute(sql`
+        SELECT current_read_provider, target_provider, mirror_writes
+        FROM library_provider_switch_states
+        WHERE tenant_id IS NULL
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+      `);
+    }
+    const switchRow = extractRows(switchResult)[0] as SwitchStateRow | undefined;
+    if (!switchRow) {
+      return fromSettings;
+    }
+    return {
+      ...fromSettings,
+      currentReadProvider: switchRow.current_read_provider ? String(switchRow.current_read_provider) : fromSettings.currentReadProvider,
+      targetProvider: switchRow.target_provider ? String(switchRow.target_provider) : fromSettings.targetProvider,
+      mirrorWrites:
+        typeof switchRow.mirror_writes === "boolean"
+          ? switchRow.mirror_writes
+          : fromSettings.mirrorWrites,
+    };
+  } catch {
+    // Switch-state table may be unavailable in earlier environments; fall back to settings/env.
+    return fromSettings;
+  }
+}
+
 function sanitizeIndexName(indexName: string): string {
   const cleaned = (indexName || "default").trim().toLowerCase();
   return cleaned.replace(/[^a-z0-9_-]+/g, "_");
@@ -200,7 +360,48 @@ async function readChromaEntries(pathname: string): Promise<VectorEntry[]> {
 
 async function writeChromaEntries(pathname: string, entries: VectorEntry[]): Promise<void> {
   await mkdir(dirname(pathname), { recursive: true });
-  await writeFile(pathname, JSON.stringify(entries), "utf-8");
+  const tmpPath = `${pathname}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    await writeFile(tmpPath, JSON.stringify(entries), "utf-8");
+    await rename(tmpPath, pathname);
+  } catch (error) {
+    await rm(tmpPath, { force: true }).catch(() => undefined);
+    throw error;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withChromaFileLock<T>(pathname: string, fn: () => Promise<T>): Promise<T> {
+  const lockPath = `${pathname}${CHROMA_LOCK_FILE_SUFFIX}`;
+  const deadline = Date.now() + CHROMA_LOCK_MAX_WAIT_MS;
+
+  while (true) {
+    let lockHandle: Awaited<ReturnType<typeof open>> | null = null;
+    try {
+      lockHandle = await open(lockPath, "wx");
+      const result = await fn();
+      await lockHandle.close().catch(() => undefined);
+      await rm(lockPath, { force: true }).catch(() => undefined);
+      return result;
+    } catch (error) {
+      if (lockHandle) {
+        await lockHandle.close().catch(() => undefined);
+        await rm(lockPath, { force: true }).catch(() => undefined);
+      }
+
+      const code = (error as NodeJS.ErrnoException)?.code;
+      if (code !== "EEXIST") {
+        throw error;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`chroma_lock_timeout:${lockPath}`);
+      }
+      await sleep(CHROMA_LOCK_RETRY_MS);
+    }
+  }
 }
 
 function toNumberArray(raw: unknown): number[] {
@@ -517,13 +718,15 @@ function createChromaAdapter(config?: VectorProviderConfig): VectorProviderAdapt
     async index(params) {
       try {
         const path = getChromaIndexPath(params.indexName, config);
-        const existing = await readChromaEntries(path);
-        const map = new Map(existing.map((entry) => [entry.id, entry]));
-        for (const vector of params.vectors) {
-          map.set(vector.id, vector);
-        }
-        await writeChromaEntries(path, Array.from(map.values()));
-        return { count: params.vectors.length };
+        return await withChromaFileLock(path, async () => {
+          const existing = await readChromaEntries(path);
+          const map = new Map(existing.map((entry) => [entry.id, entry]));
+          for (const vector of params.vectors) {
+            map.set(vector.id, vector);
+          }
+          await writeChromaEntries(path, Array.from(map.values()));
+          return { count: params.vectors.length };
+        });
       } catch (error) {
         throw normalizeProviderError("chromadb", "index_failed", error);
       }
@@ -531,12 +734,14 @@ function createChromaAdapter(config?: VectorProviderConfig): VectorProviderAdapt
     async delete(params) {
       try {
         const path = getChromaIndexPath(params.indexName, config);
-        const existing = await readChromaEntries(path);
-        const ids = new Set(params.ids);
-        const retained = existing.filter((entry) => !ids.has(entry.id));
-        const removed = existing.length - retained.length;
-        await writeChromaEntries(path, retained);
-        return { count: removed };
+        return await withChromaFileLock(path, async () => {
+          const existing = await readChromaEntries(path);
+          const ids = new Set(params.ids);
+          const retained = existing.filter((entry) => !ids.has(entry.id));
+          const removed = existing.length - retained.length;
+          await writeChromaEntries(path, retained);
+          return { count: removed };
+        });
       } catch (error) {
         throw normalizeProviderError("chromadb", "delete_failed", error);
       }
@@ -659,6 +864,10 @@ export function resetVectorProviderAdapterRegistry(): void {
   pgSchemaReady.clear();
 }
 
+export function resetVectorProviderConfigCacheForTests(): void {
+  effectiveConfigCache.clear();
+}
+
 function getAdapter(provider: VectorProvider, config?: VectorProviderConfig): VectorProviderAdapter {
   return overrideAdapters[provider] || createDefaultAdapter(provider, config);
 }
@@ -740,4 +949,27 @@ export function getVectorProviderConfigFromEnv(): VectorProviderConfig {
     vectorizeAccountId: process.env.CLOUDFLARE_ACCOUNT_ID,
     vectorizeApiToken: process.env.VECTORIZE_API_TOKEN || process.env.CLOUDFLARE_AI_API_KEY,
   };
+}
+
+export async function getEffectiveVectorProviderConfig(params?: {
+  tenantId?: string;
+  forceRefresh?: boolean;
+}): Promise<VectorProviderConfig> {
+  const tenantKey = params?.tenantId?.trim() || "__global__";
+  const now = Date.now();
+  if (!params?.forceRefresh) {
+    const cached = effectiveConfigCache.get(tenantKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
+  }
+
+  const envConfig = getVectorProviderConfigFromEnv();
+  const storedConfig = await loadStoredVectorProviderConfig({ tenantId: params?.tenantId });
+  const merged = applyDefinedSettings(envConfig, storedConfig);
+  effectiveConfigCache.set(tenantKey, {
+    value: merged,
+    expiresAt: now + EFFECTIVE_CONFIG_CACHE_TTL_MS,
+  });
+  return merged;
 }

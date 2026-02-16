@@ -10,6 +10,7 @@ import { systemSettings, invoiceConfig, tenants } from "../../drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import { validateGoogleOAuthFormat } from "../services/googleOAuthValidation";
+import { signBearerToken } from "../_core/tokens";
 
 // ============================================================
 // System Settings Router
@@ -61,6 +62,63 @@ const invoiceConfigSchema = z.object({
   })).optional(),
   isActive: z.boolean().default(true),
 });
+
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+const PY_TIMEOUT_MS = 10_000;
+
+async function readPythonErrorDetail(response: Response): Promise<string> {
+  const raw = await response.text().catch(() => "");
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as { detail?: unknown; message?: unknown };
+    if (typeof parsed.detail === "string" && parsed.detail.trim()) return parsed.detail;
+    if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message;
+  } catch {
+    // fall through to raw text
+  }
+  return raw;
+}
+
+function createAdminBearerToken(userId: number): string {
+  return signBearerToken(
+    {
+      sub: String(userId),
+      type: "access",
+      scopes: ["admin:*"],
+    },
+    "5m",
+  );
+}
+
+async function assertVectorDbConfigEditAllowedOrThrow(params: {
+  userId: number;
+  tenantId?: string | null;
+  emergency?: boolean;
+}): Promise<void> {
+  const token = createAdminBearerToken(params.userId);
+  const response = await fetch(`${PYTHON_BACKEND_URL}/api/admin/vectordb/provider-switch/assert-config-edit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    signal: AbortSignal.timeout(PY_TIMEOUT_MS),
+    body: JSON.stringify({
+      tenant_id: params.tenantId ?? null,
+      emergency: params.emergency ?? false,
+    }),
+  });
+
+  if (response.ok) {
+    return;
+  }
+
+  const detail = await readPythonErrorDetail(response);
+  if (response.status === 409) {
+    throw new Error(detail || "cutover_non_emergency_edit_blocked");
+  }
+  throw new Error(detail || `vectordb_cutover_guard_failed:${response.status}`);
+}
 
 export const systemSettingsRouter = router({
   // ============================================================
@@ -1314,6 +1372,13 @@ export const systemSettingsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      if (ctx.user?.id) {
+        await assertVectorDbConfigEditAllowedOrThrow({
+          userId: ctx.user.id,
+          tenantId: null,
+          emergency: false,
+        });
+      }
 
       const updates = [
         { key: "provider", value: input.provider, sensitive: false },

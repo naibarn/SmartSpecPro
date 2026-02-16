@@ -46,6 +46,14 @@ vi.mock("../services/vectorize", () => ({
   generateImageDescription: vi.fn().mockResolvedValue("A test image description"),
 }));
 
+vi.mock("../services/vectorProvider", async () => {
+  const actual = await vi.importActual("../services/vectorProvider");
+  return {
+    ...actual,
+    getEffectiveVectorProviderConfig: vi.fn().mockResolvedValue({ provider: "cloudflare_vectorize" }),
+  };
+});
+
 const { indexDocument, indexImage, removeVector } = await import(
   "../services/vectorize-indexing"
 );

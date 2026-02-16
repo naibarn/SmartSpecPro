@@ -199,6 +199,44 @@ class TestLibraryVectorObservabilityService:
         assert telemetry["insufficient_baseline"] is False
 
     @pytest.mark.asyncio
+    async def test_compute_search_latency_telemetry_scopes_by_tenant(self):
+        reset_vector_audit_events_for_tests()
+        now = datetime.utcnow()
+
+        record_vector_audit_event(
+            {
+                "event_version": "v1",
+                "event_type": "vector_search",
+                "operation": "search",
+                "outcome": "success",
+                "tenant_id": "tenant-a",
+                "provider": "pgvector",
+                "correlation_id": "tenant-a-current",
+                "timestamp": (now - timedelta(minutes=2)).isoformat(),
+                "details": {"latency_ms": 300.0},
+            }
+        )
+        record_vector_audit_event(
+            {
+                "event_version": "v1",
+                "event_type": "vector_search",
+                "operation": "search",
+                "outcome": "success",
+                "tenant_id": "tenant-b",
+                "provider": "pgvector",
+                "correlation_id": "tenant-b-current",
+                "timestamp": (now - timedelta(minutes=2)).isoformat(),
+                "details": {"latency_ms": 90.0},
+            }
+        )
+
+        telemetry_a = compute_search_latency_telemetry(now=now, tenant_id="tenant-a")
+        telemetry_b = compute_search_latency_telemetry(now=now, tenant_id="tenant-b")
+        assert telemetry_a["current_sample_count"] == 1
+        assert telemetry_b["current_sample_count"] == 1
+        assert telemetry_a["current_p95_ms"] > telemetry_b["current_p95_ms"]
+
+    @pytest.mark.asyncio
     async def test_queue_lag_alert_fires_on_threshold_breach(self):
         alerts = evaluate_vector_alert_policies(
             queue_lag_minutes=12.0,

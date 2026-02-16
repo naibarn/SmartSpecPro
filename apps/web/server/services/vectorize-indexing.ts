@@ -11,6 +11,7 @@ import {
 } from "./vectorize";
 import {
   dispatchVectorOperation,
+  getEffectiveVectorProviderConfig,
   getVectorProviderConfigFromEnv,
 } from "./vectorProvider";
 
@@ -125,7 +126,7 @@ export async function indexDocument(params: {
 }) {
   const chunks = chunkDocument(params.text);
   const vectors: VectorEntry[] = [];
-  const providerConfig = getVectorProviderConfigFromEnv();
+  const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
 
   for (let i = 0; i < chunks.length; i++) {
     const embedding = await generateEmbedding(chunks[i]);
@@ -164,7 +165,7 @@ export async function indexImage(params: {
 }) {
   const description = await generateImageDescription(params.imageUrl);
   const embedding = await generateEmbedding(description);
-  const providerConfig = getVectorProviderConfigFromEnv();
+  const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
 
   await dispatchVectorOperation({
     operation: "index",
@@ -191,11 +192,12 @@ export async function indexImage(params: {
  * Remove a vector by ID from the specified index.
  */
 export async function removeVector(indexName: string, id: string) {
+  const providerConfig = await getEffectiveVectorProviderConfig();
   await dispatchVectorOperation({
     operation: "delete",
     indexName,
     ids: [id],
-    providerConfig: getVectorProviderConfigFromEnv(),
+    providerConfig,
   });
 }
 
@@ -205,10 +207,11 @@ export async function removeVector(indexName: string, id: string) {
  */
 export async function removeDocument(id: string, maxChunks = 100) {
   const chunkIds = Array.from({ length: maxChunks }, (_, i) => `${id}-chunk-${i}`);
+  const providerConfig = await getEffectiveVectorProviderConfig();
   await dispatchVectorOperation({
     operation: "delete",
     indexName: DOCS_INDEX,
     ids: chunkIds,
-    providerConfig: getVectorProviderConfigFromEnv(),
+    providerConfig,
   });
 }

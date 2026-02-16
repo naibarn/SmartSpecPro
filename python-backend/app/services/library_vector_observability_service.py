@@ -126,8 +126,10 @@ def compute_search_latency_telemetry(
     now: datetime | None = None,
     window_minutes: float = LATENCY_WINDOW_MINUTES,
     baseline_window_minutes: float = LATENCY_BASELINE_WINDOW_MINUTES,
+    tenant_id: str | None = None,
 ) -> dict[str, Any]:
     now_ts = now or datetime.utcnow()
+    tenant_value = str(tenant_id).strip() if tenant_id is not None else None
     current_window = max(float(window_minutes), 1.0)
     baseline_window = max(float(baseline_window_minutes), current_window)
 
@@ -141,6 +143,10 @@ def compute_search_latency_telemetry(
     for event in _VECTOR_AUDIT_EVENTS:
         if str(event.get("operation") or "").lower() != "search":
             continue
+        if tenant_value is not None:
+            event_tenant = str(event.get("tenant_id") or "").strip()
+            if event_tenant != tenant_value:
+                continue
         timestamp = _parse_event_timestamp(event.get("timestamp"))
         if timestamp is None:
             continue
@@ -443,7 +449,7 @@ async def build_admin_vector_health_snapshot(
         "switch_status": str(state.status) if state is not None else "idle",
         "mirror_writes": bool(state.mirror_writes) if state is not None else False,
     }
-    latency_status = compute_search_latency_telemetry(now=now_ts)
+    latency_status = compute_search_latency_telemetry(now=now_ts, tenant_id=tenant_value)
 
     return {
         "tenant_id": tenant_value,

@@ -7,7 +7,7 @@
 import { generateEmbedding } from "./vectorize";
 import {
   dispatchVectorOperation,
-  getVectorProviderConfigFromEnv,
+  getEffectiveVectorProviderConfig,
   type VectorSearchMatch,
 } from "./vectorProvider";
 
@@ -51,6 +51,7 @@ export async function searchDocs(params: {
 
     const filter: Record<string, string> = { tenantId: params.tenantId };
     if (params.type) filter.type = params.type;
+    const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
 
     const result = await dispatchVectorOperation({
       operation: "search",
@@ -58,7 +59,7 @@ export async function searchDocs(params: {
       vector: queryEmbedding,
       topK: params.limit,
       filter,
-      providerConfig: getVectorProviderConfigFromEnv(),
+      providerConfig,
     });
     const matches = (result as { matches: VectorSearchMatch[] }).matches;
 
@@ -90,6 +91,7 @@ export async function searchImages(params: {
 
   try {
     const queryEmbedding = await generateEmbedding(params.query);
+    const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
 
     const result = await dispatchVectorOperation({
       operation: "search",
@@ -97,7 +99,7 @@ export async function searchImages(params: {
       vector: queryEmbedding,
       topK: params.limit,
       filter: { tenantId: params.tenantId },
-      providerConfig: getVectorProviderConfigFromEnv(),
+      providerConfig,
     });
     const matches = (result as { matches: VectorSearchMatch[] }).matches;
 

@@ -1,7 +1,8 @@
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as dbModule from "../../db";
 
 const pgState = vi.hoisted(() => ({
   rows: new Map<string, { embedding: number[]; metadata: Record<string, unknown> }>(),
@@ -77,11 +78,17 @@ vi.mock("pg", () => {
   return { Pool };
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 import {
   createVectorProviderAdapter,
   dispatchVectorOperation,
   getProviderCapabilities,
+  getEffectiveVectorProviderConfig,
   registerVectorProviderAdapter,
+  resetVectorProviderConfigCacheForTests,
   resetVectorProviderAdapterRegistry,
   resolveVectorProvider,
   validateProviderCapabilityRequest,
@@ -89,6 +96,10 @@ import {
 } from "../vectorProvider";
 
 describe("vectorProvider resolver", () => {
+  beforeEach(() => {
+    resetVectorProviderConfigCacheForTests();
+  });
+
   it("resolves read/write providers from effective settings and switch-state", () => {
     const resolvedRead = resolveVectorProvider("search", {
       provider: "chromadb",
@@ -114,6 +125,49 @@ describe("vectorProvider resolver", () => {
 
     expect(resolved.provider).toBe("cloudflare_vectorize");
     expect(resolved.fallbackApplied).toBe(true);
+  });
+
+  it("loads effective provider config from persisted settings and switch-state", async () => {
+    const fakeDb = {
+      select() {
+        return {
+          from() {
+            return {
+              where: async () => [
+                { key: "provider", value: "chromadb", isSensitive: false },
+                { key: "pgvectorHost", value: "db.internal", isSensitive: false },
+                { key: "pgvectorDatabase", value: "vectors", isSensitive: false },
+              ],
+            };
+          },
+        };
+      },
+      async execute() {
+        return {
+          rows: [
+            {
+              current_read_provider: "pgvector",
+              target_provider: "pgvector",
+              mirror_writes: true,
+            },
+          ],
+        };
+      },
+    };
+
+    vi.spyOn(dbModule, "getDb").mockResolvedValue(fakeDb as never);
+
+    const config = await getEffectiveVectorProviderConfig({
+      tenantId: "tenant-config",
+      forceRefresh: true,
+    });
+
+    expect(config.provider).toBe("chromadb");
+    expect(config.currentReadProvider).toBe("pgvector");
+    expect(config.targetProvider).toBe("pgvector");
+    expect(config.mirrorWrites).toBe(true);
+    expect(config.pgvectorHost).toBe("db.internal");
+    expect(config.pgvectorDatabase).toBe("vectors");
   });
 });
 
@@ -238,6 +292,43 @@ describe("vectorProvider adapter contract", () => {
     expect(chromaSearch.matches[0]?.id).toBe("vec-2");
     const chromaDelete = await chroma.delete({ indexName: "library", ids: ["vec-2"] });
     expect(chromaDelete.count).toBe(1);
+  });
+
+  it("serializes concurrent chromadb writes to avoid lost updates", async () => {
+    const chromaDir = await mkdtemp(join(tmpdir(), "vector-provider-race-"));
+    const chroma = createVectorProviderAdapter("chromadb", {
+      chromaPersistDir: chromaDir,
+    });
+
+    await Promise.all(
+      Array.from({ length: 20 }, (_, idx) =>
+        chroma.index({
+          indexName: "race",
+          vectors: [
+            {
+              id: `race-${idx}`,
+              values: [1, 0, 0],
+              metadata: {
+                tenantId: "tenant-race",
+                type: "doc",
+                createdAt: Date.now(),
+                title: `race-${idx}`,
+                sourceUrl: `s3://race-${idx}`,
+              },
+            },
+          ],
+        }),
+      ),
+    );
+
+    const search = await chroma.search({
+      indexName: "race",
+      vector: [1, 0, 0],
+      topK: 50,
+      filter: { tenantId: "tenant-race" },
+    });
+
+    expect(new Set(search.matches.map((match) => match.id)).size).toBe(20);
   });
 });
 

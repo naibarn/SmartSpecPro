@@ -18,6 +18,7 @@ vi.mock("../services/vectorProvider", () => ({
   dispatchVectorOperation: vi.fn().mockImplementation(async () => ({
     matches: await mockQuery(),
   })),
+  getEffectiveVectorProviderConfig: vi.fn().mockResolvedValue({ provider: "cloudflare_vectorize" }),
   getVectorProviderConfigFromEnv: vi.fn().mockReturnValue({ provider: "cloudflare_vectorize" }),
 }));
 
