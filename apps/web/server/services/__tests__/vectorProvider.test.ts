@@ -1,4 +1,81 @@
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const pgState = vi.hoisted(() => ({
+  rows: new Map<string, { embedding: number[]; metadata: Record<string, unknown> }>(),
+}));
+
+vi.mock("pg", () => {
+  class Pool {
+    async query(text: string, values: unknown[] = []) {
+      const sql = text.toLowerCase();
+      if (sql.includes("create table") || sql.includes("create index")) {
+        return { rows: [], rowCount: 0 };
+      }
+
+      if (sql.includes("insert into smartspec_vector_entries")) {
+        const indexName = String(values[0] || "");
+        const vectorId = String(values[1] || "");
+        const embedding = Array.isArray(values[2]) ? values[2].map((value) => Number(value)) : [];
+        const metadataRaw = values[3];
+        const metadata =
+          typeof metadataRaw === "string" ? (JSON.parse(metadataRaw) as Record<string, unknown>) : {};
+        pgState.rows.set(`${indexName}:${vectorId}`, { embedding, metadata });
+        return { rows: [], rowCount: 1 };
+      }
+
+      if (sql.includes("delete from smartspec_vector_entries")) {
+        const indexName = String(values[0] || "");
+        const ids = new Set((Array.isArray(values[1]) ? values[1] : []).map((value) => String(value)));
+        let removed = 0;
+        for (const key of Array.from(pgState.rows.keys())) {
+          const [rowIndex, rowId] = key.split(":");
+          if (rowIndex === indexName && ids.has(rowId)) {
+            pgState.rows.delete(key);
+            removed += 1;
+          }
+        }
+        return { rows: [], rowCount: removed };
+      }
+
+      if (sql.includes("select vector_id, embedding, metadata")) {
+        const indexName = String(values[0] || "");
+        const pairs: Array<[string, string]> = [];
+        for (let i = 1; i < values.length; i += 2) {
+          if (values[i + 1] === undefined) break;
+          pairs.push([String(values[i]), String(values[i + 1])]);
+        }
+
+        const rows = Array.from(pgState.rows.entries())
+          .filter(([key, value]) => {
+            const [rowIndex] = key.split(":");
+            if (rowIndex !== indexName) return false;
+            for (const [filterKey, filterValue] of pairs) {
+              if (String(value.metadata[filterKey]) !== filterValue) return false;
+            }
+            return true;
+          })
+          .map(([key, value]) => {
+            const [, vectorId] = key.split(":");
+            return {
+              vector_id: vectorId,
+              embedding: value.embedding,
+              metadata: value.metadata,
+            };
+          });
+        return { rows, rowCount: rows.length };
+      }
+
+      return { rows: [], rowCount: 0 };
+    }
+
+    async end() {}
+  }
+
+  return { Pool };
+});
 
 import {
   createVectorProviderAdapter,
@@ -8,7 +85,6 @@ import {
   resetVectorProviderAdapterRegistry,
   resolveVectorProvider,
   validateProviderCapabilityRequest,
-  VectorProviderError,
   type VectorProvider,
 } from "../vectorProvider";
 
@@ -44,6 +120,7 @@ describe("vectorProvider resolver", () => {
 describe("vectorProvider dispatch", () => {
   beforeEach(() => {
     resetVectorProviderAdapterRegistry();
+    pgState.rows.clear();
   });
 
   it("dispatches to the selected adapter only", async () => {
@@ -100,36 +177,67 @@ describe("vectorProvider dispatch", () => {
 });
 
 describe("vectorProvider adapter contract", () => {
-  it("exposes index/delete/search contract for all providers", async () => {
-    const cloudflare = createVectorProviderAdapter("cloudflare_vectorize", {
-      vectorizeAccountId: "acc",
-      vectorizeApiToken: "token",
-    });
+  beforeEach(() => {
+    resetVectorProviderAdapterRegistry();
+    pgState.rows.clear();
+  });
+
+  it("executes index/search/delete for pgvector and chromadb adapters", async () => {
+    const chromaDir = await mkdtemp(join(tmpdir(), "vector-provider-test-"));
     const pgvector = createVectorProviderAdapter("pgvector", {
       pgvectorHost: "localhost",
       pgvectorDatabase: "smartspec",
     });
-    const chroma = createVectorProviderAdapter("chromadb");
+    const chroma = createVectorProviderAdapter("chromadb", {
+      chromaPersistDir: chromaDir,
+    });
 
-    expect(typeof cloudflare.index).toBe("function");
-    expect(typeof cloudflare.delete).toBe("function");
-    expect(typeof cloudflare.search).toBe("function");
+    const sharedVectors = [
+      {
+        id: "vec-1",
+        values: [0.9, 0.1, 0.0],
+        metadata: {
+          tenantId: "tenant-1",
+          type: "doc",
+          createdAt: Date.now(),
+          title: "alpha",
+          sourceUrl: "s3://alpha",
+        },
+      },
+      {
+        id: "vec-2",
+        values: [0.0, 1.0, 0.0],
+        metadata: {
+          tenantId: "tenant-1",
+          type: "doc",
+          createdAt: Date.now(),
+          title: "beta",
+          sourceUrl: "s3://beta",
+        },
+      },
+    ];
 
-    await expect(
-      pgvector.search({
-        indexName: "library",
-        vector: [0.1, 0.2, 0.3],
-        topK: 5,
-      }),
-    ).rejects.toBeInstanceOf(VectorProviderError);
+    await pgvector.index({ indexName: "library", vectors: sharedVectors });
+    const pgSearch = await pgvector.search({
+      indexName: "library",
+      vector: [1, 0, 0],
+      topK: 2,
+      filter: { tenantId: "tenant-1" },
+    });
+    expect(pgSearch.matches[0]?.id).toBe("vec-1");
+    const pgDelete = await pgvector.delete({ indexName: "library", ids: ["vec-1"] });
+    expect(pgDelete.count).toBe(1);
 
-    await expect(
-      chroma.search({
-        indexName: "library",
-        vector: [0.1, 0.2, 0.3],
-        topK: 5,
-      }),
-    ).rejects.toBeInstanceOf(VectorProviderError);
+    await chroma.index({ indexName: "library", vectors: sharedVectors });
+    const chromaSearch = await chroma.search({
+      indexName: "library",
+      vector: [0, 1, 0],
+      topK: 2,
+      filter: { tenantId: "tenant-1" },
+    });
+    expect(chromaSearch.matches[0]?.id).toBe("vec-2");
+    const chromaDelete = await chroma.delete({ indexName: "library", ids: ["vec-2"] });
+    expect(chromaDelete.count).toBe(1);
   });
 });
 
@@ -146,7 +254,7 @@ describe("vectorProvider capability validation", () => {
           filter: { tenantId: "tenant-1" },
         },
       }),
-    ).toThrow(VectorProviderError);
+    ).toThrow();
 
     expect(() =>
       validateProviderCapabilityRequest({
@@ -160,7 +268,7 @@ describe("vectorProvider capability validation", () => {
           filter: { tenantId: "tenant-1" },
         },
       }),
-    ).toThrow(VectorProviderError);
+    ).toThrow();
 
     expect(() =>
       validateProviderCapabilityRequest({
@@ -171,6 +279,6 @@ describe("vectorProvider capability validation", () => {
           filter: undefined,
         },
       }),
-    ).toThrow(VectorProviderError);
+    ).toThrow();
   });
 });

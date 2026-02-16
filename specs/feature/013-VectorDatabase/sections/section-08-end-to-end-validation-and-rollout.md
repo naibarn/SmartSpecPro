@@ -54,7 +54,6 @@ Finalize feature readiness with integrated validation across API, worker, DB, an
 
 ### Deviations from plan
 - End-to-end validation is implemented as acceptance-style service tests in isolated DB fixtures rather than full staging environment smoke pipelines in this section.
-- Search latency alert validation uses policy-level threshold checks and runbook metadata; live p95 telemetry ingestion remains a follow-up.
 
 ### Tests added/updated
 - Added: `python-backend/tests/unit/services/test_library_rollout_validation.py`
@@ -68,4 +67,3 @@ Finalize feature readiness with integrated validation across API, worker, DB, an
 
 ### Known follow-ups
 - Add staging integration evidence capture for canary cohorts using live queue/search metrics.
-- Replace placeholder latency values in admin vector health endpoint with telemetry-backed p95/baseline values.

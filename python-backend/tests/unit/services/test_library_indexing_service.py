@@ -412,6 +412,89 @@ class TestLibraryIndexingService:
         assert result["status"] == "failed"
         assert result["failure_classification"] == "permanent"
 
+    @pytest.mark.asyncio
+    async def test_delete_payload_executes_and_is_idempotent(self, indexing_db):
+        item = await _create_library_item(
+            indexing_db,
+            tenant_id="tenant-309",
+            title="Delete me",
+            metadata={"prompt": "delete path"},
+        )
+
+        initial_job = await enqueue_library_index_job(indexing_db, item.id, tenant_id=item.tenant_id)
+        await process_library_index_job(
+            indexing_db,
+            initial_job["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda tenant_id, item_id, chunks, embeddings: [
+                f"vec:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks
+            ],
+        )
+
+        chunk_count_before = await indexing_db.scalar(
+            select(func.count()).select_from(LibraryChunk).where(LibraryChunk.library_item_id == item.id)
+        )
+        assert int(chunk_count_before or 0) > 0
+
+        delete_job = await enqueue_library_index_job(
+            indexing_db,
+            item.id,
+            tenant_id=item.tenant_id,
+            job_type="delete_index",
+        )
+        delete_payload = {
+            "version": "v2",
+            "domain": "library",
+            "operation": "delete",
+            "tenantId": item.tenant_id,
+            "entityId": f"library:{item.id}",
+            "dedupeKey": build_library_job_dedupe_key(
+                domain="library",
+                operation="delete",
+                tenant_id=item.tenant_id,
+                entity_id=f"library:{item.id}",
+            ),
+            "source": "library.delete",
+            "sourceMetadata": {"route": "library.delete"},
+        }
+
+        delete_result = await process_library_index_job(
+            indexing_db,
+            delete_job["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("upsert_should_not_run")),
+            job_payload=delete_payload,
+        )
+        assert delete_result["status"] == "completed"
+        assert delete_result["operation"] == "delete"
+        assert delete_result["removed_chunks"] > 0
+        assert delete_result["not_found"] is False
+
+        remaining_chunks = await indexing_db.scalar(
+            select(func.count()).select_from(LibraryChunk).where(LibraryChunk.library_item_id == item.id)
+        )
+        assert int(remaining_chunks or 0) == 0
+
+        second_delete_job = LibraryIndexJob(
+            library_item_id=item.id,
+            tenant_id=item.tenant_id,
+            job_type="delete_index",
+            status="pending",
+            run_at=datetime.utcnow(),
+        )
+        indexing_db.add(second_delete_job)
+        await indexing_db.commit()
+        await indexing_db.refresh(second_delete_job)
+        duplicate_result = await process_library_index_job(
+            indexing_db,
+            second_delete_job.id,
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("upsert_should_not_run")),
+            job_payload=delete_payload,
+        )
+        assert duplicate_result["status"] == "completed"
+        assert duplicate_result["duplicate"] is True
+
 
 def test_payload_parser_supports_v2_and_legacy_contracts():
     v2 = parse_library_index_job_payload(
@@ -440,6 +523,17 @@ def test_payload_parser_supports_v2_and_legacy_contracts():
     assert legacy["version"] == "legacy"
     assert legacy["entity_id"] == "library:45"
     assert legacy["operation"] == "index"
+
+    with pytest.raises(ValueError):
+        parse_library_index_job_payload(
+            {
+                "version": "v2",
+                "domain": "library",
+                "operation": "reindex",
+                "tenantId": "tenant-900",
+                "entityId": "library:22",
+            }
+        )
 
 
 def test_provider_resolution_falls_back_to_chroma(monkeypatch):

@@ -203,3 +203,35 @@
 - decision: dedicated `rollout-canary-runbook.md` artifact with cohort gates and rollback procedure
 - mode: `auto`
 - rationale: Improves operational handoff and keeps rollout ownership/checklists reusable.
+
+## Completion Remediation Decisions (2026-02-16)
+
+- step: node_provider_parity_strategy
+- options: keep deterministic stubs vs implement concrete adapters in Node runtime
+- decision: implement concrete `pgvector` and local persisted `chromadb` adapters
+- mode: `auto`
+- rationale: Closes production parity gap while preserving deterministic contract/error behavior.
+
+- step: worker_delete_contract
+- options: keep fail-closed delete path vs execute `operation=delete` in worker
+- decision: execute delete path with idempotent missing-item handling (`fail_on_missing=False`)
+- mode: `auto`
+- rationale: Completes queue payload contract for index+delete without breaking retry semantics.
+
+- step: gallery_backfill_execution
+- options: keep gallery skip diagnostics vs enqueue gallery jobs in campaign/batch runners
+- decision: enqueue gallery jobs with dedicated job type and no skip reason
+- mode: `auto`
+- rationale: Achieves domain parity and removes known rollout blocker.
+
+- step: cutover_runtime_wiring
+- options: keep service-only cutover controls vs expose runtime admin endpoints
+- decision: added provider-switch admin endpoints (state/assert/request/approve/rollback)
+- mode: `auto`
+- rationale: Makes governance controls callable by runtime admin operations.
+
+- step: security_hardening_decision
+- options: `plan_now`, `fix_now`, `defer`
+- decision: `defer`
+- mode: `auto`
+- rationale: No critical/high findings; remaining items are medium-risk hardening and test-depth improvements recorded in `implementation-security-review.md`.

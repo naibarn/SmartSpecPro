@@ -24,6 +24,13 @@ from app.services.library_vector_observability_service import (
     build_provider_settings_diagnostics,
     evaluate_vector_alert_policies,
 )
+from app.services.library_cutover_service import (
+    approve_read_cutover,
+    apply_either_trigger_rollback,
+    assert_config_edit_allowed,
+    get_or_create_switch_state,
+    request_provider_cutover,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -188,6 +195,37 @@ class SystemStatsResponse(BaseModel):
     total_credits_sold: int
     total_credits_used: int
     avg_credits_per_user: float
+
+
+class CutoverConfigEditRequest(BaseModel):
+    tenant_id: Optional[str] = None
+    emergency: bool = False
+
+
+class CutoverRequestPayload(BaseModel):
+    target_provider: str
+    tenant_id: Optional[str] = None
+    campaign_id: Optional[int] = None
+    campaign_completed: bool = False
+    connectivity_ok: bool = False
+    expected_version: Optional[int] = None
+
+
+class CutoverApprovePayload(BaseModel):
+    tenant_id: Optional[str] = None
+    coverage_ratio: float
+    smoke_passed: bool
+    parity_ratio: float
+    reconciliation_report: Dict[str, Any] = Field(default_factory=dict)
+    expected_version: Optional[int] = None
+
+
+class CutoverRollbackPayload(BaseModel):
+    tenant_id: Optional[str] = None
+    indexing_failure_rate: float
+    search_latency_factor: float
+    search_regression_detected: bool = False
+    expected_version: Optional[int] = None
 
 
 # ============================================================
@@ -837,6 +875,134 @@ async def admin_delete_tenant(
 # Vector Database — Reindex
 # ============================================================
 
+@router.get("/vectordb/provider-switch/state")
+async def get_vectordb_provider_switch_state(
+    request: Request,
+    tenant_id: Optional[str] = Query(None),
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return current provider switch-state for cutover governance."""
+    state = await get_or_create_switch_state(db, tenant_id=tenant_id)
+    return {
+        "tenant_id": state.tenant_id,
+        "switch_version": int(state.switch_version),
+        "status": state.status,
+        "campaign_status": state.campaign_status,
+        "current_read_provider": state.current_read_provider,
+        "previous_read_provider": state.previous_read_provider,
+        "target_provider": state.target_provider,
+        "mirror_writes": bool(state.mirror_writes),
+        "freeze_non_emergency_edits": bool(state.freeze_non_emergency_edits),
+        "readiness_gate": state.readiness_gate,
+        "campaign_id": state.campaign_id,
+    }
+
+
+@router.post("/vectordb/provider-switch/assert-config-edit")
+async def assert_vectordb_config_edit_allowed(
+    payload: CutoverConfigEditRequest,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Validate whether non-emergency provider configuration edits are currently allowed."""
+    state = await get_or_create_switch_state(db, tenant_id=payload.tenant_id)
+    try:
+        assert_config_edit_allowed(state, emergency=payload.emergency)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    return {
+        "allowed": True,
+        "tenant_id": state.tenant_id,
+        "switch_version": int(state.switch_version),
+        "status": state.status,
+        "freeze_non_emergency_edits": bool(state.freeze_non_emergency_edits),
+    }
+
+
+@router.post("/vectordb/provider-switch/request")
+async def request_vectordb_provider_cutover(
+    payload: CutoverRequestPayload,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Request staged provider cutover with campaign/connectivity prechecks."""
+    try:
+        state = await request_provider_cutover(
+            db,
+            target_provider=payload.target_provider,
+            tenant_id=payload.tenant_id,
+            campaign_id=payload.campaign_id,
+            campaign_completed=payload.campaign_completed,
+            connectivity_ok=payload.connectivity_ok,
+            expected_version=payload.expected_version,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return {
+        "tenant_id": state.tenant_id,
+        "switch_version": int(state.switch_version),
+        "status": state.status,
+        "campaign_status": state.campaign_status,
+        "current_read_provider": state.current_read_provider,
+        "target_provider": state.target_provider,
+        "mirror_writes": bool(state.mirror_writes),
+        "freeze_non_emergency_edits": bool(state.freeze_non_emergency_edits),
+    }
+
+
+@router.post("/vectordb/provider-switch/approve")
+async def approve_vectordb_provider_cutover(
+    payload: CutoverApprovePayload,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Evaluate readiness gate and apply read-provider cutover when thresholds pass."""
+    try:
+        result = await approve_read_cutover(
+            db,
+            tenant_id=payload.tenant_id,
+            coverage_ratio=payload.coverage_ratio,
+            smoke_passed=payload.smoke_passed,
+            parity_ratio=payload.parity_ratio,
+            reconciliation_report=payload.reconciliation_report,
+            expected_version=payload.expected_version,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return result
+
+
+@router.post("/vectordb/provider-switch/rollback")
+async def rollback_vectordb_provider_cutover(
+    payload: CutoverRollbackPayload,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Apply either-trigger rollback when failure-rate or search regression is detected."""
+    try:
+        result = await apply_either_trigger_rollback(
+            db,
+            tenant_id=payload.tenant_id,
+            indexing_failure_rate=payload.indexing_failure_rate,
+            search_latency_factor=payload.search_latency_factor,
+            search_regression_detected=payload.search_regression_detected,
+            expected_version=payload.expected_version,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return result
+
 @router.post("/vectordb/reindex")
 async def trigger_vectordb_reindex(
     request: Request,
@@ -986,15 +1152,19 @@ async def get_vectordb_health(
     processed = int(snapshot["campaign_progress"].get("processed", 0))
     failed = int(snapshot["campaign_progress"].get("failed", 0))
     failure_rate = (float(failed) / float(processed)) if processed > 0 else 0.0
+    latency_status = snapshot.get("latency_status") if isinstance(snapshot.get("latency_status"), dict) else {}
+    latency_p95_ms = float(latency_status.get("current_p95_ms", 0.0))
+    latency_baseline_p95_ms = float(latency_status.get("baseline_p95_ms", 1.0))
+    latency_window_minutes = float(latency_status.get("window_minutes", 15.0))
 
     alerts = evaluate_vector_alert_policies(
         queue_lag_minutes=float(snapshot["queue_status"]["lag_minutes"]),
         queue_lag_window_minutes=15.0,
         failure_rate=failure_rate,
         failure_window_minutes=30.0,
-        latency_p95_ms=100.0,
-        latency_baseline_p95_ms=100.0,
-        latency_window_minutes=15.0,
+        latency_p95_ms=latency_p95_ms,
+        latency_baseline_p95_ms=latency_baseline_p95_ms,
+        latency_window_minutes=latency_window_minutes,
         owner="vector-oncall",
         runbook_base_url="https://runbooks.smartaihub.app/vector",
     )

@@ -16,6 +16,7 @@ from app.services.library_vector_observability_service import (
     build_admin_vector_health_snapshot,
     build_provider_settings_diagnostics,
     build_vector_audit_event,
+    compute_search_latency_telemetry,
     evaluate_vector_alert_policies,
     get_recent_vector_audit_events,
     record_vector_audit_event,
@@ -80,6 +81,7 @@ class TestLibraryVectorObservabilityService:
 
     @pytest.mark.asyncio
     async def test_admin_health_snapshot_returns_provider_queue_campaign_and_failures(self, vector_obs_db):
+        reset_vector_audit_events_for_tests()
         now = datetime.utcnow()
         vector_obs_db.add(
             LibraryProviderSwitchState(
@@ -126,6 +128,19 @@ class TestLibraryVectorObservabilityService:
             )
         )
         await vector_obs_db.commit()
+        record_vector_audit_event(
+            {
+                "event_version": "v1",
+                "event_type": "vector_search",
+                "operation": "search",
+                "outcome": "success",
+                "tenant_id": "tenant-701",
+                "provider": "cloudflare_vectorize",
+                "correlation_id": "search-latency-current",
+                "timestamp": (now - timedelta(minutes=3)).isoformat(),
+                "details": {"latency_ms": 140.0},
+            }
+        )
 
         snapshot = await build_admin_vector_health_snapshot(
             vector_obs_db,
@@ -139,8 +154,49 @@ class TestLibraryVectorObservabilityService:
         assert snapshot["queue_status"]["lag_minutes"] >= 20
         assert snapshot["campaign_progress"]["status"] == "running"
         assert snapshot["campaign_progress"]["processed"] == 7
+        assert snapshot["latency_status"]["current_sample_count"] == 1
         assert len(snapshot["recent_failures"]) == 1
         assert snapshot["recent_failures"][0]["library_item_id"] == 99
+
+    @pytest.mark.asyncio
+    async def test_compute_search_latency_telemetry_uses_current_and_baseline_windows(self):
+        reset_vector_audit_events_for_tests()
+        now = datetime.utcnow()
+
+        for latency in (90.0, 110.0, 130.0):
+            record_vector_audit_event(
+                {
+                    "event_version": "v1",
+                    "event_type": "vector_search",
+                    "operation": "search",
+                    "outcome": "success",
+                    "tenant_id": "tenant-702",
+                    "provider": "pgvector",
+                    "correlation_id": f"baseline-{latency}",
+                    "timestamp": (now - timedelta(minutes=35)).isoformat(),
+                    "details": {"latency_ms": latency},
+                }
+            )
+        for latency in (180.0, 220.0, 250.0):
+            record_vector_audit_event(
+                {
+                    "event_version": "v1",
+                    "event_type": "vector_search",
+                    "operation": "search",
+                    "outcome": "success",
+                    "tenant_id": "tenant-702",
+                    "provider": "pgvector",
+                    "correlation_id": f"current-{latency}",
+                    "timestamp": (now - timedelta(minutes=5)).isoformat(),
+                    "details": {"latency_ms": latency},
+                }
+            )
+
+        telemetry = compute_search_latency_telemetry(now=now, window_minutes=15, baseline_window_minutes=60)
+        assert telemetry["current_sample_count"] == 3
+        assert telemetry["baseline_sample_count"] == 3
+        assert telemetry["current_p95_ms"] > telemetry["baseline_p95_ms"]
+        assert telemetry["insufficient_baseline"] is False
 
     @pytest.mark.asyncio
     async def test_queue_lag_alert_fires_on_threshold_breach(self):

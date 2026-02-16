@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import datetime, timedelta
+from math import ceil, floor
 from typing import Any
 
 from sqlalchemy import and_, asc, desc, or_, select
@@ -26,6 +27,7 @@ FAILURE_RATE_THRESHOLD = 0.05
 FAILURE_RATE_WINDOW_MINUTES = 30
 LATENCY_REGRESSION_FACTOR_THRESHOLD = 1.5
 LATENCY_WINDOW_MINUTES = 15
+LATENCY_BASELINE_WINDOW_MINUTES = 60
 
 INDEX_JOB_PENDING_STATUS = "pending"
 INDEX_JOB_RETRY_PENDING_STATUS = "retry_pending"
@@ -76,6 +78,96 @@ def _mask_value(value: Any) -> Any:
     if isinstance(value, list):
         return [_mask_value(item) for item in value]
     return value
+
+
+def _parse_event_timestamp(raw: Any) -> datetime | None:
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw))
+    except (TypeError, ValueError):
+        return None
+
+
+def _extract_latency_ms(details: dict[str, Any]) -> float | None:
+    for key in ("latency_ms", "latencyMs", "duration_ms", "durationMs", "search_latency_ms"):
+        value = details.get(key)
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                continue
+            try:
+                return float(stripped)
+            except ValueError:
+                continue
+    return None
+
+
+def _percentile(values: list[float], percentile: float) -> float:
+    if not values:
+        return 0.0
+    if len(values) == 1:
+        return float(values[0])
+
+    ordered = sorted(float(value) for value in values)
+    rank = max(0.0, min(1.0, percentile)) * float(len(ordered) - 1)
+    lower = floor(rank)
+    upper = ceil(rank)
+    if lower == upper:
+        return float(ordered[lower])
+    weight = rank - lower
+    return float(ordered[lower] * (1.0 - weight) + ordered[upper] * weight)
+
+
+def compute_search_latency_telemetry(
+    *,
+    now: datetime | None = None,
+    window_minutes: float = LATENCY_WINDOW_MINUTES,
+    baseline_window_minutes: float = LATENCY_BASELINE_WINDOW_MINUTES,
+) -> dict[str, Any]:
+    now_ts = now or datetime.utcnow()
+    current_window = max(float(window_minutes), 1.0)
+    baseline_window = max(float(baseline_window_minutes), current_window)
+
+    current_start = now_ts - timedelta(minutes=current_window)
+    baseline_end = current_start
+    baseline_start = baseline_end - timedelta(minutes=baseline_window)
+
+    current_samples: list[float] = []
+    baseline_samples: list[float] = []
+
+    for event in _VECTOR_AUDIT_EVENTS:
+        if str(event.get("operation") or "").lower() != "search":
+            continue
+        timestamp = _parse_event_timestamp(event.get("timestamp"))
+        if timestamp is None:
+            continue
+        details = event.get("details") if isinstance(event.get("details"), dict) else {}
+        latency_ms = _extract_latency_ms(details)
+        if latency_ms is None or latency_ms < 0:
+            continue
+
+        if timestamp >= current_start:
+            current_samples.append(latency_ms)
+        elif baseline_start <= timestamp < baseline_end:
+            baseline_samples.append(latency_ms)
+
+    current_p95 = _percentile(current_samples, 0.95)
+    baseline_p95 = _percentile(baseline_samples, 0.95)
+    if baseline_p95 <= 0.0:
+        baseline_p95 = current_p95 if current_p95 > 0.0 else 1.0
+
+    return {
+        "window_minutes": current_window,
+        "baseline_window_minutes": baseline_window,
+        "current_sample_count": len(current_samples),
+        "baseline_sample_count": len(baseline_samples),
+        "current_p95_ms": float(current_p95),
+        "baseline_p95_ms": float(baseline_p95),
+        "insufficient_baseline": len(baseline_samples) == 0,
+    }
 
 
 def build_vector_audit_event(
@@ -351,6 +443,7 @@ async def build_admin_vector_health_snapshot(
         "switch_status": str(state.status) if state is not None else "idle",
         "mirror_writes": bool(state.mirror_writes) if state is not None else False,
     }
+    latency_status = compute_search_latency_telemetry(now=now_ts)
 
     return {
         "tenant_id": tenant_value,
@@ -361,6 +454,7 @@ async def build_admin_vector_health_snapshot(
             "lag_window_minutes": float(QUEUE_LAG_WINDOW_MINUTES),
         },
         "campaign_progress": campaign_progress,
+        "latency_status": latency_status,
         "recent_failures": recent_failures,
         "timestamp": now_ts.isoformat(),
     }

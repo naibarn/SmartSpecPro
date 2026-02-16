@@ -14,7 +14,7 @@
 - section-05-backfill-reindex-and-consistency: completed (`5caee7b`)
 - section-06-staged-cutover-and-rollback-governance: completed (`e3e4508`)
 - section-07-observability-admin-and-alerting: completed (`8c8d0e9`)
-- section-08-end-to-end-validation-and-rollout: completed (pending commit hash)
+- section-08-end-to-end-validation-and-rollout: completed (`e134021`)
 
 ## Section Execution Log
 
@@ -36,7 +36,7 @@
 - commit: `b343e79`
 - test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_backfill_service.py`
 - pass_fail_summary: `PASS (12 tests)`
-- notable_deviations: `delete payload operation currently fails closed; queue task boundary has optional payload wiring only`
+- notable_deviations: `queue task boundary has optional payload wiring only`
 - blocked_tasks_resolved_remaining: `none`
 
 - section: `section-04-pgvector-migration-and-tenant-rls`
@@ -50,26 +50,33 @@
 - commit: `5caee7b`
 - test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_backfill_service.py tests/unit/services/test_library_indexing_service.py tests/unit/migrations/test_library_backfill_campaign_migration.py && cd /home/dev/projects/SmartSpecPro && source ~/.nvm/nvm.sh && npm --workspace @smartspec/web test -- server/__tests__/migrationOrdering.test.ts`
 - pass_fail_summary: `PASS (17 Python tests + 6 Node migration-ordering tests)`
-- notable_deviations: `gallery campaign batches currently track scoped candidates/diagnostics but skip Python enqueue execution pending gallery worker wiring`
+- notable_deviations: `none`
 - blocked_tasks_resolved_remaining: `none`
 
 - section: `section-06-staged-cutover-and-rollback-governance`
 - commit: `e3e4508`
 - test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_cutover_service.py tests/unit/migrations/test_library_provider_switch_state_migration.py && cd /home/dev/projects/SmartSpecPro && source ~/.nvm/nvm.sh && npm --workspace @smartspec/web test -- server/__tests__/migrationOrdering.test.ts`
 - pass_fail_summary: `PASS (9 Python tests + 7 Node migration-ordering tests)`
-- notable_deviations: `cutover governance is currently implemented as service-layer controls and not yet wired into admin/runtime mutation endpoints`
+- notable_deviations: `runtime admin cutover endpoints wired during completion remediation`
 - blocked_tasks_resolved_remaining: `none`
 
 - section: `section-07-observability-admin-and-alerting`
 - commit: `8c8d0e9`
 - test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_vector_observability_service.py tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_cutover_service.py && cd /home/dev/projects/SmartSpecPro/python-backend && .venv/bin/python -m py_compile app/api/admin.py app/services/library_vector_observability_service.py app/services/library_indexing_service.py app/services/library_cutover_service.py`
 - pass_fail_summary: `PASS (28 Python unit tests + compile checks)`
-- notable_deviations: `admin vector health endpoint currently uses placeholder latency values until live p95 telemetry wiring is added`
+- notable_deviations: `none`
 - blocked_tasks_resolved_remaining: `none`
 
 - section: `section-08-end-to-end-validation-and-rollout`
-- commit: `pending`
+- commit: `e134021`
 - test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_rollout_validation.py tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_cutover_service.py tests/unit/services/test_library_vector_observability_service.py && cd /home/dev/projects/SmartSpecPro/python-backend && .venv/bin/python -m py_compile app/api/admin.py app/services/library_indexing_service.py app/services/library_cutover_service.py app/services/library_vector_observability_service.py`
 - pass_fail_summary: `PASS (33 Python unit tests + compile checks)`
-- notable_deviations: `validation is acceptance-style in isolated DB fixtures; staging/live telemetry evidence capture remains follow-up`
+- notable_deviations: `validation is acceptance-style in isolated DB fixtures; staging evidence capture remains follow-up`
+- blocked_tasks_resolved_remaining: `none`
+
+- section: `completion-remediation`
+- commit: `pending`
+- test_command_used: `npm --workspace @smartspec/web test -- server/services/__tests__/vectorProvider.test.ts server/__tests__/vectorize-search.test.ts server/__tests__/vectorize-indexing.test.ts && cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_backfill_service.py tests/unit/services/test_library_vector_observability_service.py tests/unit/services/test_library_rollout_validation.py tests/unit/services/test_library_cutover_service.py && .venv/bin/python -m py_compile app/api/admin.py app/services/library_indexing_service.py app/services/library_backfill_service.py app/services/library_vector_observability_service.py`
+- pass_fail_summary: `PASS (Node 15 tests; Python 42 tests; compile checks)`
+- notable_deviations: `endpoint-level auth/contract tests for new provider-switch admin routes deferred`
 - blocked_tasks_resolved_remaining: `none`

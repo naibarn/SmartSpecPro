@@ -25,7 +25,6 @@ from app.services.library_observability import emit_metric, log_observability_ev
 ACTIVE_JOB_STATUSES = (PENDING_STATUS, PROCESSING_STATUS, RETRY_PENDING_STATUS)
 ELIGIBLE_ITEM_STATUSES = ("ready", "failed", "indexing")
 SUPPORTED_BACKFILL_DOMAINS = ("library", "gallery")
-GALLERY_SKIP_REASON = "gallery_enqueue_not_yet_wired_in_python_worker"
 GALLERY_SOURCE = "media_history"
 
 
@@ -298,17 +297,14 @@ async def run_backfill_campaign_batch(
     for candidate in candidates:
         enqueue_attempted += 1
         campaign.processed_count = int(campaign.processed_count or 0) + 1
-
-        if campaign.domain == "gallery":
-            campaign.skipped_count = int(campaign.skipped_count or 0) + 1
-            continue
+        job_type = "gallery_backfill_index" if campaign.domain == "gallery" else "backfill_index"
 
         try:
             result = await enqueue_library_index_job(
                 db,
                 int(candidate["library_item_id"]),
                 tenant_id=str(candidate["tenant_id"]),
-                job_type="backfill_index",
+                job_type=job_type,
                 run_at=datetime.utcnow(),
             )
             if result.get("created"):
@@ -342,7 +338,7 @@ async def run_backfill_campaign_batch(
         "created_job_ids": created_job_ids,
         "enqueue_attempted": enqueue_attempted,
         "estimated_remaining": estimated_remaining,
-        "skip_reason": GALLERY_SKIP_REASON if campaign.domain == "gallery" else None,
+        "skip_reason": None,
     }
     await db.commit()
 
@@ -601,7 +597,7 @@ async def run_library_backfill_batch(
         cursor=cursor,
         limit=cap,
     )
-    candidate_item_ids = [int(c["library_item_id"]) for c in candidates if c["domain"] == "library"]
+    candidate_item_ids = [int(c["library_item_id"]) for c in candidates]
     next_cursor = int(candidates[-1]["cursor"]) if candidates else cursor
 
     emit_metric(
@@ -638,15 +634,13 @@ async def run_library_backfill_batch(
     skipped = 0
     for candidate in candidates:
         enqueue_attempted += 1
-        if resolved_domain == "gallery":
-            skipped += 1
-            continue
+        job_type = "gallery_backfill_index" if resolved_domain == "gallery" else "backfill_index"
 
         result = await enqueue_library_index_job(
             db,
             int(candidate["library_item_id"]),
             tenant_id=str(candidate["tenant_id"]),
-            job_type="backfill_index",
+            job_type=job_type,
             run_at=datetime.utcnow(),
         )
         if result.get("created"):
@@ -688,6 +682,6 @@ async def run_library_backfill_batch(
         "skipped": skipped,
         "domain": resolved_domain,
         "diagnostics": {
-            "skip_reason": GALLERY_SKIP_REASON if resolved_domain == "gallery" else None,
+            "skip_reason": None,
         },
     }

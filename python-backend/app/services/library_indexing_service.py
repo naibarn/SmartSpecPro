@@ -102,6 +102,8 @@ def parse_library_index_job_payload(raw: Any) -> dict[str, Any]:
         entity_id = str(raw.get("entityId") or "").strip()
         domain = str(raw.get("domain") or "library").strip() or "library"
         operation = str(raw.get("operation") or "index").strip() or "index"
+        if operation not in {"index", "delete"}:
+            raise ValueError(f"Invalid library index job payload: unsupported operation '{operation}'")
         dedupe_key = str(raw.get("dedupeKey") or "").strip()
         if not dedupe_key:
             dedupe_key = build_library_job_dedupe_key(
@@ -641,6 +643,7 @@ async def delete_library_item_vectors(
     *,
     tenant_id: str,
     soft_delete_item: bool = True,
+    fail_on_missing: bool = True,
 ) -> dict[str, Any]:
     """Delete indexed chunk records for a library item and optionally soft-delete the item."""
     item = await db.scalar(
@@ -652,7 +655,16 @@ async def delete_library_item_vectors(
         )
     )
     if item is None:
-        raise LookupError(f"library_item_not_found:{library_item_id}")
+        if fail_on_missing:
+            raise LookupError(f"library_item_not_found:{library_item_id}")
+        return {
+            "library_item_id": library_item_id,
+            "tenant_id": tenant_id,
+            "removed_chunks": 0,
+            "removed_vector_refs": 0,
+            "soft_delete_item": soft_delete_item,
+            "not_found": True,
+        }
 
     chunk_rows = (
         (
@@ -719,6 +731,7 @@ async def delete_library_item_vectors(
         "removed_chunks": removed_chunks,
         "removed_vector_refs": removed_vector_refs,
         "soft_delete_item": soft_delete_item,
+        "not_found": False,
     }
 
 
@@ -844,9 +857,6 @@ async def process_library_index_job(
                     f"entity_mismatch: payload={parsed_payload['entity_id']} expected={expected_entity}"
                 )
 
-            if parsed_payload["operation"] == "delete":
-                raise NotImplementedError("delete_operation_not_supported_in_worker")
-
             duplicate_completed_job = await _find_duplicate_completed_job_by_dedupe_key(
                 db,
                 job=job,
@@ -893,6 +903,62 @@ async def process_library_index_job(
                     "chunks_written": 0,
                     "duplicate": True,
                     "dedupe_key": parsed_payload["dedupe_key"],
+                }
+
+            if parsed_payload["operation"] == "delete":
+                deleted = await delete_library_item_vectors(
+                    db,
+                    job.library_item_id,
+                    tenant_id=job.tenant_id,
+                    soft_delete_item=True,
+                    fail_on_missing=False,
+                )
+                job.status = COMPLETED_STATUS
+                job.completed_at = datetime.utcnow()
+                job.next_retry_at = None
+                job.last_error = None
+                job.updated_at = datetime.utcnow()
+                await db.commit()
+
+                log_observability_event(
+                    "library_index_job_delete_completed_observed",
+                    correlation_id=f"library-index:{job.id}",
+                    tenant_id=job.tenant_id,
+                    library_item_id=job.library_item_id,
+                    removed_chunks=int(deleted["removed_chunks"]),
+                    removed_vector_refs=int(deleted["removed_vector_refs"]),
+                    not_found=bool(deleted.get("not_found", False)),
+                )
+                emit_metric(
+                    "library.index.job.completed_total",
+                    tenant_id=job.tenant_id,
+                    job_type=job.job_type,
+                    operation="delete",
+                )
+                _safe_record_vector_audit_event(
+                    operation="delete",
+                    outcome="success",
+                    tenant_id=job.tenant_id,
+                    provider=resolve_library_vector_provider()[0],
+                    correlation_id=f"library-index:{job.id}",
+                    domain=parsed_payload.get("domain", "library"),
+                    entity_id=parsed_payload.get("entity_id", f"library:{job.library_item_id}"),
+                    details={
+                        "removed_chunks": int(deleted["removed_chunks"]),
+                        "removed_vector_refs": int(deleted["removed_vector_refs"]),
+                        "not_found": bool(deleted.get("not_found", False)),
+                        "payload_version": parsed_payload["version"],
+                    },
+                )
+                return {
+                    "job_id": job.id,
+                    "status": COMPLETED_STATUS,
+                    "chunks_written": 0,
+                    "operation": "delete",
+                    "removed_chunks": int(deleted["removed_chunks"]),
+                    "removed_vector_refs": int(deleted["removed_vector_refs"]),
+                    "not_found": bool(deleted.get("not_found", False)),
+                    "provider_payload_version": parsed_payload["version"],
                 }
 
         item = await db.scalar(

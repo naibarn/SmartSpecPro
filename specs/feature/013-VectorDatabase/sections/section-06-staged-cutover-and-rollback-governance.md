@@ -58,7 +58,7 @@ Implement controlled provider switching with readiness gating, drift reconciliat
 - `specs/feature/013-VectorDatabase/reviews/section-06-review.md`
 
 ### Deviations from plan
-- Cutover governance is implemented as a Python service boundary with persistence and deterministic policy checks, but it is not yet wired to admin/router endpoints in this section.
+- Cutover governance is implemented as a Python service boundary with persistence and deterministic policy checks; runtime admin endpoints were added during completion remediation.
 - Readiness and rollback signals are service-level evaluators with explicit inputs; live telemetry feed integration is deferred to observability/admin work.
 
 ### Tests added/updated
@@ -76,5 +76,4 @@ Implement controlled provider switching with readiness gating, drift reconciliat
   - validates migration 008 key schema markers
 
 ### Known follow-ups
-- Integrate cutover service into runtime admin/API mutation handlers so governance is enforced on real provider switch operations.
 - Add end-to-end cutover rehearsal tests against Postgres-backed state updates and real campaign telemetry.

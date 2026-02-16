@@ -55,7 +55,6 @@ Provide operational visibility and controls required to run multi-provider vecto
 - `specs/feature/013-VectorDatabase/reviews/section-07-review.md`
 
 ### Deviations from plan
-- Alert evaluation for latency regression is implemented with policy logic and runbook metadata, but current `/api/admin/vectordb/health` uses placeholder latency values pending live telemetry feed integration.
 - Admin diagnostics are delivered through a new vector health endpoint/service aggregation rather than a broad UI/dashboard rollout in this section.
 
 ### Tests added/updated
@@ -70,5 +69,4 @@ Provide operational visibility and controls required to run multi-provider vecto
   - validated unchanged cutover controls after switch audit instrumentation
 
 ### Known follow-ups
-- Wire real search latency p95/baseline metrics into vector alert evaluation inputs.
 - Add endpoint-level tests for `/api/admin/vectordb/health` auth + response contract.

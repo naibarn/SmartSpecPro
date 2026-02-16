@@ -1,3 +1,6 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import type { PoolConfig } from "pg";
 
 export type VectorProvider = "chromadb" | "pgvector" | "cloudflare_vectorize";
@@ -90,6 +93,24 @@ const PROVIDER_CAPABILITIES: Record<VectorProvider, VectorProviderCapabilities> 
 };
 
 const overrideAdapters: Partial<Record<VectorProvider, VectorProviderAdapter>> = {};
+const CHROMA_INDEX_FILE_SUFFIX = ".json";
+const CHROMA_DEFAULT_PERSIST_DIR = join(tmpdir(), "smartspec-chromadb");
+const PGVECTOR_TABLE_NAME = "smartspec_vector_entries";
+const MAX_PGVECTOR_SEARCH_SCAN = 5000;
+const pgPoolCache = new Map<string, PgPoolLike>();
+const pgSchemaReady = new Set<string>();
+
+type VectorFilter = Record<string, string | number | boolean>;
+
+type PgQueryResult = {
+  rows: Array<Record<string, unknown>>;
+  rowCount?: number | null;
+};
+
+type PgPoolLike = {
+  query(text: string, values?: unknown[]): Promise<PgQueryResult>;
+  end?: () => Promise<void> | void;
+};
 
 function isProvider(value: string | undefined | null): value is VectorProvider {
   return value === "cloudflare_vectorize" || value === "pgvector" || value === "chromadb";
@@ -139,6 +160,119 @@ function normalizeProviderError(provider: VectorProvider, code: string, error: u
     message,
     classification: isTransientError(error) ? "transient" : "permanent",
   });
+}
+
+function sanitizeIndexName(indexName: string): string {
+  const cleaned = (indexName || "default").trim().toLowerCase();
+  return cleaned.replace(/[^a-z0-9_-]+/g, "_");
+}
+
+function getChromaIndexPath(indexName: string, config?: VectorProviderConfig): string {
+  const configuredPersistDir = config?.chromaPersistDir || process.env.CHROMA_PERSIST_DIR || CHROMA_DEFAULT_PERSIST_DIR;
+  const persistDir = configuredPersistDir.startsWith("~/")
+    ? join(homedir(), configuredPersistDir.slice(2))
+    : configuredPersistDir;
+  return join(persistDir, `${sanitizeIndexName(indexName)}${CHROMA_INDEX_FILE_SUFFIX}`);
+}
+
+async function readChromaEntries(pathname: string): Promise<VectorEntry[]> {
+  try {
+    const raw = await readFile(pathname, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .filter((entry): entry is Partial<VectorEntry> => !!entry && typeof entry === "object")
+      .map((entry) => ({
+        id: String(entry.id || ""),
+        values: toNumberArray(entry.values),
+        metadata: toVectorMetadata(entry.metadata),
+      }))
+      .filter((entry) => entry.id.length > 0 && entry.values.length > 0);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function writeChromaEntries(pathname: string, entries: VectorEntry[]): Promise<void> {
+  await mkdir(dirname(pathname), { recursive: true });
+  await writeFile(pathname, JSON.stringify(entries), "utf-8");
+}
+
+function toNumberArray(raw: unknown): number[] {
+  if (Array.isArray(raw)) {
+    return raw.map((value) => Number(value)).filter((value) => Number.isFinite(value));
+  }
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      return trimmed
+        .slice(1, -1)
+        .split(",")
+        .map((value) => Number(value.trim()))
+        .filter((value) => Number.isFinite(value));
+    }
+  }
+  return [];
+}
+
+function toVectorMetadata(raw: unknown): VectorMetadata {
+  const metadata = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  return {
+    tenantId: String(metadata.tenantId || ""),
+    type: String(metadata.type || ""),
+    createdAt: Number(metadata.createdAt || 0),
+    title: String(metadata.title || ""),
+    sourceUrl: String(metadata.sourceUrl || ""),
+    description: metadata.description ? String(metadata.description) : undefined,
+  };
+}
+
+function metadataMatchesFilter(metadata: VectorMetadata, filter?: VectorFilter): boolean {
+  if (!filter || Object.keys(filter).length === 0) {
+    return true;
+  }
+
+  for (const [key, expected] of Object.entries(filter)) {
+    const actual = (metadata as Record<string, unknown>)[key];
+    if (actual === undefined || actual === null) {
+      return false;
+    }
+    if (String(actual) !== String(expected)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function cosineSimilarity(left: number[], right: number[]): number {
+  const length = Math.min(left.length, right.length);
+  if (length === 0) {
+    return 0;
+  }
+
+  let dotProduct = 0;
+  let leftNorm = 0;
+  let rightNorm = 0;
+
+  for (let idx = 0; idx < length; idx += 1) {
+    const leftValue = Number(left[idx]) || 0;
+    const rightValue = Number(right[idx]) || 0;
+    dotProduct += leftValue * rightValue;
+    leftNorm += leftValue * leftValue;
+    rightNorm += rightValue * rightValue;
+  }
+
+  if (leftNorm === 0 || rightNorm === 0) {
+    return 0;
+  }
+
+  return dotProduct / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
 }
 
 function requireCloudflareConfig(config?: VectorProviderConfig): { accountId: string; apiToken: string } {
@@ -261,40 +395,170 @@ function getPgVectorPoolConfig(config?: VectorProviderConfig): PoolConfig {
   };
 }
 
-function createPgVectorAdapter(config?: VectorProviderConfig): VectorProviderAdapter {
-  const unsupported = async (code: string) => {
-    try {
-      // Validate config eagerly so callers get deterministic errors.
-      getPgVectorPoolConfig(config);
-      throw new Error("Node pgvector adapter requires dedicated SQL schema wiring");
-    } catch (error) {
-      throw normalizeProviderError("pgvector", code, error);
-    }
-  };
+function getPgPoolCacheKey(config: PoolConfig): string {
+  return [
+    config.host || "localhost",
+    String(config.port || 5432),
+    config.database || "",
+    config.user || "",
+  ].join("|");
+}
 
+async function getOrCreatePgPool(config?: VectorProviderConfig): Promise<{ pool: PgPoolLike; key: string }> {
+  const poolConfig = getPgVectorPoolConfig(config);
+  const key = getPgPoolCacheKey(poolConfig);
+
+  let pool = pgPoolCache.get(key);
+  if (!pool) {
+    const pg = await import("pg");
+    const PoolCtor = pg.Pool as unknown as new (cfg: PoolConfig) => PgPoolLike;
+    pool = new PoolCtor(poolConfig);
+    pgPoolCache.set(key, pool);
+  }
+
+  if (!pgSchemaReady.has(key)) {
+    await pool.query(
+      `CREATE TABLE IF NOT EXISTS ${PGVECTOR_TABLE_NAME} (
+        index_name TEXT NOT NULL,
+        vector_id TEXT NOT NULL,
+        embedding DOUBLE PRECISION[] NOT NULL,
+        metadata JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (index_name, vector_id)
+      )`,
+    );
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS ${PGVECTOR_TABLE_NAME}_index_name_idx ON ${PGVECTOR_TABLE_NAME} (index_name)`,
+    );
+    pgSchemaReady.add(key);
+  }
+
+  return { pool, key };
+}
+
+function createPgVectorAdapter(config?: VectorProviderConfig): VectorProviderAdapter {
   return {
     capabilities: getProviderCapabilities("pgvector"),
-    index: () => unsupported("index_not_supported"),
-    delete: () => unsupported("delete_not_supported"),
-    search: () => unsupported("search_not_supported"),
+    async index(params) {
+      try {
+        const { pool } = await getOrCreatePgPool(config);
+        for (const vector of params.vectors) {
+          await pool.query(
+            `INSERT INTO ${PGVECTOR_TABLE_NAME} (index_name, vector_id, embedding, metadata, updated_at)
+             VALUES ($1, $2, $3::double precision[], $4::jsonb, NOW())
+             ON CONFLICT (index_name, vector_id)
+             DO UPDATE SET embedding = EXCLUDED.embedding, metadata = EXCLUDED.metadata, updated_at = NOW()`,
+            [params.indexName, vector.id, vector.values, JSON.stringify(vector.metadata)],
+          );
+        }
+        return { count: params.vectors.length };
+      } catch (error) {
+        throw normalizeProviderError("pgvector", "index_failed", error);
+      }
+    },
+    async delete(params) {
+      try {
+        const { pool } = await getOrCreatePgPool(config);
+        const result = await pool.query(
+          `DELETE FROM ${PGVECTOR_TABLE_NAME}
+           WHERE index_name = $1
+             AND vector_id = ANY($2::text[])`,
+          [params.indexName, params.ids],
+        );
+        return { count: Number(result.rowCount || 0) };
+      } catch (error) {
+        throw normalizeProviderError("pgvector", "delete_failed", error);
+      }
+    },
+    async search(params) {
+      try {
+        const { pool } = await getOrCreatePgPool(config);
+        const values: unknown[] = [params.indexName];
+        let sqlText =
+          `SELECT vector_id, embedding, metadata
+           FROM ${PGVECTOR_TABLE_NAME}
+           WHERE index_name = $1`;
+
+        if (params.filter && Object.keys(params.filter).length > 0) {
+          let argIndex = 2;
+          for (const [filterKey, filterValue] of Object.entries(params.filter)) {
+            sqlText += ` AND metadata ->> $${argIndex} = $${argIndex + 1}`;
+            values.push(filterKey, String(filterValue));
+            argIndex += 2;
+          }
+        }
+        sqlText += ` LIMIT ${MAX_PGVECTOR_SEARCH_SCAN}`;
+
+        const result = await pool.query(sqlText, values);
+        const matches = result.rows
+          .map((row) => {
+            const metadata = toVectorMetadata(row.metadata);
+            const score = cosineSimilarity(toNumberArray(row.embedding), params.vector);
+            return {
+              id: String(row.vector_id || ""),
+              score,
+              metadata,
+            } satisfies VectorSearchMatch;
+          })
+          .filter((row) => row.id.length > 0 && metadataMatchesFilter(row.metadata, params.filter))
+          .sort((left, right) => right.score - left.score)
+          .slice(0, params.topK);
+        return { matches };
+      } catch (error) {
+        throw normalizeProviderError("pgvector", "search_failed", error);
+      }
+    },
   };
 }
 
-function createChromaAdapter(): VectorProviderAdapter {
-  const unsupported = async (code: string) => {
-    throw new VectorProviderError({
-      provider: "chromadb",
-      code,
-      message: "Node Chroma adapter is not configured in this runtime",
-      classification: "permanent",
-    });
-  };
-
+function createChromaAdapter(config?: VectorProviderConfig): VectorProviderAdapter {
   return {
     capabilities: getProviderCapabilities("chromadb"),
-    index: () => unsupported("index_not_supported"),
-    delete: () => unsupported("delete_not_supported"),
-    search: () => unsupported("search_not_supported"),
+    async index(params) {
+      try {
+        const path = getChromaIndexPath(params.indexName, config);
+        const existing = await readChromaEntries(path);
+        const map = new Map(existing.map((entry) => [entry.id, entry]));
+        for (const vector of params.vectors) {
+          map.set(vector.id, vector);
+        }
+        await writeChromaEntries(path, Array.from(map.values()));
+        return { count: params.vectors.length };
+      } catch (error) {
+        throw normalizeProviderError("chromadb", "index_failed", error);
+      }
+    },
+    async delete(params) {
+      try {
+        const path = getChromaIndexPath(params.indexName, config);
+        const existing = await readChromaEntries(path);
+        const ids = new Set(params.ids);
+        const retained = existing.filter((entry) => !ids.has(entry.id));
+        const removed = existing.length - retained.length;
+        await writeChromaEntries(path, retained);
+        return { count: removed };
+      } catch (error) {
+        throw normalizeProviderError("chromadb", "delete_failed", error);
+      }
+    },
+    async search(params) {
+      try {
+        const path = getChromaIndexPath(params.indexName, config);
+        const existing = await readChromaEntries(path);
+        const matches = existing
+          .filter((entry) => metadataMatchesFilter(entry.metadata, params.filter))
+          .map((entry) => ({
+            id: entry.id,
+            score: cosineSimilarity(entry.values, params.vector),
+            metadata: entry.metadata,
+          }))
+          .sort((left, right) => right.score - left.score)
+          .slice(0, params.topK);
+        return { matches };
+      } catch (error) {
+        throw normalizeProviderError("chromadb", "search_failed", error);
+      }
+    },
   };
 }
 
@@ -305,7 +569,7 @@ function createDefaultAdapter(provider: VectorProvider, config?: VectorProviderC
   if (provider === "pgvector") {
     return createPgVectorAdapter(config);
   }
-  return createChromaAdapter();
+  return createChromaAdapter(config);
 }
 
 export function getProviderCapabilities(provider: VectorProvider): VectorProviderCapabilities {
@@ -385,6 +649,14 @@ export function resetVectorProviderAdapterRegistry(): void {
   delete overrideAdapters.chromadb;
   delete overrideAdapters.pgvector;
   delete overrideAdapters.cloudflare_vectorize;
+  for (const pool of pgPoolCache.values()) {
+    const maybeEnd = pool.end;
+    if (typeof maybeEnd === "function") {
+      void maybeEnd.call(pool);
+    }
+  }
+  pgPoolCache.clear();
+  pgSchemaReady.clear();
 }
 
 function getAdapter(provider: VectorProvider, config?: VectorProviderConfig): VectorProviderAdapter {

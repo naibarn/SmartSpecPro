@@ -52,7 +52,6 @@ Align Celery worker execution with selected vector provider and harden job proce
 
 ### Deviations from plan
 - Worker job ingestion currently accepts optional payload metadata (`job_payload`) but task-entry wiring remains follow-up; existing callers continue to process jobs without payload object.
-- `delete` payload operations are currently fail-closed (`delete_operation_not_supported_in_worker`) rather than executing provider deletes.
 - Provider resolution is env-backed (`LIBRARY_VECTOR_PROVIDER` / `VECTOR_DB_PROVIDER`) and not yet integrated with persisted switch-state settings.
 
 ### Tests added/updated
@@ -65,4 +64,3 @@ Align Celery worker execution with selected vector provider and harden job proce
 
 ### Known follow-ups
 - Pass queue payload metadata into `process_library_index_job` at the Celery task boundary so parser/tenant guardrails are always exercised.
-- Implement provider delete operation handling for payloads with `operation=delete`.

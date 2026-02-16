@@ -250,7 +250,28 @@ class TestLibraryBackfillService:
         assert refreshed.succeeded_count == 4
 
     @pytest.mark.asyncio
-    async def test_gallery_campaign_records_actionable_skip_diagnostics(self, backfill_db):
+    async def test_run_library_backfill_batch_enqueues_gallery_domain(self, backfill_db):
+        for i in range(2):
+            await _seed_gallery_item(backfill_db, tenant_id="tenant-452", suffix=i)
+
+        result = await run_library_backfill_batch(
+            backfill_db,
+            tenant_id="tenant-452",
+            cursor=0,
+            batch_size=5,
+            dry_run=False,
+            paused=False,
+            max_enqueue=5,
+            domain="gallery",
+        )
+
+        assert result["domain"] == "gallery"
+        assert result["enqueued_jobs"] == 2
+        assert result["skipped"] == 0
+        assert result["diagnostics"]["skip_reason"] is None
+
+    @pytest.mark.asyncio
+    async def test_gallery_campaign_enqueues_jobs_with_no_skip_reason(self, backfill_db):
         for i in range(2):
             await _seed_gallery_item(backfill_db, tenant_id="tenant-451", suffix=i)
 
@@ -268,9 +289,11 @@ class TestLibraryBackfillService:
         )
 
         assert result["counters"]["processed"] == 2
-        assert result["counters"]["skipped"] == 2
-        assert result["counters"]["succeeded"] == 0
-        assert result["diagnostics"]["skip_reason"] == "gallery_enqueue_not_yet_wired_in_python_worker"
+        assert result["counters"]["queued"] == 2
+        assert result["counters"]["succeeded"] == 2
+        assert result["counters"]["skipped"] == 0
+        assert result["diagnostics"]["skip_reason"] is None
+        assert len(result["created_job_ids"]) == 2
 
     @pytest.mark.asyncio
     async def test_consistency_validator_reports_divergence_with_diagnostics(self, backfill_db):
