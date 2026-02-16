@@ -10,6 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.library import LibraryProviderSwitchState
 from app.services.library_observability import emit_metric, log_observability_event
+from app.services.library_vector_observability_service import (
+    build_vector_audit_event,
+    record_vector_audit_event,
+)
 
 DEFAULT_READ_PROVIDER = "cloudflare_vectorize"
 SUPPORTED_PROVIDERS = ("cloudflare_vectorize", "pgvector", "chromadb")
@@ -21,6 +25,15 @@ DEFAULT_COVERAGE_THRESHOLD = 0.95
 DEFAULT_PARITY_THRESHOLD = 0.95
 DEFAULT_FAILURE_RATE_THRESHOLD = 0.05
 DEFAULT_LATENCY_REGRESSION_THRESHOLD = 1.5
+
+
+def _safe_record_switch_audit_event(**kwargs: Any) -> None:
+    try:
+        event = build_vector_audit_event(**kwargs)
+        record_vector_audit_event(event)
+    except Exception:  # noqa: BLE001
+        # Audit path must not break cutover controls.
+        return
 
 
 def _normalize_tenant_id(tenant_id: str | int | None) -> str | None:
@@ -266,6 +279,22 @@ async def request_provider_cutover(
         campaign_id=campaign_id,
         switch_version=state.switch_version,
     )
+    _safe_record_switch_audit_event(
+        operation="switch",
+        outcome="success",
+        tenant_id=resolved_tenant,
+        provider=state.target_provider or state.current_read_provider,
+        correlation_id=f"library-cutover:{state.id}:{state.switch_version}",
+        domain="library",
+        entity_id=None,
+        details={
+            "status": state.status,
+            "campaign_status": state.campaign_status,
+            "current_read_provider": state.current_read_provider,
+            "target_provider": state.target_provider,
+            "switch_version": state.switch_version,
+        },
+    )
 
     return state
 
@@ -334,6 +363,22 @@ async def approve_read_cutover(
         target_provider=state.target_provider,
         switch_version=state.switch_version,
     )
+    _safe_record_switch_audit_event(
+        operation="switch",
+        outcome="success" if cutover_applied else "skipped",
+        tenant_id=resolved_tenant,
+        provider=state.current_read_provider,
+        correlation_id=f"library-cutover:{state.id}:{state.switch_version}",
+        domain="library",
+        entity_id=None,
+        details={
+            "cutover_applied": cutover_applied,
+            "failed_checks": gate["failed_checks"],
+            "current_read_provider": state.current_read_provider,
+            "target_provider": state.target_provider,
+            "switch_version": state.switch_version,
+        },
+    )
 
     return {
         "cutover_applied": cutover_applied,
@@ -398,6 +443,21 @@ async def apply_either_trigger_rollback(
         current_read_provider=state.current_read_provider,
         failed_triggers=trigger["failed_triggers"],
         switch_version=state.switch_version,
+    )
+    _safe_record_switch_audit_event(
+        operation="switch",
+        outcome="failure",
+        tenant_id=resolved_tenant,
+        provider=state.current_read_provider,
+        correlation_id=f"library-cutover:{state.id}:{state.switch_version}",
+        domain="library",
+        entity_id=None,
+        details={
+            "rollback_applied": True,
+            "failed_triggers": trigger["failed_triggers"],
+            "status": state.status,
+            "switch_version": state.switch_version,
+        },
     )
 
     return {

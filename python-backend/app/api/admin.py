@@ -2,6 +2,7 @@
 Admin API Endpoints
 """
 
+import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Request
@@ -18,6 +19,11 @@ from app.models.credit import CreditTransaction
 from app.models.payment import PaymentTransaction
 from app.services.credit_service import CreditService
 from app.services.audit_service import AuditService
+from app.services.library_vector_observability_service import (
+    build_admin_vector_health_snapshot,
+    build_provider_settings_diagnostics,
+    evaluate_vector_alert_policies,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -900,3 +906,101 @@ async def get_vectordb_reindex_status(
         response["result"] = {"error": str(result.result)}
 
     return response
+
+
+@router.get("/vectordb/health")
+async def get_vectordb_health(
+    request: Request,
+    tenant_id: Optional[str] = Query(None),
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return vector provider, queue, campaign, and alert diagnostics for admin operations."""
+    snapshot = await build_admin_vector_health_snapshot(db, tenant_id=tenant_id)
+
+    provider = snapshot["provider_status"]["current_read_provider"]
+    provider_config: Dict[str, Any]
+    provider_capabilities: Dict[str, Any]
+    connection_health: Dict[str, Any]
+
+    if provider == "pgvector":
+        provider_config = {
+            "host": os.getenv("PGVECTOR_HOST"),
+            "port": os.getenv("PGVECTOR_PORT"),
+            "database": os.getenv("PGVECTOR_DATABASE"),
+            "user": os.getenv("PGVECTOR_USER"),
+            "password": os.getenv("PGVECTOR_PASSWORD"),
+        }
+        connection_health = {
+            "healthy": bool(provider_config["host"] and provider_config["database"]),
+            "status": "configured" if (provider_config["host"] and provider_config["database"]) else "misconfigured",
+            "message": "pgvector host/database settings detected",
+            "checked_at": datetime.utcnow().isoformat(),
+        }
+        provider_capabilities = {
+            "supports_metadata_filter": True,
+            "supports_hybrid_search": True,
+        }
+    elif provider == "cloudflare_vectorize":
+        provider_config = {
+            "account_id": os.getenv("VECTORIZE_ACCOUNT_ID") or os.getenv("CF_ACCOUNT_ID"),
+            "api_token": os.getenv("VECTORIZE_API_TOKEN") or os.getenv("CF_VECTORIZE_API_TOKEN"),
+            "index_name": os.getenv("VECTORIZE_INDEX_NAME") or os.getenv("CF_VECTORIZE_INDEX"),
+        }
+        connection_health = {
+            "healthy": bool(provider_config["account_id"] and provider_config["api_token"]),
+            "status": (
+                "configured"
+                if (provider_config["account_id"] and provider_config["api_token"])
+                else "misconfigured"
+            ),
+            "message": "Cloudflare Vectorize credentials detected",
+            "checked_at": datetime.utcnow().isoformat(),
+        }
+        provider_capabilities = {
+            "supports_metadata_filter": True,
+            "supports_hybrid_search": False,
+        }
+    else:
+        provider_config = {
+            "persist_dir": os.getenv("CHROMA_PERSIST_DIR"),
+        }
+        connection_health = {
+            "healthy": bool(provider_config["persist_dir"]),
+            "status": "configured" if provider_config["persist_dir"] else "misconfigured",
+            "message": "Chroma persistence directory detected",
+            "checked_at": datetime.utcnow().isoformat(),
+        }
+        provider_capabilities = {
+            "supports_metadata_filter": True,
+            "supports_hybrid_search": False,
+        }
+
+    diagnostics = build_provider_settings_diagnostics(
+        provider_name=provider,
+        config=provider_config,
+        connection_health=connection_health,
+        capabilities=provider_capabilities,
+    )
+
+    processed = int(snapshot["campaign_progress"].get("processed", 0))
+    failed = int(snapshot["campaign_progress"].get("failed", 0))
+    failure_rate = (float(failed) / float(processed)) if processed > 0 else 0.0
+
+    alerts = evaluate_vector_alert_policies(
+        queue_lag_minutes=float(snapshot["queue_status"]["lag_minutes"]),
+        queue_lag_window_minutes=15.0,
+        failure_rate=failure_rate,
+        failure_window_minutes=30.0,
+        latency_p95_ms=100.0,
+        latency_baseline_p95_ms=100.0,
+        latency_window_minutes=15.0,
+        owner="vector-oncall",
+        runbook_base_url="https://runbooks.smartaihub.app/vector",
+    )
+
+    return {
+        **snapshot,
+        "alerts": alerts,
+        "provider_diagnostics": diagnostics,
+    }

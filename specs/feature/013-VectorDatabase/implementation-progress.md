@@ -12,8 +12,8 @@
 - section-03-worker-dispatch-idempotency-and-retries: completed (`b343e79`)
 - section-04-pgvector-migration-and-tenant-rls: completed (`7a51bd3`)
 - section-05-backfill-reindex-and-consistency: completed (`5caee7b`)
-- section-06-staged-cutover-and-rollback-governance: completed (pending commit hash)
-- section-07-observability-admin-and-alerting: pending
+- section-06-staged-cutover-and-rollback-governance: completed (`e3e4508`)
+- section-07-observability-admin-and-alerting: completed (pending commit hash)
 - section-08-end-to-end-validation-and-rollout: pending
 
 ## Section Execution Log
@@ -54,8 +54,15 @@
 - blocked_tasks_resolved_remaining: `none`
 
 - section: `section-06-staged-cutover-and-rollback-governance`
-- commit: `pending`
+- commit: `e3e4508`
 - test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_cutover_service.py tests/unit/migrations/test_library_provider_switch_state_migration.py && cd /home/dev/projects/SmartSpecPro && source ~/.nvm/nvm.sh && npm --workspace @smartspec/web test -- server/__tests__/migrationOrdering.test.ts`
 - pass_fail_summary: `PASS (9 Python tests + 7 Node migration-ordering tests)`
 - notable_deviations: `cutover governance is currently implemented as service-layer controls and not yet wired into admin/runtime mutation endpoints`
+- blocked_tasks_resolved_remaining: `none`
+
+- section: `section-07-observability-admin-and-alerting`
+- commit: `pending`
+- test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_vector_observability_service.py tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_cutover_service.py && cd /home/dev/projects/SmartSpecPro/python-backend && .venv/bin/python -m py_compile app/api/admin.py app/services/library_vector_observability_service.py app/services/library_indexing_service.py app/services/library_cutover_service.py`
+- pass_fail_summary: `PASS (28 Python unit tests + compile checks)`
+- notable_deviations: `admin vector health endpoint currently uses placeholder latency values until live p95 telemetry wiring is added`
 - blocked_tasks_resolved_remaining: `none`

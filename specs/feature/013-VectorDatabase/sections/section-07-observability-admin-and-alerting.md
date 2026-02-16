@@ -43,3 +43,32 @@ Provide operational visibility and controls required to run multi-provider vecto
 - Required audit trails and admin diagnostics are available.
 - Alert policies are active and test-verified.
 - Operational ownership for incidents is explicit and documented.
+
+## As-Built (2026-02-16)
+
+### Actual files changed
+- `python-backend/app/services/library_vector_observability_service.py`
+- `python-backend/app/services/library_indexing_service.py`
+- `python-backend/app/services/library_cutover_service.py`
+- `python-backend/app/api/admin.py`
+- `python-backend/tests/unit/services/test_library_vector_observability_service.py`
+- `specs/feature/013-VectorDatabase/reviews/section-07-review.md`
+
+### Deviations from plan
+- Alert evaluation for latency regression is implemented with policy logic and runbook metadata, but current `/api/admin/vectordb/health` uses placeholder latency values pending live telemetry feed integration.
+- Admin diagnostics are delivered through a new vector health endpoint/service aggregation rather than a broad UI/dashboard rollout in this section.
+
+### Tests added/updated
+- Added: `python-backend/tests/unit/services/test_library_vector_observability_service.py`
+  - audit event required-field coverage across `index/delete/search/switch/reindex`
+  - admin health aggregation payload shape and queue/campaign/failure slices
+  - alert policy threshold checks (queue lag, failure rate, latency regression)
+  - provider settings diagnostics credential masking behavior
+- Updated: `python-backend/tests/unit/services/test_library_indexing_service.py`
+  - validated unchanged indexing behavior while audit instrumentation remains non-breaking
+- Updated: `python-backend/tests/unit/services/test_library_cutover_service.py`
+  - validated unchanged cutover controls after switch audit instrumentation
+
+### Known follow-ups
+- Wire real search latency p95/baseline metrics into vector alert evaluation inputs.
+- Add endpoint-level tests for `/api/admin/vectordb/health` auth + response contract.

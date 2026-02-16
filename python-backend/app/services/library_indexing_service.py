@@ -15,6 +15,10 @@ from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
 from app.services.embedding_service import EmbeddingService, get_embedding_service
 from app.services.library_observability import emit_metric, log_observability_event
 from app.services.credit_billing_client import charge_credits_post_deduct
+from app.services.library_vector_observability_service import (
+    build_vector_audit_event,
+    record_vector_audit_event,
+)
 
 logger = structlog.get_logger()
 
@@ -49,6 +53,22 @@ class VectorUpsertFn(Protocol):
         chunks: list[dict[str, Any]],
         embeddings: list[list[float]],
     ) -> list[str]: ...
+
+
+def _safe_record_vector_audit_event(**kwargs: Any) -> None:
+    try:
+        event = build_vector_audit_event(**kwargs)
+        record_vector_audit_event(event)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("vector_audit_record_failed", error=str(exc), operation=kwargs.get("operation"))
+
+
+def _derive_audit_operation(job_type: str, parsed_payload: dict[str, Any] | None = None) -> str:
+    if parsed_payload and parsed_payload.get("operation") == "delete":
+        return "delete"
+    if "reindex" in str(job_type or "").lower():
+        return "reindex"
+    return "index"
 
 
 def _derive_legacy_domain(job_type: str) -> str:
@@ -593,6 +613,20 @@ async def reindex_all_library_items(
         total=total_count,
         enqueued=enqueued,
     )
+    _safe_record_vector_audit_event(
+        operation="reindex",
+        outcome="success" if errors == 0 else "failure",
+        tenant_id=tenant_id,
+        provider=resolve_library_vector_provider()[0],
+        correlation_id=f"library-reindex:{tenant_id or 'global'}",
+        domain="library",
+        entity_id=None,
+        details={
+            "total_items": total_count,
+            "enqueued_jobs": enqueued,
+            "errors": errors,
+        },
+    )
 
     return {
         "total_items": total_count,
@@ -752,6 +786,20 @@ async def process_library_index_job(
                     tenant_id=job.tenant_id,
                     job_type=job.job_type,
                 )
+                _safe_record_vector_audit_event(
+                    operation=_derive_audit_operation(job.job_type, parsed_payload),
+                    outcome="skipped",
+                    tenant_id=job.tenant_id,
+                    provider=resolve_library_vector_provider()[0],
+                    correlation_id=f"library-index:{job.id}",
+                    domain=parsed_payload.get("domain", "library"),
+                    entity_id=parsed_payload.get("entity_id", f"library:{job.library_item_id}"),
+                    details={
+                        "reason": "dedupe_key_duplicate",
+                        "dedupe_key": parsed_payload["dedupe_key"],
+                        "duplicate_of_job_id": duplicate_completed_job.id,
+                    },
+                )
                 return {
                     "job_id": job.id,
                     "status": COMPLETED_STATUS,
@@ -846,6 +894,21 @@ async def process_library_index_job(
             chunk_count=len(chunks),
             attempt_count=job.attempt_count,
         )
+        _safe_record_vector_audit_event(
+            operation=_derive_audit_operation(job.job_type, parsed_payload),
+            outcome="success",
+            tenant_id=job.tenant_id,
+            provider=resolve_library_vector_provider()[0],
+            correlation_id=f"library-index:{job.id}",
+            domain=parsed_payload["domain"] if parsed_payload else "library",
+            entity_id=parsed_payload["entity_id"] if parsed_payload else f"library:{job.library_item_id}",
+            details={
+                "chunk_count": len(chunks),
+                "attempt_count": job.attempt_count,
+                "job_type": job.job_type,
+                "payload_version": parsed_payload["version"] if parsed_payload else "legacy",
+            },
+        )
 
         # Post-deduct credit billing for indexing
         service_tag = "library.save_reindex" if job.job_type == "reindex" else "library.upload_index"
@@ -918,6 +981,21 @@ async def process_library_index_job(
                 attempt_count=job.attempt_count,
                 error=error_message,
                 failure_classification=failure_classification,
+            )
+            _safe_record_vector_audit_event(
+                operation=_derive_audit_operation(job.job_type, parsed_payload),
+                outcome="failure",
+                tenant_id=job.tenant_id,
+                provider=resolve_library_vector_provider()[0],
+                correlation_id=f"library-index:{job.id}",
+                domain=parsed_payload["domain"] if parsed_payload else "library",
+                entity_id=parsed_payload["entity_id"] if parsed_payload else f"library:{job.library_item_id}",
+                details={
+                    "attempt_count": job.attempt_count,
+                    "error": error_message,
+                    "failure_classification": failure_classification,
+                    "dead_lettered": True,
+                },
             )
             return {
                 "job_id": job.id,

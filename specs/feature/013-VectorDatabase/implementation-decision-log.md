@@ -157,3 +157,29 @@
 - decision: rollback on either indexing failure-rate breach (>=5%) OR search regression (explicit flag or latency >=1.5x)
 - mode: `auto`
 - rationale: Matches section requirement for fast recovery on either safety signal.
+
+## Section 07 Decisions
+
+- step: observability_storage_scope
+- options: persistent audit table vs bounded in-memory audit stream + structured logs
+- decision: bounded in-memory audit stream (`deque`) plus structured log emission and metric counters
+- mode: `auto`
+- rationale: Enables immediate audit schema validation with minimal migration risk while preserving operational visibility.
+
+- step: admin_health_surface
+- options: add broad UI/dashboard first vs add admin service aggregator + endpoint contract now
+- decision: add service aggregator + `/api/admin/vectordb/health` endpoint now
+- mode: `auto`
+- rationale: Meets section diagnostics objective while keeping scope constrained to backend operational data contract.
+
+- step: alert_policy_ownership_metadata
+- options: threshold checks only vs thresholds with owner/runbook metadata
+- decision: include owner + runbook URL in alert payloads
+- mode: `auto`
+- rationale: Aligns alerts with operational ownership and incident response requirements.
+
+- step: credential_diagnostics_strategy
+- options: hide provider config entirely vs masked diagnostic payload with health/capabilities
+- decision: masked config with recursive secret redaction + explicit connection health/capabilities fields
+- mode: `auto`
+- rationale: Preserves actionable admin diagnostics without leaking credentials.
