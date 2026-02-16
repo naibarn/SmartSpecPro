@@ -9,6 +9,10 @@ import {
   chunkDocument,
   generateImageDescription,
 } from "./vectorize";
+import {
+  dispatchVectorOperation,
+  getVectorProviderConfigFromEnv,
+} from "./vectorProvider";
 
 const DOCS_INDEX =
   process.env.VECTORIZE_DOCS_INDEX || "docs-index-prod";
@@ -54,43 +58,32 @@ interface VectorizeClient {
  * Uses Cloudflare API REST endpoints.
  */
 export function getVectorizeClient(indexName: string): VectorizeClient {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.VECTORIZE_API_TOKEN || process.env.CLOUDFLARE_AI_API_KEY;
-
-  if (!accountId || !apiToken) {
-    throw new Error("CLOUDFLARE_ACCOUNT_ID and VECTORIZE_API_TOKEN must be set");
-  }
-
-  const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/indexes/${indexName}`;
+  const cloudflareOnlyConfig = {
+    ...getVectorProviderConfigFromEnv(),
+    provider: "cloudflare_vectorize",
+    currentReadProvider: "cloudflare_vectorize",
+    targetProvider: "cloudflare_vectorize",
+  };
 
   return {
     async upsert(vectors: VectorEntry[]) {
-      const ndjson = vectors
-        .map((v) => JSON.stringify(v))
-        .join("\n");
-      const resp = await fetch(`${baseUrl}/upsert`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/x-ndjson",
-        },
-        body: ndjson,
+      const result = await dispatchVectorOperation({
+        operation: "index",
+        indexName,
+        vectors,
+        providerConfig: cloudflareOnlyConfig,
       });
-      if (!resp.ok) throw new Error(`Vectorize upsert failed: ${resp.status}`);
-      return { count: vectors.length };
+      return result as { count: number };
     },
 
     async delete(ids: string[]) {
-      const resp = await fetch(`${baseUrl}/delete-by-ids`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ids }),
+      const result = await dispatchVectorOperation({
+        operation: "delete",
+        indexName,
+        ids,
+        providerConfig: cloudflareOnlyConfig,
       });
-      if (!resp.ok) throw new Error(`Vectorize delete failed: ${resp.status}`);
-      return { count: ids.length };
+      return result as { count: number };
     },
 
     async query(
@@ -100,30 +93,21 @@ export function getVectorizeClient(indexName: string): VectorizeClient {
         filter?: Record<string, string | number>;
       },
     ) {
-      const resp = await fetch(`${baseUrl}/query`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          vector,
-          topK: options.topK,
-          filter: options.filter,
-          returnMetadata: true,
-        }),
+      const result = await dispatchVectorOperation({
+        operation: "search",
+        indexName,
+        vector,
+        topK: options.topK,
+        filter: options.filter,
+        providerConfig: cloudflareOnlyConfig,
       });
-      if (!resp.ok) throw new Error(`Vectorize query failed: ${resp.status}`);
-      const data = (await resp.json()) as {
-        result: {
-          matches: Array<{
-            id: string;
-            score: number;
-            metadata: VectorMetadata;
-          }>;
-        };
+      return result as {
+        matches: Array<{
+          id: string;
+          score: number;
+          metadata: VectorMetadata;
+        }>;
       };
-      return data.result;
     },
   };
 }
@@ -141,6 +125,7 @@ export async function indexDocument(params: {
 }) {
   const chunks = chunkDocument(params.text);
   const vectors: VectorEntry[] = [];
+  const providerConfig = getVectorProviderConfigFromEnv();
 
   for (let i = 0; i < chunks.length; i++) {
     const embedding = await generateEmbedding(chunks[i]);
@@ -158,9 +143,13 @@ export async function indexDocument(params: {
   }
 
   // Batch upsert
-  const client = getVectorizeClient(DOCS_INDEX);
   for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
-    await client.upsert(vectors.slice(i, i + BATCH_SIZE));
+    await dispatchVectorOperation({
+      operation: "index",
+      indexName: DOCS_INDEX,
+      vectors: vectors.slice(i, i + BATCH_SIZE),
+      providerConfig,
+    });
   }
 }
 
@@ -175,30 +164,39 @@ export async function indexImage(params: {
 }) {
   const description = await generateImageDescription(params.imageUrl);
   const embedding = await generateEmbedding(description);
+  const providerConfig = getVectorProviderConfigFromEnv();
 
-  const client = getVectorizeClient(IMAGES_INDEX);
-  await client.upsert([
-    {
-      id: params.id,
-      values: embedding,
-      metadata: {
-        tenantId: params.tenantId,
-        type: "image",
-        createdAt: Date.now(),
-        title: params.filename,
-        sourceUrl: params.imageUrl,
-        description,
+  await dispatchVectorOperation({
+    operation: "index",
+    indexName: IMAGES_INDEX,
+    vectors: [
+      {
+        id: params.id,
+        values: embedding,
+        metadata: {
+          tenantId: params.tenantId,
+          type: "image",
+          createdAt: Date.now(),
+          title: params.filename,
+          sourceUrl: params.imageUrl,
+          description,
+        },
       },
-    },
-  ]);
+    ],
+    providerConfig,
+  });
 }
 
 /**
  * Remove a vector by ID from the specified index.
  */
 export async function removeVector(indexName: string, id: string) {
-  const client = getVectorizeClient(indexName);
-  await client.delete([id]);
+  await dispatchVectorOperation({
+    operation: "delete",
+    indexName,
+    ids: [id],
+    providerConfig: getVectorProviderConfigFromEnv(),
+  });
 }
 
 /**
@@ -206,7 +204,11 @@ export async function removeVector(indexName: string, id: string) {
  * Documents are stored as {id}-chunk-0, {id}-chunk-1, etc.
  */
 export async function removeDocument(id: string, maxChunks = 100) {
-  const client = getVectorizeClient(DOCS_INDEX);
   const chunkIds = Array.from({ length: maxChunks }, (_, i) => `${id}-chunk-${i}`);
-  await client.delete(chunkIds);
+  await dispatchVectorOperation({
+    operation: "delete",
+    indexName: DOCS_INDEX,
+    ids: chunkIds,
+    providerConfig: getVectorProviderConfigFromEnv(),
+  });
 }

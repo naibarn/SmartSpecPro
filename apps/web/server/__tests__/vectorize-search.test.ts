@@ -14,12 +14,11 @@ vi.mock("../services/vectorize", () => ({
   generateImageDescription: vi.fn().mockResolvedValue("description"),
 }));
 
-vi.mock("../services/vectorize-indexing", () => ({
-  getVectorizeClient: vi.fn().mockReturnValue({
-    query: mockQuery,
-    upsert: vi.fn(),
-    delete: vi.fn(),
-  }),
+vi.mock("../services/vectorProvider", () => ({
+  dispatchVectorOperation: vi.fn().mockImplementation(async () => ({
+    matches: await mockQuery(),
+  })),
+  getVectorProviderConfigFromEnv: vi.fn().mockReturnValue({ provider: "cloudflare_vectorize" }),
 }));
 
 const { searchDocs, searchImages } = await import("../services/vectorize-search");
@@ -31,8 +30,7 @@ beforeEach(() => {
 describe("Search Endpoints", () => {
   describe("search.docs", () => {
     it("returns ranked results for text query", async () => {
-      mockQuery.mockResolvedValueOnce({
-        matches: [
+      mockQuery.mockResolvedValueOnce([
           {
             id: "doc-1-chunk-0",
             score: 0.92,
@@ -55,8 +53,7 @@ describe("Search Endpoints", () => {
               tenantId: "t1",
             },
           },
-        ],
-      });
+        ]);
 
       const results = await searchDocs({
         query: "user authentication flow",
@@ -71,8 +68,7 @@ describe("Search Endpoints", () => {
     });
 
     it("filters results by tenantId", async () => {
-      mockQuery.mockResolvedValueOnce({
-        matches: [
+      mockQuery.mockResolvedValueOnce([
           {
             id: "doc-3",
             score: 0.88,
@@ -84,8 +80,7 @@ describe("Search Endpoints", () => {
               tenantId: "tenant-42",
             },
           },
-        ],
-      });
+        ]);
 
       const results = await searchDocs({
         query: "test",
@@ -95,8 +90,8 @@ describe("Search Endpoints", () => {
 
       expect(results).toHaveLength(1);
       // Verify the query was called with the tenant filter
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.any(Array),
+      const { dispatchVectorOperation } = await import("../services/vectorProvider");
+      expect(vi.mocked(dispatchVectorOperation)).toHaveBeenCalledWith(
         expect.objectContaining({
           filter: expect.objectContaining({ tenantId: "tenant-42" }),
         }),
@@ -104,8 +99,7 @@ describe("Search Endpoints", () => {
     });
 
     it("limits results to topK", async () => {
-      mockQuery.mockResolvedValueOnce({
-        matches: Array.from({ length: 5 }, (_, i) => ({
+      mockQuery.mockResolvedValueOnce(Array.from({ length: 5 }, (_, i) => ({
           id: `doc-${i}`,
           score: 0.9 - i * 0.1,
           metadata: {
@@ -115,13 +109,12 @@ describe("Search Endpoints", () => {
             createdAt: Date.now(),
             tenantId: "t1",
           },
-        })),
-      });
+        })));
 
       const results = await searchDocs({ query: "test", tenantId: "t1", limit: 5 });
       expect(results.length).toBeLessThanOrEqual(5);
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.any(Array),
+      const { dispatchVectorOperation } = await import("../services/vectorProvider");
+      expect(vi.mocked(dispatchVectorOperation)).toHaveBeenCalledWith(
         expect.objectContaining({ topK: 5 }),
       );
     });
@@ -135,8 +128,7 @@ describe("Search Endpoints", () => {
 
   describe("search.images", () => {
     it("returns results with image metadata", async () => {
-      mockQuery.mockResolvedValueOnce({
-        matches: [
+      mockQuery.mockResolvedValueOnce([
           {
             id: "img-1",
             score: 0.88,
@@ -149,8 +141,7 @@ describe("Search Endpoints", () => {
               description: "A dashboard screenshot",
             },
           },
-        ],
-      });
+        ]);
 
       const results = await searchImages({ query: "product screenshot", tenantId: "t1", limit: 10 });
       expect(results).toHaveLength(1);

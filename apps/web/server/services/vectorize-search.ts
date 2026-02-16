@@ -5,7 +5,11 @@
  * over documents and images with tenant isolation.
  */
 import { generateEmbedding } from "./vectorize";
-import { getVectorizeClient } from "./vectorize-indexing";
+import {
+  dispatchVectorOperation,
+  getVectorProviderConfigFromEnv,
+  type VectorSearchMatch,
+} from "./vectorProvider";
 
 const DOCS_INDEX =
   process.env.VECTORIZE_DOCS_INDEX || "docs-index-prod";
@@ -44,17 +48,21 @@ export async function searchDocs(params: {
 
   try {
     const queryEmbedding = await generateEmbedding(params.query);
-    const client = getVectorizeClient(DOCS_INDEX);
 
     const filter: Record<string, string> = { tenantId: params.tenantId };
     if (params.type) filter.type = params.type;
 
-    const results = await client.query(queryEmbedding, {
+    const result = await dispatchVectorOperation({
+      operation: "search",
+      indexName: DOCS_INDEX,
+      vector: queryEmbedding,
       topK: params.limit,
       filter,
+      providerConfig: getVectorProviderConfigFromEnv(),
     });
+    const matches = (result as { matches: VectorSearchMatch[] }).matches;
 
-    return results.matches
+    return matches
       .filter((match) => match.score >= MIN_RELEVANCE_SCORE)
       .map((match) => ({
         id: match.id,
@@ -82,14 +90,18 @@ export async function searchImages(params: {
 
   try {
     const queryEmbedding = await generateEmbedding(params.query);
-    const client = getVectorizeClient(IMAGES_INDEX);
 
-    const results = await client.query(queryEmbedding, {
+    const result = await dispatchVectorOperation({
+      operation: "search",
+      indexName: IMAGES_INDEX,
+      vector: queryEmbedding,
       topK: params.limit,
       filter: { tenantId: params.tenantId },
+      providerConfig: getVectorProviderConfigFromEnv(),
     });
+    const matches = (result as { matches: VectorSearchMatch[] }).matches;
 
-    return results.matches
+    return matches
       .filter((match) => match.score >= MIN_RELEVANCE_SCORE)
       .map((match) => ({
         id: match.id,
