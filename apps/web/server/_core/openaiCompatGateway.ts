@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { ENV } from "./env";
 
 /**
@@ -15,7 +16,7 @@ function requireGatewayKey(req: any, res: any): boolean {
     return false;
   }
   const k = req.header("x-gateway-key") || "";
-  if (k.length !== GATEWAY_KEY.length || !require("crypto").timingSafeEqual(Buffer.from(k), Buffer.from(GATEWAY_KEY))) {
+  if (k.length !== GATEWAY_KEY.length || !crypto.timingSafeEqual(Buffer.from(k), Buffer.from(GATEWAY_KEY))) {
     res.status(401).json({ error: { message: "invalid_gateway_key" } });
     return false;
   }

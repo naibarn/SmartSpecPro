@@ -25,6 +25,9 @@ ExecStartPre=/bin/bash -c 'for i in $(seq 1 20); do ss -tlnp 2>/dev/null | grep 
 # Start directly via tsx (not npm run start — avoids extra parent process)
 ExecStart=/home/dev/.nvm/versions/node/v24.13.0/bin/npx tsx server/_core/index.ts
 
+# Verify server is actually responding after startup (wait up to 15s for cold start)
+ExecStartPost=/bin/bash -c 'for i in $(seq 1 15); do curl -sf http://localhost:3000/healthz >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: healthz check failed after 15s"; exit 1'
+
 # Clean shutdown: SIGTERM to main, then SIGKILL entire cgroup after 15s
 KillMode=mixed
 KillSignal=SIGTERM
@@ -33,11 +36,14 @@ TimeoutStopSec=15s
 # Clean up port after stop
 ExecStopPost=/bin/bash -c '/usr/bin/fuser -k 3000/tcp 2>/dev/null || true'
 
-# Restart policy: only on failure, not on clean stop
+# Restart policy: exponential backoff to prevent tight crash loops
+# Sequence: 5s → 10s → 20s → 40s → 80s → 120s (cap)
 Restart=on-failure
 RestartSec=5s
-StartLimitIntervalSec=300
-StartLimitBurst=10
+RestartMaxDelaySec=120s
+RestartSteps=6
+StartLimitIntervalSec=600
+StartLimitBurst=8
 
 # Logging
 StandardOutput=journal

@@ -70,7 +70,18 @@
       "Bash(grep:*)",
       "Bash(xargs:*)",
       "Bash(find:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(sudo -S systemctl restart:*)",
+      "WebFetch(domain:docs.cloud.google.com)",
+      "WebFetch(domain:www.dragonflydb.io)",
+      "WebFetch(domain:cloudchipr.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:www.w3tutorials.net)",
+      "WebFetch(domain:www.pump.co)",
+      "WebFetch(domain:www.freetiers.com)",
+      "WebFetch(domain:www.prosperops.com)",
+      "WebFetch(domain:hamy.xyz)",
+      "WebFetch(domain:www.bytebase.com)"
     ],
     "deny": [
       "Bash(rm *)",

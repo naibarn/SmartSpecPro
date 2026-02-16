@@ -579,6 +579,48 @@ app.use((err: any, req: any, res: any, next: any) => {
 let httpServer: ReturnType<typeof createServer> | null = null;
 
 async function main() {
+  // ── Pre-flight validation ────────────────────────────────────────────
+  // Fail fast on critical issues to prevent silent crash loops.
+  const preflightErrors: string[] = [];
+
+  if (!ENV.databaseUrl) preflightErrors.push("DATABASE_URL not set");
+  if (!ENV.jwtSecret) preflightErrors.push("JWT_SECRET not set");
+
+  // Database connectivity check (5s timeout)
+  try {
+    const db = await getDb();
+    if (!db) {
+      preflightErrors.push("Database connection pool unavailable");
+    } else {
+      await Promise.race([
+        db.execute(sql`SELECT 1`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+      ]);
+    }
+  } catch (err: any) {
+    preflightErrors.push(`Database check failed: ${err.message}`);
+  }
+
+  // Redis connectivity check (3s timeout)
+  try {
+    const redis = getRedisClient();
+    await Promise.race([
+      redis.ping(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
+    ]);
+  } catch (err: any) {
+    preflightErrors.push(`Redis check failed: ${err.message}`);
+  }
+
+  if (preflightErrors.length > 0) {
+    console.error("[Startup] FATAL: Pre-flight checks failed:");
+    preflightErrors.forEach((e) => console.error(`  - ${e}`));
+    process.exit(1);
+  }
+
+  console.log("[Startup] Pre-flight checks passed (DB + Redis OK)");
+  // ── End pre-flight ───────────────────────────────────────────────────
+
   const server = createServer(app);
   httpServer = server;
 

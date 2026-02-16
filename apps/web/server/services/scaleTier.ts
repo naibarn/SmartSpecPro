@@ -12,6 +12,7 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
+import { fileURLToPath } from "url";
 
 const execFileAsync = promisify(execFile);
 
@@ -209,6 +210,8 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
 // Project Paths
 // ============================================================
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "../../../..");
 const WEB_ENV_PATH = path.join(PROJECT_ROOT, "apps/web/.env");
 const PYTHON_ENV_PATH = path.join(PROJECT_ROOT, "python-backend/.env");
