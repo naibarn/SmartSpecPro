@@ -57,9 +57,9 @@ describe("migration ordering", () => {
       .filter((f: string) => f.match(/^\d{3}_/))
       .sort();
 
-    expect(migrations.length).toBeGreaterThanOrEqual(7);
+    expect(migrations.length).toBeGreaterThanOrEqual(8);
     expect(migrations[migrations.length - 1]).toContain(
-      "007_library_backfill_campaign"
+      "008_library_provider_switch_state"
     );
   });
 
@@ -90,5 +90,19 @@ describe("migration ordering", () => {
     expect(content).toContain("CREATE TABLE IF NOT EXISTS");
     expect(content).toContain("queued_count");
     expect(content).toContain("processed_count");
+  });
+
+  it("Python migration 008 defines provider switch-state persistence table", () => {
+    const migrationPath = path.resolve(
+      import.meta.dirname,
+      "../../../../python-backend/migrations/008_library_provider_switch_state.py"
+    );
+
+    expect(fs.existsSync(migrationPath)).toBe(true);
+    const content = fs.readFileSync(migrationPath, "utf-8");
+    expect(content).toContain("library_provider_switch_states");
+    expect(content).toContain("current_read_provider");
+    expect(content).toContain("target_provider");
+    expect(content).toContain("switch_version");
   });
 });

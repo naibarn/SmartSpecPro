@@ -131,3 +131,29 @@
 - decision: bounded missing-entity sample (max 50)
 - mode: `auto`
 - rationale: Keeps diagnostics actionable without unbounded response payload growth on large tenants.
+
+## Section 06 Decisions
+
+- step: switch_state_persistence_shape
+- options: in-memory cutover state vs persistent DB model + migration
+- decision: persistent model `library_provider_switch_states` with migration `008_library_provider_switch_state.py`
+- mode: `auto`
+- rationale: Section objective requires auditable, resumable, and monotonic state across process boundaries.
+
+- step: optimistic_lock_enforcement
+- options: in-memory version check only vs DB-conditional update on `(id, switch_version)`
+- decision: DB-conditional updates with rowcount conflict detection
+- mode: `auto`
+- rationale: Ensures concurrent writes cannot silently override state transitions.
+
+- step: readiness_gate_thresholds
+- options: permissive ad-hoc thresholds vs strict `coverage_95_plus_smoke` defaults
+- decision: coverage >=95%, smoke required, parity >=95%, reconciliation drift == 0
+- mode: `auto`
+- rationale: Aligns gating behavior to section contract and fails closed on drift.
+
+- step: rollback_trigger_policy
+- options: require both trigger classes vs either-trigger rollback
+- decision: rollback on either indexing failure-rate breach (>=5%) OR search regression (explicit flag or latency >=1.5x)
+- mode: `auto`
+- rationale: Matches section requirement for fast recovery on either safety signal.

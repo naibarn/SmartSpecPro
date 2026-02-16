@@ -45,3 +45,36 @@ Implement controlled provider switching with readiness gating, drift reconciliat
 - Cutover only occurs after `coverage_95_plus_smoke` passes.
 - Either rollback trigger path is automated and verified.
 - Switch-state transitions are monotonic, auditable, and concurrency-safe.
+
+## As-Built (2026-02-16)
+
+### Actual files changed
+- `python-backend/app/models/library.py`
+- `python-backend/app/services/library_cutover_service.py`
+- `python-backend/migrations/008_library_provider_switch_state.py`
+- `python-backend/tests/unit/services/test_library_cutover_service.py`
+- `python-backend/tests/unit/migrations/test_library_provider_switch_state_migration.py`
+- `apps/web/server/__tests__/migrationOrdering.test.ts`
+- `specs/feature/013-VectorDatabase/reviews/section-06-review.md`
+
+### Deviations from plan
+- Cutover governance is implemented as a Python service boundary with persistence and deterministic policy checks, but it is not yet wired to admin/router endpoints in this section.
+- Readiness and rollback signals are service-level evaluators with explicit inputs; live telemetry feed integration is deferred to observability/admin work.
+
+### Tests added/updated
+- Added: `python-backend/tests/unit/services/test_library_cutover_service.py`
+  - target connectivity precheck failure behavior
+  - non-emergency edit freeze enforcement
+  - optimistic-lock stale version rejection
+  - readiness-gated read cutover sequencing
+  - either-trigger rollback restoration (failure-rate/search regression)
+  - reconciliation drift gate blocking
+- Added: `python-backend/tests/unit/migrations/test_library_provider_switch_state_migration.py`
+  - migration 008 contract coverage for switch-state persistence table
+- Updated: `apps/web/server/__tests__/migrationOrdering.test.ts`
+  - migration ordering now expects `008_library_provider_switch_state.py` as latest Python migration
+  - validates migration 008 key schema markers
+
+### Known follow-ups
+- Integrate cutover service into runtime admin/API mutation handlers so governance is enforced on real provider switch operations.
+- Add end-to-end cutover rehearsal tests against Postgres-backed state updates and real campaign telemetry.

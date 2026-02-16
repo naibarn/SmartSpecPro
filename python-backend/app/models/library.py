@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -216,4 +217,40 @@ class LibraryBackfillCampaign(Base):
     __table_args__ = (
         Index("ix_library_backfill_campaign_domain_status", "domain", "status"),
         Index("ix_library_backfill_campaign_tenant_domain", "tenant_id", "domain"),
+    )
+
+
+class LibraryProviderSwitchState(Base):
+    """Persistent switch-state and governance controls for provider cutover."""
+
+    __tablename__ = "library_provider_switch_states"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(36), nullable=True, index=True)
+
+    current_read_provider = Column(String(64), nullable=False, default="cloudflare_vectorize")
+    target_provider = Column(String(64), nullable=True)
+    previous_read_provider = Column(String(64), nullable=True)
+
+    campaign_id = Column(Integer, nullable=True)
+    campaign_status = Column(String(24), nullable=False, default="idle", index=True)
+    status = Column(String(24), nullable=False, default="idle", index=True)
+    switch_version = Column(Integer, nullable=False, default=1)
+    readiness_gate = Column(String(64), nullable=False, default="coverage_95_plus_smoke")
+
+    freeze_non_emergency_edits = Column(Boolean, nullable=False, default=False)
+    mirror_writes = Column(Boolean, nullable=False, default=False)
+
+    readiness_json = Column("readiness", JSON, nullable=False, default=dict)
+    reconciliation_json = Column("reconciliation", JSON, nullable=False, default=dict)
+    last_rollback_reason = Column(Text, nullable=True)
+
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_library_provider_switch_state_tenant_status", "tenant_id", "status"),
+        Index("ix_library_provider_switch_state_campaign", "campaign_status", "status"),
     )
