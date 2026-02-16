@@ -4,6 +4,15 @@ import type { TrpcContext } from "./context";
 type Bucket = { ts: number[] };
 const buckets = new Map<string, Bucket>();
 
+// Periodic cleanup: evict stale entries every 60 seconds to prevent memory leak
+setInterval(() => {
+  const cutoff = Date.now() - 5 * 60_000;
+  for (const [key, bucket] of buckets) {
+    bucket.ts = bucket.ts.filter((t) => t > cutoff);
+    if (bucket.ts.length === 0) buckets.delete(key);
+  }
+}, 60_000).unref();
+
 function getIp(ctx: TrpcContext): string {
   const xff = ctx.req.headers["x-forwarded-for"];
   if (typeof xff === "string") return xff.split(",")[0].trim();

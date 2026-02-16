@@ -8,6 +8,12 @@ import {
   validateLibraryUrl,
   type LibraryUrlRejectReason,
 } from "./libraryUrlPolicy";
+import {
+  buildLibraryIndexJobPayload,
+  shouldThrottleLibraryEnqueue,
+  type LibraryIndexDomain,
+  type LibraryIndexOperation,
+} from "./libraryIndexJobContract";
 import { isSvgUpload, sanitizeUploadedSvg } from "./uploadContentSafety";
 import {
   libraryChunks,
@@ -150,11 +156,7 @@ export interface UploadLibraryFileInput {
 
 export interface UploadLibraryFileResult {
   item: LibraryItemDto;
-  indexJob: {
-    jobId: number;
-    status: string;
-    created: boolean;
-  };
+  indexJob: LibraryEnqueueResult;
 }
 
 export interface LibrarySearchResultV1 {
@@ -254,11 +256,17 @@ export interface SaveLibraryMarkdownInput {
 
 export interface SaveLibraryMarkdownResult {
   item: LibraryItemDto;
-  indexJob: {
-    jobId: number;
-    status: string;
-    created: boolean;
-  };
+  indexJob: LibraryEnqueueResult;
+}
+
+export interface LibraryEnqueueResult {
+  jobId: number;
+  status: string;
+  created: boolean;
+  payloadVersion: "v2";
+  dedupeKey: string;
+  throttled?: boolean;
+  error?: string;
 }
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -270,6 +278,19 @@ function normalizeLibraryTenantId(tenantId: LibraryTenantId): string {
     throw new Error("Invalid tenant ID");
   }
   return normalized;
+}
+
+function getLibraryQueueBackpressureState() {
+  const enabled = ["1", "true", "yes", "on"].includes(
+    (process.env.LIBRARY_INDEX_BACKPRESSURE_ENABLED || "").toLowerCase(),
+  );
+  const currentQueueLagMinutes = Number(process.env.LIBRARY_INDEX_QUEUE_LAG_MINUTES || "0");
+  const maxQueueLagMinutes = Number(process.env.LIBRARY_INDEX_MAX_QUEUE_LAG_MINUTES || "15");
+  return {
+    enabled,
+    currentQueueLagMinutes,
+    maxQueueLagMinutes,
+  };
 }
 
 function validateLibraryItemUrlField(
@@ -1033,11 +1054,18 @@ export async function createVirtualDriveReference(
     .onConflictDoNothing();
 
   // Enqueue index job
-  await enqueueLibraryIndexJob(
+  await safeEnqueueLibraryIndexJob(
     {
       libraryItemId: created.id,
       tenantId: actorTenantId,
       jobType: "google_drive_sync",
+      domain: "library",
+      operation: "index",
+      source: "ingestion.google_drive_sync",
+      sourceMetadata: {
+        ingestion: "google_drive",
+      },
+      allowThrottle: true,
     },
     db,
   );
@@ -1125,11 +1153,19 @@ export async function uploadLibraryFile(
     db,
   );
 
-  const indexJob = await enqueueLibraryIndexJob(
+  const indexJob = await safeEnqueueLibraryIndexJob(
     {
       libraryItemId: created.item.id,
       tenantId,
       jobType: "initial_index",
+      domain: "library",
+      operation: "index",
+      source: "library.upload",
+      sourceMetadata: {
+        ingestion: "document_upload",
+        fileType,
+      },
+      allowThrottle: true,
     },
     db,
   );
@@ -1210,6 +1246,22 @@ export async function updateLibraryItem(
     return null;
   }
 
+  await safeEnqueueLibraryIndexJob(
+    {
+      libraryItemId: updated[0].id,
+      tenantId: actorTenantId,
+      jobType: "update_index",
+      domain: "library",
+      operation: "index",
+      source: "library.update",
+      sourceMetadata: {
+        fields: Object.keys(input),
+      },
+      allowThrottle: true,
+    },
+    db,
+  );
+
   return toLibraryItemDto(updated[0]);
 }
 
@@ -1242,7 +1294,24 @@ export async function softDeleteLibraryItem(
     .where(and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actorTenantId)))
     .returning({ id: libraryItems.id });
 
-  return Boolean(deleted[0]?.id);
+  if (!deleted[0]?.id) {
+    return false;
+  }
+
+  await safeEnqueueLibraryIndexJob(
+    {
+      libraryItemId: itemId,
+      tenantId: actorTenantId,
+      jobType: "delete_index",
+      domain: "library",
+      operation: "delete",
+      source: "library.delete",
+      allowThrottle: false,
+    },
+    db,
+  );
+
+  return true;
 }
 
 export async function shareLibraryItem(
@@ -1332,12 +1401,43 @@ export async function shareLibraryItem(
 }
 
 export async function enqueueLibraryIndexJob(
-  input: { libraryItemId: number; tenantId: LibraryTenantId; jobType?: string },
+  input: {
+    libraryItemId: number;
+    tenantId: LibraryTenantId;
+    jobType?: string;
+    domain?: LibraryIndexDomain;
+    operation?: LibraryIndexOperation;
+    source?: string;
+    sourceMetadata?: Record<string, unknown>;
+    allowThrottle?: boolean;
+  },
   dbClient?: DbClient,
-): Promise<{ jobId: number; status: string; created: boolean }> {
+): Promise<LibraryEnqueueResult> {
   const db = await resolveDb(dbClient);
   const jobType = input.jobType ?? "initial_index";
   const tenantId = normalizeLibraryTenantId(input.tenantId);
+  const payload = buildLibraryIndexJobPayload({
+    domain: input.domain || "library",
+    operation: input.operation || "index",
+    tenantId,
+    entityId: `library:${input.libraryItemId}`,
+    source: input.source || `library.${jobType}`,
+    sourceMetadata: input.sourceMetadata,
+  });
+
+  if (
+    input.allowThrottle &&
+    shouldThrottleLibraryEnqueue(getLibraryQueueBackpressureState())
+  ) {
+    return {
+      jobId: 0,
+      status: "throttled",
+      created: false,
+      payloadVersion: payload.version,
+      dedupeKey: payload.dedupeKey,
+      throttled: true,
+    };
+  }
 
   const existing = await db
     .select({
@@ -1360,6 +1460,8 @@ export async function enqueueLibraryIndexJob(
       jobId: existing[0].id,
       status: existing[0].status,
       created: false,
+      payloadVersion: payload.version,
+      dedupeKey: payload.dedupeKey,
     };
   }
 
@@ -1399,7 +1501,36 @@ export async function enqueueLibraryIndexJob(
     jobId: created.id,
     status: created.status,
     created: true,
+    payloadVersion: payload.version,
+    dedupeKey: payload.dedupeKey,
   };
+}
+
+export async function safeEnqueueLibraryIndexJob(
+  input: Parameters<typeof enqueueLibraryIndexJob>[0],
+  dbClient?: DbClient,
+): Promise<LibraryEnqueueResult> {
+  try {
+    return await enqueueLibraryIndexJob(input, dbClient);
+  } catch (error) {
+    const tenantId = normalizeLibraryTenantId(input.tenantId);
+    const payload = buildLibraryIndexJobPayload({
+      domain: input.domain || "library",
+      operation: input.operation || "index",
+      tenantId,
+      entityId: `library:${input.libraryItemId}`,
+      source: input.source || `library.${input.jobType || "initial_index"}`,
+      sourceMetadata: input.sourceMetadata,
+    });
+    return {
+      jobId: 0,
+      status: "enqueue_error",
+      created: false,
+      payloadVersion: payload.version,
+      dedupeKey: payload.dedupeKey,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 function getDocumentAccessSource(
@@ -1808,11 +1939,18 @@ export async function saveLibraryMarkdown(
     throw new Error("Failed to save markdown content");
   }
 
-  const indexJob = await enqueueLibraryIndexJob(
+  const indexJob = await safeEnqueueLibraryIndexJob(
     {
       libraryItemId: existing.id,
       tenantId: actorTenantId,
       jobType: "markdown_update",
+      domain: "library",
+      operation: "index",
+      source: "library.markdown_update",
+      sourceMetadata: {
+        ingestion: "document_management_editor",
+      },
+      allowThrottle: true,
     },
     db,
   );

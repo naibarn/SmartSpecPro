@@ -7,8 +7,8 @@
 
 ## Section Status
 
-- section-01-provider-abstraction-foundation: completed (pending commit hash)
-- section-02-api-enqueue-hooks-and-job-contract: pending
+- section-01-provider-abstraction-foundation: completed (`bae545e`)
+- section-02-api-enqueue-hooks-and-job-contract: completed (pending commit hash)
 - section-03-worker-dispatch-idempotency-and-retries: pending
 - section-04-pgvector-migration-and-tenant-rls: pending
 - section-05-backfill-reindex-and-consistency: pending
@@ -19,8 +19,15 @@
 ## Section Execution Log
 
 - section: `section-01-provider-abstraction-foundation`
-- commit: `pending`
+- commit: `bae545e`
 - test_command_used: `npm --workspace @smartspec/web test -- server/services/__tests__/vectorProvider.test.ts server/__tests__/vectorize-indexing.test.ts server/__tests__/vectorize-search.test.ts`
 - pass_fail_summary: `PASS (15 tests)`
 - notable_deviations: `pgvector/chromadb Node adapters are boundary stubs with deterministic unsupported errors`
+- blocked_tasks_resolved_remaining: `none`
+
+- section: `section-02-api-enqueue-hooks-and-job-contract`
+- commit: `pending`
+- test_command_used: `npm --workspace @smartspec/web test -- server/services/libraryIndexJobContract.test.ts server/services/libraryService.test.ts server/services/mediaLibraryService.test.ts`
+- pass_fail_summary: `PASS (28 tests, 37 existing TODO stubs)`
+- notable_deviations: `payload contract is service-layer and not yet persisted in queue table columns`
 - blocked_tasks_resolved_remaining: `none`

@@ -2,7 +2,7 @@ import { getDb } from "../db";
 import { MEDIA_MODELS, mediaGenerationService, type MediaTask } from "./mediaGenerationService";
 import {
   createLibraryItem,
-  enqueueLibraryIndexJob,
+  safeEnqueueLibraryIndexJob,
   type LibraryActor,
   type LibraryVisibility,
 } from "./libraryService";
@@ -94,11 +94,19 @@ export async function addMediaTaskToLibrary(
     db,
   );
 
-  const indexJob = await enqueueLibraryIndexJob(
+  const indexJob = await safeEnqueueLibraryIndexJob(
     {
       libraryItemId: created.item.id,
       tenantId: actor.tenantId,
       jobType: "initial_index",
+      domain: "gallery",
+      operation: "index",
+      source: "gallery.media_task",
+      sourceMetadata: {
+        ingestion: "media_to_library",
+        mediaTaskId: task.id,
+      },
+      allowThrottle: true,
     },
     db,
   );

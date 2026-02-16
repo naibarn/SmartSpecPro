@@ -27,6 +27,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   Server,
@@ -55,6 +65,8 @@ import {
   Cpu,
   HardDrive,
   MemoryStick,
+  Users,
+  Gauge,
 } from "lucide-react";
 
 // ============================================================
@@ -200,6 +212,9 @@ export default function InfrastructureSettingsPanel() {
     sentry_traces_sample_rate: "0.05",
     sentry_environment: "development",
   });
+  const [selectedTier, setSelectedTier] = useState<"starter" | "growth" | "pro" | "business" | "enterprise">("starter");
+  const [showApplyDialog, setShowApplyDialog] = useState(false);
+  const [applyResults, setApplyResults] = useState<any[] | null>(null);
   const [, setLocation] = useLocation();
 
   // --- Queries ---
@@ -256,6 +271,11 @@ export default function InfrastructureSettingsPanel() {
     refetchInterval: 30_000,
   });
 
+  const {
+    data: scaleTierData,
+    refetch: refetchScaleTier,
+  } = trpc.infrastructure.getScaleTier.useQuery();
+
   // --- Mutations ---
   const updateRedisMutation = trpc.infrastructure.updateRedisConfig.useMutation({
     onSuccess: () => {
@@ -303,6 +323,21 @@ export default function InfrastructureSettingsPanel() {
       refetchDashboard();
     },
     onError: (err) => toast.error(`Failed to switch: ${err.message}`),
+  });
+
+  const applyScaleTierMutation = trpc.infrastructure.applyScaleTier.useMutation({
+    onSuccess: (data) => {
+      setApplyResults(data.results);
+      const errors = data.results.filter((r: any) => r.status === "error");
+      if (errors.length === 0) {
+        toast.success("Scale tier applied successfully! Services restarted.");
+      } else {
+        toast.warning(`Scale tier applied with ${errors.length} issue(s). Check results below.`);
+      }
+      refetchScaleTier();
+      setShowApplyDialog(false);
+    },
+    onError: (err) => toast.error(`Failed to apply: ${err.message}`),
   });
 
   // --- Populate form from query data ---
@@ -355,6 +390,12 @@ export default function InfrastructureSettingsPanel() {
       });
     }
   }, [monitoringConfig]);
+
+  useEffect(() => {
+    if (scaleTierData?.tier) {
+      setSelectedTier(scaleTierData.tier);
+    }
+  }, [scaleTierData]);
 
   // --- Handlers ---
   const handleSaveGcp = () => {
@@ -2090,6 +2131,293 @@ FIREBASE_PROJECT_ID=your-project-id`}
           </Button>
         </CardContent>
       </Card>
+
+      {/* ============================================ */}
+      {/* CARD 6: Scale Tier Configuration             */}
+      {/* ============================================ */}
+      <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+        <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Gauge className="w-5 h-5 text-purple-500" />
+            Scale Tier Configuration
+          </CardTitle>
+          <CardDescription>
+            Select a scaling preset to configure connection pools, rate limits, worker counts, and resource allocations across all services.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-6">
+          {/* Current tier indicator */}
+          {scaleTierData?.tier && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Active tier:</span>
+              <Badge className="bg-purple-100 text-purple-700 text-xs capitalize">
+                {scaleTierData.tier}
+              </Badge>
+              {scaleTierData.appliedAt && (
+                <span className="text-xs text-gray-400">
+                  applied {new Date(scaleTierData.appliedAt).toLocaleString()}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Tier Selector Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {(scaleTierData?.allTiers ?? [
+              { id: "starter", label: "Starter", description: "Small team or development use", targetUsers: 50, recommendedCpu: 4, recommendedRamGb: 8 },
+              { id: "growth", label: "Growth", description: "Growing team with moderate AI usage", targetUsers: 100, recommendedCpu: 8, recommendedRamGb: 16 },
+              { id: "pro", label: "Pro", description: "Heavy AI and media workloads", targetUsers: 200, recommendedCpu: 12, recommendedRamGb: 32 },
+              { id: "business", label: "Business", description: "Large-scale production deployment", targetUsers: 500, recommendedCpu: 16, recommendedRamGb: 48 },
+              { id: "enterprise", label: "Enterprise", description: "Maximum scale for 1000+ concurrent users", targetUsers: 1000, recommendedCpu: 32, recommendedRamGb: 64 },
+            ]).map((tier: any) => (
+              <button
+                key={tier.id}
+                type="button"
+                onClick={() => {
+                  setSelectedTier(tier.id);
+                  setApplyResults(null);
+                }}
+                className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                  selectedTier === tier.id
+                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+              >
+                {selectedTier === tier.id && (
+                  <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+                )}
+                <div className="font-semibold text-base mb-1">{tier.label}</div>
+                <div className="flex items-center gap-1.5 text-sm text-purple-600 mb-2">
+                  <Users className="h-3.5 w-3.5" />
+                  <span>{tier.targetUsers} users</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {tier.description}
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 text-xs text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <Cpu className="h-3 w-3" />
+                    <span>{tier.recommendedCpu} CPU</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MemoryStick className="h-3 w-3" />
+                    <span>{tier.recommendedRamGb} GB</span>
+                  </div>
+                </div>
+                {scaleTierData?.tier === tier.id && (
+                  <Badge className="mt-2 bg-green-100 text-green-700 text-xs">Active</Badge>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Configuration Preview */}
+          {scaleTierData?.config && selectedTier && (
+            <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Configuration Preview — {(scaleTierData.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier}
+              </p>
+              {(() => {
+                const config = selectedTier === scaleTierData.tier
+                  ? scaleTierData.config
+                  : (scaleTierData.allTiers ?? []).find((t: any) => t.id === selectedTier);
+                if (!config) return null;
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">DB Pool</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.nodeDbPoolSize ?? config.pythonDbPoolSize ?? "—"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">LLM Rate Limit</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.nodeLlmRpm ?? config.pythonRateLimitPerMin ?? "—"} rpm
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">Uvicorn Workers</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.uvicornWorkers ?? "—"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">Redis Memory</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.redisMaxmemoryMb ?? "—"} MB
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">Nginx Connections</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.nginxWorkerConnections ?? "—"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">Celery Media</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.celeryMediaConcurrency ?? "—"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">Celery Video</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.celeryVideoConcurrency ?? "—"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">API Rate Limit</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.nginxApiLimitRate ?? "—"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">Max Parallel Workflows</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.pythonMaxParallelWorkflows ?? "—"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
+                      <span className="text-xs text-gray-500 block">Nginx Keepalive</span>
+                      <span className="text-sm font-mono font-medium">
+                        {config.nginxKeepalive ?? "—"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Info notice */}
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>
+              Applying a scale tier will update <strong>.env files</strong>, <strong>Nginx config</strong>,
+              and <strong>Redis settings</strong>, then restart backend and web services.
+              Expect <strong>10-30 seconds of downtime</strong> during the restart.
+            </span>
+          </div>
+
+          {/* Apply Button */}
+          <Button
+            onClick={() => {
+              setApplyResults(null);
+              setShowApplyDialog(true);
+            }}
+            disabled={
+              applyScaleTierMutation.isPending ||
+              (scaleTierData?.tier === selectedTier && !applyResults)
+            }
+          >
+            {applyScaleTierMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Zap className="h-4 w-4 mr-2" />
+            )}
+            {scaleTierData?.tier === selectedTier
+              ? "Re-apply Current Tier"
+              : `Apply ${(scaleTierData?.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier} & Restart Services`}
+          </Button>
+
+          {/* Apply Results */}
+          {applyResults && (
+            <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Apply Results
+              </p>
+              <div className="space-y-2">
+                {applyResults.map((result: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3 rounded-lg bg-gray-50 p-3 text-sm"
+                  >
+                    <Badge
+                      className={`text-xs shrink-0 ${
+                        result.status === "ok"
+                          ? "bg-green-100 text-green-700"
+                          : result.status === "skipped"
+                            ? "bg-gray-100 text-gray-600"
+                            : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {result.status}
+                    </Badge>
+                    <div className="min-w-0">
+                      <span className="font-medium text-gray-700">{result.step}</span>
+                      <p className="text-xs text-muted-foreground mt-0.5 break-all">
+                        {result.message}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Scale Tier Apply Confirmation Dialog */}
+      <AlertDialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apply Scale Tier Configuration</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  This will apply the <strong className="capitalize">{selectedTier}</strong> tier
+                  configuration and restart services.
+                </p>
+                {scaleTierData?.tier && scaleTierData.tier !== selectedTier && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Badge variant="outline" className="capitalize">{scaleTierData.tier}</Badge>
+                    <span>&rarr;</span>
+                    <Badge className="bg-purple-100 text-purple-700 capitalize">{selectedTier}</Badge>
+                  </div>
+                )}
+                <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+                  <strong>Warning:</strong> This will restart the backend and web services.
+                  Users will experience approximately 10-30 seconds of downtime.
+                </div>
+                <p className="text-sm">The following changes will be made:</p>
+                <ul className="list-disc ml-5 space-y-1 text-sm text-muted-foreground">
+                  <li>Update Node.js .env (DB pool, rate limits)</li>
+                  <li>Update Python .env (DB pool, workers, rate limits)</li>
+                  <li>Update systemd service (uvicorn workers)</li>
+                  <li>Update Nginx config (connections, keepalive)</li>
+                  <li>Set Redis maxmemory (hot-reload)</li>
+                  <li>Reload Nginx (graceful)</li>
+                  <li>Restart Python backend</li>
+                  <li>Restart Node.js web service</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applyScaleTierMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                applyScaleTierMutation.mutate({ tier: selectedTier });
+              }}
+              disabled={applyScaleTierMutation.isPending}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {applyScaleTierMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Zap className="h-4 w-4 mr-2" />
+              )}
+              {applyScaleTierMutation.isPending ? "Applying..." : "Apply & Restart"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

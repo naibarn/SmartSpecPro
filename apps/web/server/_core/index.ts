@@ -114,8 +114,10 @@ app.use((_req, res, next) => {
   next();
 });
 
-// JSON body parser — limit to 100MB (most requests are small, but allow larger payloads)
-app.use(express.json({ limit: "100mb" }));
+// Default JSON body limit — 10MB covers all normal API requests.
+// Upload routes use raw body or multipart, not JSON, so they're unaffected.
+// Media/storage uploads bypass this via Nginx streaming (proxy_request_buffering off).
+app.use(express.json({ limit: "10mb" }));
 app.use((err: any, req: any, res: any, next: any) => {
   // Catch JSON parse errors (SyntaxError from body-parser)
   if (err instanceof SyntaxError && 'body' in err) {
@@ -124,7 +126,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   }
   next(err);
 });
-app.use(express.urlencoded({ limit: "100mb", extended: true }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser(ENV.cookieSecret));
 
 // ============================================================================
@@ -647,6 +649,12 @@ async function main() {
   // Prefer PORT, else pick a free one
   const preferred = parseInt(process.env.PORT || "3000");
   const port = Number.isFinite(preferred) ? preferred : 3000;
+
+  // Server-level timeouts to prevent hung requests and slow attacks
+  server.timeout = 120_000;          // 2 min — max time for any request
+  server.headersTimeout = 30_000;    // 30s — max time to receive headers
+  server.keepAliveTimeout = 65_000;  // 65s — must be > Nginx keepalive_timeout (60s)
+  server.requestTimeout = 120_000;   // 2 min — same as timeout, explicit
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`SmartSpec Web listening on http://0.0.0.0:${port}`);

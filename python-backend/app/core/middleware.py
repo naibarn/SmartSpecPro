@@ -9,6 +9,8 @@ FastAPI middleware for:
 - Request logging
 """
 
+import asyncio
+
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -38,6 +40,54 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy"] = "default-src 'self'"
         
         return response
+
+
+class RequestTimeoutMiddleware(BaseHTTPMiddleware):
+    """
+    Enforces per-request timeout to prevent hung connections and resource exhaustion.
+
+    Uses asyncio.wait_for to wrap downstream processing with a configurable timeout.
+    Long-running paths (LLM inference, media generation) get an extended timeout.
+
+    On timeout, returns a 504 Gateway Timeout JSON response.
+    """
+
+    DEFAULT_TIMEOUT: int = 120  # 2 minutes for standard requests
+    LONG_TIMEOUT: int = 600  # 10 minutes for LLM/media/generation ops
+    LONG_TIMEOUT_PREFIXES: tuple[str, ...] = (
+        "/api/v1/llm/",
+        "/api/v1/media/",
+        "/api/v1/generate/",
+        "/api/v1/workflows/",
+        "/api/v1/orchestrator/",
+    )
+
+    async def dispatch(self, request: Request, call_next):
+        timeout = self.DEFAULT_TIMEOUT
+        path = request.url.path
+
+        if any(path.startswith(prefix) for prefix in self.LONG_TIMEOUT_PREFIXES):
+            timeout = self.LONG_TIMEOUT
+
+        try:
+            response = await asyncio.wait_for(call_next(request), timeout=timeout)
+            return response
+        except asyncio.TimeoutError:
+            logger.warning(
+                "Request timed out",
+                method=request.method,
+                path=path,
+                timeout_seconds=timeout,
+                client_ip=request.client.host if request.client else None,
+            )
+            return JSONResponse(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                content={
+                    "error": "GATEWAY_TIMEOUT",
+                    "message": f"Request timed out after {timeout}s",
+                    "details": {"timeout_seconds": timeout, "path": path},
+                },
+            )
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -382,8 +432,10 @@ def setup_middleware(app):
     3. Security headers - adds security headers
     4. CORS - handles cross-origin requests
     5. CSRF protection - validates CSRF tokens
-    6. Rate limiting - enforces rate limits
-    7. Request validation - validates request format
+    6. Request timeout - enforces per-request timeout
+    7. Rate limiting - enforces rate limits
+    8. Request validation - validates request format
+    9. OIDC validation - validates Cloud Tasks tokens
     """
 
     # Order matters: first added = last executed
@@ -412,13 +464,16 @@ def setup_middleware(app):
     app.add_middleware(CSRFMiddleware)
     logger.info("CSRF protection enabled", environment=settings.ENVIRONMENT)
 
-    # 6. Rate limiting (with JWT support)
+    # 6. Request timeout (prevents hung connections)
+    app.add_middleware(RequestTimeoutMiddleware)
+
+    # 7. Rate limiting (with JWT support)
     app.add_middleware(RateLimitMiddleware)
 
-    # 7. Request validation (innermost)
+    # 8. Request validation (innermost)
     app.add_middleware(RequestValidationMiddleware)
 
-    # 8. OIDC validation for /tasks/* endpoints (Cloud Tasks)
+    # 9. OIDC validation for /tasks/* endpoints (Cloud Tasks)
     from app.middleware.oidc_auth import OIDCAuthMiddleware
     app.add_middleware(OIDCAuthMiddleware)
 

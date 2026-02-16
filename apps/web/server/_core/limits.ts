@@ -4,6 +4,20 @@ type Bucket = { ts: number[] };
 
 const buckets = new Map<string, Bucket>();
 
+// Periodic cleanup: evict stale entries every 60 seconds to prevent memory leak
+const CLEANUP_INTERVAL_MS = 60_000;
+const MAX_ENTRY_AGE_MS = 5 * 60_000; // 5 minutes
+
+setInterval(() => {
+  const cutoff = Date.now() - MAX_ENTRY_AGE_MS;
+  for (const [key, bucket] of buckets) {
+    // Remove expired timestamps
+    bucket.ts = bucket.ts.filter((t) => t > cutoff);
+    // Remove bucket if empty
+    if (bucket.ts.length === 0) buckets.delete(key);
+  }
+}, CLEANUP_INTERVAL_MS).unref(); // unref() so it doesn't keep process alive
+
 function now() {
   return Date.now();
 }

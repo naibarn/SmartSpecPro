@@ -39,3 +39,23 @@
 - decision: boundary stubs with deterministic `VectorProviderError`
 - mode: `auto`
 - rationale: Keeps contract and resolver/dispatch behavior testable without introducing unverified DB/API assumptions.
+
+## Section 02 Decisions
+
+- step: payload_persistence_strategy
+- options: add DB columns now vs additive service-layer payload contract
+- decision: additive service-layer payload contract
+- mode: `auto`
+- rationale: Minimizes schema risk while enabling versioning, dedupe-key stability, and legacy parser compatibility immediately.
+
+- step: enqueue_failure_behavior
+- options: fail primary write vs non-blocking enqueue fallback
+- decision: non-blocking fallback (`enqueue_error` result)
+- mode: `auto`
+- rationale: Primary API/library writes should remain successful on transient queue failures.
+
+- step: backpressure_hook
+- options: hard block all enqueue vs optional throttle for non-critical paths
+- decision: optional throttle hook (`allowThrottle` + threshold function)
+- mode: `auto`
+- rationale: Preserves reliability while allowing controlled queue protection under lag.

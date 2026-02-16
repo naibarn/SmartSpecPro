@@ -4,7 +4,7 @@ const {
   mockGetDb,
   mockGetTask,
   mockCreateLibraryItem,
-  mockEnqueueLibraryIndexJob,
+  mockSafeEnqueueLibraryIndexJob,
   mockDb,
 } = vi.hoisted(() => {
   const db = { select: vi.fn(), insert: vi.fn(), update: vi.fn() };
@@ -14,7 +14,7 @@ const {
     mockGetDb: vi.fn().mockResolvedValue(db),
     mockGetTask: vi.fn(),
     mockCreateLibraryItem: vi.fn(),
-    mockEnqueueLibraryIndexJob: vi.fn(),
+    mockSafeEnqueueLibraryIndexJob: vi.fn(),
   };
 });
 
@@ -33,7 +33,7 @@ vi.mock("./mediaGenerationService", () => ({
 
 vi.mock("./libraryService", () => ({
   createLibraryItem: mockCreateLibraryItem,
-  enqueueLibraryIndexJob: mockEnqueueLibraryIndexJob,
+  safeEnqueueLibraryIndexJob: mockSafeEnqueueLibraryIndexJob,
 }));
 
 import { addMediaTaskToLibrary, autoAddMediaTaskToLibrary } from "./mediaLibraryService";
@@ -73,10 +73,12 @@ describe("addMediaTaskToLibrary", () => {
       idempotent: false,
     });
 
-    mockEnqueueLibraryIndexJob.mockResolvedValue({
+    mockSafeEnqueueLibraryIndexJob.mockResolvedValue({
       jobId: 9001,
       status: "pending",
       created: true,
+      payloadVersion: "v2",
+      dedupeKey: "d1",
     });
 
     const result = await addMediaTaskToLibrary(
@@ -98,6 +100,8 @@ describe("addMediaTaskToLibrary", () => {
         jobId: 9001,
         status: "pending",
         created: true,
+        payloadVersion: "v2",
+        dedupeKey: "d1",
       },
       taskStatus: "completed",
     });
@@ -129,7 +133,13 @@ describe("addMediaTaskToLibrary", () => {
     });
 
     mockCreateLibraryItem.mockResolvedValue({ item: { id: 502 }, idempotent: true });
-    mockEnqueueLibraryIndexJob.mockResolvedValue({ jobId: 9002, status: "pending", created: false });
+    mockSafeEnqueueLibraryIndexJob.mockResolvedValue({
+      jobId: 9002,
+      status: "pending",
+      created: false,
+      payloadVersion: "v2",
+      dedupeKey: "d2",
+    });
 
     const result = await addMediaTaskToLibrary(
       { mediaTaskId: "task-123", userToken: "token-abc" },

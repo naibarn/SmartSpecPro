@@ -392,6 +392,71 @@ describe("uploadLibraryFile", () => {
     expect(mockStoragePut).not.toHaveBeenCalled();
     expect(mockDb.insert).not.toHaveBeenCalled();
   });
+
+  it("preserves primary write success when enqueue fails transiently", async () => {
+    mockStoragePut.mockResolvedValueOnce({
+      key: "library/uploads/t-1/9/file.txt",
+      url: "https://cdn.example.com/file.txt",
+    });
+
+    const now = new Date("2026-02-10T00:00:00.000Z");
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([], true))
+      .mockReturnValueOnce(makeSelectChain([]));
+
+    const insertLibraryItemValues = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([
+        {
+          id: 901,
+          tenantId: "44",
+          ownerUserId: 9,
+          itemType: "text",
+          source: "document_upload",
+          title: "file.txt",
+          description: null,
+          status: "indexing",
+          visibility: "private",
+          metadata: {},
+          sourceUrl: "https://cdn.example.com/file.txt",
+          thumbnailUrl: null,
+          deletedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]),
+    });
+
+    const insertLibraryLinkValues = vi.fn().mockReturnValue({
+      onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const enqueueValues = vi.fn().mockImplementation(() => {
+      throw new Error("queue timeout");
+    });
+
+    mockDb.insert
+      .mockReturnValueOnce({ values: insertLibraryItemValues })
+      .mockReturnValueOnce({ values: insertLibraryLinkValues })
+      .mockReturnValueOnce({ values: enqueueValues });
+
+    const result = await uploadLibraryFile(
+      {
+        fileName: "file.txt",
+        fileType: "text/plain",
+        fileBase64: Buffer.from("hello world", "utf8").toString("base64"),
+      },
+      {
+        userId: 9,
+        tenantId: 44,
+        role: "user",
+      },
+    );
+
+    expect(result.item.id).toBe(901);
+    expect(result.indexJob.created).toBe(false);
+    expect(result.indexJob.status).toBe("enqueue_error");
+    expect(result.indexJob.error).toContain("queue timeout");
+  });
 });
 
 // Section 03: Group Permissions Tests

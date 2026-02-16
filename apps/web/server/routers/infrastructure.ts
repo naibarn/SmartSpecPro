@@ -20,6 +20,13 @@ import {
 import { isCacheHealthy, isRealtimeHealthy } from "../services/redisClients";
 import { isRedisHealthy, getRedisStatus } from "../services/redis";
 import { encrypt, decrypt } from "../services/crypto";
+import {
+  SCALE_TIERS,
+  SCALE_TIER_IDS,
+  applyScaleTier as applyTierConfig,
+  detectCurrentTier,
+} from "../services/scaleTier";
+import type { ScaleTierId, ApplyStepResult } from "../services/scaleTier";
 
 // ============================================================
 // Constants
@@ -642,4 +649,96 @@ export const infrastructureRouter = router({
       };
     }
   }),
+
+  // ----------------------------------------------------------
+  // Scale Tier Management
+  // ----------------------------------------------------------
+
+  getScaleTier: adminProcedure.query(async () => {
+    const db = await getDb();
+
+    let tier: ScaleTierId = detectCurrentTier();
+    let appliedAt: string | null = null;
+
+    if (db) {
+      const [tierRow] = await db
+        .select()
+        .from(systemSettings)
+        .where(
+          and(
+            eq(systemSettings.category, CATEGORY),
+            eq(systemSettings.key, "scale_tier"),
+          ),
+        )
+        .limit(1);
+
+      if (tierRow?.value && SCALE_TIER_IDS.includes(tierRow.value as ScaleTierId)) {
+        tier = tierRow.value as ScaleTierId;
+      }
+
+      const [appliedAtRow] = await db
+        .select()
+        .from(systemSettings)
+        .where(
+          and(
+            eq(systemSettings.category, CATEGORY),
+            eq(systemSettings.key, "scale_tier_applied_at"),
+          ),
+        )
+        .limit(1);
+
+      if (appliedAtRow?.value) {
+        appliedAt = appliedAtRow.value;
+      }
+    }
+
+    return {
+      tier,
+      appliedAt,
+      config: SCALE_TIERS[tier],
+      allTiers: Object.values(SCALE_TIERS),
+    };
+  }),
+
+  setScaleTier: adminProcedure
+    .input(
+      z.object({
+        tier: z.enum(["starter", "growth", "pro", "business", "enterprise"]),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await upsertSetting(db, "scale_tier", input.tier, ctx.user?.id);
+
+      return { success: true as const, tier: input.tier as ScaleTierId };
+    }),
+
+  applyScaleTier: adminProcedure
+    .input(
+      z.object({
+        tier: z.enum(["starter", "growth", "pro", "business", "enterprise"]),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // 1. Persist the tier selection
+      await upsertSetting(db, "scale_tier", input.tier, ctx.user?.id);
+
+      // 2. Apply configuration across all services
+      const results: ApplyStepResult[] = await applyTierConfig(input.tier as ScaleTierId);
+
+      // 3. Record the timestamp of the last successful apply
+      await upsertSetting(
+        db,
+        "scale_tier_applied_at",
+        new Date().toISOString(),
+        ctx.user?.id,
+      );
+
+      return { success: true as const, results };
+    }),
 });

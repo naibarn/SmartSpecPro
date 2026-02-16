@@ -2,7 +2,7 @@
  * Redis-backed distributed rate limiter using sorted set sliding window.
  *
  * Uses the cache Redis client (Upstash in production) for distributed state.
- * Falls open on Redis errors (allows the request) to avoid blocking users.
+ * Falls closed on Redis errors (rejects the request) to prevent bypass attacks.
  */
 
 import type { Request, Response, NextFunction } from "express";
@@ -41,7 +41,7 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
  * 3. If count >= limit: blocked, compute retryAfter from oldest entry
  * 4. If count < limit: ZADD current timestamp, EXPIRE with window + buffer
  *
- * Fails open on Redis errors.
+ * Fails closed on Redis errors.
  */
 export async function checkRateLimit(
   key: string,
@@ -85,9 +85,10 @@ export async function checkRateLimit(
       retryAfter: null,
     };
   } catch (error) {
-    // Fail open: allow the request when Redis is unavailable
-    console.warn("[RateLimit] Redis error, failing open:", (error as Error).message);
-    return { allowed: true, remaining: -1, retryAfter: null };
+    // Fail closed: reject requests when Redis is unavailable to prevent bypass.
+    // This is more conservative but prevents attackers from exploiting Redis downtime.
+    console.error("[RateLimit] Redis error, failing closed:", (error as Error).message);
+    return { allowed: false, remaining: 0, retryAfter: 30 };
   }
 }
 
