@@ -185,3 +185,35 @@ class LibraryIndexJob(Base):
         Index("ix_library_index_jobs_status_retry", "status", "next_retry_at"),
         Index("ix_library_index_jobs_item_status", "library_item_id", "status"),
     )
+
+
+class LibraryBackfillCampaign(Base):
+    """Persistent backfill/reindex campaign checkpoint and counter state."""
+
+    __tablename__ = "library_backfill_campaigns"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(36), nullable=True, index=True)
+    domain = Column(String(16), nullable=False, default="library", index=True)
+    status = Column(String(24), nullable=False, default="queued", index=True)
+
+    cursor = Column(Integer, nullable=False, default=0)
+    queued_count = Column(Integer, nullable=False, default=0)
+    processed_count = Column(Integer, nullable=False, default=0)
+    succeeded_count = Column(Integer, nullable=False, default=0)
+    failed_count = Column(Integer, nullable=False, default=0)
+    skipped_count = Column(Integer, nullable=False, default=0)
+
+    checkpoint_json = Column("checkpoint", JSON, nullable=False, default=dict)
+    diagnostics_json = Column("diagnostics", JSON, nullable=False, default=dict)
+    last_error = Column(Text, nullable=True)
+
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_library_backfill_campaign_domain_status", "domain", "status"),
+        Index("ix_library_backfill_campaign_tenant_domain", "tenant_id", "domain"),
+    )

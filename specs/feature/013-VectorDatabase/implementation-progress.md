@@ -10,8 +10,8 @@
 - section-01-provider-abstraction-foundation: completed (`bae545e`)
 - section-02-api-enqueue-hooks-and-job-contract: completed (`4e5bef2`)
 - section-03-worker-dispatch-idempotency-and-retries: completed (`b343e79`)
-- section-04-pgvector-migration-and-tenant-rls: completed (pending commit hash)
-- section-05-backfill-reindex-and-consistency: pending
+- section-04-pgvector-migration-and-tenant-rls: completed (`7a51bd3`)
+- section-05-backfill-reindex-and-consistency: completed (pending commit hash)
 - section-06-staged-cutover-and-rollback-governance: pending
 - section-07-observability-admin-and-alerting: pending
 - section-08-end-to-end-validation-and-rollout: pending
@@ -40,8 +40,15 @@
 - blocked_tasks_resolved_remaining: `none`
 
 - section: `section-04-pgvector-migration-and-tenant-rls`
-- commit: `pending`
+- commit: `7a51bd3`
 - test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/migrations/test_pgvector_tenant_rls_migration.py && cd /home/dev/projects/SmartSpecPro && npm --workspace @smartspec/web test -- server/__tests__/migrationOrdering.test.ts`
 - pass_fail_summary: `PASS (6 Python migration tests, 5 Node migration-ordering tests)`
 - notable_deviations: `RLS allow/deny checks are query-template + unit-validated and not executed against live Postgres in CI`
+- blocked_tasks_resolved_remaining: `none`
+
+- section: `section-05-backfill-reindex-and-consistency`
+- commit: `pending`
+- test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_backfill_service.py tests/unit/services/test_library_indexing_service.py tests/unit/migrations/test_library_backfill_campaign_migration.py && cd /home/dev/projects/SmartSpecPro && source ~/.nvm/nvm.sh && npm --workspace @smartspec/web test -- server/__tests__/migrationOrdering.test.ts`
+- pass_fail_summary: `PASS (17 Python tests + 6 Node migration-ordering tests)`
+- notable_deviations: `gallery campaign batches currently track scoped candidates/diagnostics but skip Python enqueue execution pending gallery worker wiring`
 - blocked_tasks_resolved_remaining: `none`

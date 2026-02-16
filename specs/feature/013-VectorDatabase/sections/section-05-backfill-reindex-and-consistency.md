@@ -43,3 +43,34 @@ Replace stubbed reindex workflows with production-capable, resumable campaigns t
 - Backfill campaign can run, pause, resume, and complete with deterministic accounting.
 - Post-backfill consistency checks are automated and gating.
 - Gallery/library coverage metrics are available for cutover gates.
+
+## As-Built (2026-02-16)
+
+### Actual files changed
+- `python-backend/app/models/library.py`
+- `python-backend/app/services/library_backfill_service.py`
+- `python-backend/migrations/007_library_backfill_campaign.py`
+- `python-backend/tests/unit/services/test_library_backfill_service.py`
+- `python-backend/tests/unit/migrations/test_library_backfill_campaign_migration.py`
+- `apps/web/server/__tests__/migrationOrdering.test.ts`
+- `specs/feature/013-VectorDatabase/reviews/section-05-review.md`
+
+### Deviations from plan
+- Gallery scoped loading and consistency accounting are implemented, but Python campaign enqueue for gallery entities is still intentionally non-writing and recorded as `skip_reason` diagnostics.
+- Gallery and library source scoping currently uses `library_items.source` classification (`media_history` -> gallery) in the Python worker boundary to avoid coupling to separate gallery ORM models in this phase.
+
+### Tests added/updated
+- Added: `python-backend/tests/unit/services/test_library_backfill_service.py`
+  - domain-scoped loader coverage (`library` vs `gallery`)
+  - campaign checkpoint/counter persistence across resume
+  - gallery skip diagnostics in campaign batches
+  - consistency divergence diagnostics with missing-entity sampling
+- Added: `python-backend/tests/unit/migrations/test_library_backfill_campaign_migration.py`
+  - migration 007 contract coverage for campaign persistence schema
+- Updated: `apps/web/server/__tests__/migrationOrdering.test.ts`
+  - migration ordering now expects `007_library_backfill_campaign.py` as latest Python migration
+  - validates campaign migration contract markers
+
+### Known follow-ups
+- Wire gallery-domain enqueue execution in Python worker path (or delegated runner) to remove gallery `skipped` behavior.
+- Execute migration 007 in staging/prod rollout automation before enabling campaign APIs operationally.

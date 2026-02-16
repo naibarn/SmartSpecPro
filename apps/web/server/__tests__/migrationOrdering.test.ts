@@ -57,9 +57,9 @@ describe("migration ordering", () => {
       .filter((f: string) => f.match(/^\d{3}_/))
       .sort();
 
-    expect(migrations.length).toBeGreaterThanOrEqual(6);
+    expect(migrations.length).toBeGreaterThanOrEqual(7);
     expect(migrations[migrations.length - 1]).toContain(
-      "006_pgvector_tenant_rls"
+      "007_library_backfill_campaign"
     );
   });
 
@@ -76,5 +76,19 @@ describe("migration ordering", () => {
     expect(content).toContain("ENABLE ROW LEVEL SECURITY");
     expect(content).toContain("FORCE ROW LEVEL SECURITY");
     expect(content).toContain("library_chunk_vectors_tenant_select");
+  });
+
+  it("Python migration 007 defines backfill campaign persistence table", () => {
+    const migrationPath = path.resolve(
+      import.meta.dirname,
+      "../../../../python-backend/migrations/007_library_backfill_campaign.py"
+    );
+
+    expect(fs.existsSync(migrationPath)).toBe(true);
+    const content = fs.readFileSync(migrationPath, "utf-8");
+    expect(content).toContain("library_backfill_campaigns");
+    expect(content).toContain("CREATE TABLE IF NOT EXISTS");
+    expect(content).toContain("queued_count");
+    expect(content).toContain("processed_count");
   });
 });

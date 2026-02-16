@@ -105,3 +105,29 @@
 - decision: enforce configurable capacity headroom (`PGVECTOR_MIGRATION_MAX_DB_BYTES` + minimum threshold)
 - mode: `auto`
 - rationale: Prevents running index-heavy migration steps on constrained databases without explicit operator acknowledgment.
+
+## Section 05 Decisions
+
+- step: campaign_state_persistence
+- options: in-memory resume metadata vs persistent campaign table
+- decision: persistent campaign table (`library_backfill_campaigns`) with migration `007_library_backfill_campaign.py`
+- mode: `auto`
+- rationale: Section objective requires resumable checkpoints and deterministic counters across process restarts.
+
+- step: domain_scoping_source
+- options: couple Python worker to separate gallery ORM model vs classify domains from `library_items.source`
+- decision: classify using `library_items.source` (`media_history` => gallery, non-`media_history` => library)
+- mode: `auto`
+- rationale: Preserves tenant-scoped query safety and avoids unstable gallery model dependencies in the Python worker boundary.
+
+- step: gallery_enqueue_behavior
+- options: enqueue gallery via unsupported Python path vs skip enqueue with diagnostics
+- decision: skip enqueue and record actionable diagnostics (`skip_reason`)
+- mode: `auto`
+- rationale: Avoids unsafe false-positive writes while still exposing campaign accounting/visibility for gallery scope.
+
+- step: consistency_diagnostics_payload
+- options: return full missing-entity set vs bounded sample
+- decision: bounded missing-entity sample (max 50)
+- mode: `auto`
+- rationale: Keeps diagnostics actionable without unbounded response payload growth on large tenants.
