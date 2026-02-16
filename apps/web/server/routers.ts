@@ -59,6 +59,7 @@ import { groupsRouter } from "./routers/groups";
 import { googleDriveRouter } from "./routers/googleDrive";
 import { searchRouter } from "./routers/search";
 import { adminOpsRouter } from "./routers/adminOps";
+import { funnelAnalyticsRouter } from "./routers/funnelAnalytics";
 import { infrastructureRouter } from "./routers/infrastructure";
 
 // Zod schemas for validation
@@ -1595,6 +1596,7 @@ export const appRouter = router({
 
   search: searchRouter,
   adminOps: adminOpsRouter,
+  funnelAnalytics: funnelAnalyticsRouter,
 });
 
 export type AppRouter = typeof appRouter;
