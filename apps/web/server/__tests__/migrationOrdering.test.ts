@@ -57,9 +57,24 @@ describe("migration ordering", () => {
       .filter((f: string) => f.match(/^\d{3}_/))
       .sort();
 
-    expect(migrations.length).toBeGreaterThanOrEqual(5);
+    expect(migrations.length).toBeGreaterThanOrEqual(6);
     expect(migrations[migrations.length - 1]).toContain(
-      "005_add_cloud_task_id"
+      "006_pgvector_tenant_rls"
     );
+  });
+
+  it("Python migration 006 defines pgvector extension and tenant RLS", () => {
+    const migrationPath = path.resolve(
+      import.meta.dirname,
+      "../../../../python-backend/migrations/006_pgvector_tenant_rls.py"
+    );
+
+    expect(fs.existsSync(migrationPath)).toBe(true);
+    const content = fs.readFileSync(migrationPath, "utf-8");
+    expect(content).toContain("CREATE EXTENSION IF NOT EXISTS");
+    expect(content).toContain('VECTOR_EXTENSION_NAME = "vector"');
+    expect(content).toContain("ENABLE ROW LEVEL SECURITY");
+    expect(content).toContain("FORCE ROW LEVEL SECURITY");
+    expect(content).toContain("library_chunk_vectors_tenant_select");
   });
 });

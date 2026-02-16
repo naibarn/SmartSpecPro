@@ -42,3 +42,29 @@ Implement safe pgvector rollout on the primary database with explicit migration 
 - pgvector schema objects and RLS policies exist and verify cleanly.
 - Migration/rollback checks are automated and repeatable.
 - Tenant isolation negative tests pass at DB boundary.
+
+## As-Built (2026-02-16)
+
+### Actual files changed
+- `python-backend/migrations/006_pgvector_tenant_rls.py`
+- `python-backend/tests/unit/migrations/test_pgvector_tenant_rls_migration.py`
+- `apps/web/server/__tests__/migrationOrdering.test.ts`
+
+### Deviations from plan
+- Verification and RLS allow/deny coverage are implemented as deterministic query templates and unit-level snapshot validation rather than live Postgres integration execution in CI.
+- Migration orchestration continues using repository migration scripts (not Alembic revision graph) to stay consistent with existing migration workflow.
+- Extension rollback is explicit opt-in (`--drop-extension`) to avoid destructive impact when shared by other features.
+
+### Tests added/updated
+- Added: `python-backend/tests/unit/migrations/test_pgvector_tenant_rls_migration.py`
+  - extension/table/index/RLS SQL generation coverage
+  - preflight privilege and capacity failure behavior
+  - verification drift detection for missing indexes/policies
+  - rollback SQL coverage and RLS validation query templates
+- Updated: `apps/web/server/__tests__/migrationOrdering.test.ts`
+  - migration ordering now expects `006_pgvector_tenant_rls.py` as latest Python migration
+  - asserts migration contains pgvector + RLS contract markers
+
+### Known follow-ups
+- Run migration verification against a live Postgres environment with pgvector installed to execute allow/deny RLS queries end-to-end.
+- Wire migration preflight/verification helpers into deployment automation so failures block rollout before cutover.

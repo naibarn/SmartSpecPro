@@ -79,3 +79,29 @@
 - decision: dedupe-key short-circuit against recent completed jobs scoped by tenant + item
 - mode: `auto`
 - rationale: Improves idempotency for duplicated/replayed jobs without requiring schema changes.
+
+## Section 04 Decisions
+
+- step: migration_framework_alignment
+- options: introduce new Alembic-only flow vs follow repository migration script pattern
+- decision: follow existing repository migration script pattern (`python-backend/migrations/006_*.py`)
+- mode: `auto`
+- rationale: Keeps operational workflow consistent with existing migration inventory and migration-ordering checks.
+
+- step: rls_policy_idempotency
+- options: attempt create-only policy statements vs drop-and-recreate policy set per upgrade run
+- decision: drop-and-recreate policy set on upgrade
+- mode: `auto`
+- rationale: Ensures deterministic policy definitions and prevents silent drift when policy SQL changes across iterations.
+
+- step: extension_rollback_behavior
+- options: always drop `vector` extension on rollback vs make extension drop explicit opt-in
+- decision: extension drop is opt-in (`--drop-extension`)
+- mode: `auto`
+- rationale: Reduces destructive rollback risk when `vector` extension may be shared by other schemas/workloads.
+
+- step: preflight_capacity_gate
+- options: no capacity gate vs enforce configurable headroom threshold
+- decision: enforce configurable capacity headroom (`PGVECTOR_MIGRATION_MAX_DB_BYTES` + minimum threshold)
+- mode: `auto`
+- rationale: Prevents running index-heavy migration steps on constrained databases without explicit operator acknowledgment.
