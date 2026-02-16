@@ -13,8 +13,8 @@
 - section-04-pgvector-migration-and-tenant-rls: completed (`7a51bd3`)
 - section-05-backfill-reindex-and-consistency: completed (`5caee7b`)
 - section-06-staged-cutover-and-rollback-governance: completed (`e3e4508`)
-- section-07-observability-admin-and-alerting: completed (pending commit hash)
-- section-08-end-to-end-validation-and-rollout: pending
+- section-07-observability-admin-and-alerting: completed (`8c8d0e9`)
+- section-08-end-to-end-validation-and-rollout: completed (pending commit hash)
 
 ## Section Execution Log
 
@@ -61,8 +61,15 @@
 - blocked_tasks_resolved_remaining: `none`
 
 - section: `section-07-observability-admin-and-alerting`
-- commit: `pending`
+- commit: `8c8d0e9`
 - test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_vector_observability_service.py tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_cutover_service.py && cd /home/dev/projects/SmartSpecPro/python-backend && .venv/bin/python -m py_compile app/api/admin.py app/services/library_vector_observability_service.py app/services/library_indexing_service.py app/services/library_cutover_service.py`
 - pass_fail_summary: `PASS (28 Python unit tests + compile checks)`
 - notable_deviations: `admin vector health endpoint currently uses placeholder latency values until live p95 telemetry wiring is added`
+- blocked_tasks_resolved_remaining: `none`
+
+- section: `section-08-end-to-end-validation-and-rollout`
+- commit: `pending`
+- test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_rollout_validation.py tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_cutover_service.py tests/unit/services/test_library_vector_observability_service.py && cd /home/dev/projects/SmartSpecPro/python-backend && .venv/bin/python -m py_compile app/api/admin.py app/services/library_indexing_service.py app/services/library_cutover_service.py app/services/library_vector_observability_service.py`
+- pass_fail_summary: `PASS (33 Python unit tests + compile checks)`
+- notable_deviations: `validation is acceptance-style in isolated DB fixtures; staging/live telemetry evidence capture remains follow-up`
 - blocked_tasks_resolved_remaining: `none`

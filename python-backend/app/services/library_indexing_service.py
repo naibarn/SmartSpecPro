@@ -635,6 +635,93 @@ async def reindex_all_library_items(
     }
 
 
+async def delete_library_item_vectors(
+    db: AsyncSession,
+    library_item_id: int,
+    *,
+    tenant_id: str,
+    soft_delete_item: bool = True,
+) -> dict[str, Any]:
+    """Delete indexed chunk records for a library item and optionally soft-delete the item."""
+    item = await db.scalar(
+        select(LibraryItem).where(
+            and_(
+                LibraryItem.id == library_item_id,
+                LibraryItem.tenant_id == tenant_id,
+            )
+        )
+    )
+    if item is None:
+        raise LookupError(f"library_item_not_found:{library_item_id}")
+
+    chunk_rows = (
+        (
+            await db.execute(
+                select(LibraryChunk.id, LibraryChunk.vector_ref_id).where(
+                    and_(
+                        LibraryChunk.library_item_id == library_item_id,
+                        LibraryChunk.tenant_id == tenant_id,
+                    )
+                )
+            )
+        )
+        .all()
+    )
+    removed_chunks = len(chunk_rows)
+    removed_vector_refs = len([row for row in chunk_rows if row.vector_ref_id])
+
+    await db.execute(
+        delete(LibraryChunk).where(
+            and_(
+                LibraryChunk.library_item_id == library_item_id,
+                LibraryChunk.tenant_id == tenant_id,
+            )
+        )
+    )
+
+    if soft_delete_item:
+        item.deleted_at = datetime.utcnow()
+        item.status = "deleted"
+        item.updated_at = datetime.utcnow()
+
+    await db.commit()
+
+    emit_metric(
+        "library.index.delete.completed_total",
+        tenant_id=tenant_id,
+    )
+    log_observability_event(
+        "library_index_delete_completed",
+        tenant_id=tenant_id,
+        library_item_id=library_item_id,
+        removed_chunks=removed_chunks,
+        removed_vector_refs=removed_vector_refs,
+        soft_delete_item=soft_delete_item,
+    )
+    _safe_record_vector_audit_event(
+        operation="delete",
+        outcome="success",
+        tenant_id=tenant_id,
+        provider=resolve_library_vector_provider()[0],
+        correlation_id=f"library-delete:{library_item_id}",
+        domain="library",
+        entity_id=f"library:{library_item_id}",
+        details={
+            "removed_chunks": removed_chunks,
+            "removed_vector_refs": removed_vector_refs,
+            "soft_delete_item": soft_delete_item,
+        },
+    )
+
+    return {
+        "library_item_id": library_item_id,
+        "tenant_id": tenant_id,
+        "removed_chunks": removed_chunks,
+        "removed_vector_refs": removed_vector_refs,
+        "soft_delete_item": soft_delete_item,
+    }
+
+
 async def enqueue_library_index_job(
     db: AsyncSession,
     library_item_id: int,

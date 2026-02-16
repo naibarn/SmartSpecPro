@@ -183,3 +183,23 @@
 - decision: masked config with recursive secret redaction + explicit connection health/capabilities fields
 - mode: `auto`
 - rationale: Preserves actionable admin diagnostics without leaking credentials.
+
+## Section 08 Decisions
+
+- step: acceptance_validation_scope
+- options: full staging e2e pipeline in-section vs acceptance-style integration tests in isolated DB fixtures
+- decision: acceptance-style integration tests in isolated DB fixtures
+- mode: `auto`
+- rationale: Provides deterministic validation for rollout gates while avoiding environment-coupled flakiness in this implementation section.
+
+- step: delete_acceptance_path
+- options: defer delete acceptance to future section vs add scoped delete helper now
+- decision: add `delete_library_item_vectors` helper for indexed chunk cleanup and soft-delete acceptance checks
+- mode: `auto`
+- rationale: Enables explicit delete acceptance coverage required by section objective.
+
+- step: rollout_artifact_format
+- options: inline checklist only in section notes vs dedicated canary runbook artifact
+- decision: dedicated `rollout-canary-runbook.md` artifact with cohort gates and rollback procedure
+- mode: `auto`
+- rationale: Improves operational handoff and keeps rollout ownership/checklists reusable.

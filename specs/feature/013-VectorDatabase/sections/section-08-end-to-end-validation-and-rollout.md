@@ -43,3 +43,29 @@ Finalize feature readiness with integrated validation across API, worker, DB, an
 - All acceptance stubs are implemented and passing.
 - Rollout and rollback rehearsals complete without unresolved drift.
 - Feature is production-ready with operational monitoring and ownership in place.
+
+## As-Built (2026-02-16)
+
+### Actual files changed
+- `python-backend/app/services/library_indexing_service.py`
+- `python-backend/tests/unit/services/test_library_rollout_validation.py`
+- `specs/feature/013-VectorDatabase/rollout-canary-runbook.md`
+- `specs/feature/013-VectorDatabase/reviews/section-08-review.md`
+
+### Deviations from plan
+- End-to-end validation is implemented as acceptance-style service tests in isolated DB fixtures rather than full staging environment smoke pipelines in this section.
+- Search latency alert validation uses policy-level threshold checks and runbook metadata; live p95 telemetry ingestion remains a follow-up.
+
+### Tests added/updated
+- Added: `python-backend/tests/unit/services/test_library_rollout_validation.py`
+  - gallery/library auto-indexing acceptance
+  - delete acceptance removes indexed vectors and preserves consistency
+  - provider switch gate + both rollback trigger rehearsals
+  - pgvector/RLS acceptance helper checks
+  - observability/admin alert acceptance checks
+- Updated: `python-backend/tests/unit/services/test_library_indexing_service.py`
+  - verified no regression from delete acceptance helper integration
+
+### Known follow-ups
+- Add staging integration evidence capture for canary cohorts using live queue/search metrics.
+- Replace placeholder latency values in admin vector health endpoint with telemetry-backed p95/baseline values.
