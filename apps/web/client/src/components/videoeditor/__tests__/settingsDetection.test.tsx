@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import SilenceDetectionDialog from "../SilenceDetectionDialog";
 import type { VideoEditorProject } from "../../../types/videoEditor";
+import { createEmptyProject } from "../../../types/videoEditor";
 import { createMediaJobClient } from "../../../services/mediaJobClient";
 
 // Mock the media job client with getWaveformPeaks
@@ -19,42 +20,42 @@ vi.mock("../../../services/mediaJobClient", () => ({
 
 // Helper to create a minimal test project
 function createTestProject(): VideoEditorProject {
-  return {
-    id: "test-project",
-    name: "Test Project",
-    settings: {
-      width: 1920,
-      height: 1080,
-      frameRate: 30,
-      duration: 30, // 30 seconds
-    },
-    timeline: {
-      tracks: [
+  const project = createEmptyProject("Test Project");
+  project.settings.duration = 30;
+  project.timeline.tracks = [
+    {
+      id: "audio-1",
+      type: "audio",
+      name: "A1",
+      clips: [
         {
-          id: "audio-1",
-          type: "audio",
-          clips: [
-            {
-              id: "clip-1",
-              assetId: "asset-1",
-              startTime: 0,
-              duration: 30,
-              trimStart: 0,
-              trimEnd: 30,
-            },
-          ],
+          id: "clip-1",
+          assetId: "asset-1",
+          trackId: "audio-1",
+          startTime: 0,
+          duration: 30,
+          trimIn: 0,
+          trimOut: 0,
+          volume: 1,
+          speed: 1,
+          effects: [],
         },
       ],
+      muted: false,
+      locked: false,
+      visible: true,
     },
-    assets: {
-      "asset-1": {
-        id: "asset-1",
-        path: "/test/audio.mp3",
-        type: "audio",
-        duration: 30,
-      },
-    },
-  } as VideoEditorProject;
+  ];
+  project.assets["asset-1"] = {
+    id: "asset-1",
+    path: "/test/audio.mp3",
+    type: "audio",
+    source: "imported",
+    filename: "audio.mp3",
+    format: "mp3",
+    duration: 30,
+  };
+  return project;
 }
 
 // ========================================
@@ -70,7 +71,7 @@ describe("Settings Panel: Slider Configuration", () => {
     });
   });
 
-  it("should render threshold slider with range -60 to -20 and default -40", () => {
+  it("should render threshold slider with range -60 to -10 and default -30", () => {
     const project = createTestProject();
     render(
       <SilenceDetectionDialog
@@ -83,9 +84,9 @@ describe("Settings Panel: Slider Configuration", () => {
     const thresholdSlider = screen.getByTestId("threshold-slider") as HTMLInputElement;
     expect(thresholdSlider).toBeTruthy();
     expect(thresholdSlider.getAttribute("min")).toBe("-60");
-    expect(thresholdSlider.getAttribute("max")).toBe("-20");
+    expect(thresholdSlider.getAttribute("max")).toBe("-10");
     expect(thresholdSlider.getAttribute("step")).toBe("1");
-    expect(thresholdSlider.value).toBe("-40");
+    expect(thresholdSlider.value).toBe("-30");
   });
 
   it("should show both dB and percentage values for threshold", () => {
@@ -98,10 +99,10 @@ describe("Settings Panel: Slider Configuration", () => {
       />
     );
 
-    // At default -40 dB, percentage should be 50%
+    // At default -30 dB, percentage should be 60%
     const thresholdLabel = screen.getByTestId("threshold-label");
-    expect(thresholdLabel.textContent).toContain("-40");
-    expect(thresholdLabel.textContent).toContain("50%");
+    expect(thresholdLabel.textContent).toContain("-30");
+    expect(thresholdLabel.textContent).toContain("60%");
   });
 
   it("should update percentage when threshold slider changes", () => {
@@ -122,18 +123,18 @@ describe("Settings Panel: Slider Configuration", () => {
     expect(thresholdLabel.textContent).toContain("-60");
     expect(thresholdLabel.textContent).toContain("0%");
 
-    // Change to -20 dB => 100%
+    // Change to -20 dB => 80%
     fireEvent.change(thresholdSlider, { target: { value: "-20" } });
     expect(thresholdLabel.textContent).toContain("-20");
-    expect(thresholdLabel.textContent).toContain("100%");
+    expect(thresholdLabel.textContent).toContain("80%");
 
-    // Change to -50 dB => 25%
+    // Change to -50 dB => 20%
     fireEvent.change(thresholdSlider, { target: { value: "-50" } });
     expect(thresholdLabel.textContent).toContain("-50");
-    expect(thresholdLabel.textContent).toContain("25%");
+    expect(thresholdLabel.textContent).toContain("20%");
   });
 
-  it("should render minimum duration slider with range 0.1 to 5.0 and default 0.5", () => {
+  it("should render minimum duration slider with range 0.1 to 5.0 and default 0.3", () => {
     const project = createTestProject();
     render(
       <SilenceDetectionDialog
@@ -148,7 +149,7 @@ describe("Settings Panel: Slider Configuration", () => {
     expect(durationSlider.getAttribute("min")).toBe("0.1");
     expect(durationSlider.getAttribute("max")).toBe("5.0");
     expect(durationSlider.getAttribute("step")).toBe("0.1");
-    expect(durationSlider.value).toBe("0.5");
+    expect(durationSlider.value).toBe("0.3");
   });
 
   it("should render softening buffer slider with range 0.0 to 2.0 and default 0.2", () => {
@@ -273,9 +274,11 @@ describe("Settings Panel: Analyze Flow", () => {
       expect(mockDetectDeadAir).toHaveBeenCalledWith(
         "/test/audio.mp3",
         expect.objectContaining({
-          thresholdDb: -40,
-          minSilenceMs: 500,
+          thresholdDb: -30,
+          minSilenceMs: 300,
         })
+        ,
+        expect.any(Function)
       );
     });
   });

@@ -26,6 +26,8 @@ describe("LibrarySearchPanel", () => {
       React.createElement(LibrarySearchPanel, {
         query: "",
         onQueryChange: vi.fn(),
+        recentDays: 7,
+        onRecentDaysChange: vi.fn(),
         isLoading: false,
         results: [],
         onSelect: vi.fn(),
@@ -33,7 +35,7 @@ describe("LibrarySearchPanel", () => {
     );
 
     expect(html).toContain("Search Library");
-    expect(html).toContain("Type to search indexed library items for reuse.");
+    expect(html).toContain("Updated in:");
   });
 
   it("renders search results with status labels", () => {
@@ -41,6 +43,8 @@ describe("LibrarySearchPanel", () => {
       React.createElement(LibrarySearchPanel, {
         query: "hero",
         onQueryChange: vi.fn(),
+        recentDays: 7,
+        onRecentDaysChange: vi.fn(),
         isLoading: false,
         selectedItemId: 2,
         onSelect: vi.fn(),
@@ -83,6 +87,8 @@ describe("LibrarySearchPanel", () => {
       React.createElement(LibrarySearchPanel, {
         query: "lion",
         onQueryChange: vi.fn(),
+        recentDays: 7,
+        onRecentDaysChange: vi.fn(),
         isLoading: false,
         selectedItemId: null,
         onSelect: vi.fn(),

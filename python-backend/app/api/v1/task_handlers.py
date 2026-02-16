@@ -23,6 +23,10 @@ import structlog
 
 from app.core.database import AsyncSessionLocal
 from app.services.cloud_tasks import QUEUE_CONFIGS, enqueue_task
+from app.services.cloud_task_events import (
+    ensure_media_tasks_cloud_task_id_column,
+    record_cloud_task_event,
+)
 from app.services.media_task_service import MediaTaskService
 from app.services.media_pipeline import (
     download_media,
@@ -63,6 +67,15 @@ async def _check_dead_letter(
 
     if retry_count >= max_attempts - 1:
         task_id = request.headers.get("X-CloudTasks-TaskName", "unknown")
+        await record_cloud_task_event(
+            task_id=task_id,
+            queue_name=queue_name,
+            status="dead_letter",
+            payload=payload,
+            error_message=error_message,
+            attempt_count=retry_count,
+            completed=False,
+        )
         logger.error(
             "dead_letter_recorded",
             task_id=task_id,
@@ -100,6 +113,7 @@ async def poll_job(request: Request):
     submitted_at = body.get("submitted_at", 0)
 
     logger.info("poll_job_handler", job_id=job_id, kie_job_id=kie_job_id, attempt=attempt)
+    await ensure_media_tasks_cloud_task_id_column()
 
     # 1. Look up job and check if already terminal
     async with AsyncSessionLocal() as db:
@@ -126,6 +140,15 @@ async def poll_job(request: Request):
 
         kie_client = await initialize_kie_ai_client()
         if not kie_client:
+            await record_cloud_task_event(
+                task_id=request.headers.get("X-CloudTasks-TaskName"),
+                queue_name="polling-tasks",
+                status="failed",
+                payload=body,
+                error_message="Kie AI client not available",
+                attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", attempt),
+                completed=False,
+            )
             return JSONResponse(
                 status_code=503,
                 content={"status": "error", "message": "Kie AI client not available"},
@@ -164,6 +187,15 @@ async def poll_job(request: Request):
             )
         except Exception as e:
             # Transient error — return 5xx so Cloud Tasks retries
+            await record_cloud_task_event(
+                task_id=request.headers.get("X-CloudTasks-TaskName"),
+                queue_name="polling-tasks",
+                status="failed",
+                payload=body,
+                error_message=f"Kie API error: {str(e)}",
+                attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", attempt),
+                completed=False,
+            )
             logger.error(
                 "poll_job_kie_api_error",
                 job_id=job_id,
@@ -206,6 +238,14 @@ async def poll_job(request: Request):
                     },
                     task_id=f"process-{task.id}",
                 )
+            await record_cloud_task_event(
+                task_id=request.headers.get("X-CloudTasks-TaskName"),
+                queue_name="polling-tasks",
+                status="completed",
+                payload=body,
+                attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", attempt),
+                completed=True,
+            )
             return JSONResponse(
                 status_code=200,
                 content={"status": "completed", "job_id": job_id},
@@ -224,6 +264,15 @@ async def poll_job(request: Request):
                 TaskStatus.FAILED,
                 error_message=error_msg,
             )
+            await record_cloud_task_event(
+                task_id=request.headers.get("X-CloudTasks-TaskName"),
+                queue_name="polling-tasks",
+                status="failed",
+                payload=body,
+                error_message=error_msg,
+                attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", attempt),
+                completed=True,
+            )
             return JSONResponse(
                 status_code=200,
                 content={"status": "failed", "job_id": job_id, "error": error_msg},
@@ -237,6 +286,15 @@ async def poll_job(request: Request):
                 kie_job_id,
                 TaskStatus.FAILED,
                 error_message="Polling timeout: job did not complete within 24 hours",
+            )
+            await record_cloud_task_event(
+                task_id=request.headers.get("X-CloudTasks-TaskName"),
+                queue_name="polling-tasks",
+                status="failed",
+                payload=body,
+                error_message="Polling timeout: job did not complete within 24 hours",
+                attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", attempt),
+                completed=True,
             )
             return JSONResponse(
                 status_code=200,
@@ -296,6 +354,7 @@ async def process_media(request: Request):
         )
 
     logger.info("process_media_handler", job_id=job_id, kie_job_id=kie_job_id)
+    await ensure_media_tasks_cloud_task_id_column()
     start_time = time.time()
 
     # 1. Look up job in DB
@@ -365,6 +424,14 @@ async def process_media(request: Request):
             duration_ms=duration_ms,
             file_size=file_size,
         )
+        await record_cloud_task_event(
+            task_id=request.headers.get("X-CloudTasks-TaskName"),
+            queue_name="media-jobs",
+            status="completed",
+            payload=body,
+            attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", 0),
+            completed=True,
+        )
 
         return JSONResponse(
             status_code=200,
@@ -391,6 +458,15 @@ async def process_media(request: Request):
                     TaskStatus.FAILED,
                     error_message=f"Download failed: HTTP {e.response.status_code}",
                 )
+            await record_cloud_task_event(
+                task_id=request.headers.get("X-CloudTasks-TaskName"),
+                queue_name="media-jobs",
+                status="failed",
+                payload=body,
+                error_message=f"Download failed: HTTP {e.response.status_code}",
+                attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", 0),
+                completed=True,
+            )
             return JSONResponse(
                 status_code=200,
                 content={"status": "failed", "job_id": job_id, "error": str(e)},
@@ -411,10 +487,28 @@ async def process_media(request: Request):
                     TaskStatus.FAILED,
                     error_message=f"Dead letter: {e}",
                 )
+            await record_cloud_task_event(
+                task_id=request.headers.get("X-CloudTasks-TaskName"),
+                queue_name="media-jobs",
+                status="dead_letter",
+                payload=body,
+                error_message=str(e),
+                attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", 0),
+                completed=False,
+            )
             return JSONResponse(
                 status_code=200,
                 content={"status": "dead_letter", "job_id": job_id, "error": str(e)},
             )
+        await record_cloud_task_event(
+            task_id=request.headers.get("X-CloudTasks-TaskName"),
+            queue_name="media-jobs",
+            status="failed",
+            payload=body,
+            error_message=str(e),
+            attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", 0),
+            completed=False,
+        )
         logger.warning("process_media_transient_error", job_id=job_id, error=str(e))
         return JSONResponse(
             status_code=500,
@@ -431,6 +525,15 @@ async def process_media(request: Request):
                 TaskStatus.FAILED,
                 error_message=str(e),
             )
+        await record_cloud_task_event(
+            task_id=request.headers.get("X-CloudTasks-TaskName"),
+            queue_name="media-jobs",
+            status="failed",
+            payload=body,
+            error_message=str(e),
+            attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", 0),
+            completed=True,
+        )
         return JSONResponse(
             status_code=200,
             content={"status": "failed", "job_id": job_id, "error": str(e)},
@@ -447,14 +550,38 @@ async def process_video(request: Request):
     Payload: {"job_id": str, "render_profile": str}
     """
     body = await request.json()
-    job_id = body.get("job_id")
+    render_spec = body.get("render_spec") or body.get("renderSpec") or {}
+    job_id = body.get("job_id") or render_spec.get("jobId")
+    queue_name = body.get("queue_name", "video-jobs-short")
 
-    logger.info("process_video_handler", job_id=job_id)
+    logger.info("process_video_handler", job_id=job_id, queue=queue_name)
+    await ensure_media_tasks_cloud_task_id_column()
 
-    return JSONResponse(
-        status_code=200,
-        content={"status": "acknowledged", "job_id": job_id},
-    )
+    try:
+        from app.api.v1.media_generation import process_video_task
+
+        response = await process_video_task(request)
+        await record_cloud_task_event(
+            task_id=request.headers.get("X-CloudTasks-TaskName"),
+            queue_name=queue_name,
+            status="completed",
+            payload=body,
+            attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", 0),
+            completed=True,
+        )
+        return response
+    except Exception as e:
+        await record_cloud_task_event(
+            task_id=request.headers.get("X-CloudTasks-TaskName"),
+            queue_name=queue_name,
+            status="failed",
+            payload=body,
+            error_message=str(e),
+            attempt_count=request.headers.get("X-CloudTasks-TaskRetryCount", 0),
+            completed=True,
+        )
+        logger.error("process_video_handler_error", job_id=job_id, error=str(e))
+        raise
 
 
 # ── Periodic task handlers (Cloud Scheduler via Cloud Tasks) ──────────────
@@ -468,6 +595,7 @@ async def cleanup_expired(request: Request):
     Payload: {} (no payload needed)
     """
     logger.info("cleanup_expired_handler")
+    await ensure_media_tasks_cloud_task_id_column()
 
     try:
         from app.tasks.media_tasks import _cleanup_expired_tasks_async
@@ -490,6 +618,7 @@ async def retry_failed(request: Request):
     Payload: {} (no payload needed)
     """
     logger.info("retry_failed_handler")
+    await ensure_media_tasks_cloud_task_id_column()
 
     try:
         from app.tasks.media_tasks import _retry_failed_tasks_async
@@ -546,6 +675,7 @@ async def recover_stuck(request: Request):
     Payload: {} (no payload needed)
     """
     logger.info("recover_stuck_handler")
+    await ensure_media_tasks_cloud_task_id_column()
 
     try:
         from app.tasks.media_tasks import _recover_stuck_tasks_async

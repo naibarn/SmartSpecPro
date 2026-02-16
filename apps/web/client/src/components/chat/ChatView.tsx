@@ -172,6 +172,8 @@ interface ChatViewProps {
   onTitleUpdate?: (title: string) => void;
 }
 
+type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
+
 export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -181,6 +183,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
+  const [librarySearchRecentDays, setLibrarySearchRecentDays] = useState<LibraryRecentDaysFilter>(7);
   const [selectedLibrarySources, setSelectedLibrarySources] = useState<ChatLibraryAttachPayload[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
@@ -227,13 +230,14 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   } = trpc.library.search.useQuery(
     {
       query: debouncedLibrarySearchQuery || undefined,
-      limit: 20,
+      limit: 50,
+      filters: librarySearchRecentDays === "all" ? undefined : { recentDays: librarySearchRecentDays },
     },
     {
       enabled:
         librarySourcePickerEnabled &&
         libraryPickerOpen &&
-        debouncedLibrarySearchQuery.trim().length > 0,
+        (debouncedLibrarySearchQuery.trim().length > 0 || librarySearchRecentDays !== "all"),
     },
   );
   const attachableLibrarySources = useMemo(
@@ -2379,14 +2383,36 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                     onValueChange={setLibrarySearchQuery}
                     placeholder="Search library..."
                   />
+                  <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Updated in:</span>
+                    <select
+                      className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                      value={String(librarySearchRecentDays)}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        if (next === "all") {
+                          setLibrarySearchRecentDays("all");
+                          return;
+                        }
+                        setLibrarySearchRecentDays(Number(next) as Exclude<LibraryRecentDaysFilter, "all">);
+                      }}
+                    >
+                      <option value="1">1 day</option>
+                      <option value="3">3 days</option>
+                      <option value="7">7 days</option>
+                      <option value="15">15 days</option>
+                      <option value="30">1 month</option>
+                      <option value="all">All time</option>
+                    </select>
+                  </div>
                   <CommandList className="max-h-[60vh]">
                     {librarySearchError ? (
                       <div className="px-3 py-2 text-sm text-red-600">
                         Library search unavailable. Chat can continue without it.
                       </div>
-                    ) : debouncedLibrarySearchQuery.trim().length === 0 ? (
+                    ) : debouncedLibrarySearchQuery.trim().length === 0 && librarySearchRecentDays === "all" ? (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
-                        Type to search ready library items.
+                        Pick a timeframe or type to search ready library items.
                       </div>
                     ) : isLibrarySearchLoading ? (
                       <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
@@ -2396,32 +2422,39 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                     ) : attachableLibrarySources.length === 0 ? (
                       <CommandEmpty>No ready library items found.</CommandEmpty>
                     ) : (
-                      <CommandGroup heading="Ready Library Items">
-                        {attachableLibrarySources.map((item) => {
-                          const isSelected = selectedLibrarySources.some(
-                            (selected) => selected.item_id === item.item_id,
-                          );
-                          return (
-                            <CommandItem
-                              key={item.item_id}
-                              value={`${item.title} ${item.item_type} ${item.source}`}
-                              onSelect={() => toggleLibrarySource(item)}
-                              className="flex items-center gap-2"
-                            >
-                              <Check
-                                className={cn(
-                                  "h-3.5 w-3.5 shrink-0",
-                                  isSelected ? "opacity-100" : "opacity-0",
-                                )}
-                              />
-                              <span className="flex-1 truncate">{item.title}</span>
-                              <Badge variant="outline" className="text-[10px]">
-                                {item.item_type}
-                              </Badge>
-                            </CommandItem>
-                          );
-                        })}
-                      </CommandGroup>
+                      <>
+                        <CommandGroup heading="Ready Library Items">
+                          {attachableLibrarySources.map((item) => {
+                            const isSelected = selectedLibrarySources.some(
+                              (selected) => selected.item_id === item.item_id,
+                            );
+                            return (
+                              <CommandItem
+                                key={item.item_id}
+                                value={`${item.title} ${item.item_type} ${item.source}`}
+                                onSelect={() => toggleLibrarySource(item)}
+                                className="flex items-center gap-2"
+                              >
+                                <Check
+                                  className={cn(
+                                    "h-3.5 w-3.5 shrink-0",
+                                    isSelected ? "opacity-100" : "opacity-0",
+                                  )}
+                                />
+                                <span className="flex-1 truncate">{item.title}</span>
+                                <Badge variant="outline" className="text-[10px]">
+                                  {item.item_type}
+                                </Badge>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                        {librarySearchData?.has_more && (
+                          <div className="mx-2 mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            Showing up to 50 results. There may be more items. Add more filters or keywords.
+                          </div>
+                        )}
+                      </>
                     )}
                   </CommandList>
                 </CommandDialog>

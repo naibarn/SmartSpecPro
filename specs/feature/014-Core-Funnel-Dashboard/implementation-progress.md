@@ -15,7 +15,7 @@
 
 ## Section 02: Tracker Service, Dedup, and Analytics Side Channels
 - Status: completed
-- Commit: pending
+- Commit: `e087dae`
 - Test command: `npm --workspace @smartspec/web test`
 - Section test run:
   - `npm --workspace @smartspec/web test -- server/services/funnelTracker.test.ts` (pass)

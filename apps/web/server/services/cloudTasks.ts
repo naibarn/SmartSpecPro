@@ -20,7 +20,9 @@ type CloudTasksResponse = { name?: string };
 type CloudTasksClientLike = {
   queuePath: (projectId: string, region: string, queueName: string) => string;
   taskPath: (projectId: string, region: string, queueName: string, taskId: string) => string;
-  createTask: (request: { parent: string; task: Record<string, any> }) => Promise<[CloudTasksResponse]>;
+  createTask: (
+    request: { parent: string; task: Record<string, any> },
+  ) => Promise<[CloudTasksResponse, ...unknown[]]>;
   deleteTask: (request: { name: string }) => Promise<unknown>;
 };
 
@@ -52,7 +54,9 @@ async function getClient(): Promise<CloudTasksClientLike> {
     }
     try {
       const mod = await import("@google-cloud/tasks");
-      const CloudTasksClientCtor = (mod as { CloudTasksClient?: new () => CloudTasksClientLike }).CloudTasksClient;
+      const CloudTasksClientCtor = (
+        mod as unknown as { CloudTasksClient?: new (...args: unknown[]) => CloudTasksClientLike }
+      ).CloudTasksClient;
       if (!CloudTasksClientCtor) {
         throw new Error("CloudTasksClient export was not found");
       }

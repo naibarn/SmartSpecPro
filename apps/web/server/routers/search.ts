@@ -5,9 +5,26 @@
  * Uses protectedProcedure for tenant isolation. The tenantId is
  * derived from the authenticated user's session, never from client input.
  */
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { searchDocs, searchImages } from "../services/vectorize-search";
+
+function resolveSearchTenantId(
+  ctx: { tenantId: unknown; user: { currentTenantId?: unknown } },
+): string {
+  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+
+  if (tenantId === null || tenantId === undefined) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Tenant context is required for search operations",
+    });
+  }
+
+  return tenantId;
+}
 
 export const searchRouter = router({
   docs: protectedProcedure
@@ -19,7 +36,7 @@ export const searchRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.user.tenantId ?? String(ctx.user.id);
+      const tenantId = resolveSearchTenantId(ctx);
       return searchDocs({ ...input, tenantId });
     }),
 
@@ -31,7 +48,7 @@ export const searchRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = ctx.user.tenantId ?? String(ctx.user.id);
+      const tenantId = resolveSearchTenantId(ctx);
       return searchImages({ ...input, tenantId });
     }),
 });

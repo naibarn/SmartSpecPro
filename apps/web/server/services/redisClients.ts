@@ -1,8 +1,9 @@
 /**
  * Split Redis adapter for Cloud Run deployment.
  *
- * - Cache client (Upstash): stateless ops -- rate limiting, locks, dedup, flags.
- *   Connected via REDIS_UPSTASH_URL. Uses IORedis with rediss:// protocol.
+ * - Cache client: stateless ops -- rate limiting, locks, dedup, flags.
+ *   Priority: REDIS_UPSTASH_URL → REDIS_CLOUD_URL → REDIS_URL
+ *   Supports Upstash (serverless), Redis Cloud Essentials, or local Redis.
  *
  * - Realtime client (Memorystore): connection-oriented ops -- pub/sub, concurrency sets.
  *   Connected via REDIS_MEMORYSTORE_URL. Uses IORedis with persistent TCP.
@@ -22,10 +23,10 @@ let _realtimeClient: Redis | null = null;
 
 function resolveCacheUrl(): string {
   const url =
-    process.env.REDIS_UPSTASH_URL || process.env.REDIS_URL;
+    process.env.REDIS_UPSTASH_URL || process.env.REDIS_CLOUD_URL || process.env.REDIS_URL;
   if (!url) {
     throw new Error(
-      "Redis cache not configured. Set REDIS_UPSTASH_URL (production) or REDIS_URL (local dev).",
+      "Redis cache not configured. Set REDIS_UPSTASH_URL, REDIS_CLOUD_URL (production) or REDIS_URL (local dev).",
     );
   }
   return url;
@@ -42,7 +43,7 @@ function resolveRealtimeUrl(): string {
   return url;
 }
 
-// ─── Cache client (Upstash or local Redis) ──────────────────────────────────
+// ─── Cache client (Upstash / Redis Cloud / local Redis) ──────────────────────
 
 const CACHE_OPTIONS: RedisOptions = {
   maxRetriesPerRequest: 3,
@@ -55,7 +56,7 @@ const CACHE_OPTIONS: RedisOptions = {
 };
 
 /**
- * Get the cache Redis client (Upstash in production, local Redis in dev).
+ * Get the cache Redis client (Upstash/Redis Cloud in production, local Redis in dev).
  * Used for: rate limiting, locks, dedup keys, feature flags.
  */
 export function getCacheClient(): Redis {

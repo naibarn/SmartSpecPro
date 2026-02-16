@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { router, adminProcedure } from "../_core/trpc";
+import { router, adminProcedure, rateLimitedAdminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -57,6 +57,7 @@ const REDIS_CONFIG_KEYS = [
   "redis_provider",
   "redis_local_url",
   "redis_upstash_url",
+  "redis_cloud_url",
   "redis_memorystore_url",
   "redis_password",
 ] as const;
@@ -65,6 +66,7 @@ const REDIS_ENV_FALLBACK: Record<string, string> = {
   redis_provider: "REDIS_PROVIDER",
   redis_local_url: "REDIS_URL",
   redis_upstash_url: "REDIS_UPSTASH_URL",
+  redis_cloud_url: "REDIS_CLOUD_URL",
   redis_memorystore_url: "REDIS_MEMORYSTORE_URL",
   redis_password: "REDIS_PASSWORD",
 };
@@ -72,6 +74,7 @@ const REDIS_ENV_FALLBACK: Record<string, string> = {
 /** Keys that contain credentials and must be encrypted in DB */
 const REDIS_SENSITIVE_KEYS = new Set([
   "redis_upstash_url",
+  "redis_cloud_url",
   "redis_local_url",
   "redis_memorystore_url",
   "redis_password",
@@ -236,7 +239,7 @@ export const infrastructureRouter = router({
     return result;
   }),
 
-  updateGcpConfig: adminProcedure
+  updateGcpConfig: rateLimitedAdminProcedure
     .input(
       z.object({
         gcp_project_id: z.string().max(256).optional(),
@@ -307,7 +310,7 @@ export const infrastructureRouter = router({
     return { mode: "celery" as const, source: "default" as const };
   }),
 
-  setTaskProcessingMode: adminProcedure
+  setTaskProcessingMode: rateLimitedAdminProcedure
     .input(
       z.object({
         mode: z.enum(["celery", "cloud_tasks"]),
@@ -316,6 +319,8 @@ export const infrastructureRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      console.log(`[infra-audit] setTaskProcessingMode: user=${ctx.user?.id}, mode=${input.mode}`);
 
       // 1. Persist to DB
       await upsertSetting(db, "task_processing_mode", input.mode, ctx.user?.id);
@@ -403,12 +408,13 @@ export const infrastructureRouter = router({
     return result;
   }),
 
-  updateRedisConfig: adminProcedure
+  updateRedisConfig: rateLimitedAdminProcedure
     .input(
       z.object({
-        redis_provider: z.enum(["local", "upstash"]).optional(),
+        redis_provider: z.enum(["local", "upstash", "redis_cloud", "memorystore"]).optional(),
         redis_local_url: z.string().max(512).optional(),
         redis_upstash_url: z.string().max(512).optional(),
+        redis_cloud_url: z.string().max(512).optional(),
         redis_memorystore_url: z.string().max(512).optional(),
         redis_password: z.string().max(256).optional(),
       }),
@@ -474,16 +480,22 @@ export const infrastructureRouter = router({
 
     const legacyStatus = getRedisStatus();
 
-    // Determine which URLs are active from env
-    const cacheUrl = process.env.REDIS_UPSTASH_URL || process.env.REDIS_URL || "";
+    // Determine which URLs are active from env (priority: upstash > redis_cloud > local)
+    const cacheUrl = process.env.REDIS_UPSTASH_URL || process.env.REDIS_CLOUD_URL || process.env.REDIS_URL || "";
     const realtimeUrl = process.env.REDIS_MEMORYSTORE_URL || process.env.REDIS_URL || "";
     const legacyUrl = process.env.REDIS_URL || "";
+
+    const cacheProvider = process.env.REDIS_UPSTASH_URL
+      ? "upstash"
+      : process.env.REDIS_CLOUD_URL
+        ? "redis_cloud"
+        : "local";
 
     return {
       cache: {
         healthy: cacheHealthy,
         url: maskUrl(cacheUrl),
-        provider: process.env.REDIS_UPSTASH_URL ? "upstash" : "local",
+        provider: cacheProvider,
       },
       realtime: {
         healthy: realtimeHealthy,
@@ -551,7 +563,7 @@ export const infrastructureRouter = router({
     return result;
   }),
 
-  updateMonitoringConfig: adminProcedure
+  updateMonitoringConfig: rateLimitedAdminProcedure
     .input(
       z.object({
         sentry_dsn_node: z.string().max(512).optional(),
@@ -706,7 +718,7 @@ export const infrastructureRouter = router({
     };
   }),
 
-  setScaleTier: adminProcedure
+  setScaleTier: rateLimitedAdminProcedure
     .input(
       z.object({
         tier: z.enum(["starter", "growth", "pro", "business", "enterprise"]),
@@ -716,12 +728,13 @@ export const infrastructureRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      console.log(`[infra-audit] setScaleTier: user=${ctx.user?.id}, tier=${input.tier}`);
       await upsertSetting(db, "scale_tier", input.tier, ctx.user?.id);
 
       return { success: true as const, tier: input.tier as ScaleTierId };
     }),
 
-  applyScaleTier: adminProcedure
+  applyScaleTier: rateLimitedAdminProcedure
     .input(
       z.object({
         tier: z.enum(["starter", "growth", "pro", "business", "enterprise"]),
@@ -731,6 +744,9 @@ export const infrastructureRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      const startTime = Date.now();
+      console.log(`[infra-audit] applyScaleTier: user=${ctx.user?.id}, tier=${input.tier}, mode=${input.mode ?? "auto"}`);
 
       // 1. Persist the tier selection
       await upsertSetting(db, "scale_tier", input.tier, ctx.user?.id);
@@ -748,6 +764,9 @@ export const infrastructureRouter = router({
         new Date().toISOString(),
         ctx.user?.id,
       );
+
+      const errors = results.filter((r) => r.status === "error");
+      console.log(`[infra-audit] applyScaleTier complete: tier=${input.tier}, steps=${results.length}, errors=${errors.length}, durationMs=${Date.now() - startTime}`);
 
       return { success: true as const, results };
     }),
@@ -767,7 +786,7 @@ export const infrastructureRouter = router({
     return { ...result, gcpConfigured };
   }),
 
-  setDeployModeInfo: adminProcedure
+  setDeployModeInfo: rateLimitedAdminProcedure
     .input(z.object({ mode: z.enum(["localhost", "cloudrun"]) }))
     .mutation(async ({ input, ctx }) => {
       // Validate GCP config before allowing cloudrun mode
@@ -783,6 +802,7 @@ export const infrastructureRouter = router({
           });
         }
       }
+      console.log(`[infra-audit] setDeployMode: user=${ctx.user?.id}, mode=${input.mode}`);
       await setDeployMode(input.mode as DeployMode, ctx.user?.id);
       return { success: true, mode: input.mode };
     }),

@@ -17,7 +17,7 @@ const IMAGES_INDEX =
   process.env.VECTORIZE_IMAGES_INDEX || "images-index-prod";
 const MIN_RELEVANCE_SCORE = 0.5;
 
-interface DocSearchResult {
+export interface DocSearchResult {
   id: string;
   score: number;
   title: string;
@@ -26,7 +26,7 @@ interface DocSearchResult {
   createdAt: number;
 }
 
-interface ImageSearchResult {
+export interface ImageSearchResult {
   id: string;
   score: number;
   imageUrl: string;

@@ -451,36 +451,40 @@ export async function setDeployMode(mode: DeployMode, userId?: number): Promise<
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [existing] = await db
-    .select()
-    .from(systemSettings)
-    .where(
-      and(
-        eq(systemSettings.category, "infrastructure"),
-        eq(systemSettings.key, "deploy_mode"),
-      ),
-    )
-    .limit(1);
+  // Use transaction with SELECT ... FOR UPDATE to prevent concurrent writes
+  await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(systemSettings)
+      .where(
+        and(
+          eq(systemSettings.category, "infrastructure"),
+          eq(systemSettings.key, "deploy_mode"),
+        ),
+      )
+      .limit(1);
 
-  if (existing) {
-    await db
-      .update(systemSettings)
-      .set({ value: mode, updatedBy: userId, updatedAt: new Date() })
-      .where(eq(systemSettings.id, existing.id));
-  } else {
-    await db.insert(systemSettings).values({
-      category: "infrastructure",
-      key: "deploy_mode",
-      value: mode,
-      isSensitive: false,
-      updatedBy: userId,
-    });
-  }
+    if (existing) {
+      await tx
+        .update(systemSettings)
+        .set({ value: mode, updatedBy: userId, updatedAt: new Date() })
+        .where(eq(systemSettings.id, existing.id));
+    } else {
+      await tx.insert(systemSettings).values({
+        category: "infrastructure",
+        key: "deploy_mode",
+        value: mode,
+        isSensitive: false,
+        updatedBy: userId,
+      });
+    }
+  });
 
+  // Update Redis cache with 1-hour TTL to force periodic DB re-sync
   try {
     const { getRedisClient } = await import("./redis");
     const redis = getRedisClient();
-    await redis.set("feature-flag:DEPLOY_MODE", mode);
+    await redis.set("feature-flag:DEPLOY_MODE", mode, "EX", 3600);
   } catch (err: unknown) {
     console.error("[setDeployMode] Redis update failed (DB persisted):", formatError(err));
   }
@@ -550,7 +554,7 @@ async function ensureGcloudInstalled(): Promise<void> {
   try {
     await execFileAsync("gcloud", ["--version"], { timeout: 10_000 });
   } catch (err: unknown) {
-    const msg = err instanceof Error && "code" in err && (err as any).code === "ENOENT"
+    const msg = err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT"
       ? "gcloud CLI not found. Install Google Cloud SDK: https://cloud.google.com/sdk/docs/install"
       : `gcloud CLI check failed: ${formatError(err)}`;
     throw new Error(msg);
@@ -584,6 +588,9 @@ async function updateCloudRunService(
   if (opts.concurrency !== undefined) args.push("--concurrency", String(opts.concurrency));
 
   if (opts.envVars && Object.keys(opts.envVars).length > 0) {
+    for (const [k, v] of Object.entries(opts.envVars)) {
+      validateEnvVarValue(k, v);
+    }
     const envStr = Object.entries(opts.envVars)
       .map(([k, v]) => `${k}=${v}`)
       .join(",");
@@ -627,28 +634,85 @@ export interface ApplyStepResult {
   command?: string;
 }
 
+// Concurrency lock — Redis-based distributed lock for multi-instance safety
+const APPLY_LOCK_KEY = "scale-tier:apply-lock";
+const APPLY_LOCK_TTL_SEC = 300; // 5 minutes max lock duration (auto-release on crash)
+
+async function acquireApplyLock(): Promise<boolean> {
+  try {
+    const { getRedisClient } = await import("./redis");
+    const redis = getRedisClient();
+    // SET NX EX: only succeeds if key doesn't exist (atomic lock)
+    const result = await redis.set(APPLY_LOCK_KEY, Date.now().toString(), "EX", APPLY_LOCK_TTL_SEC, "NX");
+    return result === "OK";
+  } catch {
+    // Redis unavailable — fall through to allow operation (single-instance fallback)
+    return true;
+  }
+}
+
+async function releaseApplyLock(): Promise<void> {
+  try {
+    const { getRedisClient } = await import("./redis");
+    const redis = getRedisClient();
+    await redis.del(APPLY_LOCK_KEY);
+  } catch {
+    // Best-effort release; TTL ensures eventual cleanup
+  }
+}
+
+/**
+ * Validate env var values before passing to gcloud --update-env-vars.
+ * Prevents shell metacharacters from being injected.
+ */
+function validateEnvVarValue(key: string, value: string | number): void {
+  const str = String(value);
+  // Block shell metacharacters
+  if (/[;&|`$(){}[\]<>'"\\]/.test(str)) {
+    throw new Error(`Invalid env var value for ${key}: contains disallowed characters`);
+  }
+  // Block control characters (null bytes, newlines, carriage returns, etc.)
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1f\x7f]/.test(str)) {
+    throw new Error(`Invalid env var value for ${key}: contains control characters`);
+  }
+  if (key === "NODE_OPTIONS" && !/^--max-old-space-size=\d+$/.test(str)) {
+    throw new Error(`Invalid NODE_OPTIONS format: ${str}`);
+  }
+}
+
 /**
  * Apply a scale tier configuration to all services.
  * Dispatches to localhost or Cloud Run apply logic based on deploy mode.
  *
  * Uses execFileAsync (no shell) to prevent command injection.
  * Each step is independent — failures are logged but don't block others.
+ * Concurrency lock prevents parallel apply operations.
  */
 export async function applyScaleTier(
   tierId: ScaleTierId,
   modeOverride?: DeployMode,
 ): Promise<ApplyStepResult[]> {
-  const tier = SCALE_TIERS[tierId];
-  if (!tier) throw new Error(`Unknown tier: ${tierId}`);
-
-  validateTierConfig(tier);
-
-  const { mode } = modeOverride ? { mode: modeOverride } : await getDeployMode();
-
-  if (mode === "cloudrun") {
-    return applyScaleTierCloudRun(tier);
+  const acquired = await acquireApplyLock();
+  if (!acquired) {
+    throw new Error("Another scale tier apply operation is already in progress. Please wait.");
   }
-  return applyScaleTierLocalhost(tier);
+
+  try {
+    const tier = SCALE_TIERS[tierId];
+    if (!tier) throw new Error(`Unknown tier: ${tierId}`);
+
+    validateTierConfig(tier);
+
+    const { mode } = modeOverride ? { mode: modeOverride } : await getDeployMode();
+
+    if (mode === "cloudrun") {
+      return await applyScaleTierCloudRun(tier);
+    }
+    return await applyScaleTierLocalhost(tier);
+  } finally {
+    await releaseApplyLock();
+  }
 }
 
 // ── Cloud Run Apply ─────────────────────────────────────────
@@ -675,7 +739,8 @@ async function applyScaleTierCloudRun(tier: ScaleTierConfig): Promise<ApplyStepR
 
   // Step 1+3: Update Node.js Cloud Run (env vars + scaling in single call)
   try {
-    const cmd = `gcloud run services update ${gcp.nodeServiceName} --update-env-vars ... --max-instances=${tier.cloudRunNodeMaxInstances} --cpu=${tier.cloudRunNodeCpu} --memory=${tier.cloudRunNodeMemory}`;
+    const nodeEnvKeys = "DB_POOL_SIZE,WEB_LLM_RPM,WEB_MCP_RPM,NODE_OPTIONS";
+    const cmd = `gcloud run services update ${gcp.nodeServiceName} --region=${gcp.region} --update-env-vars=${nodeEnvKeys} --max-instances=${tier.cloudRunNodeMaxInstances} --min-instances=${tier.cloudRunNodeMinInstances} --cpu=${tier.cloudRunNodeCpu} --memory=${tier.cloudRunNodeMemory} --concurrency=${tier.cloudRunNodeConcurrency}`;
     await updateCloudRunService(gcp, gcp.nodeServiceName, {
       maxInstances: tier.cloudRunNodeMaxInstances,
       minInstances: tier.cloudRunNodeMinInstances,
@@ -702,7 +767,8 @@ async function applyScaleTierCloudRun(tier: ScaleTierConfig): Promise<ApplyStepR
 
   // Step 2+4: Update Python Cloud Run (env vars + scaling in single call)
   try {
-    const cmd = `gcloud run services update ${gcp.pythonServiceName} --update-env-vars ... --max-instances=${tier.cloudRunPythonMaxInstances} --cpu=${tier.cloudRunPythonCpu} --memory=${tier.cloudRunPythonMemory}`;
+    const pyEnvKeys = "DB_POOL_SIZE,DB_MAX_OVERFLOW,REDIS_MAX_CONNECTIONS,RATE_LIMIT_PER_MINUTE,MAX_PARALLEL_WORKFLOWS";
+    const cmd = `gcloud run services update ${gcp.pythonServiceName} --region=${gcp.region} --update-env-vars=${pyEnvKeys} --max-instances=${tier.cloudRunPythonMaxInstances} --min-instances=${tier.cloudRunPythonMinInstances} --cpu=${tier.cloudRunPythonCpu} --memory=${tier.cloudRunPythonMemory} --concurrency=${tier.cloudRunPythonConcurrency}`;
     await updateCloudRunService(gcp, gcp.pythonServiceName, {
       maxInstances: tier.cloudRunPythonMaxInstances,
       minInstances: tier.cloudRunPythonMinInstances,
@@ -828,15 +894,19 @@ async function applyScaleTierLocalhost(tier: ScaleTierConfig): Promise<ApplyStep
 
   // Step 4: Update Nginx worker_connections
   try {
+    let nginxUpdated = false;
     for (const confPath of [NGINX_CONF_PATH, NGINX_DEV_CONF_PATH]) {
       try {
         await backup(confPath);
         const content = await readFile(confPath, "utf-8");
-        const updated = content.replace(
-          /worker_connections\s+\d+;/,
-          `worker_connections ${tier.nginxWorkerConnections};`,
-        );
-        await writeFile(confPath, updated, "utf-8");
+        if (/worker_connections\s+\d+;/.test(content)) {
+          const updated = content.replace(
+            /worker_connections\s+\d+;/,
+            `worker_connections ${tier.nginxWorkerConnections};`,
+          );
+          await writeFile(confPath, updated, "utf-8");
+          nginxUpdated = true;
+        }
       } catch (err: unknown) {
         if (err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       }
@@ -844,21 +914,30 @@ async function applyScaleTierLocalhost(tier: ScaleTierConfig): Promise<ApplyStep
     // Update keepalive in nginx.conf
     try {
       const content = await readFile(NGINX_CONF_PATH, "utf-8");
-      const updated = content.replace(
-        /keepalive\s+\d+;/g,
-        `keepalive ${tier.nginxKeepalive};`,
-      );
-      await writeFile(NGINX_CONF_PATH, updated, "utf-8");
+      if (/keepalive\s+\d+;/.test(content)) {
+        const updated = content.replace(
+          /keepalive\s+\d+;/g,
+          `keepalive ${tier.nginxKeepalive};`,
+        );
+        await writeFile(NGINX_CONF_PATH, updated, "utf-8");
+        nginxUpdated = true;
+      }
     } catch (err: unknown) {
       if (err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
     }
-    results.push({ step: "nginx_config", status: "ok", mode: "localhost", message: `Nginx: connections=${tier.nginxWorkerConnections}, keepalive=${tier.nginxKeepalive}` });
+    if (nginxUpdated) {
+      results.push({ step: "nginx_config", status: "ok", mode: "localhost", message: `Nginx: connections=${tier.nginxWorkerConnections}, keepalive=${tier.nginxKeepalive}` });
+    } else {
+      results.push({ step: "nginx_config", status: "skipped", mode: "localhost", message: "Nginx config files not found or patterns not matched" });
+    }
   } catch (err: unknown) {
     results.push({ step: "nginx_config", status: "error", mode: "localhost", message: formatError(err) });
   }
 
   // Step 5: Apply Redis maxmemory (hot-reload, no restart needed)
   try {
+    // Pre-check: verify Redis container is running
+    await execFileAsync("docker", ["inspect", "--format", "{{.State.Running}}", "smartspec-redis"], { timeout: 5_000 });
     await execFileAsync("docker", [
       "exec", "smartspec-redis", "redis-cli",
       "CONFIG", "SET", "maxmemory", `${tier.redisMaxmemoryMb}mb`,
@@ -869,15 +948,21 @@ async function applyScaleTierLocalhost(tier: ScaleTierConfig): Promise<ApplyStep
     ]);
     results.push({ step: "redis_config", status: "ok", mode: "localhost", message: `Redis maxmemory=${tier.redisMaxmemoryMb}mb, policy=allkeys-lru` });
   } catch (err: unknown) {
-    results.push({ step: "redis_config", status: "error", mode: "localhost", message: formatError(err) });
+    const msg = formatError(err);
+    const isContainerDown = msg.includes("No such object") || msg.includes("is not running");
+    results.push({ step: "redis_config", status: "error", mode: "localhost", message: isContainerDown ? "Redis container (smartspec-redis) is not running" : msg });
   }
 
   // Step 6: Reload Nginx (graceful, no downtime)
   try {
+    // Pre-check: verify Nginx container is running
+    await execFileAsync("docker", ["inspect", "--format", "{{.State.Running}}", "smartspec-nginx-dev"], { timeout: 5_000 });
     await execFileAsync("docker", ["exec", "smartspec-nginx-dev", "nginx", "-s", "reload"]);
     results.push({ step: "nginx_reload", status: "ok", mode: "localhost", message: "Nginx reloaded successfully" });
   } catch (err: unknown) {
-    results.push({ step: "nginx_reload", status: "error", mode: "localhost", message: `Nginx reload failed: ${formatError(err)}` });
+    const msg = formatError(err);
+    const isContainerDown = msg.includes("No such object") || msg.includes("is not running");
+    results.push({ step: "nginx_reload", status: "error", mode: "localhost", message: isContainerDown ? "Nginx container (smartspec-nginx-dev) is not running" : `Nginx reload failed: ${msg}` });
   }
 
   // Step 7: Restart Python backend (picks up new .env + uvicorn workers)

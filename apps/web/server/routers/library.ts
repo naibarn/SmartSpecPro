@@ -43,6 +43,14 @@ const sourceLinkSchema = z.object({
   providerTaskId: z.string().min(1).max(128).optional(),
 });
 
+const recentDaysSchema = z.union([
+  z.literal(1),
+  z.literal(3),
+  z.literal(7),
+  z.literal(15),
+  z.literal(30),
+]);
+
 const searchFilterSchema = z.object({
   itemType: z.string().min(1).max(32).optional(),
   model: z.string().min(1).max(128).optional(),
@@ -51,6 +59,7 @@ const searchFilterSchema = z.object({
   status: itemStatusSchema.optional(),
   fromDate: z.coerce.date().optional(),
   toDate: z.coerce.date().optional(),
+  recentDays: recentDaysSchema.optional(),
 }).optional();
 
 const documentScopeSchema = z.enum(["all", "my_library", "shared_with_me", "shared_groups"]);
@@ -61,6 +70,7 @@ const documentFilterSchema = z.object({
   status: itemStatusSchema.optional(),
   fromDate: z.coerce.date().optional(),
   toDate: z.coerce.date().optional(),
+  recentDays: recentDaysSchema.optional(),
 }).optional();
 
 const uploadLibraryFileSchema = z.object({
@@ -115,7 +125,7 @@ export const libraryRouter = router({
     .input(
       z.object({
         query: z.string().max(1000).optional(),
-        limit: z.number().int().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(50).optional(),
         offset: z.number().int().min(0).optional(),
         filters: searchFilterSchema,
       }).optional(),
@@ -146,7 +156,7 @@ export const libraryRouter = router({
         query: z.string().max(1000).optional(),
         scope: documentScopeSchema.optional(),
         sort: documentSortSchema.optional(),
-        limit: z.number().int().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(50).optional(),
         offset: z.number().int().min(0).optional(),
         filters: documentFilterSchema,
       }).optional(),
@@ -802,8 +812,8 @@ export const libraryRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx);
-      await isLibraryEnabledForTenant(tenantId);
+      const tenantId = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantId);
 
       return federatedSearch(input, {
         userId: ctx.user.id,

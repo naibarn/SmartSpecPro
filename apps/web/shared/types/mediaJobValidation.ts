@@ -269,18 +269,18 @@ function validateTextClipColorFields(spec: MediaJobSpec): string[] {
       if (typeof textConfig !== "object" || textConfig === null) continue;
       const clipId = typeof clip?.clipId === "string" ? clip.clipId : "unknown";
 
-      if (!isHexColor((textConfig as Record<string, unknown>).color)) {
+      if (!isHexColor(textConfig.color)) {
         errors.push(`Clip "${clipId}": textConfig.color must be a #RRGGBB string`);
       }
 
-      const backgroundColor = (textConfig as Record<string, unknown>).backgroundColor;
+      const backgroundColor = textConfig.backgroundColor;
       if (backgroundColor !== "transparent" && !isHexColor(backgroundColor)) {
         errors.push(
           `Clip "${clipId}": textConfig.backgroundColor must be "transparent" or #RRGGBB`,
         );
       }
 
-      const effectColor = (textConfig as Record<string, unknown>).effectColor;
+      const effectColor = textConfig.effectColor;
       if (effectColor !== undefined && !isHexColor(effectColor)) {
         errors.push(`Clip "${clipId}": textConfig.effectColor must be a #RRGGBB string`);
       }

@@ -37,6 +37,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   Server,
@@ -67,6 +73,7 @@ import {
   MemoryStick,
   Users,
   Gauge,
+  Globe,
 } from "lucide-react";
 
 // ============================================================
@@ -117,6 +124,7 @@ interface RedisForm {
   redis_provider: string;
   redis_local_url: string;
   redis_upstash_url: string;
+  redis_cloud_url: string;
   redis_memorystore_url: string;
   redis_password: string;
 }
@@ -181,6 +189,7 @@ const EMPTY_FORM: GcpForm = {
 // ============================================================
 
 export default function InfrastructureSettingsPanel() {
+  const [activeTab, setActiveTab] = useState("gcp");
   const [gcpForm, setGcpForm] = useState<GcpForm>(EMPTY_FORM);
   const [selectedMode, setSelectedMode] = useState<"celery" | "cloud_tasks">("celery");
   const [showFailedTasks, setShowFailedTasks] = useState(false);
@@ -191,6 +200,7 @@ export default function InfrastructureSettingsPanel() {
     redis_provider: "local",
     redis_local_url: "",
     redis_upstash_url: "",
+    redis_cloud_url: "",
     redis_memorystore_url: "",
     redis_password: "",
   });
@@ -236,7 +246,7 @@ export default function InfrastructureSettingsPanel() {
     isLoading: dashboardLoading,
     refetch: refetchDashboard,
   } = trpc.infrastructure.getQueueDashboard.useQuery(undefined, {
-    refetchInterval: 30_000,
+    refetchInterval: activeTab === "queues" ? 30_000 : false,
   });
 
   const {
@@ -250,7 +260,7 @@ export default function InfrastructureSettingsPanel() {
     isLoading: redisHealthLoading,
     refetch: refetchRedisHealth,
   } = trpc.infrastructure.getRedisHealth.useQuery(undefined, {
-    refetchInterval: 30_000,
+    refetchInterval: activeTab === "redis" ? 30_000 : false,
   });
 
   const {
@@ -269,7 +279,7 @@ export default function InfrastructureSettingsPanel() {
     isLoading: systemHealthLoading,
     refetch: refetchSystemHealth,
   } = trpc.infrastructure.getSystemHealth.useQuery(undefined, {
-    refetchInterval: 30_000,
+    refetchInterval: activeTab === "monitoring" ? 30_000 : false,
   });
 
   const {
@@ -277,7 +287,7 @@ export default function InfrastructureSettingsPanel() {
     refetch: refetchScaleTier,
   } = trpc.infrastructure.getScaleTier.useQuery();
 
-  const { data: deployModeInfo, refetch: refetchDeployMode } =
+  const { data: deployModeInfo, isLoading: deployModeLoading, refetch: refetchDeployMode } =
     trpc.infrastructure.getDeployModeInfo.useQuery();
 
   const setDeployModeMutation = trpc.infrastructure.setDeployModeInfo.useMutation({
@@ -378,6 +388,7 @@ export default function InfrastructureSettingsPanel() {
         redis_provider: redisConfig.redis_provider?.value || "local",
         redis_local_url: redisConfig.redis_local_url?.value || "",
         redis_upstash_url: redisConfig.redis_upstash_url?.value || "",
+        redis_cloud_url: redisConfig.redis_cloud_url?.value || "",
         redis_memorystore_url: redisConfig.redis_memorystore_url?.value || "",
         redis_password: redisConfig.redis_password?.value || "",
       });
@@ -433,7 +444,16 @@ export default function InfrastructureSettingsPanel() {
   };
 
   const handleTestRedis = () => {
-    const url = testUrl || (redisForm.redis_provider === "upstash" ? redisForm.redis_upstash_url : redisForm.redis_local_url);
+    let url = testUrl;
+    if (!url) {
+      const providerUrlMap: Record<string, string> = {
+        upstash: redisForm.redis_upstash_url,
+        redis_cloud: redisForm.redis_cloud_url,
+        memorystore: redisForm.redis_memorystore_url,
+        local: redisForm.redis_local_url,
+      };
+      url = providerUrlMap[redisForm.redis_provider] || redisForm.redis_local_url;
+    }
     if (!url) {
       toast.error("Enter a Redis URL to test");
       return;
@@ -458,6 +478,35 @@ export default function InfrastructureSettingsPanel() {
 
   return (
     <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="gcp" className="flex items-center gap-1">
+            <Cloud className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">GCP</span>
+          </TabsTrigger>
+          <TabsTrigger value="tasks" className="flex items-center gap-1">
+            <Server className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Tasks</span>
+          </TabsTrigger>
+          <TabsTrigger value="queues" className="flex items-center gap-1">
+            <Activity className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Queues</span>
+          </TabsTrigger>
+          <TabsTrigger value="redis" className="flex items-center gap-1">
+            <Database className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Redis</span>
+          </TabsTrigger>
+          <TabsTrigger value="monitoring" className="flex items-center gap-1">
+            <Shield className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Monitoring</span>
+          </TabsTrigger>
+          <TabsTrigger value="scale-tier" className="flex items-center gap-1">
+            <Gauge className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Scale Tier</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="gcp">
       {/* ============================================ */}
       {/* CARD 1: GCP Configuration                   */}
       {/* ============================================ */}
@@ -722,7 +771,9 @@ done`}
           </Button>
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="tasks">
       {/* ============================================ */}
       {/* CARD 2: Task Processing Backend              */}
       {/* ============================================ */}
@@ -819,7 +870,9 @@ done`}
           </Button>
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="queues">
       {/* ============================================ */}
       {/* CARD 3: Queue Status Dashboard               */}
       {/* ============================================ */}
@@ -1003,7 +1056,9 @@ done`}
           )}
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="redis">
       {/* ============================================ */}
       {/* CARD 4: Cache / Redis Configuration          */}
       {/* ============================================ */}
@@ -1047,7 +1102,7 @@ done`}
                 )}
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {redisHealth?.cache.provider === "upstash" ? "Upstash" : "Local Redis"}
+                {redisHealth?.cache.provider === "upstash" ? "Upstash" : redisHealth?.cache.provider === "redis_cloud" ? "Redis Cloud" : "Local Redis"}
               </p>
               {redisHealth?.cache.url && (
                 <p className="text-xs font-mono text-gray-400 truncate">{redisHealth.cache.url}</p>
@@ -1224,51 +1279,97 @@ REDIS_URL=redis://10.0.0.3:6379`}
           {/* Provider Selector */}
           <div className="space-y-1.5">
             <Label>Cache Provider</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setRedisForm({ ...redisForm, redis_provider: "local" })}
-                className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                className={`relative rounded-xl border-2 p-3 text-left transition-all ${
                   redisForm.redis_provider === "local"
                     ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
                     : "border-gray-200 hover:border-gray-300 bg-white"
                 }`}
               >
                 {redisForm.redis_provider === "local" && (
-                  <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-purple-500" />
                 )}
-                <div className="flex items-center gap-2 font-semibold text-base mb-1">
-                  <Server className="h-4 w-4" />
+                <div className="flex items-center gap-2 font-semibold text-sm mb-0.5">
+                  <Server className="h-3.5 w-3.5" />
                   Local Redis
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Self-hosted Redis server. Good for development and single-server deployments.
+                <p className="text-xs text-muted-foreground">
+                  Self-hosted. Good for dev and single-server.
                 </p>
                 {redisConfig?.redis_local_url?.source === "env" && (
-                  <Badge variant="outline" className="text-xs mt-2">from env</Badge>
+                  <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
                 )}
               </button>
               <button
                 type="button"
                 onClick={() => setRedisForm({ ...redisForm, redis_provider: "upstash" })}
-                className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                className={`relative rounded-xl border-2 p-3 text-left transition-all ${
                   redisForm.redis_provider === "upstash"
                     ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
                     : "border-gray-200 hover:border-gray-300 bg-white"
                 }`}
               >
                 {redisForm.redis_provider === "upstash" && (
-                  <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-purple-500" />
                 )}
-                <div className="flex items-center gap-2 font-semibold text-base mb-1">
-                  <Zap className="h-4 w-4" />
+                <div className="flex items-center gap-2 font-semibold text-sm mb-0.5">
+                  <Zap className="h-3.5 w-3.5" />
                   Upstash
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Serverless Redis with TLS. Best for Cloud Run / distributed deployments.
+                <p className="text-xs text-muted-foreground">
+                  Serverless with TLS. No VPC needed.
                 </p>
                 {redisConfig?.redis_upstash_url?.source === "env" && (
-                  <Badge variant="outline" className="text-xs mt-2">from env</Badge>
+                  <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRedisForm({ ...redisForm, redis_provider: "redis_cloud" })}
+                className={`relative rounded-xl border-2 p-3 text-left transition-all ${
+                  redisForm.redis_provider === "redis_cloud"
+                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+              >
+                {redisForm.redis_provider === "redis_cloud" && (
+                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-purple-500" />
+                )}
+                <div className="flex items-center gap-2 font-semibold text-sm mb-0.5">
+                  <Globe className="h-3.5 w-3.5" />
+                  Redis Cloud
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Managed by redis.com. Full BullMQ support.
+                </p>
+                {redisConfig?.redis_cloud_url?.source === "env" && (
+                  <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRedisForm({ ...redisForm, redis_provider: "memorystore" })}
+                className={`relative rounded-xl border-2 p-3 text-left transition-all ${
+                  redisForm.redis_provider === "memorystore"
+                    ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+              >
+                {redisForm.redis_provider === "memorystore" && (
+                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-purple-500" />
+                )}
+                <div className="flex items-center gap-2 font-semibold text-sm mb-0.5">
+                  <Cloud className="h-3.5 w-3.5" />
+                  Memorystore
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  GCP managed. Lowest latency via VPC.
+                </p>
+                {redisConfig?.redis_memorystore_url?.source === "env" && (
+                  <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
                 )}
               </button>
             </div>
@@ -1340,6 +1441,26 @@ REDIS_URL=redis://10.0.0.3:6379`}
             </p>
           </div>
 
+          {/* Redis Cloud URL */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="redis_cloud_url">Redis Cloud URL</Label>
+              {redisConfig?.redis_cloud_url?.source === "env" && (
+                <Badge variant="outline" className="text-xs">from env</Badge>
+              )}
+            </div>
+            <Input
+              id="redis_cloud_url"
+              type={showRedisPasswords ? "text" : "password"}
+              value={redisForm.redis_cloud_url}
+              onChange={(e) => setRedisForm({ ...redisForm, redis_cloud_url: e.target.value })}
+              placeholder="redis://default:password@redis-12345.c1.us-central1-1.gce.redns.redis-cloud.com:12345"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used as <code className="bg-gray-100 px-1 rounded">REDIS_CLOUD_URL</code>. Redis Cloud Essentials (redis.com). Full BullMQ and pub/sub support.
+            </p>
+          </div>
+
           {/* Memorystore URL */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -1400,9 +1521,13 @@ REDIS_URL=redis://10.0.0.3:6379`}
               <Input
                 value={testUrl}
                 onChange={(e) => setTestUrl(e.target.value)}
-                placeholder={redisForm.redis_provider === "upstash"
-                  ? "rediss://default:token@host:6379"
-                  : "redis://localhost:6379"}
+                placeholder={
+                  redisForm.redis_provider === "upstash"
+                    ? "rediss://default:token@host:6379"
+                    : redisForm.redis_provider === "redis_cloud"
+                      ? "redis://default:pass@host.redis-cloud.com:12345"
+                      : "redis://localhost:6379"
+                }
                 type={showRedisPasswords ? "text" : "password"}
                 className="flex-1"
               />
@@ -1420,7 +1545,9 @@ REDIS_URL=redis://10.0.0.3:6379`}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Enter a URL to test, or leave empty to test the active {redisForm.redis_provider === "upstash" ? "Upstash" : "Local Redis"} URL from the form above.
+              Enter a URL to test, or leave empty to test the active {
+                { local: "Local Redis", upstash: "Upstash", redis_cloud: "Redis Cloud", memorystore: "Memorystore" }[redisForm.redis_provider] || "Redis"
+              } URL from the form above.
             </p>
           </div>
 
@@ -1437,7 +1564,9 @@ REDIS_URL=redis://10.0.0.3:6379`}
           </Button>
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="monitoring">
       {/* ============================================ */}
       {/* CARD 5: Monitoring & Observability           */}
       {/* ============================================ */}
@@ -2153,7 +2282,9 @@ FIREBASE_PROJECT_ID=your-project-id`}
           </Button>
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="scale-tier">
       {/* ============================================ */}
       {/* CARD 6: Scale Tier Configuration             */}
       {/* ============================================ */}
@@ -2190,20 +2321,22 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 <Server className="h-4 w-4" />
                 Deploy Mode
               </p>
-              {deployModeInfo && (
+              {deployModeLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              ) : deployModeInfo ? (
                 <Badge variant="outline" className="text-xs">
                   source: {deployModeInfo.source}
                 </Badge>
-              )}
+              ) : null}
             </div>
             <div className="flex rounded-lg border border-gray-200 overflow-hidden">
               <button
                 type="button"
                 onClick={() => setSelectedDeployMode("localhost")}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-r ${
                   selectedDeployMode === "localhost"
-                    ? "bg-purple-100 text-purple-700 border-r border-purple-200"
-                    : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
+                    ? "bg-purple-100 text-purple-700 border-purple-200"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border-gray-200"
                 }`}
               >
                 <Server className="h-4 w-4" />
@@ -2231,7 +2364,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 </span>
               </div>
             )}
-            {selectedDeployMode !== (deployModeInfo?.mode ?? "localhost") && (
+            {!deployModeLoading && selectedDeployMode !== (deployModeInfo?.mode ?? "localhost") && (
               <Button
                 size="sm"
                 variant="outline"
@@ -2544,6 +2677,8 @@ FIREBASE_PROJECT_ID=your-project-id`}
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Scale Tier Apply Confirmation Dialog */}
       <AlertDialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>

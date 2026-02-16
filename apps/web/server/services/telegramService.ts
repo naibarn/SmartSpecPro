@@ -353,6 +353,7 @@ export async function enqueueTelegramNotification(
     if (!user || !user.telegramVerified || !user.telegramChatId) {
       return; // User not linked or not verified
     }
+    const chatId = user.telegramChatId;
 
     const prefs = user.userPreferences || {};
     const notifyLevel = (prefs as any).telegramNotifyLevel;
@@ -399,7 +400,7 @@ export async function enqueueTelegramNotification(
     await withRetry(() =>
       sendTelegramMessage(
         settings.botToken,
-        user.telegramChatId,
+        chatId,
         text,
         parseMode,
         replyMarkup

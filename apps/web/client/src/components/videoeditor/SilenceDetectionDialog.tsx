@@ -120,6 +120,14 @@ interface AssetWithWaveform {
   waveformData?: number[];
 }
 
+interface DetectedSilenceSegment {
+  startMs?: number;
+  endMs?: number;
+  start?: number;
+  end?: number;
+  averageDb?: number;
+}
+
 function resolveAssetUri(asset?: AssetWithWaveform | null): string {
   if (!asset) return '';
   const candidate = asset.path || asset.originalPath || asset.url || asset.uri || '';
@@ -169,6 +177,17 @@ function getProjectDurationSeconds(project: VideoEditorProject): number {
 function toMs(value: unknown, fallback = 0): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   return fallback;
+}
+
+function extractSilenceSegmentsFromDerived(
+  derived: Record<string, unknown> | undefined,
+): DetectedSilenceSegment[] {
+  const raw = derived?.silenceSegments;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (segment): segment is DetectedSilenceSegment =>
+      typeof segment === 'object' && segment !== null,
+  );
 }
 
 function clampPercent(value: number): number {
@@ -838,7 +857,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       setAnalysisProgressPct((prev) => Math.max(prev, 92));
 
       // Map segments to regions
-      const silenceSegments = result.derived?.silenceSegments || [];
+      const silenceSegments = extractSilenceSegmentsFromDerived(result.derived);
       const clipStart = getClipStartSeconds(firstClip);
       const clipTrimIn = getClipTrimInSeconds(firstClip);
       const clipDuration = getClipDurationSeconds(firstClip);
@@ -847,7 +866,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
         : Number.POSITIVE_INFINITY;
 
       const rawRegions: SilentRegion[] = silenceSegments
-        .map((seg: any): SilentRegion | null => {
+        .map((seg): SilentRegion | null => {
           const startMs = toMs(seg?.startMs, toMs(seg?.start, 0) * 1000);
           const endMs = toMs(seg?.endMs, toMs(seg?.end, 0) * 1000);
           if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {

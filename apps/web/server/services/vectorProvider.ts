@@ -2,7 +2,6 @@ import { mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import type { PoolConfig } from "pg";
 
 import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
@@ -129,6 +128,14 @@ type VectorFilter = Record<string, string | number | boolean>;
 type PgQueryResult = {
   rows: Array<Record<string, unknown>>;
   rowCount?: number | null;
+};
+
+type PgPoolConfig = {
+  host?: string;
+  port?: number;
+  database?: string;
+  user?: string;
+  password?: string;
 };
 
 type PgPoolLike = {
@@ -438,8 +445,17 @@ function metadataMatchesFilter(metadata: VectorMetadata, filter?: VectorFilter):
     return true;
   }
 
+  const metadataLookup: Record<string, unknown> = {
+    tenantId: metadata.tenantId,
+    type: metadata.type,
+    createdAt: metadata.createdAt,
+    title: metadata.title,
+    sourceUrl: metadata.sourceUrl,
+    description: metadata.description,
+  };
+
   for (const [key, expected] of Object.entries(filter)) {
-    const actual = (metadata as Record<string, unknown>)[key];
+    const actual = metadataLookup[key];
     if (actual === undefined || actual === null) {
       return false;
     }
@@ -575,7 +591,7 @@ function createCloudflareVectorizeAdapter(config?: VectorProviderConfig): Vector
   };
 }
 
-function getPgVectorPoolConfig(config?: VectorProviderConfig): PoolConfig {
+function getPgVectorPoolConfig(config?: VectorProviderConfig): PgPoolConfig {
   const host = config?.pgvectorHost;
   const database = config?.pgvectorDatabase;
   if (!host || !database) {
@@ -596,7 +612,7 @@ function getPgVectorPoolConfig(config?: VectorProviderConfig): PoolConfig {
   };
 }
 
-function getPgPoolCacheKey(config: PoolConfig): string {
+function getPgPoolCacheKey(config: PgPoolConfig): string {
   return [
     config.host || "localhost",
     String(config.port || 5432),
@@ -612,7 +628,7 @@ async function getOrCreatePgPool(config?: VectorProviderConfig): Promise<{ pool:
   let pool = pgPoolCache.get(key);
   if (!pool) {
     const pg = await import("pg");
-    const PoolCtor = pg.Pool as unknown as new (cfg: PoolConfig) => PgPoolLike;
+    const PoolCtor = pg.Pool as unknown as new (cfg: PgPoolConfig) => PgPoolLike;
     pool = new PoolCtor(poolConfig);
     pgPoolCache.set(key, pool);
   }

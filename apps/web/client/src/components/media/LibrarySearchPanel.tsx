@@ -9,11 +9,17 @@ import { FileImage, FileText, Film, Loader2, Search } from "lucide-react";
 import type { LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
 
+type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
+
 interface LibrarySearchPanelProps {
   query: string;
   onQueryChange: (query: string) => void;
+  recentDays: LibraryRecentDaysFilter;
+  onRecentDaysChange: (value: LibraryRecentDaysFilter) => void;
   isLoading: boolean;
   results: LibrarySearchResultItem[];
+  totalResults?: number;
+  hasMore?: boolean;
   errorMessage?: string;
   selectedItemId?: number | null;
   onSelect: (item: LibrarySearchResultItem) => void;
@@ -22,12 +28,18 @@ interface LibrarySearchPanelProps {
 export default function LibrarySearchPanel({
   query,
   onQueryChange,
+  recentDays,
+  onRecentDaysChange,
   isLoading,
   results,
+  totalResults = 0,
+  hasMore = false,
   errorMessage,
   selectedItemId,
   onSelect,
 }: LibrarySearchPanelProps) {
+  const hasActiveSearchCriteria = query.trim().length > 0 || recentDays !== "all";
+
   const renderItemPreview = (item: LibrarySearchResultItem) => {
     const itemType = item.item_type.toLowerCase();
     const thumbnailUrl = item.thumbnail_url?.trim() || null;
@@ -94,6 +106,29 @@ export default function LibrarySearchPanel({
         placeholder="Search reusable assets..."
       />
 
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Updated in:</span>
+        <select
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+          value={String(recentDays)}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (next === "all") {
+              onRecentDaysChange("all");
+              return;
+            }
+            onRecentDaysChange(Number(next) as Exclude<LibraryRecentDaysFilter, "all">);
+          }}
+        >
+          <option value="1">1 day</option>
+          <option value="3">3 days</option>
+          <option value="7">7 days</option>
+          <option value="15">15 days</option>
+          <option value="30">1 month</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
+
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -105,14 +140,20 @@ export default function LibrarySearchPanel({
         <p className="text-sm text-red-600">{errorMessage}</p>
       )}
 
-      {!query.trim() && !isLoading && (
+      {!hasActiveSearchCriteria && !isLoading && (
         <p className="text-sm text-muted-foreground">
-          Type to search indexed library items for reuse.
+          Pick a timeframe or type to search indexed library items for reuse.
         </p>
       )}
 
-      {!!query.trim() && !isLoading && !errorMessage && results.length === 0 && (
+      {hasActiveSearchCriteria && !isLoading && !errorMessage && results.length === 0 && (
         <p className="text-sm text-muted-foreground">No matching library items.</p>
+      )}
+
+      {hasActiveSearchCriteria && !isLoading && !errorMessage && hasMore && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+          Showing up to 50 results. There may be more items ({totalResults}+). Add more filters or keywords.
+        </p>
       )}
 
       {results.length > 0 && (

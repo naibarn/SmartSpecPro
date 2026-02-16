@@ -75,3 +75,6 @@ afterEach(async () => {
   const { cleanup } = await import("@testing-library/react");
   cleanup();
 });
+
+// Add jest-dom matchers
+import "@testing-library/jest-dom/vitest";

@@ -304,6 +304,40 @@ describe("libraryRouter.search", () => {
       expect.objectContaining({ userId: 9, tenantId: 44 }),
     );
   });
+
+  it("passes recentDays filter to search service", async () => {
+    mockSearchLibraryItems.mockResolvedValue({
+      version: "library_search_v1",
+      query: "",
+      total: 0,
+      limit: 20,
+      offset: 0,
+      has_more: false,
+      results: [],
+    });
+
+    const fn = libraryRouter.search as Function;
+    await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: 44 },
+        tenantId: null,
+      },
+      input: {
+        filters: {
+          recentDays: 7,
+        },
+      },
+    });
+
+    expect(mockSearchLibraryItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: expect.objectContaining({
+          recentDays: 7,
+        }),
+      }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
+    );
+  });
 });
 
 describe("libraryRouter.listDocuments", () => {
@@ -332,6 +366,39 @@ describe("libraryRouter.listDocuments", () => {
     expect(mockListLibraryDocuments).toHaveBeenCalledWith(
       expect.objectContaining({ scope: "my_library" }),
       expect.objectContaining({ userId: 9, tenantId: 44 }),
+    );
+  });
+
+  it("passes recentDays filter to listDocuments service", async () => {
+    mockListLibraryDocuments.mockResolvedValue({
+      total: 0,
+      limit: 20,
+      offset: 0,
+      has_more: false,
+      scope: "all",
+      results: [],
+    });
+
+    const fn = libraryRouter.listDocuments as Function;
+    await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: 44 },
+        tenantId: null,
+      },
+      input: {
+        filters: {
+          recentDays: 15,
+        },
+      },
+    });
+
+    expect(mockListLibraryDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: expect.objectContaining({
+          recentDays: 15,
+        }),
+      }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
   });
 });

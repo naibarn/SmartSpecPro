@@ -47,6 +47,10 @@ export function beforeSend(event: Sentry.Event): Sentry.Event | null {
   return event;
 }
 
+function scrubSentryEvent(event: Sentry.Event): Sentry.Event | null {
+  return beforeSend(event);
+}
+
 /**
  * Initialize Sentry for the Node.js backend.
  * Only initializes if SENTRY_DSN_NODE is set.
@@ -63,7 +67,7 @@ export function initSentry(): void {
     environment: process.env.ENVIRONMENT || process.env.NODE_ENV || "development",
     release: process.env.RELEASE || process.env.GIT_COMMIT_SHA || undefined,
     tracesSampleRate: 0.05,
-    beforeSend,
+    beforeSend: (event: Sentry.ErrorEvent) => scrubSentryEvent(event) as Sentry.ErrorEvent | null,
     integrations: [Sentry.expressIntegration()],
   });
 

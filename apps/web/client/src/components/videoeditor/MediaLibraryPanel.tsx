@@ -23,6 +23,8 @@ interface MediaLibraryPanelProps {
   projectAssets?: Record<string, Asset>;
 }
 
+type LibraryRecentDaysFilter = 'all' | 1 | 3 | 7 | 15 | 30;
+
 // Type guards
 const isValidAsset = (asset: unknown): asset is MediaLibraryAsset => {
   return (
@@ -104,31 +106,26 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [libraryTypeFilter, setLibraryTypeFilter] = useState<'all' | 'video' | 'audio' | 'image'>('all');
-  const [libraryOffset, setLibraryOffset] = useState(0);
+  const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>(7);
 
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(librarySearchQuery);
-      setLibraryOffset(0);
     }, 300);
     return () => clearTimeout(timer);
   }, [librarySearchQuery]);
-
-  // Reset offset when type filter changes
-  useEffect(() => {
-    setLibraryOffset(0);
-  }, [libraryTypeFilter]);
 
   // Library search query via tRPC
   const libraryQuery = trpc.library.listDocuments.useQuery(
     {
       query: debouncedSearch || undefined,
       limit: 50,
-      offset: libraryOffset,
+      offset: 0,
       filters: {
         itemType: libraryTypeFilter !== 'all' ? libraryTypeFilter : undefined,
         status: 'ready' as const,
+        ...(libraryRecentDays === 'all' ? {} : { recentDays: libraryRecentDays }),
       },
     },
     { enabled: sourceMode === 'library' }
@@ -831,6 +828,19 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         }
 
         .library-type-select {
+          min-width: 70px;
+          padding: 6px 8px;
+          background: #2a2a2a;
+          border: 1px solid #444;
+          border-radius: 4px;
+          color: #e0e0e0;
+          font-size: 11px;
+          outline: none;
+          cursor: pointer;
+        }
+
+        .library-days-select {
+          min-width: 88px;
           padding: 6px 8px;
           background: #2a2a2a;
           border: 1px solid #444;
@@ -842,6 +852,10 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         }
 
         .library-type-select:focus {
+          border-color: #0078d4;
+        }
+
+        .library-days-select:focus {
           border-color: #0078d4;
         }
 
@@ -976,6 +990,25 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
               <option value="video">Video</option>
               <option value="audio">Audio</option>
               <option value="image">Image</option>
+            </select>
+            <select
+              className="library-days-select"
+              value={String(libraryRecentDays)}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === 'all') {
+                  setLibraryRecentDays('all');
+                  return;
+                }
+                setLibraryRecentDays(Number(next) as Exclude<LibraryRecentDaysFilter, 'all'>);
+              }}
+            >
+              <option value="1">1d</option>
+              <option value="3">3d</option>
+              <option value="7">7d</option>
+              <option value="15">15d</option>
+              <option value="30">1m</option>
+              <option value="all">All</option>
             </select>
           </div>
         )}
@@ -1257,9 +1290,24 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
             ) : (
               <>
                 <div className="library-result-count">
-                  {libraryQuery.data?.total ?? 0} results
+                  {Math.min(libraryQuery.data?.total ?? 0, 50)} / {libraryQuery.data?.total ?? 0} results
                   {debouncedSearch && ` for "${debouncedSearch}"`}
                 </div>
+                {libraryQuery.data?.has_more && (
+                  <div
+                    style={{
+                      marginBottom: '8px',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #a16207',
+                      background: '#422006',
+                      color: '#fcd34d',
+                      fontSize: '11px',
+                    }}
+                  >
+                    Showing up to 50 results. There may be more items. Add more filters or keywords.
+                  </div>
+                )}
                 <div className="media-grid">
                   {libraryMediaAssets.map(asset => (
                     <div
@@ -1325,15 +1373,6 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
                     </div>
                   ))}
                 </div>
-
-                {libraryQuery.data?.has_more && (
-                  <button
-                    className="load-more-button"
-                    onClick={() => setLibraryOffset(prev => prev + 50)}
-                  >
-                    Load more...
-                  </button>
-                )}
               </>
             )}
           </>

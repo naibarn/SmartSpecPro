@@ -48,6 +48,8 @@ function checkRateLimit(userId: number, skillType: string): boolean {
 
 export interface SkillExecutionParams {
   prompt: string;
+  conversationId?: string;
+  context?: Record<string, unknown>;
   model?: string;
   aspectRatio?: string;
   quality?: string;

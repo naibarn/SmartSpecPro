@@ -14,6 +14,54 @@ import { deliverScheduledMessage, sweepUndeliveredMessages } from "../services/s
 
 const USE_CLOUD_TASKS = () => process.env.USE_CLOUD_TASKS === "true";
 
+function parseIntHeader(value: string | undefined, fallback = 0): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function deriveJobId(body: any): string | null {
+  if (!body || typeof body !== "object") return null;
+  const raw = body.scheduleId ?? body.skillId ?? body.jobId ?? body.job_id ?? null;
+  return raw === null || raw === undefined ? null : String(raw);
+}
+
+async function recordCloudTaskEvent(
+  req: Request,
+  status: "completed" | "failed" | "dead_letter",
+  errorMessage?: string,
+) {
+  try {
+    const [{ getDb }, { cloudTaskEvents }] = await Promise.all([
+      import("../db"),
+      import("../../drizzle/schema"),
+    ]);
+    const db = await getDb();
+    if (!db) return;
+
+    const taskIdHeader = req.header("x-cloudtasks-taskname");
+    const queueNameHeader = req.header("x-cloudtasks-queuename");
+    const retryCountHeader = req.header("x-cloudtasks-taskretrycount");
+    const attemptCount = parseIntHeader(retryCountHeader, 0);
+
+    await db.insert(cloudTaskEvents).values({
+      taskId: taskIdHeader || "unknown",
+      queueName: queueNameHeader || "node-tasks",
+      jobId: deriveJobId(req.body),
+      status,
+      attemptCount,
+      payload: req.body ?? {},
+      errorMessage: errorMessage ?? null,
+      completedAt: status === "dead_letter" ? null : new Date(),
+    });
+  } catch (error) {
+    console.warn("[Tasks] failed to write cloud_task_events row", {
+      status,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 /**
  * Middleware to authenticate Cloud Tasks requests.
  *
@@ -94,9 +142,11 @@ export function createTasksRouter(): Router {
       }
 
       await deliverScheduledMessage(scheduleId);
+      await recordCloudTaskEvent(req, "completed");
       res.status(200).json({ success: true, scheduleId });
     } catch (err: any) {
       console.error("[Tasks] deliver-scheduled-message failed:", err);
+      await recordCloudTaskEvent(req, "failed", err?.message);
       // Return 500 so Cloud Tasks retries (transient failure)
       res.status(500).json({ error: err.message });
     }
@@ -111,9 +161,11 @@ export function createTasksRouter(): Router {
   router.post("/deliver-scheduled-fallback", async (_req: Request, res: Response) => {
     try {
       const count = await sweepUndeliveredMessages();
+      await recordCloudTaskEvent(_req, "completed");
       res.status(200).json({ success: true, enqueued: count });
     } catch (err: any) {
       console.error("[Tasks] deliver-scheduled-fallback failed:", err);
+      await recordCloudTaskEvent(_req, "failed", err?.message);
       res.status(500).json({ error: err.message });
     }
   });
@@ -141,6 +193,7 @@ export function createTasksRouter(): Router {
       const skill = getSkillById(skillId);
       if (!skill) {
         console.warn(`[Tasks] Skill ${skillId} not found, skipping`);
+        await recordCloudTaskEvent(req, "failed", "Skill not found");
         res.status(200).json({ success: false, error: "Skill not found" });
         return;
       }
@@ -153,9 +206,11 @@ export function createTasksRouter(): Router {
       );
 
       console.log(`[Tasks] Skill ${skillId} step ${currentStep || 0} completed: ${result.success}`);
+      await recordCloudTaskEvent(req, result.success ? "completed" : "failed", result.success ? undefined : "Skill execution returned success=false");
       res.status(200).json({ success: result.success, skillId });
     } catch (err: any) {
       console.error("[Tasks] execute-skill-step failed:", err);
+      await recordCloudTaskEvent(req, "failed", err?.message);
       res.status(500).json({ error: err.message });
     }
   });

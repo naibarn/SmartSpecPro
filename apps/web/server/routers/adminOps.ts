@@ -13,6 +13,30 @@
 import { z } from 'zod';
 import { router, domainAdminProcedure } from '../_core/trpc';
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+function isProviderUsageLogUnavailableError(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return (
+    (message.includes("provider_usage_log") && message.includes("does not exist")) ||
+    (message.includes("provider_usage_log") && message.includes("no such table")) ||
+    (message.includes("provider_usage_log") && message.includes("column")) ||
+    message.includes("errortype") ||
+    message.includes("createdat")
+  );
+}
+
+function isCloudTaskEventsMissingError(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return (
+    (message.includes("cloud_task_events") && message.includes("does not exist")) ||
+    (message.includes("cloud_task_events") && message.includes("no such table"))
+  );
+}
+
 export const adminOpsRouter = router({
   /**
    * Traffic & Auth Panel - Daily user activity and login metrics
@@ -72,7 +96,14 @@ export const adminOpsRouter = router({
       const hours = input?.hours ?? 24;
       const { getDb } = await import('../db');
       const db = await getDb();
-      if (!db) return { summary: { totalRequests: 0, errorRate: 0, avgLatencyMs: 0, p95LatencyMs: 0 }, byProvider: [] };
+      if (!db) {
+        return {
+          summary: { totalRequests: 0, errorRate: 0, avgLatencyMs: 0, p95LatencyMs: 0 },
+          byProvider: [],
+          degraded: true,
+          reason: 'database_unavailable',
+        };
+      }
 
       const { providerUsageLog } = await import('../../drizzle/schema');
       const { sql, gte, count } = await import('drizzle-orm');
@@ -80,50 +111,66 @@ export const adminOpsRouter = router({
       const since = new Date();
       since.setHours(since.getHours() - hours);
 
-      // Aggregate provider usage metrics
-      const metrics = await db.select({
-        totalRequests: count(providerUsageLog.id).as('total_requests'),
-        errorCount: sql<number>`COUNT(*) FILTER (WHERE "statusCode" >= 500)`.as('error_count'),
-        avgLatencyMs: sql<number>`COALESCE(AVG("responseTimeMs"), 0)`.as('avg_latency_ms'),
-        p95LatencyMs: sql<number>`COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTimeMs"), 0)`.as('p95_latency_ms'),
-      })
-        .from(providerUsageLog)
-        .where(gte(providerUsageLog.createdAt, since));
+      try {
+        // Aggregate provider usage metrics
+        const metrics = await db.select({
+          totalRequests: count(providerUsageLog.id).as('total_requests'),
+          errorCount: sql<number>`COUNT(*) FILTER (WHERE "statusCode" >= 500)`.as('error_count'),
+          avgLatencyMs: sql<number>`COALESCE(AVG("responseTimeMs"), 0)`.as('avg_latency_ms'),
+          p95LatencyMs: sql<number>`COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTimeMs"), 0)`.as('p95_latency_ms'),
+        })
+          .from(providerUsageLog)
+          .where(gte(providerUsageLog.createdAt, since));
 
-      const [summary] = metrics;
+        const [summary] = metrics;
 
-      // Per-provider breakdown
-      const byProvider = await db.select({
-        modelUsed: providerUsageLog.modelUsed,
-        requestCount: count(providerUsageLog.id).as('request_count'),
-        errorCount: sql<number>`COUNT(*) FILTER (WHERE "statusCode" >= 500)`.as('error_count'),
-        avgLatencyMs: sql<number>`COALESCE(AVG("responseTimeMs"), 0)`.as('avg_latency_ms'),
-        totalCostUsd: sql<number>`COALESCE(SUM("costUsd"::numeric), 0)`.as('total_cost_usd'),
-      })
-        .from(providerUsageLog)
-        .where(gte(providerUsageLog.createdAt, since))
-        .groupBy(providerUsageLog.modelUsed)
-        .orderBy(sql`COUNT(${providerUsageLog.id}) DESC`)
-        .limit(20);
+        // Per-provider breakdown
+        const byProvider = await db.select({
+          modelUsed: providerUsageLog.modelUsed,
+          requestCount: count(providerUsageLog.id).as('request_count'),
+          errorCount: sql<number>`COUNT(*) FILTER (WHERE "statusCode" >= 500)`.as('error_count'),
+          avgLatencyMs: sql<number>`COALESCE(AVG("responseTimeMs"), 0)`.as('avg_latency_ms'),
+          totalCostUsd: sql<number>`COALESCE(SUM("costUsd"::numeric), 0)`.as('total_cost_usd'),
+        })
+          .from(providerUsageLog)
+          .where(gte(providerUsageLog.createdAt, since))
+          .groupBy(providerUsageLog.modelUsed)
+          .orderBy(sql`COUNT(${providerUsageLog.id}) DESC`)
+          .limit(20);
 
-      const totalReqs = Number(summary?.totalRequests ?? 0);
-      const errorCnt = Number(summary?.errorCount ?? 0);
+        const totalReqs = Number(summary?.totalRequests ?? 0);
+        const errorCnt = Number(summary?.errorCount ?? 0);
 
-      return {
-        summary: {
-          totalRequests: totalReqs,
-          errorRate: totalReqs > 0 ? Number(((errorCnt / totalReqs) * 100).toFixed(2)) : 0,
-          avgLatencyMs: Math.round(Number(summary?.avgLatencyMs ?? 0)),
-          p95LatencyMs: Math.round(Number(summary?.p95LatencyMs ?? 0)),
-        },
-        byProvider: byProvider.map(p => ({
-          model: p.modelUsed,
-          requests: Number(p.requestCount),
-          errors: Number(p.errorCount),
-          avgLatencyMs: Math.round(Number(p.avgLatencyMs)),
-          totalCostUsd: Number(Number(p.totalCostUsd).toFixed(6)),
-        })),
-      };
+        return {
+          summary: {
+            totalRequests: totalReqs,
+            errorRate: totalReqs > 0 ? Number(((errorCnt / totalReqs) * 100).toFixed(2)) : 0,
+            avgLatencyMs: Math.round(Number(summary?.avgLatencyMs ?? 0)),
+            p95LatencyMs: Math.round(Number(summary?.p95LatencyMs ?? 0)),
+          },
+          byProvider: byProvider.map(p => ({
+            model: p.modelUsed,
+            requests: Number(p.requestCount),
+            errors: Number(p.errorCount),
+            avgLatencyMs: Math.round(Number(p.avgLatencyMs)),
+            totalCostUsd: Number(Number(p.totalCostUsd).toFixed(6)),
+          })),
+          degraded: false,
+          reason: null as string | null,
+        };
+      } catch (error) {
+        const unavailable = isProviderUsageLogUnavailableError(error);
+        console.warn('[adminOps.apiHealth] falling back to empty metrics', {
+          reason: unavailable ? 'provider_usage_log_unavailable' : 'query_failed',
+          error: getErrorMessage(error),
+        });
+        return {
+          summary: { totalRequests: 0, errorRate: 0, avgLatencyMs: 0, p95LatencyMs: 0 },
+          byProvider: [],
+          degraded: true,
+          reason: unavailable ? 'provider_usage_log_unavailable' : 'query_failed',
+        };
+      }
     }),
 
   /**
@@ -133,49 +180,72 @@ export const adminOpsRouter = router({
     .query(async () => {
       const { getDb } = await import('../db');
       const db = await getDb();
-      if (!db) return { countsByStatus: {}, recentFailures: [] };
+      if (!db) {
+        return {
+          countsByStatus: {},
+          recentFailures: [],
+          degraded: true,
+          reason: 'database_unavailable',
+        };
+      }
 
       const { cloudTaskEvents } = await import('../../drizzle/schema');
       const { sql, count, desc } = await import('drizzle-orm');
 
-      // Counts by status
-      const statusCounts = await db.select({
-        status: cloudTaskEvents.status,
-        count: count(cloudTaskEvents.id).as('count'),
-      })
-        .from(cloudTaskEvents)
-        .groupBy(cloudTaskEvents.status);
+      try {
+        // Counts by status
+        const statusCounts = await db.select({
+          status: cloudTaskEvents.status,
+          count: count(cloudTaskEvents.id).as('count'),
+        })
+          .from(cloudTaskEvents)
+          .groupBy(cloudTaskEvents.status);
 
-      const countsByStatus: Record<string, number> = {};
-      for (const row of statusCounts) {
-        if (row.status) countsByStatus[row.status] = Number(row.count);
+        const countsByStatus: Record<string, number> = {};
+        for (const row of statusCounts) {
+          if (row.status) countsByStatus[row.status] = Number(row.count);
+        }
+
+        // Recent failures with error messages
+        const recentFailures = await db.select({
+          id: cloudTaskEvents.id,
+          taskId: cloudTaskEvents.taskId,
+          queueName: cloudTaskEvents.queueName,
+          errorMessage: cloudTaskEvents.errorMessage,
+          attemptCount: cloudTaskEvents.attemptCount,
+          createdAt: cloudTaskEvents.createdAt,
+        })
+          .from(cloudTaskEvents)
+          .where(sql`${cloudTaskEvents.status} IN ('failed', 'dead_letter')`)
+          .orderBy(desc(cloudTaskEvents.createdAt))
+          .limit(20);
+
+        return {
+          countsByStatus,
+          recentFailures: recentFailures.map(f => ({
+            id: f.id,
+            taskId: f.taskId,
+            queue: f.queueName,
+            error: f.errorMessage,
+            attempts: f.attemptCount,
+            createdAt: f.createdAt?.toISOString(),
+          })),
+          degraded: false,
+          reason: null as string | null,
+        };
+      } catch (error) {
+        const missingTable = isCloudTaskEventsMissingError(error);
+        console.warn('[adminOps.jobsHealth] falling back to empty metrics', {
+          reason: missingTable ? 'cloud_task_events_table_missing' : 'query_failed',
+          error: getErrorMessage(error),
+        });
+        return {
+          countsByStatus: {},
+          recentFailures: [],
+          degraded: true,
+          reason: missingTable ? 'cloud_task_events_table_missing' : 'query_failed',
+        };
       }
-
-      // Recent failures with error messages
-      const recentFailures = await db.select({
-        id: cloudTaskEvents.id,
-        taskId: cloudTaskEvents.taskId,
-        queueName: cloudTaskEvents.queueName,
-        errorMessage: cloudTaskEvents.errorMessage,
-        attemptCount: cloudTaskEvents.attemptCount,
-        createdAt: cloudTaskEvents.createdAt,
-      })
-        .from(cloudTaskEvents)
-        .where(sql`${cloudTaskEvents.status} IN ('failed', 'dead_letter')`)
-        .orderBy(desc(cloudTaskEvents.createdAt))
-        .limit(20);
-
-      return {
-        countsByStatus,
-        recentFailures: recentFailures.map(f => ({
-          id: f.id,
-          taskId: f.taskId,
-          queue: f.queueName,
-          error: f.errorMessage,
-          attempts: f.attemptCount,
-          createdAt: f.createdAt?.toISOString(),
-        })),
-      };
     }),
 
   /**
@@ -376,34 +446,51 @@ export const adminOpsRouter = router({
       const { getDb } = await import('../db');
       const db = await getDb();
       let recentErrors: { errorType: string; count: number }[] = [];
+      let degraded = false;
+      let reason: string | null = null;
 
       if (db) {
-        const { providerUsageLog } = await import('../../drizzle/schema');
-        const { sql, gte, count, isNotNull } = await import('drizzle-orm');
+        try {
+          const { providerUsageLog } = await import('../../drizzle/schema');
+          const { sql, count } = await import('drizzle-orm');
 
-        const since = new Date();
-        since.setHours(since.getHours() - 24);
+          const since = new Date();
+          since.setHours(since.getHours() - 24);
 
-        const errors = await db.select({
-          errorType: providerUsageLog.errorType,
-          count: count(providerUsageLog.id).as('count'),
-        })
-          .from(providerUsageLog)
-          .where(sql`${providerUsageLog.createdAt} >= ${since} AND ${providerUsageLog.errorType} IS NOT NULL`)
-          .groupBy(providerUsageLog.errorType)
-          .orderBy(sql`COUNT(${providerUsageLog.id}) DESC`)
-          .limit(10);
+          const errors = await db.select({
+            errorType: providerUsageLog.errorType,
+            count: count(providerUsageLog.id).as('count'),
+          })
+            .from(providerUsageLog)
+            .where(sql`${providerUsageLog.createdAt} >= ${since} AND ${providerUsageLog.errorType} IS NOT NULL`)
+            .groupBy(providerUsageLog.errorType)
+            .orderBy(sql`COUNT(${providerUsageLog.id}) DESC`)
+            .limit(10);
 
-        recentErrors = errors.map(e => ({
-          errorType: e.errorType || 'unknown',
-          count: Number(e.count),
-        }));
+          recentErrors = errors.map(e => ({
+            errorType: e.errorType || 'unknown',
+            count: Number(e.count),
+          }));
+        } catch (error) {
+          const unavailable = isProviderUsageLogUnavailableError(error);
+          degraded = true;
+          reason = unavailable ? 'provider_usage_log_unavailable' : 'query_failed';
+          console.warn('[adminOps.securityStats] falling back to empty provider error metrics', {
+            reason,
+            error: getErrorMessage(error),
+          });
+        }
+      } else {
+        degraded = true;
+        reason = 'database_unavailable';
       }
 
       return {
         rateLimitKeys: rateLimitHits.slice(0, 20),
         recentErrors,
         totalRateLimitKeys: rateLimitHits.reduce((sum, r) => sum + r.count, 0),
+        degraded,
+        reason,
       };
     }),
 });

@@ -170,7 +170,7 @@ function validateTransformKeyframes(rawKeyframes: any): TransformKeyframe[] {
 }
 
 export function validateTextCapabilityMatrixCompliance(config: TextConfig): void {
-  const supported = new Set(STRICT_PARITY_TEXT_CAPABILITY_MATRIX.supportedEffects);
+  const supported = new Set<string>(STRICT_PARITY_TEXT_CAPABILITY_MATRIX.supportedEffects);
   if (!supported.has(config.effect)) {
     throw new Error(
       `Text effect "${config.effect}" is not supported in ${STRICT_PARITY_TEXT_CAPABILITY_MATRIX.mode} mode`,

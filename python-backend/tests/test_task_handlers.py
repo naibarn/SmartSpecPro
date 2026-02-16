@@ -1,7 +1,8 @@
 """Tests for Cloud Tasks handler endpoints under /tasks/*."""
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from httpx import AsyncClient, ASGITransport
 
 from app.api.v1.task_handlers import router
@@ -46,6 +47,49 @@ class TestProcessMediaHandler:
                 json={"job_id": "test-123", "kie_job_id": "kie-456"},
             )
             assert response.status_code == 200
+
+
+@pytest.mark.unit
+class TestProcessVideoHandler:
+    """Tests for POST /tasks/process-video."""
+
+    @pytest.mark.asyncio
+    async def test_delegates_to_media_generation_process_video_task(self):
+        """Handler delegates to media_generation.process_video_task and returns response."""
+        app = create_test_app()
+        transport = ASGITransport(app=app)
+
+        with (
+            patch(
+                "app.api.v1.task_handlers.ensure_media_tasks_cloud_task_id_column",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.api.v1.task_handlers.record_cloud_task_event",
+                new_callable=AsyncMock,
+            ) as mock_record_event,
+            patch(
+                "app.api.v1.media_generation.process_video_task",
+                new_callable=AsyncMock,
+            ) as mock_process_video_task,
+        ):
+            mock_process_video_task.return_value = JSONResponse(
+                status_code=200,
+                content={"success": True, "render_hash": "hash-123"},
+            )
+
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    "/tasks/process-video",
+                    json={
+                        "queue_name": "video-jobs-short",
+                        "render_spec": {"jobId": "job-123", "renderHash": "hash-123"},
+                    },
+                )
+
+        assert response.status_code == 200
+        mock_process_video_task.assert_awaited_once()
+        mock_record_event.assert_awaited_once()
 
 
 @pytest.mark.unit

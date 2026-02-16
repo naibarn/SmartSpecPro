@@ -13,11 +13,20 @@ const mockGetWaveformPeaks = vi.fn(() =>
   Promise.resolve({ derived: { peaks: [0.1, 0.2, 0.3] } }),
 );
 const mockCreateMediaJobClient = vi.fn(() =>
-  Promise.resolve({ getWaveformPeaks: mockGetWaveformPeaks }),
+  Promise.resolve({
+    getWaveformPeaks: mockGetWaveformPeaks,
+    detectDeadAir: vi.fn(() =>
+      Promise.resolve({
+        derived: {
+          silenceSegments: [],
+        },
+      }),
+    ),
+  }),
 );
 
 vi.mock("../../../services/mediaJobClient", () => ({
-  createMediaJobClient: (...args: unknown[]) => mockCreateMediaJobClient(...args),
+  createMediaJobClient: () => mockCreateMediaJobClient(),
 }));
 
 function makeTestProject(): VideoEditorProject {
@@ -397,7 +406,7 @@ describe("SilenceDetectionDialog — Waveform Data Availability", () => {
 
   it("shows loading skeleton while fetching waveform data", () => {
     // Make the fetch never resolve
-    mockCreateMediaJobClient.mockReturnValue(new Promise(() => {}));
+    (mockCreateMediaJobClient as any).mockReturnValue(new Promise(() => {}));
 
     render(
       <SilenceDetectionDialog
@@ -411,7 +420,7 @@ describe("SilenceDetectionDialog — Waveform Data Availability", () => {
   });
 
   it("shows 'Waveform unavailable' on waveform fetch failure", async () => {
-    mockCreateMediaJobClient.mockResolvedValue({
+    (mockCreateMediaJobClient as any).mockResolvedValue({
       getWaveformPeaks: vi.fn(() => Promise.reject(new Error("Network error"))),
     });
 
@@ -450,7 +459,7 @@ describe("SilenceDetectionDialog — Waveform Data Availability", () => {
       }),
     );
 
-    mockCreateMediaJobClient.mockResolvedValue({
+    (mockCreateMediaJobClient as any).mockResolvedValue({
       getWaveformPeaks: mockGetWaveformPeaks,
       detectDeadAir: mockDetectDeadAir,
     });
@@ -478,7 +487,7 @@ describe("SilenceDetectionDialog — Waveform Data Availability", () => {
   });
 
   it("shows progress bar and percent while analyzing", async () => {
-    let resolveDetect: ((value: any) => void) | null = null;
+    let resolveDetect: any = null;
 
     const mockDetectDeadAir = vi.fn(
       (_assetUri: string, _params: unknown, onProgress?: (progress: any) => void) => {
@@ -495,7 +504,7 @@ describe("SilenceDetectionDialog — Waveform Data Availability", () => {
       },
     );
 
-    mockCreateMediaJobClient.mockResolvedValue({
+    (mockCreateMediaJobClient as any).mockResolvedValue({
       getWaveformPeaks: mockGetWaveformPeaks,
       detectDeadAir: mockDetectDeadAir,
     });
@@ -519,11 +528,13 @@ describe("SilenceDetectionDialog — Waveform Data Availability", () => {
     expect(within(progress).getByText("42%")).toBeDefined();
     expect(within(progress).getByText("Detecting silence...")).toBeDefined();
 
-    resolveDetect?.({
-      derived: {
-        silenceSegments: [],
-      },
-    });
+    if (resolveDetect) {
+      resolveDetect({
+        derived: {
+          silenceSegments: [],
+        },
+      });
+    }
 
     await waitFor(() => {
       expect(screen.queryByTestId("analysis-progress")).toBeNull();
@@ -603,7 +614,7 @@ describe("SilenceDetectionDialog — Waveform Data Availability", () => {
       }),
     );
 
-    mockCreateMediaJobClient.mockResolvedValue({
+    (mockCreateMediaJobClient as any).mockResolvedValue({
       getWaveformPeaks: mockGetWaveformPeaks,
       detectDeadAir: mockDetectDeadAir,
     });

@@ -6,6 +6,7 @@ import type { MediaJobSpec, MediaJobProgress } from "../../shared/types/mediaJob
 import { validateWebJobSpec } from "../../shared/types/mediaJobValidation";
 import { nanoid } from "nanoid";
 import type { Express, Request, Response } from "express";
+import type { VideoEditorProject } from "../../client/src/types/videoEditor";
 import { authorizeRequest } from "../_core/authz";
 import type { TenantRequest } from "../_core/tenant";
 import { rateLimit } from "../_core/limits";
@@ -405,7 +406,7 @@ export const mediaJobsRouter = router({
       const { computeRenderHash } = await import("../services/renderHash");
       const { routeVideoJob } = await import("../services/videoJobRouter");
 
-      const project = input.project;
+      const project = input.project as unknown as VideoEditorProject;
       const profile = input.profile;
       const inputAssetKeys = input.inputAssetKeys;
       const tenantId = resolveTenantIdForContext(ctx);

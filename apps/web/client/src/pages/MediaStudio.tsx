@@ -113,6 +113,7 @@ import {
 } from "@/lib/imageGridSplitter";
 
 type MediaType = "image" | "video" | "audio";
+type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 
 interface ReferenceImage {
   url: string;
@@ -406,6 +407,7 @@ export default function MediaStudio() {
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
+  const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>(7);
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
 
   // Dialog states (global)
@@ -532,11 +534,16 @@ export default function MediaStudio() {
   } = trpc.library.search.useQuery(
     {
       query: debouncedLibrarySearchQuery || undefined,
-      limit: 12,
-      filters: activeTab ? { itemType: activeTab } : undefined,
+      limit: 50,
+      filters: activeTab
+        ? {
+            itemType: activeTab,
+            ...(libraryRecentDays === "all" ? {} : { recentDays: libraryRecentDays }),
+          }
+        : undefined,
     },
     {
-      enabled: debouncedLibrarySearchQuery.trim().length > 0,
+      enabled: debouncedLibrarySearchQuery.trim().length > 0 || libraryRecentDays !== "all",
     },
   );
   const librarySearchResults = (librarySearchData?.results || []) as LibrarySearchResultItem[];
@@ -3530,8 +3537,12 @@ export default function MediaStudio() {
             <LibrarySearchPanel
               query={librarySearchQuery}
               onQueryChange={setLibrarySearchQuery}
+              recentDays={libraryRecentDays}
+              onRecentDaysChange={setLibraryRecentDays}
               isLoading={isLibrarySearchLoading}
               results={librarySearchResults}
+              totalResults={librarySearchData?.total ?? 0}
+              hasMore={librarySearchData?.has_more ?? false}
               errorMessage={librarySearchError?.message}
               selectedItemId={selectedLibraryItemId}
               onSelect={handleLibraryResultSelect}

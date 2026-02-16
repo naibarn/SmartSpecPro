@@ -82,7 +82,14 @@
       "WebFetch(domain:www.prosperops.com)",
       "WebFetch(domain:hamy.xyz)",
       "WebFetch(domain:www.bytebase.com)",
-      "mcp__plugin_context7_context7__resolve-library-id"
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "Bash(awk:*)",
+      "WebFetch(domain:upstash.com)",
+      "WebFetch(domain:aiven.io)",
+      "WebFetch(domain:upendravarma.com)",
+      "WebFetch(domain:docs.google.com)",
+      "WebFetch(domain:chimbu.medium.com)",
+      "Bash(dpkg:*)"
     ],
     "deny": [
       "Bash(rm *)",

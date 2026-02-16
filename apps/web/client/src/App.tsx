@@ -49,6 +49,7 @@ import AdminQueueLLM from "./pages/AdminQueueLLM";
 import AdminQueueMedia from "./pages/AdminQueueMedia";
 import AdminOpsDashboard from "./pages/Admin/AdminOpsDashboard";
 import AdminOverviewDashboard from "./pages/Admin/AdminOverviewDashboard";
+import AdminFunnelDashboard from "./pages/AdminFunnelDashboard";
 import DomainAdmin from "./pages/DomainAdmin";
 import DomainThemeEditor from "./pages/DomainThemeEditor";
 import DomainAdminContent from "./pages/DomainAdminContent";
@@ -136,6 +137,7 @@ function Router() {
       <Route path="/admin/queues/media" component={AdminQueueMedia} />
       <Route path="/admin/ops" component={AdminOpsDashboard} />
       <Route path="/admin/dashboard" component={AdminOverviewDashboard} />
+      <Route path="/admin/funnel" component={AdminFunnelDashboard} />
       <Route path="/admin/tenants" component={AdminTenants} />
       <Route path="/domain-admin" component={DomainAdmin} />
       <Route path="/domain-admin/theme" component={DomainThemeEditor} />

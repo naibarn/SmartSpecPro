@@ -33,6 +33,7 @@ export type LibraryPermissionLevel = "read" | "write" | "delete" | "owner";
 export type LibraryVisibility = "private" | "team" | "public";
 export type LibraryItemStatus = "draft" | "ready" | "indexing" | "archived" | "failed";
 export type LibraryTenantId = string | number;
+export type LibraryRecentDaysFilter = 1 | 3 | 7 | 15 | 30;
 
 export interface LibraryActor {
   userId: number;
@@ -137,6 +138,7 @@ export interface LibrarySearchFilters {
   status?: LibraryItemStatus;
   fromDate?: Date;
   toDate?: Date;
+  recentDays?: LibraryRecentDaysFilter;
 }
 
 export interface LibrarySearchInput {
@@ -203,6 +205,7 @@ export interface LibraryDocumentFilters {
   status?: LibraryItemStatus;
   fromDate?: Date;
   toDate?: Date;
+  recentDays?: LibraryRecentDaysFilter;
 }
 
 export interface LibraryDocumentListInput {
@@ -504,6 +507,19 @@ function computeTokenOverlapScore(queryTokens: string[], content: string): numbe
   return hits / queryTokens.length;
 }
 
+const ALLOWED_LIBRARY_RECENT_DAYS = new Set<LibraryRecentDaysFilter>([1, 3, 7, 15, 30]);
+const DAY_MS = 86_400_000;
+
+function getRecentCutoffDate(recentDays?: LibraryRecentDaysFilter): Date | null {
+  if (recentDays === undefined) return null;
+  if (!ALLOWED_LIBRARY_RECENT_DAYS.has(recentDays)) return null;
+  return new Date(Date.now() - recentDays * DAY_MS);
+}
+
+function getLibraryItemLastActivityAt(item: Pick<LibraryItemRow, "createdAt" | "updatedAt">): Date {
+  return item.updatedAt > item.createdAt ? item.updatedAt : item.createdAt;
+}
+
 function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters): boolean {
   if (!filters) return true;
 
@@ -512,6 +528,8 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
   if (filters.status && item.status !== filters.status) return false;
   if (filters.fromDate && item.createdAt < filters.fromDate) return false;
   if (filters.toDate && item.createdAt > filters.toDate) return false;
+  const recentCutoff = getRecentCutoffDate(filters.recentDays);
+  if (recentCutoff && getLibraryItemLastActivityAt(item) < recentCutoff) return false;
 
   const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
   if (filters.model) {
@@ -1579,6 +1597,8 @@ function itemMatchesDocumentFilters(
   if (filters.status && item.status !== filters.status) return false;
   if (filters.fromDate && item.createdAt < filters.fromDate) return false;
   if (filters.toDate && item.createdAt > filters.toDate) return false;
+  const recentCutoff = getRecentCutoffDate(filters.recentDays);
+  if (recentCutoff && getLibraryItemLastActivityAt(item) < recentCutoff) return false;
   return true;
 }
 
@@ -1619,7 +1639,7 @@ export async function listLibraryDocuments(
 
   const scope = input.scope ?? "all";
   const sort = input.sort ?? "updated_desc";
-  const limit = Math.min(Math.max(input.limit ?? 30, 1), 100);
+  const limit = Math.min(Math.max(input.limit ?? 30, 1), 50);
   const offset = Math.max(input.offset ?? 0, 0);
   const query = (input.query ?? "").trim();
 
@@ -2078,7 +2098,7 @@ export async function searchLibraryItems(
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
 
-  const limit = Math.min(Math.max(input.limit ?? 20, 1), 100);
+  const limit = Math.min(Math.max(input.limit ?? 20, 1), 50);
   const offset = Math.max(input.offset ?? 0, 0);
   const query = (input.query ?? "").trim();
   const queryTokens = tokenize(query);
