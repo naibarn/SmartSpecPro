@@ -41,6 +41,9 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     sourcemap: "hidden",
+    // Large code-highlighting/diagram bundles are expected in this app.
+    // Raise warning threshold to reduce non-actionable build noise.
+    chunkSizeWarningLimit: 8000,
   },
   server: {
     host: true,

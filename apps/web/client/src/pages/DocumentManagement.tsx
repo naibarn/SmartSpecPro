@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
@@ -62,6 +62,17 @@ interface MarkdownDraftState {
   updatedAt?: string;
 }
 
+const DESKTOP_BREAKPOINT_QUERY = "(min-width: 1280px)";
+const MIN_LIBRARY_PANEL_WIDTH = 320;
+const MIN_PREVIEW_PANEL_WIDTH = 320;
+const MIN_EDITOR_PANEL_WIDTH = 420;
+const COLLAPSED_PANEL_WIDTH = 72;
+const RESIZE_HANDLE_WIDTH = 8;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
 export default function DocumentManagement() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -71,6 +82,16 @@ export default function DocumentManagement() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewSectionRef = useRef<HTMLDivElement | null>(null);
   const editorWorkspaceRef = useRef<HTMLDivElement | null>(null);
+  const desktopLayoutRef = useRef<HTMLDivElement | null>(null);
+  const activeResizeRef = useRef<{
+    panel: "library" | "preview";
+    startX: number;
+    startLibraryWidth: number;
+    startPreviewWidth: number;
+    containerWidth: number;
+    libraryOpenAtStart: boolean;
+    previewOpenAtStart: boolean;
+  } | null>(null);
 
   const [queryState, setQueryState] = useState<DocumentQueryState>(() => {
     if (typeof window === "undefined") {
@@ -97,6 +118,12 @@ export default function DocumentManagement() {
   const [isMarkdownPreviewPanelOpen, setIsMarkdownPreviewPanelOpen] = useState(true);
   const [isEditorPanelCollapsed, setIsEditorPanelCollapsed] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+  const [isDesktopLayout, setIsDesktopLayout] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(DESKTOP_BREAKPOINT_QUERY).matches;
+  });
+  const [libraryPanelWidth, setLibraryPanelWidth] = useState(440);
+  const [previewPanelWidth, setPreviewPanelWidth] = useState(430);
   const [importingDriveFileId, setImportingDriveFileId] = useState<string | null>(null);
   const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
     if (typeof window === "undefined") {
@@ -119,6 +146,16 @@ export default function DocumentManagement() {
       setLocation("/login");
     }
   }, [authLoading, isAuthenticated, setLocation]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia(DESKTOP_BREAKPOINT_QUERY);
+    const applyLayout = (matches: boolean) => setIsDesktopLayout(matches);
+    applyLayout(media.matches);
+    const listener = (event: MediaQueryListEvent) => applyLayout(event.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, []);
 
   useEffect(() => {
     setQueryState((prev) => (
@@ -707,6 +744,87 @@ export default function DocumentManagement() {
     }
   }
 
+  const isPreviewFullWidth = isPreviewExpanded || (!isLibraryPanelOpen && isEditorPanelCollapsed);
+
+  function stopHorizontalResizeSession() {
+    activeResizeRef.current = null;
+    if (typeof document !== "undefined") {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+  }
+
+  function beginHorizontalResize(panel: "library" | "preview", event: ReactMouseEvent<HTMLDivElement>) {
+    if (!isDesktopLayout) return;
+    const container = desktopLayoutRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    activeResizeRef.current = {
+      panel,
+      startX: event.clientX,
+      startLibraryWidth: libraryPanelWidth,
+      startPreviewWidth: previewPanelWidth,
+      containerWidth: rect.width,
+      libraryOpenAtStart: isLibraryPanelOpen,
+      previewOpenAtStart: isMarkdownPreviewPanelOpen,
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      const session = activeResizeRef.current;
+      if (!session || !isDesktopLayout) return;
+
+      const deltaX = event.clientX - session.startX;
+      const containerWidth = session.containerWidth;
+
+      if (session.panel === "library") {
+        const previewWidth = session.previewOpenAtStart
+          ? session.startPreviewWidth
+          : COLLAPSED_PANEL_WIDTH;
+        const maxLibraryWidth = Math.max(
+          MIN_LIBRARY_PANEL_WIDTH,
+          containerWidth - previewWidth - MIN_EDITOR_PANEL_WIDTH - RESIZE_HANDLE_WIDTH * 2,
+        );
+        const nextLibraryWidth = clamp(
+          session.startLibraryWidth + deltaX,
+          MIN_LIBRARY_PANEL_WIDTH,
+          maxLibraryWidth,
+        );
+        setLibraryPanelWidth(nextLibraryWidth);
+        return;
+      }
+
+      const libraryWidth = session.libraryOpenAtStart
+        ? session.startLibraryWidth
+        : COLLAPSED_PANEL_WIDTH;
+      const maxPreviewWidth = Math.max(
+        MIN_PREVIEW_PANEL_WIDTH,
+        containerWidth - libraryWidth - MIN_EDITOR_PANEL_WIDTH - RESIZE_HANDLE_WIDTH * 2,
+      );
+      const nextPreviewWidth = clamp(
+        session.startPreviewWidth - deltaX,
+        MIN_PREVIEW_PANEL_WIDTH,
+        maxPreviewWidth,
+      );
+      setPreviewPanelWidth(nextPreviewWidth);
+    };
+
+    const handleMouseUp = () => stopHorizontalResizeSession();
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mouseleave", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mouseleave", handleMouseUp);
+      stopHorizontalResizeSession();
+    };
+  }, [isDesktopLayout]);
+
   if (authLoading || !isAuthenticated || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -844,11 +962,15 @@ export default function DocumentManagement() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 xl:h-[calc(100vh-140px)] xl:flex-row">
+        <div
+          ref={desktopLayoutRef}
+          className="flex flex-col gap-4 xl:h-[calc(100vh-140px)] xl:flex-row"
+        >
           {isLibraryPanelOpen ? (
             <aside
               ref={previewSectionRef}
-              className="flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:min-h-0 xl:w-[440px] xl:shrink-0"
+              className="flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:min-h-0 xl:shrink-0"
+              style={isDesktopLayout ? { width: `${libraryPanelWidth}px` } : undefined}
             >
               <div className="mb-4 flex items-center justify-between gap-2">
                 <div>
@@ -941,7 +1063,7 @@ export default function DocumentManagement() {
               )}
             </aside>
           ) : (
-            <div className="flex items-center justify-center xl:shrink-0">
+            <div className="flex items-center justify-center xl:w-[72px] xl:shrink-0">
               <Button
                 type="button"
                 variant="outline"
@@ -957,6 +1079,19 @@ export default function DocumentManagement() {
               </Button>
             </div>
           )}
+
+          {isLibraryPanelOpen && !isEditorPanelCollapsed && isDesktopLayout ? (
+            <div
+              className="hidden cursor-col-resize items-stretch justify-center rounded-full transition-colors hover:bg-sky-100 xl:flex"
+              style={{ width: `${RESIZE_HANDLE_WIDTH}px` }}
+              onMouseDown={(event) => beginHorizontalResize("library", event)}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize library and editor panels"
+            >
+              <div className="my-6 w-px rounded-full bg-slate-300" />
+            </div>
+          ) : null}
 
           {!isEditorPanelCollapsed ? (
             <section
@@ -1120,10 +1255,25 @@ export default function DocumentManagement() {
             </div>
           )}
 
+          {!isEditorPanelCollapsed && isMarkdownPreviewPanelOpen && !isPreviewFullWidth && isDesktopLayout ? (
+            <div
+              className="hidden cursor-col-resize items-stretch justify-center rounded-full transition-colors hover:bg-cyan-100 xl:flex"
+              style={{ width: `${RESIZE_HANDLE_WIDTH}px` }}
+              onMouseDown={(event) => beginHorizontalResize("preview", event)}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize editor and markdown preview panels"
+            >
+              <div className="my-6 w-px rounded-full bg-slate-300" />
+            </div>
+          ) : null}
+
           {isMarkdownPreviewPanelOpen ? (
             <aside className={`space-y-3 rounded-3xl border border-slate-200/80 bg-white p-3 shadow-md transition-all duration-300 ${
-              isPreviewExpanded || (!isLibraryPanelOpen && isEditorPanelCollapsed) ? "xl:min-w-0 xl:flex-1" : "xl:w-[430px] xl:shrink-0"
-            }`}>
+              isPreviewFullWidth ? "xl:min-w-0 xl:flex-1" : "xl:shrink-0"
+            }`}
+            style={isDesktopLayout && !isPreviewFullWidth ? { width: `${previewPanelWidth}px` } : undefined}
+            >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   {isEditorPanelCollapsed ? (
@@ -1203,7 +1353,7 @@ export default function DocumentManagement() {
               )}
             </aside>
           ) : (
-            <div className="flex items-center justify-center xl:shrink-0">
+            <div className="flex items-center justify-center xl:w-[72px] xl:shrink-0">
               <Button
                 type="button"
                 variant="outline"
