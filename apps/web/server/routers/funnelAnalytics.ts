@@ -1,15 +1,60 @@
 import { and, count, eq, gte, lte, sql, desc, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { router, domainAdminProcedure } from "../_core/trpc";
+import {
+  router,
+  domainAdminProcedure,
+  rateLimitedDomainAdminProcedure,
+} from "../_core/trpc";
 import { funnelEvents } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { auditLogger } from "../services/auditLogger";
 
 // ── Constants ──
 
 export const MAX_RANGE_DAYS = 90;
+
+/**
+ * Maximum rows returned per export operation.
+ * Limit of 5000 balances usability (sufficient for most analytics needs)
+ * with data minimization principles (prevents bulk extraction of entire datasets).
+ * Protects against accidental or intentional large-scale data exfiltration.
+ */
+export const MAX_EXPORT_ROWS = 5000;
+
 const CACHE_TTL = 300; // 5 minutes
 const CACHE_PREFIX = "funnel:analytics:";
+
+/**
+ * Property keys to exclude from API responses and exports for privacy/compliance.
+ *
+ * Rationale:
+ * - PII (email, phone, IP): GDPR Article 4(1) - personal data subject to right to erasure
+ * - Credentials (password, apiKey, token): Security - prevent accidental exposure
+ * - Financial (ssn, creditCard): PCI DSS / privacy regulations
+ *
+ * Update this list when:
+ * - New sensitive fields are added to event instrumentation
+ * - Privacy policy or legal requirements change
+ * - Security audit identifies new sensitive data types
+ */
+export const DISALLOWED_PROPERTY_KEYS = new Set([
+  "email",
+  "phone",
+  "phoneNumber",
+  "ipAddress",
+  "ip",
+  "password",
+  "apiKey",
+  "api_key",
+  "token",
+  "secret",
+  "accessToken",
+  "refreshToken",
+  "ssn",
+  "creditCard",
+  "cvv",
+]);
 
 export const STAGE_PRESETS = {
   acquisition: ["signup_completed", "email_verified"],
@@ -31,11 +76,60 @@ type Bucket = "day" | "week" | "month";
 
 // ── Shared helpers ──
 
-export function buildScopeFilter(input: {
-  role: string;
-  registeredDomain: string | null;
-  ctxTenantId: string | null;
-}): FunnelScope {
+/**
+ * Sanitize event properties by removing disallowed sensitive keys.
+ *
+ * Used to prevent exposure of PII, credentials, and regulated data in:
+ * - API responses (rawEvents endpoint)
+ * - Export files (CSV/JSON downloads)
+ * - Analytics aggregations where properties are returned
+ *
+ * Privacy rationale: Implements data minimization (GDPR Article 5(1)(c))
+ * by excluding personal data that is not strictly necessary for analytics.
+ *
+ * @param properties - Raw event properties from database (may contain sensitive keys)
+ * @returns Sanitized properties object with disallowed keys removed
+ */
+export function sanitizeEventProperties(
+  properties: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  if (!properties || typeof properties !== "object") {
+    return {};
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(properties)) {
+    if (!DISALLOWED_PROPERTY_KEYS.has(key) && value !== undefined) {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
+/**
+ * Build tenant scope filter for funnel queries.
+ *
+ * Scope resolution logic (tenant-primary with explicit fallback):
+ * 1. Prefer ctxTenantId (explicit tenant context from middleware)
+ * 2. Fallback to registeredDomain if ctxTenantId is null
+ * 3. Emit audit log when fallback occurs (for observability)
+ *
+ * Role-based domain filtering:
+ * - domain_admin: Scoped to their specific domain (tenantId + domain filter)
+ * - admin: Tenant-wide access (tenantId only, no domain filter)
+ *
+ * @param input - Role and tenant identifiers
+ * @param userId - User ID for audit logging (nullable for test contexts)
+ * @returns FunnelScope with tenantId and optional domain filter
+ */
+export function buildScopeFilter(
+  input: {
+    role: string;
+    registeredDomain: string | null;
+    ctxTenantId: string | null;
+  },
+  userId?: number | null,
+): FunnelScope {
   const tenantId = input.ctxTenantId ?? input.registeredDomain;
   if (!tenantId) {
     throw new TRPCError({
@@ -43,6 +137,22 @@ export function buildScopeFilter(input: {
       message: "Unable to determine tenant scope",
     });
   }
+
+  // Emit audit log if fallback occurred (unconditional for observability)
+  const didFallback = !input.ctxTenantId && input.registeredDomain;
+  if (didFallback) {
+    auditLogger.log({
+      eventType: "funnel_scope_fallback",
+      userId: userId ?? null,
+      metadata: {
+        role: input.role,
+        fallbackSource: "registeredDomain",
+        resolvedTenantId: tenantId,
+        registeredDomain: input.registeredDomain,
+      },
+    });
+  }
+
   if (input.role === "domain_admin") {
     return { tenantId, domain: input.registeredDomain };
   }
@@ -102,14 +212,17 @@ function scopeConditions(scope: FunnelScope) {
 }
 
 function resolveScope(ctx: {
-  user: { role: string | null; registeredDomain: string | null };
+  user: { id: number; role: string | null; registeredDomain: string | null };
   tenantId: string | null;
 }) {
-  const scope = buildScopeFilter({
-    role: ctx.user.role ?? "domain_admin",
-    registeredDomain: ctx.user.registeredDomain ?? null,
-    ctxTenantId: ctx.tenantId ?? null,
-  });
+  const scope = buildScopeFilter(
+    {
+      role: ctx.user.role ?? "domain_admin",
+      registeredDomain: ctx.user.registeredDomain ?? null,
+      ctxTenantId: ctx.tenantId ?? null,
+    },
+    ctx.user.id,
+  );
   console.log("[FunnelAnalytics] scope resolved", {
     tenantId: scope.tenantId,
     domain: scope.domain,
@@ -204,6 +317,7 @@ const rawEventsInput = z.object({
   eventName: z.string().max(128).optional(),
   limit: z.number().min(1).max(500).default(100),
   offset: z.number().min(0).default(0),
+  includeUserData: z.boolean().default(false),
 });
 
 // ── Router ──
@@ -303,7 +417,7 @@ export const funnelAnalyticsRouter = router({
       return { series: data, rangeClamped: range.clamped, cached };
     }),
 
-  rawEvents: domainAdminProcedure
+  rawEvents: rateLimitedDomainAdminProcedure
     .input(rawEventsInput)
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -342,16 +456,38 @@ export const funnelAnalyticsRouter = router({
           .where(and(...conditions)),
       ]);
 
+      // Audit raw events query (per-user data access)
+      auditLogger.log({
+        eventType: "funnel_raw_events_query",
+        userId: ctx.user.id,
+        metadata: {
+          dateRange: {
+            from: range.from.toISOString(),
+            to: range.to.toISOString(),
+          },
+          eventName: input.eventName ?? "all",
+          rowCount: events.length,
+          includeUserData: input.includeUserData,
+          elevated: input.includeUserData,
+          scope: { tenantId: scope.tenantId, domain: scope.domain },
+        },
+      });
+
       return {
         events: events.map((e) => ({
           ...e,
           eventTime: e.eventTime.toISOString(),
+          // Conditionally include userId based on flag
+          userId: input.includeUserData ? e.userId : undefined,
+          properties: sanitizeEventProperties(
+            e.properties as Record<string, unknown> | null,
+          ),
         })),
         total: Number(totalResult[0]?.total ?? 0),
       };
     }),
 
-  export: domainAdminProcedure
+  export: rateLimitedDomainAdminProcedure
     .input(exportInput)
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -371,6 +507,7 @@ export const funnelAnalyticsRouter = router({
         conditions.push(inArray(funnelEvents.eventName, stageNames));
       }
 
+      // Apply limit at SQL level (prevents OOM on large datasets)
       const rows = await db
         .select({
           bucket: sql<string>`${sql.raw(bucketSqlStr)}`.as("bucket"),
@@ -382,14 +519,32 @@ export const funnelAnalyticsRouter = router({
         .from(funnelEvents)
         .where(and(...conditions))
         .groupBy(sql`${sql.raw(bucketSqlStr)}`, funnelEvents.eventName)
-        .orderBy(sql`${sql.raw(bucketSqlStr)}`);
+        .orderBy(sql`${sql.raw(bucketSqlStr)}`)
+        .limit(MAX_EXPORT_ROWS + 1); // +1 to detect truncation
 
-      const mapped = rows.map((r) => ({
+      const wasTruncated = rows.length > MAX_EXPORT_ROWS;
+      const limitedRows = wasTruncated ? rows.slice(0, MAX_EXPORT_ROWS) : rows;
+
+      const mapped = limitedRows.map((r) => ({
         bucket: r.bucket,
         eventName: r.eventName,
         total: Number(r.total),
         uniqueUsers: Number(r.uniqueUsers),
       }));
+
+      // Audit export operation
+      auditLogger.log({
+        eventType: "funnel_export",
+        userId: ctx.user.id,
+        metadata: {
+          format: input.format,
+          rowCount: mapped.length,
+          wasTruncated,
+          dateRange: { from: range.from.toISOString(), to: range.to.toISOString() },
+          stage: input.stage ?? "all",
+          scope: { tenantId: scope.tenantId, domain: scope.domain },
+        },
+      });
 
       if (input.format === "json") {
         return {

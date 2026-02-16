@@ -33,6 +33,9 @@ export type AuditEventType =
   | "google_drive_sync"
   | "google_drive_webhook"
   | "google_drive_edit"
+  | "funnel_scope_fallback"
+  | "funnel_export"
+  | "funnel_raw_events_query"
   | "error";
 
 export interface AuditLogEntry {

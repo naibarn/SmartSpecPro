@@ -25,6 +25,11 @@ export default defineConfig({
     ],
     include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/src/**/*.test.ts", "client/src/**/*.test.tsx", "shared/**/*.test.ts"],
     setupFiles: ["client/src/test-setup.ts"],
+    env: {
+      CONTROL_PLANE_API_KEY: "test-control-plane-key-minimum-24-chars",
+      CONTROL_PLANE_URL: "http://localhost:7070",
+      ORCHESTRATOR_URL: "http://localhost:8000",
+    },
     server: {
       deps: {
         inline: [/react/, /react-dom/, /@testing-library/],

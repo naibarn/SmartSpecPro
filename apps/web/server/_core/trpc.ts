@@ -92,3 +92,16 @@ export const domainAdminProcedure = t.procedure.use(
     });
   }),
 );
+
+// Rate-limited domain admin procedure - auth check first, then rate limit
+// Used for sensitive export and query operations that need abuse protection
+export const rateLimitedDomainAdminProcedure = t.procedure
+  .use(
+    t.middleware(async opts => {
+      if (!opts.ctx.user || (opts.ctx.user.role !== 'admin' && opts.ctx.user.role !== 'domain_admin')) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Domain admin access required" });
+      }
+      return opts.next({ ctx: { ...opts.ctx, user: opts.ctx.user } });
+    }),
+  )
+  .use(createRateLimitMiddleware({ namespace: "domain-admin", limit: 20, windowMs: 60_000 }));
