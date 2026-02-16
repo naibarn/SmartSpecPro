@@ -8,8 +8,8 @@
 ## Section Status
 
 - section-01-provider-abstraction-foundation: completed (`bae545e`)
-- section-02-api-enqueue-hooks-and-job-contract: completed (pending commit hash)
-- section-03-worker-dispatch-idempotency-and-retries: pending
+- section-02-api-enqueue-hooks-and-job-contract: completed (`4e5bef2`)
+- section-03-worker-dispatch-idempotency-and-retries: completed (pending commit hash)
 - section-04-pgvector-migration-and-tenant-rls: pending
 - section-05-backfill-reindex-and-consistency: pending
 - section-06-staged-cutover-and-rollback-governance: pending
@@ -26,8 +26,15 @@
 - blocked_tasks_resolved_remaining: `none`
 
 - section: `section-02-api-enqueue-hooks-and-job-contract`
-- commit: `pending`
+- commit: `4e5bef2`
 - test_command_used: `npm --workspace @smartspec/web test -- server/services/libraryIndexJobContract.test.ts server/services/libraryService.test.ts server/services/mediaLibraryService.test.ts`
 - pass_fail_summary: `PASS (28 tests, 37 existing TODO stubs)`
 - notable_deviations: `payload contract is service-layer and not yet persisted in queue table columns`
+- blocked_tasks_resolved_remaining: `none`
+
+- section: `section-03-worker-dispatch-idempotency-and-retries`
+- commit: `pending`
+- test_command_used: `cd python-backend && uv run pytest --no-cov tests/unit/services/test_library_indexing_service.py tests/unit/services/test_library_backfill_service.py`
+- pass_fail_summary: `PASS (12 tests)`
+- notable_deviations: `delete payload operation currently fails closed; queue task boundary has optional payload wiring only`
 - blocked_tasks_resolved_remaining: `none`

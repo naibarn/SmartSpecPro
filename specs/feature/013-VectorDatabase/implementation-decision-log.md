@@ -59,3 +59,23 @@
 - decision: optional throttle hook (`allowThrottle` + threshold function)
 - mode: `auto`
 - rationale: Preserves reliability while allowing controlled queue protection under lag.
+
+## Section 03 Decisions
+
+- step: worker_provider_resolution_source
+- options: keep hardcoded Chroma path vs resolve provider from effective env-backed settings
+- decision: resolve provider from `LIBRARY_VECTOR_PROVIDER`/`VECTOR_DB_PROVIDER` with normalized aliases and safe fallback
+- mode: `auto`
+- rationale: Reduces provider-dispatch drift and keeps worker behavior aligned with configurable rollout state.
+
+- step: retry_classification_policy
+- options: retry everything except `ValueError` vs explicit transient/permanent classifier
+- decision: explicit classifier (`transient` => retry until max attempts; permanent => fail terminal immediately)
+- mode: `auto`
+- rationale: Prevents unproductive retries on tenant/entity/payload guardrail violations while preserving retries for transport/backend instability.
+
+- step: dedupe_scope
+- options: rely only on completed-status short-circuit for same job id vs dedupe-key short-circuit across duplicate jobs
+- decision: dedupe-key short-circuit against recent completed jobs scoped by tenant + item
+- mode: `auto`
+- rationale: Improves idempotency for duplicated/replayed jobs without requiring schema changes.

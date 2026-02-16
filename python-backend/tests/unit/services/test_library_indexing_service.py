@@ -10,9 +10,13 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import Base
 from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
 from app.models.user import User
+from app.services import library_indexing_service
 from app.services.library_indexing_service import (
+    build_library_job_dedupe_key,
     enqueue_library_index_job,
+    parse_library_index_job_payload,
     process_library_index_job,
+    resolve_library_vector_provider,
     retry_due_library_index_jobs,
 )
 from app.services.library_observability import (
@@ -271,3 +275,175 @@ class TestLibraryIndexingService:
         assert get_metric_count("library.index.job.enqueued_total") == 2
         assert get_metric_count("library.index.job.completed_total") == 1
         assert get_metric_count("library.index.job.failed_total") == 1
+
+    @pytest.mark.asyncio
+    async def test_worker_uses_resolved_provider_when_upsert_not_injected(self, indexing_db, monkeypatch):
+        reset_library_observability_metrics()
+        item = await _create_library_item(
+            indexing_db,
+            tenant_id="tenant-305",
+            title="Provider resolve",
+            metadata={"prompt": "provider"},
+        )
+        enqueue_result = await enqueue_library_index_job(indexing_db, item.id, tenant_id=item.tenant_id)
+
+        captured: dict[str, object] = {}
+
+        def fake_resolver(provider, config=None):
+            captured["provider"] = provider
+            captured["config"] = config or {}
+
+            def fake_upsert(*, tenant_id, item_id, chunks, embeddings):
+                return [f"vec:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks]
+
+            return fake_upsert
+
+        monkeypatch.setenv("LIBRARY_VECTOR_PROVIDER", "pgvector")
+        monkeypatch.setattr(library_indexing_service, "get_vector_upsert_fn", fake_resolver)
+
+        result = await process_library_index_job(
+            indexing_db,
+            enqueue_result["job_id"],
+            embedding_service=FakeEmbeddingService(),
+        )
+
+        assert result["status"] == "completed"
+        assert captured["provider"] == "pgvector"
+        assert isinstance(captured["config"], dict)
+
+    @pytest.mark.asyncio
+    async def test_duplicate_dedupe_key_short_circuits_duplicate_job_processing(self, indexing_db):
+        item = await _create_library_item(
+            indexing_db,
+            tenant_id="tenant-306",
+            title="Dedupe entry",
+            metadata={"prompt": "dedupe me"},
+        )
+        first_job = await enqueue_library_index_job(indexing_db, item.id, tenant_id=item.tenant_id)
+        dedupe_payload = {
+            "version": "v2",
+            "domain": "library",
+            "operation": "index",
+            "tenantId": item.tenant_id,
+            "entityId": f"library:{item.id}",
+            "dedupeKey": build_library_job_dedupe_key(
+                domain="library",
+                operation="index",
+                tenant_id=item.tenant_id,
+                entity_id=f"library:{item.id}",
+            ),
+            "source": "library.upload",
+            "sourceMetadata": {"route": "library.upload"},
+        }
+
+        first_result = await process_library_index_job(
+            indexing_db,
+            first_job["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda tenant_id, item_id, chunks, embeddings: [
+                f"vec:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks
+            ],
+            job_payload=dedupe_payload,
+        )
+        assert first_result["status"] == "completed"
+
+        second_job = await enqueue_library_index_job(indexing_db, item.id, tenant_id=item.tenant_id)
+        second_result = await process_library_index_job(
+            indexing_db,
+            second_job["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("upsert_should_not_run")),
+            job_payload=dedupe_payload,
+        )
+
+        assert second_result["status"] == "completed"
+        assert second_result["duplicate"] is True
+        assert second_result["chunks_written"] == 0
+
+    @pytest.mark.asyncio
+    async def test_payload_tenant_mismatch_is_terminal_and_dead_lettered(self, indexing_db):
+        reset_library_observability_metrics()
+        item = await _create_library_item(
+            indexing_db,
+            tenant_id="tenant-307",
+            title="Tenant guardrail",
+            metadata={"prompt": "tenant mismatch"},
+        )
+        enqueue_result = await enqueue_library_index_job(indexing_db, item.id, tenant_id=item.tenant_id)
+
+        result = await process_library_index_job(
+            indexing_db,
+            enqueue_result["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            job_payload={
+                "version": "v2",
+                "domain": "library",
+                "operation": "index",
+                "tenantId": "other-tenant",
+                "entityId": f"library:{item.id}",
+                "dedupeKey": "libidx:v2:library:index:other-tenant:mismatch",
+                "source": "library.upload",
+                "sourceMetadata": {},
+            },
+        )
+
+        assert result["status"] == "failed"
+        assert result["failure_classification"] == "permanent"
+        assert result["dead_lettered"] is True
+        assert get_metric_count("library.index.job.dead_letter_total") == 1
+
+    @pytest.mark.asyncio
+    async def test_non_transient_runtime_error_is_terminal_failure(self, indexing_db):
+        item = await _create_library_item(
+            indexing_db,
+            tenant_id="tenant-308",
+            title="Permanent runtime",
+            metadata={"prompt": "permanent"},
+        )
+        enqueue_result = await enqueue_library_index_job(indexing_db, item.id, tenant_id=item.tenant_id)
+
+        result = await process_library_index_job(
+            indexing_db,
+            enqueue_result["job_id"],
+            embedding_service=FakeEmbeddingService(),
+            vector_upsert_fn=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("schema mismatch")),
+        )
+
+        assert result["status"] == "failed"
+        assert result["failure_classification"] == "permanent"
+
+
+def test_payload_parser_supports_v2_and_legacy_contracts():
+    v2 = parse_library_index_job_payload(
+        {
+            "version": "v2",
+            "domain": "library",
+            "operation": "index",
+            "tenantId": "tenant-900",
+            "entityId": "library:22",
+            "dedupeKey": "libidx:v2:library:index:tenant-900:library:22",
+            "source": "library.upload",
+            "sourceMetadata": {"origin": "upload"},
+        }
+    )
+    legacy = parse_library_index_job_payload(
+        {
+            "tenantId": "tenant-legacy",
+            "libraryItemId": 45,
+            "jobType": "initial_index",
+        }
+    )
+
+    assert v2["version"] == "v2"
+    assert v2["tenant_id"] == "tenant-900"
+    assert v2["source_metadata"] == {"origin": "upload"}
+    assert legacy["version"] == "legacy"
+    assert legacy["entity_id"] == "library:45"
+    assert legacy["operation"] == "index"
+
+
+def test_provider_resolution_falls_back_to_chroma(monkeypatch):
+    monkeypatch.delenv("LIBRARY_VECTOR_PROVIDER", raising=False)
+    monkeypatch.delenv("VECTOR_DB_PROVIDER", raising=False)
+    provider, _config = resolve_library_vector_provider()
+    assert provider == "chroma"

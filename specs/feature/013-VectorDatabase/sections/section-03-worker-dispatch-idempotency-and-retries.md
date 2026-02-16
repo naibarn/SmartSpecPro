@@ -43,3 +43,26 @@ Align Celery worker execution with selected vector provider and harden job proce
 - Worker provider dispatch behavior matches control-plane settings.
 - Idempotency/retry/dead-letter tests pass.
 - Legacy payload compatibility remains intact during transition.
+
+## As-Built (2026-02-16)
+
+### Actual files changed
+- `python-backend/app/services/library_indexing_service.py`
+- `python-backend/tests/unit/services/test_library_indexing_service.py`
+
+### Deviations from plan
+- Worker job ingestion currently accepts optional payload metadata (`job_payload`) but task-entry wiring remains follow-up; existing callers continue to process jobs without payload object.
+- `delete` payload operations are currently fail-closed (`delete_operation_not_supported_in_worker`) rather than executing provider deletes.
+- Provider resolution is env-backed (`LIBRARY_VECTOR_PROVIDER` / `VECTOR_DB_PROVIDER`) and not yet integrated with persisted switch-state settings.
+
+### Tests added/updated
+- Updated: `python-backend/tests/unit/services/test_library_indexing_service.py`
+  - worker resolves provider from effective env-backed settings when no explicit upsert function is injected
+  - duplicate dedupe key short-circuits duplicate job processing
+  - payload parser supports both `v2` and legacy schemas
+  - tenant mismatch fails as permanent and records dead-letter metric
+  - non-transient runtime errors classify as permanent terminal failures
+
+### Known follow-ups
+- Pass queue payload metadata into `process_library_index_job` at the Celery task boundary so parser/tenant guardrails are always exercised.
+- Implement provider delete operation handling for payloads with `operation=delete`.

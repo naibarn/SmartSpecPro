@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional, Protocol
 
@@ -22,6 +23,19 @@ PROCESSING_STATUS = "processing"
 RETRY_PENDING_STATUS = "retry_pending"
 COMPLETED_STATUS = "completed"
 FAILED_STATUS = "failed"
+SUPPORTED_VECTOR_PROVIDERS = {"chroma", "pgvector", "cloudflare_vectorize"}
+TRANSIENT_ERROR_MARKERS = (
+    "timeout",
+    "temporarily",
+    "try again",
+    "connection",
+    "rate limit",
+    "429",
+    "503",
+    "network",
+    "unavailable",
+    "reset by peer",
+)
 
 
 class VectorUpsertFn(Protocol):
@@ -35,6 +49,98 @@ class VectorUpsertFn(Protocol):
         chunks: list[dict[str, Any]],
         embeddings: list[list[float]],
     ) -> list[str]: ...
+
+
+def _derive_legacy_domain(job_type: str) -> str:
+    return "gallery" if job_type.startswith("gallery") else "library"
+
+
+def _derive_legacy_operation(job_type: str) -> str:
+    return "delete" if "delete" in job_type else "index"
+
+
+def build_library_job_dedupe_key(
+    *,
+    domain: str,
+    operation: str,
+    tenant_id: str,
+    entity_id: str,
+) -> str:
+    return f"libidx:v2:{domain}:{operation}:{tenant_id}:{entity_id}"
+
+
+def parse_library_index_job_payload(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("Invalid library index job payload")
+
+    version = str(raw.get("version") or "").strip()
+    if version == "v2":
+        tenant_id = str(raw.get("tenantId") or "").strip()
+        if not tenant_id:
+            raise ValueError("Invalid library index job payload: tenantId is required")
+
+        entity_id = str(raw.get("entityId") or "").strip()
+        domain = str(raw.get("domain") or "library").strip() or "library"
+        operation = str(raw.get("operation") or "index").strip() or "index"
+        dedupe_key = str(raw.get("dedupeKey") or "").strip()
+        if not dedupe_key:
+            dedupe_key = build_library_job_dedupe_key(
+                domain=domain,
+                operation=operation,
+                tenant_id=tenant_id,
+                entity_id=entity_id,
+            )
+
+        return {
+            "version": "v2",
+            "domain": domain,
+            "operation": operation,
+            "tenant_id": tenant_id,
+            "entity_id": entity_id,
+            "dedupe_key": dedupe_key,
+            "source": str(raw.get("source") or "unknown"),
+            "source_metadata": raw.get("sourceMetadata") if isinstance(raw.get("sourceMetadata"), dict) else {},
+        }
+
+    tenant_id = str(raw.get("tenantId") or "").strip()
+    if not tenant_id:
+        raise ValueError("Invalid library index job payload: tenantId is required")
+
+    job_type = str(raw.get("jobType") or "initial_index").strip()
+    domain = _derive_legacy_domain(job_type)
+    operation = _derive_legacy_operation(job_type)
+
+    entity_id = str(raw.get("entityId") or "").strip()
+    if not entity_id:
+        if raw.get("libraryItemId") is not None:
+            entity_id = f"library:{raw['libraryItemId']}"
+        elif raw.get("galleryItemId") is not None:
+            entity_id = f"gallery:{raw['galleryItemId']}"
+        else:
+            entity_id = "unknown:0"
+
+    dedupe_key = str(raw.get("dedupeKey") or "").strip()
+    if not dedupe_key:
+        dedupe_key = build_library_job_dedupe_key(
+            domain=domain,
+            operation=operation,
+            tenant_id=tenant_id,
+            entity_id=entity_id,
+        )
+
+    source = str(raw.get("source") or f"legacy:{job_type}")
+    source_metadata = raw.get("sourceMetadata") if isinstance(raw.get("sourceMetadata"), dict) else {}
+
+    return {
+        "version": "legacy",
+        "domain": domain,
+        "operation": operation,
+        "tenant_id": tenant_id,
+        "entity_id": entity_id,
+        "dedupe_key": dedupe_key,
+        "source": source,
+        "source_metadata": source_metadata,
+    }
 
 
 def _retry_delay_seconds(attempt_count: int) -> int:
@@ -320,6 +426,95 @@ def get_vector_upsert_fn(
     return _default_vector_upsert
 
 
+def _vector_provider_config_from_env() -> dict[str, str]:
+    config: dict[str, str] = {}
+    mapping = {
+        "PGVECTOR_HOST": "pgvectorHost",
+        "PGVECTOR_PORT": "pgvectorPort",
+        "PGVECTOR_DATABASE": "pgvectorDatabase",
+        "PGVECTOR_USER": "pgvectorUser",
+        "PGVECTOR_PASSWORD": "pgvectorPassword",
+        "VECTORIZE_ACCOUNT_ID": "vectorizeAccountId",
+        "VECTORIZE_API_TOKEN": "vectorizeApiToken",
+        "VECTORIZE_INDEX_NAME": "vectorizeIndexName",
+    }
+    for env_key, config_key in mapping.items():
+        value = os.getenv(env_key)
+        if value:
+            config[config_key] = value
+    return config
+
+
+def resolve_library_vector_provider() -> tuple[str, dict[str, str]]:
+    raw = (os.getenv("LIBRARY_VECTOR_PROVIDER") or os.getenv("VECTOR_DB_PROVIDER") or "chroma").strip().lower()
+    aliases = {
+        "vectorize": "cloudflare_vectorize",
+        "cloudflare": "cloudflare_vectorize",
+        "chromadb": "chroma",
+    }
+    provider = aliases.get(raw, raw)
+    if provider not in SUPPORTED_VECTOR_PROVIDERS:
+        provider = "chroma"
+    return provider, _vector_provider_config_from_env()
+
+
+def _resolve_vector_upsert_fn(explicit: Optional[VectorUpsertFn]) -> VectorUpsertFn:
+    if explicit is not None:
+        return explicit
+
+    provider, config = resolve_library_vector_provider()
+    return get_vector_upsert_fn(provider, config=config)
+
+
+def _is_transient_indexing_error(exc: Exception) -> bool:
+    if isinstance(exc, (ValueError, LookupError, PermissionError, NotImplementedError)):
+        return False
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return True
+
+    lowered = str(exc).lower()
+    return any(marker in lowered for marker in TRANSIENT_ERROR_MARKERS)
+
+
+async def _find_duplicate_completed_job_by_dedupe_key(
+    db: AsyncSession,
+    *,
+    job: LibraryIndexJob,
+    dedupe_key: str,
+) -> Optional[LibraryIndexJob]:
+    candidates = (
+        (
+            await db.execute(
+                select(LibraryIndexJob)
+                .where(
+                    and_(
+                        LibraryIndexJob.id != job.id,
+                        LibraryIndexJob.tenant_id == job.tenant_id,
+                        LibraryIndexJob.library_item_id == job.library_item_id,
+                        LibraryIndexJob.status == COMPLETED_STATUS,
+                    )
+                )
+                .order_by(LibraryIndexJob.completed_at.desc(), LibraryIndexJob.id.desc())
+                .limit(25)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    entity_id = f"library:{job.library_item_id}"
+    for candidate in candidates:
+        candidate_key = build_library_job_dedupe_key(
+            domain=_derive_legacy_domain(candidate.job_type),
+            operation=_derive_legacy_operation(candidate.job_type),
+            tenant_id=candidate.tenant_id,
+            entity_id=entity_id,
+        )
+        if candidate_key == dedupe_key:
+            return candidate
+    return None
+
+
 async def reindex_all_library_items(
     db: AsyncSession,
     *,
@@ -488,6 +683,7 @@ async def process_library_index_job(
     *,
     embedding_service: Optional[EmbeddingService] = None,
     vector_upsert_fn: Optional[VectorUpsertFn] = None,
+    job_payload: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Process a single index job through extract/chunk/embed/upsert pipeline."""
     job = await db.scalar(select(LibraryIndexJob).where(LibraryIndexJob.id == job_id))
@@ -511,7 +707,59 @@ async def process_library_index_job(
     await db.commit()
 
     item: Optional[LibraryItem] = None
+    parsed_payload: Optional[dict[str, Any]] = None
     try:
+        if job_payload is not None:
+            parsed_payload = parse_library_index_job_payload(job_payload)
+
+            if parsed_payload["tenant_id"] != job.tenant_id:
+                raise PermissionError(
+                    f"tenant_mismatch: payload={parsed_payload['tenant_id']} job={job.tenant_id}"
+                )
+
+            expected_entity = f"library:{job.library_item_id}"
+            if parsed_payload["entity_id"] != expected_entity:
+                raise ValueError(
+                    f"entity_mismatch: payload={parsed_payload['entity_id']} expected={expected_entity}"
+                )
+
+            if parsed_payload["operation"] == "delete":
+                raise NotImplementedError("delete_operation_not_supported_in_worker")
+
+            duplicate_completed_job = await _find_duplicate_completed_job_by_dedupe_key(
+                db,
+                job=job,
+                dedupe_key=parsed_payload["dedupe_key"],
+            )
+            if duplicate_completed_job is not None:
+                job.status = COMPLETED_STATUS
+                job.completed_at = datetime.utcnow()
+                job.next_retry_at = None
+                job.last_error = None
+                job.updated_at = datetime.utcnow()
+                await db.commit()
+
+                log_observability_event(
+                    "library_index_job_deduped",
+                    correlation_id=f"library-index:{job.id}",
+                    tenant_id=job.tenant_id,
+                    library_item_id=job.library_item_id,
+                    dedupe_key=parsed_payload["dedupe_key"],
+                    duplicate_of_job_id=duplicate_completed_job.id,
+                )
+                emit_metric(
+                    "library.index.job.deduped_total",
+                    tenant_id=job.tenant_id,
+                    job_type=job.job_type,
+                )
+                return {
+                    "job_id": job.id,
+                    "status": COMPLETED_STATUS,
+                    "chunks_written": 0,
+                    "duplicate": True,
+                    "dedupe_key": parsed_payload["dedupe_key"],
+                }
+
         item = await db.scalar(
             select(LibraryItem).where(
                 and_(
@@ -535,7 +783,7 @@ async def process_library_index_job(
         embedder = embedding_service or get_embedding_service()
         embeddings = embedder.embed_batch([chunk["content"] for chunk in chunks])
 
-        upsert = vector_upsert_fn or _default_vector_upsert
+        upsert = _resolve_vector_upsert_fn(vector_upsert_fn)
         vector_ids = upsert(
             tenant_id=job.tenant_id,
             item_id=job.library_item_id,
@@ -613,13 +861,16 @@ async def process_library_index_job(
             "status": COMPLETED_STATUS,
             "chunks_written": len(chunks),
             "attempt_count": job.attempt_count,
+            "provider_payload_version": parsed_payload["version"] if parsed_payload else "legacy",
         }
 
     except Exception as exc:  # noqa: BLE001
         error_message = str(exc)
-        terminal = isinstance(exc, ValueError) or job.attempt_count >= (job.max_attempts or 5)
+        is_transient = _is_transient_indexing_error(exc)
+        terminal = (not is_transient) or job.attempt_count >= (job.max_attempts or 5)
 
         if terminal:
+            failure_classification = "transient_exhausted" if is_transient else "permanent"
             job.status = FAILED_STATUS
             job.completed_at = datetime.utcnow()
             job.next_retry_at = None
@@ -641,6 +892,13 @@ async def process_library_index_job(
                 tenant_id=job.tenant_id,
                 job_type=job.job_type,
                 terminal=True,
+                classification=failure_classification,
+            )
+            emit_metric(
+                "library.index.job.dead_letter_total",
+                tenant_id=job.tenant_id,
+                job_type=job.job_type,
+                classification=failure_classification,
             )
             log_observability_event(
                 "library_index_job_failed_observed",
@@ -649,12 +907,25 @@ async def process_library_index_job(
                 library_item_id=job.library_item_id,
                 attempt_count=job.attempt_count,
                 error=error_message,
+                failure_classification=failure_classification,
+                dead_lettered=True,
+            )
+            log_observability_event(
+                "library_index_job_dead_lettered",
+                correlation_id=f"library-index:{job.id}",
+                tenant_id=job.tenant_id,
+                library_item_id=job.library_item_id,
+                attempt_count=job.attempt_count,
+                error=error_message,
+                failure_classification=failure_classification,
             )
             return {
                 "job_id": job.id,
                 "status": FAILED_STATUS,
                 "error": error_message,
                 "attempt_count": job.attempt_count,
+                "failure_classification": failure_classification,
+                "dead_lettered": True,
             }
 
         delay = _retry_delay_seconds(job.attempt_count)
