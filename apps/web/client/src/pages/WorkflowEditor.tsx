@@ -913,7 +913,11 @@ function FlowEditor() {
   const inputNodes = filterNodes(getNodeTypesByCategory('inputs'));
   const outputNodes = filterNodes(getNodeTypesByCategory('outputs'));
   const dataNodes = filterNodes(getNodeTypesByCategory('data'));
-  const integrationNodes = filterNodes(getNodeTypesByCategory('integrations'));
+  // Combine both 'integrations' and 'integration' categories
+  const integrationNodes = [
+    ...filterNodes(getNodeTypesByCategory('integrations')),
+    ...filterNodes(getNodeTypesByCategory('integration')),
+  ];
   const observabilityNodes = filterNodes(getNodeTypesByCategory('observability'));
   const securityNodes = filterNodes(getNodeTypesByCategory('security'));
 
