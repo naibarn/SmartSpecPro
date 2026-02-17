@@ -1,0 +1,67 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/014-Core-Funnel-Dashboard/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/014-Core-Funnel-Dashboard/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-data-schema-migration-and-index-foundation",
+    "section-02-tracker-service-dedup-and-analytics-sidechannels",
+    "section-03-milestone-event-instrumentation-and-idempotency",
+    "section-04-funnel-analytics-router-aggregation-and-caching",
+    "section-05-admin-dashboard-route-tabs-and-export-ux",
+    "section-06-backfill-checkpointing-reconciliation-and-consistency-gates",
+    "section-07-security-rbac-tenant-scope-and-privacy-controls",
+    "section-08-rollout-slo-gates-rollback-and-operational-runbooks",
+    "section-09-verification-suite-and-release-readiness"
+  ],
+  "sections_state": {
+    "section-01-data-schema-migration-and-index-foundation": {
+      "status": "complete",
+      "commit_hash": "8f8c996"
+    },
+    "section-02-tracker-service-dedup-and-analytics-sidechannels": {
+      "status": "complete",
+      "commit_hash": "e087dae"
+    },
+    "section-03-milestone-event-instrumentation-and-idempotency": {
+      "status": "complete",
+      "commit_hash": "e8f4044"
+    },
+    "section-04-funnel-analytics-router-aggregation-and-caching": {
+      "status": "complete",
+      "commit_hash": "7a39fce"
+    },
+    "section-05-admin-dashboard-route-tabs-and-export-ux": {
+      "status": "complete",
+      "commit_hash": "3d2ee40"
+    },
+    "section-06-backfill-checkpointing-reconciliation-and-consistency-gates": {
+      "status": "complete",
+      "commit_hash": "4c2bddc"
+    },
+    "section-07-security-rbac-tenant-scope-and-privacy-controls": {
+      "status": "complete",
+      "commit_hash": "4514b95"
+    },
+    "section-08-rollout-slo-gates-rollback-and-operational-runbooks": {
+      "status": "complete",
+      "commit_hash": "2125314"
+    },
+    "section-09-verification-suite-and-release-readiness": {
+      "status": "complete",
+      "commit_hash": "67adbe1"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-16T13:59:25.374594+00:00"
+}

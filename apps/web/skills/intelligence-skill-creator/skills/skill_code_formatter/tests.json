@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "id": "t1",
+      "input": "print('hi')   \\nprint('ok')   ",
+      "expected_contains": [
+        "Formatted:",
+        "print('hi')",
+        "print('ok')"
+      ]
+    }
+  ]
+}

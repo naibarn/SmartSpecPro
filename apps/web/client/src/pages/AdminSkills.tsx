@@ -87,7 +87,7 @@ interface Skill {
   skillContent: string | null;
   knowledgebase: string | null;
   configJson: Record<string, unknown> | null;
-  executionMode: "llm-only" | "media-generate" | "enhance-prompt" | null;
+  executionMode: "llm-only" | "media-generate" | "enhance-prompt" | "python" | null;
   marketplaceContent?: string | null;
   importSource: string | null;
   importedFromZip: string | null;
@@ -1081,7 +1081,7 @@ export default function AdminSkills() {
                   onValueChange={(value) =>
                     setEditingSkill({
                       ...editingSkill,
-                      executionMode: value as "llm-only" | "media-generate" | "enhance-prompt",
+                      executionMode: value as "llm-only" | "media-generate" | "enhance-prompt" | "python",
                       defaultModel: null
                     })
                   }
@@ -1093,6 +1093,7 @@ export default function AdminSkills() {
                     <SelectItem value="llm-only">LLM Only (Custom Skill - uses skill.md as system prompt)</SelectItem>
                     <SelectItem value="enhance-prompt">Enhance Prompt (specialized prompt enhancement endpoint)</SelectItem>
                     <SelectItem value="media-generate">Media Generate (LLM prompt + media API)</SelectItem>
+                    <SelectItem value="python">Python (runs python/skill.py via subprocess)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
@@ -1100,6 +1101,8 @@ export default function AdminSkills() {
                     ? "LLM generates optimized prompt JSON, then auto-calls media generation API."
                     : editingSkill.executionMode === "enhance-prompt"
                     ? "Uses specialized enhancePrompt endpoint for image prompt generation."
+                    : editingSkill.executionMode === "python"
+                    ? "Runs python/skill.py as subprocess. Input: JSON stdin. Output: JSON stdout {success, output}."
                     : "Uses skill.md content as system prompt for LLM (default)."}
                 </p>
               </div>

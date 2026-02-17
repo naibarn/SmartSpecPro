@@ -83,8 +83,8 @@ export interface SkillDefinition {
   /** Reference to external skill file path */
   skillFilePath?: string;
 
-  /** Execution mode: llm-only (text), media-generate (LLM→prompt→media API) */
-  executionMode?: "llm-only" | "media-generate";
+  /** Execution mode: llm-only (text), media-generate (LLM→prompt→media API), python (subprocess via python/skill.py) */
+  executionMode?: "llm-only" | "media-generate" | "python";
 
   /** Chain to another skill after this skill completes (skill slug) */
   chainTo?: string;

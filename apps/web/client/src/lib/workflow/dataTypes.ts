@@ -34,6 +34,22 @@ export function isCompatibleConnection(sourceType: DataType, targetType: DataTyp
 }
 
 /**
+ * Get a short, user-facing label for a data type (used in error messages).
+ */
+export function getDataTypeLabel(dataType: DataType): string {
+  const labels: Record<DataType, string> = {
+    text: "Text",
+    json: "JSON",
+    array: "Array",
+    image: "Image",
+    number: "Number",
+    boolean: "Boolean",
+    any: "Any",
+  };
+  return labels[dataType] ?? dataType;
+}
+
+/**
  * Get a human-readable description of a data type.
  */
 export function getDataTypeDescription(dataType: DataType): string {

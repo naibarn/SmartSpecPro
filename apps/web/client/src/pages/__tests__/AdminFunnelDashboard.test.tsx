@@ -37,6 +37,32 @@ const mockSummaryQuery = vi.mocked(trpc.funnelAnalytics.summary.useQuery);
 const mockTimeSeriesQuery = vi.mocked(trpc.funnelAnalytics.timeSeries.useQuery);
 const mockInvalidateCacheMutation = vi.mocked(trpc.funnelAnalytics.invalidateCache.useMutation);
 
+// Helper to create properly typed query mock result
+function createQueryMock<T>(data: T | undefined, isLoading: boolean, error?: Error) {
+  return {
+    data,
+    isLoading,
+    error,
+    trpc: {} as any,
+    refetch: vi.fn(),
+    isError: !!error,
+    isSuccess: !isLoading && !error && data !== undefined,
+  } as any;
+}
+
+// Helper to create properly typed mutation mock result
+function createMutationMock() {
+  return {
+    mutateAsync: vi.fn().mockResolvedValue({ cleared: 0 }),
+    isPending: false,
+    isError: false,
+    error: null,
+    trpc: {} as any,
+    mutate: vi.fn(),
+    reset: vi.fn(),
+  } as any;
+}
+
 function renderWithProviders(ui: React.ReactElement, { route = "/admin/funnel" } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -59,24 +85,17 @@ describe("AdminFunnelDashboard", () => {
     vi.clearAllMocks();
 
     // Default mutation mock setup
-    mockInvalidateCacheMutation.mockReturnValue({
-      mutateAsync: vi.fn().mockResolvedValue({ cleared: 0 }),
-      isPending: false,
-      isError: false,
-      error: null,
-    });
+    mockInvalidateCacheMutation.mockReturnValue(createMutationMock());
   });
 
   describe("Feature flag gating", () => {
     it("should render when feature flag is enabled (implied by route access)", () => {
-      mockSummaryQuery.mockReturnValue({
-        data: { stages: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: { series: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock({ stages: [], rangeClamped: false, cached: false }, false)
+      );
+      mockTimeSeriesQuery.mockReturnValue(
+        createQueryMock({ series: [], rangeClamped: false, cached: false }, false)
+      );
 
       renderWithProviders(<AdminFunnelDashboard />);
 
@@ -86,14 +105,12 @@ describe("AdminFunnelDashboard", () => {
 
   describe("Tab rendering and MVP gating", () => {
     beforeEach(() => {
-      mockSummaryQuery.mockReturnValue({
-        data: { stages: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: { series: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock({ stages: [], rangeClamped: false, cached: false }, false)
+      );
+      mockTimeSeriesQuery.mockReturnValue(
+        createQueryMock({ series: [], rangeClamped: false, cached: false }, false)
+      );
     });
 
     it("should render five MVP tabs: Overview, Acquisition, Activation, Revenue, Engagement (Retention hidden in MVP)", () => {
@@ -119,14 +136,12 @@ describe("AdminFunnelDashboard", () => {
 
   describe("Date range and refresh controls", () => {
     beforeEach(() => {
-      mockSummaryQuery.mockReturnValue({
-        data: { stages: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: { series: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock({ stages: [], rangeClamped: false, cached: false }, false)
+      );
+      mockTimeSeriesQuery.mockReturnValue(
+        createQueryMock({ series: [], rangeClamped: false, cached: false }, false)
+      );
     });
 
     it("should render date range inputs", () => {
@@ -145,14 +160,8 @@ describe("AdminFunnelDashboard", () => {
 
   describe("Panel resilience", () => {
     it("should show loading state when data is loading", () => {
-      mockSummaryQuery.mockReturnValue({
-        data: undefined,
-        isLoading: true,
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: undefined,
-        isLoading: true,
-      });
+      mockSummaryQuery.mockReturnValue(createQueryMock(undefined, true));
+      mockTimeSeriesQuery.mockReturnValue(createQueryMock(undefined, true));
 
       renderWithProviders(<AdminFunnelDashboard />);
 
@@ -162,14 +171,12 @@ describe("AdminFunnelDashboard", () => {
     });
 
     it("should show empty state when no data is available", () => {
-      mockSummaryQuery.mockReturnValue({
-        data: { stages: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: { series: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock({ stages: [], rangeClamped: false, cached: false }, false)
+      );
+      mockTimeSeriesQuery.mockReturnValue(
+        createQueryMock({ series: [], rangeClamped: false, cached: false }, false)
+      );
 
       renderWithProviders(<AdminFunnelDashboard />);
 
@@ -179,15 +186,10 @@ describe("AdminFunnelDashboard", () => {
     });
 
     it("should show error state when query fails", async () => {
-      mockSummaryQuery.mockReturnValue({
-        data: undefined,
-        isLoading: false,
-        error: new Error("Failed to fetch"),
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: undefined,
-        isLoading: false,
-      });
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock(undefined, false, new Error("Failed to fetch"))
+      );
+      mockTimeSeriesQuery.mockReturnValue(createQueryMock(undefined, false));
 
       renderWithProviders(<AdminFunnelDashboard />);
 
@@ -198,21 +200,18 @@ describe("AdminFunnelDashboard", () => {
 
     it("should render other panels even if one fails", async () => {
       // Summary fails but timeSeries succeeds
-      mockSummaryQuery.mockReturnValue({
-        data: undefined,
-        isLoading: false,
-        error: new Error("Failed to fetch summary"),
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: {
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock(undefined, false, new Error("Failed to fetch summary"))
+      );
+      mockTimeSeriesQuery.mockReturnValue(
+        createQueryMock({
           series: [
             { bucket: "2026-02-01", eventName: "signup_completed", total: 10 }
           ],
           rangeClamped: false,
           cached: false
-        },
-        isLoading: false,
-      });
+        }, false)
+      );
 
       renderWithProviders(<AdminFunnelDashboard />);
 
@@ -229,14 +228,12 @@ describe("AdminFunnelDashboard", () => {
 
   describe("Export functionality", () => {
     beforeEach(() => {
-      mockSummaryQuery.mockReturnValue({
-        data: { stages: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: { series: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock({ stages: [], rangeClamped: false, cached: false }, false)
+      );
+      mockTimeSeriesQuery.mockReturnValue(
+        createQueryMock({ series: [], rangeClamped: false, cached: false }, false)
+      );
     });
 
     it("should render export button", () => {
@@ -256,20 +253,18 @@ describe("AdminFunnelDashboard", () => {
 
   describe("UTC bucket label semantics", () => {
     it("should display bucket labels with UTC indicator", () => {
-      mockSummaryQuery.mockReturnValue({
-        data: { stages: [], rangeClamped: false, cached: false },
-        isLoading: false,
-      });
-      mockTimeSeriesQuery.mockReturnValue({
-        data: {
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock({ stages: [], rangeClamped: false, cached: false }, false)
+      );
+      mockTimeSeriesQuery.mockReturnValue(
+        createQueryMock({
           series: [
             { bucket: "2026-02-01", eventName: "signup_completed", total: 10 }
           ],
           rangeClamped: false,
           cached: false
-        },
-        isLoading: false,
-      });
+        }, false)
+      );
 
       renderWithProviders(<AdminFunnelDashboard />);
 

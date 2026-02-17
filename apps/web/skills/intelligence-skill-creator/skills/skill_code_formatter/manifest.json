@@ -1,0 +1,11 @@
+{
+  "name": "Code Formatter",
+  "version": "1.0.0",
+  "description": "จัดรูปแบบโค้ด Python แบบง่าย ๆ",
+  "entrypoint": "skill.py",
+  "author": "ISC sample",
+  "tags": [
+    "code",
+    "python"
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "base_url": "https://your-gateway/v1",
+  "api_key_env": "ISC_LLM_API_KEY",
+  "notes": "Use --llm-model per session to choose routed model."
+}

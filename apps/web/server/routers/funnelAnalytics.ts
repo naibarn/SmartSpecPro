@@ -387,6 +387,9 @@ export const funnelAnalyticsRouter = router({
   timeSeries: domainAdminProcedure
     .input(dateRangeInput)
     .query(async ({ ctx, input }) => {
+      // Check feature flag rollout phase
+      await checkFunnelEnabled(ctx.user.role);
+
       const db = await getDb();
       if (!db) return { series: [], rangeClamped: false, cached: false };
 
@@ -434,6 +437,9 @@ export const funnelAnalyticsRouter = router({
   rawEvents: rateLimitedDomainAdminProcedure
     .input(rawEventsInput)
     .query(async ({ ctx, input }) => {
+      // Check feature flag rollout phase
+      await checkFunnelEnabled(ctx.user.role);
+
       const db = await getDb();
       if (!db) return { events: [], total: 0 };
 
@@ -504,6 +510,9 @@ export const funnelAnalyticsRouter = router({
   export: rateLimitedDomainAdminProcedure
     .input(exportInput)
     .query(async ({ ctx, input }) => {
+      // Check feature flag rollout phase
+      await checkFunnelEnabled(ctx.user.role);
+
       const db = await getDb();
       if (!db) return { data: "", mimeType: "text/csv", filename: "empty.csv" };
 

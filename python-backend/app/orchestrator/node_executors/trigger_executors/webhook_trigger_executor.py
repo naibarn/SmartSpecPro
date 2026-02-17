@@ -1,114 +1,94 @@
-"""Webhook Trigger Executor - Start workflow from HTTP webhook call."""
-import json
-from typing import Any
+"""Webhook Trigger Executor - Trigger workflow via HTTP webhook."""
 
-import structlog
+import hmac
+import hashlib
+import logging
+from datetime import datetime, timezone
+from typing import Any
 
 from app.orchestrator.node_executors.base import ExecutionContext, NodeExecutionData
 
-logger = structlog.get_logger()
-
-# All supported HTTP methods
-SUPPORTED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+logger = logging.getLogger(__name__)
 
 
 class WebhookTriggerExecutor:
-    """Executor for webhook trigger nodes.
+    """
+    Webhook trigger executor.
 
-    Receives HTTP request data injected into extra_data by the
-    webhook receiver endpoint. Validates method, parses body
-    based on content-type, and extracts headers and query params.
-
-    Output ports:
-        - body (json): Parsed request body.
-        - headers (json): Request headers (sensitive headers redacted).
-        - query (json): URL query parameters.
-        - method (text): HTTP method used (GET, POST, etc.).
-        - path (text): Request URL path.
+    This executor runs when a webhook request is received.
+    It validates the request and returns trigger data.
     """
 
-    # Headers that should be redacted from output for security
-    REDACTED_HEADERS = {"authorization", "cookie", "x-api-key", "x-secret"}
-
     async def execute(
-        self,
-        data: NodeExecutionData,
-        context: ExecutionContext,
+        self, data: NodeExecutionData, context: ExecutionContext
     ) -> dict[str, Any]:
-        """Execute webhook trigger - returns webhook request data.
+        """Process webhook request."""
+        webhook_id = data.inputs.get("webhook_id")
+        request_body = data.inputs.get("body")
+        request_headers = data.inputs.get("headers", {})
+        request_query = data.inputs.get("query", {})
+        request_method = data.inputs.get("method", "POST")
 
-        Args:
-            data: Node execution data with config (allowedMethods, authRequired).
-            context: Execution context with webhook_request in extra_data.
-
-        Returns:
-            Dictionary with body, headers, query, method, and path.
-
-        Raises:
-            ValueError: If method is not in allowedMethods config, or if
-                        webhook_request data is missing from context.
-        """
-        webhook_data = context.extra_data.get("webhook_request", {})
-
-        if not webhook_data:
-            raise ValueError(
-                "No webhook request data provided. This trigger must be "
-                "invoked via the webhook endpoint."
+        # Validate webhook signature if configured
+        secret = data.inputs.get("_webhook_secret")
+        if secret:
+            signature = request_headers.get("x-webhook-signature") or request_headers.get(
+                "X-Webhook-Signature"
             )
-
-        method = webhook_data.get("method", "POST").upper()
-        body = webhook_data.get("body", {})
-        headers = webhook_data.get("headers", {})
-        query = webhook_data.get("query", {})
-        path = webhook_data.get("path", "")
-
-        # Validate method against configured allowed methods
-        allowed_methods = data.config.get("allowedMethods")
-        if allowed_methods is None:
-            # Fallback: check legacy single-method config
-            configured_method = data.config.get("method")
-            if configured_method:
-                allowed_methods = [configured_method]
-
-        if allowed_methods:
-            allowed_upper = [m.upper() for m in allowed_methods]
-            if method not in allowed_upper:
-                raise ValueError(
-                    f"HTTP method '{method}' is not allowed. "
-                    f"Configured allowed methods: {allowed_upper}"
-                )
-
-        # Parse JSON body from raw string if needed
-        if isinstance(body, str) and body.strip():
-            content_type = ""
-            # Headers may be case-insensitive
-            for h_key, h_val in headers.items():
-                if h_key.lower() == "content-type":
-                    content_type = h_val.lower()
-                    break
-
-            if "application/json" in content_type:
-                try:
-                    body = json.loads(body)
-                except json.JSONDecodeError:
-                    logger.warning(
-                        "webhook_body_json_parse_failed",
-                        raw_body_preview=body[:200],
-                    )
-                    # Keep as raw string
-
-        # Redact sensitive headers
-        safe_headers = {}
-        for key, value in headers.items():
-            if key.lower() in self.REDACTED_HEADERS:
-                safe_headers[key] = "[REDACTED]"
-            else:
-                safe_headers[key] = value
+            if not signature:
+                raise ValueError("Missing webhook signature header")
+            if not self._verify_signature(request_body, signature, secret):
+                raise ValueError("Invalid webhook signature")
 
         return {
+            "triggered_at": datetime.now(timezone.utc).isoformat(),
+            "webhook_id": webhook_id,
+            "method": request_method,
+            "body": request_body,
+            "headers": request_headers,
+            "query": request_query,
+        }
+
+    def _verify_signature(
+        self, body: Any, signature: str, secret: str
+    ) -> bool:
+        """Verify webhook signature using HMAC-SHA256."""
+        body_bytes = body.encode() if isinstance(body, str) else str(body).encode()
+
+        expected = hmac.new(
+            secret.encode(), body_bytes, hashlib.sha256
+        ).hexdigest()
+
+        # Support both "sha256=<signature>" and just "<signature>" formats
+        expected_with_prefix = f"sha256={expected}"
+
+        return hmac.compare_digest(expected_with_prefix, signature) or hmac.compare_digest(
+            expected, signature
+        )
+
+
+class WebhookResponseExecutor:
+    """
+    Send response back to webhook caller.
+
+    Must be used in workflows triggered by webhook_trigger.
+    """
+
+    async def execute(
+        self, data: NodeExecutionData, context: ExecutionContext
+    ) -> dict[str, Any]:
+        """Send webhook response."""
+        status_code = data.inputs.get("status_code", 200)
+        body = data.inputs.get("body")
+        headers = data.inputs.get("headers", {})
+
+        # Mark this as a webhook response for the runtime
+        return {
+            "_webhook_response": True,
+            "status_code": status_code,
             "body": body,
-            "headers": safe_headers,
-            "query": query,
-            "method": method,
-            "path": path,
+            "headers": {
+                "content-type": "application/json",
+                **headers,
+            },
         }

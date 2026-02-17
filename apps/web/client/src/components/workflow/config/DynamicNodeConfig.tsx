@@ -5,8 +5,11 @@
  * Supports various UI types: text, textarea, number, slider, select, toggle, json_editor.
  */
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { useNodeRegistry, type InputSpec } from "@/lib/workflow/useNodeRegistry";
+import LLMModelSelector, { type LLMModel } from "@/components/workflow/LLMModelSelector";
+import { trpc } from "@/lib/trpc";
+import { Loader2, Search, Check } from "lucide-react";
 
 export interface DynamicNodeConfigProps {
   nodeId: string;
@@ -14,6 +17,11 @@ export interface DynamicNodeConfigProps {
   config: Record<string, any>;
   connections: Record<string, boolean>; // inputName → isConnected
   onConfigChange: (config: Record<string, any>) => void;
+  /** Available LLM models — enables searchable model picker for "model" fields */
+  llmModels?: LLMModel[];
+  llmModelsLoading?: boolean;
+  /** Workflow-level default model ID (shown as placeholder when no node-level model is set) */
+  defaultModelId?: string;
 }
 
 export function DynamicNodeConfig({
@@ -22,6 +30,9 @@ export function DynamicNodeConfig({
   config,
   connections,
   onConfigChange,
+  llmModels,
+  llmModelsLoading,
+  defaultModelId,
 }: DynamicNodeConfigProps) {
   const { getNodeType } = useNodeRegistry();
   const nodeDef = getNodeType(nodeType);
@@ -64,6 +75,10 @@ export function DynamicNodeConfig({
             value={config[input.name]}
             isConnected={connections[input.name] ?? false}
             onChange={(value) => handleChange(input.name, value)}
+            llmModels={llmModels}
+            llmModelsLoading={llmModelsLoading}
+            defaultModelId={defaultModelId}
+            nodeType={nodeType}
           />
         ))}
       </div>
@@ -87,9 +102,13 @@ interface FormFieldProps {
   value: any;
   isConnected: boolean;
   onChange: (value: any) => void;
+  llmModels?: LLMModel[];
+  llmModelsLoading?: boolean;
+  defaultModelId?: string;
+  nodeType?: string;
 }
 
-function FormField({ input, value, isConnected, onChange }: FormFieldProps) {
+function FormField({ input, value, isConnected, onChange, llmModels, llmModelsLoading, defaultModelId, nodeType }: FormFieldProps) {
   // If input is connected via edge, show connection indicator instead of form control
   if (isConnected && input.accepts_connection) {
     return (
@@ -104,6 +123,44 @@ function FormField({ input, value, isConnected, onChange }: FormFieldProps) {
         </div>
         {input.placeholder && (
           <p className="text-xs text-gray-500">{input.placeholder}</p>
+        )}
+      </div>
+    );
+  }
+
+  // LLM model fields: use searchable model selector when models data is available
+  const isModelField = input.name === "model" && llmModels && llmModels.length > 0;
+
+  // Build default model placeholder text
+  const defaultModelName = defaultModelId
+    ? llmModels?.find((m) => m.modelId === defaultModelId)?.modelName ?? defaultModelId
+    : undefined;
+  const modelPlaceholder = defaultModelName
+    ? `Use workflow default (${defaultModelName})`
+    : "Use workflow default";
+
+  if (isModelField) {
+    return (
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
+          {input.display_name}
+          {input.required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        <LLMModelSelector
+          models={llmModels!}
+          selectedModelId={value || undefined}
+          onSelect={(modelId) => onChange(modelId || undefined)}
+          isLoading={llmModelsLoading}
+          placeholder={modelPlaceholder}
+        />
+        {value ? (
+          <p className="text-xs text-blue-600">
+            This node uses a custom model, overriding the workflow default.
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400">
+            No override — will use the workflow&apos;s default model.
+          </p>
         )}
       </div>
     );
@@ -153,19 +210,36 @@ function FormField({ input, value, isConnected, onChange }: FormFieldProps) {
         />
       )}
 
-      {input.ui_type === "select" && (
-        <select
+      {input.ui_type === "select" && input.name === "skill_id" ? (
+        // Skill selector with search for workflow node
+        <SkillSelector
           value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">-- Select --</option>
-          {input.options?.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          onChange={onChange}
+          placeholder={input.placeholder || "Search and select a skill..."}
+        />
+      ) : input.ui_type === "select" && input.options_endpoint ? (
+        // Dynamic select with options from API endpoint
+        <DynamicSelect
+          value={value || ""}
+          onChange={onChange}
+          endpoint={input.options_endpoint}
+          placeholder={input.placeholder || "-- Select --"}
+        />
+      ) : (
+        input.ui_type === "select" && (
+          <select
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">-- Select --</option>
+            {input.options?.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        )
       )}
 
       {input.ui_type === "toggle" && (
@@ -260,11 +334,249 @@ function FormField({ input, value, isConnected, onChange }: FormFieldProps) {
         <p className="text-xs text-gray-500">{input.placeholder}</p>
       )}
 
+      {/* Field-specific help notes */}
+      {input.name === "max_tokens" && (
+        <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+          💡 <strong>Max Tokens:</strong> Limits the maximum number of tokens the AI will generate in its response. 
+          (1 token ≈ 4 English characters or 1-2 non-Latin characters). 
+          Default 2000 tokens is suitable for short to medium responses.
+        </p>
+      )}
+      {input.name === "context_data" && (
+        <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+          💡 <strong>Context Data:</strong> Additional data to be sent to the AI along with the prompt, 
+          such as outputs from previous nodes or data you want the AI to analyze as additional context.
+        </p>
+      )}
+      {input.name === "prompt" && nodeType === "llm_call" && (
+        <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
+          ✏️ <strong>Prompt:</strong> The instruction or question you want to send to the AI for processing. 
+          Write clearly and specifically to get results that match your requirements.
+        </p>
+      )}
+      {input.name === "temperature" && (
+        <p className="text-xs text-purple-600 bg-purple-50 p-2 rounded">
+          🌡️ <strong>Temperature:</strong> Controls the AI's creativity level (0.0 - 2.0)
+          <br/>• 0.0-0.3: Focused and reliable responses (best for analysis)
+          <br/>• 0.7-1.0: Balanced between accuracy and creativity
+          <br/>• 1.5-2.0: High imagination, very creative (best for storytelling)
+        </p>
+      )}
+      {input.name === "skill_id" && (
+        <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+          🛠️ <strong>Skill:</strong> Select a skill from the list of skills you have permission to use. 
+          Skills help improve the quality of results based on specialized expertise.
+        </p>
+      )}
+
       {/* Data type indicator */}
       <p className="text-xs text-gray-400">
         Type: <code>{input.data_type}</code>
       </p>
     </div>
+  );
+}
+
+/**
+ * SkillSelector - Searchable dropdown for selecting user-visible skills.
+ */
+interface SkillSelectorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+function SkillSelector({ value, onChange, placeholder }: SkillSelectorProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Fetch skills from API
+  const { data, isLoading } = (trpc as any).skills.listForWorkflow.useQuery(
+    { search: searchQuery || undefined, limit: 50 },
+    { enabled: true }
+  );
+
+  const skills = data?.skills || [];
+  const selectedSkill = skills.find((s: any) => s.slug === value);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Selected value display / Trigger */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex items-center justify-between bg-white"
+      >
+        <span className={selectedSkill ? "text-gray-900" : "text-gray-400"}>
+          {selectedSkill ? `${selectedSkill.icon || "🛠️"} ${selectedSkill.name}` : placeholder || "Select a skill..."}
+        </span>
+        <span className="text-gray-400">▼</span>
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden">
+          {/* Search input */}
+          <div className="p-2 border-b border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search skills..."
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Skills list */}
+          <div className="overflow-y-auto max-h-60">
+            {isLoading ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                <span className="ml-2 text-sm text-gray-500">Loading skills...</span>
+              </div>
+            ) : skills.length === 0 ? (
+              <div className="p-4 text-center text-sm text-gray-500">
+                {searchQuery ? "No skills found matching your search" : "No skills available"}
+              </div>
+            ) : (
+              <div className="py-1">
+                {skills.map((skill: any) => (
+                  <button
+                    key={skill.slug}
+                    type="button"
+                    onClick={() => {
+                      onChange(skill.slug);
+                      setIsOpen(false);
+                      setSearchQuery("");
+                    }}
+                    className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-gray-100 ${
+                      value === skill.slug ? "bg-blue-50 border-l-2 border-blue-500" : ""
+                    }`}
+                  >
+                    <span className="text-lg">{skill.icon || "🛠️"}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 truncate">
+                        {skill.name}
+                        {value === skill.slug && <Check className="inline w-4 h-4 ml-1 text-blue-500" />}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">{skill.description}</div>
+                    </div>
+                    <span className="text-xs text-gray-400">×{skill.creditMultiplier || 1}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="p-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-500">
+            Showing {skills.length} of {data?.total || 0} skills
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * DynamicSelect - Select dropdown with options fetched from an API endpoint.
+ */
+interface DynamicSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  endpoint: string;
+  placeholder?: string;
+}
+
+function DynamicSelect({ value, onChange, endpoint, placeholder }: DynamicSelectProps) {
+  const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(endpoint);
+        if (!response.ok) throw new Error("Failed to fetch options");
+        const data = await response.json();
+        
+        // Handle different response formats safely
+        let fetchedOptions: Array<{ value: string; label: string }> = [];
+        if (Array.isArray(data)) {
+          fetchedOptions = data;
+        } else if (data.options && Array.isArray(data.options)) {
+          fetchedOptions = data.options;
+        } else if (data.skills && Array.isArray(data.skills)) {
+          // Handle skills response format
+          fetchedOptions = data.skills.map((s: any) => ({
+            value: s.slug || s.id,
+            label: s.name,
+          }));
+        } else if (data.data && Array.isArray(data.data)) {
+          fetchedOptions = data.data;
+        }
+        
+        setOptions(fetchedOptions);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOptions();
+  }, [endpoint]);
+
+  if (isLoading) {
+    return (
+      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 flex items-center gap-2">
+        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        <span className="text-sm text-gray-500">Loading options...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full px-3 py-2 border border-red-300 rounded-md bg-red-50 text-sm text-red-600">
+        Error loading options: {error}
+      </div>
+    );
+  }
+
+  // Ensure options is always an array
+  const safeOptions = Array.isArray(options) ? options : [];
+
+  return (
+    <select
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      <option value="">{placeholder || "-- Select --"}</option>
+      {safeOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
 

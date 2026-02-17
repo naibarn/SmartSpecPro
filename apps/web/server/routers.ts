@@ -51,6 +51,7 @@ import { mediaJobsRouter } from "./routers/mediaJobs";
 import { videoEditorProjectsRouter } from "./routers/videoEditorProjects";
 import { telegramRouter } from "./routers/telegram";
 import { workflowRouter } from "./routers/workflow";
+import { workflowHealthRouter } from "./routers/workflow-health";
 import { approvalsRouter } from "./routers/approvals";
 import { libraryRouter } from "./routers/library";
 import { libraryOpsRouter } from "./routers/libraryOps";
@@ -1273,6 +1274,9 @@ export const appRouter = router({
 
   // Workflow engine (LangGraph integration via Python backend)
   workflow: workflowRouter,
+
+  // Workflow health monitoring
+  workflowHealth: workflowHealthRouter,
 
   // Approval Gate operations (proxies to Python backend)
   approvals: approvalsRouter,

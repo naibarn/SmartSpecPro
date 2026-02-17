@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import {
   RefreshCw,
   AlertCircle,
   Loader2,
+  ChevronLeft,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function AdminFunnelDashboard() {
   // RBAC check - only admin and domain_admin can access
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   if (!user || (user.role !== 'admin' && user.role !== 'domain_admin')) {
     return <Redirect to="/" />;
@@ -147,14 +149,24 @@ export default function AdminFunnelDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <TrendingUp className="h-8 w-8" />
-            Funnel Analytics
-          </h1>
-          <p className="text-muted-foreground">
-            User journey and conversion metrics
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/dashboard")}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <TrendingUp className="h-8 w-8" />
+              Funnel Analytics
+            </h1>
+            <p className="text-muted-foreground">
+              User journey and conversion metrics
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button

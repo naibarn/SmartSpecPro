@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/isc/ui.schema.json",
+  "title": "ISC UI Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ui:order": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "skill_name",
+        "mode",
+        "rounds",
+        "ask_user",
+        "allow_test_expansion",
+        "llm",
+        "research",
+        "safety"
+      ]
+    },
+    "skill_name": {
+      "ui:widget": "text",
+      "ui:placeholder": "skill_math_tutor"
+    },
+    "mode": {
+      "ui:widget": "select"
+    },
+    "rounds": {
+      "ui:widget": "updown"
+    },
+    "ask_user": {
+      "ui:widget": "checkbox"
+    },
+    "allow_test_expansion": {
+      "ui:widget": "checkbox"
+    },
+    "llm": {
+      "base_url": {
+        "ui:widget": "text",
+        "ui:placeholder": "https://your-gateway/v1"
+      },
+      "api_key": {
+        "ui:widget": "password"
+      },
+      "model": {
+        "ui:widget": "text",
+        "ui:placeholder": "model for this run"
+      },
+      "temperature": {
+        "ui:widget": "updown"
+      },
+      "timeout_s": {
+        "ui:widget": "updown"
+      }
+    },
+    "research": {
+      "max_topics": {
+        "ui:widget": "updown"
+      },
+      "max_results_per_topic": {
+        "ui:widget": "updown"
+      },
+      "max_snippet_chars": {
+        "ui:widget": "updown"
+      }
+    },
+    "safety": {
+      "restrict_paths_under_skills": {
+        "ui:widget": "checkbox"
+      },
+      "disallow_new_deps_in_skill_py": {
+        "ui:widget": "checkbox"
+      },
+      "require_respond_signature": {
+        "ui:widget": "checkbox"
+      }
+    }
+  }
+}

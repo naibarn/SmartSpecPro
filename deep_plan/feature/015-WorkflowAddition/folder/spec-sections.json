@@ -1,0 +1,47 @@
+{
+  "title": "Workflow Addition Feature - Enhanced Node Library and Workflow-to-Skill Conversion",
+  "sections": [
+    {
+      "section_id": "A",
+      "title": "Phase 1: Bug Fixes and Stabilization",
+      "description": "Fix existing issues in workflow editor including skill node field naming, options endpoints, and executor verification",
+      "order": 1,
+      "file": "plan/section-A-bug-fixes.md"
+    },
+    {
+      "section_id": "B",
+      "title": "Phase 2: High-Priority Node Implementation",
+      "description": "Implement 5 essential nodes: HTTP Request, Send Email, Schedule Trigger, Delay, and Try Catch",
+      "order": 2,
+      "file": "plan/section-B-high-priority-nodes.md"
+    },
+    {
+      "section_id": "C",
+      "title": "Phase 3: Medium-Priority Node Implementation",
+      "description": "Implement 5 important nodes: Webhook, File Operations, CSV Parser, Template Engine, and Retry",
+      "order": 3,
+      "file": "plan/section-C-medium-priority-nodes.md"
+    },
+    {
+      "section_id": "D",
+      "title": "Phase 4: Advanced Node Implementation",
+      "description": "Implement 10 advanced nodes including Parallel/Join, Subworkflow, Circuit Breaker, and AI enhancements",
+      "order": 4,
+      "file": "plan/section-D-advanced-nodes.md"
+    },
+    {
+      "section_id": "E",
+      "title": "Phase 5: Workflow to Skill Conversion",
+      "description": "Build complete workflow-to-agent-skill conversion system with analysis, adapters, and execution",
+      "order": 5,
+      "file": "plan/section-E-workflow-conversion.md"
+    },
+    {
+      "section_id": "META",
+      "title": "Implementation Metadata",
+      "description": "Dependencies, configuration, testing strategy, and success metrics",
+      "order": 6,
+      "file": "plan/section-META-metadata.md"
+    }
+  ]
+}

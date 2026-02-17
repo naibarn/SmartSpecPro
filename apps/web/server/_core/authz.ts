@@ -44,7 +44,11 @@ export async function authorizeRequest(
           const revoked = await isJtiRevoked(jti);
           if (revoked) return { ok: false, error: "Token revoked" };
         }
-        return { ok: true, mode: "bearer", sub: String(claims.sub), scopes: claims.scopes || [] };
+        // sub may be absent in session JWTs that use openId claim instead
+        const sub = claims.sub != null
+          ? String(claims.sub)
+          : String((claims as any).openId || (claims as any).id || "");
+        return { ok: true, mode: "bearer", sub, scopes: claims.scopes || [] };
       } catch (e: any) {
         return { ok: false, error: e?.message || "Invalid token" };
       }

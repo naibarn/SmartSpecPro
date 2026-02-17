@@ -1,0 +1,12 @@
+{
+  "name": "Math Tutor",
+  "version": "1.0.0",
+  "description": "ตอบโจทย์เลขพื้นฐานและอธิบายเป็นขั้นตอน",
+  "entrypoint": "skill.py",
+  "author": "ISC sample",
+  "tags": [
+    "math",
+    "tutor",
+    "thai"
+  ]
+}

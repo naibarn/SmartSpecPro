@@ -3,6 +3,9 @@
  * Executes detected skills by calling the appropriate service
  */
 
+import path from "path";
+import { spawnSync } from "child_process";
+import fs from "fs";
 import { SkillDefinition } from "./skillRegistry";
 import {
   mediaGenerationService,
@@ -70,6 +73,15 @@ export interface SkillExecutionParams {
   publicUrl?: string;
 }
 
+export interface SkillCreateAction {
+  type: "create_skill";
+  name: string;
+  slug: string;
+  description: string;
+  skillContent: string;
+  triggerPatterns: string[];
+}
+
 export interface SkillExecutionResult {
   success: boolean;
   skillId: string;
@@ -82,6 +94,8 @@ export interface SkillExecutionResult {
   creditsUsed?: number;
   taskId?: string;
   isAsync?: boolean;
+  /** Structured side-effect from a python skill (e.g. create_skill) */
+  _action?: SkillCreateAction;
 }
 
 /**
@@ -123,6 +137,26 @@ export async function executeSkill(
     case "image-video-generation":
       console.log(`[SkillExecutor] Skill type is image-video-generation, routing to video generation`);
       return executeVideoGeneration(skill, params, userId, userToken);
+
+    case "automation":
+    case "chat-assistant":
+    case "code-assistant":
+    case "web-search":
+    case "document-analysis":
+    case "translation":
+    case "prompt-enhancement": {
+      // For python execution mode, run python/skill.py subprocess
+      if ((skill as any).executionMode === "python") {
+        return executePythonSkill(skill, params);
+      }
+      // Fall through to default for non-python modes
+      return {
+        success: false,
+        skillId: skill.id,
+        type: "text",
+        error: `Skill type '${skill.type}' requires executionMode: python or an LLM handler`,
+      };
+    }
 
     default:
       console.error(`[SkillExecutor] Unknown skill type '${skill.type}' for skill '${skill.id}'`);
@@ -444,6 +478,106 @@ export async function executeAudioGeneration(
       skillId: "audio-generation",
       type: "audio",
       error: error instanceof Error ? error.message : "Audio generation failed",
+    };
+  }
+}
+
+/**
+ * Execute a Python skill via subprocess (executionMode: "python")
+ *
+ * Convention:
+ *   - Skill must have: <skill_dir>/python/skill.py
+ *   - Input:  JSON written to stdin → { skill_name, prompt, params }
+ *   - Output: JSON on stdout       → { success: true, output: string }
+ *                                  | { success: false, error: string }
+ *
+ * Python executable: python-backend/.venv/bin/python (project venv)
+ */
+function executePythonSkill(
+  skill: SkillDefinition,
+  params: SkillExecutionParams
+): SkillExecutionResult {
+  // Resolve skill directory from skillFilePath or derive from skill id
+  const skillsDir = path.resolve(
+    path.join(process.cwd(), "skills")
+  );
+  const skillDir = skill.skillFilePath
+    ? path.dirname(skill.skillFilePath)
+    : path.join(skillsDir, skill.id);
+
+  const scriptPath = path.join(skillDir, "python", "skill.py");
+  if (!fs.existsSync(scriptPath)) {
+    return {
+      success: false,
+      skillId: skill.id,
+      type: "text",
+      error: `Python skill script not found: ${scriptPath}`,
+    };
+  }
+
+  // Locate venv Python
+  const projectRoot = path.resolve(process.cwd(), "..", "..");
+  const venvPython = path.join(projectRoot, "python-backend", ".venv", "bin", "python");
+  const pythonBin = fs.existsSync(venvPython) ? venvPython : "python3";
+
+  const input = JSON.stringify({
+    skill_name: skill.id,
+    prompt: params.prompt,
+    params: params.extraParams ?? {},
+  });
+
+  console.log(`[SkillExecutor] Running Python skill: ${scriptPath}`);
+
+  const result = spawnSync(pythonBin, [scriptPath], {
+    input,
+    encoding: "utf8",
+    timeout: 120_000, // 2 minutes
+  });
+
+  if (result.error) {
+    return {
+      success: false,
+      skillId: skill.id,
+      type: "text",
+      error: `Python process error: ${result.error.message}`,
+    };
+  }
+
+  if (result.status !== 0) {
+    const stderr = result.stderr?.trim() || "Unknown error";
+    return {
+      success: false,
+      skillId: skill.id,
+      type: "text",
+      error: `Python skill exited with code ${result.status}: ${stderr}`,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(result.stdout.trim());
+    if (!parsed.success) {
+      return {
+        success: false,
+        skillId: skill.id,
+        type: "text",
+        error: parsed.error ?? "Python skill returned failure",
+      };
+    }
+    return {
+      success: true,
+      skillId: skill.id,
+      type: "text",
+      message: parsed.output ?? result.stdout.trim(),
+      // Pass through structured action if present (e.g. create_skill)
+      ...(parsed._action ? { _action: parsed._action as SkillCreateAction } : {}),
+    };
+  } catch {
+    // Non-JSON stdout — return raw output
+    return {
+      success: true,
+      skillId: skill.id,
+      type: "text",
+      message: result.stdout.trim(),
     };
   }
 }

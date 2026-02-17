@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/isc/input.schema.json",
+  "title": "ISC Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "skill_name"
+  ],
+  "properties": {
+    "skill_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "llm",
+        "heuristic"
+      ],
+      "default": "auto"
+    },
+    "rounds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 3
+    },
+    "ask_user": {
+      "type": "boolean",
+      "default": false
+    },
+    "allow_test_expansion": {
+      "type": "boolean",
+      "default": false
+    },
+    "llm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "api_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 600,
+          "default": 180
+        }
+      }
+    },
+    "research": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_topics": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 10
+        },
+        "max_results_per_topic": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 3
+        },
+        "max_snippet_chars": {
+          "type": "integer",
+          "minimum": 500,
+          "maximum": 20000,
+          "default": 6000
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "restrict_paths_under_skills": {
+          "type": "boolean",
+          "default": true
+        },
+        "disallow_new_deps_in_skill_py": {
+          "type": "boolean",
+          "default": true
+        },
+        "require_respond_signature": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

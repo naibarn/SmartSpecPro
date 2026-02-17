@@ -411,6 +411,102 @@ export const workflowRouter = router({
     }),
 
   /**
+   * Submit async workflow generation to the task queue.
+   * Returns a taskId immediately — frontend polls autoGenerateStatus for result.
+   */
+  autoGenerate: protectedProcedure
+    .input(
+      z.object({
+        prompt: z.string().min(1).max(150000),
+        nodeTypes: z.array(z.record(z.any())).optional(),
+        modelId: z.string().optional(),
+        defaultModel: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const response = await fetchPythonBackend(
+          "/api/v1/workflows/generate",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              prompt: input.prompt,
+              node_types: input.nodeTypes ?? [],
+              model_id: input.modelId ?? null,
+              default_model: input.defaultModel ?? input.modelId ?? null,
+            }),
+          },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({
+            detail: `HTTP ${response.status}: ${response.statusText}`,
+          }));
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: err.detail || "Workflow generation failed",
+          });
+        }
+
+        const data = await response.json();
+        console.log("[Workflow] Auto-generation submitted to queue", {
+          userId: ctx.user.id,
+          taskId: data.task_id,
+        });
+        return { taskId: data.task_id as string };
+      } catch (error: any) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to submit workflow generation",
+        });
+      }
+    }),
+
+  /**
+   * Poll async workflow generation status.
+   * Returns status + result when completed.
+   */
+  autoGenerateStatus: protectedProcedure
+    .input(z.object({ taskId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      try {
+        const response = await fetchPythonBackend(
+          `/api/v1/workflows/generate/status/${input.taskId}`,
+          { method: "GET" },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            return { status: "not_found" as const, error: "Task not found or expired" };
+          }
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Failed to check generation status",
+          });
+        }
+
+        const data = await response.json();
+        return data as {
+          status: "queued" | "processing" | "completed" | "failed";
+          message?: string;
+          error?: string;
+          nodes?: unknown[];
+          edges?: unknown[];
+          description?: string;
+        };
+      } catch (error: any) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to check generation status",
+        });
+      }
+    }),
+
+  /**
    * List user's workflow executions
    *
    * Returns paginated list of workflow execution history with filters.

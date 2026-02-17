@@ -429,6 +429,11 @@ export async function deductCreditsForModel(params: {
   costUsd?: number;
   description?: string;
 }): Promise<{ creditsUsed: number; wasFree: boolean }> {
+  // Skip for static tokens (server-to-server calls)
+  if (params.userId === 0) {
+    return { creditsUsed: 0, wasFree: true };
+  }
+
   const free = await isModelFree(params.model);
 
   if (free) {

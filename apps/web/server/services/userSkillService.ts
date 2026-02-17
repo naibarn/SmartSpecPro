@@ -337,6 +337,7 @@ export async function getSlashCommands(userId: number) {
       icon: skillsTable.icon,
       description: skillsTable.description,
       category: skillsTable.category,
+      visibleByDefault: skillsTable.visibleByDefault,
     })
     .from(userSkillVisibility)
     .innerJoin(skillsTable, eq(userSkillVisibility.skillId, skillsTable.id))

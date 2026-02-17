@@ -46,12 +46,29 @@ import {
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
+  Trash2,
+  PenLine,
+  HelpCircle,
+  Layers,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { AutoCreateWorkflowModal } from '@/components/workflow/AutoCreateWorkflowModal';
 
 // Step 1: Import BaseNode and registry hook
 import { BaseNode } from '@/components/workflow/nodes/BaseNode';
+import GroupNode from '@/components/workflow/nodes/GroupNode';
 import { useNodeRegistry } from '@/lib/workflow/useNodeRegistry';
-import { isValidConnection as createIsValidConnection } from '@/lib/workflow/isValidConnection';
+import {
+  isValidConnection as createIsValidConnection,
+  getConnectionError,
+} from '@/lib/workflow/isValidConnection';
 
 // Step 4: Import DynamicNodeConfig
 import { DynamicNodeConfig } from '@/components/workflow/config/DynamicNodeConfig';
@@ -75,9 +92,10 @@ interface WorkflowNodeData {
   config: Record<string, unknown>;
 }
 
-// Step 1: Single node type for all workflow nodes
+// Step 1: Node types (workflow + group)
 const nodeTypes: NodeTypes = {
   workflow: BaseNode,
+  group: GroupNode as any,
 };
 
 function FlowEditor() {
@@ -85,17 +103,49 @@ function FlowEditor() {
   const [workflowId, setWorkflowId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState('');
   const [workflowDescription, setWorkflowDescription] = useState('');
-  const [defaultModel, setDefaultModel] = useState<string>('');
+  const [defaultModel, setDefaultModel] = useState<string>(() => {
+    // Load saved default model from localStorage on mount
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('workflow-default-model') || '';
+    }
+    return '';
+  });
+
+  // Save default model to localStorage whenever it changes
+  const handleSetDefaultModel = useCallback((modelId: string) => {
+    setDefaultModel(modelId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('workflow-default-model', modelId);
+    }
+  }, []);
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const lastConnectionError = useRef<string | null>(null);
+  const connectionCompleted = useRef(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const sidebarDragRef = useRef(false);
+  const sidebarDragStartX = useRef(0);
+  const sidebarDragStartWidth = useRef(320);
   const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
   const [compiledManifest, setCompiledManifest] = useState<any>(null);
   const viewport = useViewport();
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+  const [edgeContextMenu, setEdgeContextMenu] = useState<{ x: number; y: number; edgeId: string } | null>(null);
+  // Edit Node ID dialog
+  const [editNodeIdDialog, setEditNodeIdDialog] = useState<{ nodeId: string } | null>(null);
+  const [editNodeIdValue, setEditNodeIdValue] = useState('');
+  // Help dialog
+  const [helpDialog, setHelpDialog] = useState<string | null>(null); // nodeType string
+  // Auto Create Workflow modal
+  const [showAutoCreate, setShowAutoCreate] = useState(false);
 
   // Step 2: Use node registry instead of hardcoded options
   const { nodeTypes: registryNodeTypes, isLoading: registryLoading, getNodeTypesByCategory } = useNodeRegistry();
@@ -154,7 +204,9 @@ function FlowEditor() {
       const workflow = loadWorkflowQuery.data;
       setWorkflowName(workflow.name || '');
       setWorkflowDescription(workflow.description || '');
-      setDefaultModel(workflow.defaultModel || '');
+      // Use workflow's defaultModel if available, otherwise use localStorage
+      const savedModel = workflow.defaultModel || localStorage.getItem('workflow-default-model') || '';
+      setDefaultModel(savedModel);
       if (workflow.workflowJson) {
         setNodes(workflow.workflowJson.nodes || []);
         setEdges(workflow.workflowJson.edges || []);
@@ -180,10 +232,23 @@ function FlowEditor() {
   const isValidConnection = useCallback(
     (connection: Connection) => {
       if (!registryNodeTypes) return true;
-      return createIsValidConnection(connection, nodes, registryNodeTypes);
+      const error = getConnectionError(connection, nodes, registryNodeTypes);
+      lastConnectionError.current = error;
+      return error === null;
     },
     [nodes, registryNodeTypes]
   );
+
+  const onConnectStart = useCallback(() => {
+    lastConnectionError.current = null;
+    connectionCompleted.current = false;
+  }, []);
+
+  const onConnectEnd = useCallback(() => {
+    if (!connectionCompleted.current && lastConnectionError.current) {
+      toast.error(lastConnectionError.current, { duration: 5000 });
+    }
+  }, []);
 
   // Step 3: Node creation handler
   const onAddNode = useCallback(
@@ -191,9 +256,75 @@ function FlowEditor() {
       const spec = registryNodeTypes?.find(t => t.type === nodeType);
       if (!spec) return;
 
-      const position = reactFlowInstance
-        ? reactFlowInstance.project({ x: 250, y: 250 })
-        : { x: 250, y: 250 };
+      // Calculate position - find empty space or center of current view
+      let position: { x: number; y: number } = { x: 250, y: 250 };
+      
+      if (reactFlowInstance) {
+        // Get current viewport center
+        const { x, y, zoom } = reactFlowInstance.getViewport();
+        const canvasWidth = reactFlowWrapper.current?.clientWidth || 800;
+        const canvasHeight = reactFlowWrapper.current?.clientHeight || 600;
+        
+        // Calculate center of visible area in flow coordinates
+        const centerX = (canvasWidth / 2 - x) / zoom;
+        const centerY = (canvasHeight / 2 - y) / zoom;
+        
+        // Check for overlapping nodes and find empty space
+        const existingNodes = reactFlowInstance.getNodes();
+        let offsetX = 0;
+        let offsetY = 0;
+        const step = 220; // Node width + padding
+        let found = false;
+        
+        // Try positions in a spiral pattern starting from center
+        for (let i = 0; i < 20; i++) {
+          const testX = centerX + offsetX;
+          const testY = centerY + offsetY;
+          
+          // Check if this position overlaps with any existing node
+          const overlaps = existingNodes.some((node: Node) => {
+            const dx = Math.abs(node.position.x - testX);
+            const dy = Math.abs(node.position.y - testY);
+            return dx < 180 && dy < 100; // Node approximate size
+          });
+          
+          if (!overlaps) {
+            position = { x: testX, y: testY };
+            found = true;
+            break;
+          }
+          
+          // Spiral pattern: right, down, left, left, up, up, right, right, right, down, down, down...
+          if (i === 0) offsetX = step;
+          else if (i === 1) { offsetX = 0; offsetY = step; }
+          else if (i === 2) { offsetX = -step; offsetY = 0; }
+          else if (i === 3) { offsetX = -step; }
+          else if (i === 4) { offsetX = 0; offsetY = -step; }
+          else if (i === 5) { offsetY = -step; }
+          else if (i === 6) { offsetX = step; offsetY = 0; }
+          else if (i === 7) { offsetX = step; }
+          else if (i === 8) { offsetX = step; }
+          else {
+            // Expand spiral
+            const spiralStep = Math.ceil((i - 8) / 4) * step;
+            const direction = (i - 8) % 4;
+            if (direction === 0) { offsetX = spiralStep; offsetY = -spiralStep + step; }
+            else if (direction === 1) { offsetX = spiralStep; offsetY = spiralStep; }
+            else if (direction === 2) { offsetX = -spiralStep; offsetY = spiralStep; }
+            else { offsetX = -spiralStep; offsetY = -spiralStep; }
+          }
+        }
+        
+        if (!found) {
+          // Fallback: place below the lowest node
+          const lowestY = existingNodes.length > 0 
+            ? Math.max(...existingNodes.map((n: Node) => n.position.y + 100))
+            : 0;
+          position = { x: centerX, y: lowestY + 150 };
+        }
+      } else {
+        position = { x: 250, y: 250 };
+      }
 
       const newNode: Node<WorkflowNodeData> = {
         id: `${nodeType}-${Date.now()}`,
@@ -207,12 +338,27 @@ function FlowEditor() {
       };
 
       setNodes((nodes: Node<WorkflowNodeData>[]) => [...nodes, newNode]);
+      
+      // Select the new node automatically
+      setSelectedNodeId(newNode.id);
+      
+      // If node was added via palette click (not drag), fit view to show the new node
+      if (reactFlowInstance) {
+        setTimeout(() => {
+          reactFlowInstance.fitView({ 
+            padding: 0.2, 
+            duration: 300,
+            nodes: [{ id: newNode.id }]
+          });
+        }, 50);
+      }
     },
     [registryNodeTypes, reactFlowInstance, setNodes]
   );
 
   const onConnect = useCallback(
     (params: Connection) => {
+      connectionCompleted.current = true;
       const newEdge = {
         ...params,
         type: 'smoothstep',
@@ -224,6 +370,60 @@ function FlowEditor() {
     },
     [setEdges]
   );
+
+  // Handle edge reconnection (drag to change connection)
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      // Validate connection has source and target
+      if (!newConnection.source || !newConnection.target) {
+        return;
+      }
+      setEdges((eds: Edge[]) => {
+        // Remove old edge and add new connection
+        const filtered = eds.filter((e) => e.id !== oldEdge.id);
+        const newEdge: Edge = {
+          id: `edge-${newConnection.source}-${newConnection.target}-${Date.now()}`,
+          source: newConnection.source as string,
+          target: newConnection.target as string,
+          sourceHandle: newConnection.sourceHandle,
+          targetHandle: newConnection.targetHandle,
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: '#3b82f6', strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+        };
+        return [...filtered, newEdge];
+      });
+      toast.success('Connection updated');
+    },
+    [setEdges]
+  );
+
+  // Handle edge click to select
+  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    setSelectedEdgeId(edge.id);
+    setSelectedNodeId(null); // Deselect node when clicking edge
+  }, []);
+
+  // Handle delete selected edge
+  const handleDeleteSelectedEdge = useCallback(() => {
+    if (selectedEdgeId) {
+      setEdges((eds: Edge[]) => eds.filter((e) => e.id !== selectedEdgeId));
+      setSelectedEdgeId(null);
+      toast.success('Connection deleted');
+    }
+  }, [selectedEdgeId, setEdges]);
+
+  // Delete key handler for edges
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedEdgeId && !isExecuting) {
+        handleDeleteSelectedEdge();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedEdgeId, handleDeleteSelectedEdge, isExecuting]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -251,7 +451,215 @@ function FlowEditor() {
 
   const onNodeClick = useCallback((_: any, node: Node<WorkflowNodeData>) => {
     setSelectedNodeId(node.id);
+    setContextMenu(null);
   }, []);
+
+  // ---- Context menu ----
+  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
+    setEdgeContextMenu(null);
+  }, []);
+
+  // ---- Edge context menu ----
+  const onEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
+    event.preventDefault();
+    setEdgeContextMenu({ x: event.clientX, y: event.clientY, edgeId: edge.id });
+    setSelectedEdgeId(edge.id);
+    setContextMenu(null);
+    setSelectedNodeId(null);
+  }, []);
+
+  // Handle delete edge from context menu
+  const handleDeleteEdge = useCallback((edgeId: string) => {
+    setEdges((eds: Edge[]) => eds.filter((e) => e.id !== edgeId));
+    setEdgeContextMenu(null);
+    setSelectedEdgeId(null);
+    toast.success('Connection deleted');
+  }, [setEdges]);
+
+  const onPaneClick = useCallback(() => {
+    setContextMenu(null);
+    setEdgeContextMenu(null);
+    setSelectedNodeId(null);
+  }, []);
+
+  // ---- Sidebar resize drag ----
+  const onSidebarResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    sidebarDragRef.current = true;
+    sidebarDragStartX.current = e.clientX;
+    sidebarDragStartWidth.current = sidebarWidth;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!sidebarDragRef.current) return;
+      const delta = ev.clientX - sidebarDragStartX.current;
+      const newWidth = Math.min(600, Math.max(200, sidebarDragStartWidth.current + delta));
+      setSidebarWidth(newWidth);
+    };
+    const onMouseUp = () => {
+      sidebarDragRef.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  }, [sidebarWidth]);
+
+  // ---- Delete node ----
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    setNodes((nds: Node[]) => nds.filter(n => n.id !== nodeId));
+    setEdges((eds: Edge[]) => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+    if (selectedNodeId === nodeId) setSelectedNodeId(null);
+    setContextMenu(null);
+  }, [selectedNodeId, setNodes, setEdges]);
+
+  // ---- Edit Node ID ----
+  const openEditNodeId = useCallback((nodeId: string) => {
+    setEditNodeIdValue(nodeId);
+    setEditNodeIdDialog({ nodeId });
+    setContextMenu(null);
+  }, []);
+
+  const handleEditNodeId = useCallback(() => {
+    if (!editNodeIdDialog) return;
+    const oldId = editNodeIdDialog.nodeId;
+    const newId = editNodeIdValue.trim();
+    if (!newId || newId === oldId) { setEditNodeIdDialog(null); return; }
+    if (nodes.some(n => n.id === newId)) {
+      toast.error('Node ID already exists');
+      return;
+    }
+    setNodes((nds: Node[]) => nds.map(n => n.id === oldId ? { ...n, id: newId } : n));
+    setEdges((eds: Edge[]) => eds.map(e => ({
+      ...e,
+      source: e.source === oldId ? newId : e.source,
+      target: e.target === oldId ? newId : e.target,
+    })));
+    if (selectedNodeId === oldId) setSelectedNodeId(newId);
+    setEditNodeIdDialog(null);
+    toast.success('Node ID updated');
+  }, [editNodeIdDialog, editNodeIdValue, nodes, selectedNodeId, setNodes, setEdges]);
+
+  // ---- Help ----
+  const openHelp = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) setHelpDialog(node.data.nodeType);
+    setContextMenu(null);
+  }, [nodes]);
+
+  // ---- Group selected nodes ----
+  const handleGroupSelected = useCallback(() => {
+    const selected = nodes.filter(n => n.selected && n.type !== 'group');
+    if (selected.length < 2) {
+      toast.error('Select 2 or more nodes to create a group (hold Shift to multi-select)');
+      setContextMenu(null);
+      return;
+    }
+    const PAD_X = 24;
+    const PAD_TOP = 44;
+    const PAD_BOTTOM = 24;
+    const NODE_W = 200;
+    const NODE_H = 80;
+    const minX = Math.min(...selected.map(n => n.position.x)) - PAD_X;
+    const minY = Math.min(...selected.map(n => n.position.y)) - PAD_TOP;
+    const maxX = Math.max(...selected.map(n => n.position.x + NODE_W)) + PAD_X;
+    const maxY = Math.max(...selected.map(n => n.position.y + NODE_H)) + PAD_BOTTOM;
+    const groupId = `group-${Date.now()}`;
+    const groupNode: Node = {
+      id: groupId,
+      type: 'group',
+      position: { x: minX, y: minY },
+      style: { width: maxX - minX, height: maxY - minY },
+      data: {
+        label: 'Group',
+        collapsed: false,
+        onToggleCollapse: handleToggleGroupCollapse,
+      },
+    };
+    setNodes((nds: Node[]) => [
+      ...nds.filter(n => !selected.find(s => s.id === n.id)),
+      groupNode,
+      ...selected.map(n => ({
+        ...n,
+        parentNode: groupId,
+        extent: 'parent' as const,
+        position: { x: n.position.x - minX, y: n.position.y - minY },
+      })),
+    ]);
+    setContextMenu(null);
+    toast.success('Nodes grouped');
+  }, [nodes, setNodes]);
+
+  // ---- Toggle group collapse ----
+  // Use a ref to access current nodes inside the edge updater without stale closure
+  const nodesRef = useRef<Node[]>([]);
+  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+
+  const handleToggleGroupCollapse = useCallback((groupId: string) => {
+    const currentNodes = nodesRef.current;
+    const group = currentNodes.find(n => n.id === groupId);
+    const collapsed = !group?.data?.collapsed;
+    const childIds = new Set(currentNodes.filter(n => n.parentNode === groupId).map(n => n.id));
+
+    setNodes((nds: Node[]) => nds.map(n => {
+      if (n.id === groupId) return { ...n, data: { ...n.data, collapsed, onToggleCollapse: handleToggleGroupCollapse } };
+      if (n.parentNode === groupId) return { ...n, hidden: collapsed };
+      return n;
+    }));
+
+    setEdges((eds: Edge[]) => eds.map(e => ({
+      ...e,
+      hidden: collapsed ? (childIds.has(e.source) || childIds.has(e.target)) : false,
+    })));
+  }, [setNodes, setEdges]);
+
+  // ---- Auto Create: apply generated workflow ----
+  const handleAutoGenerated = useCallback((
+    generatedNodes: Node[],
+    generatedEdges: Edge[],
+    mode: 'replace' | 'append',
+  ) => {
+    // Ensure all edges have unique IDs
+    const timestamp = Date.now();
+    const edgesWithIds = generatedEdges.map((edge, index) => ({
+      ...edge,
+      id: edge.id || `edge-${edge.source}-${edge.target}-${index}-${timestamp}`,
+    }));
+
+    if (mode === 'replace') {
+      setNodes(generatedNodes);
+      setEdges(edgesWithIds);
+    } else {
+      // Append: offset nodes to the right of existing content
+      const offsetX = nodes.length > 0
+        ? Math.max(...nodes.map(n => n.position.x)) + 350
+        : 0;
+      setNodes((nds: Node[]) => [
+        ...nds,
+        ...generatedNodes.map(n => ({
+          ...n,
+          id: `${n.id}-${timestamp}`,
+          position: { x: n.position.x + offsetX, y: n.position.y },
+        })),
+      ]);
+      // Remap edge source/target to match new node IDs and ensure unique edge IDs
+      const nodeIdMap = new Map(generatedNodes.map(n => [n.id, `${n.id}-${timestamp}`]));
+      const remappedEdges = edgesWithIds.map(edge => ({
+        ...edge,
+        id: `${edge.id}-${timestamp}`,
+        source: nodeIdMap.get(edge.source) || edge.source,
+        target: nodeIdMap.get(edge.target) || edge.target,
+      }));
+      setEdges((eds: Edge[]) => [...eds, ...remappedEdges]);
+    }
+    setCompiledManifest(null); // require re-compile after changes
+    toast.success(`Added ${generatedNodes.length} nodes and ${generatedEdges.length} connections`);
+  }, [nodes, setNodes, setEdges]);
 
   const handleConfigChange = useCallback(
     (newConfig: Record<string, unknown>) => {
@@ -607,8 +1015,11 @@ function FlowEditor() {
       )}
 
       <div className="flex h-[calc(100vh-80px)]">
-        {/* Left Sidebar - Node Palette */}
-        <div className={`${sidebarCollapsed ? 'w-12' : 'w-80'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto transition-all duration-300 relative`}>
+        {/* Left Sidebar - Node Palette (resizable) */}
+        <div
+          className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto relative flex-shrink-0"
+          style={{ width: sidebarCollapsed ? 48 : sidebarWidth, transition: sidebarCollapsed ? 'width 0.3s' : 'none' }}
+        >
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -620,6 +1031,15 @@ function FlowEditor() {
               <ChevronLeft className="h-4 w-4" />
             )}
           </button>
+
+          {/* Resize handle — drag to widen/narrow sidebar */}
+          {!sidebarCollapsed && (
+            <div
+              onMouseDown={onSidebarResizeMouseDown}
+              className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-blue-400 active:bg-blue-500 transition-colors z-20"
+              title="Drag to resize sidebar"
+            />
+          )}
 
           {!sidebarCollapsed && (
             <>
@@ -659,7 +1079,7 @@ function FlowEditor() {
                   <LLMModelSelector
                     models={llmModels}
                     selectedModelId={defaultModel}
-                    onSelect={setDefaultModel}
+                    onSelect={handleSetDefaultModel}
                     isLoading={modelsLoading}
                     placeholder="Select default model for this workflow..."
                   />
@@ -679,6 +1099,15 @@ function FlowEditor() {
                 >
                   <ShoppingBag className="h-4 w-4 mr-2" />
                   Browse Templates
+                </Button>
+                <Button
+                  onClick={() => setShowAutoCreate(true)}
+                  variant="outline"
+                  className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-300"
+                  size="sm"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Auto Create with AI
                 </Button>
               </div>
 
@@ -1119,18 +1548,37 @@ function FlowEditor() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
             onInit={setReactFlowInstance}
             onDrop={onDrop}
             onDragOver={onDragOver}
             onNodeClick={onNodeClick}
+            onNodeContextMenu={onNodeContextMenu}
+            onPaneClick={() => {
+              onPaneClick();
+              setSelectedEdgeId(null);
+            }}
+            onEdgeClick={onEdgeClick}
+            onEdgeContextMenu={onEdgeContextMenu}
+            onReconnect={onReconnect}
+            onReconnectStart={onConnectStart}
+            onReconnectEnd={onConnectEnd}
+            reconnectRadius={10}
             nodeTypes={nodeTypes}
             isValidConnection={isValidConnection}
+            deleteKeyCode={isExecuting ? null : ['Delete', 'Backspace']}
+            multiSelectionKeyCode={['Shift', 'Meta']}
             defaultEdgeOptions={{
               type: 'smoothstep',
               animated: false,
               style: { stroke: '#3b82f6', strokeWidth: 2 },
               markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+              reconnectable: true,
+              selected: false,
             }}
+            edgesFocusable={!isExecuting}
+            edgesUpdatable={!isExecuting}
             fitView
             className="bg-gray-50 dark:bg-gray-900"
           >
@@ -1173,18 +1621,86 @@ function FlowEditor() {
         </div>
 
         {/* Right Sidebar - Config Panel */}
+        {selectedEdgeId && !selectedNode && (
+          <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 z-10">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  Connection
+                </h3>
+                <button
+                  onClick={() => setSelectedEdgeId(null)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {(() => {
+                const edge = edges.find(e => e.id === selectedEdgeId);
+                const sourceNode = nodes.find(n => n.id === edge?.source);
+                const targetNode = nodes.find(n => n.id === edge?.target);
+                return edge ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">From:</span>
+                      <code className="text-xs font-mono bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded text-blue-700 dark:text-blue-300">
+                        {sourceNode?.data?.label || edge.source}
+                      </code>
+                      <span className="text-xs text-gray-400">({edge.sourceHandle})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">To:</span>
+                      <code className="text-xs font-mono bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded text-green-700 dark:text-green-300">
+                        {targetNode?.data?.label || edge.target}
+                      </code>
+                      <span className="text-xs text-gray-400">({edge.targetHandle})</span>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Drag the connection endpoints to reconnect to different nodes.
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteSelectedEdge}
+                className="w-full"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Connection
+              </Button>
+              <p className="text-xs text-gray-500">
+                Or press Delete / Backspace key
+              </p>
+            </div>
+          </div>
+        )}
+
         {selectedNode && (
           <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
-            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between z-10">
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Configure Node
-              </h3>
-              <button
-                onClick={() => setSelectedNodeId(null)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="h-5 w-5" />
-              </button>
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 z-10">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  Configure Node
+                </h3>
+                <button
+                  onClick={() => setSelectedNodeId(null)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">
+                  ID: {selectedNode.id}
+                </code>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {selectedNode.data.nodeType}
+                </span>
+              </div>
             </div>
 
             <div className="p-4">
@@ -1195,6 +1711,9 @@ function FlowEditor() {
                 config={selectedNode.data.config}
                 connections={connections}
                 onConfigChange={handleConfigChange}
+                llmModels={llmModels}
+                llmModelsLoading={modelsLoading}
+                defaultModelId={defaultModel || undefined}
               />
 
               {/* Step 6: Cost Estimation (when not executing) */}
@@ -1203,7 +1722,7 @@ function FlowEditor() {
                   <CostEstimation
                     nodes={nodes}
                     edges={edges}
-                    userBalance={user.creditBalance || 0}
+                    userBalance={user.credits || 0}
                   />
                 </div>
               )}
@@ -1242,6 +1761,203 @@ function FlowEditor() {
           </div>
         </div>
       )}
+
+      {/* ---- Context Menu ---- */}
+      {contextMenu && (() => {
+        const ctxNode = nodes.find(n => n.id === contextMenu.nodeId);
+        return (
+          <div
+            className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-xl rounded-lg py-1 min-w-[200px] text-sm"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onMouseLeave={() => setContextMenu(null)}
+          >
+            <button
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              onClick={() => handleDeleteNode(contextMenu.nodeId)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete Node
+            </button>
+            <button
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => openEditNodeId(contextMenu.nodeId)}
+            >
+              <PenLine className="h-4 w-4" /> Edit Node ID
+            </button>
+            <button
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => openHelp(contextMenu.nodeId)}
+            >
+              <HelpCircle className="h-4 w-4" /> Help
+            </button>
+            {ctxNode?.type !== 'group' && (
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={handleGroupSelected}
+              >
+                <Layers className="h-4 w-4" /> Group Selected Nodes
+              </button>
+            )}
+            <hr className="my-1 border-gray-200 dark:border-gray-600" />
+            <button
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+              onClick={() => { setShowAutoCreate(true); setContextMenu(null); }}
+            >
+              <Sparkles className="h-4 w-4" /> Auto Create Workflow
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* ---- Edge Context Menu ---- */}
+      {edgeContextMenu && !isExecuting && (() => {
+        const edge = edges.find(e => e.id === edgeContextMenu.edgeId);
+        const sourceNode = nodes.find(n => n.id === edge?.source);
+        const targetNode = nodes.find(n => n.id === edge?.target);
+        return (
+          <div
+            className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-xl rounded-lg py-1 min-w-[200px] text-sm"
+            style={{ top: edgeContextMenu.y, left: edgeContextMenu.x }}
+            onMouseLeave={() => setEdgeContextMenu(null)}
+          >
+            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-600">
+              <div className="text-xs text-gray-500 dark:text-gray-400">Connection</div>
+              <div className="flex items-center gap-1 text-xs mt-1">
+                <span className="text-blue-600 dark:text-blue-400">{sourceNode?.data?.label || edge?.source}</span>
+                <span className="text-gray-400">→</span>
+                <span className="text-green-600 dark:text-green-400">{targetNode?.data?.label || edge?.target}</span>
+              </div>
+            </div>
+            <button
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              onClick={() => edge && handleDeleteEdge(edge.id)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete Connection
+            </button>
+            <button
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => setEdgeContextMenu(null)}
+            >
+              <X className="h-4 w-4" /> Cancel
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* ---- Edit Node ID Dialog ---- */}
+      <Dialog open={!!editNodeIdDialog} onOpenChange={(o) => { if (!o) setEditNodeIdDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PenLine className="h-4 w-4" /> Edit Node ID
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              New Node ID
+            </label>
+            <input
+              type="text"
+              value={editNodeIdValue}
+              onChange={e => setEditNodeIdValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleEditNodeId(); }}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Use lowercase letters, numbers, and underscores only.
+            </p>
+          </div>
+          <DialogFooter>
+            <button
+              className="px-4 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-50"
+              onClick={() => setEditNodeIdDialog(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
+              onClick={handleEditNodeId}
+            >
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Help Dialog ---- */}
+      {helpDialog && (() => {
+        const nodeDef = registryNodeTypes?.find(nt => nt.type === helpDialog);
+        return (
+          <Dialog open={!!helpDialog} onOpenChange={(o) => { if (!o) setHelpDialog(null); }}>
+            <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-blue-500" />
+                  {nodeDef?.display_name ?? helpDialog}
+                </DialogTitle>
+              </DialogHeader>
+              {nodeDef ? (
+                <div className="space-y-4 text-sm">
+                  <p className="text-gray-600 dark:text-gray-300">{nodeDef.description}</p>
+
+                  {nodeDef.inputs.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">Inputs</h4>
+                      <div className="space-y-1.5">
+                        {nodeDef.inputs.map((inp: any) => (
+                          <div key={inp.name} className="bg-gray-50 dark:bg-gray-700/50 rounded px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <code className="text-xs font-mono text-blue-600 dark:text-blue-400">{inp.name}</code>
+                              <span className="text-xs bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded">{inp.data_type}</span>
+                              {inp.required && <span className="text-xs text-red-500">required</span>}
+                              {inp.accepts_connection && <span className="text-xs text-green-600">connectable</span>}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">{inp.display_name}{inp.placeholder ? ` — ${inp.placeholder}` : ''}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {nodeDef.outputs.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">Outputs</h4>
+                      <div className="space-y-1.5">
+                        {nodeDef.outputs.map((out: any) => (
+                          <div key={out.name} className="bg-gray-50 dark:bg-gray-700/50 rounded px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <code className="text-xs font-mono text-green-600 dark:text-green-400">{out.name}</code>
+                              <span className="text-xs bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded">{out.data_type}</span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">{out.display_name}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Node type information not available.</p>
+              )}
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+
+      {/* ---- Auto Create Workflow Modal ---- */}
+      <AutoCreateWorkflowModal
+        open={showAutoCreate}
+        onOpenChange={setShowAutoCreate}
+        nodeTypes={registryNodeTypes?.map(nt => ({
+          type: nt.type,
+          display_name: nt.display_name,
+          description: nt.description,
+          inputs: (nt.inputs ?? []) as unknown as Record<string, unknown>[],
+          outputs: (nt.outputs ?? []) as unknown as Record<string, unknown>[],
+        }))}
+        modelId={defaultModel || undefined}
+        onGenerated={handleAutoGenerated}
+      />
     </div>
   );
 }

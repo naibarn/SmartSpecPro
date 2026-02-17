@@ -1,0 +1,4 @@
+rich>=13.0.0
+requests>=2.31.0
+duckduckgo-search>=5.2.2
+jsonschema>=4.22.0

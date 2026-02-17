@@ -37,11 +37,114 @@ import { TRPCError } from "@trpc/server";
 import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills } from "../services/skillRegistry";
 import { detectSkill, extractSkillParams, getSkillDetectionSummary } from "../services/skillDetector";
 import { getSlashCommands as _getSlashCommands } from "../services/userSkillService";
-import { executeSkill, estimateSkillCost, canAutoExecute } from "../services/skillExecutor";
+import { executeSkill, estimateSkillCost, canAutoExecute, type SkillCreateAction } from "../services/skillExecutor";
 import { signBearerToken } from "../_core/tokens";
 import { skillDetectionLimiter, skillExecutionLimiter } from "../services/rateLimiter";
 import { debugLog, debugError } from "../_core/logger";
 import { ENABLE_FUNNEL_TRACKING, trackFirstConversation } from "../services/funnelMilestones";
+import { getDb } from "../db";
+import { skills as skillsTable, userSkillVisibility } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
+import { checkRateLimit } from "../middleware/distributedRateLimit";
+
+// ── Security: forbidden patterns in LLM-generated skillContent ───────────────
+const ISC_FORBIDDEN_PATTERNS = [
+  /\bSELECT\b.*\bFROM\b/i,           // SQL queries
+  /\bINSERT INTO\b|\bDROP TABLE\b/i,  // destructive SQL
+  /open\s*\(|readFile|writeFile/,     // file access
+  /process\.env|os\.environ/,         // env access
+  /eval\s*\(|exec\s*\(/,              // code execution
+  /import\s+os|import\s+subprocess/,  // dangerous Python imports
+  /require\s*\(['"](fs|child_process|path)['"]\)/, // dangerous Node imports
+];
+
+function _validateSkillContent(content: string): string | null {
+  if (content.length > 50_000) return "skillContent too long (max 50 000 chars)";
+  for (const pat of ISC_FORBIDDEN_PATTERNS) {
+    if (pat.test(content)) {
+      return `skillContent contains forbidden pattern: ${pat.source}`;
+    }
+  }
+  return null; // ok
+}
+
+/**
+ * Handle the `create_skill` action returned by the ISC Python skill.
+ * - Rate limit: 3/hour, 10/day, 5/10 min burst
+ * - Dedup: no duplicate slug per user
+ * - Security: validate skillContent against forbidden patterns
+ * - Storage: insert into skills + userSkillVisibility (private to creator)
+ */
+async function handleIscCreateSkill(
+  action: SkillCreateAction,
+  userId: number,
+): Promise<{ ok: true; skillId: number } | { ok: false; reason: string }> {
+  // 1. Rate limiting (hourly / daily / burst)
+  const [hourly, daily, burst] = await Promise.all([
+    checkRateLimit(`isc_create:${userId}`,       3,   3_600),
+    checkRateLimit(`isc_create_daily:${userId}`, 10,  86_400),
+    checkRateLimit(`isc_create_burst:${userId}`, 5,   600),
+  ]);
+  if (!hourly.allowed) return { ok: false, reason: "Rate limit: max 3 skills per hour" };
+  if (!daily.allowed)  return { ok: false, reason: "Rate limit: max 10 skills per day" };
+  if (!burst.allowed)  return { ok: false, reason: "Rate limit: too many skills created in 10 minutes" };
+
+  // 2. Security validation
+  const secErr = _validateSkillContent(action.skillContent);
+  if (secErr) return { ok: false, reason: `Security check failed: ${secErr}` };
+
+  // Force safe values regardless of what ISC generated
+  const safeSlug = action.slug.replace(/[^a-z0-9-]/g, "-").slice(0, 80);
+
+  const db = await getDb();
+
+  // 3. Deduplication: same slug + same createdBy
+  const existing = await db
+    .select({ id: skillsTable.id })
+    .from(skillsTable)
+    .where(and(eq(skillsTable.slug, safeSlug), eq(skillsTable.createdBy, userId)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    return { ok: false, reason: `You already have a skill named '${safeSlug}'` };
+  }
+
+  // 4. Insert skill (user-private: visibleByDefault=false, enabledByDefault=false)
+  const [newSkill] = await db
+    .insert(skillsTable)
+    .values({
+      slug:               safeSlug,
+      name:               action.name.slice(0, 255),
+      description:        action.description.slice(0, 1000),
+      skillContent:       action.skillContent,
+      systemPrompt:       action.skillContent,
+      executionMode:      "llm-only",   // ALWAYS — no code execution
+      importSource:       "isc-user",
+      createdBy:          userId,
+      isEnabled:          true,
+      enabledByDefault:   false,        // not in global defaults
+      visibleByDefault:   false,        // not in lazy-init for other users
+      isAutoTrigger:      false,
+      triggerPatterns:    action.triggerPatterns ?? [],
+      category:           "other" as any,
+      priority:           30,
+    })
+    .returning({ id: skillsTable.id });
+
+  // 5. Grant visibility to the creating user only
+  await db
+    .insert(userSkillVisibility)
+    .values({
+      userId,
+      skillId:            newSkill.id,
+      visible:            true,
+      autoTriggerEnabled: false,  // user must invoke explicitly
+    })
+    .onConflictDoNothing();
+
+  console.log(`[ISC] Created private skill '${safeSlug}' (id=${newSkill.id}) for user ${userId}`);
+  return { ok: true, skillId: newSkill.id };
+}
 
 // Helper to create secure token for skill execution
 function createSkillToken(userId: number): string {
@@ -949,8 +1052,38 @@ export const chatRouter = router({
         });
       }
 
+      // Authorization: verify user has access to restricted skills (visibleByDefault=false)
+      {
+        const db = await getDb();
+        const [accessCheck] = await db
+          .select({
+            visibleByDefault: skillsTable.visibleByDefault,
+            hasAccess: userSkillVisibility.id,
+          })
+          .from(skillsTable)
+          .leftJoin(
+            userSkillVisibility,
+            and(
+              eq(userSkillVisibility.skillId, skillsTable.id),
+              eq(userSkillVisibility.userId, ctx.user.id),
+              eq(userSkillVisibility.visible, true)
+            )
+          )
+          .where(eq(skillsTable.slug, input.skillId))
+          .limit(1);
+
+        if (accessCheck && !accessCheck.visibleByDefault && !accessCheck.hasAccess) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Skill '${input.skillId}' is not available in your account.`,
+          });
+        }
+      }
+
       // Check if skill can be auto-executed
-      if (!canAutoExecute(skill)) {
+      // Python-mode skills are always executable (they handle their own subprocess)
+      const isPythonMode = (skill as any).executionMode === "python";
+      if (!isPythonMode && !canAutoExecute(skill)) {
         return {
           success: false,
           skillId: input.skillId,
@@ -985,6 +1118,24 @@ export const chatRouter = router({
         ctx.user.id,
         userToken
       );
+
+      // Handle structured actions from Python skills (e.g. ISC create_skill)
+      if (result.success && result._action?.type === "create_skill") {
+        const createResult = await handleIscCreateSkill(result._action, ctx.user.id);
+        if (createResult.ok) {
+          result = {
+            ...result,
+            message: (result.message ?? "") +
+              `\n\n✅ **Skill saved** (id: ${createResult.skillId}) — visible in your Skills panel.`,
+          };
+        } else {
+          result = {
+            ...result,
+            message: (result.message ?? "") +
+              `\n\n⚠️ **Could not save skill**: ${createResult.reason}`,
+          };
+        }
+      }
 
       // Persist the media result as an assistant message in the conversation
       if (input.conversationId && result.success) {

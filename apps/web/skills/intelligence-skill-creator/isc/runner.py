@@ -1,0 +1,60 @@
+from __future__ import annotations
+import shutil
+import datetime as _dt
+from pathlib import Path
+from dataclasses import dataclass
+from typing import List, Optional, Dict, Any
+
+from .evaluator import evaluate_from_path
+from .models import EvaluationReport, PatchProposal
+from .improver import HeuristicImprover, LLMImprover, apply_diff
+
+@dataclass
+class RunResult:
+    workspace: Path
+    final_report: EvaluationReport
+    proposals: List[PatchProposal]
+
+def make_workspace(project_root: Path, skill_name: str) -> Path:
+    ts = _dt.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ws = project_root / "runs" / "workspaces" / skill_name / ts
+    ws.mkdir(parents=True, exist_ok=True)
+    src = project_root / "skills" / skill_name
+    dst = ws / "skills" / skill_name
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(src, dst, dirs_exist_ok=True)
+    return ws
+
+def iterate_improve(project_root: Path, skill_name: str, mode: str="auto", rounds: int=3,
+                   ask_user: bool=False, allow_test_expansion: bool=False,
+                   llm_override: Optional[dict]=None,
+                   research_cfg: Optional[Dict[str, Any]]=None,
+                   safety_cfg: Optional[Dict[str, Any]]=None) -> RunResult:
+    ws = make_workspace(project_root, skill_name)
+    skill_dir = ws / "skills" / skill_name
+    proposals: List[PatchProposal] = []
+    report = evaluate_from_path(skill_dir)
+
+    for _ in range(max(1, rounds)):
+        if report.pass_rate >= 1.0:
+            break
+        if mode == "heuristic":
+            proposal = HeuristicImprover().propose_patch(skill_name, report)
+        elif mode == "llm":
+            proposal = LLMImprover(ask_user=ask_user, allow_test_expansion=allow_test_expansion,
+                                   llm_override=llm_override, research_cfg=research_cfg, safety_cfg=safety_cfg
+                                  ).propose_patch(skill_name, report)
+        else:
+            try:
+                proposal = LLMImprover(ask_user=ask_user, allow_test_expansion=allow_test_expansion,
+                                       llm_override=llm_override, research_cfg=research_cfg, safety_cfg=safety_cfg
+                                      ).propose_patch(skill_name, report)
+            except Exception:
+                proposal = HeuristicImprover().propose_patch(skill_name, report)
+        proposals.append(proposal)
+        if not proposal.unified_diff.strip():
+            break
+        apply_diff(ws, proposal.unified_diff)
+        report = evaluate_from_path(skill_dir)
+
+    return RunResult(ws, report, proposals)

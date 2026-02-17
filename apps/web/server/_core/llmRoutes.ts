@@ -3,7 +3,7 @@ import { decrypt } from "../services/crypto";
 import { ENV } from "./env";
 import { authorizeRequest, AuthResult } from "./authz";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
-import { getUserByOpenId, getDb, db } from "../db";
+import { getUserByOpenId, getUserById, getDb, db } from "../db";
 import { llmProviders } from "../../drizzle/schema";
 import { eq, asc, and } from "drizzle-orm";
 import {
@@ -309,6 +309,55 @@ async function resolveProviderModel(modelId: string, providerId: number): Promis
     };
   } catch (error) {
     console.error("[LLM] Failed to resolve provider model:", { modelId, providerId, error });
+    return null;
+  }
+}
+
+/**
+ * Resolve a provider-specific model ID across ALL enabled providers (no provider constraint).
+ * Used when no preferredProvider is specified — picks the highest-priority enabled mapping.
+ */
+async function resolveProviderModelAny(modelId: string): Promise<ResolvedModel> {
+  try {
+    const { modelProviderMap } = await import("../../drizzle/schema");
+
+    // Try by internal modelId first
+    let [mapping] = await db
+      .select({
+        providerModelId: modelProviderMap.providerModelId,
+        apiStyle: modelProviderMap.apiStyle,
+      })
+      .from(modelProviderMap)
+      .where(and(
+        eq(modelProviderMap.modelId, modelId),
+        eq(modelProviderMap.isEnabled, true),
+      ))
+      .orderBy(asc(modelProviderMap.priority))
+      .limit(1);
+
+    // Fallback: try matching on providerModelId directly
+    if (!mapping) {
+      [mapping] = await db
+        .select({
+          providerModelId: modelProviderMap.providerModelId,
+          apiStyle: modelProviderMap.apiStyle,
+        })
+        .from(modelProviderMap)
+        .where(and(
+          eq(modelProviderMap.providerModelId, modelId),
+          eq(modelProviderMap.isEnabled, true),
+        ))
+        .orderBy(asc(modelProviderMap.priority))
+        .limit(1);
+    }
+
+    if (!mapping) return null;
+    return {
+      providerModelId: mapping.providerModelId,
+      apiStyle: mapping.apiStyle as 'chat-completions' | 'responses' | 'messages' | 'gemini',
+    };
+  } catch (error) {
+    console.error("[LLM] Failed to resolve model (any provider):", { modelId, error });
     return null;
   }
 }
@@ -678,8 +727,16 @@ async function getUserIdFromAuth(auth: AuthResult & { ok: true }): Promise<numbe
 
   // For bearer auth with openId (sub), look up user
   if (auth.sub && auth.sub !== "static") {
-    const user = await getUserByOpenId(auth.sub);
-    return user?.id ?? null;
+    // First try openId lookup (session JWTs use openId as sub)
+    const userByOpenId = await getUserByOpenId(auth.sub);
+    if (userByOpenId) return userByOpenId.id;
+
+    // Fallback: sub may be a numeric user ID (internal JWTs)
+    const numericId = parseInt(auth.sub, 10);
+    if (!isNaN(numericId) && String(numericId) === auth.sub) {
+      const userById = await getUserById(numericId);
+      return userById?.id ?? null;
+    }
   }
 
   return null;
@@ -840,6 +897,15 @@ async function proxyChatWithCredits(
       });
     } else {
       debugLog("LLM", "Failed to resolve provider model, using requested ID", { requestedModelId, providerId: preferredProviderId });
+    }
+  } else {
+    // No preferredProvider given — try global resolution so internal model IDs
+    // (e.g. "kimi-k2.5") are mapped to their provider-specific IDs (e.g. "moonshotai/kimi-k2.5")
+    const resolved = await resolveProviderModelAny(requestedModelId);
+    if (resolved) {
+      model = resolved.providerModelId;
+      apiStyle = resolved.apiStyle;
+      debugLog("LLM", "Resolved model (global)", { requestedModelId, providerModelId: resolved.providerModelId });
     }
   }
 
@@ -1133,6 +1199,11 @@ export function registerLLMRoutes(app: Express) {
     llmLimiter,
     enforceJsonBodyMaxBytes(MAX_LLM_BODY_BYTES),
     async (req: Request, res: Response) => {
+      // LLM calls (especially workflow generation with large prompts) can take
+      // longer than the server-level 120s timeout.  Extend per-request.
+      req.socket.setTimeout(600_000);  // 10 min
+      res.setTimeout(600_000);
+
       const check = await guardWithCredits(req, res);
       if (!check.ok) return;
 

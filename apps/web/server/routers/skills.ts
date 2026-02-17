@@ -737,6 +737,46 @@ export const skillsRouter = router({
       }));
     }),
 
+  // List skills visible to the current user (for workflow node)
+  listForWorkflow: protectedProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        limit: z.number().int().min(1).max(100).optional().default(50),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.user?.id;
+      if (!userId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User not authenticated",
+        });
+      }
+
+      // Import here to avoid circular dependency
+      const { getUserVisibleSkills } = await import("../services/userSkillService");
+      
+      const result = await getUserVisibleSkills(userId, {
+        search: input?.search,
+        limit: input?.limit || 50,
+      });
+
+      // Return skills in format suitable for workflow node dropdown
+      return {
+        skills: result.skills.map((skill) => ({
+          id: skill.id,
+          slug: skill.slug,
+          name: skill.name,
+          description: skill.description,
+          icon: skill.icon,
+          category: skill.category,
+          creditMultiplier: skill.creditMultiplier,
+        })),
+        total: result.total,
+      };
+    }),
+
   // Get a specific skill by ID
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
@@ -1880,7 +1920,7 @@ export const skillsRouter = router({
         creditMultiplier: z.number().min(0).max(100).optional(),
         priority: z.number().min(0).max(100).optional(),
         defaultModel: z.string().nullable().optional(),
-        executionMode: z.enum(["llm-only", "media-generate", "enhance-prompt"]).optional(),
+        executionMode: z.enum(["llm-only", "media-generate", "enhance-prompt", "python"]).optional(),
         systemPrompt: z.string().nullable().optional(),
         skillContent: z.string().nullable().optional(),
         marketplaceContent: z.string().nullable().optional(),
@@ -2429,6 +2469,115 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
     .mutation(async ({ ctx, input }) => {
       await batchSetVisibility(ctx.user.id, input.updates);
       return { success: true };
+    }),
+
+  /**
+   * List ISC (Intelligence Skill Creator) proposals pending admin review.
+   * Proposals are unified diffs saved in:
+   *   apps/web/skills/intelligence-skill-creator/runs/proposals/<skill_name>/*.diff
+   */
+  listIscProposals: adminProcedure
+    .query(async () => {
+      const fsp = await import("fs/promises");
+      const pathLib = await import("path");
+
+      const proposalsRoot = pathLib.default.resolve(
+        process.cwd(),
+        "skills",
+        "intelligence-skill-creator",
+        "runs",
+        "proposals"
+      );
+
+      let skillDirs: string[] = [];
+      try {
+        skillDirs = await fsp.default.readdir(proposalsRoot);
+      } catch {
+        return { proposals: [] };
+      }
+
+      const proposals: Array<{
+        skillName: string;
+        diffFile: string;
+        diffRelPath: string;
+        createdAt: string;
+        round: number;
+      }> = [];
+
+      for (const skillName of skillDirs) {
+        const skillDir = pathLib.default.join(proposalsRoot, skillName);
+        const stat = await fsp.default.stat(skillDir).catch(() => null);
+        if (!stat?.isDirectory()) continue;
+
+        const files = (await fsp.default.readdir(skillDir)).filter((f) => f.endsWith(".diff"));
+        for (const file of files) {
+          // filename: 20260217T123000_r1.diff → parse timestamp + round
+          const m = file.match(/^(\d{8}T?\d{6})_r(\d+)\.diff$/);
+          proposals.push({
+            skillName,
+            diffFile: file,
+            diffRelPath: pathLib.default.join("skills", "intelligence-skill-creator", "runs", "proposals", skillName, file),
+            createdAt: m ? m[1] : file,
+            round: m ? parseInt(m[2], 10) : 0,
+          });
+        }
+      }
+
+      return { proposals: proposals.sort((a, b) => b.createdAt.localeCompare(a.createdAt)) };
+    }),
+
+  /**
+   * Apply an ISC proposal diff to the skill files (admin only).
+   * Runs: patch -N -r - -p0 < <diff_file>
+   * Working directory: apps/web/skills/intelligence-skill-creator/
+   */
+  applyIscProposal: adminProcedure
+    .input(z.object({
+      skillName: z.string().min(1).max(100).regex(/^[\w-]+$/),
+      diffFile: z.string().min(1).max(200).regex(/^[\w.\-]+\.diff$/),
+    }))
+    .mutation(async ({ input }) => {
+      const pathLib = await import("path");
+      const fsp = await import("fs/promises");
+      const { spawnSync } = await import("child_process");
+
+      const iscRoot = pathLib.default.resolve(
+        process.cwd(),
+        "skills",
+        "intelligence-skill-creator"
+      );
+      const diffPath = pathLib.default.join(
+        iscRoot,
+        "runs",
+        "proposals",
+        input.skillName,
+        input.diffFile
+      );
+
+      // Verify diff file exists and is within expected directory (path traversal guard)
+      const resolvedDiff = pathLib.default.resolve(diffPath);
+      const expectedBase = pathLib.default.resolve(iscRoot, "runs", "proposals");
+      if (!resolvedDiff.startsWith(expectedBase)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Invalid diff path" });
+      }
+
+      const diffContent = await fsp.default.readFile(resolvedDiff, "utf8").catch(() => null);
+      if (!diffContent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Diff file not found: ${input.diffFile}` });
+      }
+
+      const result = spawnSync("patch", ["-N", "-r", "-", "-p0"], {
+        input: diffContent,
+        encoding: "utf8",
+        cwd: iscRoot,
+      });
+
+      if (result.status !== 0) {
+        const msg = (result.stderr || result.stdout || "patch failed").trim();
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Apply failed: ${msg}` });
+      }
+
+      return { success: true, output: (result.stdout || "").trim() };
     }),
 
   /**

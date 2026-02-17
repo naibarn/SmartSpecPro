@@ -27,6 +27,7 @@ from app.orchestrator.node_registry import NodeRegistry
 from app.orchestrator.ring_buffer import get_ring_buffer_store
 from app.orchestrator.stream_translator import StreamTranslator
 from app.orchestrator.workflow_compiler import WorkflowCompiler, CompilationError
+from app.orchestrator.workflow_generator import WorkflowGenerator, WorkflowGenerationError
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -52,6 +53,47 @@ class FlowCompileResponse(BaseModel):
     error: str | None = None
     errors: list[str] | None = None  # Section 14: multiple validation errors
     warnings: list[str] | None = None  # Section 14: non-fatal warnings
+
+
+class WorkflowGenerateRequest(BaseModel):
+    """Request to auto-generate a workflow from a natural language prompt."""
+
+    prompt: str = Field(..., min_length=1, max_length=150000)
+    node_types: list[dict[str, Any]] | None = Field(
+        default=None, description="Available node type specs for LLM context"
+    )
+    model_id: str | None = Field(
+        default=None, description="LLM model for the generation call itself"
+    )
+    default_model: str | None = Field(
+        default=None, description="Workflow-level default model for llm_call nodes in the generated workflow"
+    )
+
+
+class WorkflowGenerateResponse(BaseModel):
+    """Response from workflow auto-generation."""
+
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+    description: str
+
+
+class WorkflowGenerateSubmitResponse(BaseModel):
+    """Response from async workflow generation submission."""
+
+    task_id: str
+    status: str  # "queued"
+
+
+class WorkflowGenerateStatusResponse(BaseModel):
+    """Response from workflow generation status polling."""
+
+    status: str  # queued | processing | completed | failed
+    message: str | None = None
+    error: str | None = None
+    nodes: list[dict[str, Any]] | None = None
+    edges: list[dict[str, Any]] | None = None
+    description: str | None = None
 
 
 class ExecuteWorkflowRequest(BaseModel):
@@ -151,6 +193,113 @@ class WorkflowReport(BaseModel):
     startedAt: Optional[str] = None
     completedAt: Optional[str] = None
     error: Optional[str] = None
+
+
+@router.post("/generate", response_model=WorkflowGenerateSubmitResponse)
+async def generate_workflow(
+    body: WorkflowGenerateRequest,
+    http_request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Submit async workflow generation to the task queue.
+
+    Returns a task_id immediately. The client polls /generate/status/{task_id}
+    until the result is ready. This handles concurrent users safely.
+    """
+    from app.tasks.workflow_gen_tasks import generate_workflow_task, create_task_id, _set_status
+
+    # Extract user JWT from Authorization header so the gateway can track credits
+    auth_header = http_request.headers.get("authorization", "")
+    user_token: str | None = None
+    if auth_header.lower().startswith("bearer "):
+        user_token = auth_header.split(" ", 1)[1].strip()
+
+    task_id = create_task_id()
+
+    # Set initial queued status in Redis
+    _set_status(task_id, {"status": "queued", "message": "Waiting in queue..."})
+
+    # Submit to Celery queue
+    try:
+        generate_workflow_task.delay(
+            task_id=task_id,
+            prompt=body.prompt,
+            node_types=body.node_types,
+            model=body.model_id,
+            default_model=body.default_model,
+            user_token=user_token,
+        )
+    except Exception as exc:
+        logger.error("workflow_gen_queue_submit_failed", error=str(exc))
+        # Fallback: run synchronously if Celery is not available
+        logger.warning("workflow_gen_falling_back_to_sync", task_id=task_id)
+        _set_status(task_id, {"status": "processing", "message": "Running directly (queue unavailable)..."})
+        try:
+            generator = WorkflowGenerator()
+            result = await generator.generate(
+                prompt=body.prompt,
+                node_types=body.node_types,
+                model=body.model_id,
+                user_token=user_token,
+                default_model=body.default_model,
+            )
+            _set_status(task_id, {"status": "completed", "result": result})
+        except WorkflowGenerationError as gen_exc:
+            _set_status(task_id, {"status": "failed", "error": gen_exc.message})
+        except Exception as gen_exc:
+            _set_status(task_id, {"status": "failed", "error": str(gen_exc)})
+
+    logger.info(
+        "workflow_gen_submitted",
+        task_id=task_id,
+        user_id=current_user.id,
+        prompt_length=len(body.prompt),
+    )
+
+    return WorkflowGenerateSubmitResponse(task_id=task_id, status="queued")
+
+
+@router.get("/generate/status/{task_id}", response_model=WorkflowGenerateStatusResponse)
+async def get_generate_status(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Poll workflow generation task status.
+
+    Returns current status and result when completed.
+    """
+    from app.tasks.workflow_gen_tasks import get_status
+
+    # Validate task_id format
+    if not task_id.startswith("wfgen-") or len(task_id) != 18:
+        raise HTTPException(status_code=400, detail="Invalid task_id format")
+
+    status_data = get_status(task_id)
+    if status_data is None:
+        raise HTTPException(status_code=404, detail="Task not found or expired")
+
+    status = status_data.get("status", "unknown")
+
+    if status == "completed":
+        result = status_data.get("result", {})
+        return WorkflowGenerateStatusResponse(
+            status="completed",
+            nodes=result.get("nodes", []),
+            edges=result.get("edges", []),
+            description=result.get("description", ""),
+        )
+    elif status == "failed":
+        return WorkflowGenerateStatusResponse(
+            status="failed",
+            error=status_data.get("error", "Unknown error"),
+        )
+    else:
+        return WorkflowGenerateStatusResponse(
+            status=status,
+            message=status_data.get("message"),
+        )
 
 
 @router.post("/compile", response_model=FlowCompileResponse)

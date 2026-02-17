@@ -1,0 +1,20 @@
+{
+  "skill_name": "skill_math_tutor",
+  "mode": "llm",
+  "rounds": 3,
+  "ask_user": false,
+  "allow_test_expansion": false,
+  "llm": {
+    "model": "YOUR_SESSION_MODEL"
+  },
+  "research": {
+    "max_topics": 10,
+    "max_results_per_topic": 3,
+    "max_snippet_chars": 6000
+  },
+  "safety": {
+    "restrict_paths_under_skills": true,
+    "disallow_new_deps_in_skill_py": true,
+    "require_respond_signature": true
+  }
+}

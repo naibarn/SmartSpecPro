@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Sparkles, Wand2, Video, Code2, FileText, Globe, BarChart3, Languages, Bot, Zap, Settings2 } from "lucide-react";
+import { Sparkles, Wand2, Video, Code2, FileText, Globe, BarChart3, Languages, Bot, Zap, Settings2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -84,7 +84,36 @@ export function SlashCommandMenu({ filter, onSelect, onClose, visible }: SlashCo
     return () => window.removeEventListener("keydown", handler, true);
   }, [visible, filtered, selectedIndex, onSelect, onClose]);
 
+  const publicSkills = filtered.filter((cmd) => cmd.visibleByDefault !== false);
+  const mySkills = filtered.filter((cmd) => cmd.visibleByDefault === false);
+
   if (!visible || filtered.length === 0) return null;
+
+  const renderItem = (cmd: (typeof filtered)[0], i: number, globalIndex: number) => {
+    const Icon = iconMap[cmd.icon ?? "sparkles"] || Sparkles;
+    return (
+      <button
+        key={cmd.slug}
+        data-active={globalIndex === selectedIndex}
+        className={cn(
+          "flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left transition-colors",
+          globalIndex === selectedIndex
+            ? "bg-accent text-accent-foreground"
+            : "hover:bg-accent/50"
+        )}
+        onClick={() => onSelect(cmd.slug, cmd.name)}
+        onMouseEnter={() => setSelectedIndex(globalIndex)}
+      >
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          <span className="font-medium">/{cmd.slug}</span>
+          <span className="text-xs text-muted-foreground ml-2 truncate">
+            {cmd.name}
+          </span>
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div
@@ -92,34 +121,28 @@ export function SlashCommandMenu({ filter, onSelect, onClose, visible }: SlashCo
       className="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-lg border bg-popover shadow-lg z-50"
     >
       <div className="p-1">
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-          Skills ({filtered.length})
-        </div>
-        {filtered.map((cmd, i) => {
-          const Icon = iconMap[cmd.icon ?? "sparkles"] || Sparkles;
-          return (
-            <button
-              key={cmd.slug}
-              data-active={i === selectedIndex}
-              className={cn(
-                "flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left transition-colors",
-                i === selectedIndex
-                  ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent/50"
-              )}
-              onClick={() => onSelect(cmd.slug, cmd.name)}
-              onMouseEnter={() => setSelectedIndex(i)}
-            >
-              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <span className="font-medium">/{cmd.slug}</span>
-                <span className="text-xs text-muted-foreground ml-2 truncate">
-                  {cmd.name}
-                </span>
-              </div>
-            </button>
-          );
-        })}
+        {mySkills.length > 0 && (
+          <>
+            <div className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              <Lock className="h-3 w-3" />
+              My Skills ({mySkills.length})
+            </div>
+            {mySkills.map((cmd, i) => renderItem(cmd, i, i))}
+            {publicSkills.length > 0 && (
+              <div className="my-1 border-t" />
+            )}
+          </>
+        )}
+        {publicSkills.length > 0 && (
+          <>
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              Skills ({publicSkills.length})
+            </div>
+            {publicSkills.map((cmd, i) =>
+              renderItem(cmd, i, mySkills.length + i)
+            )}
+          </>
+        )}
       </div>
     </div>
   );
