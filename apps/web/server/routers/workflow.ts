@@ -881,4 +881,96 @@ export const workflowRouter = router({
         });
       }
     }),
+
+  /**
+   * Analyze workflow for conversion to skill - Workflow Addition Feature
+   */
+  analyzeConversion: protectedProcedure
+    .input(z.object({ workflowId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      try {
+        const response = await fetchPythonBackend(
+          `/api/v1/workflows/${input.workflowId}/analyze-conversion`,
+          { method: "GET" },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({
+            detail: `HTTP ${response.status}: ${response.statusText}`,
+          }));
+          throw new TRPCError({
+            code: response.status === 404 ? "NOT_FOUND" : "BAD_REQUEST",
+            message: error.detail || "Failed to analyze workflow",
+          });
+        }
+
+        return await response.json();
+      } catch (error: any) {
+        console.error("[Workflow] Analyze conversion error:", error.message);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to analyze workflow for conversion",
+        });
+      }
+    }),
+
+  /**
+   * Convert workflow to skill - Workflow Addition Feature
+   */
+  convertToSkill: protectedProcedure
+    .input(
+      z.object({
+        workflowId: z.number(),
+        config: z.object({
+          name: z.string(),
+          description: z.string().optional(),
+          triggerPatterns: z.array(z.string()),
+          isEnabled: z.boolean().optional(),
+        }),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const response = await fetchPythonBackend(
+          `/api/v1/workflows/${input.workflowId}/convert-to-skill`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              name: input.config.name,
+              description: input.config.description,
+              trigger_patterns: input.config.triggerPatterns,
+              is_enabled: input.config.isEnabled ?? false,
+            }),
+          },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({
+            detail: `HTTP ${response.status}: ${response.statusText}`,
+          }));
+          throw new TRPCError({
+            code: response.status === 404 ? "NOT_FOUND" : "BAD_REQUEST",
+            message: error.detail || "Failed to convert workflow",
+          });
+        }
+
+        const data = await response.json();
+        console.log("[Workflow] Converted to skill", {
+          userId: ctx.user.id,
+          workflowId: input.workflowId,
+          skillId: data.skill_id,
+        });
+        return data;
+      } catch (error: any) {
+        console.error("[Workflow] Convert error:", error.message);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to convert workflow to skill",
+        });
+      }
+    }),
 });

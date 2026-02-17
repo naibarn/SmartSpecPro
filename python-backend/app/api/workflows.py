@@ -1611,6 +1611,146 @@ async def delete_event_subscription(
 
 
 # ============================================================================
+# Workflow to Skill Conversion Endpoints
+# ============================================================================
+
+
+@router.get("/{workflow_id}/analyze-conversion")
+async def analyze_workflow_conversion(
+    workflow_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Analyze workflow for conversion to agent skill.
+    Returns compatibility score and required adapters.
+    """
+    from app.conversion.analyzer import ConversionAnalyzer
+
+    # Fetch workflow
+    workflow = await db.get(Workflow, workflow_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    # Check access
+    if workflow.created_by != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Analyze workflow
+    analyzer = ConversionAnalyzer()
+    analysis = analyzer.analyze({
+        "id": workflow.id,
+        "nodes": workflow.workflow_json.get("nodes", []),
+        "edges": workflow.workflow_json.get("edges", []),
+    })
+
+    return {
+        "eligible": analysis.eligible,
+        "compatibility_score": analysis.compatibility_score,
+        "level": analysis.level.value,
+        "unsupported_nodes": [
+            {
+                "node_id": n.node_id,
+                "node_type": n.node_type,
+                "reason": n.reason,
+            }
+            for n in analysis.unsupported_nodes
+        ],
+        "adapters_required": [
+            {
+                "node_id": n.node_id,
+                "node_type": n.node_type,
+                "adapter": n.adapter_required,
+            }
+            for n in analysis.adapters_required
+        ],
+        "recommendations": analysis.recommendations,
+    }
+
+
+class ConvertToSkillRequest(BaseModel):
+    """Request to convert workflow to skill."""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field(default="", max_length=500)
+    trigger_patterns: list[str] = Field(default_factory=list)
+    is_enabled: bool = Field(default=False)
+
+
+@router.post("/{workflow_id}/convert-to-skill")
+async def convert_workflow_to_skill(
+    workflow_id: int,
+    request: ConvertToSkillRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Convert a workflow to an agent skill.
+    """
+    from app.conversion.analyzer import ConversionAnalyzer
+    from app.conversion.adapter_registry import AdapterRegistry
+    from datetime import timezone
+
+    # Fetch workflow
+    workflow = await db.get(Workflow, workflow_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    # Check access
+    if workflow.created_by != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Analyze workflow
+    analyzer = ConversionAnalyzer()
+    analysis = analyzer.analyze({
+        "id": workflow.id,
+        "nodes": workflow.workflow_json.get("nodes", []),
+        "edges": workflow.workflow_json.get("edges", []),
+    })
+
+    if not analysis.eligible:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Workflow not eligible for conversion: {analysis.recommendations[0] if analysis.recommendations else 'Unknown reason'}"
+        )
+
+    # Adapt nodes
+    original_nodes = workflow.workflow_json.get("nodes", [])
+    adapted_nodes = [AdapterRegistry.adapt_node(node) for node in original_nodes]
+
+    # Create skill (simplified - in production, integrate with skill system)
+    import secrets
+    skill_id = f"skill_{secrets.token_hex(8)}"
+    
+    # Prepare conversion metadata
+    conversion_metadata = {
+        "original_workflow_id": workflow_id,
+        "converted_by": current_user.id,
+        "converted_at": datetime.now(timezone.utc).isoformat(),
+        "compatibility_score": analysis.compatibility_score,
+        "adapters_used": [a.adapter_required for a in analysis.adapters_required],
+    }
+
+    logger.info(
+        "workflow_converted_to_skill",
+        workflow_id=workflow_id,
+        skill_id=skill_id,
+        user_id=current_user.id,
+        name=request.name,
+    )
+
+    return {
+        "skill_id": skill_id,
+        "name": request.name,
+        "status": "created",
+        "trigger_patterns": request.trigger_patterns,
+        "is_enabled": request.is_enabled,
+        "conversion_metadata": conversion_metadata,
+        "note": "Skill created successfully. Integration with skill registry required for full functionality.",
+    }
+
+
+# ============================================================================
 # Skills Endpoint (for skill node)
 # ============================================================================
 

@@ -2731,3 +2731,1183 @@ class NodeRegistry:
                 executor="app.orchestrator.node_executors.flow_executors.dlq_executor.DLQExecutor",  # Temporary stub
             )
         )
+
+        # ===== WORKFLOW ADDITION FEATURE (015) =====
+        
+        # ===== PHASE B: HIGH-PRIORITY NODES =====
+        
+        # HTTP Request Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="http_request",
+                display_name="HTTP Request",
+                description="Execute HTTP requests to external APIs",
+                icon="globe",
+                color="blue",
+                category="integration",
+                inputs=[
+                    InputSpec(
+                        name="url",
+                        display_name="URL",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="https://api.example.com/endpoint",
+                    ),
+                    InputSpec(
+                        name="method",
+                        display_name="Method",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="GET",
+                        options=[
+                            {"label": "GET", "value": "GET"},
+                            {"label": "POST", "value": "POST"},
+                            {"label": "PUT", "value": "PUT"},
+                            {"label": "PATCH", "value": "PATCH"},
+                            {"label": "DELETE", "value": "DELETE"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="headers",
+                        display_name="Headers",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        default={},
+                        placeholder='{"Authorization": "Bearer token"}',
+                    ),
+                    InputSpec(
+                        name="body",
+                        display_name="Request Body",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"key": "value"}',
+                    ),
+                    InputSpec(
+                        name="query_params",
+                        display_name="Query Parameters",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"page": 1, "limit": 10}',
+                    ),
+                    InputSpec(
+                        name="timeout",
+                        display_name="Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=30,
+                        validation={"min": 1, "max": 300},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="status_code", display_name="Status Code", data_type="number"),
+                    OutputSpec(name="body", display_name="Response Body", data_type="json"),
+                    OutputSpec(name="headers", display_name="Response Headers", data_type="json"),
+                ],
+                executor="app.orchestrator.node_executors.integration_executors.http_executor.HTTPExecutor",
+            )
+        )
+
+        # Send Email Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="send_email",
+                display_name="Send Email",
+                description="Send emails via configured providers",
+                icon="mail",
+                color="blue",
+                category="integration",
+                inputs=[
+                    InputSpec(
+                        name="to",
+                        display_name="To",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="recipient@example.com",
+                    ),
+                    InputSpec(
+                        name="subject",
+                        display_name="Subject",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Email subject",
+                    ),
+                    InputSpec(
+                        name="body_text",
+                        display_name="Body (Text)",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Email body...",
+                    ),
+                    InputSpec(
+                        name="body_html",
+                        display_name="Body (HTML)",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="<html>...</html>",
+                    ),
+                    InputSpec(
+                        name="from",
+                        display_name="From",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="sender@example.com (uses default if empty)",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="message_id", display_name="Message ID", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.integration_executors.email_executor.EmailExecutor",
+            )
+        )
+
+        # Schedule Trigger Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="schedule_trigger",
+                display_name="Schedule Trigger",
+                description="Trigger workflow on a cron schedule",
+                icon="calendar-clock",
+                color="green",
+                category="triggers",
+                inputs=[
+                    InputSpec(
+                        name="cron",
+                        display_name="Cron Expression",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="0 9 * * 1 (Mon at 9am)",
+                    ),
+                    InputSpec(
+                        name="timezone",
+                        display_name="Timezone",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="UTC",
+                        options=[
+                            {"label": "UTC", "value": "UTC"},
+                            {"label": "America/New_York", "value": "America/New_York"},
+                            {"label": "America/Los_Angeles", "value": "America/Los_Angeles"},
+                            {"label": "Europe/London", "value": "Europe/London"},
+                            {"label": "Asia/Tokyo", "value": "Asia/Tokyo"},
+                            {"label": "Asia/Bangkok", "value": "Asia/Bangkok"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="triggered_at", display_name="Triggered At", data_type="text"),
+                    OutputSpec(name="scheduled_time", display_name="Scheduled Time", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.trigger_executors.schedule_trigger_executor.ScheduleTriggerExecutor",
+            )
+        )
+
+        # Delay Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="delay",
+                display_name="Delay",
+                description="Pause workflow execution for a specified time",
+                icon="timer",
+                color="purple",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="duration",
+                        display_name="Duration (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=True,
+                        accepts_connection=True,
+                        default=1,
+                        validation={"min": 0.1, "max": 86400},
+                        placeholder="Delay in seconds (0.1 - 86400)",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="delayed_seconds", display_name="Delayed Seconds", data_type="number"),
+                    OutputSpec(name="started_at", display_name="Started At", data_type="text"),
+                    OutputSpec(name="ended_at", display_name="Ended At", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.delay_executor.DelayExecutor",
+            )
+        )
+
+        # Try Catch Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="try_catch",
+                display_name="Try Catch",
+                description="Execute with error handling and retry",
+                icon="shield",
+                color="red",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="retry_count",
+                        display_name="Retry Count",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=0,
+                        validation={"min": 0, "max": 5},
+                    ),
+                    InputSpec(
+                        name="retry_delay",
+                        display_name="Retry Delay (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=1,
+                        validation={"min": 0, "max": 300},
+                    ),
+                    InputSpec(
+                        name="fallback_value",
+                        display_name="Fallback Value",
+                        data_type="any",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Value to return on failure...",
+                    ),
+                    InputSpec(
+                        name="continue_on_error",
+                        display_name="Continue on Error",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="result", display_name="Result", data_type="any"),
+                    OutputSpec(name="error", display_name="Error Info", data_type="json"),
+                    OutputSpec(name="attempts", display_name="Attempt Details", data_type="array"),
+                ],
+                executor="app.orchestrator.node_executors.reliability_executors.try_catch_executor.TryCatchExecutor",
+            )
+        )
+
+        # ===== PHASE C: MEDIUM-PRIORITY NODES =====
+
+        # Webhook Trigger Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="webhook_trigger",
+                display_name="Webhook Trigger",
+                description="Trigger workflow via HTTP webhook",
+                icon="webhook",
+                color="green",
+                category="triggers",
+                inputs=[
+                    InputSpec(
+                        name="webhook_id",
+                        display_name="Webhook ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="Auto-generated if empty",
+                    ),
+                    InputSpec(
+                        name="secret",
+                        display_name="Secret (for signature verification)",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="Shared secret for HMAC verification",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="triggered_at", display_name="Triggered At", data_type="text"),
+                    OutputSpec(name="method", display_name="HTTP Method", data_type="text"),
+                    OutputSpec(name="body", display_name="Request Body", data_type="json"),
+                    OutputSpec(name="headers", display_name="Headers", data_type="json"),
+                    OutputSpec(name="query", display_name="Query Params", data_type="json"),
+                ],
+                executor="app.orchestrator.node_executors.trigger_executors.webhook_trigger_executor.WebhookTriggerExecutor",
+            )
+        )
+
+        # Webhook Response Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="webhook_response",
+                display_name="Webhook Response",
+                description="Send response back to webhook caller",
+                icon="reply",
+                color="green",
+                category="outputs",
+                inputs=[
+                    InputSpec(
+                        name="status_code",
+                        display_name="Status Code",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=200,
+                        validation={"min": 100, "max": 599},
+                    ),
+                    InputSpec(
+                        name="body",
+                        display_name="Response Body",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        default={"success": True},
+                    ),
+                    InputSpec(
+                        name="headers",
+                        display_name="Custom Headers",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        default={},
+                    ),
+                ],
+                outputs=[],
+                executor="app.orchestrator.node_executors.trigger_executors.webhook_trigger_executor.WebhookResponseExecutor",
+            )
+        )
+
+        # File Read Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="read_file",
+                display_name="Read File",
+                description="Read file from workflow storage",
+                icon="file-input",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="file_path",
+                        display_name="File Path",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="data/file.txt",
+                    ),
+                    InputSpec(
+                        name="encoding",
+                        display_name="Encoding",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="utf-8",
+                        options=[
+                            {"label": "UTF-8", "value": "utf-8"},
+                            {"label": "ASCII", "value": "ascii"},
+                            {"label": "ISO-8859-1", "value": "iso-8859-1"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="content", display_name="Content", data_type="text"),
+                    OutputSpec(name="file_name", display_name="File Name", data_type="text"),
+                    OutputSpec(name="file_size", display_name="Size (bytes)", data_type="number"),
+                ],
+                executor="app.orchestrator.node_executors.io_executors.file_read_executor.FileReadExecutor",
+            )
+        )
+
+        # File Write Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="write_file",
+                display_name="Write File",
+                description="Write file to workflow storage",
+                icon="file-output",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="file_path",
+                        display_name="File Path",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="outputs/result.txt",
+                    ),
+                    InputSpec(
+                        name="content",
+                        display_name="Content",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="File content...",
+                    ),
+                    InputSpec(
+                        name="encoding",
+                        display_name="Encoding",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="utf-8",
+                        options=[
+                            {"label": "UTF-8", "value": "utf-8"},
+                            {"label": "ASCII", "value": "ascii"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="append",
+                        display_name="Append Mode",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=False,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="file_path", display_name="Saved Path", data_type="text"),
+                    OutputSpec(name="bytes_written", display_name="Bytes Written", data_type="number"),
+                ],
+                executor="app.orchestrator.node_executors.io_executors.file_write_executor.FileWriteExecutor",
+            )
+        )
+
+        # CSV Parser Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="csv_parser",
+                display_name="CSV Parser",
+                description="Parse CSV files with auto-detection",
+                icon="table",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="csv_input",
+                        display_name="CSV Input",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="CSV content or file path (/data/file.csv)",
+                    ),
+                    InputSpec(
+                        name="delimiter",
+                        display_name="Delimiter",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="auto",
+                        options=[
+                            {"label": "Auto-detect", "value": ""},
+                            {"label": "Comma (,)", "value": ","},
+                            {"label": "Semicolon (;)", "value": ";"},
+                            {"label": "Tab", "value": "\t"},
+                            {"label": "Pipe (|)", "value": "|"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="has_header",
+                        display_name="Has Header Row",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                    InputSpec(
+                        name="max_rows",
+                        display_name="Max Rows",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=10000,
+                        validation={"min": 1, "max": 100000},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="rows", display_name="Rows", data_type="array"),
+                    OutputSpec(name="row_count", display_name="Row Count", data_type="number"),
+                    OutputSpec(name="columns", display_name="Columns", data_type="array"),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.csv_parser_executor.CSVParserExecutor",
+            )
+        )
+
+        # Template Engine Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="template_engine",
+                display_name="Template Engine",
+                description="Render templates with variable substitution",
+                icon="file-code",
+                color="orange",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="template",
+                        display_name="Template",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Hello {{name}}!",
+                    ),
+                    InputSpec(
+                        name="variables",
+                        display_name="Variables",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=True,
+                        accepts_connection=True,
+                        default={},
+                        placeholder='{"name": "World"}',
+                    ),
+                    InputSpec(
+                        name="engine",
+                        display_name="Template Engine",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="mustache",
+                        options=[
+                            {"label": "Mustache {{var}}", "value": "mustache"},
+                            {"label": "Python f-string {var}", "value": "fstring"},
+                            {"label": "Jinja2 {{ var }}", "value": "jinja2"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="result", display_name="Rendered Output", data_type="text"),
+                    OutputSpec(name="variables_used", display_name="Variables Used", data_type="array"),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.template_engine_executor.TemplateEngineExecutor",
+            )
+        )
+
+        # Retry Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="retry",
+                display_name="Retry",
+                description="Retry failed operations with configurable strategies",
+                icon="refresh-cw",
+                color="red",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="max_attempts",
+                        display_name="Max Attempts",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=3,
+                        validation={"min": 1, "max": 10},
+                    ),
+                    InputSpec(
+                        name="delay",
+                        display_name="Base Delay (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=1,
+                        validation={"min": 0, "max": 300},
+                    ),
+                    InputSpec(
+                        name="strategy",
+                        display_name="Strategy",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="exponential",
+                        options=[
+                            {"label": "Fixed", "value": "fixed"},
+                            {"label": "Linear", "value": "linear"},
+                            {"label": "Exponential", "value": "exponential"},
+                            {"label": "Exponential + Jitter", "value": "exponential_jitter"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="result", display_name="Result", data_type="any"),
+                    OutputSpec(name="attempts", display_name="Attempt Details", data_type="array"),
+                ],
+                executor="app.orchestrator.node_executors.reliability_executors.retry_executor.RetryExecutor",
+            )
+        )
+
+        # ===== PHASE D: ADVANCED NODES =====
+
+        # Parallel Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="parallel",
+                display_name="Parallel",
+                description="Execute multiple branches",
+                icon="git-branch",
+                color="purple",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="branches",
+                        display_name="Branches Config",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=True,
+                        accepts_connection=False,
+                        default=[],
+                        placeholder="[{\"id\": \"branch1\", \"node_type\": \"llm_call\"}]",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="results", display_name="Results", data_type="json"),
+                    OutputSpec(name="completed_branches", display_name="Completed", data_type="number"),
+                    OutputSpec(name="failed_branches", display_name="Failed", data_type="number"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.parallel_executor.ParallelExecutor",
+            )
+        )
+
+        # Join Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="join",
+                display_name="Join",
+                description="Wait for parallel branches and combine results",
+                icon="git-merge",
+                color="purple",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="strategy",
+                        display_name="Join Strategy",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="all",
+                        options=[
+                            {"label": "Wait for All", "value": "all"},
+                            {"label": "First Complete", "value": "any"},
+                            {"label": "N Complete", "value": "n"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="required_count",
+                        display_name="Required Count (for N strategy)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=1,
+                    ),
+                    InputSpec(
+                        name="merge_strategy",
+                        display_name="Merge Strategy",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="object",
+                        options=[
+                            {"label": "As Object", "value": "object"},
+                            {"label": "As Array", "value": "array"},
+                            {"label": "Concatenate", "value": "concat"},
+                            {"label": "Sum", "value": "sum"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="results", display_name="Results", data_type="array"),
+                    OutputSpec(name="merged", display_name="Merged Output", data_type="any"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.parallel_executor.JoinExecutor",
+            )
+        )
+
+        # Subworkflow Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="subworkflow",
+                display_name="Subworkflow",
+                description="Execute another workflow as a sub-process",
+                icon="workflow",
+                color="purple",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="workflow_id",
+                        display_name="Workflow ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="ID of workflow to execute",
+                    ),
+                    InputSpec(
+                        name="inputs",
+                        display_name="Inputs",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        default={},
+                    ),
+                    InputSpec(
+                        name="timeout",
+                        display_name="Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=60,
+                        validation={"min": 1, "max": 300},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="outputs", display_name="Outputs", data_type="json"),
+                ],
+                executor="app.orchestrator.node_executors.flow_executors.subworkflow_executor.SubworkflowExecutor",
+            )
+        )
+
+        # Circuit Breaker Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="circuit_breaker",
+                display_name="Circuit Breaker",
+                description="Prevent cascading failures",
+                icon="shield-alert",
+                color="red",
+                category="flow_control",
+                inputs=[
+                    InputSpec(
+                        name="circuit_id",
+                        display_name="Circuit ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="Unique ID for this circuit",
+                    ),
+                    InputSpec(
+                        name="failure_threshold",
+                        display_name="Failure Threshold",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=5,
+                        validation={"min": 1, "max": 20},
+                    ),
+                    InputSpec(
+                        name="recovery_timeout",
+                        display_name="Recovery Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=60,
+                        validation={"min": 10, "max": 3600},
+                    ),
+                    InputSpec(
+                        name="fallback_value",
+                        display_name="Fallback Value",
+                        data_type="any",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="circuit_state", display_name="Circuit State", data_type="text"),
+                    OutputSpec(name="result", display_name="Result", data_type="any"),
+                ],
+                executor="app.orchestrator.node_executors.reliability_executors.circuit_breaker_executor.CircuitBreakerExecutor",
+            )
+        )
+
+        # WebSocket Client Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="websocket_client",
+                display_name="WebSocket Client",
+                description="Connect to WebSocket servers",
+                icon="radio",
+                color="blue",
+                category="integration",
+                inputs=[
+                    InputSpec(
+                        name="url",
+                        display_name="WebSocket URL",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="wss://example.com/socket",
+                    ),
+                    InputSpec(
+                        name="mode",
+                        display_name="Mode",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="send",
+                        options=[
+                            {"label": "Send", "value": "send"},
+                            {"label": "Receive", "value": "receive"},
+                            {"label": "Request-Reply", "value": "request_reply"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="message",
+                        display_name="Message",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Message to send...",
+                    ),
+                    InputSpec(
+                        name="timeout",
+                        display_name="Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=30,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                    OutputSpec(name="message", display_name="Message", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.integration_executors.websocket_executor.WebSocketClientExecutor",
+            )
+        )
+
+        # GraphQL Request Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="graphql_request",
+                display_name="GraphQL Request",
+                description="Execute GraphQL queries and mutations",
+                icon="graphql",
+                color="blue",
+                category="integration",
+                inputs=[
+                    InputSpec(
+                        name="url",
+                        display_name="GraphQL Endpoint",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="https://api.example.com/graphql",
+                    ),
+                    InputSpec(
+                        name="query",
+                        display_name="Query",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="query { field }",
+                    ),
+                    InputSpec(
+                        name="variables",
+                        display_name="Variables",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        default={},
+                    ),
+                    InputSpec(
+                        name="operation_name",
+                        display_name="Operation Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="data", display_name="Data", data_type="json"),
+                    OutputSpec(name="errors", display_name="Errors", data_type="json"),
+                ],
+                executor="app.orchestrator.node_executors.integration_executors.graphql_executor.GraphQLExecutor",
+            )
+        )
+
+        # Prompt Template Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="prompt_template",
+                display_name="Prompt Template",
+                description="Generate prompts from templates",
+                icon="file-text",
+                color="blue",
+                category="ai",
+                inputs=[
+                    InputSpec(
+                        name="template",
+                        display_name="Template",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=False,
+                        placeholder="You are a helpful assistant. User: {{message}}",
+                    ),
+                    InputSpec(
+                        name="variables",
+                        display_name="Variables",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=True,
+                        accepts_connection=True,
+                        default={},
+                    ),
+                    InputSpec(
+                        name="format",
+                        display_name="Format",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="mustache",
+                        options=[
+                            {"label": "Mustache", "value": "mustache"},
+                            {"label": "f-string", "value": "fstring"},
+                            {"label": "Jinja2", "value": "jinja2"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="prompt", display_name="Prompt", data_type="text"),
+                    OutputSpec(name="token_estimate", display_name="Token Estimate", data_type="number"),
+                ],
+                executor="app.orchestrator.node_executors.ai_executors.prompt_template_executor.PromptTemplateExecutor",
+            )
+        )
+
+        # Output Parser Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="output_parser",
+                display_name="Output Parser",
+                description="Parse and validate LLM outputs",
+                icon="scissors",
+                color="blue",
+                category="ai",
+                inputs=[
+                    InputSpec(
+                        name="text",
+                        display_name="Text to Parse",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="parser",
+                        display_name="Parser",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="json",
+                        options=[
+                            {"label": "JSON", "value": "json"},
+                            {"label": "Regex", "value": "regex"},
+                            {"label": "List", "value": "list"},
+                            {"label": "Key-Value", "value": "key_value"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="pattern",
+                        display_name="Pattern (for regex)",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="Regular expression pattern",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="parsed", display_name="Parsed Data", data_type="any"),
+                    OutputSpec(name="valid", display_name="Is Valid", data_type="boolean"),
+                ],
+                executor="app.orchestrator.node_executors.ai_executors.output_parser_executor.OutputParserExecutor",
+            )
+        )
+
+        # Multi-Model Router Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="multi_model_router",
+                display_name="Multi-Model Router",
+                description="Route to different models based on criteria",
+                icon="route",
+                color="blue",
+                category="ai",
+                inputs=[
+                    InputSpec(
+                        name="prompt",
+                        display_name="Prompt",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
+                        name="strategy",
+                        display_name="Strategy",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="cost",
+                        options=[
+                            {"label": "Cost Optimized", "value": "cost"},
+                            {"label": "Complexity Based", "value": "complexity"},
+                            {"label": "Quality", "value": "quality"},
+                            {"label": "Fallback", "value": "fallback"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="preferred_model",
+                        display_name="Preferred Model",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="",
+                        options=[
+                            {"label": "Auto", "value": ""},
+                            {"label": "GPT-4", "value": "gpt-4"},
+                            {"label": "GPT-3.5", "value": "gpt-3.5-turbo"},
+                            {"label": "Claude 3 Opus", "value": "claude-3-opus"},
+                            {"label": "Claude 3 Sonnet", "value": "claude-3-sonnet"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="max_cost",
+                        display_name="Max Cost ($)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="Maximum cost per request",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="selected_model", display_name="Selected Model", data_type="text"),
+                    OutputSpec(name="estimated_tokens", display_name="Token Estimate", data_type="number"),
+                    OutputSpec(name="estimated_cost", display_name="Cost Estimate", data_type="number"),
+                ],
+                executor="app.orchestrator.node_executors.ai_executors.multi_model_router_executor.MultiModelRouterExecutor",
+            )
+        )
+
+
+
+# Helper function to get executor class by node type
+def get_executor(node_type: str):
+    """Get executor class for a node type."""
+    from app.orchestrator.node_executors.integration_executors.http_executor import HTTPExecutor
+    from app.orchestrator.node_executors.integration_executors.email_executor import EmailExecutor
+    from app.orchestrator.node_executors.integration_executors.websocket_executor import WebSocketClientExecutor
+    from app.orchestrator.node_executors.integration_executors.graphql_executor import GraphQLExecutor
+    from app.orchestrator.node_executors.trigger_executors.schedule_trigger_executor import ScheduleTriggerExecutor
+    from app.orchestrator.node_executors.trigger_executors.webhook_trigger_executor import WebhookTriggerExecutor, WebhookResponseExecutor
+    from app.orchestrator.node_executors.flow_executors.delay_executor import DelayExecutor
+    from app.orchestrator.node_executors.flow_executors.parallel_executor import ParallelExecutor, JoinExecutor
+    from app.orchestrator.node_executors.flow_executors.subworkflow_executor import SubworkflowExecutor
+    from app.orchestrator.node_executors.reliability_executors.try_catch_executor import TryCatchExecutor
+    from app.orchestrator.node_executors.reliability_executors.retry_executor import RetryExecutor
+    from app.orchestrator.node_executors.reliability_executors.circuit_breaker_executor import CircuitBreakerExecutor
+    from app.orchestrator.node_executors.io_executors.file_read_executor import FileReadExecutor
+    from app.orchestrator.node_executors.io_executors.file_write_executor import FileWriteExecutor
+    from app.orchestrator.node_executors.data_executors.csv_parser_executor import CSVParserExecutor
+    from app.orchestrator.node_executors.data_executors.template_engine_executor import TemplateEngineExecutor
+    from app.orchestrator.node_executors.ai_executors.prompt_template_executor import PromptTemplateExecutor
+    from app.orchestrator.node_executors.ai_executors.output_parser_executor import OutputParserExecutor
+    from app.orchestrator.node_executors.ai_executors.multi_model_router_executor import MultiModelRouterExecutor
+    
+    executor_map = {
+        # Integration
+        "http_request": HTTPExecutor,
+        "send_email": EmailExecutor,
+        "websocket_client": WebSocketClientExecutor,
+        "graphql_request": GraphQLExecutor,
+        # Triggers
+        "schedule_trigger": ScheduleTriggerExecutor,
+        "webhook_trigger": WebhookTriggerExecutor,
+        "webhook_response": WebhookResponseExecutor,
+        # Flow
+        "delay": DelayExecutor,
+        "parallel": ParallelExecutor,
+        "join": JoinExecutor,
+        "subworkflow": SubworkflowExecutor,
+        # Reliability
+        "try_catch": TryCatchExecutor,
+        "retry": RetryExecutor,
+        "circuit_breaker": CircuitBreakerExecutor,
+        # IO
+        "read_file": FileReadExecutor,
+        "write_file": FileWriteExecutor,
+        # Data
+        "csv_parser": CSVParserExecutor,
+        "template_engine": TemplateEngineExecutor,
+        # AI
+        "prompt_template": PromptTemplateExecutor,
+        "output_parser": OutputParserExecutor,
+        "multi_model_router": MultiModelRouterExecutor,
+    }
+    
+    return executor_map.get(node_type)
