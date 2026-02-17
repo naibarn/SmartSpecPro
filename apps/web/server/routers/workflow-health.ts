@@ -6,8 +6,9 @@
  */
 
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc';
+import { router, protectedProcedure } from '../_core/trpc';
 import { TRPCError } from '@trpc/server';
+import type { TrpcContext } from '../_core/context';
 
 const ENDPOINTS = [
   { path: '/api/v1/workflow/available-models', required: true, name: 'available-models' },
@@ -35,7 +36,7 @@ export const workflowHealthRouter = router({
       allRequiredOk: z.boolean(),
       timestamp: z.string(),
     }))
-    .query(async ({ ctx }) => {
+    .query(async ({ ctx }: { ctx: TrpcContext }) => {
       const pythonBackendUrl = process.env.PYTHON_BACKEND_URL;
       
       if (!pythonBackendUrl) {
@@ -52,7 +53,7 @@ export const workflowHealthRouter = router({
             const response = await fetch(`${pythonBackendUrl}${ep.path}`, {
               method: 'HEAD',
               headers: { 
-                'Authorization': `Bearer ${ctx.token}`,
+                'Authorization': `Bearer ${ctx.userToken}`,
                 'Content-Type': 'application/json',
               },
             });
@@ -103,7 +104,7 @@ export const workflowHealthRouter = router({
       latency: z.number(),
       details: z.record(z.any()).optional(),
     }))
-    .query(async ({ input, ctx }) => {
+    .query(async ({ input, ctx }: { input: { name: string }, ctx: TrpcContext }) => {
       const pythonBackendUrl = process.env.PYTHON_BACKEND_URL;
       
       if (!pythonBackendUrl) {
@@ -127,7 +128,7 @@ export const workflowHealthRouter = router({
         const response = await fetch(`${pythonBackendUrl}${endpoint.path}`, {
           method: 'GET',
           headers: { 
-            'Authorization': `Bearer ${ctx.token}`,
+            'Authorization': `Bearer ${ctx.userToken}`,
             'Content-Type': 'application/json',
           },
         });

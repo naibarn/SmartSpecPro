@@ -79,15 +79,15 @@ export function ConvertToSkillDialog({
   });
   const [createdSkillId, setCreatedSkillId] = useState<string | null>(null);
 
-  // Analysis query
-  const analyzeMutation = trpc.workflow.analyzeConversion.useMutation({
-    onSuccess: (data) => {
+  // Analysis query - use type assertion for tRPC
+  const analyzeMutation = (trpc as any).workflow.analyzeConversion.useMutation({
+    onSuccess: (data: AnalysisResult) => {
       setAnalysis(data);
       if (data.eligible) {
         setStep("configure");
       }
     },
-    onError: (error) => {
+    onError: (error: { message: string }) => {
       toast({
         title: "Analysis Failed",
         description: error.message,
@@ -96,9 +96,9 @@ export function ConvertToSkillDialog({
     },
   });
 
-  // Convert mutation
-  const convertMutation = trpc.workflow.convertToSkill.useMutation({
-    onSuccess: (data) => {
+  // Convert mutation - use type assertion for tRPC
+  const convertMutation = (trpc as any).workflow.convertToSkill.useMutation({
+    onSuccess: (data: { skillId: string }) => {
       setCreatedSkillId(data.skillId);
       setStep("success");
       onSuccess?.(data.skillId);
@@ -107,7 +107,7 @@ export function ConvertToSkillDialog({
         description: `Skill "${config.name}" has been created successfully.`,
       });
     },
-    onError: (error) => {
+    onError: (error: { message: string }) => {
       toast({
         title: "Conversion Failed",
         description: error.message,
