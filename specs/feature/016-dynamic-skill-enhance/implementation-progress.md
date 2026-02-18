@@ -44,6 +44,11 @@
    - Changes: Created ChatDynamicSkillForm wrapper with image upload
    - Tests: Created ChatDynamicSkillForm.test.tsx
 
+5. [x] Section 7: API Extension
+   - Commit: bdf7719
+   - Changes: Added dynamicParams support with validation
+   - Tests: Created chat.executeSkill.test.ts
+
 ### Blocked Tasks
 
 None yet.
