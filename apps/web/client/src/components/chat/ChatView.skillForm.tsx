@@ -165,10 +165,20 @@ export function useChatSkillForm(
         )
       : values;
     
+    // Get prompt from form values if not provided directly
+    // Check common prompt field names
+    const promptValue = prompt 
+      || values.prompt 
+      || values.input 
+      || values.message 
+      || values.description 
+      || values.text 
+      || '';
+    
     try {
       const result = await execute({
         skillId: skillFormState.skillId,
-        prompt,
+        prompt: promptValue,
         dynamicParams: mappedValues,
       });
       
