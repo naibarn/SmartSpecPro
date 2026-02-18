@@ -1224,7 +1224,7 @@ export const chatRouter = router({
       const userToken = ctx.userToken || createSkillToken(ctx.user.id);
 
       // Execute the skill
-      const result = await executeSkill(
+      let result = await executeSkill(
         skill,
         {
           prompt: input.prompt || '',

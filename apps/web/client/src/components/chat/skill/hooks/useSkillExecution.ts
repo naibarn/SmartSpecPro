@@ -68,10 +68,11 @@ export function useSkillExecution(
       });
     },
     onError: (err) => {
-      setError(err);
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
       analytics.track('skill_form_error', {
         conversation_id: conversationId,
-        error: err.message,
+        error: error.message,
       });
     },
   });

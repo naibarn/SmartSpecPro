@@ -82,7 +82,6 @@ export function MobileSkillForm({
           if (!isOpen) handleDismiss();
         }}
         snapPoints={[0.5, 0.9]}
-        defaultSnapPoint={0.9}
       >
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />

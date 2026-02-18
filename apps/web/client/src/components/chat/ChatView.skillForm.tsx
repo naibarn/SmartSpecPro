@@ -305,6 +305,3 @@ export function useChatSkillForm(
     renderSkillSelector,
   };
 }
-
-// Re-export types
-export type { SkillFormState };
