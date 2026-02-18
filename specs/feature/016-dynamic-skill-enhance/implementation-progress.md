@@ -39,6 +39,11 @@
    - Changes: Created useSkillForm and useSkillExecution hooks
    - Tests: Created useSkillForm.test.ts and useSkillExecution.test.ts
 
+4. [x] Section 3: ChatDynamicSkillForm
+   - Commit: a36bb19
+   - Changes: Created ChatDynamicSkillForm wrapper with image upload
+   - Tests: Created ChatDynamicSkillForm.test.tsx
+
 ### Blocked Tasks
 
 None yet.

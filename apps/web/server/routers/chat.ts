@@ -198,6 +198,114 @@ const skillSettingsSchema = z.object({
 const entityTypeSchema = z.enum(["user", "project", "preference", "technical"]);
 type MessageAttachment = z.infer<typeof attachmentSchema>;
 
+// ==================== Validation Helpers ====================
+
+/**
+ * Validate dynamic parameters from skill forms
+ * - Type checking for known field types
+ * - XSS prevention for string fields
+ * - URL validation for image uploads
+ */
+function validateDynamicParams(
+  params: Record<string, any>,
+  skill: { configJson?: Record<string, any> | null }
+): string[] {
+  const errors: string[] = [];
+
+  // Get expected params from skill config
+  const configJson = skill.configJson || {};
+  const expectedParams = configJson.inputFields || [];
+
+  // Validate each parameter
+  for (const [key, value] of Object.entries(params)) {
+    const fieldDef = expectedParams.find((f: any) => f.id === key);
+
+    if (!fieldDef) {
+      // Unknown parameter - log but don't block (for backward compatibility)
+      console.warn(`[executeSkill] Unknown parameter: ${key} for skill`);
+      continue;
+    }
+
+    // Type validation
+    switch (fieldDef.type) {
+      case 'number':
+        if (typeof value !== 'number') {
+          errors.push(`${key} must be a number`);
+        }
+        break;
+      case 'boolean':
+        if (typeof value !== 'boolean') {
+          errors.push(`${key} must be a boolean`);
+        }
+        break;
+      case 'text':
+      case 'textarea':
+        if (typeof value !== 'string') {
+          errors.push(`${key} must be a string`);
+        } else {
+          // XSS prevention
+          if (/<script|javascript:|on\w+\s*=/i.test(value)) {
+            errors.push(`${key} contains invalid characters`);
+          }
+          // Max length check
+          if (fieldDef.maxLength && value.length > fieldDef.maxLength) {
+            errors.push(`${key} exceeds maximum length of ${fieldDef.maxLength}`);
+          }
+        }
+        break;
+      case 'select':
+        // Validate option exists
+        const validOptions = (fieldDef.options || []).map((o: any) => o.value);
+        if (validOptions.length > 0 && !validOptions.includes(value)) {
+          errors.push(`${key} has invalid value`);
+        }
+        break;
+      case 'imageUpload':
+      case 'images':
+        // Validate URLs
+        if (Array.isArray(value)) {
+          for (const url of value) {
+            if (!isValidUploadUrl(url)) {
+              errors.push(`${key} contains invalid URL: ${url}`);
+            }
+          }
+        } else if (typeof value === 'string' && !isValidUploadUrl(value)) {
+          errors.push(`${key} has invalid URL`);
+        }
+        break;
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validate upload URLs
+ * - Allow relative URLs (/uploads/...)
+ * - Allow configured domains
+ * - Reject javascript: and data: URLs
+ */
+function isValidUploadUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+
+  // Reject dangerous protocols
+  if (/^(javascript|data|vbscript):/i.test(url)) {
+    return false;
+  }
+
+  // Allow relative URLs
+  if (url.startsWith('/uploads/')) return true;
+  if (url.startsWith('/')) return true; // Other relative paths
+
+  // Allow http/https from any domain (images are served from CDN)
+  try {
+    const urlObj = new URL(url);
+    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 // ==================== Chat Router ====================
 
 export const chatRouter = router({
@@ -1014,7 +1122,7 @@ export const chatRouter = router({
     .input(
       z.object({
         skillId: z.string().min(1).max(50),
-        prompt: z.string().min(1).max(5000),
+        prompt: z.string().min(1).max(5000).optional(),
         model: z.string().max(50).optional(),
         aspectRatio: skillAspectRatioSchema.optional(),
         numImages: z.number().min(1).max(4).optional(),
@@ -1030,6 +1138,8 @@ export const chatRouter = router({
         resolution: z.string().max(10).optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: z.record(z.any()).optional(),
+        // Alias for extraParams - used by dynamic skill forms
+        dynamicParams: z.record(z.any()).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1080,6 +1190,23 @@ export const chatRouter = router({
         }
       }
 
+      // Merge dynamicParams with extraParams (dynamicParams takes precedence)
+      const mergedExtraParams = {
+        ...input.extraParams,
+        ...input.dynamicParams,
+      };
+
+      // Validate dynamicParams if provided
+      if (Object.keys(mergedExtraParams).length > 0) {
+        const validationErrors = validateDynamicParams(mergedExtraParams, skill as any);
+        if (validationErrors.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Validation failed: ${validationErrors.join(', ')}`,
+          });
+        }
+      }
+
       // Check if skill can be auto-executed
       // Python-mode skills are always executable (they handle their own subprocess)
       const isPythonMode = (skill as any).executionMode === "python";
@@ -1100,7 +1227,7 @@ export const chatRouter = router({
       const result = await executeSkill(
         skill,
         {
-          prompt: input.prompt,
+          prompt: input.prompt || '',
           model: input.model,
           aspectRatio: input.aspectRatio,
           numImages: input.numImages,
@@ -1112,7 +1239,7 @@ export const chatRouter = router({
           referenceStyleUrl: input.referenceStyleUrl,
           resolution: input.resolution,
           apiConfig: input.apiConfig,
-          extraParams: input.extraParams,
+          extraParams: mergedExtraParams,
           publicUrl: ctx.publicUrl ?? undefined,
         },
         ctx.user.id,
