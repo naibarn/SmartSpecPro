@@ -172,15 +172,20 @@ export function useChatSkillForm(
       || values.input 
       || values.message 
       || values.description 
-      || values.text 
-      || '';
+      || values.text;
+    
+    // Build execute params - only include prompt if it has value
+    const executeParams: any = {
+      skillId: skillFormState.skillId,
+      dynamicParams: mappedValues,
+    };
+    
+    if (promptValue && promptValue.trim().length > 0) {
+      executeParams.prompt = promptValue.trim();
+    }
     
     try {
-      const result = await execute({
-        skillId: skillFormState.skillId,
-        prompt: promptValue,
-        dynamicParams: mappedValues,
-      });
+      const result = await execute(executeParams);
       
       if (result?.success) {
         // Send context message if needed
