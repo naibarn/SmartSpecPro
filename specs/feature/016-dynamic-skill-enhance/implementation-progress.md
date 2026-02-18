@@ -24,7 +24,10 @@
 
 ### Completed Sections
 
-None yet.
+1. [x] Section 2: DynamicSkillForm Refactor
+   - Commit: 94f88a2
+   - Changes: Added className prop, optionGroups support, cascading selects
+   - Tests: Created DynamicSkillForm.test.tsx
 
 ### Blocked Tasks
 
