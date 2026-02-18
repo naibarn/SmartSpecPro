@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -95,8 +95,15 @@ export interface SkillInputField {
   searchable?: boolean;
   dependsOn?: {
     field: string;
-    value: any;
+    value?: any;
+    notEmpty?: boolean;
   };
+  /** Options grouped by parent field value for cascading selects */
+  optionGroups?: Record<string, Array<{
+    value: string;
+    label: string;
+    labelTh?: string;
+  }>>;
 }
 
 export interface SkillInputSection {
@@ -142,6 +149,8 @@ interface DynamicSkillFormProps {
   excludeFields?: string[];
   /** Callback when a special style action is triggered (e.g., "upscale") */
   onStyleAction?: (action: StyleAction) => void;
+  /** Additional CSS class for the container */
+  className?: string;
 }
 
 export default function DynamicSkillForm({
@@ -155,6 +164,7 @@ export default function DynamicSkillForm({
   isUploading,
   excludeFields = [],
   onStyleAction,
+  className,
 }: DynamicSkillFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -175,6 +185,27 @@ export default function DynamicSkillForm({
       [sectionId]: !prev[sectionId],
     }));
   };
+  
+  // Reset dependent field values when parent changes (for cascading selects)
+  useEffect(() => {
+    schema.sections.forEach((section) => {
+      section.fields.forEach((field) => {
+        if (field.optionGroups && field.dependsOn) {
+          const parentValue = values[field.dependsOn.field];
+          const currentValue = values[field.id];
+          
+          // If parent changed, check if current value is still valid
+          const validOptions = field.optionGroups[parentValue] || [];
+          const isValid = validOptions.some((opt) => opt.value === currentValue);
+          
+          if (!isValid && currentValue) {
+            // Reset to empty
+            onChange({ ...values, [field.id]: '' });
+          }
+        }
+      });
+    });
+  }, [schema, values, onChange]);
 
   // Helper to get localized text
   const getText = (en: string | undefined, th: string | undefined) => {
@@ -196,7 +227,28 @@ export default function DynamicSkillForm({
   const isFieldVisible = (field: SkillInputField): boolean => {
     if (!field.dependsOn) return true;
     const dependentValue = values[field.dependsOn.field];
-    return dependentValue === field.dependsOn.value;
+    
+    // Handle notEmpty condition
+    if (field.dependsOn.notEmpty) {
+      return !!dependentValue && dependentValue !== '';
+    }
+    
+    // Handle value condition
+    if (field.dependsOn.value !== undefined) {
+      return dependentValue === field.dependsOn.value;
+    }
+    
+    return true;
+  };
+  
+  // Get select options, handling optionGroups for cascading selects
+  const getSelectOptions = (field: SkillInputField) => {
+    // If field has optionGroups and dependsOn, filter by parent value
+    if (field.optionGroups && field.dependsOn) {
+      const parentValue = values[field.dependsOn.field];
+      return field.optionGroups[parentValue] || [];
+    }
+    return field.options || [];
   };
 
   // Handle file selection for image fields
@@ -307,6 +359,9 @@ export default function DynamicSkillForm({
         );
 
       case "select":
+        const selectOptions = getSelectOptions(field);
+        const isDisabled = field.optionGroups && field.dependsOn && selectOptions.length === 0;
+        
         return (
           <div key={field.id} className="space-y-1.5">
             <Label htmlFor={field.id} className="flex items-center gap-1.5">
@@ -328,12 +383,19 @@ export default function DynamicSkillForm({
             <Select
               value={value || undefined}
               onValueChange={(v) => updateValue(field.id, v)}
+              disabled={isDisabled}
             >
               <SelectTrigger id={field.id}>
-                <SelectValue placeholder={placeholder || "Select..."} />
+                <SelectValue 
+                  placeholder={
+                    isDisabled 
+                      ? `Select ${field.dependsOn?.field} first` 
+                      : (placeholder || "Select...")
+                  } 
+                />
               </SelectTrigger>
               <SelectContent className="max-h-[300px]">
-                {field.options?.filter((opt) => opt.value != null && opt.value !== "").map((opt) => (
+                {selectOptions.filter((opt) => opt.value != null && opt.value !== "").map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     {getText(opt.label, opt.labelTh)}
                   </SelectItem>
@@ -713,7 +775,7 @@ export default function DynamicSkillForm({
   };
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", className)}>
       {schema.sections.map((section) => renderSection(section))}
 
       {/* Reference Images */}
