@@ -29,6 +29,11 @@
    - Changes: Added className prop, optionGroups support, cascading selects
    - Tests: Created DynamicSkillForm.test.tsx
 
+2. [x] Section 1: SkillSelector Component
+   - Commit: f78d161
+   - Changes: Created SkillSelector dialog with search, schema indicator
+   - Tests: Created SkillSelector.test.tsx
+
 ### Blocked Tasks
 
 None yet.
