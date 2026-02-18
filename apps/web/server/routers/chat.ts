@@ -1122,7 +1122,7 @@ export const chatRouter = router({
     .input(
       z.object({
         skillId: z.string().min(1).max(50),
-        prompt: z.string().min(1).max(5000).optional(),
+        prompt: z.string().max(5000).optional(),
         model: z.string().max(50).optional(),
         aspectRatio: skillAspectRatioSchema.optional(),
         numImages: z.number().min(1).max(4).optional(),
