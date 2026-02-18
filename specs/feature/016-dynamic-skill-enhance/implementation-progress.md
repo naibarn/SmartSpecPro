@@ -34,6 +34,11 @@
    - Changes: Created SkillSelector dialog with search, schema indicator
    - Tests: Created SkillSelector.test.tsx
 
+3. [x] Section 5: Hooks
+   - Commit: ede6929
+   - Changes: Created useSkillForm and useSkillExecution hooks
+   - Tests: Created useSkillForm.test.ts and useSkillExecution.test.ts
+
 ### Blocked Tasks
 
 None yet.
