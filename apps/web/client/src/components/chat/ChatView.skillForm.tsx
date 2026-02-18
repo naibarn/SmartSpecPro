@@ -196,7 +196,7 @@ export function useChatSkillForm(
     if (!skillFormState?.isOpen || skillFormState.isMinimized) return null;
     
     return (
-      <Card className="mb-4 flex flex-col max-h-[70vh]">
+      <Card className="mb-4 flex flex-col" style={{ maxHeight: '70vh' }}>
         <CardHeader className="flex flex-row items-center justify-between py-3 shrink-0">
           <CardTitle className="text-base flex items-center gap-2">
             <Settings className="h-4 w-4" />
@@ -221,22 +221,20 @@ export function useChatSkillForm(
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden p-0">
-          <ScrollArea className="h-full px-6">
-            <ChatDynamicSkillForm
-              schema={skillFormState.schema}
-              values={values}
-              onChange={(newValues) => {
-                // Update form values
-                Object.entries(newValues).forEach(([key, value]) => {
-                  if (values[key] !== value) {
-                    setValue(key, value);
-                  }
-                });
-              }}
-              error={executionError?.message || null}
-            />
-          </ScrollArea>
+        <CardContent className="flex-1 overflow-y-auto px-6" style={{ minHeight: 0, maxHeight: 'calc(70vh - 140px)' }}>
+          <ChatDynamicSkillForm
+            schema={skillFormState.schema}
+            values={values}
+            onChange={(newValues) => {
+              // Update form values
+              Object.entries(newValues).forEach(([key, value]) => {
+                if (values[key] !== value) {
+                  setValue(key, value);
+                }
+              });
+            }}
+            error={executionError?.message || null}
+          />
         </CardContent>
         <CardFooter className="flex justify-end gap-2 shrink-0 border-t pt-4">
           <Button variant="outline" onClick={closeSkillForm}>
