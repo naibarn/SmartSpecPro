@@ -48,6 +48,7 @@ interface SkillSelectorProps {
 
 interface SkillWithSchema {
   id: string;
+  slug: string;
   name: string;
   description: string;
   icon: string;
@@ -77,10 +78,11 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
 
       for (const skill of skillsData.skills) {
         try {
-          const result = await utils.skills.getInputSchema.fetch({ skillId: String(skill.id) });
-          status[String(skill.id)] = result.hasSchema;
+          // Use slug instead of id for API call
+          const result = await utils.skills.getInputSchema.fetch({ skillId: skill.slug });
+          status[skill.slug] = result.hasSchema;
         } catch {
-          status[String(skill.id)] = false;
+          status[skill.slug] = false;
         }
       }
 
@@ -97,12 +99,13 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
     // Filter by search
     let skills = skillsData.skills.map((skill) => ({
       id: String(skill.id),
+      slug: skill.slug,
       name: skill.name,
       description: skill.description || '',
       icon: skill.icon || 'sparkles',
       category: skill.category || 'Other',
       priority: skill.priority || 50,
-      hasSchema: schemaStatus[String(skill.id)] || false,
+      hasSchema: schemaStatus[skill.slug] || false,
     }));
 
     if (search.trim()) {
@@ -135,7 +138,8 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
   // Handle skill selection
   const handleSelect = useCallback(
     (skill: SkillWithSchema) => {
-      onSelect(skill.id, skill.hasSchema);
+      // Use slug instead of id for API calls
+      onSelect(skill.slug, skill.hasSchema);
       setSearch('');
       setSelectedSkillId(null);
     },
@@ -149,28 +153,28 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       const allSkills = groupedSkills.flatMap((g) => g.skills);
       const currentIndex = selectedSkillId
-        ? allSkills.findIndex((s) => s.id === selectedSkillId)
+        ? allSkills.findIndex((s) => s.slug === selectedSkillId)
         : -1;
 
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
           if (currentIndex < allSkills.length - 1) {
-            setSelectedSkillId(allSkills[currentIndex + 1].id);
+            setSelectedSkillId(allSkills[currentIndex + 1].slug);
           } else if (currentIndex === -1 && allSkills.length > 0) {
-            setSelectedSkillId(allSkills[0].id);
+            setSelectedSkillId(allSkills[0].slug);
           }
           break;
         case 'ArrowUp':
           e.preventDefault();
           if (currentIndex > 0) {
-            setSelectedSkillId(allSkills[currentIndex - 1].id);
+            setSelectedSkillId(allSkills[currentIndex - 1].slug);
           }
           break;
         case 'Enter':
           e.preventDefault();
           if (selectedSkillId) {
-            const skill = allSkills.find((s) => s.id === selectedSkillId);
+            const skill = allSkills.find((s) => s.slug === selectedSkillId);
             if (skill) {
               handleSelect(skill);
             }
@@ -251,7 +255,7 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
                       <SkillItem
                         key={skill.id}
                         skill={skill}
-                        isSelected={selectedSkillId === skill.id}
+                        isSelected={selectedSkillId === skill.slug}
                         onClick={() => handleSelect(skill)}
                       />
                     ))}
