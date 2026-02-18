@@ -166,15 +166,15 @@ export function useChatSkillForm(
       : values;
     
     // Get prompt from form values if not provided directly
-    // Check common prompt field names
-    const promptValue = prompt 
-      || values.prompt 
-      || values.input 
-      || values.message 
-      || values.description 
+    // Check common prompt field names; fallback to skill name (backend requires non-empty string)
+    const promptValue = prompt
+      || values.prompt
+      || values.input
+      || values.message
+      || values.description
       || values.text
-      || ''; // Default to empty string
-    
+      || `Use ${skillFormState.skillName}`;
+
     try {
       const result = await execute({
         skillId: skillFormState.skillId,

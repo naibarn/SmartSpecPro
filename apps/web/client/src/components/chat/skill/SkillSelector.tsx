@@ -201,8 +201,8 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
+      <DialogContent className="max-w-2xl p-0 flex flex-col max-h-[85vh] overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             Select a Skill
@@ -213,7 +213,7 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
         </DialogHeader>
 
         {/* Search */}
-        <div className="px-6 py-2">
+        <div className="px-6 py-2 shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -227,7 +227,7 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
         </div>
 
         {/* Skills List */}
-        <ScrollArea className="h-[400px] px-6">
+        <ScrollArea className="flex-1 px-6 min-h-0">
           {isLoadingSkills ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -267,7 +267,7 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
         </ScrollArea>
 
         {/* Footer Help */}
-        <div className="px-6 py-3 border-t bg-muted/30 text-xs text-muted-foreground">
+        <div className="px-6 py-3 border-t bg-muted/30 text-xs text-muted-foreground shrink-0">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-background rounded border text-[10px]">↑↓</kbd>
