@@ -85,16 +85,25 @@ export function useChatSkillForm(
     setIsLoadingSchema(true);
     try {
       // Check if skill has schema
-      const [schemaData, skill] = await Promise.all([
-        utils.skills.getInputSchema.fetch({ skillId }),
-        utils.skills.get.fetch({ id: skillId }),
-      ]);
+      const schemaData = await utils.skills.getInputSchema.fetch({ skillId });
       
       if (schemaData.hasSchema) {
+        // Try to get skill details - first try by slug, then use schema data
+        let skillName = skillId;
+        try {
+          const skill = await utils.skills.get.fetch({ id: skillId });
+          skillName = skill.name;
+        } catch {
+          // If skills.get fails, try to extract name from schema or use skillId
+          if (schemaData.schema && 'title' in schemaData.schema) {
+            skillName = schemaData.schema.title;
+          }
+        }
+        
         // Open form
         setSkillFormState({
           skillId,
-          skillName: skill.name,
+          skillName,
           schema: schemaData.schema as SkillInputSchema,
           isOpen: true,
           isMinimized: false,
@@ -106,6 +115,7 @@ export function useChatSkillForm(
         await execute({ skillId, dynamicParams: {} });
       }
     } catch (error) {
+      console.error('[openSkillForm] Error:', error);
       toast.error('Failed to load skill form');
     } finally {
       setIsLoadingSchema(false);

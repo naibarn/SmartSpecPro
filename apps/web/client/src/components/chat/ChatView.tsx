@@ -54,6 +54,8 @@ import {
 } from "@/components/ui/context-menu";
 import { Brain, Lightbulb, Languages, Mic } from "lucide-react";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { useChatSkillForm, SkillCommandButton, SkillFormErrorBoundary } from "@/components/chat/skill";
 import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 import { toast } from "sonner";
 import { FallbackConsent } from "./FallbackConsent";
@@ -327,6 +329,23 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     onTranscription: (text) => setInput((prev) => prev ? `${prev} ${text}` : text),
     onError: (err) => toast.error(err),
   });
+
+  // Dynamic Skill Form integration
+  const isSkillFormEnabled = useFeatureFlag('chat.dynamicSkillForm');
+  const skillForm = useChatSkillForm(conversationId ?? 0);
+
+  // Ctrl+K to open Skill Selector
+  useEffect(() => {
+    if (!isSkillFormEnabled) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        skillForm.setShowSkillSelector(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSkillFormEnabled, skillForm.setShowSkillSelector]);
 
   // Brainstorm mode state
   const [brainstormMode, setBrainstormMode] = useState(false);
@@ -2284,6 +2303,14 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           </div>
         )}
 
+        {/* Dynamic Skill Form & Chip */}
+        {isSkillFormEnabled && (
+          <SkillFormErrorBoundary onReset={() => skillForm.closeSkillForm()}>
+            {skillForm.renderSkillForm()}
+            {skillForm.renderSkillChip()}
+          </SkillFormErrorBoundary>
+        )}
+
         {/* Attachment Previews */}
         {selectedLibrarySources.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -2518,6 +2545,14 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 <p>Auto Prompt (PromptDepth Pro)</p>
               </TooltipContent>
             </Tooltip>
+
+            {/* Skill Form Button (Ctrl+K) */}
+            {isSkillFormEnabled && (
+              <SkillCommandButton
+                onClick={() => skillForm.setShowSkillSelector(true)}
+                disabled={isStreaming || skillForm.isFormOpen}
+              />
+            )}
           </TooltipProvider>
           <input
             ref={fileRef}
@@ -2531,8 +2566,16 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               filter={slashFilter}
               visible={showSlashMenu}
               onSelect={(slug) => {
-                setInput(`/${slug} `);
                 setShowSlashMenu(false);
+                if (isSkillFormEnabled) {
+                  // Try to open dynamic form for this skill
+                  skillForm.openSkillForm(slug).catch(() => {
+                    // Fallback: insert slash command as text
+                    setInput(`/${slug} `);
+                  });
+                } else {
+                  setInput(`/${slug} `);
+                }
               }}
               onClose={() => setShowSlashMenu(false)}
             />
@@ -2615,6 +2658,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         initialData={suggestedMemory || undefined}
         conversationId={conversationId}
       />
+
+      {/* Skill Selector Dialog */}
+      {isSkillFormEnabled && skillForm.renderSkillSelector()}
     </div>
   );
 }

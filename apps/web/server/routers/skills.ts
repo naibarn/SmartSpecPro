@@ -9,6 +9,7 @@ import { TRPCError } from "@trpc/server";
 import {
   getAvailableSkills,
   getSkillById,
+  getSkillByIdOrType,
   SkillDefinition,
   refreshSkillCache,
   syncSingleSkillIfChanged,
@@ -900,7 +901,8 @@ export const skillsRouter = router({
       // Sync skill if contentHash changed (ensures latest skill.md is used)
       await syncSingleSkillIfChanged(input.skillId);
 
-      const skill = getSkillById(input.skillId);
+      // Use getSkillByIdOrType to support both slug and type lookup
+      const skill = getSkillByIdOrType(input.skillId);
 
       if (!skill) {
         throw new TRPCError({
