@@ -67,9 +67,32 @@ const originalResolveFilename = (Module as any)._resolveFilename;
 // React 19 testing environment setup
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
+// Mock ResizeObserver (used by Radix UI components)
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+(globalThis as any).ResizeObserver = ResizeObserverMock;
+
+// Mock matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 // RTL auto-cleanup may not trigger with custom module resolution,
 // so register it explicitly. Dynamic import ensures the hook is active first.
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 
 afterEach(async () => {
   const { cleanup } = await import("@testing-library/react");

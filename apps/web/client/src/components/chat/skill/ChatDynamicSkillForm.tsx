@@ -3,7 +3,8 @@ import DynamicSkillForm, { SkillInputSchema } from '@/components/media/DynamicSk
 import { useImageUpload } from './hooks/useImageUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Loader2, X } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface ChatDynamicSkillFormProps {
@@ -23,12 +24,19 @@ export function ChatDynamicSkillForm({
   error,
   onClearError,
 }: ChatDynamicSkillFormProps) {
-  const { upload, isUploading, error: uploadError, retry, reset } = useImageUpload();
+  const { upload, isUploading, uploadProgress, error: uploadError, retry, reset, validateFile } = useImageUpload();
 
   const handleImageUpload = async (files: FileList): Promise<string[]> => {
     const urls: string[] = [];
 
     for (const file of Array.from(files)) {
+      // Pre-validate file before upload
+      const validation = validateFile(file);
+      if (!validation.valid) {
+        toast.error(`${file.name}: ${validation.error}`);
+        throw new Error(validation.error);
+      }
+
       try {
         const url = await upload(file, { retry: 3 });
         urls.push(url);
@@ -77,6 +85,20 @@ export function ChatDynamicSkillForm({
         </Alert>
       )}
 
+      {/* Upload Progress */}
+      {isUploading && (
+        <div className="space-y-2 py-2">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Upload className="h-4 w-4" />
+              <span>Uploading...</span>
+            </div>
+            <span className="text-muted-foreground">{uploadProgress}%</span>
+          </div>
+          <Progress value={uploadProgress} className="h-2" />
+        </div>
+      )}
+
       {/* Form */}
       <div className="bg-muted/30 rounded-lg p-4">
         <DynamicSkillForm
@@ -91,18 +113,10 @@ export function ChatDynamicSkillForm({
       </div>
 
       {/* Loading State */}
-      {isLoading && (
+      {isLoading && !isUploading && (
         <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span>Processing...</span>
-        </div>
-      )}
-
-      {/* Uploading State */}
-      {isUploading && (
-        <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Uploading images...</span>
         </div>
       )}
     </div>

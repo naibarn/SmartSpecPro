@@ -1,10 +1,18 @@
 import { useState, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
+import { getPostHog } from '@/lib/posthog';
 
-// Analytics tracking (mock - replace with actual implementation)
+// Analytics tracking using PostHog
 const analytics = {
   track: (event: string, properties?: Record<string, any>) => {
-    console.log('[Analytics]', event, properties);
+    const posthog = getPostHog();
+    if (posthog) {
+      posthog.capture(event, properties);
+    }
+    // Also log to console in development
+    if (import.meta.env.DEV) {
+      console.log('[Analytics]', event, properties);
+    }
   },
 };
 

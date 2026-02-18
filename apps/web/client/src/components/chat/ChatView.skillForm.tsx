@@ -29,6 +29,8 @@ export interface UseChatSkillFormReturn {
   // State
   skillFormState: SkillFormState | null;
   isFormOpen: boolean;
+  hasFormChanges: boolean;
+  isLoadingSchema: boolean;
   
   // UI Controls
   showSkillSelector: boolean;
@@ -53,10 +55,11 @@ export interface UseChatSkillFormReturn {
 export function useChatSkillForm(
   conversationId: number,
   onSendMessage?: (content: string, skillContext?: any) => void
-): UseChatSkillFormFormReturn {
+): UseChatSkillFormReturn {
   const [skillFormState, setSkillFormState] = useState<SkillFormState | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [showSkillSelector, setShowSkillSelector] = useState(false);
+  const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   
   const utils = trpc.useUtils();
   
@@ -79,10 +82,13 @@ export function useChatSkillForm(
 
   // Open skill form
   const openSkillForm = useCallback(async (skillId: string) => {
+    setIsLoadingSchema(true);
     try {
       // Check if skill has schema
-      const schemaData = await utils.skills.getInputSchema.fetch({ skillId });
-      const skill = await utils.skills.get.fetch({ id: skillId });
+      const [schemaData, skill] = await Promise.all([
+        utils.skills.getInputSchema.fetch({ skillId }),
+        utils.skills.get.fetch({ id: skillId }),
+      ]);
       
       if (schemaData.hasSchema) {
         // Open form
@@ -101,6 +107,8 @@ export function useChatSkillForm(
       }
     } catch (error) {
       toast.error('Failed to load skill form');
+    } finally {
+      setIsLoadingSchema(false);
     }
   }, [utils, execute, resetForm]);
 
@@ -282,6 +290,8 @@ export function useChatSkillForm(
   return {
     skillFormState,
     isFormOpen,
+    hasFormChanges: hasChanges,
+    isLoadingSchema,
     showSkillSelector,
     setShowSkillSelector,
     openSkillForm,
@@ -293,7 +303,6 @@ export function useChatSkillForm(
     renderSkillForm,
     renderSkillChip,
     renderSkillSelector,
-    hasFormChanges: hasChanges,
   };
 }
 
