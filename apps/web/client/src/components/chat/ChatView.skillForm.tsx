@@ -14,6 +14,7 @@ import { useSkillForm } from '@/components/chat/skill/hooks/useSkillForm';
 import { useSkillExecution } from '@/components/chat/skill/hooks/useSkillExecution';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Minimize2, X, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -195,8 +196,8 @@ export function useChatSkillForm(
     if (!skillFormState?.isOpen || skillFormState.isMinimized) return null;
     
     return (
-      <Card className="mb-4">
-        <CardHeader className="flex flex-row items-center justify-between py-3">
+      <Card className="mb-4 flex flex-col max-h-[70vh]">
+        <CardHeader className="flex flex-row items-center justify-between py-3 shrink-0">
           <CardTitle className="text-base flex items-center gap-2">
             <Settings className="h-4 w-4" />
             {skillFormState.skillName}
@@ -220,22 +221,24 @@ export function useChatSkillForm(
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <ChatDynamicSkillForm
-            schema={skillFormState.schema}
-            values={values}
-            onChange={(newValues) => {
-              // Update form values
-              Object.entries(newValues).forEach(([key, value]) => {
-                if (values[key] !== value) {
-                  setValue(key, value);
-                }
-              });
-            }}
-            error={executionError?.message || null}
-          />
+        <CardContent className="flex-1 overflow-hidden p-0">
+          <ScrollArea className="h-full px-6">
+            <ChatDynamicSkillForm
+              schema={skillFormState.schema}
+              values={values}
+              onChange={(newValues) => {
+                // Update form values
+                Object.entries(newValues).forEach(([key, value]) => {
+                  if (values[key] !== value) {
+                    setValue(key, value);
+                  }
+                });
+              }}
+              error={executionError?.message || null}
+            />
+          </ScrollArea>
         </CardContent>
-        <CardFooter className="flex justify-end gap-2">
+        <CardFooter className="flex justify-end gap-2 shrink-0 border-t pt-4">
           <Button variant="outline" onClick={closeSkillForm}>
             Cancel
           </Button>
