@@ -2651,6 +2651,27 @@ export const workflowTemplates = pgTable("workflow_templates", {
   /** Full-text search vector (auto-generated from name + description) */
   searchVector: text("searchVector"), // tsvector in migration SQL
 
+  // --- Feature 017: Gallery columns ---
+
+  /** Pre-generated SVG topology diagram (generated at seed time by workflowSvgGenerator) */
+  previewSvg: text("previewSvg"),
+
+  /** Industry/sector tags for gallery filtering (e.g. ["E-commerce", "Retail"]) */
+  industry: json("industry").$type<string[]>(),
+
+  /** Number of nodes in the workflow (computed from workflowJson.nodes.length at seed time) */
+  stepCount: integer("stepCount"),
+
+  /** Rough setup effort in minutes (provided in template JSON, displayed in Gallery) */
+  estimatedSetupMinutes: integer("estimatedSetupMinutes"),
+
+  /**
+   * Stable slug identifier for idempotent upserts (e.g. "tpl-001").
+   * Used as the ON CONFLICT target in the seeder script.
+   * Must be unique across all templates.
+   */
+  templateKey: varchar("templateKey", { length: 50 }).unique(),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
