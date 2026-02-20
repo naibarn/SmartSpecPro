@@ -9,8 +9,8 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { db } from "../db";
-import { workflows } from "@db/schema";
-import { eq, and, desc, type SQL } from "drizzle-orm";
+import { workflows, workflowTemplates, templateCategories } from "@db/schema";
+import { eq, and, desc, sql, count, asc, type SQL } from "drizzle-orm";
 
 // Python backend URL from environment (default to localhost:8000)
 const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
@@ -970,6 +970,256 @@ export const workflowRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to convert workflow to skill",
+        });
+      }
+    }),
+
+  // =========================================================================
+  // Feature 017: Gallery Template Endpoints
+  // =========================================================================
+
+  /**
+   * List published public templates for the Gallery grid.
+   * Excludes workflowJson and previewSvg (fetched lazily via getTemplate).
+   */
+  listTemplates: protectedProcedure
+    .input(
+      z.object({
+        category: z.string().optional(),
+        search: z.string().max(200).optional(),
+        tags: z.array(z.string()).optional(),
+        limit: z.number().min(1).max(100).optional().default(24),
+        offset: z.number().min(0).optional().default(0),
+      })
+    )
+    .query(async ({ input }) => {
+      try {
+        const conditions: SQL<unknown>[] = [
+          eq(workflowTemplates.isPublic, true),
+          eq(workflowTemplates.status, "published"),
+        ];
+
+        // Category filter: resolve name → id
+        if (input.category) {
+          const [cat] = await db
+            .select({ id: templateCategories.id })
+            .from(templateCategories)
+            .where(eq(templateCategories.name, input.category))
+            .limit(1);
+          if (cat) {
+            conditions.push(eq(workflowTemplates.categoryId, cat.id));
+          } else {
+            // Unknown category — return empty results
+            return { items: [], total: 0 };
+          }
+        }
+
+        // Full-text search via searchVector
+        if (input.search) {
+          conditions.push(
+            sql`${workflowTemplates.searchVector} @@ plainto_tsquery('english', ${input.search})`
+          );
+        }
+
+        const whereClause = and(...conditions)!;
+
+        // Explicit column selection — excludes workflowJson and previewSvg
+        const items = await db
+          .select({
+            id: workflowTemplates.id,
+            name: workflowTemplates.name,
+            description: workflowTemplates.description,
+            categoryId: workflowTemplates.categoryId,
+            tags: workflowTemplates.tags,
+            isPublic: workflowTemplates.isPublic,
+            isFeatured: workflowTemplates.isFeatured,
+            status: workflowTemplates.status,
+            downloadCount: workflowTemplates.downloadCount,
+            version: workflowTemplates.version,
+            industry: workflowTemplates.industry,
+            stepCount: workflowTemplates.stepCount,
+            estimatedSetupMinutes: workflowTemplates.estimatedSetupMinutes,
+            templateKey: workflowTemplates.templateKey,
+            createdAt: workflowTemplates.createdAt,
+            updatedAt: workflowTemplates.updatedAt,
+          })
+          .from(workflowTemplates)
+          .where(whereClause)
+          .orderBy(desc(workflowTemplates.downloadCount))
+          .limit(input.limit)
+          .offset(input.offset);
+
+        // Total count (same conditions, no limit/offset)
+        const [countResult] = await db
+          .select({ cnt: count() })
+          .from(workflowTemplates)
+          .where(whereClause);
+
+        return {
+          items,
+          total: Number(countResult?.cnt ?? 0),
+        };
+      } catch (error: any) {
+        console.error("[Workflow] listTemplates error:", error.message);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to list templates",
+        });
+      }
+    }),
+
+  /**
+   * List all template categories with count of published public templates.
+   * Zero-count categories still appear.
+   */
+  listTemplateCategories: protectedProcedure.query(async () => {
+    try {
+      const categories = await db
+        .select({
+          id: templateCategories.id,
+          name: templateCategories.name,
+          templateCount: count(workflowTemplates.id),
+        })
+        .from(templateCategories)
+        .leftJoin(
+          workflowTemplates,
+          and(
+            eq(workflowTemplates.categoryId, templateCategories.id),
+            eq(workflowTemplates.isPublic, true),
+            eq(workflowTemplates.status, "published")
+          )
+        )
+        .groupBy(templateCategories.id, templateCategories.name)
+        .orderBy(asc(templateCategories.name));
+
+      return categories;
+    } catch (error: any) {
+      console.error(
+        "[Workflow] listTemplateCategories error:",
+        error.message
+      );
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to list template categories",
+      });
+    }
+  }),
+
+  /**
+   * Get full template record including workflowJson and previewSvg.
+   * Called lazily when user opens template detail.
+   */
+  getTemplate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      try {
+        const [template] = await db
+          .select()
+          .from(workflowTemplates)
+          .where(
+            and(
+              eq(workflowTemplates.id, input.id),
+              eq(workflowTemplates.isPublic, true)
+            )
+          )
+          .limit(1);
+
+        if (!template) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Template not found",
+          });
+        }
+
+        return template;
+      } catch (error: any) {
+        console.error("[Workflow] getTemplate error:", error.message);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to get template",
+        });
+      }
+    }),
+
+  /**
+   * Clone a template into a new draft workflow owned by the caller.
+   * Increments downloadCount on the source template.
+   */
+  useTemplate: protectedProcedure
+    .input(
+      z.object({
+        templateId: z.number(),
+        name: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        // 1. Fetch the template (must be public + published)
+        const [template] = await db
+          .select()
+          .from(workflowTemplates)
+          .where(
+            and(
+              eq(workflowTemplates.id, input.templateId),
+              eq(workflowTemplates.isPublic, true),
+              eq(workflowTemplates.status, "published")
+            )
+          )
+          .limit(1);
+
+        if (!template) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Template not found",
+          });
+        }
+
+        const userId = ctx.user.id;
+        const tenantId = ctx.user.currentTenantId
+          ? String(ctx.user.currentTenantId)
+          : null;
+
+        // 2. Create new draft workflow + increment downloadCount in transaction
+        const result = await db.transaction(async (tx) => {
+          const [created] = await tx
+            .insert(workflows)
+            .values({
+              name: input.name ?? template.name,
+              description: template.description,
+              workflowJson: template.workflowJson,
+              userId,
+              tenantId,
+              status: "draft",
+              schemaVersion: "1.0.0",
+            })
+            .returning();
+
+          await tx
+            .update(workflowTemplates)
+            .set({
+              downloadCount: sql`${workflowTemplates.downloadCount} + 1`,
+            })
+            .where(eq(workflowTemplates.id, input.templateId));
+
+          return created;
+        });
+
+        console.log("[Workflow] Template used", {
+          templateId: input.templateId,
+          newWorkflowId: result.id,
+          userId,
+        });
+
+        return { id: result.id };
+      } catch (error: any) {
+        console.error("[Workflow] useTemplate error:", error.message);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to use template",
         });
       }
     }),
