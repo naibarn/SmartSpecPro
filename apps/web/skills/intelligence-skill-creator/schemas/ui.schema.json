@@ -1,82 +1,207 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/isc/ui.schema.json",
-  "title": "ISC UI Schema",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "ui:order": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "default": [
-        "skill_name",
-        "mode",
-        "rounds",
-        "ask_user",
-        "allow_test_expansion",
-        "llm",
-        "research",
-        "safety"
+  "version": "1.0",
+  "skillId": "intelligence-skill-creator",
+  "title": "Intelligence Skill Creator",
+  "titleTh": "ตัวสร้าง Skill อัจฉริยะ",
+  "description": "Multi-agent LLM-powered tool for creating and improving skills",
+  "descriptionTh": "เครื่องมือสร้างและปรับปรุง Skill ด้วย Multi-agent LLM",
+  "sections": [
+    {
+      "id": "basic",
+      "title": "Skill Setup",
+      "titleTh": "ตั้งค่า Skill",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "skill_name",
+          "type": "text",
+          "label": "Skill Name",
+          "labelTh": "ชื่อ Skill",
+          "placeholder": "skill_math_tutor",
+          "helpText": "Name of the skill to create or improve (snake_case)",
+          "helpTextTh": "ชื่อ Skill ที่ต้องการสร้างหรือปรับปรุง (snake_case)",
+          "required": true
+        },
+        {
+          "id": "mode",
+          "type": "select",
+          "label": "Mode",
+          "labelTh": "โหมด",
+          "helpText": "How to process the skill",
+          "helpTextTh": "วิธีการประมวลผล Skill",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Recommended)", "labelTh": "อัตโนมัติ (แนะนำ)" },
+            { "value": "llm", "label": "LLM-based", "labelTh": "ใช้ LLM" },
+            { "value": "heuristic", "label": "Heuristic", "labelTh": "Heuristic" }
+          ]
+        },
+        {
+          "id": "rounds",
+          "type": "number",
+          "label": "Improvement Rounds",
+          "labelTh": "รอบการปรับปรุง",
+          "helpText": "Number of refine-test-validate iterations",
+          "helpTextTh": "จำนวนรอบของการแก้ไข-ทดสอบ-ตรวจสอบ",
+          "min": 1,
+          "max": 10,
+          "default": 3
+        }
       ]
     },
-    "skill_name": {
-      "ui:widget": "text",
-      "ui:placeholder": "skill_math_tutor"
+    {
+      "id": "behavior",
+      "title": "Behavior",
+      "titleTh": "พฤติกรรม",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "ask_user",
+          "type": "boolean",
+          "label": "Ask User for Clarification",
+          "labelTh": "ถามผู้ใช้เพื่อความชัดเจน",
+          "helpText": "Pause and ask for input when uncertain",
+          "helpTextTh": "หยุดและถามผู้ใช้เมื่อไม่แน่ใจ",
+          "default": false
+        },
+        {
+          "id": "allow_test_expansion",
+          "type": "boolean",
+          "label": "Allow Test Expansion",
+          "labelTh": "อนุญาตขยายการทดสอบ",
+          "helpText": "Allow the agent to create additional test cases",
+          "helpTextTh": "อนุญาตให้ agent สร้าง test case เพิ่มเติม",
+          "default": false
+        }
+      ]
     },
-    "mode": {
-      "ui:widget": "select"
+    {
+      "id": "llm_config",
+      "title": "LLM Connection",
+      "titleTh": "การเชื่อมต่อ LLM",
+      "icon": "zap",
+      "fields": [
+        {
+          "id": "llm_base_url",
+          "type": "text",
+          "label": "API Base URL",
+          "labelTh": "Base URL ของ API",
+          "placeholder": "https://your-gateway/v1",
+          "helpText": "OpenAI-compatible endpoint (optional, uses default if blank)",
+          "helpTextTh": "Endpoint ที่ compatible กับ OpenAI (ไม่บังคับ)"
+        },
+        {
+          "id": "llm_model",
+          "type": "text",
+          "label": "Model",
+          "labelTh": "โมเดล",
+          "placeholder": "gpt-4o, claude-opus-4-6",
+          "helpText": "Model name to use for this run",
+          "helpTextTh": "ชื่อโมเดลที่ใช้ในการทำงาน"
+        },
+        {
+          "id": "llm_temperature",
+          "type": "slider",
+          "label": "Temperature",
+          "labelTh": "Temperature",
+          "helpText": "Creativity level (0 = deterministic, 2 = highly creative)",
+          "helpTextTh": "ระดับความสร้างสรรค์ (0 = แน่นอน, 2 = สร้างสรรค์สูง)",
+          "min": 0,
+          "max": 2,
+          "step": 0.1,
+          "default": 0
+        },
+        {
+          "id": "llm_timeout_s",
+          "type": "number",
+          "label": "Timeout (seconds)",
+          "labelTh": "Timeout (วินาที)",
+          "min": 10,
+          "max": 600,
+          "default": 180
+        }
+      ]
     },
-    "rounds": {
-      "ui:widget": "updown"
+    {
+      "id": "research",
+      "title": "Research Settings",
+      "titleTh": "ตั้งค่าการวิจัย",
+      "icon": "search",
+      "fields": [
+        {
+          "id": "research_max_topics",
+          "type": "number",
+          "label": "Max Research Topics",
+          "labelTh": "หัวข้อวิจัยสูงสุด",
+          "min": 1,
+          "max": 10,
+          "default": 10
+        },
+        {
+          "id": "research_max_results",
+          "type": "number",
+          "label": "Max Results per Topic",
+          "labelTh": "ผลลัพธ์สูงสุดต่อหัวข้อ",
+          "min": 1,
+          "max": 5,
+          "default": 3
+        },
+        {
+          "id": "research_max_snippet_chars",
+          "type": "number",
+          "label": "Max Snippet Characters",
+          "labelTh": "ตัวอักษรข้อมูลสูงสุด",
+          "min": 500,
+          "max": 20000,
+          "default": 6000
+        }
+      ]
     },
-    "ask_user": {
-      "ui:widget": "checkbox"
-    },
-    "allow_test_expansion": {
-      "ui:widget": "checkbox"
-    },
-    "llm": {
-      "base_url": {
-        "ui:widget": "text",
-        "ui:placeholder": "https://your-gateway/v1"
-      },
-      "api_key": {
-        "ui:widget": "password"
-      },
-      "model": {
-        "ui:widget": "text",
-        "ui:placeholder": "model for this run"
-      },
-      "temperature": {
-        "ui:widget": "updown"
-      },
-      "timeout_s": {
-        "ui:widget": "updown"
-      }
-    },
-    "research": {
-      "max_topics": {
-        "ui:widget": "updown"
-      },
-      "max_results_per_topic": {
-        "ui:widget": "updown"
-      },
-      "max_snippet_chars": {
-        "ui:widget": "updown"
-      }
-    },
-    "safety": {
-      "restrict_paths_under_skills": {
-        "ui:widget": "checkbox"
-      },
-      "disallow_new_deps_in_skill_py": {
-        "ui:widget": "checkbox"
-      },
-      "require_respond_signature": {
-        "ui:widget": "checkbox"
-      }
+    {
+      "id": "safety",
+      "title": "Safety Settings",
+      "titleTh": "ตั้งค่าความปลอดภัย",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "safety_restrict_paths",
+          "type": "boolean",
+          "label": "Restrict File Paths to Skills Directory",
+          "labelTh": "จำกัดเส้นทางไฟล์ในโฟลเดอร์ Skills",
+          "default": true
+        },
+        {
+          "id": "safety_disallow_new_deps",
+          "type": "boolean",
+          "label": "Disallow New Dependencies in skill.py",
+          "labelTh": "ไม่อนุญาตเพิ่ม dependency ใหม่ใน skill.py",
+          "default": true
+        },
+        {
+          "id": "safety_require_signature",
+          "type": "boolean",
+          "label": "Require respond() Signature",
+          "labelTh": "บังคับใช้ signature respond()",
+          "default": true
+        }
+      ]
     }
+  ],
+  "outputMapping": {
+    "skill_name": "skill_name",
+    "mode": "mode",
+    "rounds": "rounds",
+    "ask_user": "ask_user",
+    "allow_test_expansion": "allow_test_expansion",
+    "llm_base_url": "llm_base_url",
+    "llm_model": "llm_model",
+    "llm_temperature": "llm_temperature",
+    "llm_timeout_s": "llm_timeout_s",
+    "research_max_topics": "research_max_topics",
+    "research_max_results": "research_max_results",
+    "research_max_snippet_chars": "research_max_snippet_chars",
+    "safety_restrict_paths": "safety_restrict_paths",
+    "safety_disallow_new_deps": "safety_disallow_new_deps",
+    "safety_require_signature": "safety_require_signature"
   }
 }
