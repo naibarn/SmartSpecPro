@@ -93,6 +93,7 @@ class WorkflowEdge(BaseModel):
     target: str
     sourceHandle: str = "output"
     targetHandle: str = "input"
+    type: str = "smoothstep"
 
 
 class GeneratedWorkflow(BaseModel):
@@ -110,6 +111,7 @@ class GeneratedWorkflow(BaseModel):
 
     nodes: list[WorkflowNode]
     edges: list[WorkflowEdge]
+    description: str = "AI-generated workflow"
 
     @model_validator(mode="after")
     def validate_workflow(self) -> "GeneratedWorkflow":

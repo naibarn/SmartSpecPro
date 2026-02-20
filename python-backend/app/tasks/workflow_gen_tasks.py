@@ -69,7 +69,7 @@ def create_task_id() -> str:
 
 @celery_app.task(
     bind=True,
-    max_retries=1,
+    max_retries=0,  # Application-level retry loop in generate_with_retry() handles retries
     name="app.tasks.workflow_gen_tasks.generate_workflow",
     soft_time_limit=540,   # 9 min soft limit
     time_limit=600,        # 10 min hard limit
@@ -88,6 +88,7 @@ def generate_workflow_task(
 
     Runs the LLM call in a background worker so the API can return immediately.
     Status is tracked in Redis for frontend polling.
+    Uses generate_with_retry() for up to 3 LLM attempts with validation feedback.
     """
     logger.info(
         "workflow_gen_task_started",
@@ -99,11 +100,11 @@ def generate_workflow_task(
     _set_status(task_id, {"status": "processing", "message": "Generating workflow via LLM..."})
 
     try:
-        from app.orchestrator.workflow_generator import WorkflowGenerator
+        from app.orchestrator.workflow_generator import WorkflowGenerator, WorkflowGenerationError
 
         generator = WorkflowGenerator()
         result = _run_async(
-            generator.generate(
+            generator.generate_with_retry(
                 prompt=prompt,
                 node_types=node_types,
                 model=model,
@@ -125,21 +126,23 @@ def generate_workflow_task(
         )
         return result
 
+    except WorkflowGenerationError as e:
+        logger.error("workflow_gen_task_failed", task_id=task_id, error=e.message)
+        _set_status(task_id, {
+            "status": "failed",
+            "error": e.message,
+            "validationError": e.validation_error,
+            "hint": e.hint,
+        })
+        return {"status": "failed", "error": e.message}
+
     except Exception as e:
         error_msg = str(e)
         logger.error("workflow_gen_task_failed", task_id=task_id, error=error_msg)
-
         _set_status(task_id, {
             "status": "failed",
             "error": error_msg,
+            "validationError": None,
+            "hint": None,
         })
-
-        # Retry once on transient failures
-        if self.request.retries < self.max_retries:
-            _set_status(task_id, {
-                "status": "processing",
-                "message": "Retrying after transient error...",
-            })
-            raise self.retry(exc=e, countdown=5)
-
         return {"status": "failed", "error": error_msg}

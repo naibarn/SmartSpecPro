@@ -8,6 +8,7 @@ centrally — exactly the same as every other LLM call in the platform.
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from typing import Any
@@ -15,8 +16,27 @@ from typing import Any
 import structlog
 
 from app.clients.web_gateway import forward_chat_json
+from app.orchestrator.workflow_validator import GeneratedWorkflow
 
 logger = structlog.get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Few-shot cache — populated from database, refreshed every 24h
+# ---------------------------------------------------------------------------
+_few_shot_cache: list[dict[str, Any]] = []
+_few_shot_loaded_at: float = 0.0
+_FEW_SHOT_TTL = 86400.0  # 24 hours
+
+# Static selection — one per major category from the 60 seeded templates
+_FEW_SHOT_TEMPLATE_KEYS: list[str] = [
+    "tpl-055",  # Customer Service (onboarding sequence)
+    "tpl-019",  # IT & DevOps (error log analysis)
+    "tpl-039",  # Logistics (shipment status notification)
+    "tpl-032",  # Personal Productivity (news digest)
+    "tpl-048",  # Customer Service (support ticket triage)
+]
+
+_MAX_FEW_SHOT_TOKENS = 3000
 
 # ---------------------------------------------------------------------------
 # System prompt
@@ -97,6 +117,11 @@ OUTPUT FORMAT
   "description": "<one sentence summary>"
 }
 
+"""
+
+# The examples section is dynamically injected via _build_system_prompt().
+# Keep the built-in examples as a fallback when DB is unavailable.
+_BUILTIN_EXAMPLES = """\
 ════════════════════════════════════════
 BUILT-IN EXAMPLES (study these carefully)
 ════════════════════════════════════════
@@ -203,10 +228,140 @@ EXAMPLE C — Workflow with User Input Form (form_input):
 """
 
 
+# ---------------------------------------------------------------------------
+# Few-shot helpers
+# ---------------------------------------------------------------------------
+
+
+def _load_from_db() -> list[dict[str, Any]]:
+    """Synchronous DB query for Celery worker context."""
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url:
+        return []
+    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+    try:
+        from sqlalchemy import create_engine, text
+
+        engine = create_engine(sync_url, pool_pre_ping=True)
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    'SELECT name, description, "workflowJson" FROM workflow_templates '
+                    'WHERE "templateKey" = ANY(:keys) AND "isPublic" = true '
+                    "LIMIT 5"
+                ),
+                {"keys": _FEW_SHOT_TEMPLATE_KEYS},
+            ).fetchall()
+        engine.dispose()
+        return [{"name": r[0], "description": r[1], "workflowJson": r[2]} for r in rows]
+    except Exception as exc:
+        logger.warning("few_shot_db_load_failed", error=str(exc)[:200])
+        return []
+
+
+def _truncate_to_token_budget(
+    examples: list[dict[str, Any]],
+    max_tokens: int = _MAX_FEW_SHOT_TOKENS,
+) -> list[dict[str, Any]]:
+    """Trim few-shot examples to fit within the token budget."""
+    if not examples:
+        return []
+
+    # Truncate long config strings in workflowJson
+    trimmed = []
+    for ex in examples:
+        wf = ex.get("workflowJson")
+        if isinstance(wf, dict):
+            wf = json.loads(json.dumps(wf))  # deep copy
+            for node in wf.get("nodes", []):
+                config = node.get("data", {}).get("config", {})
+                for k, v in list(config.items()):
+                    if isinstance(v, str) and len(v) > 100:
+                        config[k] = v[:97] + "..."
+        trimmed.append({"name": ex["name"], "description": ex["description"], "workflowJson": wf})
+
+    total_tokens = len(json.dumps(trimmed)) // 4
+    if total_tokens <= max_tokens:
+        return trimmed
+
+    # Reduce to 3 examples if still over budget
+    trimmed = trimmed[:3]
+    total_tokens = len(json.dumps(trimmed)) // 4
+    if total_tokens <= max_tokens:
+        return trimmed
+
+    # Still over — return 1 example or empty
+    trimmed = trimmed[:1]
+    total_tokens = len(json.dumps(trimmed)) // 4
+    return trimmed if total_tokens <= max_tokens else []
+
+
+def load_few_shot_examples(force: bool = False) -> list[dict[str, Any]]:
+    """Load few-shot workflow examples from the database with 24h cache."""
+    global _few_shot_cache, _few_shot_loaded_at
+
+    now = time.monotonic()
+    if not force and _few_shot_cache and (now - _few_shot_loaded_at) < _FEW_SHOT_TTL:
+        return _few_shot_cache
+
+    raw = _load_from_db()
+    _few_shot_cache = _truncate_to_token_budget(raw)
+    _few_shot_loaded_at = now
+    return _few_shot_cache
+
+
+def _build_system_prompt(few_shot_examples: list[dict[str, Any]]) -> str:
+    """Build the system prompt, injecting few-shot examples or falling back to built-in."""
+    if not few_shot_examples:
+        return _SYSTEM_PROMPT + "\n" + _BUILTIN_EXAMPLES
+
+    examples_text = (
+        "════════════════════════════════════════\n"
+        "CURATED EXAMPLES (study these carefully)\n"
+        "════════════════════════════════════════\n\n"
+    )
+    for i, ex in enumerate(few_shot_examples, 1):
+        examples_text += f"# Example {i}: {ex['name']}\n"
+        examples_text += f"Description: {ex['description']}\n"
+        examples_text += f"Workflow JSON:\n{json.dumps(ex['workflowJson'], indent=2)}\n\n"
+
+    return _SYSTEM_PROMPT + "\n" + examples_text
+
+
+def _derive_hint(validation_error: str | None) -> str:
+    """Derive a user-facing hint from a validation error message."""
+    if not validation_error:
+        return "Try rephrasing your request with more specific steps and tools."
+    ve_lower = validation_error.lower()
+    if "trigger" in ve_lower:
+        return (
+            "Try describing when the workflow should start "
+            "(e.g., 'every morning at 7 AM' or 'when a webhook is received')."
+        )
+    if "unknown nodetype" in ve_lower or "nodeType" in validation_error:
+        return (
+            "Be more specific about which tools or apps are involved. "
+            "Use standard node types like 'llm_call', 'http_request', or 'send_email'."
+        )
+    if "source" in ve_lower or "target" in ve_lower:
+        return (
+            "Try simplifying the workflow description — "
+            "fewer branching paths make it easier to generate correctly."
+        )
+    return "Try rephrasing your request with more specific steps and tools."
+
+
 class WorkflowGenerationError(Exception):
-    def __init__(self, message: str) -> None:
+    def __init__(
+        self,
+        message: str,
+        validation_error: str | None = None,
+        hint: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.message = message
+        self.validation_error = validation_error
+        self.hint = hint
 
 
 class WorkflowGenerator:
@@ -224,7 +379,8 @@ class WorkflowGenerator:
         user_token: str | None = None,
         default_model: str | None = None,
     ) -> dict[str, Any]:
-        """
+        """Single-shot workflow generation (backward-compatible wrapper).
+
         Args:
             prompt: User's description of the desired workflow.
             node_types: Full node type specs from the registry (with inputs/outputs).
@@ -235,82 +391,14 @@ class WorkflowGenerator:
         Returns:
             dict with keys: nodes, edges, description
         """
-        effective_node_types = node_types or []
-        node_types_text = self._format_node_types(effective_node_types)
-
-        # The model to use inside generated llm_call config
-        workflow_model = default_model or model or "gpt-4o-mini"
-
-        user_message = (
-            "════════════════════════════════════════\n"
-            "AVAILABLE NODE TYPES\n"
-            "════════════════════════════════════════\n"
-            f"{node_types_text}\n\n"
-            "════════════════════════════════════════\n"
-            "WORKFLOW SETTINGS\n"
-            "════════════════════════════════════════\n"
-            f'WORKFLOW_DEFAULT_MODEL: "{workflow_model}"\n\n'
-            "════════════════════════════════════════\n"
-            "USER REQUEST\n"
-            "════════════════════════════════════════\n"
-            f"{prompt}\n\n"
-            "Generate the complete, fully-connected workflow JSON now.\n"
-            "• Every node must have at least one edge.\n"
-            "• Use ONLY port names listed in the node specs above.\n"
-            "• Populate ALL config fields with sensible defaults.\n"
-            f'• For every llm_call node set config.model to "{workflow_model}".'
+        result = await self._call_llm_once(
+            prompt=prompt,
+            node_types=node_types,
+            model=model,
+            user_token=user_token,
+            default_model=default_model,
         )
 
-        payload: dict[str, Any] = {
-            "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
-            ],
-            "temperature": 0.1,
-            "max_tokens": 6000,
-        }
-        if model:
-            payload["model"] = model
-
-        t0 = time.monotonic()
-        try:
-            response = await forward_chat_json(payload=payload, user_token=user_token)
-        except Exception as exc:
-            logger.error("workflow_generator_gateway_error", error=str(exc))
-            raise WorkflowGenerationError(f"Gateway call failed: {exc}") from exc
-
-        elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-        if response.status_code != 200:
-            body_text = response.text[:500]
-            logger.error(
-                "workflow_generator_gateway_http_error",
-                status=response.status_code,
-                body=body_text,
-                elapsed_ms=elapsed_ms,
-            )
-            raise WorkflowGenerationError(
-                f"Gateway returned HTTP {response.status_code}: {body_text}"
-            )
-
-        try:
-            resp_json = response.json()
-            raw = resp_json["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, ValueError) as exc:
-            raise WorkflowGenerationError(
-                f"Unexpected gateway response format: {exc}"
-            ) from exc
-
-        logger.info(
-            "workflow_generator_response",
-            elapsed_ms=elapsed_ms,
-            model=resp_json.get("model", model),
-            chars=len(raw),
-            prompt_preview=user_message[:500],
-        )
-
-        result = self._parse_and_validate(raw, effective_node_types, workflow_model)
-        
         # Log detailed result for debugging
         logger.info(
             "workflow_generator_result",
@@ -319,7 +407,7 @@ class WorkflowGenerator:
             description=result.get("description", ""),
             node_types=[n.get("data", {}).get("nodeType") for n in result.get("nodes", [])],
         )
-        
+
         return result
 
     # ------------------------------------------------------------------
@@ -634,3 +722,159 @@ class WorkflowGenerator:
                     "workflow_generator_form_input_default",
                     message="Added default form field configuration"
                 )
+
+    # ------------------------------------------------------------------
+    # _call_llm_once — single LLM call extracted from generate()
+    # ------------------------------------------------------------------
+
+    async def _call_llm_once(
+        self,
+        prompt: str,
+        node_types: list[dict[str, Any]] | None = None,
+        model: str | None = None,
+        user_token: str | None = None,
+        default_model: str | None = None,
+    ) -> dict[str, Any]:
+        """Make a single LLM call and return the parsed workflow dict."""
+        effective_node_types = node_types or []
+        node_types_text = self._format_node_types(effective_node_types)
+        workflow_model = default_model or model or "gpt-4o-mini"
+
+        user_message = (
+            "════════════════════════════════════════\n"
+            "AVAILABLE NODE TYPES\n"
+            "════════════════════════════════════════\n"
+            f"{node_types_text}\n\n"
+            "════════════════════════════════════════\n"
+            "WORKFLOW SETTINGS\n"
+            "════════════════════════════════════════\n"
+            f'WORKFLOW_DEFAULT_MODEL: "{workflow_model}"\n\n'
+            "════════════════════════════════════════\n"
+            "USER REQUEST\n"
+            "════════════════════════════════════════\n"
+            f"{prompt}\n\n"
+            "Generate the complete, fully-connected workflow JSON now.\n"
+            "• Every node must have at least one edge.\n"
+            "• Use ONLY port names listed in the node specs above.\n"
+            "• Populate ALL config fields with sensible defaults.\n"
+            f'• For every llm_call node set config.model to "{workflow_model}".'
+        )
+
+        payload: dict[str, Any] = {
+            "messages": [
+                {"role": "system", "content": _build_system_prompt(load_few_shot_examples())},
+                {"role": "user", "content": user_message},
+            ],
+            "temperature": 0.1,
+            "max_tokens": 6000,
+        }
+        if model:
+            payload["model"] = model
+
+        t0 = time.monotonic()
+        try:
+            response = await forward_chat_json(payload=payload, user_token=user_token)
+        except Exception as exc:
+            logger.error("workflow_generator_gateway_error", error=str(exc))
+            raise WorkflowGenerationError(f"Gateway call failed: {exc}") from exc
+
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+        if response.status_code != 200:
+            body_text = response.text[:500]
+            raise WorkflowGenerationError(
+                f"Gateway returned HTTP {response.status_code}: {body_text}"
+            )
+
+        try:
+            resp_json = response.json()
+            raw = resp_json["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, ValueError) as exc:
+            raise WorkflowGenerationError(
+                f"Unexpected gateway response format: {exc}"
+            ) from exc
+
+        logger.info(
+            "workflow_generator_response",
+            elapsed_ms=elapsed_ms,
+            model=resp_json.get("model", model),
+            chars=len(raw),
+        )
+
+        return self._parse_and_validate(raw, effective_node_types, workflow_model)
+
+    # ------------------------------------------------------------------
+    # _build_retry_prompt — append correction context for retries
+    # ------------------------------------------------------------------
+
+    def _build_retry_prompt(
+        self,
+        original_prompt: str,
+        previous_error: str | None,
+        attempt: int,
+    ) -> str:
+        """Append validation error context to prompt for retry attempts."""
+        if previous_error is None or attempt == 1:
+            return original_prompt
+        return (
+            f"{original_prompt}\n\n"
+            f"[CORRECTION REQUIRED — Attempt {attempt}]\n"
+            f"Your previous response failed validation with this error:\n"
+            f"{previous_error}\n"
+            f"Fix ONLY the specific issue described above. Do not change other parts of the workflow."
+        )
+
+    # ------------------------------------------------------------------
+    # generate_with_retry — retry loop with Pydantic v2 validation
+    # ------------------------------------------------------------------
+
+    async def generate_with_retry(
+        self,
+        prompt: str,
+        node_types: list[dict[str, Any]] | None = None,
+        model: str | None = None,
+        user_token: str | None = None,
+        default_model: str | None = None,
+        max_attempts: int = 3,
+    ) -> dict[str, Any]:
+        """Generate a workflow with up to max_attempts LLM calls.
+
+        On each failed attempt, the Pydantic ValidationError message is fed
+        back to the LLM as a correction instruction.
+        """
+        from pydantic import ValidationError
+
+        last_validation_error: str | None = None
+
+        for attempt in range(1, max_attempts + 1):
+            full_prompt = self._build_retry_prompt(
+                original_prompt=prompt,
+                previous_error=last_validation_error,
+                attempt=attempt,
+            )
+
+            raw_dict = await self._call_llm_once(
+                prompt=full_prompt,
+                node_types=node_types,
+                model=model,
+                user_token=user_token,
+                default_model=default_model,
+            )
+
+            try:
+                workflow = GeneratedWorkflow.model_validate(raw_dict)
+                return workflow.model_dump()
+            except ValidationError as e:
+                last_validation_error = str(e)
+                logger.warning(
+                    "workflow_generator_validation_failure",
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    error=last_validation_error[:200],
+                )
+
+        raise WorkflowGenerationError(
+            message=f"Workflow generation failed after {max_attempts} attempts.",
+            validation_error=last_validation_error,
+            hint=_derive_hint(last_validation_error),
+        )

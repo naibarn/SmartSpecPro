@@ -93,6 +93,8 @@ export function AutoCreateWorkflowModal({
   } | null>(null);
   const [phase, setPhase] = useState<GenerationPhase>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [taskId, setTaskId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,6 +158,8 @@ export function AutoCreateWorkflowModal({
           setTaskId(null);
         } else if (status.status === "failed") {
           setErrorMessage(status.error || "Unknown error occurred");
+          setValidationError(status.validationError ?? null);
+          setHint(status.hint ?? null);
           setPhase("error");
           setTaskId(null);
         }
@@ -227,6 +231,8 @@ export function AutoCreateWorkflowModal({
     setPhase("sending");
     setResult(null);
     setErrorMessage("");
+    setValidationError(null);
+    setHint(null);
 
     try {
       const data = await generateMutation.mutateAsync({
@@ -269,6 +275,8 @@ export function AutoCreateWorkflowModal({
     setPhase("idle");
     setTaskId(null);
     setErrorMessage("");
+    setValidationError(null);
+    setHint(null);
   };
 
   const isGenerating =
@@ -456,20 +464,37 @@ export function AutoCreateWorkflowModal({
           {phase === "error" && !result && (
             <div className="border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20 p-4 flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-red-800 dark:text-red-200">
                   Generation failed
                 </p>
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">
                   {errorMessage ||
-                    "The LLM did not return a valid workflow. Try simplifying your description or using a different model."}
+                    "The LLM did not return a valid workflow. Try simplifying your description."}
                 </p>
+                {validationError && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-red-500 cursor-pointer">
+                      Technical details
+                    </summary>
+                    <pre className="text-xs text-red-500 mt-1 whitespace-pre-wrap font-mono">
+                      {validationError}
+                    </pre>
+                  </details>
+                )}
+                {hint && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 bg-amber-50 dark:bg-amber-900/20 rounded p-2">
+                    Suggestion: {hint}
+                  </p>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
                     setPhase("idle");
                     setErrorMessage("");
+                    setValidationError(null);
+                    setHint(null);
                   }}
                   className="mt-2 h-7 text-xs border-red-300 text-red-700"
                 >

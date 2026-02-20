@@ -496,6 +496,8 @@ export const workflowRouter = router({
           nodes?: unknown[];
           edges?: unknown[];
           description?: string;
+          validationError?: string;
+          hint?: string;
         };
       } catch (error: any) {
         if (error instanceof TRPCError) throw error;

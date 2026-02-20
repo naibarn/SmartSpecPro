@@ -284,6 +284,8 @@ async def get_generate_status(
         return WorkflowGenerateStatusResponse(
             status="failed",
             error=status_data.get("error", "Unknown error"),
+            validationError=status_data.get("validationError"),
+            hint=status_data.get("hint"),
         )
     else:
         return WorkflowGenerateStatusResponse(
