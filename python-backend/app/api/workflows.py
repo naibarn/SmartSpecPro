@@ -28,6 +28,7 @@ from app.orchestrator.ring_buffer import get_ring_buffer_store
 from app.orchestrator.stream_translator import StreamTranslator
 from app.orchestrator.workflow_compiler import WorkflowCompiler, CompilationError
 from app.orchestrator.workflow_generator import WorkflowGenerator, WorkflowGenerationError
+from app.orchestrator.workflow_validator import WorkflowGenerateStatusResponse
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -83,17 +84,6 @@ class WorkflowGenerateSubmitResponse(BaseModel):
 
     task_id: str
     status: str  # "queued"
-
-
-class WorkflowGenerateStatusResponse(BaseModel):
-    """Response from workflow generation status polling."""
-
-    status: str  # queued | processing | completed | failed
-    message: str | None = None
-    error: str | None = None
-    nodes: list[dict[str, Any]] | None = None
-    edges: list[dict[str, Any]] | None = None
-    description: str | None = None
 
 
 class ExecuteWorkflowRequest(BaseModel):
