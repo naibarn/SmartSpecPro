@@ -82,6 +82,7 @@ import UsageAnalytics from "./pages/UsageAnalytics";
 import TaskQueueMonitor from "./pages/TaskQueueMonitor";
 import Workflows from "./pages/Workflows";
 import WorkflowEditor from "./pages/WorkflowEditor";
+import WorkflowGallery from "./pages/WorkflowGallery";
 
 function PostHogPageViewTracker() {
   const [location] = useLocation();
@@ -151,6 +152,7 @@ function Router() {
       <Route path="/chat" component={Chat} />
       <Route path="/workflows" component={Workflows} />
       <Route path="/workflows/editor" component={WorkflowEditor} />
+      <Route path="/workflows/gallery" component={WorkflowGallery} />
       <Route path="/workflows/editor/:id" component={WorkflowEditor} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/generate/:type?" component={Generate} />

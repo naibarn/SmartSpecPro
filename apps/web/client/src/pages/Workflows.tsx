@@ -24,6 +24,7 @@ import {
   XCircle,
   AlertCircle,
   Home,
+  LayoutGrid,
 } from 'lucide-react';
 
 type WorkflowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -107,14 +108,24 @@ export default function Workflows() {
                 </div>
               </div>
             </div>
-            <Button
-              size="sm"
-              onClick={() => setLocation('/workflows/editor')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              New Workflow
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation('/workflows/gallery')}
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" />
+                Gallery
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setLocation('/workflows/editor')}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                New Workflow
+              </Button>
+            </div>
           </div>
         </div>
       </header>
