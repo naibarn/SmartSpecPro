@@ -1,0 +1,135 @@
+{
+  "id": "tpl-017",
+  "name": "Overdue Invoice Reminder",
+  "description": "Automatically identifies overdue invoices from the accounting system, categorizes them by days overdue, generates appropriately-toned reminder emails based on severity, and tracks all communication attempts in the database. Supports escalating tone from friendly reminder to final notice, helping professional services and finance teams reduce accounts receivable aging without manual follow-up.",
+  "category": "Finance & Accounting",
+  "industry": ["Finance", "Professional Services"],
+  "tags": ["scheduled", "finance", "invoicing", "email", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every weekday at 9 AM",
+          "config": {
+            "schedule": "0 9 * * 1-5",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch all overdue unpaid invoices",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT i.id AS invoice_id, i.invoice_number, i.amount, i.currency, i.due_date, i.issued_date, CURRENT_DATE - i.due_date AS days_overdue, c.company_name, c.contact_name, c.email AS customer_email, c.phone, COALESCE(r.reminder_count, 0) AS reminders_sent, r.last_reminder_date FROM invoices i JOIN customers c ON i.customer_id = c.id LEFT JOIN (SELECT invoice_id, COUNT(*) AS reminder_count, MAX(sent_at) AS last_reminder_date FROM invoice_reminders GROUP BY invoice_id) r ON i.id = r.invoice_id WHERE i.status = 'unpaid' AND i.due_date < CURRENT_DATE AND (r.last_reminder_date IS NULL OR r.last_reminder_date < CURRENT_DATE - INTERVAL '3 days') ORDER BY days_overdue DESC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Exclude invoices reminded within last 3 days",
+          "config": {
+            "condition": "item.days_overdue > 0 && (item.last_reminder_date === null || item.days_overdue > 3)"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each overdue invoice",
+          "config": {
+            "iterateOver": "{{overdueInvoices}}",
+            "itemVariable": "invoice"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Categorize by overdue severity",
+          "config": {
+            "expression": "invoice.days_overdue <= 7 ? 'gentle' : invoice.days_overdue <= 30 ? 'firm' : invoice.days_overdue <= 60 ? 'urgent' : 'final'",
+            "cases": {
+              "gentle": "1-7 days: Friendly reminder",
+              "firm": "8-30 days: Firm follow-up",
+              "urgent": "31-60 days: Urgent notice",
+              "final": "60+ days: Final notice before collections"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Generate severity-appropriate email content",
+          "config": {
+            "template": "{{#if (eq severity 'gentle')}}Dear {{invoice.contact_name}},\n\nThis is a friendly reminder that invoice #{{invoice.invoice_number}} for {{invoice.currency}} {{invoice.amount}} was due on {{invoice.due_date}}. If payment has already been sent, please disregard this message.\n\nPlease let us know if you have any questions about this invoice.\n\nBest regards{{else if (eq severity 'firm')}}Dear {{invoice.contact_name}},\n\nOur records indicate that invoice #{{invoice.invoice_number}} for {{invoice.currency}} {{invoice.amount}} is now {{invoice.days_overdue}} days past due (due date: {{invoice.due_date}}).\n\nPlease arrange payment at your earliest convenience. If there are any issues with this invoice, please contact our accounts receivable team.\n\nThank you for your prompt attention{{else if (eq severity 'urgent')}}Dear {{invoice.contact_name}},\n\nURGENT: Invoice #{{invoice.invoice_number}} for {{invoice.currency}} {{invoice.amount}} is now {{invoice.days_overdue}} days overdue. This is our third notice regarding this outstanding balance.\n\nImmediate payment is required. Please contact us within 5 business days to resolve this matter.\n\nIf payment arrangements need to be discussed, please call us directly{{else}}FINAL NOTICE\n\nDear {{invoice.contact_name}},\n\nDespite previous reminders, invoice #{{invoice.invoice_number}} for {{invoice.currency}} {{invoice.amount}} remains unpaid after {{invoice.days_overdue}} days. This is our final notice before this account is referred to our collections department.\n\nPlease remit payment immediately or contact us to discuss payment arrangements.{{/if}}"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send overdue reminder to customer",
+          "config": {
+            "to": ["{{invoice.customer_email}}"],
+            "cc": ["{{#if (eq severity 'final')}}collections@company.com{{/if}}"],
+            "subject": "{{#if (eq severity 'gentle')}}Reminder: Invoice #{{invoice.invoice_number}} Due{{else if (eq severity 'firm')}}Past Due: Invoice #{{invoice.invoice_number}} - {{invoice.days_overdue}} Days Overdue{{else if (eq severity 'urgent')}}URGENT: Invoice #{{invoice.invoice_number}} - Action Required{{else}}FINAL NOTICE: Invoice #{{invoice.invoice_number}}{{/if}}",
+            "body": "{{emailBody}}",
+            "from": "accounts-receivable@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Log reminder sent to invoice history",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "INSERT INTO invoice_reminders (invoice_id, severity, sent_at, recipient_email, reminder_number) VALUES ({{invoice.invoice_id}}, '{{severity}}', NOW(), '{{invoice.customer_email}}', {{invoice.reminders_sent}} + 1)"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

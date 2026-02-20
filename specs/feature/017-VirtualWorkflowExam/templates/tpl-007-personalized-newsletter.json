@@ -1,0 +1,144 @@
+{
+  "id": "tpl-007",
+  "name": "Personalized Weekly Newsletter",
+  "description": "Runs every Friday to generate personalized newsletter content for each subscriber segment. Subscribers are fetched from the database and processed in batches. For each batch, a RAG query retrieves relevant articles based on subscriber interests, then a customized email is assembled and sent. Engagement metrics are tracked for continuous optimization. Built for media companies and SaaS platforms with large subscriber bases.",
+  "category": "Sales & Marketing",
+  "industry": ["Media", "SaaS"],
+  "tags": ["scheduled", "newsletter", "personalization", "email", "advanced"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 40,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every Friday at 9 AM",
+          "config": {
+            "schedule": "0 9 * * 5",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch active subscribers with preferences",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT s.id, s.email, s.first_name, s.interests, s.preferred_frequency, s.last_sent_at FROM subscribers s WHERE s.is_active = true AND s.preferred_frequency IN ('weekly', 'all') AND (s.last_sent_at IS NULL OR s.last_sent_at < CURRENT_DATE - INTERVAL '6 days') ORDER BY s.last_sent_at ASC NULLS FIRST"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "batch",
+          "label": "Batch subscribers into groups of 50",
+          "config": {
+            "batchSize": 50,
+            "collection": "{{subscribers}}"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each subscriber in batch",
+          "config": {
+            "collection": "{{batch}}",
+            "itemVariable": "subscriber",
+            "maxIterations": 50
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Find articles matching subscriber interests",
+          "config": {
+            "collection": "published-articles",
+            "query": "Find the top 5 most relevant articles for a reader interested in: {{subscriber.interests}}. Prioritize articles published in the last 7 days.",
+            "topK": 5,
+            "filter": {
+              "publishedAfter": "{{sevenDaysAgo}}",
+              "status": "published"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Render personalized newsletter HTML",
+          "config": {
+            "template": "<h1>Your Weekly Digest, {{subscriber.first_name}}</h1><p>Here are this week's top picks based on your interests:</p>{{#each articles}}<div style='margin-bottom:16px'><h3><a href='{{this.url}}'>{{this.title}}</a></h3><p>{{this.excerpt}}</p></div>{{/each}}<hr><p style='font-size:12px'><a href='{{unsubscribeUrl}}'>Unsubscribe</a> | <a href='{{preferencesUrl}}'>Update preferences</a></p>"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send personalized newsletter email",
+          "config": {
+            "to": "{{subscriber.email}}",
+            "subject": "Your Weekly Digest - {{weekLabel}}",
+            "body": "{{newsletterHtml}}",
+            "from": "newsletter@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}",
+            "replyTo": "hello@company.com"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "metrics_collector",
+          "label": "Track newsletter send metrics",
+          "config": {
+            "metrics": {
+              "newsletter_sent_total": { "type": "counter", "increment": 1 },
+              "newsletter_batch_size": { "type": "gauge", "value": "{{batchSize}}" },
+              "newsletter_processing_time_ms": { "type": "histogram", "value": "{{elapsedMs}}" }
+            },
+            "labels": {
+              "frequency": "weekly",
+              "date": "{{today}}"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "id": "tpl-029",
+  "name": "Citizen Service Request Processing",
+  "description": "Receives citizen service requests via a public-facing webhook, validates the submission data, uses AI to classify the request type and route it to the appropriate department, stores the ticket in the case management database, and sends parallel notifications to both the citizen (confirmation) and the assigned department (new case alert). Streamlines municipal service delivery for government agencies.",
+  "category": "Government & Public",
+  "industry": ["Government"],
+  "tags": ["webhook", "government", "service-request", "ai-routing", "intermediate"],
+  "stepCount": 9,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 275 },
+        "data": {
+          "nodeType": "webhook_trigger",
+          "label": "Receive citizen service request from portal",
+          "config": {
+            "path": "/api/webhooks/citizen-request",
+            "method": "POST",
+            "authentication": "api-key",
+            "apiKeyHeader": "X-Portal-Key",
+            "apiKey": "{{secrets.PORTAL_WEBHOOK_KEY}}"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 275 },
+        "data": {
+          "nodeType": "validator",
+          "label": "Validate citizen request fields",
+          "config": {
+            "schema": {
+              "required": ["citizenName", "email", "category", "description", "location"],
+              "types": {
+                "citizenName": "string",
+                "email": "string",
+                "description": "string",
+                "location": "string"
+              },
+              "constraints": {
+                "description": { "minLength": 20, "maxLength": 5000 },
+                "email": { "format": "email" }
+              }
+            },
+            "onFailure": "reject",
+            "errorMessage": "Please provide all required fields with valid data."
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 275 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Classify request and determine department routing",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a municipal service request classifier for a city government. Analyze the following citizen service request and classify it.\n\nRequest:\nCategory Selected: {{category}}\nDescription: {{description}}\nLocation: {{location}}\n\nClassify into exactly ONE department:\n- PUBLIC_WORKS: roads, sidewalks, streetlights, water, sewage\n- PARKS_AND_REC: parks, playgrounds, trails, community centers\n- SANITATION: garbage, recycling, illegal dumping, street cleaning\n- CODE_ENFORCEMENT: building violations, zoning, noise complaints\n- PUBLIC_SAFETY: traffic hazards, damaged signs, emergency prep\n- UTILITIES: power outages, water quality, gas leaks\n- GENERAL: anything that doesn't fit above categories\n\nAlso determine:\n- Priority: LOW, MEDIUM, HIGH, URGENT\n- Estimated resolution time in business days\n- A brief summary (1 sentence) for the case title\n\nReturn JSON: { department, priority, estimatedDays, caseTitle }",
+            "maxTokens": 300,
+            "temperature": 0.2
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 275 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route to department based on AI classification",
+          "config": {
+            "expression": "department",
+            "cases": [
+              { "value": "PUBLIC_WORKS", "label": "Public Works Department" },
+              { "value": "PARKS_AND_REC", "label": "Parks and Recreation" },
+              { "value": "SANITATION", "label": "Sanitation Department" },
+              { "value": "CODE_ENFORCEMENT", "label": "Code Enforcement" },
+              { "value": "PUBLIC_SAFETY", "label": "Public Safety" },
+              { "value": "UTILITIES", "label": "Utilities Department" }
+            ],
+            "default": "GENERAL"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 275 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Create service case in case management system",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "INSERT INTO service_cases (case_number, citizen_name, citizen_email, category, department, priority, description, location, case_title, estimated_resolution_days, status, created_at) VALUES (CONCAT('SR-', TO_CHAR(NOW(), 'YYYYMMDD'), '-', LPAD(nextval('case_seq')::text, 4, '0')), '{{citizenName}}', '{{email}}', '{{category}}', '{{department}}', '{{priority}}', '{{description}}', '{{location}}', '{{caseTitle}}', {{estimatedDays}}, 'open', NOW()) RETURNING case_number, id"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 275 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Notify citizen and department simultaneously",
+          "config": {
+            "branches": ["citizen-confirmation", "department-alert"],
+            "waitForAll": true
+          }
+        }
+      },
+      {
+        "id": "node-6a",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 125 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send confirmation to citizen",
+          "config": {
+            "channel": "email",
+            "to": "{{email}}",
+            "subject": "Service Request Received - {{caseNumber}}",
+            "message": "Dear {{citizenName}},\n\nThank you for contacting City Services. Your request has been received and assigned to the {{department}} department.\n\nCase Number: {{caseNumber}}\nCategory: {{category}}\nPriority: {{priority}}\nEstimated Resolution: {{estimatedDays}} business days\n\nYou can track your request status at {{env.PORTAL_URL}}/track/{{caseNumber}}\n\nThank you for helping us improve our community.",
+            "from": "cityservices@city.gov",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-6b",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 425 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert assigned department of new case",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.DEPT_SLACK_WEBHOOK}}",
+            "message": "New Service Request Assigned\n\nCase: {{caseNumber}}\nTitle: {{caseTitle}}\nPriority: {{priority}}\nDepartment: {{department}}\nLocation: {{location}}\nDescription: {{description}}\n\nPlease review and assign a field agent within {{estimatedDays}} business days.",
+            "priority": "{{priority === 'URGENT' ? 'high' : 'normal'}}"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 275 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Log case creation for audit trail",
+          "config": {
+            "channel": "webhook",
+            "webhookUrl": "{{env.AUDIT_LOG_URL}}",
+            "message": "Case {{caseNumber}} created. Department: {{department}}. Priority: {{priority}}. Citizen notified: true. Department notified: true."
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-6a", "source": "node-6", "target": "node-6a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-6b", "source": "node-6", "target": "node-6b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6a-7", "source": "node-6a", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6b-7", "source": "node-6b", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

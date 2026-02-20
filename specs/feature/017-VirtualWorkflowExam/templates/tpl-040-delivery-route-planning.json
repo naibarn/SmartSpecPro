@@ -1,0 +1,124 @@
+{
+  "id": "tpl-040",
+  "name": "Delivery Route Planning",
+  "description": "Optimizes daily delivery routes for a fleet of drivers by combining order data, geographic constraints, and AI-powered route optimization. Runs early each morning to query pending deliveries, fetches real-time traffic and road conditions from a mapping API, uses an LLM to generate optimized route sequences considering delivery windows, vehicle capacity, and traffic patterns, then batches the assignments and sends push notifications to each driver with their personalized route. Designed for logistics companies, food delivery operations, and last-mile distribution centers.",
+  "category": "Logistics & Supply Chain",
+  "industry": ["Logistics", "Food & Beverage"],
+  "tags": ["scheduled", "logistics", "routing", "ai-optimization", "advanced"],
+  "stepCount": 6,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run route planning at 5 AM daily",
+          "config": {
+            "schedule": "0 5 * * *",
+            "timezone": "America/Chicago"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch today's pending deliveries and driver roster",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT d.id AS delivery_id, d.order_id, d.recipient_name, d.address, d.city, d.zip_code, d.latitude, d.longitude, d.delivery_window_start, d.delivery_window_end, d.package_weight_kg, d.special_instructions, d.priority FROM deliveries d WHERE d.status = 'pending' AND d.scheduled_date = CURRENT_DATE ORDER BY d.priority DESC, d.delivery_window_start ASC; SELECT dr.id AS driver_id, dr.name, dr.phone, dr.push_token, dr.vehicle_type, dr.max_capacity_kg, dr.home_latitude, dr.home_longitude, dr.shift_start, dr.shift_end FROM drivers dr WHERE dr.status = 'available' AND dr.scheduled_date = CURRENT_DATE ORDER BY dr.name"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch traffic conditions and travel time matrix",
+          "config": {
+            "method": "POST",
+            "url": "{{env.ROUTING_API_URL}}/v1/matrix",
+            "headers": {
+              "Authorization": "Bearer {{secrets.ROUTING_API_KEY}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "origins": "{{deliveryCoordinates}}",
+              "destinations": "{{deliveryCoordinates}}",
+              "departureTime": "{{todayDate}}T06:00:00",
+              "trafficModel": "best_guess",
+              "travelMode": "driving",
+              "avoidTolls": false
+            },
+            "timeout": 30000
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Optimize route assignments using AI",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a logistics route optimization specialist. Assign deliveries to drivers and optimize each driver's route sequence.\n\nDrivers Available ({{driverCount}}):\n{{#each drivers}}- {{this.name}} ({{this.vehicle_type}}): Max {{this.max_capacity_kg}}kg, shift {{this.shift_start}}-{{this.shift_end}}, starts at ({{this.home_latitude}}, {{this.home_longitude}})\n{{/each}}\n\nPending Deliveries ({{deliveryCount}}):\n{{#each deliveries}}- #{{this.delivery_id}}: {{this.address}}, {{this.city}} ({{this.latitude}}, {{this.longitude}}), window {{this.delivery_window_start}}-{{this.delivery_window_end}}, {{this.package_weight_kg}}kg, priority: {{this.priority}}{{#if this.special_instructions}}, note: {{this.special_instructions}}{{/if}}\n{{/each}}\n\nTravel Time Matrix:\n{{travelTimeMatrix}}\n\nOptimization objectives (in priority order):\n1. Meet all delivery time windows (hard constraint)\n2. Respect driver shift hours and vehicle capacity\n3. Minimize total driving distance/time\n4. Balance workload across drivers\n5. Prioritize high-priority deliveries early in route\n\nReturn JSON: [{driverId, driverName, routeSequence: [{deliveryId, address, estimatedArrival, estimatedDepartTime}], totalDistance_km, totalTime_min, totalWeight_kg, deliveryCount}].\n\nIf any deliveries cannot be assigned (capacity/time constraints), list them separately as unassigned with the reason.",
+            "maxTokens": 4000,
+            "temperature": 0.1
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "batch",
+          "label": "Batch route assignments by driver",
+          "config": {
+            "groupBy": "driverId",
+            "batchSize": 1,
+            "processingMode": "parallel"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send optimized route to each driver",
+          "config": {
+            "channel": "push",
+            "pushToken": "{{batch.driver.push_token}}",
+            "title": "Your Route for Today - {{batch.deliveryCount}} stops",
+            "message": "Good morning {{batch.driverName}}! You have {{batch.deliveryCount}} deliveries today ({{batch.totalDistance_km}} km, est. {{batch.totalTime_min}} min). First stop: {{batch.routeSequence[0].address}} at {{batch.routeSequence[0].estimatedArrival}}. Open the app for turn-by-turn navigation.",
+            "priority": "high",
+            "data": {
+              "driverId": "{{batch.driverId}}",
+              "routeSequence": "{{batch.routeSequence}}",
+              "totalStops": "{{batch.deliveryCount}}",
+              "action": "open_driver_route"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

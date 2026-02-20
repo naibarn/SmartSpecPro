@@ -1,0 +1,158 @@
+{
+  "id": "tpl-026",
+  "name": "Plagiarism Detection",
+  "description": "Triggered when a student uploads a document for submission. Reads the file content, splits it into analyzable passages, searches the institutional knowledge base using RAG for similar existing submissions and published sources, then uses an LLM to assess originality and flag potential plagiarism with detailed similarity reports. Sends results to the instructor for review.",
+  "category": "Education",
+  "industry": ["Education"],
+  "tags": ["file-upload", "education", "ai-detection", "rag", "advanced"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "file_upload_trigger",
+          "label": "Student submits document for plagiarism check",
+          "config": {
+            "acceptedTypes": [".pdf", ".docx", ".txt", ".md"],
+            "maxSizeMB": 25,
+            "storagePath": "submissions/{{courseId}}/{{assignmentId}}/"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "read_file",
+          "label": "Extract text content from uploaded document",
+          "config": {
+            "filePath": "{{uploadedFilePath}}",
+            "encoding": "utf-8",
+            "extractText": true,
+            "supportedFormats": ["pdf", "docx", "txt", "md"]
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "split",
+          "label": "Split document into paragraph-level passages",
+          "config": {
+            "delimiter": "\n\n",
+            "minChunkSize": 100,
+            "maxChunkSize": 1500,
+            "overlapSize": 50
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Search submissions database for similar passages",
+          "config": {
+            "collection": "academic-submissions",
+            "query": "{{passage}}",
+            "topK": 10,
+            "minScore": 0.75,
+            "embeddingModel": "text-embedding-3-small",
+            "apiKey": "{{secrets.OPENAI_API_KEY}}",
+            "filters": {
+              "excludeStudentId": "{{studentId}}",
+              "courseId": "{{courseId}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Analyze passages for originality and plagiarism",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are an academic integrity analyst. Compare the submitted text passages with the retrieved similar passages from the database.\n\nSubmitted Passage:\n{{passage}}\n\nSimilar Matches Found:\n{{#each ragResults}}\n- Source: {{this.metadata.source}} (Similarity: {{this.score}})\n  Text: {{this.content}}\n{{/each}}\n\nFor each match, assess:\n1. Is this a direct copy (>90% similar)?\n2. Is this paraphrased content (70-90% similar)?\n3. Is this coincidental similarity (<70%)?\n4. Is this properly cited?\n\nReturn a JSON object with:\n- overallScore: 0-100 (100 = fully original)\n- flaggedPassages: array of { passage, matchSource, similarityType, confidence }\n- recommendation: 'clear' | 'review_needed' | 'likely_plagiarism'\n- summary: brief explanation",
+            "maxTokens": 1000,
+            "temperature": 0.1
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse plagiarism analysis into structured report",
+          "config": {
+            "format": "json",
+            "schema": {
+              "overallScore": "number",
+              "flaggedPassages": "array",
+              "recommendation": "string",
+              "summary": "string"
+            },
+            "fallbackOnError": {
+              "overallScore": 0,
+              "recommendation": "review_needed",
+              "summary": "Analysis could not be parsed. Manual review required."
+            }
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Check if plagiarism was detected",
+          "config": {
+            "condition": "overallScore < 70 || recommendation === 'likely_plagiarism' || recommendation === 'review_needed'",
+            "trueLabel": "Flag for instructor review",
+            "falseLabel": "Mark as clear"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify instructor of plagiarism report",
+          "config": {
+            "channel": "email",
+            "to": "{{instructorEmail}}",
+            "subject": "Plagiarism Report: {{studentName}} - {{assignmentTitle}}",
+            "message": "A plagiarism check has been completed for the following submission:\n\nStudent: {{studentName}}\nCourse: {{courseName}} ({{courseCode}})\nAssignment: {{assignmentTitle}}\n\nOriginality Score: {{overallScore}}/100\nRecommendation: {{recommendation}}\n\nSummary: {{summary}}\n\n{{#if flaggedPassages.length}}Flagged Passages: {{flaggedPassages.length}} passages require review.{{/if}}\n\nPlease log in to the LMS to view the full report.",
+            "from": "integrity@university.edu",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

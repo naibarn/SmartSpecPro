@@ -1,0 +1,135 @@
+{
+  "id": "tpl-015",
+  "name": "Budget Overspend Alert",
+  "description": "Monitors departmental budgets on a weekly basis by comparing actual expenditures against allocated budgets. Calculates spend rates, identifies departments approaching or exceeding their limits, and routes alerts through severity-based channels. Critical overspends trigger executive email escalation while warnings go to department heads via Slack. Designed for enterprises and government organizations with strict fiscal accountability requirements.",
+  "category": "Finance & Accounting",
+  "industry": ["Enterprise", "Government"],
+  "tags": ["scheduled", "finance", "budget", "alerts", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every Monday at 7 AM",
+          "config": {
+            "schedule": "0 7 * * 1",
+            "timezone": "Asia/Bangkok"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch budget allocations and actual spend",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT d.id AS dept_id, d.name AS department, d.head_email, b.fiscal_year, b.allocated_amount, COALESCE(SUM(e.amount), 0) AS spent_amount, b.allocated_amount - COALESCE(SUM(e.amount), 0) AS remaining, ROUND((COALESCE(SUM(e.amount), 0) / NULLIF(b.allocated_amount, 0)) * 100, 1) AS spend_pct FROM departments d JOIN budgets b ON d.id = b.department_id LEFT JOIN expenditures e ON d.id = e.department_id AND e.fiscal_year = b.fiscal_year WHERE b.fiscal_year = EXTRACT(YEAR FROM CURRENT_DATE) GROUP BY d.id, d.name, d.head_email, b.fiscal_year, b.allocated_amount ORDER BY spend_pct DESC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "code_runner",
+          "label": "Calculate spend rates and project end-of-year",
+          "config": {
+            "language": "javascript",
+            "code": "const now = new Date();\nconst yearStart = new Date(now.getFullYear(), 0, 1);\nconst yearEnd = new Date(now.getFullYear(), 11, 31);\nconst daysPassed = Math.floor((now - yearStart) / 86400000);\nconst daysTotal = Math.floor((yearEnd - yearStart) / 86400000);\nconst expectedPct = (daysPassed / daysTotal) * 100;\n\nreturn input.map(dept => ({\n  ...dept,\n  expectedPct: Math.round(expectedPct * 10) / 10,\n  overBudgetPct: Math.round((dept.spend_pct - expectedPct) * 10) / 10,\n  projectedTotal: Math.round((dept.spent_amount / daysPassed) * daysTotal),\n  severity: dept.spend_pct >= 100 ? 'critical' : dept.spend_pct >= 85 ? 'warning' : dept.spend_pct >= expectedPct * 1.1 ? 'watch' : 'healthy'\n}));"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Keep only departments with warning or critical status",
+          "config": {
+            "condition": "item.severity === 'critical' || item.severity === 'warning'"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each flagged department",
+          "config": {
+            "iterateOver": "{{flaggedDepartments}}",
+            "itemVariable": "dept"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route by severity level",
+          "config": {
+            "expression": "{{dept.severity}}",
+            "cases": {
+              "critical": "Escalate to CFO and department head",
+              "warning": "Notify department head only"
+            },
+            "default": "Log for review"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 125 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert department head via Slack",
+          "config": {
+            "channel": "#finance-alerts",
+            "webhookUrl": "{{env.SLACK_WEBHOOK_URL}}",
+            "message": "Budget Alert ({{dept.severity}}): {{dept.department}} has spent {{dept.spend_pct}}% of annual budget (expected: {{dept.expectedPct}}%). Projected year-end spend: ${{dept.projectedTotal}} vs allocated ${{dept.allocated_amount}}. Remaining: ${{dept.remaining}}."
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 350 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Escalate critical overspend to CFO",
+          "config": {
+            "to": ["{{dept.head_email}}", "cfo@company.com"],
+            "subject": "CRITICAL: {{dept.department}} Budget Overspend - {{dept.spend_pct}}% Used",
+            "body": "Dear {{dept.department}} Leadership,\n\nThis is an automated budget overspend alert.\n\nDepartment: {{dept.department}}\nBudget Allocated: ${{dept.allocated_amount}}\nAmount Spent: ${{dept.spent_amount}} ({{dept.spend_pct}}%)\nRemaining: ${{dept.remaining}}\nProjected Year-End: ${{dept.projectedTotal}}\n\nThe department is {{dept.overBudgetPct}}% ahead of the expected spend rate for this point in the fiscal year.\n\nPlease review and submit a budget remediation plan within 5 business days.\n\nRegards,\nFinance Automation System",
+            "from": "finance-alerts@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-8", "source": "node-6", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

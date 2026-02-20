@@ -1,0 +1,178 @@
+{
+  "id": "tpl-057",
+  "name": "Multi-Language Content Publisher",
+  "description": "Triggered when new content is published in the CMS, this workflow fetches the original article from the database and translates it into three target languages (Thai, Japanese, Chinese) in parallel using separate LLM calls optimized for each language. The translations converge at a join node, pass through an editorial approval gate, then are published to the CMS via API calls in a loop. Built for international media companies and enterprises that need to distribute content across multiple language markets simultaneously.",
+  "category": "AI & Automation",
+  "industry": ["Media", "Enterprise"],
+  "tags": ["event", "translation", "ai-content", "parallel", "advanced"],
+  "stepCount": 10,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 225 },
+        "data": {
+          "nodeType": "event_trigger",
+          "label": "New article published in CMS",
+          "config": {
+            "eventName": "content.published",
+            "source": "cms",
+            "filters": {
+              "contentType": "article",
+              "language": "en"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 225 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch original article content and metadata",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT a.id, a.title, a.body, a.summary, a.author_name, a.category, a.tags, a.slug, a.published_at FROM articles a WHERE a.id = '{{articleId}}' AND a.status = 'published'"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 225 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Translate to Thai, Japanese, and Chinese in parallel",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-3a",
+        "type": "workflow",
+        "position": { "x": 850, "y": 50 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Translate article to Thai",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a professional Thai translator specializing in {{category}} content.\n\nTranslate the following English article to Thai. Maintain the original tone, formatting, and technical terms where appropriate. Ensure natural Thai phrasing, not word-for-word translation.\n\nTitle: {{title}}\nSummary: {{summary}}\nBody:\n{{body}}\n\nOutput as JSON with keys: title_th, summary_th, body_th",
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "node-3b",
+        "type": "workflow",
+        "position": { "x": 850, "y": 225 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Translate article to Japanese",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a professional Japanese translator specializing in {{category}} content.\n\nTranslate the following English article to Japanese. Use appropriate keigo level for publication. Maintain the original structure and technical accuracy.\n\nTitle: {{title}}\nSummary: {{summary}}\nBody:\n{{body}}\n\nOutput as JSON with keys: title_ja, summary_ja, body_ja",
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "node-3c",
+        "type": "workflow",
+        "position": { "x": 850, "y": 400 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Translate article to Simplified Chinese",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a professional Simplified Chinese translator specializing in {{category}} content.\n\nTranslate the following English article to Simplified Chinese. Use mainland Chinese conventions and natural phrasing suitable for publication.\n\nTitle: {{title}}\nSummary: {{summary}}\nBody:\n{{body}}\n\nOutput as JSON with keys: title_zh, summary_zh, body_zh",
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 225 },
+        "data": {
+          "nodeType": "join",
+          "label": "Collect all three translations",
+          "config": {
+            "mode": "all"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 225 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Editorial team reviews translations",
+          "config": {
+            "assignTo": "editorial-team@company.com",
+            "timeoutHours": 24,
+            "message": "Translations ready for review:\n\nOriginal: {{title}}\nLanguages: Thai, Japanese, Simplified Chinese\n\nPlease review and approve for publication.",
+            "approvalOptions": ["approve-all", "approve-with-edits", "reject"]
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 225 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Publish each translation to CMS",
+          "config": {
+            "iterateOver": "{{translations}}",
+            "maxIterations": 3
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 225 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Create translated article in CMS via API",
+          "config": {
+            "method": "POST",
+            "url": "{{env.CMS_API_URL}}/articles",
+            "headers": {
+              "Authorization": "Bearer {{secrets.CMS_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "title": "{{currentTranslation.title}}",
+              "summary": "{{currentTranslation.summary}}",
+              "body": "{{currentTranslation.body}}",
+              "language": "{{currentTranslation.languageCode}}",
+              "originalArticleId": "{{articleId}}",
+              "slug": "{{slug}}-{{currentTranslation.languageCode}}",
+              "status": "published",
+              "author": "{{authorName}}",
+              "category": "{{category}}",
+              "tags": "{{tags}}"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3a", "source": "node-3", "target": "node-3a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3b", "source": "node-3", "target": "node-3b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3c", "source": "node-3", "target": "node-3c", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3a-4", "source": "node-3a", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3b-4", "source": "node-3b", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3c-4", "source": "node-3c", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

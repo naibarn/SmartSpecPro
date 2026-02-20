@@ -1,0 +1,159 @@
+{
+  "id": "tpl-003",
+  "name": "Lead Scoring and Routing",
+  "description": "Receives inbound leads via webhook from landing pages or ad platforms, validates the data, enriches the lead profile using a RAG knowledge base of ideal customer profiles, and uses AI to assign a score from 0-100. Based on the score, leads are automatically routed to the appropriate sales team or nurture sequence in the CRM. Built for SaaS, real estate, and insurance companies with high lead volumes.",
+  "category": "Sales & Marketing",
+  "industry": ["SaaS", "Real Estate", "Insurance"],
+  "tags": ["webhook", "lead-scoring", "crm", "routing", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "webhook_trigger",
+          "label": "Receive new lead from landing page",
+          "config": {
+            "path": "/webhooks/leads/inbound",
+            "method": "POST",
+            "secret": "{{secrets.LEAD_WEBHOOK_SECRET}}"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "validator",
+          "label": "Validate lead has email and company",
+          "config": {
+            "rules": {
+              "email": { "type": "string", "format": "email", "required": true },
+              "companyName": { "type": "string", "minLength": 1, "required": true },
+              "fullName": { "type": "string", "required": true },
+              "phone": { "type": "string", "required": false }
+            },
+            "onFailure": "reject"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Lookup ideal customer profile matches",
+          "config": {
+            "collection": "ideal-customer-profiles",
+            "query": "Company: {{companyName}}, Industry: {{industry}}, Size: {{companySize}}, Role: {{jobTitle}}",
+            "topK": 5,
+            "scoreThreshold": 0.7
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Score lead fit from 0 to 100",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a lead scoring specialist.\nScore this lead from 0-100 based on fit with our ideal customer profile.\n\nLead Info:\n- Name: {{fullName}}\n- Email: {{email}}\n- Company: {{companyName}}\n- Job Title: {{jobTitle}}\n- Company Size: {{companySize}}\n- Industry: {{industry}}\n- Source: {{leadSource}}\n\nICP Matches from knowledge base:\n{{ragResults}}\n\nScoring criteria:\n- 80-100: Enterprise buyer, decision maker, matching industry\n- 60-79: Mid-market, influencer role, adjacent industry\n- 40-59: SMB, unclear authority, partial fit\n- 0-39: Poor fit, personal email, no company info\n\nReturn JSON: { \"score\": number, \"tier\": \"hot|warm|cold\", \"reason\": \"string\" }"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse score, tier, and reason",
+          "config": {
+            "format": "json",
+            "schema": {
+              "score": "number (0-100)",
+              "tier": "hot | warm | cold",
+              "reason": "string"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Create or update lead in CRM",
+          "config": {
+            "method": "POST",
+            "url": "https://api.hubspot.com/crm/v3/objects/contacts",
+            "headers": {
+              "Authorization": "Bearer {{secrets.HUBSPOT_API_KEY}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "properties": {
+                "email": "{{email}}",
+                "firstname": "{{firstName}}",
+                "lastname": "{{lastName}}",
+                "company": "{{companyName}}",
+                "lead_score": "{{score}}",
+                "lead_tier": "{{tier}}"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route lead by tier",
+          "config": {
+            "expression": "tier",
+            "cases": {
+              "hot": "Assign to senior AE immediately",
+              "warm": "Add to nurture sequence",
+              "cold": "Add to marketing drip campaign"
+            },
+            "default": "Add to general pool"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify sales team of new scored lead",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.SLACK_SALES_WEBHOOK_URL}}",
+            "message": "New {{tier}} lead (score: {{score}}): {{fullName}} from {{companyName}}.\nReason: {{reason}}\nCRM link: https://app.hubspot.com/contacts/{{contactId}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

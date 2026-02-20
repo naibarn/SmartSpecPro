@@ -1,0 +1,140 @@
+{
+  "id": "tpl-044",
+  "name": "Restaurant Inventory Auto-Order",
+  "description": "Runs on a nightly schedule to query current inventory levels from the restaurant's database, filters for items that have dropped below their reorder threshold, loops through each low-stock item to build purchase order line items from a supplier template, routes the order through a manager approval gate, emails the finalized purchase order to the supplier, and updates the inventory records to reflect the pending restock. Designed for restaurants and hospitality businesses that need automated supply chain management to prevent stockouts during peak service.",
+  "category": "Food & Restaurant",
+  "industry": ["Food & Beverage", "Hospitality"],
+  "tags": ["scheduled", "inventory", "restaurant", "ordering", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run nightly at 11 PM after service",
+          "config": {
+            "schedule": "0 23 * * *",
+            "timezone": "Asia/Bangkok"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Query current inventory levels",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT i.id, i.item_name, i.current_quantity, i.unit, i.reorder_threshold, i.reorder_quantity, i.category, s.supplier_name, s.email AS supplier_email, s.lead_time_days FROM inventory i JOIN suppliers s ON i.preferred_supplier_id = s.id WHERE i.current_quantity <= i.reorder_threshold AND i.is_active = true ORDER BY i.category, i.item_name"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Filter items not already on pending order",
+          "config": {
+            "condition": "item.pending_order_id IS NULL AND item.current_quantity <= item.reorder_threshold",
+            "passThrough": "matching"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Build purchase order line items",
+          "config": {
+            "collection": "{{filteredItems}}",
+            "itemVariable": "item",
+            "indexVariable": "idx",
+            "operation": {
+              "type": "map",
+              "expression": "{ lineNumber: idx + 1, itemId: item.id, itemName: item.item_name, quantity: item.reorder_quantity, unit: item.unit, category: item.category, supplierName: item.supplier_name, supplierEmail: item.supplier_email, estimatedDelivery: addDays(now(), item.lead_time_days) }"
+            },
+            "maxIterations": 200
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format purchase order document",
+          "config": {
+            "template": "<h2>Purchase Order - {{formatDate(now(), 'YYYY-MM-DD')}}</h2><p><strong>Restaurant:</strong> {{env.RESTAURANT_NAME}}</p><p><strong>Order Date:</strong> {{formatDate(now(), 'MMMM D, YYYY')}}</p><table border='1' cellpadding='8'><thead><tr><th>#</th><th>Item</th><th>Quantity</th><th>Unit</th><th>Category</th><th>Est. Delivery</th></tr></thead><tbody>{{#each orderLines}}<tr><td>{{this.lineNumber}}</td><td>{{this.itemName}}</td><td>{{this.quantity}}</td><td>{{this.unit}}</td><td>{{this.category}}</td><td>{{formatDate(this.estimatedDelivery, 'MMM D')}}</td></tr>{{/each}}</tbody></table><p><strong>Total Items:</strong> {{orderLines.length}}</p>"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Manager approves purchase order",
+          "config": {
+            "approvers": ["kitchen-manager@restaurant.com", "owner@restaurant.com"],
+            "message": "Review the auto-generated purchase order for {{orderLines.length}} items below reorder threshold.\n\nItems include: {{orderLines | map('itemName') | join(', ')}}",
+            "timeout": 28800,
+            "autoApproveAfter": null,
+            "escalateTo": "owner@restaurant.com"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email purchase order to suppliers",
+          "config": {
+            "to": "{{uniqueSupplierEmails}}",
+            "subject": "Purchase Order from {{env.RESTAURANT_NAME}} - {{formatDate(now(), 'YYYY-MM-DD')}}",
+            "body": "{{purchaseOrderHtml}}",
+            "from": "orders@restaurant.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}",
+            "replyTo": "kitchen-manager@restaurant.com"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Update inventory with pending order status",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "UPDATE inventory SET pending_order_id = {{orderId}}, pending_order_date = NOW(), last_reorder_date = NOW() WHERE id = ANY({{orderItemIds}}) RETURNING id, item_name, pending_order_id"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "approved", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

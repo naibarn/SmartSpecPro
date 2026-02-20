@@ -1,0 +1,177 @@
+{
+  "id": "tpl-011",
+  "name": "Leave Request and Approval",
+  "description": "Handles the complete employee leave request lifecycle from submission through multi-level approval. Validates leave balances, routes to the correct manager for approval, and upon decision updates the HR database, notifies the employee via email, and syncs the calendar via API. Ideal for mid-to-large organizations replacing paper-based or email-based leave workflows.",
+  "category": "HR & People",
+  "industry": ["Enterprise", "SME"],
+  "tags": ["form", "approval", "hr", "leave", "intermediate"],
+  "stepCount": 10,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 275 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Employee submits leave request form",
+          "config": {
+            "fields": [
+              { "name": "employeeId", "type": "text", "required": true },
+              { "name": "leaveType", "type": "select", "options": ["annual", "sick", "personal", "unpaid"], "required": true },
+              { "name": "startDate", "type": "date", "required": true },
+              { "name": "endDate", "type": "date", "required": true },
+              { "name": "reason", "type": "textarea", "required": false }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 275 },
+        "data": {
+          "nodeType": "validator",
+          "label": "Validate dates and leave type",
+          "config": {
+            "rules": [
+              { "field": "startDate", "condition": "isAfter", "value": "today" },
+              { "field": "endDate", "condition": "isAfterOrEqual", "value": "{{startDate}}" },
+              { "field": "leaveType", "condition": "isIn", "value": ["annual", "sick", "personal", "unpaid"] }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 275 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Check remaining leave balance",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT e.id, e.full_name, e.manager_id, e.department, lb.balance_days FROM employees e JOIN leave_balances lb ON e.id = lb.employee_id WHERE e.id = {{employeeId}} AND lb.leave_type = '{{leaveType}}' AND lb.year = EXTRACT(YEAR FROM CURRENT_DATE)"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 275 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Has sufficient leave balance?",
+          "config": {
+            "condition": "{{balanceDays}} >= {{requestedDays}}",
+            "trueLabel": "Sufficient",
+            "falseLabel": "Insufficient"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 275 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Manager reviews leave request",
+          "config": {
+            "assignTo": "{{managerId}}",
+            "timeoutHours": 48,
+            "notifyChannel": "email",
+            "message": "{{employeeName}} has requested {{requestedDays}} days of {{leaveType}} leave from {{startDate}} to {{endDate}}. Remaining balance: {{balanceDays}} days."
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 275 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Was the request approved?",
+          "config": {
+            "condition": "{{approvalStatus}} === 'approved'",
+            "trueLabel": "Approved",
+            "falseLabel": "Rejected"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 275 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Process approved leave in parallel",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-7a",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 50 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Update leave balance and record",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "WITH updated_balance AS (UPDATE leave_balances SET balance_days = balance_days - {{requestedDays}} WHERE employee_id = {{employeeId}} AND leave_type = '{{leaveType}}' AND year = EXTRACT(YEAR FROM CURRENT_DATE)) INSERT INTO leave_records (employee_id, leave_type, start_date, end_date, status, approved_by, approved_at) VALUES ({{employeeId}}, '{{leaveType}}', '{{startDate}}', '{{endDate}}', 'approved', {{managerId}}, NOW())"
+          }
+        }
+      },
+      {
+        "id": "node-7b",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 275 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Notify employee of approval",
+          "config": {
+            "to": ["{{employeeEmail}}"],
+            "subject": "Leave Request Approved: {{startDate}} to {{endDate}}",
+            "body": "Hi {{employeeName}},\n\nYour {{leaveType}} leave request from {{startDate}} to {{endDate}} ({{requestedDays}} days) has been approved by your manager.\n\nRemaining balance: {{newBalance}} days.\n\nBest regards,\nHR System",
+            "from": "hr@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-7c",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 500 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Sync leave to company calendar",
+          "config": {
+            "method": "POST",
+            "url": "https://www.googleapis.com/calendar/v3/calendars/{{env.HR_CALENDAR_ID}}/events",
+            "headers": {
+              "Authorization": "Bearer {{secrets.GOOGLE_CALENDAR_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "summary": "{{employeeName}} - {{leaveType}} Leave",
+              "start": { "date": "{{startDate}}" },
+              "end": { "date": "{{endDate}}" }
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-7a", "source": "node-7", "target": "node-7a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-7b", "source": "node-7", "target": "node-7b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-7c", "source": "node-7", "target": "node-7c", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

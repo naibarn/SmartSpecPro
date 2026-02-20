@@ -1,0 +1,215 @@
+{
+  "id": "tpl-058",
+  "name": "Emergency Alert Broadcast System",
+  "description": "Manually triggered by authorized personnel to broadcast emergency alerts across all communication channels simultaneously. The operator fills out an emergency details form, then a switch node classifies the alert severity to determine the broadcast scope. A parallel node dispatches notifications via push notification, email, SMS gateway API, and logs the incident in the database simultaneously. After broadcasting, the workflow waits for a configurable period and sends a follow-up status notification. Designed for enterprises and government agencies that need reliable multi-channel emergency communication.",
+  "category": "AI & Automation",
+  "industry": ["Enterprise", "Government"],
+  "tags": ["manual", "emergency", "alerts", "parallel", "advanced"],
+  "stepCount": 11,
+  "estimatedSetupMinutes": 40,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 225 },
+        "data": {
+          "nodeType": "manual_trigger",
+          "label": "Emergency coordinator initiates alert",
+          "config": {
+            "requiredRole": "emergency_coordinator",
+            "confirmationMessage": "You are about to broadcast an emergency alert. This action cannot be undone. Proceed?"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 225 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Fill in emergency alert details",
+          "config": {
+            "fields": [
+              { "name": "alertTitle", "type": "text", "label": "Alert Title", "required": true },
+              { "name": "severity", "type": "select", "options": ["critical", "high", "medium", "advisory"], "required": true },
+              { "name": "description", "type": "textarea", "label": "Emergency Description", "required": true },
+              { "name": "affectedAreas", "type": "text", "label": "Affected Areas / Departments", "required": true },
+              { "name": "actionRequired", "type": "textarea", "label": "Required Actions", "required": true },
+              { "name": "coordinatorName", "type": "text", "required": true },
+              { "name": "followUpMinutes", "type": "number", "label": "Follow-up check interval (minutes)", "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 225 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Determine broadcast scope by severity",
+          "config": {
+            "expression": "{{severity}}",
+            "cases": [
+              {
+                "value": "critical",
+                "label": "Critical: All channels + executive escalation",
+                "broadcastScope": "all-hands"
+              },
+              {
+                "value": "high",
+                "label": "High: All channels, affected departments",
+                "broadcastScope": "department"
+              },
+              {
+                "value": "medium",
+                "label": "Medium: Email + Slack to affected areas",
+                "broadcastScope": "targeted"
+              },
+              {
+                "value": "advisory",
+                "label": "Advisory: Slack notification only",
+                "broadcastScope": "informational"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 225 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Broadcast alert across all channels simultaneously",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-4a",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 50 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send push notification to all staff",
+          "config": {
+            "channel": "push",
+            "webhookUrl": "{{secrets.PUSH_SERVICE_WEBHOOK}}",
+            "message": "EMERGENCY ALERT: {{alertTitle}}\n\nSeverity: {{severity}}\n{{description}}\n\nAction Required: {{actionRequired}}\n\nCoordinator: {{coordinatorName}}",
+            "priority": "critical",
+            "sound": "emergency"
+          }
+        }
+      },
+      {
+        "id": "node-4b",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 175 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send emergency email to affected staff",
+          "config": {
+            "to": ["{{broadcastEmailList}}"],
+            "subject": "[EMERGENCY - {{severity}}] {{alertTitle}}",
+            "body": "EMERGENCY ALERT\n\nSeverity: {{severity}}\nAffected Areas: {{affectedAreas}}\n\n{{description}}\n\nACTION REQUIRED:\n{{actionRequired}}\n\nThis alert was issued by {{coordinatorName}} at {{timestamp}}.\nDo NOT reply to this email. Contact the emergency coordinator directly.",
+            "from": "emergency@{{env.EMAIL_DOMAIN}}",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}",
+            "priority": "high"
+          }
+        }
+      },
+      {
+        "id": "node-4c",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 300 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Send SMS via gateway API to emergency contacts",
+          "config": {
+            "method": "POST",
+            "url": "{{env.SMS_GATEWAY_URL}}/messages/broadcast",
+            "headers": {
+              "Authorization": "Bearer {{secrets.SMS_API_KEY}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "recipients": "{{emergencyContactNumbers}}",
+              "message": "[{{severity}}] {{alertTitle}}: {{actionRequired}} - Issued by {{coordinatorName}}",
+              "priority": "urgent",
+              "sender": "{{env.SMS_SENDER_ID}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-4d",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 425 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Log emergency incident in database",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "INSERT INTO emergency_incidents (title, severity, description, affected_areas, action_required, coordinator_name, broadcast_scope, status, created_at) VALUES ('{{alertTitle}}', '{{severity}}', '{{description}}', '{{affectedAreas}}', '{{actionRequired}}', '{{coordinatorName}}', '{{broadcastScope}}', 'active', NOW()) RETURNING id"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 225 },
+        "data": {
+          "nodeType": "join",
+          "label": "Wait for all broadcast channels to complete",
+          "config": {
+            "mode": "all"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 225 },
+        "data": {
+          "nodeType": "wait",
+          "label": "Wait for follow-up check interval",
+          "config": {
+            "duration": "{{followUpMinutes}}",
+            "unit": "minutes"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 225 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send follow-up status check notification",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{secrets.SLACK_EMERGENCY_WEBHOOK}}",
+            "message": "FOLLOW-UP CHECK: {{alertTitle}}\n\nIncident ID: {{incidentId}}\nSeverity: {{severity}}\nTime Since Alert: {{followUpMinutes}} minutes\n\nCoordinator {{coordinatorName}}: Please update the incident status.\n- Reply with 'resolved' to close the incident\n- Reply with 'ongoing' to schedule another follow-up\n- Reply with 'escalate' to notify executive leadership"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-4a", "source": "node-4", "target": "node-4a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-4b", "source": "node-4", "target": "node-4b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-4c", "source": "node-4", "target": "node-4c", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-4d", "source": "node-4", "target": "node-4d", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4a-5", "source": "node-4a", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4b-5", "source": "node-4b", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4c-5", "source": "node-4c", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4d-5", "source": "node-4d", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

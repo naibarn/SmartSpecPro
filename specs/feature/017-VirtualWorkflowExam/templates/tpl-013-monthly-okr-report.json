@@ -1,0 +1,118 @@
+{
+  "id": "tpl-013",
+  "name": "Monthly OKR Report",
+  "description": "Generates a comprehensive monthly Objectives and Key Results report by pulling progress data from the database, transforming metrics into a structured summary, using AI to provide qualitative analysis and recommendations, and delivering a polished HTML report via email to leadership. Built for organizations practicing OKR methodology who want automated progress visibility without manual report compilation.",
+  "category": "HR & People",
+  "industry": ["Enterprise", "SaaS"],
+  "tags": ["scheduled", "reporting", "okr", "ai-analysis", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run on the 1st of every month at 9 AM",
+          "config": {
+            "schedule": "0 9 1 * *",
+            "timezone": "Asia/Bangkok"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch all OKR progress for the period",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT o.id AS objective_id, o.title AS objective, o.owner_name, o.department, kr.title AS key_result, kr.target_value, kr.current_value, ROUND((kr.current_value::numeric / NULLIF(kr.target_value, 0)) * 100, 1) AS progress_pct, kr.status, kr.updated_at FROM objectives o JOIN key_results kr ON o.id = kr.objective_id WHERE o.cycle_end >= DATE_TRUNC('month', CURRENT_DATE) AND o.cycle_start <= CURRENT_DATE ORDER BY o.department, o.id, kr.id"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "transformer",
+          "label": "Aggregate OKR metrics by department",
+          "config": {
+            "expression": "{ departments: _.chain(input).groupBy('department').mapValues(dept => ({ avgProgress: _.meanBy(dept, 'progress_pct'), totalObjectives: _.uniqBy(dept, 'objective_id').length, atRisk: _.filter(dept, kr => kr.progress_pct < 30 && kr.status !== 'completed').length, completed: _.filter(dept, kr => kr.status === 'completed').length })).value(), overallAvg: _.meanBy(input, 'progress_pct'), reportMonth: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) }"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "AI analysis of OKR performance trends",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a strategic planning advisor. Analyze the following monthly OKR progress data and provide actionable insights.\n\nOKR Data:\n{{input}}\n\nPlease provide:\n1. **Executive Summary** (2-3 sentences on overall health)\n2. **Top Performers** - departments or objectives exceeding targets\n3. **At-Risk Items** - key results below 30% progress that need intervention\n4. **Recommendations** - 3 specific actions leadership should take this month\n5. **Trend Analysis** - compare against typical progress for this point in the cycle\n\nKeep the analysis concise, data-driven, and actionable. Use percentages and specific objective names where relevant."
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format OKR report as HTML email",
+          "config": {
+            "template": "<h1>Monthly OKR Report - {{reportMonth}}</h1><h2>Overall Progress: {{overallAvg}}%</h2><div style='background:#f0f9ff;padding:16px;border-radius:8px;margin:16px 0;'>{{aiAnalysis}}</div><h2>Department Breakdown</h2><table border='1' cellpadding='8' cellspacing='0' style='border-collapse:collapse;width:100%;'><thead><tr><th>Department</th><th>Avg Progress</th><th>Objectives</th><th>Completed</th><th>At Risk</th></tr></thead><tbody>{{#each departments}}<tr><td>{{@key}}</td><td>{{this.avgProgress}}%</td><td>{{this.totalObjectives}}</td><td>{{this.completed}}</td><td style='{{#if (gt this.atRisk 2)}}color:red;font-weight:bold;{{/if}}'>{{this.atRisk}}</td></tr>{{/each}}</tbody></table><p style='color:#6b7280;font-size:12px;margin-top:24px;'>Generated automatically by SmartSpecPro OKR Workflow</p>"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "storage_action",
+          "label": "Archive report to cloud storage",
+          "config": {
+            "action": "upload",
+            "bucket": "{{env.REPORTS_BUCKET}}",
+            "key": "okr-reports/{{reportMonth}}/monthly-okr-report.html",
+            "contentType": "text/html",
+            "body": "{{emailBody}}"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email OKR report to leadership team",
+          "config": {
+            "to": ["ceo@company.com", "coo@company.com", "hr-director@company.com"],
+            "subject": "Monthly OKR Report - {{reportMonth}}",
+            "body": "{{emailBody}}",
+            "from": "okr-reports@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

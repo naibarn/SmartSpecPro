@@ -1,0 +1,136 @@
+{
+  "id": "tpl-031",
+  "name": "Project Budget Alert",
+  "description": "Monitors government and enterprise project budgets on a recurring schedule. Queries the project finance database for spending across all active projects, runs variance analysis against approved budget ceilings, filters projects that exceed configurable thresholds, and routes notifications by severity level — email for warnings, push notification for critical overruns. Designed for public-sector financial controllers and enterprise PMOs who need proactive budget oversight.",
+  "category": "Government & Public",
+  "industry": ["Government", "Enterprise"],
+  "tags": ["scheduled", "government", "budget", "alerts", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run budget check every weekday at 8 AM",
+          "config": {
+            "schedule": "0 8 * * 1-5",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Query active project budgets and expenditures",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT p.id, p.name, p.department, p.approved_budget, COALESCE(SUM(e.amount), 0) AS total_spent, p.approved_budget - COALESCE(SUM(e.amount), 0) AS remaining, ROUND(COALESCE(SUM(e.amount), 0) / p.approved_budget * 100, 2) AS pct_used FROM projects p LEFT JOIN expenditures e ON p.id = e.project_id WHERE p.status = 'active' AND p.fiscal_year = EXTRACT(YEAR FROM CURRENT_DATE) GROUP BY p.id ORDER BY pct_used DESC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "code_runner",
+          "label": "Compute budget variance and risk scores",
+          "config": {
+            "language": "javascript",
+            "code": "const projects = input.rows; return projects.map(p => ({ ...p, variance: p.approved_budget - p.total_spent, riskScore: p.pct_used >= 100 ? 'critical' : p.pct_used >= 85 ? 'warning' : 'healthy', daysRemaining: Math.ceil((new Date(p.end_date) - new Date()) / 86400000), burnRate: p.total_spent / Math.max(1, Math.ceil((new Date() - new Date(p.start_date)) / 86400000)) }));"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Keep only projects exceeding 80% budget usage",
+          "config": {
+            "condition": "item.pct_used >= 80"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Iterate over each flagged project",
+          "config": {
+            "iterateOver": "{{filteredProjects}}",
+            "itemVariable": "project"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route by risk severity level",
+          "config": {
+            "expression": "{{project.riskScore}}",
+            "cases": {
+              "critical": "output_critical",
+              "warning": "output_warning"
+            },
+            "default": "output_healthy"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 150 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Push critical budget overrun alert",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.SLACK_WEBHOOK_FINANCE}}",
+            "message": "CRITICAL: Project '{{project.name}}' ({{project.department}}) has used {{project.pct_used}}% of its ${{project.approved_budget}} budget. Only ${{project.remaining}} remains. Immediate review required.",
+            "priority": "high"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 300 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email budget warning to project manager",
+          "config": {
+            "to": ["{{project.manager_email}}"],
+            "subject": "Budget Warning: {{project.name}} at {{project.pct_used}}% utilization",
+            "body": "Dear {{project.manager_name}},\n\nThis is an automated alert that project '{{project.name}}' in the {{project.department}} department has reached {{project.pct_used}}% of its approved budget of ${{project.approved_budget}}.\n\nTotal Spent: ${{project.total_spent}}\nRemaining: ${{project.remaining}}\nEstimated Burn Rate: ${{project.burnRate}}/day\n\nPlease review current commitments and submit a budget amendment if needed.\n\nRegards,\nBudget Monitoring System",
+            "from": "budget-alerts@agency.gov",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output_critical", "targetHandle": "input" },
+      { "id": "e6-8", "source": "node-6", "target": "node-8", "sourceHandle": "output_warning", "targetHandle": "input" }
+    ]
+  }
+}

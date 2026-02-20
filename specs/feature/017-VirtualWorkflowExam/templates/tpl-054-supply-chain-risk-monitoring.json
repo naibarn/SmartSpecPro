@@ -1,0 +1,149 @@
+{
+  "id": "tpl-054",
+  "name": "Supply Chain Risk Monitor",
+  "description": "Runs on a configurable schedule to simultaneously fetch supplier status data from the procurement system API and global supply chain news from a risk intelligence feed. An LLM analyzes the combined data to identify disruption risks, severity levels, and recommended mitigation actions. Results are parsed and filtered to surface only high and critical risks, which trigger immediate alerts to the procurement team. Built for manufacturing and logistics operations that need proactive visibility into supply chain vulnerabilities.",
+  "category": "AI & Automation",
+  "industry": ["Manufacturing", "Logistics"],
+  "tags": ["scheduled", "supply-chain", "ai-risk", "parallel", "advanced"],
+  "stepCount": 9,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every 4 hours during business days",
+          "config": {
+            "schedule": "0 */4 * * 1-5",
+            "timezone": "Asia/Bangkok"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Fetch supplier data and news simultaneously",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-2a",
+        "type": "workflow",
+        "position": { "x": 600, "y": 50 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch active supplier status from procurement API",
+          "config": {
+            "method": "GET",
+            "url": "{{env.PROCUREMENT_API_URL}}/suppliers?status=active&include=orders,leadTimes,qualityScores",
+            "headers": {
+              "Authorization": "Bearer {{secrets.PROCUREMENT_API_KEY}}"
+            },
+            "timeoutMs": 15000
+          }
+        }
+      },
+      {
+        "id": "node-2b",
+        "type": "workflow",
+        "position": { "x": 600, "y": 350 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch supply chain disruption news",
+          "config": {
+            "method": "GET",
+            "url": "https://api.riskintelligence.com/v3/alerts?categories=supply-chain,logistics,trade&severity=medium,high,critical&limit=25",
+            "headers": {
+              "X-Api-Key": "{{secrets.RISK_INTEL_API_KEY}}"
+            },
+            "timeoutMs": 15000
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "join",
+          "label": "Combine supplier data and news feeds",
+          "config": {
+            "mode": "all"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Analyze combined data for supply chain risks",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a supply chain risk analyst.\n\nAnalyze the following supplier data and global news for potential supply chain disruptions.\n\nSupplier Data:\n{{supplierData}}\n\nGlobal News Alerts:\n{{newsAlerts}}\n\nFor each identified risk, provide:\n1. Risk title (concise)\n2. Severity: critical, high, medium, low\n3. Affected suppliers (by name and ID)\n4. Risk category: geopolitical, natural-disaster, logistics, quality, financial, regulatory\n5. Potential impact description\n6. Recommended mitigation action\n7. Urgency: immediate, within-24h, within-week\n\nOutput as JSON array of risk objects. Include only risks with severity medium or above."
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse risk assessment results",
+          "config": {
+            "format": "json",
+            "schema": {
+              "risks": "array of {title, severity, affectedSuppliers, category, impact, mitigation, urgency}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Filter for high and critical severity risks",
+          "config": {
+            "condition": "severity === 'high' || severity === 'critical'",
+            "input": "{{risks}}"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert procurement team of critical risks",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{secrets.SLACK_PROCUREMENT_WEBHOOK}}",
+            "message": "Supply Chain Risk Alert\n\n{{#each filteredRisks}}Risk: {{this.title}}\nSeverity: {{this.severity}}\nAffected: {{this.affectedSuppliers}}\nCategory: {{this.category}}\nAction: {{this.mitigation}}\nUrgency: {{this.urgency}}\n---\n{{/each}}\n\nTotal risks detected: {{riskCount}} | Critical: {{criticalCount}} | High: {{highCount}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-2a", "source": "node-2", "target": "node-2a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-2b", "source": "node-2", "target": "node-2b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2a-3", "source": "node-2a", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2b-3", "source": "node-2b", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

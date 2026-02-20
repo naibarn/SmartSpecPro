@@ -1,0 +1,135 @@
+{
+  "id": "tpl-023",
+  "name": "Lab Result Notification",
+  "description": "Triggered when a lab result is finalized in the laboratory information system. Validates the result data against expected ranges, classifies results as normal or abnormal using a code runner, and sends parallel notifications to both the patient and the ordering physician. Critical abnormal results are flagged for immediate follow-up.",
+  "category": "Healthcare",
+  "industry": ["Healthcare"],
+  "tags": ["event", "healthcare", "lab-results", "notifications", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 275 },
+        "data": {
+          "nodeType": "event_trigger",
+          "label": "Lab result finalized in LIS",
+          "config": {
+            "eventName": "lab.result.finalized",
+            "source": "laboratory-information-system",
+            "filters": {
+              "status": "final"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 275 },
+        "data": {
+          "nodeType": "validator",
+          "label": "Validate lab result data completeness",
+          "config": {
+            "schema": {
+              "required": ["patientId", "testCode", "resultValue", "unit", "referenceRange", "orderingPhysicianId"],
+              "types": {
+                "patientId": "string",
+                "testCode": "string",
+                "resultValue": "number",
+                "unit": "string"
+              }
+            },
+            "onFailure": "reject"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 275 },
+        "data": {
+          "nodeType": "code_runner",
+          "label": "Classify result as normal, abnormal, or critical",
+          "config": {
+            "language": "javascript",
+            "code": "const { resultValue, referenceRange } = input;\nconst [low, high] = referenceRange.split('-').map(Number);\nconst criticalLow = low * 0.5;\nconst criticalHigh = high * 2;\nlet classification = 'normal';\nif (resultValue < criticalLow || resultValue > criticalHigh) classification = 'critical';\nelse if (resultValue < low || resultValue > high) classification = 'abnormal';\nreturn { ...input, classification, isOutOfRange: classification !== 'normal' };"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 275 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Check if result requires notification",
+          "config": {
+            "condition": "classification !== 'normal' || input.alwaysNotify === true",
+            "trueLabel": "Send notifications",
+            "falseLabel": "Skip - normal result, no notification needed"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 275 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Notify patient and physician simultaneously",
+          "config": {
+            "branches": ["patient-notification", "physician-notification"],
+            "waitForAll": true
+          }
+        }
+      },
+      {
+        "id": "node-5a",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 125 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify patient of lab results availability",
+          "config": {
+            "channel": "sms",
+            "provider": "twilio",
+            "accountSid": "{{secrets.TWILIO_SID}}",
+            "authToken": "{{secrets.TWILIO_TOKEN}}",
+            "from": "{{env.TWILIO_PHONE}}",
+            "to": "{{patient.phone}}",
+            "message": "Your lab results for {{testName}} are now available. Please log in to your patient portal to view them or contact your provider at (555) 234-5678. Classification: {{classification}}."
+          }
+        }
+      },
+      {
+        "id": "node-5b",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 425 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert ordering physician of abnormal result",
+          "config": {
+            "channel": "push",
+            "provider": "internal",
+            "recipientId": "{{orderingPhysicianId}}",
+            "title": "{{classification | upper}} Lab Result - {{patient.lastName}}",
+            "message": "Patient {{patient.firstName}} {{patient.lastName}} (MRN: {{patient.mrn}}): {{testName}} result {{resultValue}} {{unit}} (Ref: {{referenceRange}}). Classification: {{classification}}.",
+            "priority": "{{classification === 'critical' ? 'urgent' : 'normal'}}",
+            "requiresAck": true
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-5a", "source": "node-5", "target": "node-5a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-5b", "source": "node-5", "target": "node-5b", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

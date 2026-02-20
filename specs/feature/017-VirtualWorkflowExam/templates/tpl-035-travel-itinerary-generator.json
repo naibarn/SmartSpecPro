@@ -1,0 +1,139 @@
+{
+  "id": "tpl-035",
+  "name": "Travel Itinerary Generator",
+  "description": "Generates a personalized travel itinerary based on user preferences submitted through a form. Fetches destination data from a travel API, enriches it with local knowledge from a RAG-indexed travel guide, constructs a detailed prompt for AI-powered itinerary planning, and delivers the final day-by-day plan via email. Supports preferences for budget, travel style, dietary restrictions, and activity types. Ideal for trip planning and travel agencies.",
+  "category": "Personal Productivity",
+  "industry": ["Travel", "Personal Productivity"],
+  "tags": ["form", "travel", "ai-content", "rag", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Collect travel preferences from user",
+          "config": {
+            "fields": [
+              { "name": "destination", "type": "text", "label": "Destination City/Country", "required": true },
+              { "name": "startDate", "type": "date", "label": "Trip Start Date", "required": true },
+              { "name": "endDate", "type": "date", "label": "Trip End Date", "required": true },
+              { "name": "budget", "type": "select", "label": "Budget Level", "options": ["budget", "mid-range", "luxury"], "required": true },
+              { "name": "travelStyle", "type": "multiselect", "label": "Travel Style", "options": ["adventure", "cultural", "relaxation", "foodie", "nightlife", "family-friendly"] },
+              { "name": "dietary", "type": "text", "label": "Dietary Restrictions (optional)" },
+              { "name": "email", "type": "email", "label": "Send itinerary to", "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch destination info from travel data API",
+          "config": {
+            "method": "GET",
+            "url": "{{env.TRAVEL_API_URL}}/v2/destinations/search",
+            "params": {
+              "query": "{{form.destination}}",
+              "include": "weather,currency,safety,transport,topAttractions",
+              "month": "{{form.startDate | dateFormat:'MM'}}"
+            },
+            "headers": {
+              "Authorization": "Bearer {{secrets.TRAVEL_API_KEY}}"
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Search travel guide knowledge base",
+          "config": {
+            "indexName": "travel-guides",
+            "query": "Best things to do in {{form.destination}} for {{form.travelStyle}} travelers on a {{form.budget}} budget",
+            "topK": 8,
+            "minScore": 0.7,
+            "filters": {
+              "destination": "{{form.destination}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "prompt_template",
+          "label": "Build detailed itinerary generation prompt",
+          "config": {
+            "template": "You are an expert travel planner. Create a detailed day-by-day itinerary for the following trip.\n\nDestination: {{form.destination}}\nDates: {{form.startDate}} to {{form.endDate}} ({{tripDays}} days)\nBudget: {{form.budget}}\nTravel Style: {{form.travelStyle}}\nDietary Restrictions: {{form.dietary | default:'None'}}\n\nDestination Info:\n- Weather: {{destinationInfo.weather}}\n- Currency: {{destinationInfo.currency}}\n- Safety Rating: {{destinationInfo.safety}}\n- Top Attractions: {{destinationInfo.topAttractions}}\n\nLocal Knowledge:\n{{ragResults}}\n\nFor each day, include:\n1. Morning, afternoon, and evening activities\n2. Recommended restaurants (respecting dietary restrictions)\n3. Estimated costs in local currency and USD\n4. Transportation tips between locations\n5. Insider tips from local guides\n\nEnd with a packing checklist and budget summary.",
+            "outputVariable": "itineraryPrompt"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate personalized travel itinerary",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "{{itineraryPrompt}}",
+            "maxTokens": 4000,
+            "temperature": 0.7
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format itinerary as styled HTML email",
+          "config": {
+            "template": "<div style='max-width:600px;margin:0 auto;font-family:Georgia,serif;'><h1 style='color:#2c5f2d;'>Your {{form.destination}} Itinerary</h1><p style='color:#666;'>{{form.startDate}} - {{form.endDate}} | {{form.budget}} budget | {{form.travelStyle}}</p><div style='background:#f5f5dc;padding:16px;border-radius:8px;margin:16px 0;'><h3>Destination Quick Facts</h3><p>Weather: {{destinationInfo.weather}}</p><p>Currency: {{destinationInfo.currency}}</p><p>Safety: {{destinationInfo.safety}}</p></div><div>{{itinerary}}</div><hr><p style='color:#999;font-size:12px;'>Created with SmartSpecPro Travel Planner. Have a wonderful trip!</p></div>"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send itinerary to user email",
+          "config": {
+            "to": ["{{form.email}}"],
+            "subject": "Your Personalized {{form.destination}} Itinerary is Ready!",
+            "body": "{{emailBody}}",
+            "from": "travel@smartspechub.app",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

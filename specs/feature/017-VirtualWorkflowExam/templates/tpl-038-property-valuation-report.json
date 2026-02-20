@@ -1,0 +1,123 @@
+{
+  "id": "tpl-038",
+  "name": "Property Valuation Report",
+  "description": "Generates a comprehensive property valuation report by combining internal sales data with external market intelligence. A real estate agent submits a property address via form, the system queries comparable sales from the database, fetches current market trends from an external API, and uses AI to synthesize a professional valuation report with price estimate, confidence range, and market commentary. The formatted report is emailed to the requesting agent. Designed for real estate brokerages and appraisal firms.",
+  "category": "Real Estate",
+  "industry": ["Real Estate", "Finance"],
+  "tags": ["form", "real-estate", "ai-analysis", "reporting", "intermediate"],
+  "stepCount": 6,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Enter property details for valuation",
+          "config": {
+            "fields": [
+              { "name": "address", "type": "text", "label": "Property Address", "required": true },
+              { "name": "city", "type": "text", "label": "City", "required": true },
+              { "name": "state", "type": "text", "label": "State", "required": true },
+              { "name": "zipCode", "type": "text", "label": "ZIP Code", "required": true },
+              { "name": "propertyType", "type": "select", "label": "Property Type", "options": ["single-family", "condo", "townhouse", "multi-family", "land"], "required": true },
+              { "name": "bedrooms", "type": "number", "label": "Bedrooms", "required": true },
+              { "name": "bathrooms", "type": "number", "label": "Bathrooms", "required": true },
+              { "name": "squareFeet", "type": "number", "label": "Square Feet", "required": true },
+              { "name": "yearBuilt", "type": "number", "label": "Year Built" },
+              { "name": "agentEmail", "type": "email", "label": "Agent Email", "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Query comparable recent sales in the area",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT s.address, s.sale_price, s.sale_date, s.bedrooms, s.bathrooms, s.square_feet, s.year_built, s.days_on_market, s.price_per_sqft FROM sales s WHERE s.zip_code = '{{form.zipCode}}' AND s.property_type = '{{form.propertyType}}' AND s.sale_date >= CURRENT_DATE - INTERVAL '12 months' AND s.bedrooms BETWEEN {{form.bedrooms}} - 1 AND {{form.bedrooms}} + 1 AND s.square_feet BETWEEN {{form.squareFeet}} * 0.75 AND {{form.squareFeet}} * 1.25 ORDER BY s.sale_date DESC LIMIT 20"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch current market trends for the area",
+          "config": {
+            "method": "GET",
+            "url": "{{env.MARKET_INTEL_API_URL}}/v1/market-trends",
+            "params": {
+              "zipCode": "{{form.zipCode}}",
+              "propertyType": "{{form.propertyType}}",
+              "metrics": "medianPrice,priceChange12m,inventoryLevel,daysOnMarket,listToSaleRatio"
+            },
+            "headers": {
+              "Authorization": "Bearer {{secrets.MARKET_INTEL_API_KEY}}"
+            },
+            "timeout": 15000
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate AI-powered property valuation",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a certified real estate appraiser. Generate a professional property valuation report.\n\nSubject Property:\n- Address: {{form.address}}, {{form.city}}, {{form.state}} {{form.zipCode}}\n- Type: {{form.propertyType}}\n- Bedrooms: {{form.bedrooms}}, Bathrooms: {{form.bathrooms}}\n- Square Feet: {{form.squareFeet}}\n- Year Built: {{form.yearBuilt}}\n\nComparable Sales (last 12 months):\n{{#each comparables}}- {{this.address}}: ${{this.sale_price}} ({{this.sale_date}}), {{this.bedrooms}}bd/{{this.bathrooms}}ba, {{this.square_feet}}sqft, ${{this.price_per_sqft}}/sqft, {{this.days_on_market}} DOM\n{{/each}}\n\nMarket Trends:\n- Median Price: ${{marketTrends.medianPrice}}\n- 12-Month Price Change: {{marketTrends.priceChange12m}}%\n- Active Inventory: {{marketTrends.inventoryLevel}} listings\n- Average Days on Market: {{marketTrends.daysOnMarket}}\n- List-to-Sale Ratio: {{marketTrends.listToSaleRatio}}%\n\nProvide:\n1. Estimated Market Value with low/mid/high range\n2. Price per square foot analysis\n3. Comparable sales analysis (top 5 most relevant comps)\n4. Market conditions assessment (buyer's/seller's/balanced)\n5. Value adjustment factors (age, condition assumptions, location premium)\n6. Recommended listing price range\n7. Confidence level (high/medium/low) with reasoning\n\nFormat as a professional report.",
+            "maxTokens": 3000,
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format valuation report as professional HTML",
+          "config": {
+            "template": "<div style='max-width:700px;margin:0 auto;font-family:Arial,sans-serif;'><div style='background:#1a365d;color:white;padding:24px;text-align:center;'><h1 style='margin:0;'>Property Valuation Report</h1><p style='margin:8px 0 0;opacity:0.8;'>Comparative Market Analysis</p></div><div style='padding:24px;'><h2>Subject Property</h2><p><strong>{{form.address}}</strong><br>{{form.city}}, {{form.state}} {{form.zipCode}}</p><p>{{form.propertyType}} | {{form.bedrooms}} bed / {{form.bathrooms}} bath | {{form.squareFeet}} sqft | Built {{form.yearBuilt}}</p><hr><div>{{valuationReport}}</div><div style='background:#f7fafc;padding:16px;border-radius:8px;margin-top:24px;'><h3>Market Snapshot</h3><p>Median Price: ${{marketTrends.medianPrice}} | 12M Change: {{marketTrends.priceChange12m}}% | Avg DOM: {{marketTrends.daysOnMarket}}</p></div></div><div style='background:#eee;padding:16px;text-align:center;font-size:12px;color:#666;'>Generated by SmartSpecPro | {{generatedDate}} | For informational purposes only — not a formal appraisal.</div></div>"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email valuation report to requesting agent",
+          "config": {
+            "to": ["{{form.agentEmail}}"],
+            "subject": "Valuation Report: {{form.address}}, {{form.city}}",
+            "body": "{{emailBody}}",
+            "from": "valuations@realty-company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

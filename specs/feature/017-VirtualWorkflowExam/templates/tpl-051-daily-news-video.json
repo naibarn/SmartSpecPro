@@ -1,0 +1,166 @@
+{
+  "id": "tpl-051",
+  "name": "Daily News Video Generator",
+  "description": "Runs on a daily schedule to fetch trending AI and automation news from an RSS aggregator API, uses an LLM to write a concise video script and thumbnail prompt, then generates a thumbnail image and a narrated video clip in parallel. The final assets are uploaded to cloud storage and a Slack notification is sent to the editorial team. Designed for media companies and content creators who publish daily AI recap videos.",
+  "category": "AI & Automation",
+  "industry": ["Media"],
+  "tags": ["scheduled", "ai-video", "news", "parallel", "advanced"],
+  "stepCount": 9,
+  "estimatedSetupMinutes": 40,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run daily at 6 AM UTC",
+          "config": {
+            "schedule": "0 6 * * *",
+            "timezone": "UTC"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch trending AI news from aggregator",
+          "config": {
+            "method": "GET",
+            "url": "https://api.newsaggregator.com/v2/top-headlines?category=technology&q=AI+automation&pageSize=10",
+            "headers": {
+              "X-Api-Key": "{{secrets.NEWS_API_KEY}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Write video script and thumbnail prompt",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a video scriptwriter for a daily AI news channel.\n\nBased on the following top stories, create:\n1. A 90-second narration script covering the 3 most impactful stories\n2. A thumbnail image prompt (vivid, attention-grabbing, no text in image)\n3. A compelling video title (under 60 chars)\n\nStories:\n{{articles}}\n\nOutput as JSON with keys: script, thumbnailPrompt, videoTitle"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Generate thumbnail and video in parallel",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-4a",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 50 },
+        "data": {
+          "nodeType": "generate_image",
+          "label": "Generate eye-catching thumbnail",
+          "config": {
+            "provider": "dall-e-3",
+            "prompt": "{{thumbnailPrompt}}",
+            "size": "1792x1024",
+            "quality": "hd",
+            "style": "vivid"
+          }
+        }
+      },
+      {
+        "id": "node-4b",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 350 },
+        "data": {
+          "nodeType": "skill",
+          "label": "Generate narrated news video clip",
+          "config": {
+            "skillId": "video-creator",
+            "params": {
+              "script": "{{script}}",
+              "voiceId": "en-US-news-anchor",
+              "duration": 90,
+              "resolution": "1080p",
+              "style": "news-broadcast"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "join",
+          "label": "Wait for thumbnail and video to complete",
+          "config": {
+            "mode": "all"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "storage_action",
+          "label": "Upload video and thumbnail to S3",
+          "config": {
+            "provider": "s3",
+            "bucket": "{{env.MEDIA_BUCKET}}",
+            "region": "{{env.AWS_REGION}}",
+            "accessKeyId": "{{secrets.AWS_ACCESS_KEY_ID}}",
+            "secretAccessKey": "{{secrets.AWS_SECRET_ACCESS_KEY}}",
+            "actions": [
+              {
+                "operation": "upload",
+                "key": "news-videos/{{date}}/video.mp4",
+                "content": "{{videoOutput}}"
+              },
+              {
+                "operation": "upload",
+                "key": "news-videos/{{date}}/thumbnail.png",
+                "content": "{{thumbnailOutput}}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify editorial team on Slack",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{secrets.SLACK_EDITORIAL_WEBHOOK}}",
+            "message": "Daily AI News Video Ready\n\nTitle: {{videoTitle}}\nVideo: https://{{env.CDN_DOMAIN}}/news-videos/{{date}}/video.mp4\nThumbnail: https://{{env.CDN_DOMAIN}}/news-videos/{{date}}/thumbnail.png\n\nPlease review and publish."
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-4a", "source": "node-4", "target": "node-4a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-4b", "source": "node-4", "target": "node-4b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4a-5", "source": "node-4a", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4b-5", "source": "node-4b", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

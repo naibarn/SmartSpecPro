@@ -1,0 +1,144 @@
+{
+  "id": "tpl-033",
+  "name": "Stock Price Alert",
+  "description": "Monitors a personal watchlist of stocks on a regular schedule. Queries the user's watchlist from the database, loops through each ticker to fetch real-time price data from a market API, evaluates user-defined alert conditions (price thresholds, percentage changes), and sends push notifications when conditions are met. Includes rate limiting to avoid exceeding API quotas. Ideal for retail investors and finance enthusiasts tracking multiple positions.",
+  "category": "Personal Productivity",
+  "industry": ["Finance", "Personal Productivity"],
+  "tags": ["scheduled", "finance", "stocks", "alerts", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Check prices every 15 minutes during market hours",
+          "config": {
+            "schedule": "*/15 9-16 * * 1-5",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch user watchlist with alert thresholds",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT w.id, w.ticker, w.alert_price_above, w.alert_price_below, w.alert_pct_change, w.user_id, u.push_token, u.email FROM watchlist w JOIN users u ON w.user_id = u.id WHERE w.alerts_enabled = true AND w.deleted_at IS NULL ORDER BY w.ticker"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Iterate over each watched ticker",
+          "config": {
+            "iterateOver": "{{watchlist}}",
+            "itemVariable": "stock"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch current price from market data API",
+          "config": {
+            "method": "GET",
+            "url": "{{env.MARKET_DATA_API_URL}}/v1/quote",
+            "params": {
+              "symbol": "{{stock.ticker}}",
+              "fields": "price,change,changePercent,volume,previousClose"
+            },
+            "headers": {
+              "Authorization": "Bearer {{secrets.MARKET_DATA_API_KEY}}"
+            },
+            "timeout": 5000
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Check if price meets alert conditions",
+          "config": {
+            "conditions": [
+              {
+                "name": "price_above_threshold",
+                "expression": "stock.alert_price_above != null && quote.price >= stock.alert_price_above"
+              },
+              {
+                "name": "price_below_threshold",
+                "expression": "stock.alert_price_below != null && quote.price <= stock.alert_price_below"
+              },
+              {
+                "name": "pct_change_exceeded",
+                "expression": "stock.alert_pct_change != null && Math.abs(quote.changePercent) >= stock.alert_pct_change"
+              }
+            ],
+            "operator": "OR"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send stock price alert notification",
+          "config": {
+            "channel": "push",
+            "pushToken": "{{stock.push_token}}",
+            "title": "Stock Alert: {{stock.ticker}}",
+            "message": "{{stock.ticker}} is now ${{quote.price}} ({{quote.changePercent}}% today). Previous close: ${{quote.previousClose}}. Volume: {{quote.volume}}.",
+            "priority": "high",
+            "data": {
+              "ticker": "{{stock.ticker}}",
+              "price": "{{quote.price}}",
+              "action": "open_stock_detail"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "rate_limiter",
+          "label": "Throttle to avoid API quota exhaustion",
+          "config": {
+            "maxRequests": 50,
+            "windowMs": 60000,
+            "strategy": "sliding_window",
+            "onLimitReached": "queue"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "true", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

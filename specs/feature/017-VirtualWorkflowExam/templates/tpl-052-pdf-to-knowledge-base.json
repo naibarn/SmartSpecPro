@@ -1,0 +1,160 @@
+{
+  "id": "tpl-052",
+  "name": "PDF to Knowledge Base Indexer",
+  "description": "Accepts PDF file uploads, extracts text content, splits it into semantically meaningful chunks, then batch-indexes each chunk into a vector knowledge base via API calls. Sends a completion notification with indexing statistics. Ideal for enterprises and educational institutions building searchable document repositories from large PDF collections.",
+  "category": "AI & Automation",
+  "industry": ["Enterprise", "Education"],
+  "tags": ["file-upload", "knowledge-base", "indexing", "advanced"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "file_upload_trigger",
+          "label": "Accept PDF document upload",
+          "config": {
+            "allowedTypes": ["application/pdf"],
+            "maxSizeMb": 50,
+            "storagePath": "uploads/knowledge-base/pending/"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "read_file",
+          "label": "Extract text from uploaded PDF",
+          "config": {
+            "filePath": "{{uploadedFilePath}}",
+            "parser": "pdf",
+            "options": {
+              "extractImages": false,
+              "preserveFormatting": true,
+              "ocrEnabled": true
+            }
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "split",
+          "label": "Split text into semantic chunks",
+          "config": {
+            "strategy": "recursive",
+            "chunkSize": 1500,
+            "chunkOverlap": 200,
+            "separators": ["\n\n", "\n", ". ", " "]
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "batch",
+          "label": "Group chunks into batches of 20",
+          "config": {
+            "batchSize": 20,
+            "input": "{{chunks}}"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each batch sequentially",
+          "config": {
+            "iterateOver": "{{batches}}",
+            "maxIterations": 500,
+            "continueOnError": true
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Index batch into vector database",
+          "config": {
+            "method": "POST",
+            "url": "{{env.VECTOR_DB_URL}}/collections/{{env.KB_COLLECTION}}/upsert",
+            "headers": {
+              "Authorization": "Bearer {{secrets.VECTOR_DB_API_KEY}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "documents": "{{currentBatch}}",
+              "metadata": {
+                "source": "{{fileName}}",
+                "uploadedAt": "{{uploadTimestamp}}",
+                "documentId": "{{documentId}}"
+              }
+            },
+            "retries": 3,
+            "timeoutMs": 30000
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "storage_action",
+          "label": "Move PDF to processed folder",
+          "config": {
+            "provider": "s3",
+            "bucket": "{{env.DOCUMENTS_BUCKET}}",
+            "accessKeyId": "{{secrets.AWS_ACCESS_KEY_ID}}",
+            "secretAccessKey": "{{secrets.AWS_SECRET_ACCESS_KEY}}",
+            "actions": [
+              {
+                "operation": "move",
+                "source": "uploads/knowledge-base/pending/{{fileName}}",
+                "destination": "uploads/knowledge-base/processed/{{fileName}}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify team of indexing completion",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{secrets.SLACK_KNOWLEDGE_WEBHOOK}}",
+            "message": "Knowledge Base Indexing Complete\n\nDocument: {{fileName}}\nChunks indexed: {{totalChunks}}\nBatches processed: {{batchCount}}\nErrors: {{errorCount}}\nDuration: {{elapsedTime}}s\n\nThe document is now searchable in the knowledge base."
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

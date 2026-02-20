@@ -1,0 +1,168 @@
+{
+  "id": "tpl-048",
+  "name": "AI Support Ticket Triage",
+  "description": "Receives new support tickets via webhook, queries a RAG knowledge base to find relevant documentation and past solutions, uses an LLM to classify the ticket priority, determine the appropriate team, and draft a response, parses the AI output into structured fields, then simultaneously updates the ticket in the support system via API and sends an acknowledgment email to the customer. Designed for SaaS and e-commerce companies that need fast, consistent first-response handling of customer support requests.",
+  "category": "Customer Service",
+  "industry": ["SaaS", "E-commerce"],
+  "tags": ["webhook", "support", "ai-triage", "rag", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "webhook_trigger",
+          "label": "New support ticket received via webhook",
+          "config": {
+            "path": "/webhooks/support-ticket",
+            "method": "POST",
+            "authentication": {
+              "type": "hmac",
+              "secret": "{{secrets.WEBHOOK_SIGNING_SECRET}}",
+              "header": "X-Signature-256"
+            },
+            "expectedFields": ["ticketId", "subject", "body", "customerEmail", "customerName", "source", "priority"]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Search knowledge base for relevant docs and past tickets",
+          "config": {
+            "collectionName": "support_knowledge_base",
+            "query": "{{webhook.subject}} {{webhook.body}}",
+            "topK": 8,
+            "scoreThreshold": 0.65,
+            "filters": {
+              "type": ["documentation", "faq", "resolved_ticket"]
+            },
+            "includeMetadata": true
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Classify, route, and draft response",
+          "config": {
+            "model": "gpt-4o",
+            "temperature": 0.3,
+            "maxTokens": 1500,
+            "prompt": "You are a senior customer support agent performing ticket triage.\n\nTicket Details:\n- ID: {{webhook.ticketId}}\n- Subject: {{webhook.subject}}\n- Body: {{webhook.body}}\n- Customer: {{webhook.customerName}} ({{webhook.customerEmail}})\n- Source: {{webhook.source}}\n- Reported Priority: {{webhook.priority}}\n\nRelevant Knowledge Base Results:\n{{#each ragResults}}[{{this.metadata.type}}] {{this.content}} (Score: {{this.score}})\n{{/each}}\n\nPerform the following:\n1. **Priority Classification**: Assign P1 (critical/outage), P2 (high/degraded), P3 (medium/workaround exists), or P4 (low/question). Justify based on business impact.\n2. **Category**: billing, technical, account, feature_request, bug_report, general_inquiry\n3. **Assigned Team**: engineering, billing_ops, account_management, product, general_support\n4. **Sentiment**: positive, neutral, frustrated, angry\n5. **Draft Response**: Write a professional, empathetic customer-facing response that acknowledges the issue, provides any immediately helpful information from the knowledge base, and sets expectations for resolution timeline.\n6. **Internal Notes**: Summary for the support agent, including relevant KB article IDs and suggested next steps.\n\nReturn as JSON with fields: priority, priorityJustification, category, assignedTeam, sentiment, draftResponse, internalNotes, suggestedKbArticles (array of IDs)."
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse triage results into structured fields",
+          "config": {
+            "format": "json",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "priority": { "type": "string", "enum": ["P1", "P2", "P3", "P4"] },
+                "priorityJustification": { "type": "string" },
+                "category": { "type": "string" },
+                "assignedTeam": { "type": "string" },
+                "sentiment": { "type": "string" },
+                "draftResponse": { "type": "string" },
+                "internalNotes": { "type": "string" },
+                "suggestedKbArticles": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["priority", "category", "assignedTeam", "draftResponse"]
+            },
+            "fallbackOnParseError": {
+              "priority": "P3",
+              "category": "general_inquiry",
+              "assignedTeam": "general_support"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Update ticket system and notify customer simultaneously",
+          "config": {
+            "branches": ["updateTicket", "emailCustomer"]
+          }
+        }
+      },
+      {
+        "id": "node-5a",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 150 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Update ticket in support system with triage data",
+          "config": {
+            "method": "PUT",
+            "url": "{{env.SUPPORT_API_URL}}/tickets/{{webhook.ticketId}}",
+            "headers": {
+              "Authorization": "Bearer {{secrets.SUPPORT_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "priority": "{{triageResult.priority}}",
+              "category": "{{triageResult.category}}",
+              "assignedTeam": "{{triageResult.assignedTeam}}",
+              "sentiment": "{{triageResult.sentiment}}",
+              "internalNotes": "{{triageResult.internalNotes}}",
+              "suggestedKbArticles": "{{triageResult.suggestedKbArticles}}",
+              "aiTriaged": true,
+              "triagedAt": "{{now()}}"
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "node-5b",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 275 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send acknowledgment email to customer",
+          "config": {
+            "to": ["{{webhook.customerEmail}}"],
+            "subject": "Re: {{webhook.subject}} [Ticket #{{webhook.ticketId}}]",
+            "body": "{{triageResult.draftResponse}}",
+            "from": "support@company.com",
+            "replyTo": "support+{{webhook.ticketId}}@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}",
+            "headers": {
+              "X-Ticket-Id": "{{webhook.ticketId}}",
+              "X-Priority": "{{triageResult.priority}}"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-5a", "source": "node-5", "target": "node-5a", "sourceHandle": "branch-updateTicket", "targetHandle": "input" },
+      { "id": "e5-5b", "source": "node-5", "target": "node-5b", "sourceHandle": "branch-emailCustomer", "targetHandle": "input" }
+    ]
+  }
+}

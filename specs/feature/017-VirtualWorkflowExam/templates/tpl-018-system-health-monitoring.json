@@ -1,0 +1,166 @@
+{
+  "id": "tpl-018",
+  "name": "System Health Monitoring",
+  "description": "Continuously monitors the health of critical infrastructure services by cycling through a configurable list of endpoints, making HTTP health check requests with error handling, and tracking response times and availability. Incorporates circuit breaker logic to prevent alert storms during extended outages, and publishes metrics for dashboarding. Ideal for SaaS platforms and IT teams managing multiple microservices or third-party dependencies.",
+  "category": "IT & DevOps",
+  "industry": ["SaaS", "IT Services"],
+  "tags": ["scheduled", "monitoring", "devops", "alerts", "advanced"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 40,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run health checks every 5 minutes",
+          "config": {
+            "schedule": "*/5 * * * *",
+            "timezone": "UTC"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Iterate over each monitored service",
+          "config": {
+            "iterateOver": [
+              { "name": "API Gateway", "url": "{{env.API_GATEWAY_URL}}/health", "expectedStatus": 200, "timeoutMs": 5000 },
+              { "name": "Auth Service", "url": "{{env.AUTH_SERVICE_URL}}/health", "expectedStatus": 200, "timeoutMs": 3000 },
+              { "name": "Database", "url": "{{env.DB_MONITOR_URL}}/status", "expectedStatus": 200, "timeoutMs": 5000 },
+              { "name": "Redis Cache", "url": "{{env.REDIS_MONITOR_URL}}/ping", "expectedStatus": 200, "timeoutMs": 2000 },
+              { "name": "Payment Service", "url": "https://api.stripe.com/v1/health", "expectedStatus": 200, "timeoutMs": 5000 },
+              { "name": "Email Service", "url": "{{env.EMAIL_SERVICE_URL}}/health", "expectedStatus": 200, "timeoutMs": 3000 }
+            ],
+            "itemVariable": "service"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Ping service health endpoint",
+          "config": {
+            "method": "GET",
+            "url": "{{service.url}}",
+            "timeout": "{{service.timeoutMs}}",
+            "headers": {
+              "User-Agent": "SmartSpec-HealthCheck/1.0",
+              "Authorization": "Bearer {{secrets.MONITORING_TOKEN}}"
+            },
+            "retries": 1,
+            "captureResponseTime": true
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "try_catch",
+          "label": "Handle connection failures gracefully",
+          "config": {
+            "onError": "continue",
+            "errorVariable": "healthCheckError",
+            "defaultResult": {
+              "status": "down",
+              "responseTime": -1,
+              "error": "{{healthCheckError.message}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Is the service unhealthy?",
+          "config": {
+            "condition": "{{responseStatus}} !== {{service.expectedStatus}} || {{responseTime}} > {{service.timeoutMs}}",
+            "trueLabel": "Unhealthy",
+            "falseLabel": "Healthy"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "circuit_breaker",
+          "label": "Suppress alerts if service already flagged",
+          "config": {
+            "key": "health_{{service.name}}",
+            "failureThreshold": 3,
+            "resetTimeoutSeconds": 300,
+            "halfOpenRequests": 1,
+            "onOpen": "skip_notification",
+            "onClosed": "allow_notification"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert on-call team via PagerDuty",
+          "config": {
+            "channel": "#ops-alerts",
+            "webhookUrl": "{{env.PAGERDUTY_WEBHOOK_URL}}",
+            "message": "SERVICE DOWN: {{service.name}}\nURL: {{service.url}}\nExpected status: {{service.expectedStatus}}\nActual status: {{responseStatus}}\nResponse time: {{responseTime}}ms\nError: {{healthCheckError.message}}\nTimestamp: {{timestamp}}\n\nCircuit breaker state: {{circuitState}}",
+            "severity": "critical"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "metrics_collector",
+          "label": "Record health check metrics",
+          "config": {
+            "metrics": [
+              {
+                "name": "service_health_status",
+                "type": "gauge",
+                "value": "{{responseStatus === service.expectedStatus ? 1 : 0}}",
+                "labels": { "service": "{{service.name}}" }
+              },
+              {
+                "name": "service_response_time_ms",
+                "type": "histogram",
+                "value": "{{responseTime}}",
+                "labels": { "service": "{{service.name}}" }
+              }
+            ],
+            "endpoint": "{{env.PROMETHEUS_PUSH_URL}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "id": "tpl-049",
+  "name": "Churn Risk Detection & Outreach",
+  "description": "Runs weekly to query customer engagement metrics from the database, sends the behavioral data to an LLM for churn probability scoring and risk factor analysis, parses the predictions into structured output, filters for customers above the risk threshold, loops through each at-risk customer, and sends personalized retention notifications to the customer success team. Designed for SaaS companies that want proactive churn prevention powered by AI-driven behavioral analysis rather than waiting for cancellation signals.",
+  "category": "Customer Service",
+  "industry": ["SaaS"],
+  "tags": ["scheduled", "churn", "ai-prediction", "customer-success", "advanced"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every Monday at 9 AM",
+          "config": {
+            "schedule": "0 9 * * 1",
+            "timezone": "UTC"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Query customer engagement metrics (last 30 days)",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT u.id AS user_id, u.email, u.full_name, u.company_name, u.plan_name, u.plan_mrr, u.created_at AS signup_date, EXTRACT(DAY FROM NOW() - u.last_login_at) AS days_since_last_login, COALESCE(a.sessions_last_30d, 0) AS sessions_last_30d, COALESCE(a.sessions_prev_30d, 0) AS sessions_prev_30d, COALESCE(a.features_used_last_30d, 0) AS features_used_last_30d, COALESCE(a.api_calls_last_30d, 0) AS api_calls_last_30d, COALESCE(t.open_tickets, 0) AS open_support_tickets, COALESCE(t.avg_satisfaction_score, 0) AS avg_satisfaction_score, CASE WHEN u.billing_failures > 0 THEN true ELSE false END AS has_billing_issues, u.contract_end_date FROM users u LEFT JOIN ( SELECT user_id, COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) AS sessions_last_30d, COUNT(CASE WHEN created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days' THEN 1 END) AS sessions_prev_30d, COUNT(DISTINCT CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN feature_name END) AS features_used_last_30d, COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' AND event_type = 'api_call' THEN 1 END) AS api_calls_last_30d FROM activity_log GROUP BY user_id ) a ON u.id = a.user_id LEFT JOIN ( SELECT customer_id, COUNT(CASE WHEN status = 'open' THEN 1 END) AS open_tickets, AVG(satisfaction_score) AS avg_satisfaction_score FROM support_tickets WHERE created_at >= NOW() - INTERVAL '90 days' GROUP BY customer_id ) t ON u.id = t.customer_id WHERE u.is_active = true AND u.plan_name != 'free' ORDER BY u.plan_mrr DESC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Score churn risk and identify risk factors",
+          "config": {
+            "model": "gpt-4o",
+            "temperature": 0.2,
+            "maxTokens": 4000,
+            "prompt": "You are a customer success data scientist. Analyze the following customer engagement data and predict churn risk for each customer.\n\nCustomer Data:\n{{#each customers}}Customer {{this.user_id}} ({{this.company_name}}):\n- Plan: {{this.plan_name}} (${{this.plan_mrr}}/mo)\n- Days since last login: {{this.days_since_last_login}}\n- Sessions (last 30d): {{this.sessions_last_30d}} (prev 30d: {{this.sessions_prev_30d}})\n- Features used (30d): {{this.features_used_last_30d}}\n- API calls (30d): {{this.api_calls_last_30d}}\n- Open support tickets: {{this.open_support_tickets}}\n- Avg satisfaction: {{this.avg_satisfaction_score}}/5\n- Billing issues: {{this.has_billing_issues}}\n- Contract ends: {{this.contract_end_date}}\n{{/each}}\n\nFor each customer, provide:\n1. churnProbability: 0.0-1.0 score\n2. riskLevel: critical (>0.8), high (0.6-0.8), medium (0.4-0.6), low (<0.4)\n3. topRiskFactors: top 3 contributing factors (e.g., 'Login frequency dropped 70%', 'No feature adoption in 2 weeks')\n4. recommendedAction: specific retention action for the CS team\n5. urgency: immediate, this_week, next_review\n\nReturn as JSON array of objects with fields: userId, companyName, churnProbability, riskLevel, topRiskFactors (array of strings), recommendedAction (string), urgency (string)."
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse churn predictions into structured data",
+          "config": {
+            "format": "json",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "userId": { "type": "string" },
+                  "companyName": { "type": "string" },
+                  "churnProbability": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "riskLevel": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+                  "topRiskFactors": { "type": "array", "items": { "type": "string" } },
+                  "recommendedAction": { "type": "string" },
+                  "urgency": { "type": "string", "enum": ["immediate", "this_week", "next_review"] }
+                },
+                "required": ["userId", "churnProbability", "riskLevel", "recommendedAction"]
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Filter customers above churn risk threshold",
+          "config": {
+            "condition": "prediction.churnProbability >= 0.4",
+            "passThrough": "matching",
+            "sortBy": "churnProbability",
+            "sortOrder": "desc"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each at-risk customer",
+          "config": {
+            "collection": "{{atRiskCustomers}}",
+            "itemVariable": "customer",
+            "indexVariable": "idx",
+            "maxIterations": 500
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert CS team with retention recommendation",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.SLACK_CS_WEBHOOK_URL}}",
+            "message": "CHURN RISK ALERT - {{customer.riskLevel | uppercase}}\n\nCustomer: {{customer.companyName}} (ID: {{customer.userId}})\nChurn Probability: {{multiply(customer.churnProbability, 100)}}%\nUrgency: {{customer.urgency}}\n\nTop Risk Factors:\n{{#each customer.topRiskFactors}}- {{this}}\n{{/each}}\n\nRecommended Action: {{customer.recommendedAction}}\n\nPlease take action within the recommended timeframe.",
+            "priority": "{{customer.urgency === 'immediate' ? 'high' : 'normal'}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

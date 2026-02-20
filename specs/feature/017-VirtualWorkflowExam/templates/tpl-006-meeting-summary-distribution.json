@@ -1,0 +1,116 @@
+{
+  "id": "tpl-006",
+  "name": "Meeting Summary Distribution",
+  "description": "After a meeting, paste the raw notes or transcript into a simple form. AI generates a structured summary with action items, key decisions, and next steps. The summary is simultaneously emailed to all attendees and posted to the team Slack channel. Perfect for professional services firms and enterprise teams who need consistent meeting documentation without manual effort.",
+  "category": "Sales & Marketing",
+  "industry": ["Professional Services", "Enterprise"],
+  "tags": ["form", "ai-summary", "meetings", "slack", "email", "beginner"],
+  "stepCount": 6,
+  "estimatedSetupMinutes": 15,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 275 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Enter meeting notes and attendees",
+          "config": {
+            "fields": [
+              { "name": "meetingTitle", "type": "text", "label": "Meeting Title", "required": true },
+              { "name": "attendees", "type": "text", "label": "Attendee Emails (comma-separated)", "required": true },
+              { "name": "rawNotes", "type": "textarea", "label": "Paste meeting notes or transcript", "required": true },
+              { "name": "meetingDate", "type": "date", "label": "Meeting Date", "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 275 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate structured meeting summary",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a professional executive assistant.\nSummarize the following meeting notes into a structured format.\n\nMeeting: {{meetingTitle}}\nDate: {{meetingDate}}\nAttendees: {{attendees}}\n\nRaw Notes:\n{{rawNotes}}\n\nOutput the summary in this exact structure:\n1. MEETING OVERVIEW (2-3 sentences)\n2. KEY DECISIONS (bullet points)\n3. ACTION ITEMS (who, what, by when)\n4. OPEN QUESTIONS (items needing follow-up)\n5. NEXT MEETING (suggested date/agenda if mentioned)\n\nBe concise but thorough. Use the attendees' names when assigning action items."
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 275 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse summary sections and action items",
+          "config": {
+            "format": "structured",
+            "schema": {
+              "overview": "string",
+              "keyDecisions": "string[]",
+              "actionItems": "{ assignee: string, task: string, dueDate: string }[]",
+              "openQuestions": "string[]",
+              "nextMeeting": "string"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 275 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Distribute via email and Slack",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-4a",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 125 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email summary to all attendees",
+          "config": {
+            "to": "{{attendees}}",
+            "subject": "Meeting Summary: {{meetingTitle}} - {{meetingDate}}",
+            "body": "Hi team,\n\nHere is the summary from our meeting.\n\n{{formattedSummary}}\n\nPlease review your action items and update the team on progress.\n\nBest regards,\nAutomated Meeting Assistant",
+            "from": "meetings@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-4b",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 425 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Post summary to Slack channel",
+          "config": {
+            "method": "POST",
+            "url": "{{env.SLACK_WEBHOOK_URL}}",
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "text": "Meeting Summary: *{{meetingTitle}}* ({{meetingDate}})\n\n{{formattedSummary}}"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-4a", "source": "node-4", "target": "node-4a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-4b", "source": "node-4", "target": "node-4b", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

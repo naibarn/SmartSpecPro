@@ -1,0 +1,152 @@
+{
+  "id": "tpl-019",
+  "name": "Error Log Analysis",
+  "description": "Performs automated analysis of application error logs by reading log files, splitting entries, filtering for errors and warnings, batching them for efficient AI processing, and generating a categorized incident report. Uses LLM to identify patterns, group related errors, suggest root causes, and prioritize remediation. Alerts the engineering team when critical patterns emerge. Built for SaaS and IT teams drowning in log data who need actionable insights, not raw output.",
+  "category": "IT & DevOps",
+  "industry": ["SaaS", "IT Services"],
+  "tags": ["scheduled", "devops", "ai-analysis", "logs", "intermediate"],
+  "stepCount": 9,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every 6 hours",
+          "config": {
+            "schedule": "0 */6 * * *",
+            "timezone": "UTC"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "read_file",
+          "label": "Read application error log file",
+          "config": {
+            "path": "{{env.APP_LOG_DIR}}/app-error.log",
+            "encoding": "utf-8",
+            "tailLines": 5000,
+            "sinceTimestamp": "{{lastRunTimestamp}}"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "split",
+          "label": "Split log into individual entries",
+          "config": {
+            "delimiter": "\n",
+            "removeEmpty": true,
+            "parseJson": true
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Keep only ERROR and WARN level entries",
+          "config": {
+            "condition": "item.level === 'ERROR' || item.level === 'WARN' || item.level === 'FATAL'"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "batch",
+          "label": "Batch errors into groups of 50 for AI analysis",
+          "config": {
+            "batchSize": 50,
+            "strategy": "fixed"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Analyze error patterns with AI",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a senior SRE engineer analyzing application error logs. Review the following batch of error log entries and provide a structured analysis.\n\nLog Entries:\n{{input}}\n\nAnalyze and provide:\n1. **Error Categories** - Group similar errors together with count and frequency\n2. **Root Cause Hypothesis** - For each category, suggest the most likely root cause\n3. **Impact Assessment** - Rate each category as Critical/High/Medium/Low based on:\n   - Frequency of occurrence\n   - Whether it affects user-facing functionality\n   - Whether it indicates data loss or security concerns\n4. **Recommended Actions** - Specific next steps for each category (e.g., 'Check database connection pool size', 'Review auth token expiry logic')\n5. **Patterns** - Any time-based patterns, correlated failures, or cascading errors\n\nFormat as JSON with keys: categories, rootCauses, impact, actions, patterns.\nBe specific with file names, error codes, and stack trace references where available."
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse AI analysis into structured format",
+          "config": {
+            "format": "json",
+            "schema": {
+              "categories": "array",
+              "rootCauses": "object",
+              "impact": "object",
+              "actions": "array",
+              "patterns": "array"
+            },
+            "fallback": "raw_text"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Are there critical or high-impact errors?",
+          "config": {
+            "condition": "Object.values({{impact}}).some(v => v === 'Critical' || v === 'High')",
+            "trueLabel": "Critical errors found",
+            "falseLabel": "No critical errors"
+          }
+        }
+      },
+      {
+        "id": "node-9",
+        "type": "workflow",
+        "position": { "x": 2100, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert engineering team on critical errors",
+          "config": {
+            "channel": "#engineering-alerts",
+            "webhookUrl": "{{env.SLACK_WEBHOOK_URL}}",
+            "message": "Error Log Analysis Report (Last 6 hours)\n\nTotal errors analyzed: {{totalErrors}}\nCritical categories found: {{criticalCount}}\n\nTop Issues:\n{{#each categories}}{{this.count}}x {{this.name}} ({{this.impact}})\n{{/each}}\n\nRecommended Actions:\n{{#each actions}}* {{this}}\n{{/each}}\n\nFull report: {{env.APP_URL}}/reports/error-analysis/{{reportId}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e8-9", "source": "node-8", "target": "node-9", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

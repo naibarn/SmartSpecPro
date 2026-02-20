@@ -1,0 +1,112 @@
+{
+  "id": "tpl-024",
+  "name": "Pre-Visit Patient Summary",
+  "description": "Runs each evening before clinic hours to prepare AI-generated patient summaries for the next day's appointments. Retrieves patient records from the database, searches the medical knowledge base using RAG for relevant clinical context, and uses an LLM to generate a concise pre-visit brief that is sent to each provider. Helps physicians prepare efficiently and improves quality of care.",
+  "category": "Healthcare",
+  "industry": ["Healthcare"],
+  "tags": ["scheduled", "healthcare", "ai-summary", "rag", "advanced"],
+  "stepCount": 6,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every evening at 7 PM before next clinic day",
+          "config": {
+            "schedule": "0 19 * * 0-4",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch tomorrow's appointments with patient history",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT a.id as appointment_id, a.appointment_date, a.appointment_time, a.reason_for_visit, p.id as patient_id, p.first_name, p.last_name, p.date_of_birth, p.allergies, p.active_medications, d.name as provider_name, d.email as provider_email, (SELECT json_agg(json_build_object('date', v.visit_date, 'diagnosis', v.diagnosis, 'notes', v.clinical_notes)) FROM visits v WHERE v.patient_id = p.id ORDER BY v.visit_date DESC LIMIT 5) as recent_visits FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN providers d ON a.provider_id = d.id WHERE a.appointment_date = CURRENT_DATE + INTERVAL '1 day' AND a.status = 'confirmed' ORDER BY d.id, a.appointment_time"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each scheduled appointment",
+          "config": {
+            "iterateOver": "appointments",
+            "itemVariable": "appt",
+            "maxIterations": 200
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Search clinical guidelines for visit reason",
+          "config": {
+            "collection": "clinical-guidelines",
+            "query": "{{appt.reason_for_visit}} treatment guidelines and differential diagnosis for patient with allergies: {{appt.allergies}}",
+            "topK": 5,
+            "minScore": 0.7,
+            "embeddingModel": "text-embedding-3-small",
+            "apiKey": "{{secrets.OPENAI_API_KEY}}"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate pre-visit clinical summary",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a clinical decision support assistant. Generate a concise pre-visit summary for the following patient appointment.\n\nPatient: {{appt.first_name}} {{appt.last_name}} (DOB: {{appt.date_of_birth}})\nReason for Visit: {{appt.reason_for_visit}}\nAllergies: {{appt.allergies}}\nActive Medications: {{appt.active_medications}}\n\nRecent Visits:\n{{#each appt.recent_visits}}\n- {{this.date}}: {{this.diagnosis}} - {{this.notes}}\n{{/each}}\n\nRelevant Clinical Guidelines:\n{{ragResults}}\n\nPlease provide:\n1. Patient Overview (2-3 sentences)\n2. Key History Points (bullet list)\n3. Potential Concerns Based on History\n4. Suggested Topics to Address During Visit\n5. Medication Interaction Alerts (if any)\n\nKeep the summary under 300 words. Use clinical terminology appropriate for a physician audience.",
+            "maxTokens": 800,
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send pre-visit summary to provider",
+          "config": {
+            "channel": "email",
+            "to": "{{appt.provider_email}}",
+            "subject": "Pre-Visit Summary: {{appt.first_name}} {{appt.last_name}} - {{appt.appointment_time}}",
+            "message": "{{clinicalSummary}}",
+            "from": "clinical-support@clinic.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}",
+            "priority": "normal"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

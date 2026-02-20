@@ -1,0 +1,193 @@
+{
+  "id": "tpl-042",
+  "name": "Content Repurposing Pipeline",
+  "description": "Takes an original long-form article URL via a form, fetches the full content, splits it into logical sections, then runs three parallel AI branches to repurpose the content into a blog summary post, a set of social media snippets, and an email newsletter digest. After all branches complete, a join node merges the outputs, and an approval gate lets editors review before the repurposed assets are pushed to a CMS via API. Designed for content teams that need to maximize reach from a single piece of content.",
+  "category": "Content & Media",
+  "industry": ["Media", "Marketing"],
+  "tags": ["form", "content", "ai-repurpose", "parallel", "advanced"],
+  "stepCount": 10,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Enter article URL and repurposing preferences",
+          "config": {
+            "fields": [
+              { "name": "articleUrl", "type": "url", "label": "Original Article URL", "required": true },
+              { "name": "brandTone", "type": "select", "label": "Brand Tone", "options": ["Professional", "Casual", "Witty", "Authoritative"], "required": true },
+              { "name": "targetAudience", "type": "text", "label": "Target Audience Description", "required": true },
+              { "name": "cmsSlug", "type": "text", "label": "CMS Collection Slug", "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch original article content",
+          "config": {
+            "method": "GET",
+            "url": "{{articleUrl}}",
+            "headers": {
+              "Accept": "text/html"
+            },
+            "timeout": 20000,
+            "responseFormat": "text"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "split",
+          "label": "Split article into logical sections",
+          "config": {
+            "strategy": "semantic",
+            "maxChunkSize": 2000,
+            "overlapTokens": 100,
+            "preserveHeadings": true
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Repurpose into three content formats",
+          "config": {
+            "branches": ["blogSummary", "socialMedia", "emailNewsletter"]
+          }
+        }
+      },
+      {
+        "id": "node-5a",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 50 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate condensed blog summary post",
+          "config": {
+            "model": "gpt-4o",
+            "temperature": 0.6,
+            "maxTokens": 1500,
+            "prompt": "You are a content writer with a {{brandTone}} tone.\n\nOriginal article sections:\n{{articleSections}}\n\nTarget audience: {{targetAudience}}\n\nWrite a condensed blog summary post (400-600 words) that:\n- Captures the key insights from the original article\n- Has an engaging headline and subheadings\n- Includes a call-to-action linking to the full article\n- Uses the specified brand tone consistently\n\nReturn as JSON with fields: title, body (markdown), metaDescription, slug."
+          }
+        }
+      },
+      {
+        "id": "node-5b",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate social media snippets",
+          "config": {
+            "model": "gpt-4o-mini",
+            "temperature": 0.8,
+            "maxTokens": 1200,
+            "prompt": "You are a social media strategist with a {{brandTone}} voice.\n\nOriginal article sections:\n{{articleSections}}\n\nTarget audience: {{targetAudience}}\n\nCreate social media content for each platform:\n1. Twitter/X: 3 tweet-length posts (max 280 chars each) with relevant hashtags\n2. LinkedIn: 1 professional post (150-250 words) with a hook\n3. Instagram: 1 caption (100-200 words) with 10 hashtags and a carousel slide outline (5 slides)\n\nReturn as JSON with fields: tweets (array), linkedinPost (string), instagramCaption (string), instagramHashtags (array), carouselSlides (array of strings)."
+          }
+        }
+      },
+      {
+        "id": "node-5c",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 350 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate email newsletter digest",
+          "config": {
+            "model": "gpt-4o-mini",
+            "temperature": 0.5,
+            "maxTokens": 1000,
+            "prompt": "You are an email copywriter with a {{brandTone}} tone.\n\nOriginal article sections:\n{{articleSections}}\n\nTarget audience: {{targetAudience}}\n\nWrite an email newsletter digest that:\n- Has a compelling subject line (max 60 chars)\n- Opens with a personal, conversational hook\n- Summarizes the article's key takeaways in 3-5 bullet points\n- Includes a prominent CTA to read the full article\n- Has a preview text (max 120 chars)\n\nReturn as JSON with fields: subjectLine, previewText, htmlBody, plainTextBody."
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "join",
+          "label": "Merge all repurposed content",
+          "config": {
+            "strategy": "wait_all",
+            "timeout": 120000,
+            "outputMapping": {
+              "blogSummary": "node-5a.output",
+              "socialMedia": "node-5b.output",
+              "emailNewsletter": "node-5c.output"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Editor reviews repurposed content",
+          "config": {
+            "approvers": ["content-editor@company.com"],
+            "message": "Review the following repurposed content before publishing:\n\nBlog Summary: {{blogSummary.title}}\nSocial Posts: {{socialMedia.tweets.length}} tweets, 1 LinkedIn, 1 Instagram\nNewsletter: {{emailNewsletter.subjectLine}}\n\nApprove to publish to CMS.",
+            "timeout": 172800,
+            "escalateAfter": 86400,
+            "escalateTo": "marketing-director@company.com"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Publish repurposed assets to CMS",
+          "config": {
+            "method": "POST",
+            "url": "{{env.CMS_API_URL}}/collections/{{cmsSlug}}/entries/bulk",
+            "headers": {
+              "Authorization": "Bearer {{secrets.CMS_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "entries": [
+                { "type": "blog_summary", "data": "{{blogSummary}}" },
+                { "type": "social_media", "data": "{{socialMedia}}" },
+                { "type": "email_newsletter", "data": "{{emailNewsletter}}" }
+              ]
+            },
+            "timeout": 15000
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5a", "source": "node-4", "target": "node-5a", "sourceHandle": "branch-blogSummary", "targetHandle": "input" },
+      { "id": "e4-5b", "source": "node-4", "target": "node-5b", "sourceHandle": "branch-socialMedia", "targetHandle": "input" },
+      { "id": "e4-5c", "source": "node-4", "target": "node-5c", "sourceHandle": "branch-emailNewsletter", "targetHandle": "input" },
+      { "id": "e5a-6", "source": "node-5a", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5b-6", "source": "node-5b", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5c-6", "source": "node-5c", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "approved", "targetHandle": "input" }
+    ]
+  }
+}

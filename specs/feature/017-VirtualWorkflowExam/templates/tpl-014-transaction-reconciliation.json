@@ -1,0 +1,131 @@
+{
+  "id": "tpl-014",
+  "name": "Daily Transaction Reconciliation",
+  "description": "Automates daily reconciliation between payment processor transaction exports and internal database records. Parses incoming CSV bank statements, cross-references each transaction against the orders database, runs a matching algorithm to flag discrepancies, and notifies the finance team of any mismatches requiring manual review. Designed for retailers and financial institutions that process high volumes of daily transactions.",
+  "category": "Finance & Accounting",
+  "industry": ["Finance", "Retail"],
+  "tags": ["scheduled", "finance", "reconciliation", "csv", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run daily at 6 AM after bank file arrives",
+          "config": {
+            "schedule": "0 6 * * *",
+            "timezone": "Asia/Bangkok"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "csv_parser",
+          "label": "Parse bank transaction CSV export",
+          "config": {
+            "source": "{{env.BANK_SFTP_PATH}}/transactions_{{date}}.csv",
+            "delimiter": ",",
+            "hasHeader": true,
+            "columns": ["txn_id", "date", "amount", "currency", "reference", "description", "status"],
+            "encoding": "utf-8"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch internal payment records for same period",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT p.id, p.order_id, p.amount, p.currency, p.gateway_reference, p.status, p.created_at, o.customer_email FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.created_at >= CURRENT_DATE - INTERVAL '1 day' AND p.created_at < CURRENT_DATE AND p.status IN ('completed', 'refunded') ORDER BY p.created_at"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "code_runner",
+          "label": "Match transactions and identify discrepancies",
+          "config": {
+            "language": "javascript",
+            "code": "const bankTxns = input.bankTransactions;\nconst internalPayments = input.internalPayments;\nconst matched = [];\nconst unmatched_bank = [];\nconst unmatched_internal = [];\nconst amount_mismatches = [];\n\nconst internalMap = new Map(internalPayments.map(p => [p.gateway_reference, p]));\n\nfor (const txn of bankTxns) {\n  const internal = internalMap.get(txn.reference);\n  if (!internal) {\n    unmatched_bank.push(txn);\n  } else if (Math.abs(parseFloat(txn.amount) - parseFloat(internal.amount)) > 0.01) {\n    amount_mismatches.push({ bank: txn, internal });\n    internalMap.delete(txn.reference);\n  } else {\n    matched.push({ bank: txn, internal });\n    internalMap.delete(txn.reference);\n  }\n}\n\nfor (const [ref, payment] of internalMap) {\n  unmatched_internal.push(payment);\n}\n\nreturn { matched, unmatched_bank, unmatched_internal, amount_mismatches, summary: { totalBank: bankTxns.length, totalInternal: internalPayments.length, matchedCount: matched.length, discrepancies: unmatched_bank.length + unmatched_internal.length + amount_mismatches.length } };"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Filter for records with discrepancies only",
+          "config": {
+            "condition": "input.summary.discrepancies > 0"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Are there critical discrepancies?",
+          "config": {
+            "condition": "{{summary.discrepancies}} > 0",
+            "trueLabel": "Discrepancies found",
+            "falseLabel": "All matched"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert finance team about mismatches",
+          "config": {
+            "channel": "#finance-reconciliation",
+            "webhookUrl": "{{env.SLACK_WEBHOOK_URL}}",
+            "message": "Reconciliation Alert: {{summary.discrepancies}} discrepancies found in yesterday's transactions.\n- Unmatched bank: {{unmatched_bank.length}}\n- Unmatched internal: {{unmatched_internal.length}}\n- Amount mismatches: {{amount_mismatches.length}}\n\nTotal processed: {{summary.totalBank}} bank / {{summary.totalInternal}} internal"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Log reconciliation results to audit table",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "INSERT INTO reconciliation_log (run_date, total_bank_txns, total_internal_txns, matched_count, unmatched_bank_count, unmatched_internal_count, amount_mismatch_count, status) VALUES (CURRENT_DATE - INTERVAL '1 day', {{summary.totalBank}}, {{summary.totalInternal}}, {{summary.matchedCount}}, {{unmatched_bank.length}}, {{unmatched_internal.length}}, {{amount_mismatches.length}}, CASE WHEN {{summary.discrepancies}} = 0 THEN 'clean' ELSE 'needs_review' END)"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "id": "tpl-032",
+  "name": "Personal News Digest",
+  "description": "Aggregates top stories from multiple news sources every morning, uses AI to summarize and deduplicate articles, then delivers a clean formatted digest via email. The parallel fetch ensures fast collection from multiple APIs simultaneously. Perfect for professionals who want a curated briefing without scrolling through multiple apps.",
+  "category": "Personal Productivity",
+  "industry": ["Personal Productivity"],
+  "tags": ["scheduled", "news", "ai-summary", "email", "beginner"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 20,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run daily at 6:30 AM",
+          "config": {
+            "schedule": "30 6 * * *",
+            "timezone": "America/Chicago"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Fetch news from multiple sources simultaneously",
+          "config": {
+            "branches": ["branch_a", "branch_b"],
+            "waitForAll": true
+          }
+        }
+      },
+      {
+        "id": "node-2a",
+        "type": "workflow",
+        "position": { "x": 600, "y": 150 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch top headlines from NewsAPI",
+          "config": {
+            "method": "GET",
+            "url": "https://newsapi.org/v2/top-headlines",
+            "params": {
+              "country": "us",
+              "category": "technology,business",
+              "pageSize": 15
+            },
+            "headers": {
+              "X-Api-Key": "{{secrets.NEWS_API_KEY}}"
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "node-2b",
+        "type": "workflow",
+        "position": { "x": 600, "y": 300 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch latest articles from RSS aggregator",
+          "config": {
+            "method": "GET",
+            "url": "{{env.RSS_AGGREGATOR_URL}}/api/articles",
+            "params": {
+              "limit": 15,
+              "since": "24h",
+              "feeds": "techcrunch,hackernews,arstechnica"
+            },
+            "headers": {
+              "Authorization": "Bearer {{secrets.RSS_API_TOKEN}}"
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "join",
+          "label": "Merge results from all news sources",
+          "config": {
+            "mergeStrategy": "concatenate",
+            "deduplicateBy": "url"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Summarize and rank articles by relevance",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a personal news curator. Given the following {{articleCount}} articles, perform these tasks:\n\n1. Remove duplicate stories covering the same event\n2. Rank the remaining articles by importance and relevance\n3. Write a 2-3 sentence summary for each of the top 10 articles\n4. Group articles into categories: Tech, Business, Science, World\n\nArticles:\n{{articles}}\n\nReturn a JSON array with: title, source, summary, category, originalUrl",
+            "maxTokens": 2000,
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format digest as HTML email",
+          "config": {
+            "template": "<h1>Your Daily News Digest - {{date}}</h1><p>Here are today's top stories, curated and summarized by AI.</p>{{#each categories}}<h2>{{this.name}}</h2>{{#each this.articles}}<div style='margin-bottom:16px;border-left:3px solid #0066cc;padding-left:12px;'><h3><a href='{{this.originalUrl}}'>{{this.title}}</a></h3><p style='color:#555;font-size:13px;'>{{this.source}}</p><p>{{this.summary}}</p></div>{{/each}}{{/each}}<hr><p style='color:#999;font-size:12px;'>Generated automatically. Powered by SmartSpecPro.</p>"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send daily digest to personal inbox",
+          "config": {
+            "to": ["{{env.DIGEST_RECIPIENT_EMAIL}}"],
+            "subject": "Your News Digest for {{date}}",
+            "body": "{{emailBody}}",
+            "from": "digest@smartspechub.app",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-2a", "source": "node-2", "target": "node-2a", "sourceHandle": "branch_a", "targetHandle": "input" },
+      { "id": "e2-2b", "source": "node-2", "target": "node-2b", "sourceHandle": "branch_b", "targetHandle": "input" },
+      { "id": "e2a-3", "source": "node-2a", "target": "node-4", "sourceHandle": "output", "targetHandle": "input_a" },
+      { "id": "e2b-3", "source": "node-2b", "target": "node-4", "sourceHandle": "output", "targetHandle": "input_b" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "id": "tpl-028",
+  "name": "Student Progress Report",
+  "description": "Runs weekly to generate AI-powered progress reports for each student across all their enrolled courses. Queries grades and participation data, processes students in batches for efficiency, uses an LLM to generate personalized insights and recommendations, formats the report using a template engine, and emails it to parents or guardians. Helps educators and families stay informed about student performance.",
+  "category": "Education",
+  "industry": ["Education"],
+  "tags": ["scheduled", "education", "reporting", "ai-analysis", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every Friday at 4 PM",
+          "config": {
+            "schedule": "0 16 * * 5",
+            "timezone": "America/Chicago"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch student grades and participation data",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT s.id as student_id, s.first_name, s.last_name, s.guardian_email, c.name as course_name, c.code as course_code, ROUND(AVG(g.score / g.max_score * 100), 1) as avg_grade, COUNT(DISTINCT g.id) as assignments_completed, COUNT(DISTINCT a.id) as total_assignments, SUM(CASE WHEN att.status = 'present' THEN 1 ELSE 0 END) as days_present, COUNT(DISTINCT att.id) as total_class_days, (SELECT json_agg(json_build_object('assignment', a2.title, 'score', g2.score, 'maxScore', g2.max_score, 'date', g2.graded_at)) FROM grades g2 JOIN assignments a2 ON g2.assignment_id = a2.id WHERE g2.student_id = s.id AND g2.graded_at >= NOW() - INTERVAL '7 days') as recent_grades FROM students s JOIN enrollments e ON s.id = e.student_id JOIN courses c ON e.course_id = c.id LEFT JOIN assignments a ON c.id = a.course_id AND a.due_date <= NOW() LEFT JOIN grades g ON a.id = g.assignment_id AND s.id = g.student_id LEFT JOIN attendance att ON s.id = att.student_id AND c.id = att.course_id WHERE e.status = 'active' AND s.guardian_email IS NOT NULL GROUP BY s.id, s.first_name, s.last_name, s.guardian_email, c.name, c.code ORDER BY s.last_name, s.first_name"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "batch",
+          "label": "Group records by student for batch processing",
+          "config": {
+            "groupBy": "student_id",
+            "batchSize": 25,
+            "description": "Group all course records per student so each LLM call gets a complete picture"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Generate report for each student",
+          "config": {
+            "iterateOver": "studentBatches",
+            "itemVariable": "student",
+            "maxIterations": 500
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate personalized progress insights",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a supportive academic advisor generating a weekly progress report for a parent/guardian.\n\nStudent: {{student.first_name}} {{student.last_name}}\n\nCourse Performance:\n{{#each student.courses}}\n- {{this.course_name}} ({{this.course_code}}): {{this.avg_grade}}% average, {{this.assignments_completed}}/{{this.total_assignments}} assignments completed, {{this.days_present}}/{{this.total_class_days}} attendance\n{{/each}}\n\nRecent Grades This Week:\n{{#each student.recent_grades}}\n- {{this.assignment}}: {{this.score}}/{{this.maxScore}}\n{{/each}}\n\nPlease provide:\n1. Overall Performance Summary (2-3 sentences, positive tone)\n2. Strengths (what the student is doing well)\n3. Areas for Improvement (constructive and specific)\n4. Recommended Actions for Parents (2-3 actionable suggestions)\n\nKeep the tone encouraging and constructive. Address parents directly. Use plain language without jargon.",
+            "maxTokens": 600,
+            "temperature": 0.5
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format progress report as HTML email",
+          "config": {
+            "template": "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'><h2 style='color: #2563eb;'>Weekly Progress Report</h2><p><strong>Student:</strong> {{student.first_name}} {{student.last_name}}</p><p><strong>Week Ending:</strong> {{reportDate}}</p><hr><h3>Course Summary</h3><table style='width: 100%; border-collapse: collapse;'><tr style='background: #f1f5f9;'><th style='padding: 8px; text-align: left;'>Course</th><th>Grade</th><th>Assignments</th><th>Attendance</th></tr>{{#each student.courses}}<tr><td style='padding: 8px;'>{{this.course_name}}</td><td style='text-align: center;'>{{this.avg_grade}}%</td><td style='text-align: center;'>{{this.assignments_completed}}/{{this.total_assignments}}</td><td style='text-align: center;'>{{this.days_present}}/{{this.total_class_days}}</td></tr>{{/each}}</table><h3>AI-Powered Insights</h3><div>{{aiInsights}}</div><hr><p style='color: #64748b; font-size: 12px;'>This report is generated automatically by the school's learning management system.</p></div>"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email weekly report to parent or guardian",
+          "config": {
+            "to": ["{{student.guardian_email}}"],
+            "subject": "Weekly Progress Report - {{student.first_name}} {{student.last_name}} (Week of {{reportDate}})",
+            "body": "{{formattedReport}}",
+            "contentType": "html",
+            "from": "reports@school.edu",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

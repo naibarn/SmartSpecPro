@@ -1,0 +1,153 @@
+{
+  "id": "tpl-053",
+  "name": "Personalized Learning Path Generator",
+  "description": "Collects a learner's goals, current skill level, and preferred learning style via a form, then queries the course knowledge base using RAG to find relevant materials. An LLM assembles a structured learning path with milestones, which is parsed and stored in the database. A recurring schedule sends weekly progress check-in reminders. Built for EdTech platforms and corporate training departments delivering adaptive learning experiences.",
+  "category": "AI & Automation",
+  "industry": ["EdTech", "Education"],
+  "tags": ["form", "ai-tutor", "personalization", "rag", "advanced"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Learner submits goals and skill assessment",
+          "config": {
+            "fields": [
+              { "name": "learnerId", "type": "text", "required": true },
+              { "name": "learnerName", "type": "text", "required": true },
+              { "name": "learningGoal", "type": "textarea", "label": "What do you want to learn?", "required": true },
+              { "name": "currentLevel", "type": "select", "options": ["beginner", "intermediate", "advanced"], "required": true },
+              { "name": "learningStyle", "type": "select", "options": ["visual", "reading", "hands-on", "video"], "required": true },
+              { "name": "weeklyHours", "type": "number", "label": "Available hours per week", "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Search course catalog for relevant materials",
+          "config": {
+            "collectionName": "{{env.COURSE_COLLECTION}}",
+            "query": "{{learningGoal}} for {{currentLevel}} level with {{learningStyle}} resources",
+            "topK": 15,
+            "scoreThreshold": 0.7,
+            "vectorDbUrl": "{{env.VECTOR_DB_URL}}",
+            "apiKey": "{{secrets.VECTOR_DB_API_KEY}}"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate structured learning path with milestones",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are an expert learning path designer.\n\nCreate a personalized learning path for this learner:\n- Goal: {{learningGoal}}\n- Current Level: {{currentLevel}}\n- Preferred Style: {{learningStyle}}\n- Available Time: {{weeklyHours}} hours/week\n\nAvailable course materials:\n{{ragResults}}\n\nCreate a structured learning path with:\n1. 4-8 sequential milestones, each with a title, description, and estimated weeks\n2. Specific course/resource recommendations for each milestone\n3. Practice exercises or projects per milestone\n4. Assessment criteria for milestone completion\n\nOutput as JSON with keys: pathTitle, totalWeeks, milestones (array of {title, description, weeks, resources, exercises, assessmentCriteria})"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse learning path JSON structure",
+          "config": {
+            "format": "json",
+            "schema": {
+              "pathTitle": "string",
+              "totalWeeks": "number",
+              "milestones": "array"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Save learning path to database",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "INSERT INTO learning_paths (learner_id, title, total_weeks, milestones_json, learning_style, weekly_hours, status, created_at) VALUES ('{{learnerId}}', '{{pathTitle}}', {{totalWeeks}}, '{{milestonesJson}}', '{{learningStyle}}', {{weeklyHours}}, 'active', NOW()) RETURNING id"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Create milestone records for each milestone",
+          "config": {
+            "iterateOver": "{{milestones}}",
+            "maxIterations": 10,
+            "body": {
+              "action": "database_insert",
+              "query": "INSERT INTO milestones (learning_path_id, title, description, week_number, resources, exercises, status) VALUES ({{learningPathId}}, '{{milestone.title}}', '{{milestone.description}}', {{milestone.weeks}}, '{{milestone.resources}}', '{{milestone.exercises}}', 'pending')"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Set weekly progress check-in reminder",
+          "config": {
+            "schedule": "0 9 * * 1",
+            "timezone": "{{learnerTimezone}}",
+            "metadata": {
+              "learningPathId": "{{learningPathId}}",
+              "learnerId": "{{learnerId}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send learning path and weekly reminders",
+          "config": {
+            "channel": "email",
+            "to": "{{learnerEmail}}",
+            "subject": "Your Personalized Learning Path: {{pathTitle}}",
+            "message": "Hi {{learnerName}},\n\nYour personalized learning path is ready!\n\nPath: {{pathTitle}}\nEstimated Duration: {{totalWeeks}} weeks\nMilestones: {{milestoneCount}}\n\nYour first milestone: {{firstMilestoneTitle}}\n\nYou will receive weekly check-in reminders every Monday at 9 AM.\n\nHappy learning!",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

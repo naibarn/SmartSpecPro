@@ -1,0 +1,148 @@
+{
+  "id": "tpl-005",
+  "name": "Competitor Price Monitor",
+  "description": "Runs on a daily schedule to check competitor pricing across tracked products. For each competitor URL in the database, it fetches the current page, uses AI to extract the price, and stores the result. Products with significant price changes are filtered and flagged, triggering notifications to the pricing team. Essential for e-commerce and retail businesses operating in competitive markets.",
+  "category": "Sales & Marketing",
+  "industry": ["E-commerce", "Retail"],
+  "tags": ["scheduled", "monitoring", "pricing", "scraping", "advanced"],
+  "stepCount": 9,
+  "estimatedSetupMinutes": 45,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run daily at 6 AM",
+          "config": {
+            "schedule": "0 6 * * *",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch all tracked competitor product URLs",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT cp.id, cp.product_name, cp.competitor_name, cp.competitor_url, cp.our_price, cp.last_competitor_price FROM competitor_products cp WHERE cp.is_active = true ORDER BY cp.product_name"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Iterate over each competitor product",
+          "config": {
+            "collection": "{{products}}",
+            "itemVariable": "product",
+            "maxIterations": 200
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch competitor product page",
+          "config": {
+            "method": "GET",
+            "url": "{{product.competitor_url}}",
+            "headers": {
+              "User-Agent": "Mozilla/5.0 (compatible; PriceBot/1.0)"
+            },
+            "timeout": 15000
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Extract current price from page HTML",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "Extract the product price from this HTML content.\nProduct name to look for: {{product.product_name}}\nCompetitor: {{product.competitor_name}}\n\nHTML content (truncated):\n{{pageContent}}\n\nReturn ONLY a JSON object:\n{ \"price\": number, \"currency\": \"USD\"|\"EUR\"|\"THB\", \"inStock\": boolean }\n\nIf the price cannot be found, return:\n{ \"price\": null, \"currency\": null, \"inStock\": null }"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Store updated price in price history",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "INSERT INTO competitor_price_history (competitor_product_id, price, currency, in_stock, checked_at) VALUES ('{{product.id}}', {{extractedPrice}}, '{{currency}}', {{inStock}}, NOW()); UPDATE competitor_products SET last_competitor_price = {{extractedPrice}}, last_checked_at = NOW() WHERE id = '{{product.id}}'"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Filter products with price drop over 5%",
+          "config": {
+            "condition": "Math.abs(item.extractedPrice - item.last_competitor_price) / item.last_competitor_price > 0.05",
+            "keepMatching": true
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Check if any significant changes found",
+          "config": {
+            "condition": "filteredResults.length > 0",
+            "trueLabel": "Send alert",
+            "falseLabel": "Skip notification"
+          }
+        }
+      },
+      {
+        "id": "node-9",
+        "type": "workflow",
+        "position": { "x": 2100, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Alert pricing team of significant changes",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.SLACK_PRICING_WEBHOOK_URL}}",
+            "message": "Price Alert: {{filteredResults.length}} competitor price changes detected (>5% change).\n\n{{#each filteredResults}}{{this.product_name}} ({{this.competitor_name}}): was ${{this.last_competitor_price}} -> now ${{this.extractedPrice}}\n{{/each}}\n\nReview in dashboard: {{env.APP_URL}}/pricing/monitor"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e8-9", "source": "node-8", "target": "node-9", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

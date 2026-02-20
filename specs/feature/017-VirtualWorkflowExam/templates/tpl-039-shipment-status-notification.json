@@ -1,0 +1,138 @@
+{
+  "id": "tpl-039",
+  "name": "Shipment Status Notification",
+  "description": "Processes incoming shipment status webhook events from carrier APIs and sends targeted customer notifications based on the shipment stage. When a carrier posts a status update, the workflow looks up the order and customer details, routes the notification through a switch based on status type (shipped, in-transit, out-for-delivery, delivered, delayed, exception), formats an appropriate message template, and pushes the notification. Simple to set up and essential for e-commerce and logistics operations.",
+  "category": "Logistics & Supply Chain",
+  "industry": ["Logistics", "E-commerce"],
+  "tags": ["webhook", "logistics", "tracking", "notifications", "beginner"],
+  "stepCount": 5,
+  "estimatedSetupMinutes": 15,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "webhook_trigger",
+          "label": "Receive shipment status update from carrier",
+          "config": {
+            "path": "/webhooks/shipment-status",
+            "method": "POST",
+            "authentication": {
+              "type": "hmac",
+              "secret": "{{secrets.CARRIER_WEBHOOK_SECRET}}",
+              "header": "X-Signature-256"
+            },
+            "expectedFields": ["trackingNumber", "status", "location", "timestamp", "carrier"]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Look up order and customer details",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT o.id AS order_id, o.order_number, o.total_amount, c.id AS customer_id, c.first_name, c.last_name, c.email, c.phone, c.push_token, c.notification_preferences, s.carrier, s.estimated_delivery FROM shipments s JOIN orders o ON s.order_id = o.id JOIN customers c ON o.customer_id = c.id WHERE s.tracking_number = '{{webhook.trackingNumber}}' LIMIT 1"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route by shipment status type",
+          "config": {
+            "expression": "{{webhook.status}}",
+            "cases": {
+              "shipped": "output_shipped",
+              "in_transit": "output_transit",
+              "out_for_delivery": "output_delivery",
+              "delivered": "output_delivered",
+              "delayed": "output_delayed",
+              "exception": "output_exception"
+            },
+            "default": "output_generic"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format status-appropriate notification message",
+          "config": {
+            "templates": {
+              "shipped": {
+                "title": "Order Shipped!",
+                "message": "Hi {{customer.first_name}}, your order #{{order.order_number}} has shipped via {{webhook.carrier}}! Tracking: {{webhook.trackingNumber}}. Estimated delivery: {{order.estimated_delivery}}."
+              },
+              "in_transit": {
+                "title": "Package In Transit",
+                "message": "Your order #{{order.order_number}} is on its way! Current location: {{webhook.location}}. Tracking: {{webhook.trackingNumber}}."
+              },
+              "out_for_delivery": {
+                "title": "Out for Delivery Today!",
+                "message": "Great news, {{customer.first_name}}! Your order #{{order.order_number}} is out for delivery and should arrive today."
+              },
+              "delivered": {
+                "title": "Package Delivered!",
+                "message": "Your order #{{order.order_number}} has been delivered at {{webhook.location}}. Enjoy! If you have any issues, contact support."
+              },
+              "delayed": {
+                "title": "Delivery Update",
+                "message": "Hi {{customer.first_name}}, there's a delay with your order #{{order.order_number}}. New estimated delivery: {{webhook.newEstimate}}. We apologize for the inconvenience."
+              },
+              "exception": {
+                "title": "Delivery Issue",
+                "message": "There's an issue with your order #{{order.order_number}}: {{webhook.exceptionMessage}}. Our team is working on it. Tracking: {{webhook.trackingNumber}}."
+              }
+            },
+            "selectedTemplate": "{{webhook.status}}"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Push notification to customer",
+          "config": {
+            "channel": "push",
+            "pushToken": "{{customer.push_token}}",
+            "title": "{{notification.title}}",
+            "message": "{{notification.message}}",
+            "priority": "{{webhook.status == 'exception' || webhook.status == 'delayed' ? 'high' : 'normal'}}",
+            "data": {
+              "orderId": "{{order.order_id}}",
+              "trackingNumber": "{{webhook.trackingNumber}}",
+              "status": "{{webhook.status}}",
+              "action": "open_order_tracking"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output_shipped", "targetHandle": "input" },
+      { "id": "e3-4b", "source": "node-3", "target": "node-4", "sourceHandle": "output_transit", "targetHandle": "input" },
+      { "id": "e3-4c", "source": "node-3", "target": "node-4", "sourceHandle": "output_delivery", "targetHandle": "input" },
+      { "id": "e3-4d", "source": "node-3", "target": "node-4", "sourceHandle": "output_delivered", "targetHandle": "input" },
+      { "id": "e3-4e", "source": "node-3", "target": "node-4", "sourceHandle": "output_delayed", "targetHandle": "input" },
+      { "id": "e3-4f", "source": "node-3", "target": "node-4", "sourceHandle": "output_exception", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

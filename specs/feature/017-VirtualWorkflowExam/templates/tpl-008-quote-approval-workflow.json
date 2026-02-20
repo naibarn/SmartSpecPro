@@ -1,0 +1,134 @@
+{
+  "id": "tpl-008",
+  "name": "Quote Approval Workflow",
+  "description": "Sales reps submit quotes through a structured form. The quote amount is validated and routed through different approval tiers based on value: small quotes auto-approve, medium quotes go to the sales manager, and large quotes require VP approval. Once approved, a confirmation email is sent to the client and the quote status is updated in the database. Designed for professional services and construction companies with tiered pricing authority.",
+  "category": "Sales & Marketing",
+  "industry": ["Professional Services", "Construction"],
+  "tags": ["form", "approval", "quotes", "email", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Sales rep submits new quote",
+          "config": {
+            "fields": [
+              { "name": "clientName", "type": "text", "label": "Client Name", "required": true },
+              { "name": "clientEmail", "type": "email", "label": "Client Email", "required": true },
+              { "name": "projectDescription", "type": "textarea", "label": "Project Description", "required": true },
+              { "name": "quoteAmount", "type": "number", "label": "Quote Amount (USD)", "required": true },
+              { "name": "validUntil", "type": "date", "label": "Quote Valid Until", "required": true },
+              { "name": "salesRepEmail", "type": "email", "label": "Sales Rep Email", "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "validator",
+          "label": "Validate quote amount and dates",
+          "config": {
+            "rules": {
+              "quoteAmount": { "type": "number", "min": 100, "required": true },
+              "clientEmail": { "type": "string", "format": "email", "required": true },
+              "validUntil": { "type": "string", "format": "date", "required": true }
+            },
+            "onFailure": "reject"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route by quote amount tier",
+          "config": {
+            "expression": "quoteAmount",
+            "cases": {
+              "under_5k": { "condition": "quoteAmount < 5000", "label": "Auto-approve (< $5K)" },
+              "5k_to_50k": { "condition": "quoteAmount >= 5000 && quoteAmount < 50000", "label": "Sales Manager approval ($5K-$50K)" },
+              "over_50k": { "condition": "quoteAmount >= 50000", "label": "VP approval (>= $50K)" }
+            }
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Approver reviews and decides",
+          "config": {
+            "assignTo": "{{approverEmail}}",
+            "timeoutHours": 48,
+            "message": "Quote #{{quoteId}} for {{clientName}} requires your approval.\nAmount: ${{quoteAmount}}\nProject: {{projectDescription}}\nSubmitted by: {{salesRepEmail}}"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Check if quote was approved",
+          "config": {
+            "condition": "approvalStatus === 'approved'",
+            "trueLabel": "Send to client",
+            "falseLabel": "Notify sales rep of rejection"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send quote confirmation to client",
+          "config": {
+            "to": "{{clientEmail}}",
+            "cc": ["{{salesRepEmail}}"],
+            "subject": "Your Quote from {{companyName}} - #{{quoteId}}",
+            "body": "Dear {{clientName}},\n\nThank you for your interest. Please find your quote details below:\n\nProject: {{projectDescription}}\nAmount: ${{quoteAmount}}\nValid Until: {{validUntil}}\n\nTo accept this quote, please reply to this email or contact {{salesRepEmail}}.\n\nBest regards,\n{{companyName}} Sales Team",
+            "from": "quotes@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Update quote status in database",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "UPDATE quotes SET status = '{{approvalStatus}}', approved_by = '{{approverEmail}}', approved_at = NOW(), sent_to_client_at = CASE WHEN '{{approvalStatus}}' = 'approved' THEN NOW() ELSE NULL END WHERE id = '{{quoteId}}'"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "id": "tpl-036",
+  "name": "Recipe Suggestion",
+  "description": "A simple AI-powered recipe suggestion workflow triggered by a form where users enter available ingredients, dietary preferences, and desired cuisine type. The input is structured into a prompt template, sent to an LLM for creative recipe generation, parsed into a structured format with ingredients list and step-by-step instructions, and returned directly as a workflow response. Quick to set up and perfect for meal planning apps or personal cooking inspiration.",
+  "category": "Personal Productivity",
+  "industry": ["Personal Productivity", "Food & Beverage"],
+  "tags": ["form", "ai-content", "recipes", "beginner"],
+  "stepCount": 5,
+  "estimatedSetupMinutes": 10,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Enter ingredients and preferences",
+          "config": {
+            "fields": [
+              { "name": "ingredients", "type": "textarea", "label": "Available Ingredients (comma separated)", "required": true, "placeholder": "chicken breast, garlic, olive oil, lemon, rice" },
+              { "name": "cuisine", "type": "select", "label": "Preferred Cuisine", "options": ["any", "italian", "mexican", "asian", "indian", "mediterranean", "american", "french", "thai", "japanese"], "default": "any" },
+              { "name": "dietary", "type": "multiselect", "label": "Dietary Restrictions", "options": ["none", "vegetarian", "vegan", "gluten-free", "dairy-free", "keto", "low-sodium"] },
+              { "name": "servings", "type": "number", "label": "Number of Servings", "default": 2, "min": 1, "max": 12 },
+              { "name": "maxTime", "type": "select", "label": "Max Cooking Time", "options": ["15 minutes", "30 minutes", "45 minutes", "1 hour", "no limit"], "default": "30 minutes" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "prompt_template",
+          "label": "Build recipe generation prompt",
+          "config": {
+            "template": "You are a creative and experienced home chef. Suggest a delicious recipe based on the following constraints.\n\nAvailable Ingredients: {{form.ingredients}}\nPreferred Cuisine: {{form.cuisine}}\nDietary Restrictions: {{form.dietary | join:', ' | default:'None'}}\nServings: {{form.servings}}\nMax Cooking Time: {{form.maxTime}}\n\nRequirements:\n1. Use as many of the listed ingredients as possible\n2. You may include up to 5 additional common pantry staples if needed\n3. Keep instructions clear and numbered\n4. Include estimated prep time and cook time separately\n5. Provide nutritional estimates per serving (calories, protein, carbs, fat)\n\nReturn your response as JSON with fields: recipeName, description, prepTime, cookTime, totalTime, ingredients (array of {item, quantity, unit}), instructions (numbered array of strings), nutritionPerServing ({calories, protein, carbs, fat}), tips (array of strings).",
+            "outputVariable": "recipePrompt"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate recipe with AI",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "{{recipePrompt}}",
+            "maxTokens": 1500,
+            "temperature": 0.8,
+            "responseFormat": "json"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse and validate recipe JSON structure",
+          "config": {
+            "format": "json",
+            "schema": {
+              "required": ["recipeName", "description", "ingredients", "instructions"],
+              "properties": {
+                "recipeName": { "type": "string" },
+                "description": { "type": "string" },
+                "prepTime": { "type": "string" },
+                "cookTime": { "type": "string" },
+                "ingredients": { "type": "array" },
+                "instructions": { "type": "array" },
+                "nutritionPerServing": { "type": "object" },
+                "tips": { "type": "array" }
+              }
+            },
+            "onParseError": "return_raw"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "workflow_response",
+          "label": "Return recipe to the user",
+          "config": {
+            "statusCode": 200,
+            "contentType": "application/json",
+            "body": {
+              "success": true,
+              "recipe": "{{parsedRecipe}}"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

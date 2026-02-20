@@ -1,0 +1,105 @@
+{
+  "id": "tpl-045",
+  "name": "Menu Performance Analysis",
+  "description": "Runs weekly to query POS sales data by menu item, calculates performance metrics such as contribution margin, popularity ranking, and food cost percentage using a code runner, sends the aggregated data to an LLM for strategic menu engineering recommendations, formats the analysis into a professional HTML report, and emails it to restaurant management. Ideal for food and beverage businesses that want data-driven menu optimization without manual spreadsheet work.",
+  "category": "Food & Restaurant",
+  "industry": ["Food & Beverage"],
+  "tags": ["scheduled", "restaurant", "analytics", "ai-analysis", "intermediate"],
+  "stepCount": 6,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every Monday at 6 AM",
+          "config": {
+            "schedule": "0 6 * * 1",
+            "timezone": "Asia/Bangkok"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Query last week's sales by menu item",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT mi.id, mi.name AS item_name, mi.category, mi.price, mi.food_cost, COUNT(oi.id) AS units_sold, SUM(oi.quantity * oi.unit_price) AS total_revenue, AVG(r.rating) AS avg_rating, COUNT(DISTINCT o.id) AS order_appearances FROM menu_items mi LEFT JOIN order_items oi ON mi.id = oi.menu_item_id LEFT JOIN orders o ON oi.order_id = o.id AND o.created_at >= CURRENT_DATE - INTERVAL '7 days' AND o.created_at < CURRENT_DATE LEFT JOIN reviews r ON mi.id = r.menu_item_id AND r.created_at >= CURRENT_DATE - INTERVAL '7 days' WHERE mi.is_active = true GROUP BY mi.id, mi.name, mi.category, mi.price, mi.food_cost ORDER BY total_revenue DESC NULLS LAST"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "code_runner",
+          "label": "Calculate menu engineering metrics",
+          "config": {
+            "language": "javascript",
+            "code": "const items = input.rows;\nconst totalRevenue = items.reduce((sum, i) => sum + (i.total_revenue || 0), 0);\nconst totalUnits = items.reduce((sum, i) => sum + (i.units_sold || 0), 0);\nconst avgPopularity = totalUnits / Math.max(items.length, 1);\nconst avgMargin = items.reduce((sum, i) => sum + ((i.price - i.food_cost) / Math.max(i.price, 0.01)), 0) / Math.max(items.length, 1);\n\nconst analyzed = items.map(item => {\n  const margin = item.price > 0 ? (item.price - item.food_cost) / item.price : 0;\n  const foodCostPct = item.price > 0 ? (item.food_cost / item.price) * 100 : 0;\n  const isPopular = (item.units_sold || 0) >= avgPopularity;\n  const isProfitable = margin >= avgMargin;\n  let classification;\n  if (isPopular && isProfitable) classification = 'Star';\n  else if (isPopular && !isProfitable) classification = 'Plow Horse';\n  else if (!isPopular && isProfitable) classification = 'Puzzle';\n  else classification = 'Dog';\n  return { ...item, contributionMargin: margin, foodCostPercentage: foodCostPct, classification, revenueShare: totalRevenue > 0 ? ((item.total_revenue || 0) / totalRevenue * 100) : 0 };\n});\n\nreturn { items: analyzed, summary: { totalRevenue, totalUnits, itemCount: items.length, avgMargin: (avgMargin * 100), stars: analyzed.filter(i => i.classification === 'Star').length, dogs: analyzed.filter(i => i.classification === 'Dog').length } };",
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate menu optimization recommendations",
+          "config": {
+            "model": "gpt-4o",
+            "temperature": 0.5,
+            "maxTokens": 2000,
+            "prompt": "You are a restaurant consultant specializing in menu engineering.\n\nWeekly Performance Summary:\n- Total Revenue: ${{summary.totalRevenue}}\n- Total Units Sold: {{summary.totalUnits}}\n- Active Menu Items: {{summary.itemCount}}\n- Stars (high popularity + high margin): {{summary.stars}}\n- Dogs (low popularity + low margin): {{summary.dogs}}\n\nDetailed Item Analysis:\n{{#each items}}{{this.item_name}} | Category: {{this.category}} | Price: ${{this.price}} | Food Cost: ${{this.food_cost}} | Units Sold: {{this.units_sold}} | Revenue: ${{this.total_revenue}} | Margin: {{this.contributionMargin}}% | Classification: {{this.classification}} | Avg Rating: {{this.avg_rating}}\n{{/each}}\n\nProvide:\n1. Top 3 actionable recommendations for menu optimization\n2. Items to consider removing or repricing (Dogs with low ratings)\n3. Items with upsell potential (Puzzles with high margins)\n4. Suggested new item categories based on gaps\n5. Food cost alerts (items with food cost percentage above 35%)\n\nBe specific with numbers and item names. Keep recommendations practical for a restaurant operator."
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format menu performance report",
+          "config": {
+            "template": "<h2>Weekly Menu Performance Report</h2><p>Period: {{formatDate(subtractDays(now(), 7), 'MMM D')}} - {{formatDate(now(), 'MMM D, YYYY')}}</p><h3>Summary</h3><table border='1' cellpadding='6'><tr><td><strong>Total Revenue</strong></td><td>${{summary.totalRevenue}}</td></tr><tr><td><strong>Units Sold</strong></td><td>{{summary.totalUnits}}</td></tr><tr><td><strong>Stars</strong></td><td>{{summary.stars}} items</td></tr><tr><td><strong>Dogs</strong></td><td>{{summary.dogs}} items</td></tr></table><h3>Item Details</h3><table border='1' cellpadding='6'><thead><tr><th>Item</th><th>Category</th><th>Price</th><th>Units</th><th>Revenue</th><th>Margin</th><th>Class</th></tr></thead><tbody>{{#each items}}<tr><td>{{this.item_name}}</td><td>{{this.category}}</td><td>${{this.price}}</td><td>{{this.units_sold}}</td><td>${{this.total_revenue}}</td><td>{{this.contributionMargin}}%</td><td>{{this.classification}}</td></tr>{{/each}}</tbody></table><h3>AI Recommendations</h3><div>{{aiRecommendations}}</div>"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email report to restaurant management",
+          "config": {
+            "to": ["owner@restaurant.com", "head-chef@restaurant.com", "gm@restaurant.com"],
+            "subject": "Weekly Menu Performance Report - {{formatDate(now(), 'MMM D, YYYY')}}",
+            "body": "{{menuReportHtml}}",
+            "from": "analytics@restaurant.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

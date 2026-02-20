@@ -1,0 +1,152 @@
+{
+  "id": "tpl-004",
+  "name": "Product Description Generator",
+  "description": "Triggered when a new product is added to the catalog, this workflow simultaneously generates optimized descriptions for three channels: the company website, marketplace listings (e.g., Shopee/Amazon), and social media (Instagram). After the content team approves the drafts, they are saved to the product database and a notification is sent. Ideal for e-commerce teams managing multi-channel product content at scale.",
+  "category": "Sales & Marketing",
+  "industry": ["E-commerce", "Retail"],
+  "tags": ["ai-content", "e-commerce", "parallel", "approval", "intermediate"],
+  "stepCount": 10,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 350 },
+        "data": {
+          "nodeType": "event_trigger",
+          "label": "New product added to catalog",
+          "config": {
+            "eventName": "product.created",
+            "source": "catalog-service"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 350 },
+        "data": {
+          "nodeType": "prompt_template",
+          "label": "Build content generation prompt",
+          "config": {
+            "template": "Product: {{productName}}\nCategory: {{category}}\nKey Specs: {{specs}}\nTarget Audience: {{targetAudience}}\nBrand Voice: {{brandVoice}}\nPrice Point: {{priceRange}}"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 350 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Generate descriptions for all platforms",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-3a",
+        "type": "workflow",
+        "position": { "x": 850, "y": 125 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Write website product description",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "Write a detailed product description for the company website (150-200 words).\nUse the following product details:\n{{input}}\n\nGuidelines:\n- Lead with the primary benefit, not the feature\n- Include 3-4 key features with brief explanations\n- Mention the ideal use case or target user\n- End with a clear call-to-action\n- Tone: professional yet approachable\n- Do NOT include pricing"
+          }
+        }
+      },
+      {
+        "id": "node-3b",
+        "type": "workflow",
+        "position": { "x": 850, "y": 350 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Write marketplace listing description",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "Write a marketplace product listing optimized for Shopee/Amazon.\nProduct details: {{input}}\n\nFormat:\n- Title: Under 200 characters, keyword-rich\n- 5 bullet points highlighting key features\n- Short description (under 100 words)\n\nOptimize for:\n- Mobile readability\n- Search keywords relevant to {{category}}\n- Conversion-focused language"
+          }
+        }
+      },
+      {
+        "id": "node-3c",
+        "type": "workflow",
+        "position": { "x": 850, "y": 575 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Write Instagram caption with hashtags",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "Write an engaging Instagram caption for a new product post.\nProduct details: {{input}}\n\nRequirements:\n- Caption: Under 125 words, conversational and enthusiastic\n- Include a question to drive engagement\n- Add 10-15 relevant hashtags\n- Include one emoji per sentence maximum\n- End with a call-to-action (link in bio, shop now, etc.)"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 350 },
+        "data": {
+          "nodeType": "join",
+          "label": "Collect all platform descriptions",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 350 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Content team reviews all drafts",
+          "config": {
+            "assignTo": "{{env.CONTENT_TEAM_EMAIL}}",
+            "timeoutHours": 24,
+            "message": "New product descriptions ready for review: {{productName}}. Please review website, marketplace, and social media drafts."
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 350 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Save approved descriptions to product table",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "UPDATE products SET website_description = '{{websiteDesc}}', marketplace_description = '{{marketplaceDesc}}', social_caption = '{{socialCaption}}', descriptions_approved_at = NOW() WHERE id = '{{productId}}'"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 350 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify team descriptions are live",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.SLACK_CONTENT_WEBHOOK_URL}}",
+            "message": "Product descriptions approved and saved for {{productName}} (ID: {{productId}}). Ready to publish across all channels."
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3a", "source": "node-3", "target": "node-3a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3b", "source": "node-3", "target": "node-3b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3c", "source": "node-3", "target": "node-3c", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3a-4", "source": "node-3a", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3b-4", "source": "node-3b", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3c-4", "source": "node-3c", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

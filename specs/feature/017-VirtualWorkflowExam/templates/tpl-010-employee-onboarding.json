@@ -1,0 +1,236 @@
+{
+  "id": "tpl-010",
+  "name": "Employee Onboarding Process",
+  "description": "Triggered when a new hire is confirmed, this workflow collects employee details via a form, then simultaneously provisions accounts across multiple systems (HR platform, email/Google Workspace, project management tool) and sends a welcome email. After a configurable waiting period, it sends a first-week check-in email, then another follow-up at the end of the first month. Designed for enterprise and SME organizations that need consistent, automated onboarding across departments.",
+  "category": "HR & People",
+  "industry": ["Enterprise", "SME"],
+  "tags": ["event", "onboarding", "hr", "parallel", "advanced"],
+  "stepCount": 12,
+  "estimatedSetupMinutes": 45,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 350 },
+        "data": {
+          "nodeType": "event_trigger",
+          "label": "New hire confirmed in HR system",
+          "config": {
+            "eventName": "employee.hired",
+            "source": "hr-platform"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 350 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Collect new employee details",
+          "config": {
+            "fields": [
+              { "name": "fullName", "type": "text", "label": "Full Name", "required": true },
+              { "name": "personalEmail", "type": "email", "label": "Personal Email", "required": true },
+              { "name": "department", "type": "select", "label": "Department", "options": ["Engineering", "Sales", "Marketing", "Operations", "Finance", "HR"], "required": true },
+              { "name": "jobTitle", "type": "text", "label": "Job Title", "required": true },
+              { "name": "startDate", "type": "date", "label": "Start Date", "required": true },
+              { "name": "managerEmail", "type": "email", "label": "Manager Email", "required": true },
+              { "name": "officeLocation", "type": "select", "label": "Office Location", "options": ["HQ", "Remote", "Branch-A", "Branch-B"], "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 350 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Provision accounts and send welcome email",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-3a",
+        "type": "workflow",
+        "position": { "x": 850, "y": 50 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Create account in HR platform (BambooHR)",
+          "config": {
+            "method": "POST",
+            "url": "https://api.bamboohr.com/api/gateway.php/{{env.BAMBOOHR_DOMAIN}}/v1/employees",
+            "headers": {
+              "Authorization": "Basic {{secrets.BAMBOOHR_API_KEY}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "firstName": "{{firstName}}",
+              "lastName": "{{lastName}}",
+              "department": "{{department}}",
+              "jobTitle": "{{jobTitle}}",
+              "hireDate": "{{startDate}}",
+              "workEmail": "{{workEmail}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-3b",
+        "type": "workflow",
+        "position": { "x": 850, "y": 225 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Create Google Workspace account",
+          "config": {
+            "method": "POST",
+            "url": "https://admin.googleapis.com/admin/directory/v1/users",
+            "headers": {
+              "Authorization": "Bearer {{secrets.GOOGLE_ADMIN_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "primaryEmail": "{{workEmail}}",
+              "name": {
+                "givenName": "{{firstName}}",
+                "familyName": "{{lastName}}"
+              },
+              "orgUnitPath": "/{{department}}",
+              "password": "{{tempPassword}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-3c",
+        "type": "workflow",
+        "position": { "x": 850, "y": 400 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Add to project management tool (Asana)",
+          "config": {
+            "method": "POST",
+            "url": "https://app.asana.com/api/1.0/workspaces/{{env.ASANA_WORKSPACE_ID}}/addUser",
+            "headers": {
+              "Authorization": "Bearer {{secrets.ASANA_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "data": {
+                "user": "{{workEmail}}"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "node-3d",
+        "type": "workflow",
+        "position": { "x": 850, "y": 575 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send welcome email to new hire",
+          "config": {
+            "to": "{{personalEmail}}",
+            "cc": ["{{managerEmail}}", "hr@company.com"],
+            "subject": "Welcome to {{companyName}}, {{firstName}}!",
+            "body": "Dear {{firstName}},\n\nWelcome to {{companyName}}! We are thrilled to have you join the {{department}} team as {{jobTitle}}.\n\nYour start date: {{startDate}}\nOffice: {{officeLocation}}\nManager: {{managerName}} ({{managerEmail}})\n\nBefore your first day:\n1. Your work email ({{workEmail}}) will be ready 24 hours before start\n2. Check your inbox for account setup instructions\n3. Review the employee handbook attached\n\nIf you have any questions, reach out to hr@company.com.\n\nSee you soon!\nThe HR Team",
+            "from": "onboarding@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 350 },
+        "data": {
+          "nodeType": "join",
+          "label": "Wait for all provisioning to complete",
+          "config": {}
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 350 },
+        "data": {
+          "nodeType": "wait",
+          "label": "Wait until end of first week",
+          "config": {
+            "duration": "7d",
+            "resumeAt": "{{startDate + 7 days}}"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 350 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send first-week check-in email",
+          "config": {
+            "to": "{{workEmail}}",
+            "cc": ["{{managerEmail}}"],
+            "subject": "How was your first week, {{firstName}}?",
+            "body": "Hi {{firstName}},\n\nCongratulations on completing your first week at {{companyName}}!\n\nWe would love to hear how things are going:\n- Were you able to access all your tools and systems?\n- Did you have a chance to meet your team?\n- Is there anything you need help with?\n\nPlease take 2 minutes to fill out this quick survey: {{env.APP_URL}}/onboarding/survey/week-1/{{employeeId}}\n\nYour manager {{managerName}} is also available if you need anything.\n\nBest,\nThe HR Team",
+            "from": "onboarding@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 350 },
+        "data": {
+          "nodeType": "wait",
+          "label": "Wait until end of first month",
+          "config": {
+            "duration": "23d",
+            "resumeAt": "{{startDate + 30 days}}"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 2100, "y": 350 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send 30-day onboarding completion email",
+          "config": {
+            "to": "{{workEmail}}",
+            "cc": ["{{managerEmail}}", "hr@company.com"],
+            "subject": "Your First Month at {{companyName}} - Onboarding Complete!",
+            "body": "Hi {{firstName}},\n\nYou have officially completed your first month at {{companyName}}! Here is a quick recap:\n\nDepartment: {{department}}\nRole: {{jobTitle}}\nManager: {{managerName}}\n\nNext steps:\n1. Schedule your 30-day review with {{managerName}}\n2. Complete any remaining compliance training\n3. Update your profile and goals in the HR portal\n\nOnboarding survey (5 min): {{env.APP_URL}}/onboarding/survey/month-1/{{employeeId}}\n\nWe are glad to have you on the team!\n\nBest regards,\nThe HR Team",
+            "from": "onboarding@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3a", "source": "node-3", "target": "node-3a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3b", "source": "node-3", "target": "node-3b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3c", "source": "node-3", "target": "node-3c", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-3d", "source": "node-3", "target": "node-3d", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3a-4", "source": "node-3a", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3b-4", "source": "node-3b", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3c-4", "source": "node-3c", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3d-4", "source": "node-3d", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

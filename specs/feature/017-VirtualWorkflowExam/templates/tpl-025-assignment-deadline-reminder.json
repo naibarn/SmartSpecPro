@@ -1,0 +1,125 @@
+{
+  "id": "tpl-025",
+  "name": "Assignment Deadline Reminder",
+  "description": "Runs daily to check for upcoming assignment deadlines across all courses. Queries the learning management system database, filters assignments due within the next 48 hours, and sends personalized reminders via the student's preferred notification channel. Supports different urgency levels based on time remaining and whether the student has started their submission.",
+  "category": "Education",
+  "industry": ["Education"],
+  "tags": ["scheduled", "education", "reminders", "deadlines", "beginner"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 20,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every morning at 9 AM on weekdays",
+          "config": {
+            "schedule": "0 9 * * 1-5",
+            "timezone": "America/Chicago"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch assignments due in next 48 hours",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT a.id as assignment_id, a.title, a.description, a.due_date, a.max_points, c.name as course_name, c.code as course_code, s.id as student_id, s.first_name, s.last_name, s.email, s.phone, s.notification_preference, sub.status as submission_status, sub.submitted_at FROM assignments a JOIN courses c ON a.course_id = c.id JOIN enrollments e ON c.id = e.course_id JOIN students s ON e.student_id = s.id LEFT JOIN submissions sub ON a.id = sub.assignment_id AND s.id = sub.student_id WHERE a.due_date BETWEEN NOW() AND NOW() + INTERVAL '48 hours' AND a.status = 'published' AND (sub.status IS NULL OR sub.status = 'draft') ORDER BY a.due_date ASC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Exclude students who already submitted",
+          "config": {
+            "condition": "item.submission_status !== 'submitted' && item.submission_status !== 'graded'",
+            "description": "Only remind students who have not yet submitted their work"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each student-assignment pair",
+          "config": {
+            "iterateOver": "pendingReminders",
+            "itemVariable": "reminder",
+            "maxIterations": 1000
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route by urgency level",
+          "config": {
+            "expression": "hoursUntilDue",
+            "cases": [
+              { "value": "lessThan6", "condition": "hoursUntilDue < 6", "label": "Critical - due very soon" },
+              { "value": "lessThan24", "condition": "hoursUntilDue < 24", "label": "Urgent - due today" },
+              { "value": "lessThan48", "condition": "hoursUntilDue < 48", "label": "Reminder - due tomorrow" }
+            ],
+            "default": "lessThan48"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format reminder based on urgency",
+          "config": {
+            "template": "{{#if (eq urgency 'critical')}}URGENT: {{/if}}Hi {{reminder.first_name}},\n\n{{#if (eq urgency 'critical')}}Your assignment is due in less than 6 hours!{{else if (eq urgency 'urgent')}}Your assignment is due today.{{else}}Friendly reminder: your assignment is due tomorrow.{{/if}}\n\nAssignment: {{reminder.title}}\nCourse: {{reminder.course_name}} ({{reminder.course_code}})\nDue: {{reminder.due_date}}\nPoints: {{reminder.max_points}}\n{{#if (eq reminder.submission_status 'draft')}}You have a draft saved. Don't forget to submit it!{{else}}You haven't started yet. Log in to begin.{{/if}}\n\nGood luck!"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send reminder via student's preferred channel",
+          "config": {
+            "channel": "{{reminder.notification_preference}}",
+            "to": "{{reminder.email}}",
+            "phone": "{{reminder.phone}}",
+            "message": "{{formattedReminder}}",
+            "provider": "twilio",
+            "accountSid": "{{secrets.TWILIO_SID}}",
+            "authToken": "{{secrets.TWILIO_TOKEN}}",
+            "from": "{{env.TWILIO_PHONE}}",
+            "fallbackChannel": "email"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

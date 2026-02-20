@@ -1,0 +1,145 @@
+{
+  "id": "tpl-047",
+  "name": "License & Permit Expiry Tracking",
+  "description": "Runs daily to check a database of business licenses, health permits, and regulatory certifications for upcoming expirations. Filters for licenses expiring within configurable warning windows, loops through each expiring license, and uses a switch node to route notifications by urgency level: critical (expired or within 7 days), warning (within 30 days), or advisory (within 90 days). Critical items trigger immediate Slack/SMS notifications, while warnings and advisories go via email. Designed for restaurants, food businesses, government agencies, and any organization that must maintain current licenses to operate legally.",
+  "category": "Legal & Compliance",
+  "industry": ["Legal", "Government", "Food & Beverage"],
+  "tags": ["scheduled", "legal", "compliance", "tracking", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run daily at 8 AM",
+          "config": {
+            "schedule": "0 8 * * *",
+            "timezone": "Asia/Bangkok"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Query all licenses expiring within 90 days",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT l.id, l.license_type, l.license_number, l.issuing_authority, l.expiry_date, l.holder_name, l.holder_email, l.department, l.renewal_url, l.notes, EXTRACT(DAY FROM l.expiry_date - CURRENT_DATE) AS days_until_expiry, CASE WHEN l.expiry_date < CURRENT_DATE THEN 'expired' WHEN l.expiry_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'critical' WHEN l.expiry_date <= CURRENT_DATE + INTERVAL '30 days' THEN 'warning' ELSE 'advisory' END AS urgency FROM licenses l WHERE l.expiry_date <= CURRENT_DATE + INTERVAL '90 days' AND l.is_active = true AND l.renewal_status != 'completed' ORDER BY l.expiry_date ASC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Exclude already-notified licenses (today)",
+          "config": {
+            "condition": "license.last_notification_date IS NULL OR license.last_notification_date < CURRENT_DATE",
+            "passThrough": "matching"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each expiring license",
+          "config": {
+            "collection": "{{filteredLicenses}}",
+            "itemVariable": "license",
+            "indexVariable": "idx",
+            "maxIterations": 500
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route by urgency level",
+          "config": {
+            "expression": "{{license.urgency}}",
+            "cases": [
+              {
+                "value": "expired",
+                "label": "Already expired - critical alert",
+                "targetNode": "node-6"
+              },
+              {
+                "value": "critical",
+                "label": "Expiring within 7 days - critical alert",
+                "targetNode": "node-6"
+              },
+              {
+                "value": "warning",
+                "label": "Expiring within 30 days - email warning",
+                "targetNode": "node-7"
+              },
+              {
+                "value": "advisory",
+                "label": "Expiring within 90 days - email advisory",
+                "targetNode": "node-7"
+              }
+            ],
+            "default": "node-7"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 150 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send critical Slack alert for urgent expirations",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.SLACK_COMPLIANCE_WEBHOOK_URL}}",
+            "message": "URGENT LICENSE ALERT\n\nLicense: {{license.license_type}}\nNumber: {{license.license_number}}\nHolder: {{license.holder_name}} ({{license.department}})\nExpiry: {{license.expiry_date}} ({{license.days_until_expiry}} days)\nStatus: {{license.urgency | uppercase}}\nIssuing Authority: {{license.issuing_authority}}\n\nRenewal Link: {{license.renewal_url}}\n\nImmediate action required to avoid regulatory penalties.",
+            "priority": "high"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 275 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email license expiry notice to holder",
+          "config": {
+            "to": ["{{license.holder_email}}", "compliance@company.com"],
+            "subject": "[{{license.urgency | uppercase}}] License Expiring: {{license.license_type}} - {{license.license_number}}",
+            "body": "<h2>License Expiry Notice</h2><p><strong>Status:</strong> {{license.urgency | uppercase}}</p><p><strong>License:</strong> {{license.license_type}} ({{license.license_number}})</p><p><strong>Holder:</strong> {{license.holder_name}} - {{license.department}}</p><p><strong>Expiry Date:</strong> {{license.expiry_date}}</p><p><strong>Days Remaining:</strong> {{license.days_until_expiry}}</p><p><strong>Issuing Authority:</strong> {{license.issuing_authority}}</p><p><a href='{{license.renewal_url}}'>Start Renewal Process</a></p><p>{{license.notes}}</p>",
+            "from": "compliance@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "case-expired", "targetHandle": "input" },
+      { "id": "e5-6b", "source": "node-5", "target": "node-6", "sourceHandle": "case-critical", "targetHandle": "input" },
+      { "id": "e5-7", "source": "node-5", "target": "node-7", "sourceHandle": "case-warning", "targetHandle": "input" },
+      { "id": "e5-7b", "source": "node-5", "target": "node-7", "sourceHandle": "case-advisory", "targetHandle": "input" }
+    ]
+  }
+}

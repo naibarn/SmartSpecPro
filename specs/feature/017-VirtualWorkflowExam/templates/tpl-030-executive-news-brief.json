@@ -1,0 +1,188 @@
+{
+  "id": "tpl-030",
+  "name": "Executive News Brief",
+  "description": "Runs every weekday morning to compile a curated executive news briefing from multiple news sources. Fetches articles in parallel from government news feeds, industry publications, and policy databases, then merges the results, uses an LLM to summarize key developments and assess their strategic implications, formats the brief using a professional template, and emails it to senior leadership. Designed for government officials and enterprise executives who need concise, actionable intelligence.",
+  "category": "Government & Public",
+  "industry": ["Government", "Enterprise"],
+  "tags": ["scheduled", "news", "ai-summary", "parallel", "advanced"],
+  "stepCount": 10,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 350 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every weekday at 6 AM",
+          "config": {
+            "schedule": "0 6 * * 1-5",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 350 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Fetch news from three sources simultaneously",
+          "config": {
+            "branches": ["government-news", "industry-news", "policy-feed"],
+            "waitForAll": true,
+            "timeoutSeconds": 60
+          }
+        }
+      },
+      {
+        "id": "node-2a",
+        "type": "workflow",
+        "position": { "x": 600, "y": 125 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch government and regulatory news",
+          "config": {
+            "method": "GET",
+            "url": "{{env.GOV_NEWS_API_URL}}/api/v2/articles?category=government&since=24h&limit=20",
+            "headers": {
+              "Authorization": "Bearer {{secrets.NEWS_API_KEY}}"
+            },
+            "timeout": 30000,
+            "retryOnFailure": true,
+            "maxRetries": 2
+          }
+        }
+      },
+      {
+        "id": "node-2b",
+        "type": "workflow",
+        "position": { "x": 600, "y": 350 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch industry and economic news",
+          "config": {
+            "method": "GET",
+            "url": "{{env.INDUSTRY_NEWS_URL}}/api/feed?topics=economy,policy,regulation&period=24h&limit=20",
+            "headers": {
+              "Authorization": "Bearer {{secrets.INDUSTRY_API_KEY}}"
+            },
+            "timeout": 30000,
+            "retryOnFailure": true,
+            "maxRetries": 2
+          }
+        }
+      },
+      {
+        "id": "node-2c",
+        "type": "workflow",
+        "position": { "x": 600, "y": 575 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch policy and legislative updates",
+          "config": {
+            "method": "GET",
+            "url": "{{env.POLICY_FEED_URL}}/api/v1/updates?type=legislative,executive_order,regulation&since=yesterday",
+            "headers": {
+              "Authorization": "Bearer {{secrets.POLICY_API_KEY}}"
+            },
+            "timeout": 30000,
+            "retryOnFailure": true,
+            "maxRetries": 2
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 850, "y": 350 },
+        "data": {
+          "nodeType": "join",
+          "label": "Collect all news feed results",
+          "config": {
+            "strategy": "waitAll",
+            "timeout": 90
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 350 },
+        "data": {
+          "nodeType": "merge_data",
+          "label": "Merge and deduplicate articles from all sources",
+          "config": {
+            "strategy": "concat",
+            "deduplicateBy": "title",
+            "sortBy": "publishedAt",
+            "sortOrder": "desc",
+            "maxItems": 50,
+            "inputs": ["governmentNews", "industryNews", "policyUpdates"]
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 350 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate executive briefing with strategic analysis",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a senior policy analyst preparing a daily executive news briefing for government leadership.\n\nArticles from the past 24 hours:\n{{#each mergedArticles}}\n[{{@index}}] {{this.title}} (Source: {{this.source}}, Published: {{this.publishedAt}})\n{{this.summary}}\n{{/each}}\n\nPrepare an executive briefing with these sections:\n\n1. TOP STORIES (3-5 most important developments, 2-3 sentences each)\n   - Include why each matters for policy and operations\n\n2. REGULATORY & LEGISLATIVE UPDATE\n   - New regulations, pending legislation, or executive actions\n\n3. ECONOMIC INDICATORS\n   - Key economic data points or market movements\n\n4. STRATEGIC IMPLICATIONS\n   - What these developments mean for our organization\n   - Recommended actions or watch items\n\n5. UPCOMING EVENTS\n   - Hearings, deadlines, or events in the next 7 days (if mentioned)\n\nWrite in a concise, authoritative style. Use bullet points. Keep the total briefing under 800 words. Flag any items requiring immediate attention with [ACTION REQUIRED].",
+            "maxTokens": 2000,
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 350 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format briefing as professional HTML email",
+          "config": {
+            "template": "<div style='font-family: Georgia, serif; max-width: 700px; margin: 0 auto; color: #1a1a2e;'><div style='background: #16213e; color: white; padding: 20px; text-align: center;'><h1 style='margin: 0; font-size: 24px;'>Executive News Brief</h1><p style='margin: 5px 0 0; opacity: 0.8;'>{{briefingDate}} | Daily Intelligence Summary</p></div><div style='padding: 20px; background: #f8f9fa;'><div style='background: white; padding: 20px; border-radius: 8px; margin-bottom: 16px;'>{{executiveBriefing}}</div><div style='background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 8px; margin-bottom: 16px;'><strong>Sources Analyzed:</strong> {{articleCount}} articles from {{sourceCount}} sources</div></div><div style='padding: 16px; text-align: center; color: #6c757d; font-size: 12px;'><p>This briefing is auto-generated. Sources include government feeds, industry publications, and policy databases.</p><p>Prepared by the Office of Strategic Intelligence</p></div></div>"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 350 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Deliver briefing to executive leadership",
+          "config": {
+            "to": ["{{env.EXEC_DISTRO_LIST}}"],
+            "cc": ["{{env.POLICY_TEAM_EMAIL}}"],
+            "subject": "Executive News Brief - {{briefingDate}}",
+            "body": "{{formattedBriefing}}",
+            "contentType": "html",
+            "from": "intel-brief@agency.gov",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}",
+            "priority": "high"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-2a", "source": "node-2", "target": "node-2a", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-2b", "source": "node-2", "target": "node-2b", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-2c", "source": "node-2", "target": "node-2c", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2a-3", "source": "node-2a", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2b-3", "source": "node-2b", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2c-3", "source": "node-2c", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

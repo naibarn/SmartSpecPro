@@ -1,0 +1,204 @@
+{
+  "id": "tpl-043",
+  "name": "Blog Image Generation Pipeline",
+  "description": "Listens for a new blog post published event, uses AI to analyze the article content and generate tailored image prompts, then runs three parallel image generation branches to create a hero banner, a thumbnail, and a social share card. After all images are generated, they are uploaded to cloud storage, the blog post record is updated with the image URLs via API, and a notification is sent to the content team. Ideal for media and e-commerce teams that need consistent visual assets for every piece of content.",
+  "category": "Content & Media",
+  "industry": ["Media", "E-commerce"],
+  "tags": ["event", "ai-images", "content", "parallel", "advanced"],
+  "stepCount": 10,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "event_trigger",
+          "label": "New blog post published event",
+          "config": {
+            "eventName": "blog.post.published",
+            "source": "cms",
+            "filters": {
+              "status": "published",
+              "hasHeroImage": false
+            }
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Analyze article and generate image prompts",
+          "config": {
+            "model": "gpt-4o",
+            "temperature": 0.7,
+            "maxTokens": 1500,
+            "prompt": "You are a creative director specializing in blog visual assets.\n\nArticle title: {{event.title}}\nArticle excerpt: {{event.excerpt}}\nCategory: {{event.category}}\nTags: {{event.tags}}\n\nGenerate three detailed image generation prompts for:\n1. Hero Banner (1200x630px): A visually striking, editorial-quality image that captures the article's main theme. Should work as a page header.\n2. Thumbnail (400x400px): A compact, recognizable image for grid/list views. Bold and simple composition.\n3. Social Share Card (1200x630px): Eye-catching image optimized for social media feeds. Should include visual elements that create curiosity.\n\nFor each prompt, specify: style (photographic, illustration, 3D render), mood, color palette, key visual elements, and composition notes.\n\nReturn as JSON with fields: heroPrompt, thumbnailPrompt, socialPrompt."
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Generate three image variants simultaneously",
+          "config": {
+            "branches": ["heroBranch", "thumbnailBranch", "socialBranch"]
+          }
+        }
+      },
+      {
+        "id": "node-3a",
+        "type": "workflow",
+        "position": { "x": 850, "y": 50 },
+        "data": {
+          "nodeType": "generate_image",
+          "label": "Generate hero banner image",
+          "config": {
+            "provider": "fal-ai",
+            "model": "flux-pro",
+            "prompt": "{{heroPrompt}}",
+            "width": 1200,
+            "height": 630,
+            "steps": 30,
+            "guidanceScale": 7.5,
+            "negativePrompt": "text, watermark, blurry, low quality, distorted"
+          }
+        }
+      },
+      {
+        "id": "node-3b",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "generate_image",
+          "label": "Generate thumbnail image",
+          "config": {
+            "provider": "fal-ai",
+            "model": "flux-pro",
+            "prompt": "{{thumbnailPrompt}}",
+            "width": 400,
+            "height": 400,
+            "steps": 25,
+            "guidanceScale": 7.0,
+            "negativePrompt": "text, watermark, blurry, low quality, complex background"
+          }
+        }
+      },
+      {
+        "id": "node-3c",
+        "type": "workflow",
+        "position": { "x": 850, "y": 350 },
+        "data": {
+          "nodeType": "generate_image",
+          "label": "Generate social share card image",
+          "config": {
+            "provider": "fal-ai",
+            "model": "flux-pro",
+            "prompt": "{{socialPrompt}}",
+            "width": 1200,
+            "height": 630,
+            "steps": 30,
+            "guidanceScale": 8.0,
+            "negativePrompt": "text, watermark, blurry, low quality, distorted, dull colors"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "join",
+          "label": "Wait for all images to complete",
+          "config": {
+            "strategy": "wait_all",
+            "timeout": 180000,
+            "outputMapping": {
+              "heroImage": "node-3a.output",
+              "thumbnailImage": "node-3b.output",
+              "socialImage": "node-3c.output"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "storage_action",
+          "label": "Upload all images to cloud storage",
+          "config": {
+            "provider": "s3",
+            "bucket": "{{env.MEDIA_BUCKET_NAME}}",
+            "region": "{{env.AWS_REGION}}",
+            "accessKeyId": "{{secrets.AWS_ACCESS_KEY_ID}}",
+            "secretAccessKey": "{{secrets.AWS_SECRET_ACCESS_KEY}}",
+            "uploads": [
+              { "source": "{{heroImage.url}}", "destination": "blog/{{event.slug}}/hero.webp", "contentType": "image/webp" },
+              { "source": "{{thumbnailImage.url}}", "destination": "blog/{{event.slug}}/thumbnail.webp", "contentType": "image/webp" },
+              { "source": "{{socialImage.url}}", "destination": "blog/{{event.slug}}/social.webp", "contentType": "image/webp" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Update blog post with image URLs",
+          "config": {
+            "method": "PATCH",
+            "url": "{{env.CMS_API_URL}}/posts/{{event.postId}}",
+            "headers": {
+              "Authorization": "Bearer {{secrets.CMS_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "heroImageUrl": "{{storageResults.uploads[0].publicUrl}}",
+              "thumbnailUrl": "{{storageResults.uploads[1].publicUrl}}",
+              "socialImageUrl": "{{storageResults.uploads[2].publicUrl}}"
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify content team of generated images",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.SLACK_CONTENT_WEBHOOK_URL}}",
+            "message": "Images generated for blog post \"{{event.title}}\":\n- Hero: {{storageResults.uploads[0].publicUrl}}\n- Thumbnail: {{storageResults.uploads[1].publicUrl}}\n- Social: {{storageResults.uploads[2].publicUrl}}\n\nAll images have been attached to the post."
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4a", "source": "node-3", "target": "node-3a", "sourceHandle": "branch-heroBranch", "targetHandle": "input" },
+      { "id": "e3-4b", "source": "node-3", "target": "node-3b", "sourceHandle": "branch-thumbnailBranch", "targetHandle": "input" },
+      { "id": "e3-4c", "source": "node-3", "target": "node-3c", "sourceHandle": "branch-socialBranch", "targetHandle": "input" },
+      { "id": "e4a-5", "source": "node-3a", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4b-5", "source": "node-3b", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4c-5", "source": "node-3c", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

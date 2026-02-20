@@ -1,0 +1,99 @@
+{
+  "id": "tpl-012",
+  "name": "Employee Birthday and Anniversary Notifications",
+  "description": "Runs daily to check for upcoming employee birthdays and work anniversaries within the next 7 days. Filters matching employees, generates personalized congratulatory messages using a template, and sends notifications to the relevant team channels. Helps HR teams build company culture and ensure no milestone goes unrecognized.",
+  "category": "HR & People",
+  "industry": ["Enterprise", "SME"],
+  "tags": ["scheduled", "hr", "notifications", "beginner"],
+  "stepCount": 6,
+  "estimatedSetupMinutes": 15,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run daily at 8 AM on weekdays",
+          "config": {
+            "schedule": "0 8 * * 1-5",
+            "timezone": "Asia/Bangkok"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Find upcoming birthdays and anniversaries",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT e.id, e.full_name, e.email, e.department, e.hire_date, e.birth_date, e.manager_email, CASE WHEN EXTRACT(MONTH FROM e.birth_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(DAY FROM e.birth_date) BETWEEN EXTRACT(DAY FROM CURRENT_DATE) AND EXTRACT(DAY FROM CURRENT_DATE + INTERVAL '7 days') THEN 'birthday' WHEN EXTRACT(MONTH FROM e.hire_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(DAY FROM e.hire_date) BETWEEN EXTRACT(DAY FROM CURRENT_DATE) AND EXTRACT(DAY FROM CURRENT_DATE + INTERVAL '7 days') THEN 'anniversary' END AS milestone_type, EXTRACT(YEAR FROM AGE(CURRENT_DATE, e.hire_date)) AS years_of_service FROM employees e WHERE e.status = 'active' AND (EXTRACT(MONTH FROM e.birth_date) = EXTRACT(MONTH FROM CURRENT_DATE) OR EXTRACT(MONTH FROM e.hire_date) = EXTRACT(MONTH FROM CURRENT_DATE))"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Keep only employees with milestones this week",
+          "config": {
+            "condition": "item.milestone_type !== null"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each employee milestone",
+          "config": {
+            "iterateOver": "{{filteredEmployees}}",
+            "itemVariable": "employee"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Generate milestone notification message",
+          "config": {
+            "template": "{{#if (eq employee.milestone_type 'birthday')}}Happy Birthday, {{employee.full_name}}! The {{employee.department}} team wishes you a wonderful day ahead.{{else}}Congratulations, {{employee.full_name}}! Today marks your {{employee.years_of_service}}-year work anniversary with us. Thank you for your dedication and contributions to the {{employee.department}} team.{{/if}}"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Post to team Slack channel",
+          "config": {
+            "channel": "#{{employee.department}}-general",
+            "webhookUrl": "{{env.SLACK_WEBHOOK_URL}}",
+            "message": "{{notificationMessage}}",
+            "iconEmoji": "{{#if (eq employee.milestone_type 'birthday')}}:birthday:{{else}}:tada:{{/if}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

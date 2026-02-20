@@ -1,0 +1,171 @@
+{
+  "id": "tpl-060",
+  "name": "Subscription Renewal Workflow",
+  "description": "Runs daily to query the database for subscriptions expiring within the next 30 days. Each subscription is processed in a loop: a switch node categorizes it by days-until-expiry (30, 14, 7, 3, 1, or expired). For active subscriptions, a conditional checks if auto-renewal is enabled and attempts to charge via the payment gateway API. A second conditional checks the charge result: successful renewals trigger a confirmation email and database update, while failed charges trigger a dunning email with a payment update link. Built for SaaS and subscription businesses to automate the entire renewal lifecycle and reduce involuntary churn.",
+  "category": "AI & Automation",
+  "industry": ["SaaS", "Subscription"],
+  "tags": ["scheduled", "subscription", "renewal", "billing", "intermediate"],
+  "stepCount": 9,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run subscription check daily at 2 AM UTC",
+          "config": {
+            "schedule": "0 2 * * *",
+            "timezone": "UTC"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch subscriptions expiring within 30 days",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT s.id AS subscription_id, s.plan_name, s.amount, s.currency, s.billing_cycle, s.current_period_end, s.auto_renew, s.payment_method_id, s.retry_count, u.id AS user_id, u.email, u.full_name, u.company_name, EXTRACT(DAY FROM s.current_period_end - NOW()) AS days_until_expiry FROM subscriptions s JOIN users u ON s.user_id = u.id WHERE s.status = 'active' AND s.current_period_end <= NOW() + INTERVAL '30 days' ORDER BY s.current_period_end ASC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each expiring subscription",
+          "config": {
+            "iterateOver": "{{subscriptions}}",
+            "maxIterations": 5000,
+            "continueOnError": true
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Categorize by days until expiry",
+          "config": {
+            "expression": "{{currentSubscription.days_until_expiry}}",
+            "cases": [
+              { "value": "<=0", "label": "Expired: Attempt charge or suspend" },
+              { "value": "1", "label": "Final day: Urgent renewal notice" },
+              { "value": "3", "label": "3 days: Last chance reminder" },
+              { "value": "7", "label": "7 days: Renewal reminder" },
+              { "value": "14", "label": "14 days: Early notice" },
+              { "value": "30", "label": "30 days: First notification" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Is auto-renewal enabled with valid payment?",
+          "config": {
+            "condition": "currentSubscription.auto_renew === true && currentSubscription.payment_method_id !== null && currentSubscription.days_until_expiry <= 1",
+            "trueLabel": "Attempt automatic charge",
+            "falseLabel": "Send renewal reminder email"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Charge payment method via billing gateway",
+          "config": {
+            "method": "POST",
+            "url": "{{env.PAYMENT_GATEWAY_URL}}/charges",
+            "headers": {
+              "Authorization": "Bearer {{secrets.PAYMENT_API_KEY}}",
+              "Content-Type": "application/json",
+              "Idempotency-Key": "renewal-{{currentSubscription.subscription_id}}-{{date}}"
+            },
+            "body": {
+              "payment_method_id": "{{currentSubscription.payment_method_id}}",
+              "amount": "{{currentSubscription.amount}}",
+              "currency": "{{currentSubscription.currency}}",
+              "description": "Subscription renewal: {{currentSubscription.plan_name}}",
+              "metadata": {
+                "subscription_id": "{{currentSubscription.subscription_id}}",
+                "user_id": "{{currentSubscription.user_id}}"
+              }
+            },
+            "timeoutMs": 30000
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Was the payment charge successful?",
+          "config": {
+            "condition": "chargeResult.status === 'succeeded'",
+            "trueLabel": "Payment succeeded",
+            "falseLabel": "Payment failed"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send renewal confirmation or dunning email",
+          "config": {
+            "to": ["{{currentSubscription.email}}"],
+            "subject": "{{#if paymentSucceeded}}Subscription Renewed: {{currentSubscription.plan_name}}{{else}}Action Required: Payment Failed for {{currentSubscription.plan_name}}{{/if}}",
+            "body": "{{#if paymentSucceeded}}Hi {{currentSubscription.full_name}},\n\nYour {{currentSubscription.plan_name}} subscription has been successfully renewed.\n\nAmount: {{currentSubscription.currency}} {{currentSubscription.amount}}\nNext billing date: {{nextBillingDate}}\n\nThank you for your continued subscription!\n{{else}}Hi {{currentSubscription.full_name}},\n\nWe were unable to process your payment for the {{currentSubscription.plan_name}} subscription.\n\nAmount: {{currentSubscription.currency}} {{currentSubscription.amount}}\n\nPlease update your payment method to avoid service interruption:\n{{env.APP_URL}}/billing/update-payment\n\nIf you have questions, contact support at support@{{env.EMAIL_DOMAIN}}.\n{{/if}}\n\nBest regards,\nThe Billing Team",
+            "from": "billing@{{env.EMAIL_DOMAIN}}",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-9",
+        "type": "workflow",
+        "position": { "x": 2100, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Update subscription status and billing record",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "{{#if paymentSucceeded}}UPDATE subscriptions SET current_period_end = current_period_end + INTERVAL '1 {{currentSubscription.billing_cycle}}', retry_count = 0, last_payment_at = NOW(), last_payment_status = 'succeeded' WHERE id = '{{currentSubscription.subscription_id}}'{{else}}UPDATE subscriptions SET retry_count = retry_count + 1, last_payment_status = 'failed', last_payment_error = '{{chargeResult.error}}' WHERE id = '{{currentSubscription.subscription_id}}'{{/if}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e8-9", "source": "node-8", "target": "node-9", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

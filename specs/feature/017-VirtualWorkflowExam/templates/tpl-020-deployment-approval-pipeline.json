@@ -1,0 +1,165 @@
+{
+  "id": "tpl-020",
+  "name": "Deployment Approval Pipeline",
+  "description": "Orchestrates a production deployment approval workflow triggered by CI/CD webhook events. Uses AI to analyze the deployment diff for risk assessment, routes through a human approval gate for production releases, triggers the deployment via API, waits for rollout completion, verifies health, and notifies the team of the outcome. Ensures every production deployment is reviewed, risk-assessed, and traceable. Built for SaaS engineering teams practicing continuous delivery with guardrails.",
+  "category": "IT & DevOps",
+  "industry": ["SaaS", "IT Services"],
+  "tags": ["webhook", "devops", "deployment", "approval", "advanced"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "webhook_trigger",
+          "label": "Receive deployment request from CI/CD",
+          "config": {
+            "path": "/webhooks/deploy-request",
+            "method": "POST",
+            "secret": "{{secrets.WEBHOOK_DEPLOY_SECRET}}",
+            "expectedPayload": {
+              "repo": "string",
+              "branch": "string",
+              "commitSha": "string",
+              "environment": "string",
+              "author": "string",
+              "prNumber": "number",
+              "diffStats": "object"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "AI risk assessment of deployment changes",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a senior DevOps engineer performing a deployment risk assessment. Analyze the following deployment details and provide a risk evaluation.\n\nRepository: {{repo}}\nBranch: {{branch}}\nCommit: {{commitSha}}\nTarget Environment: {{environment}}\nAuthor: {{author}}\nPR #{{prNumber}}\n\nChange Statistics:\n- Files changed: {{diffStats.filesChanged}}\n- Insertions: {{diffStats.insertions}}\n- Deletions: {{diffStats.deletions}}\n- Modified paths: {{diffStats.paths}}\n\nAssess the following:\n1. **Risk Level**: LOW / MEDIUM / HIGH / CRITICAL\n2. **Risk Factors**: List specific concerns (e.g., database migrations, auth changes, config changes)\n3. **Blast Radius**: Which services/features could be affected\n4. **Recommended Checks**: Pre-deployment verification steps\n5. **Rollback Complexity**: Easy / Moderate / Complex\n6. **Approval Recommendation**: Auto-approve / Require human review / Block deployment\n\nOutput as JSON with keys: riskLevel, riskFactors, blastRadius, checks, rollbackComplexity, recommendation"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Engineering lead approves production deploy",
+          "config": {
+            "assignTo": "{{env.DEPLOY_APPROVERS}}",
+            "timeoutHours": 4,
+            "notifyChannel": "#deployments",
+            "message": "Deployment Approval Required\n\nRepo: {{repo}} ({{branch}})\nAuthor: {{author}}\nPR: #{{prNumber}}\nEnvironment: {{environment}}\n\nAI Risk Assessment: {{riskLevel}}\nRisk Factors: {{riskFactors}}\nRecommendation: {{recommendation}}\n\nApprove or reject this deployment."
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Was the deployment approved?",
+          "config": {
+            "condition": "{{approvalStatus}} === 'approved'",
+            "trueLabel": "Deploy",
+            "falseLabel": "Rejected"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Trigger deployment via CI/CD API",
+          "config": {
+            "method": "POST",
+            "url": "https://api.github.com/repos/{{repo}}/deployments",
+            "headers": {
+              "Authorization": "token {{secrets.GITHUB_DEPLOY_TOKEN}}",
+              "Accept": "application/vnd.github.v3+json",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "ref": "{{commitSha}}",
+              "environment": "{{environment}}",
+              "auto_merge": false,
+              "required_contexts": [],
+              "description": "Approved by {{approvedBy}} via SmartSpec deploy pipeline"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "wait",
+          "label": "Wait for deployment rollout (up to 10 min)",
+          "config": {
+            "duration": 120,
+            "unit": "seconds",
+            "pollUrl": "https://api.github.com/repos/{{repo}}/deployments/{{deploymentId}}/statuses",
+            "pollInterval": 15,
+            "successCondition": "response.state === 'success'",
+            "failureCondition": "response.state === 'failure' || response.state === 'error'",
+            "maxWait": 600
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Run post-deployment health check",
+          "config": {
+            "method": "GET",
+            "url": "{{env.APP_URL}}/api/health",
+            "headers": {
+              "Authorization": "Bearer {{secrets.MONITORING_TOKEN}}"
+            },
+            "timeout": 10000,
+            "expectedStatus": 200,
+            "retries": 3,
+            "retryDelay": 5000
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify team of deployment result",
+          "config": {
+            "channel": "#deployments",
+            "webhookUrl": "{{env.SLACK_WEBHOOK_URL}}",
+            "message": "Deployment {{#if deploySuccess}}Succeeded{{else}}Failed{{/if}}\n\nRepo: {{repo}} ({{branch}})\nCommit: {{commitSha}}\nEnvironment: {{environment}}\nAuthor: {{author}}\nApproved by: {{approvedBy}}\nRisk Level: {{riskLevel}}\n\n{{#if deploySuccess}}Health check: PASSING\nDeployment completed successfully.{{else}}Health check: {{healthStatus}}\nPlease investigate immediately. Rollback may be required.\nRollback complexity: {{rollbackComplexity}}{{/if}}\n\nDeploy log: {{env.APP_URL}}/deploys/{{deploymentId}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

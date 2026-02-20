@@ -1,0 +1,121 @@
+{
+  "id": "tpl-016",
+  "name": "Monthly P&L Summary",
+  "description": "Produces a comprehensive monthly Profit and Loss statement by aggregating revenue and expense data from the accounting database, transforming raw figures into structured financial categories, merging with prior period data for trend comparison, and using AI to generate executive commentary. The formatted report is emailed to the finance team and CFO on the first business day of each month.",
+  "category": "Finance & Accounting",
+  "industry": ["Finance", "Enterprise"],
+  "tags": ["scheduled", "finance", "reporting", "ai-analysis", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run on the 2nd of every month at 8 AM",
+          "config": {
+            "schedule": "0 8 2 * *",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch revenue and expense entries for the period",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT gl.account_code, coa.account_name, coa.category, coa.subcategory, coa.account_type, SUM(CASE WHEN gl.entry_type = 'credit' THEN gl.amount ELSE 0 END) AS credits, SUM(CASE WHEN gl.entry_type = 'debit' THEN gl.amount ELSE 0 END) AS debits, SUM(CASE WHEN gl.entry_type = 'credit' THEN gl.amount ELSE -gl.amount END) AS net_amount FROM general_ledger gl JOIN chart_of_accounts coa ON gl.account_code = coa.code WHERE gl.posting_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') AND gl.posting_date < DATE_TRUNC('month', CURRENT_DATE) AND gl.status = 'posted' GROUP BY gl.account_code, coa.account_name, coa.category, coa.subcategory, coa.account_type ORDER BY coa.category, coa.subcategory"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "transformer",
+          "label": "Structure data into P&L categories",
+          "config": {
+            "expression": "{ revenue: { total: _.sumBy(_.filter(input, {account_type: 'revenue'}), 'net_amount'), byCategory: _.groupBy(_.filter(input, {account_type: 'revenue'}), 'subcategory') }, cogs: { total: _.sumBy(_.filter(input, {account_type: 'cogs'}), 'net_amount') }, grossProfit: _.sumBy(_.filter(input, {account_type: 'revenue'}), 'net_amount') - Math.abs(_.sumBy(_.filter(input, {account_type: 'cogs'}), 'net_amount')), opex: { total: _.sumBy(_.filter(input, {account_type: 'expense'}), 'net_amount'), byCategory: _.groupBy(_.filter(input, {account_type: 'expense'}), 'subcategory') }, netIncome: _.sumBy(_.filter(input, {account_type: 'revenue'}), 'net_amount') - Math.abs(_.sumBy(_.filter(input, {account_type: 'cogs'}), 'net_amount')) - Math.abs(_.sumBy(_.filter(input, {account_type: 'expense'}), 'net_amount')), period: new Date(Date.now() - 30*86400000).toLocaleDateString('en-US', {month:'long', year:'numeric'}) }"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "merge_data",
+          "label": "Merge with prior month for comparison",
+          "config": {
+            "sources": ["currentPeriodPL", "priorPeriodPL"],
+            "mergeStrategy": "combine",
+            "outputFields": {
+              "current": "{{currentPeriodPL}}",
+              "prior": "{{priorPeriodPL}}",
+              "revenueChange": "(({{currentPeriodPL.revenue.total}} - {{priorPeriodPL.revenue.total}}) / {{priorPeriodPL.revenue.total}}) * 100",
+              "netIncomeChange": "(({{currentPeriodPL.netIncome}} - {{priorPeriodPL.netIncome}}) / {{priorPeriodPL.netIncome}}) * 100"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate executive financial commentary",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a CFO preparing a monthly financial commentary for the board. Analyze the following P&L data and provide a concise executive summary.\n\nCurrent Period: {{period}}\nRevenue: ${{revenue.total}} ({{revenueChange}}% vs prior month)\nGross Profit: ${{grossProfit}}\nOperating Expenses: ${{opex.total}}\nNet Income: ${{netIncome}} ({{netIncomeChange}}% vs prior month)\n\nRevenue Breakdown:\n{{#each revenue.byCategory}}{{@key}}: ${{this}}\\n{{/each}}\n\nExpense Breakdown:\n{{#each opex.byCategory}}{{@key}}: ${{this}}\\n{{/each}}\n\nProvide:\n1. **Summary** (2 sentences on overall financial health)\n2. **Revenue Analysis** - key drivers and trends\n3. **Cost Management** - notable expense changes\n4. **Gross Margin** - current margin % and trend\n5. **Outlook** - one forward-looking statement\n\nUse precise dollar amounts and percentages. Keep it under 200 words."
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format P&L report as professional HTML",
+          "config": {
+            "template": "<div style='font-family:Arial,sans-serif;max-width:800px;margin:0 auto;'><h1 style='border-bottom:2px solid #1a365d;padding-bottom:8px;'>Profit & Loss Statement - {{period}}</h1><table style='width:100%;border-collapse:collapse;margin:16px 0;'><tr style='background:#f7fafc;'><td style='padding:8px;font-weight:bold;'>Revenue</td><td style='padding:8px;text-align:right;'>${{revenue.total}}</td><td style='padding:8px;text-align:right;color:{{#if (gt revenueChange 0)}}green{{else}}red{{/if}};'>{{revenueChange}}%</td></tr><tr><td style='padding:8px;font-weight:bold;'>Cost of Goods Sold</td><td style='padding:8px;text-align:right;'>(${{cogs.total}})</td><td></td></tr><tr style='background:#ebf8ff;font-weight:bold;'><td style='padding:8px;'>Gross Profit</td><td style='padding:8px;text-align:right;'>${{grossProfit}}</td><td></td></tr><tr><td style='padding:8px;font-weight:bold;'>Operating Expenses</td><td style='padding:8px;text-align:right;'>(${{opex.total}})</td><td></td></tr><tr style='background:#f0fff4;font-weight:bold;font-size:18px;'><td style='padding:12px;'>Net Income</td><td style='padding:12px;text-align:right;'>${{netIncome}}</td><td style='padding:12px;text-align:right;color:{{#if (gt netIncomeChange 0)}}green{{else}}red{{/if}};'>{{netIncomeChange}}%</td></tr></table><div style='background:#f7fafc;padding:16px;border-radius:8px;margin:16px 0;'><h3>Executive Commentary</h3>{{aiCommentary}}</div></div>"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email P&L report to finance leadership",
+          "config": {
+            "to": ["cfo@company.com", "finance-team@company.com", "controller@company.com"],
+            "subject": "Monthly P&L Summary - {{period}}",
+            "body": "{{emailBody}}",
+            "from": "finance-reports@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "id": "tpl-037",
+  "name": "Property Buyer Matching",
+  "description": "Listens for new property listing events and automatically matches them against registered buyer preferences using RAG-powered semantic search and AI scoring. When a new listing is published, the system searches the buyer profile index for compatible matches based on location, budget, property type, and lifestyle preferences. An LLM scores and ranks matches, filters out low-confidence results, and sends personalized notifications to matched buyers. Ideal for real estate agencies looking to automate lead distribution.",
+  "category": "Real Estate",
+  "industry": ["Real Estate"],
+  "tags": ["event", "real-estate", "ai-matching", "rag", "intermediate"],
+  "stepCount": 6,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "event_trigger",
+          "label": "Listen for new property listing events",
+          "config": {
+            "eventName": "property.listing.published",
+            "source": "listing-service",
+            "filters": {
+              "status": "active",
+              "visibility": "public"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Search buyer profiles matching property attributes",
+          "config": {
+            "indexName": "buyer-preferences",
+            "query": "Buyer looking for {{event.propertyType}} in {{event.neighborhood}}, {{event.city}} with budget around ${{event.listPrice}}. Features: {{event.bedrooms}} bed, {{event.bathrooms}} bath, {{event.squareFeet}} sqft. Amenities: {{event.amenities}}.",
+            "topK": 25,
+            "minScore": 0.6,
+            "filters": {
+              "budgetMax": { "$gte": "{{event.listPrice}}" },
+              "preferredCities": { "$contains": "{{event.city}}" },
+              "isActive": true
+            }
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Score and rank buyer-property compatibility",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a real estate matching specialist. Score how well each buyer profile matches this new property listing.\n\nProperty:\n- Address: {{event.address}}, {{event.city}}\n- Type: {{event.propertyType}}\n- Price: ${{event.listPrice}}\n- Bedrooms: {{event.bedrooms}}, Bathrooms: {{event.bathrooms}}\n- Square Feet: {{event.squareFeet}}\n- Amenities: {{event.amenities}}\n- Year Built: {{event.yearBuilt}}\n- HOA: ${{event.hoaMonthly}}/month\n\nBuyer Profiles:\n{{#each buyers}}  - {{this.name}}: Budget ${{this.budgetMin}}-${{this.budgetMax}}, wants {{this.preferredType}} in {{this.preferredNeighborhoods}}, needs {{this.minBedrooms}}+ bed, priorities: {{this.priorities}}\n{{/each}}\n\nFor each buyer, return JSON array: [{buyerId, name, matchScore (0-100), matchReasons (3 bullet points), concerns (if any)}]. Only include buyers with score >= 70.",
+            "maxTokens": 2000,
+            "temperature": 0.2
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Filter to high-confidence matches only",
+          "config": {
+            "condition": "item.matchScore >= 70"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Iterate over each matched buyer",
+          "config": {
+            "iterateOver": "{{matchedBuyers}}",
+            "itemVariable": "buyer"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify matched buyer about new listing",
+          "config": {
+            "channel": "push",
+            "pushToken": "{{buyer.pushToken}}",
+            "title": "New Listing Match: {{event.address}}",
+            "message": "A new {{event.propertyType}} at {{event.address}} matches your search! ${{event.listPrice}} | {{event.bedrooms}} bed | {{event.squareFeet}} sqft. Match score: {{buyer.matchScore}}%. Reasons: {{buyer.matchReasons}}",
+            "priority": "high",
+            "data": {
+              "listingId": "{{event.listingId}}",
+              "matchScore": "{{buyer.matchScore}}",
+              "action": "open_listing_detail"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

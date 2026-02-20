@@ -1,0 +1,119 @@
+{
+  "id": "tpl-022",
+  "name": "Patient Appointment Reminder",
+  "description": "Runs daily to query upcoming patient appointments from the clinic database, filters for appointments within the next 24-48 hours, and sends personalized SMS and email reminders to each patient with appointment details, provider name, and preparation instructions. Reduces no-show rates for healthcare clinics and hospitals.",
+  "category": "Healthcare",
+  "industry": ["Healthcare"],
+  "tags": ["scheduled", "healthcare", "reminders", "sms", "beginner"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 20,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every morning at 8 AM",
+          "config": {
+            "schedule": "0 8 * * *",
+            "timezone": "America/New_York"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch appointments for next 24-48 hours",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT a.id, a.appointment_date, a.appointment_time, a.duration_minutes, a.notes, p.first_name, p.last_name, p.phone, p.email, p.preferred_language, d.name as provider_name, d.specialty, l.address as location_address, l.name as location_name FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN providers d ON a.provider_id = d.id JOIN locations l ON a.location_id = l.id WHERE a.appointment_date BETWEEN CURRENT_DATE + INTERVAL '1 day' AND CURRENT_DATE + INTERVAL '2 days' AND a.status = 'confirmed' AND a.reminder_sent = false ORDER BY a.appointment_date, a.appointment_time"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Filter patients with valid contact info",
+          "config": {
+            "condition": "item.phone !== null || item.email !== null",
+            "description": "Exclude patients who have no phone and no email on file"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each patient appointment",
+          "config": {
+            "iterateOver": "filteredAppointments",
+            "itemVariable": "appointment",
+            "maxIterations": 500
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Build personalized reminder message",
+          "config": {
+            "template": "Hi {{appointment.first_name}}, this is a reminder for your appointment:\n\nDate: {{appointment.appointment_date}}\nTime: {{appointment.appointment_time}}\nProvider: Dr. {{appointment.provider_name}} ({{appointment.specialty}})\nLocation: {{appointment.location_name}}, {{appointment.location_address}}\n\nPlease arrive 15 minutes early. If you need to reschedule, call us at (555) 123-4567.\n\nThank you!"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send SMS/email reminder to patient",
+          "config": {
+            "channel": "sms",
+            "provider": "twilio",
+            "accountSid": "{{secrets.TWILIO_SID}}",
+            "authToken": "{{secrets.TWILIO_TOKEN}}",
+            "from": "{{env.TWILIO_PHONE}}",
+            "to": "{{appointment.phone}}",
+            "message": "{{reminderMessage}}",
+            "fallbackChannel": "email"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Mark reminder as sent in database",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "UPDATE appointments SET reminder_sent = true, reminder_sent_at = NOW(), reminder_channel = '{{channelUsed}}' WHERE id = {{appointment.id}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "id": "tpl-055",
+  "name": "Customer Onboarding Email Sequence",
+  "description": "Triggered when a new customer signs up, this workflow delivers a timed drip email sequence over the first two weeks. It fetches the customer profile from the database, sends a welcome email, then waits configured intervals before sending feature highlight, tips-and-tricks, and check-in emails. After the sequence completes, it updates the customer record with onboarding status and conditionally sends a re-engagement email if the user has not activated key features. Designed for SaaS products seeking to improve trial-to-paid conversion through structured onboarding.",
+  "category": "AI & Automation",
+  "industry": ["SaaS"],
+  "tags": ["event", "onboarding", "email-sequence", "drip", "intermediate"],
+  "stepCount": 11,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "event_trigger",
+          "label": "New customer signup event received",
+          "config": {
+            "eventName": "customer.created",
+            "source": "auth-service",
+            "filters": {
+              "plan": ["trial", "free"]
+            }
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch new customer profile details",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT u.id, u.email, u.full_name, u.company_name, u.plan, u.created_at, up.industry, up.team_size FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.id = '{{customerId}}'"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send welcome email with getting started guide",
+          "config": {
+            "to": ["{{customerEmail}}"],
+            "subject": "Welcome to {{env.APP_NAME}}, {{firstName}}!",
+            "body": "Hi {{firstName}},\n\nWelcome aboard! We are thrilled to have you and {{companyName}} join us.\n\nHere are 3 things to do in your first 10 minutes:\n1. Complete your profile setup\n2. Create your first project\n3. Invite a team member\n\nNeed help? Reply to this email or visit our help center.\n\nCheers,\nThe {{env.APP_NAME}} Team",
+            "from": "welcome@{{env.EMAIL_DOMAIN}}",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "wait",
+          "label": "Wait 2 days before next email",
+          "config": {
+            "duration": 2,
+            "unit": "days"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send feature highlights email",
+          "config": {
+            "to": ["{{customerEmail}}"],
+            "subject": "Discover what {{env.APP_NAME}} can do for you",
+            "body": "Hi {{firstName}},\n\nHere are the top 3 features our customers love:\n\n1. AI-Powered Workflows - Automate repetitive tasks with smart templates\n2. Team Collaboration - Real-time editing and comments\n3. Analytics Dashboard - Track your team productivity at a glance\n\nWatch a 2-minute demo: {{env.APP_URL}}/demo\n\nBest,\nThe {{env.APP_NAME}} Team",
+            "from": "hello@{{env.EMAIL_DOMAIN}}",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "wait",
+          "label": "Wait 3 days before tips email",
+          "config": {
+            "duration": 3,
+            "unit": "days"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send tips and best practices email",
+          "config": {
+            "to": ["{{customerEmail}}"],
+            "subject": "Pro tips to get the most out of {{env.APP_NAME}}",
+            "body": "Hi {{firstName}},\n\nHere are some pro tips from power users:\n\n- Use keyboard shortcuts (Ctrl+K) to navigate faster\n- Set up integrations with Slack and Google Calendar\n- Use templates to standardize your team workflows\n- Enable notifications for real-time updates\n\nExplore all tips: {{env.APP_URL}}/tips\n\nHappy building,\nThe {{env.APP_NAME}} Team",
+            "from": "hello@{{env.EMAIL_DOMAIN}}",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "wait",
+          "label": "Wait 7 days before check-in",
+          "config": {
+            "duration": 7,
+            "unit": "days"
+          }
+        }
+      },
+      {
+        "id": "node-9",
+        "type": "workflow",
+        "position": { "x": 2100, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Check customer activation status",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT u.id, COUNT(p.id) AS project_count, COUNT(DISTINCT tm.invited_user_id) AS invited_members, MAX(s.last_active_at) AS last_active FROM users u LEFT JOIN projects p ON u.id = p.owner_id LEFT JOIN team_members tm ON u.id = tm.inviter_id LEFT JOIN sessions s ON u.id = s.user_id WHERE u.id = '{{customerId}}' GROUP BY u.id"
+          }
+        }
+      },
+      {
+        "id": "node-10",
+        "type": "workflow",
+        "position": { "x": 2350, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Has the customer activated key features?",
+          "config": {
+            "condition": "projectCount >= 1 && invitedMembers >= 1",
+            "trueLabel": "Activated",
+            "falseLabel": "Needs re-engagement"
+          }
+        }
+      },
+      {
+        "id": "node-11",
+        "type": "workflow",
+        "position": { "x": 2600, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Send re-engagement or success check-in email",
+          "config": {
+            "to": ["{{customerEmail}}"],
+            "subject": "{{#if activated}}You are doing great, {{firstName}}!{{else}}Need help getting started, {{firstName}}?{{/if}}",
+            "body": "{{#if activated}}Hi {{firstName}},\n\nGreat progress! You have created {{projectCount}} projects and invited {{invitedMembers}} team members.\n\nReady for the next level? Explore our advanced features: {{env.APP_URL}}/advanced\n{{else}}Hi {{firstName}},\n\nWe noticed you have not had a chance to set up your first project yet. No worries, we are here to help!\n\nBook a free 15-minute onboarding call: {{env.APP_URL}}/book-demo\n\nOr reply to this email and we will guide you step by step.\n{{/if}}\n\nBest,\nThe {{env.APP_NAME}} Team",
+            "from": "success@{{env.EMAIL_DOMAIN}}",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e8-9", "source": "node-8", "target": "node-9", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e9-10", "source": "node-9", "target": "node-10", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e10-11", "source": "node-10", "target": "node-11", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

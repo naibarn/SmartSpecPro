@@ -1,0 +1,103 @@
+{
+  "id": "tpl-034",
+  "name": "Personal Expense Tracker",
+  "description": "Generates a weekly personal expense analysis by querying transaction data, transforming it into categorized spending summaries, and using AI to identify spending patterns and provide budgeting advice. The formatted report is delivered via email every Monday morning, giving users a clear picture of the previous week's finances with actionable recommendations for saving money.",
+  "category": "Personal Productivity",
+  "industry": ["Personal Productivity"],
+  "tags": ["scheduled", "finance", "expense", "ai-analysis", "beginner"],
+  "stepCount": 6,
+  "estimatedSetupMinutes": 15,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run every Monday at 7 AM",
+          "config": {
+            "schedule": "0 7 * * 1",
+            "timezone": "America/Los_Angeles"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch last week's transactions",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT t.id, t.amount, t.description, t.merchant_name, t.category, t.transaction_date, t.payment_method FROM transactions t WHERE t.user_id = '{{env.USER_ID}}' AND t.transaction_date >= CURRENT_DATE - INTERVAL '7 days' AND t.transaction_date < CURRENT_DATE ORDER BY t.transaction_date DESC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "transformer",
+          "label": "Categorize and aggregate spending totals",
+          "config": {
+            "expression": "{ totalSpent: sum(input, 'amount'), transactionCount: len(input), byCategory: groupBy(input, 'category') | mapValues(sum, 'amount') | sortDesc, byPaymentMethod: groupBy(input, 'payment_method') | mapValues(sum, 'amount'), topMerchants: groupBy(input, 'merchant_name') | mapValues(sum, 'amount') | sortDesc | take(10), dailySpending: groupBy(input, 'transaction_date') | mapValues(sum, 'amount') }"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Analyze spending patterns and generate advice",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a friendly personal finance advisor. Analyze the following weekly spending data and provide helpful insights.\n\nWeek: {{weekStart}} to {{weekEnd}}\nTotal Spent: ${{totalSpent}}\nTransaction Count: {{transactionCount}}\n\nSpending by Category:\n{{#each byCategory}}  - {{@key}}: ${{this}}\n{{/each}}\n\nTop Merchants:\n{{#each topMerchants}}  - {{@key}}: ${{this}}\n{{/each}}\n\nProvide:\n1. A brief spending summary (2-3 sentences)\n2. The biggest spending category and whether it seems reasonable\n3. Any unusual patterns or outliers\n4. Two specific, actionable tips to save money next week\n\nKeep the tone encouraging and non-judgmental.",
+            "maxTokens": 800,
+            "temperature": 0.4
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Format weekly expense report email",
+          "config": {
+            "template": "<h2>Weekly Expense Report</h2><p style='color:#666;'>{{weekStart}} - {{weekEnd}}</p><div style='background:#f0f8ff;padding:16px;border-radius:8px;margin:16px 0;'><h3 style='margin:0;'>Total Spent: ${{totalSpent}}</h3><p style='margin:4px 0;color:#666;'>{{transactionCount}} transactions</p></div><h3>By Category</h3><table style='width:100%;border-collapse:collapse;'>{{#each byCategory}}<tr><td style='padding:8px;border-bottom:1px solid #eee;'>{{@key}}</td><td style='padding:8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;'>${{this}}</td></tr>{{/each}}</table><h3>AI Insights</h3><div style='background:#f9f9f9;padding:16px;border-radius:8px;'>{{aiAnalysis}}</div><hr><p style='color:#999;font-size:12px;'>Your personal expense tracker. Powered by SmartSpecPro.</p>"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email weekly expense report",
+          "config": {
+            "to": ["{{env.USER_EMAIL}}"],
+            "subject": "Your Weekly Expense Report: ${{totalSpent}} spent",
+            "body": "{{emailBody}}",
+            "from": "expenses@smartspechub.app",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "id": "tpl-002",
+  "name": "Customer Review Auto-Response",
+  "description": "Listens for new customer reviews via webhook, fetches the full review details, uses AI to draft a professional and empathetic response, and routes it through an approval gate before posting. Negative reviews are flagged for manual intervention. Ideal for retail and hospitality businesses managing reviews across multiple platforms.",
+  "category": "Sales & Marketing",
+  "industry": ["Retail", "Hospitality"],
+  "tags": ["webhook", "ai-response", "reviews", "approval", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "webhook_trigger",
+          "label": "Receive new review notification",
+          "config": {
+            "path": "/webhooks/reviews",
+            "method": "POST",
+            "secret": "{{secrets.REVIEW_WEBHOOK_SECRET}}"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Fetch full review from platform API",
+          "config": {
+            "method": "GET",
+            "url": "https://api.reviews-platform.com/v2/reviews/{{reviewId}}",
+            "headers": {
+              "Authorization": "Bearer {{secrets.REVIEWS_API_KEY}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Draft empathetic review response",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a customer service representative for a {{businessType}} business.\nDraft a professional, empathetic response to the following customer review.\n\nReview Rating: {{rating}}/5\nReview Text: {{reviewText}}\nCustomer Name: {{customerName}}\n\nGuidelines:\n- If rating >= 4: Thank them warmly, highlight what they enjoyed\n- If rating <= 3: Apologize sincerely, acknowledge their specific concern\n- Always invite them back\n- Keep response under 150 words\n- Do NOT offer discounts or freebies (manager approval needed for that)\n- Sign off as the Customer Experience Team"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Extract sentiment and response text",
+          "config": {
+            "format": "json",
+            "schema": {
+              "sentiment": "positive | neutral | negative",
+              "responseText": "string",
+              "flagForManager": "boolean"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Check if negative sentiment",
+          "config": {
+            "condition": "sentiment === 'negative' || rating <= 2",
+            "trueLabel": "Needs manager review",
+            "falseLabel": "Auto-approve"
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Manager approves response before posting",
+          "config": {
+            "assignTo": "cs-manager@company.com",
+            "timeoutHours": 12,
+            "message": "Please review the AI-drafted response for a {{rating}}-star review from {{customerName}}"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Post approved response to review platform",
+          "config": {
+            "method": "POST",
+            "url": "https://api.reviews-platform.com/v2/reviews/{{reviewId}}/reply",
+            "headers": {
+              "Authorization": "Bearer {{secrets.REVIEWS_API_KEY}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "text": "{{responseText}}"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Log response in review history table",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "INSERT INTO review_responses (review_id, platform, rating, sentiment, response_text, approved_by, responded_at) VALUES ('{{reviewId}}', '{{platform}}', {{rating}}, '{{sentiment}}', '{{responseText}}', '{{approvedBy}}', NOW())"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

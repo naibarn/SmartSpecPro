@@ -1,0 +1,171 @@
+{
+  "id": "tpl-027",
+  "name": "Auto Quiz Generation",
+  "description": "Allows instructors to upload course material and automatically generate quiz questions using AI. Reads the uploaded content, builds a structured prompt with difficulty and question type preferences, generates questions with an LLM, parses them into a standard format, and publishes to the LMS after instructor approval. Dramatically reduces quiz creation time for educators.",
+  "category": "Education",
+  "industry": ["Education", "EdTech"],
+  "tags": ["form", "education", "ai-content", "quiz", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Instructor provides course material and preferences",
+          "config": {
+            "fields": [
+              { "name": "materialFile", "type": "file", "label": "Upload course material (PDF, DOCX, or TXT)", "required": true },
+              { "name": "courseId", "type": "select", "label": "Course", "required": true },
+              { "name": "questionCount", "type": "number", "label": "Number of questions", "default": 10, "min": 5, "max": 50 },
+              { "name": "difficulty", "type": "select", "label": "Difficulty level", "options": ["easy", "medium", "hard", "mixed"], "default": "mixed" },
+              { "name": "questionTypes", "type": "multiselect", "label": "Question types", "options": ["multiple-choice", "true-false", "short-answer", "fill-in-blank"], "default": ["multiple-choice", "true-false"] },
+              { "name": "topic", "type": "text", "label": "Specific topic or chapter (optional)", "required": false }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "read_file",
+          "label": "Extract text from uploaded course material",
+          "config": {
+            "filePath": "{{materialFile.path}}",
+            "encoding": "utf-8",
+            "extractText": true,
+            "supportedFormats": ["pdf", "docx", "txt"]
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "prompt_template",
+          "label": "Build quiz generation prompt with constraints",
+          "config": {
+            "template": "You are an experienced educator creating a quiz for a college-level course.\n\nSource Material:\n{{extractedText}}\n\n{{#if topic}}Focus specifically on: {{topic}}{{/if}}\n\nRequirements:\n- Generate exactly {{questionCount}} questions\n- Difficulty: {{difficulty}}\n- Question types: {{questionTypes}}\n- Each question must be directly answerable from the source material\n- For multiple-choice: provide 4 options (A-D) with exactly one correct answer\n- For true-false: provide the statement and correct answer\n- For short-answer: provide the question and a model answer\n- For fill-in-blank: provide the sentence with a blank and the correct word/phrase\n\nReturn as a JSON array where each item has: { questionNumber, type, question, options (if MC), correctAnswer, explanation, difficulty }"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate quiz questions from course material",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "{{formattedPrompt}}",
+            "maxTokens": 4000,
+            "temperature": 0.7,
+            "responseFormat": "json"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse and validate generated quiz questions",
+          "config": {
+            "format": "json",
+            "schema": {
+              "type": "array",
+              "items": {
+                "questionNumber": "number",
+                "type": "string",
+                "question": "string",
+                "correctAnswer": "string",
+                "explanation": "string"
+              }
+            },
+            "validation": {
+              "minItems": 5,
+              "requiredFields": ["questionNumber", "type", "question", "correctAnswer"]
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Instructor reviews and approves quiz",
+          "config": {
+            "assignTo": "{{instructorEmail}}",
+            "timeoutHours": 72,
+            "message": "Please review the AI-generated quiz ({{questionCount}} questions, {{difficulty}} difficulty) before it is published to the LMS.",
+            "actions": ["approve", "reject", "edit"],
+            "showPreview": true
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Publish approved quiz to LMS API",
+          "config": {
+            "method": "POST",
+            "url": "{{env.LMS_API_URL}}/api/v1/courses/{{courseId}}/quizzes",
+            "headers": {
+              "Authorization": "Bearer {{secrets.LMS_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "title": "Auto-Generated Quiz - {{topic}}",
+              "questions": "{{approvedQuestions}}",
+              "settings": {
+                "timeLimit": "{{questionCount * 2}}",
+                "shuffleQuestions": true,
+                "showResults": "after_submission"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Confirm quiz publication to instructor",
+          "config": {
+            "channel": "email",
+            "to": "{{instructorEmail}}",
+            "subject": "Quiz Published: {{topic}} - {{courseName}}",
+            "message": "Your AI-generated quiz has been successfully published to the LMS.\n\nCourse: {{courseName}}\nQuiz: Auto-Generated Quiz - {{topic}}\nQuestions: {{questionCount}}\nDifficulty: {{difficulty}}\nLink: {{env.LMS_URL}}/courses/{{courseId}}/quizzes/{{quizId}}\n\nStudents can now access this quiz.",
+            "from": "lms-bot@university.edu",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

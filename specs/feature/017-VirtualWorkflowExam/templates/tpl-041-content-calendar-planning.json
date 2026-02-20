@@ -1,0 +1,181 @@
+{
+  "id": "tpl-041",
+  "name": "Content Calendar Planning",
+  "description": "Collects topic preferences and campaign goals via a form, retrieves existing brand guidelines and past performance data from a RAG knowledge base, builds a structured editorial prompt, generates a month-long content calendar with AI, parses the output into structured JSON, then simultaneously emails the calendar to stakeholders and publishes it to a project management tool via API. Ideal for marketing teams managing multi-channel content pipelines.",
+  "category": "Content & Media",
+  "industry": ["Media", "Marketing"],
+  "tags": ["form", "content", "ai-planning", "social-media", "intermediate"],
+  "stepCount": 9,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "form_input",
+          "label": "Collect campaign brief and preferences",
+          "config": {
+            "fields": [
+              { "name": "campaignName", "type": "text", "label": "Campaign Name", "required": true },
+              { "name": "targetChannels", "type": "multi_select", "label": "Target Channels", "options": ["Blog", "Instagram", "Twitter/X", "LinkedIn", "TikTok", "YouTube", "Newsletter"] },
+              { "name": "monthYear", "type": "text", "label": "Planning Month (e.g., March 2026)", "required": true },
+              { "name": "brandVoice", "type": "textarea", "label": "Brand Voice Notes", "required": false },
+              { "name": "keyThemes", "type": "textarea", "label": "Key Themes or Product Launches", "required": true }
+            ]
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "rag_query",
+          "label": "Retrieve brand guidelines and past top posts",
+          "config": {
+            "collectionName": "content_knowledge_base",
+            "query": "brand voice guidelines, top-performing posts for {{targetChannels}}, audience engagement patterns",
+            "topK": 10,
+            "scoreThreshold": 0.72
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "prompt_template",
+          "label": "Build editorial calendar prompt",
+          "config": {
+            "template": "You are an expert content strategist.\n\nCampaign: {{campaignName}}\nMonth: {{monthYear}}\nChannels: {{targetChannels}}\nKey Themes: {{keyThemes}}\nBrand Voice: {{brandVoice}}\n\nReference material from our knowledge base:\n{{ragResults}}\n\nCreate a detailed content calendar for the entire month. For each post include:\n- Date and day of week\n- Channel\n- Content type (e.g., carousel, reel, blog post, thread, newsletter)\n- Headline / hook\n- Brief description (2-3 sentences)\n- Suggested hashtags or keywords\n- Estimated engagement tier (high / medium / low)\n\nOrganize by week. Ensure a balanced distribution across channels and a mix of content types. Return the calendar as a structured JSON array."
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate content calendar with AI",
+          "config": {
+            "model": "gpt-4o",
+            "temperature": 0.7,
+            "maxTokens": 4000,
+            "prompt": "{{editorialPrompt}}"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse calendar into structured JSON",
+          "config": {
+            "format": "json",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "date": { "type": "string" },
+                  "dayOfWeek": { "type": "string" },
+                  "channel": { "type": "string" },
+                  "contentType": { "type": "string" },
+                  "headline": { "type": "string" },
+                  "description": { "type": "string" },
+                  "hashtags": { "type": "array", "items": { "type": "string" } },
+                  "engagementTier": { "type": "string", "enum": ["high", "medium", "low"] }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "parallel",
+          "label": "Distribute calendar to email and project tool",
+          "config": {
+            "branches": ["emailBranch", "apiPublishBranch"]
+          }
+        }
+      },
+      {
+        "id": "node-7a",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 150 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email calendar to marketing team",
+          "config": {
+            "to": ["marketing-team@company.com", "content-lead@company.com"],
+            "subject": "Content Calendar - {{campaignName}} - {{monthYear}}",
+            "body": "<h2>{{campaignName}} Content Calendar</h2><p>Month: {{monthYear}}</p><p>Total posts planned: {{parsedCalendar.length}}</p><p>Please review the attached calendar and confirm assignments by end of week.</p>",
+            "from": "content-planner@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "id": "node-7b",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 275 },
+        "data": {
+          "nodeType": "http_request",
+          "label": "Publish calendar to project management tool",
+          "config": {
+            "method": "POST",
+            "url": "{{env.PROJECT_MGMT_API_URL}}/boards/{{env.CONTENT_BOARD_ID}}/cards/bulk",
+            "headers": {
+              "Authorization": "Bearer {{secrets.PROJECT_MGMT_API_KEY}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "cards": "{{parsedCalendar}}"
+            },
+            "timeout": 15000
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "workflow_response",
+          "label": "Return calendar summary",
+          "config": {
+            "statusCode": 200,
+            "body": {
+              "campaign": "{{campaignName}}",
+              "month": "{{monthYear}}",
+              "totalPosts": "{{parsedCalendar.length}}",
+              "status": "published"
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7a", "source": "node-6", "target": "node-7a", "sourceHandle": "branch-emailBranch", "targetHandle": "input" },
+      { "id": "e6-7b", "source": "node-6", "target": "node-7b", "sourceHandle": "branch-apiPublishBranch", "targetHandle": "input" },
+      { "id": "e7a-8", "source": "node-7a", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7b-8", "source": "node-7b", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

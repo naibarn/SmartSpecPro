@@ -1,0 +1,170 @@
+{
+  "id": "tpl-046",
+  "name": "Contract Review & Summary",
+  "description": "Accepts a contract document via file upload, reads the full text content, splits the document into clause-level sections, processes sections in batches through an LLM for detailed clause-by-clause analysis, merges all clause analyses into a unified dataset, runs a second LLM pass to produce an executive summary with risk assessments and key obligations, routes the summary through a legal team approval gate, and emails the finalized review to stakeholders. Designed for legal teams and professional services firms that review high volumes of contracts and need consistent, AI-assisted due diligence.",
+  "category": "Legal & Compliance",
+  "industry": ["Legal", "Professional Services"],
+  "tags": ["file-upload", "legal", "ai-review", "contracts", "advanced"],
+  "stepCount": 9,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "file_upload_trigger",
+          "label": "Contract document uploaded",
+          "config": {
+            "allowedMimeTypes": ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"],
+            "maxFileSizeMb": 25,
+            "storagePath": "uploads/contracts/{{timestamp}}-{{originalFilename}}"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "read_file",
+          "label": "Extract text from uploaded contract",
+          "config": {
+            "filePath": "{{uploadedFile.storagePath}}",
+            "extractionMode": "full_text",
+            "ocrEnabled": true,
+            "preserveStructure": true,
+            "maxPages": 100
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "split",
+          "label": "Split contract into clause-level sections",
+          "config": {
+            "strategy": "heading_based",
+            "headingPatterns": ["^\\d+\\.\\s+", "^ARTICLE\\s+", "^Section\\s+", "^CLAUSE\\s+"],
+            "fallbackChunkSize": 3000,
+            "overlapTokens": 150,
+            "preserveClauseNumbers": true
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "batch",
+          "label": "Batch clauses for parallel LLM processing",
+          "config": {
+            "batchSize": 5,
+            "concurrency": 3,
+            "retryOnFailure": true,
+            "maxRetries": 2
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Analyze each clause for risks and obligations",
+          "config": {
+            "model": "gpt-4o",
+            "temperature": 0.2,
+            "maxTokens": 1500,
+            "prompt": "You are a senior contract attorney performing due diligence.\n\nAnalyze the following contract clause:\n\n{{clauseText}}\n\nFor this clause, provide:\n1. **Clause Type**: (e.g., Indemnification, Limitation of Liability, Confidentiality, Term/Termination, Payment, IP Rights, Force Majeure, Non-Compete, Data Protection, Governing Law, Other)\n2. **Risk Level**: HIGH / MEDIUM / LOW with specific justification\n3. **Key Obligations**: List each party's obligations under this clause\n4. **Red Flags**: Any unusual, one-sided, or potentially problematic terms\n5. **Missing Protections**: Standard protections that are absent\n6. **Recommended Changes**: Specific suggested edits or additions\n\nReturn as JSON with fields: clauseNumber, clauseType, riskLevel, riskJustification, obligations (array), redFlags (array), missingProtections (array), recommendations (array)."
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "merge_data",
+          "label": "Merge all clause analyses into unified report",
+          "config": {
+            "strategy": "array_concat",
+            "sortBy": "clauseNumber",
+            "deduplication": false,
+            "addSummaryStats": true,
+            "statsFields": {
+              "totalClauses": "count",
+              "highRiskClauses": "count(riskLevel == 'HIGH')",
+              "mediumRiskClauses": "count(riskLevel == 'MEDIUM')",
+              "clauseTypes": "distinct(clauseType)"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate executive summary and risk assessment",
+          "config": {
+            "model": "gpt-4o",
+            "temperature": 0.3,
+            "maxTokens": 2500,
+            "prompt": "You are a senior legal advisor preparing an executive contract review summary.\n\nContract: {{uploadedFile.originalFilename}}\nTotal Clauses Analyzed: {{stats.totalClauses}}\nHigh Risk: {{stats.highRiskClauses}} | Medium Risk: {{stats.mediumRiskClauses}}\n\nClause-by-Clause Analysis:\n{{#each clauseAnalyses}}Clause {{this.clauseNumber}}: {{this.clauseType}} ({{this.riskLevel}})\n- Red Flags: {{this.redFlags}}\n- Recommendations: {{this.recommendations}}\n{{/each}}\n\nProduce an executive summary that includes:\n1. **Overall Risk Assessment**: Overall contract risk rating with justification\n2. **Critical Issues** (must address before signing): List with clause references\n3. **Negotiation Points**: Top 5 terms to negotiate, ordered by business impact\n4. **Key Dates and Deadlines**: Any time-sensitive obligations\n5. **Financial Exposure**: Summary of payment terms, penalties, liability caps\n6. **Recommendation**: Sign as-is / Sign with modifications / Do not sign / Needs further review\n\nFormat as professional HTML suitable for executive stakeholders."
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "approval_gate",
+          "label": "Legal team reviews and approves summary",
+          "config": {
+            "approvers": ["lead-counsel@company.com", "legal-director@company.com"],
+            "message": "Review the AI-assisted contract analysis for {{uploadedFile.originalFilename}}.\n\nHigh-risk clauses found: {{stats.highRiskClauses}}\nOverall recommendation: {{executiveSummary.recommendation}}\n\nPlease verify accuracy before distributing to business stakeholders.",
+            "timeout": 259200,
+            "escalateAfter": 172800,
+            "escalateTo": "general-counsel@company.com"
+          }
+        }
+      },
+      {
+        "id": "node-9",
+        "type": "workflow",
+        "position": { "x": 2100, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email approved review to stakeholders",
+          "config": {
+            "to": ["business-dev@company.com", "cfo@company.com"],
+            "cc": ["lead-counsel@company.com"],
+            "subject": "Contract Review Complete: {{uploadedFile.originalFilename}}",
+            "body": "{{executiveSummaryHtml}}",
+            "from": "legal@company.com",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e8-9", "source": "node-8", "target": "node-9", "sourceHandle": "approved", "targetHandle": "input" }
+    ]
+  }
+}

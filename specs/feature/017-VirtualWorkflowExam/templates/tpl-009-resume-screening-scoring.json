@@ -1,0 +1,141 @@
+{
+  "id": "tpl-009",
+  "name": "Resume Screening and Scoring",
+  "description": "When a recruiter uploads a resume file (PDF or DOCX), the workflow extracts the text content, builds a structured evaluation prompt based on the job requirements, and uses AI to score the candidate on technical skills, experience, and cultural fit. High-scoring candidates are automatically flagged for interview, while lower scores are logged for review. Saves recruiting teams hours of manual resume screening per open position.",
+  "category": "HR & People",
+  "industry": ["Recruiting", "Enterprise"],
+  "tags": ["file-upload", "ai-screening", "hr", "recruiting", "intermediate"],
+  "stepCount": 8,
+  "estimatedSetupMinutes": 30,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "file_upload_trigger",
+          "label": "Recruiter uploads resume file",
+          "config": {
+            "acceptedTypes": [".pdf", ".docx", ".doc", ".txt"],
+            "maxSizeMB": 10,
+            "storagePrefix": "resumes/"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "read_file",
+          "label": "Extract text from resume document",
+          "config": {
+            "filePath": "{{uploadedFilePath}}",
+            "encoding": "utf-8",
+            "parser": "auto"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "prompt_template",
+          "label": "Build evaluation prompt with job criteria",
+          "config": {
+            "template": "RESUME TEXT:\n{{resumeText}}\n\nJOB REQUIREMENTS:\n- Position: {{jobTitle}}\n- Department: {{department}}\n- Required Skills: {{requiredSkills}}\n- Minimum Experience: {{minYearsExperience}} years\n- Education: {{requiredEducation}}\n- Nice to Have: {{preferredSkills}}\n\nEvaluate this candidate against the requirements above."
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "AI scores candidate on fit criteria",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are an experienced technical recruiter.\nEvaluate the following candidate resume against the job requirements.\n\n{{evaluationPrompt}}\n\nScore each category from 0-100:\n1. Technical Skills Match\n2. Years of Relevant Experience\n3. Education Fit\n4. Communication Quality (based on resume writing)\n5. Overall Recommendation\n\nReturn JSON:\n{\n  \"candidateName\": \"extracted from resume\",\n  \"technicalScore\": number,\n  \"experienceScore\": number,\n  \"educationScore\": number,\n  \"communicationScore\": number,\n  \"overallScore\": number,\n  \"recommendation\": \"strong_yes | yes | maybe | no\",\n  \"summary\": \"2-3 sentence assessment\",\n  \"keyStrengths\": [\"string\"],\n  \"concerns\": [\"string\"]\n}"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "output_parser",
+          "label": "Parse scoring results and recommendation",
+          "config": {
+            "format": "json",
+            "schema": {
+              "candidateName": "string",
+              "technicalScore": "number",
+              "experienceScore": "number",
+              "educationScore": "number",
+              "communicationScore": "number",
+              "overallScore": "number",
+              "recommendation": "strong_yes | yes | maybe | no",
+              "summary": "string",
+              "keyStrengths": "string[]",
+              "concerns": "string[]"
+            }
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "conditional",
+          "label": "Check if candidate qualifies for interview",
+          "config": {
+            "condition": "overallScore >= 70 && (recommendation === 'strong_yes' || recommendation === 'yes')",
+            "trueLabel": "Schedule interview",
+            "falseLabel": "Archive for future"
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Notify hiring manager of qualified candidate",
+          "config": {
+            "channel": "slack",
+            "webhookUrl": "{{env.SLACK_HIRING_WEBHOOK_URL}}",
+            "message": "New qualified candidate for {{jobTitle}}!\n\nCandidate: {{candidateName}}\nOverall Score: {{overallScore}}/100\nRecommendation: {{recommendation}}\n\nSummary: {{summary}}\n\nStrengths: {{keyStrengths}}\nConcerns: {{concerns}}\n\nResume: {{resumeFileUrl}}"
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Save screening results to candidates table",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "INSERT INTO candidate_screenings (job_id, candidate_name, resume_file_url, technical_score, experience_score, education_score, communication_score, overall_score, recommendation, summary, screened_at) VALUES ('{{jobId}}', '{{candidateName}}', '{{resumeFileUrl}}', {{technicalScore}}, {{experienceScore}}, {{educationScore}}, {{communicationScore}}, {{overallScore}}, '{{recommendation}}', '{{summary}}', NOW())"
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

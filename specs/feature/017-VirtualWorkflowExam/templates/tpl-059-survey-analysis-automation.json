@@ -1,0 +1,174 @@
+{
+  "id": "tpl-059",
+  "name": "Survey Analysis and Report Automation",
+  "description": "Accepts a CSV file upload of survey responses, parses the data, filters out incomplete responses, then processes them in batches through an AI loop that extracts sentiment, themes, and key insights from each batch. The batch results are merged into a unified dataset, and a final LLM call generates an executive summary report with statistical highlights and actionable recommendations. The report is rendered into an HTML template and emailed to stakeholders. Built for HR departments analyzing employee engagement surveys and marketing teams processing customer feedback at scale.",
+  "category": "AI & Automation",
+  "industry": ["HR", "Marketing"],
+  "tags": ["file-upload", "survey", "ai-analysis", "reporting", "advanced"],
+  "stepCount": 10,
+  "estimatedSetupMinutes": 35,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "file_upload_trigger",
+          "label": "Accept CSV survey response upload",
+          "config": {
+            "allowedTypes": ["text/csv", "application/vnd.ms-excel"],
+            "maxSizeMb": 25,
+            "storagePath": "uploads/surveys/pending/"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "csv_parser",
+          "label": "Parse CSV into structured response records",
+          "config": {
+            "delimiter": ",",
+            "hasHeader": true,
+            "encoding": "utf-8",
+            "trimWhitespace": true,
+            "expectedColumns": ["respondent_id", "department", "q1_rating", "q2_rating", "q3_rating", "open_feedback", "submitted_at"]
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Filter out incomplete responses",
+          "config": {
+            "condition": "open_feedback !== '' && open_feedback !== null && q1_rating !== null",
+            "input": "{{parsedRows}}"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "batch",
+          "label": "Group responses into batches of 25",
+          "config": {
+            "batchSize": 25,
+            "input": "{{filteredResponses}}"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Analyze each batch with AI",
+          "config": {
+            "iterateOver": "{{batches}}",
+            "maxIterations": 200,
+            "continueOnError": true
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Extract sentiment and themes from batch",
+          "config": {
+            "model": "gpt-4o-mini",
+            "prompt": "You are a survey data analyst.\n\nAnalyze the following batch of survey responses and extract:\n1. Overall sentiment distribution (positive/neutral/negative counts)\n2. Top 3 recurring themes with example quotes\n3. Notable outliers or strong opinions\n4. Department-level patterns if visible\n\nResponses:\n{{currentBatch}}\n\nOutput as JSON with keys: sentimentCounts, themes (array of {theme, count, examples}), outliers, departmentPatterns",
+            "temperature": 0.2
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "merge_data",
+          "label": "Merge all batch analysis results",
+          "config": {
+            "strategy": "concatenate",
+            "input": "{{batchResults}}",
+            "deduplicateThemes": true,
+            "aggregateSentiment": true
+          }
+        }
+      },
+      {
+        "id": "node-8",
+        "type": "workflow",
+        "position": { "x": 1850, "y": 200 },
+        "data": {
+          "nodeType": "llm_call",
+          "label": "Generate executive summary report",
+          "config": {
+            "model": "gpt-4o",
+            "prompt": "You are a senior organizational psychologist preparing an executive report.\n\nBased on the aggregated survey analysis below, write a comprehensive executive summary:\n\nTotal Responses: {{totalResponses}}\nSentiment: Positive {{positiveCount}}, Neutral {{neutralCount}}, Negative {{negativeCount}}\nThemes: {{mergedThemes}}\nDepartment Patterns: {{departmentPatterns}}\n\nInclude:\n1. Executive Summary (3-4 sentences)\n2. Key Findings (top 5, each with data backing)\n3. Areas of Concern (ranked by severity)\n4. Strengths to Celebrate\n5. Actionable Recommendations (5 specific, prioritized actions)\n6. Suggested Follow-Up Questions for next survey\n\nUse professional tone. Include percentages where possible.",
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "node-9",
+        "type": "workflow",
+        "position": { "x": 2100, "y": 200 },
+        "data": {
+          "nodeType": "template_engine",
+          "label": "Render HTML report from template",
+          "config": {
+            "template": "<html><head><style>body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:20px}h1{color:#2c3e50}h2{color:#34495e;border-bottom:2px solid #3498db;padding-bottom:8px}.metric{display:inline-block;margin:10px;padding:15px;background:#f8f9fa;border-radius:8px;text-align:center}.metric-value{font-size:2em;font-weight:bold;color:#2c3e50}.metric-label{font-size:0.9em;color:#7f8c8d}.positive{color:#27ae60}.negative{color:#e74c3c}.neutral{color:#f39c12}</style></head><body><h1>Survey Analysis Report</h1><p>Generated: {{date}}</p><div class='metrics'><div class='metric'><div class='metric-value'>{{totalResponses}}</div><div class='metric-label'>Total Responses</div></div><div class='metric'><div class='metric-value positive'>{{positivePercent}}%</div><div class='metric-label'>Positive</div></div><div class='metric'><div class='metric-value neutral'>{{neutralPercent}}%</div><div class='metric-label'>Neutral</div></div><div class='metric'><div class='metric-value negative'>{{negativePercent}}%</div><div class='metric-label'>Negative</div></div></div><div>{{executiveSummary}}</div></body></html>"
+          }
+        }
+      },
+      {
+        "id": "node-10",
+        "type": "workflow",
+        "position": { "x": 2350, "y": 200 },
+        "data": {
+          "nodeType": "send_email",
+          "label": "Email report to stakeholders",
+          "config": {
+            "to": ["{{stakeholderEmails}}"],
+            "subject": "Survey Analysis Report - {{surveyName}} ({{totalResponses}} responses)",
+            "body": "{{htmlReport}}",
+            "contentType": "text/html",
+            "from": "analytics@{{env.EMAIL_DOMAIN}}",
+            "smtpHost": "{{env.SMTP_HOST}}",
+            "smtpPassword": "{{secrets.SMTP_PASSWORD}}",
+            "attachments": [
+              {
+                "filename": "survey-raw-data.csv",
+                "content": "{{originalFileUrl}}"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e7-8", "source": "node-7", "target": "node-8", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e8-9", "source": "node-8", "target": "node-9", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e9-10", "source": "node-9", "target": "node-10", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}

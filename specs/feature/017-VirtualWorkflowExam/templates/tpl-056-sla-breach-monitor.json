@@ -1,0 +1,139 @@
+{
+  "id": "tpl-056",
+  "name": "SLA Breach Monitor and Alerter",
+  "description": "Runs every 15 minutes to query the ticket database for open support tickets approaching or exceeding their SLA deadlines. A code runner calculates time remaining and breach severity for each ticket. Results are filtered to only include at-risk tickets, then looped through a switch node that routes alerts by severity level: critical breaches trigger PagerDuty and Slack escalations, warnings go to the team channel, and informational alerts are logged. Built for IT service desks and SaaS support teams who must maintain SLA compliance.",
+  "category": "AI & Automation",
+  "industry": ["IT Services", "SaaS"],
+  "tags": ["scheduled", "sla", "monitoring", "alerts", "intermediate"],
+  "stepCount": 7,
+  "estimatedSetupMinutes": 25,
+  "workflowJson": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "workflow",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "nodeType": "schedule_trigger",
+          "label": "Run SLA check every 15 minutes",
+          "config": {
+            "schedule": "*/15 * * * *",
+            "timezone": "UTC"
+          }
+        }
+      },
+      {
+        "id": "node-2",
+        "type": "workflow",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "nodeType": "database_query",
+          "label": "Fetch open tickets with SLA deadlines",
+          "config": {
+            "connectionString": "{{env.DATABASE_URL}}",
+            "query": "SELECT t.id AS ticket_id, t.subject, t.priority, t.assigned_to, t.created_at, t.sla_deadline, t.customer_id, c.company_name, c.plan AS customer_plan, EXTRACT(EPOCH FROM (t.sla_deadline - NOW())) / 60 AS minutes_remaining FROM tickets t JOIN customers c ON t.customer_id = c.id WHERE t.status IN ('open', 'in_progress') AND t.sla_deadline IS NOT NULL AND t.sla_deadline <= NOW() + INTERVAL '2 hours' ORDER BY t.sla_deadline ASC"
+          }
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "workflow",
+        "position": { "x": 600, "y": 200 },
+        "data": {
+          "nodeType": "code_runner",
+          "label": "Calculate breach severity for each ticket",
+          "config": {
+            "language": "javascript",
+            "code": "return input.tickets.map(ticket => { const mins = ticket.minutes_remaining; let severity, status; if (mins <= 0) { severity = 'critical'; status = 'breached'; } else if (mins <= 15) { severity = 'critical'; status = 'imminent'; } else if (mins <= 30) { severity = 'warning'; status = 'at-risk'; } else { severity = 'info'; status = 'approaching'; } return { ...ticket, severity, breachStatus: status, minutesRemaining: Math.round(mins) }; });"
+          }
+        }
+      },
+      {
+        "id": "node-4",
+        "type": "workflow",
+        "position": { "x": 850, "y": 200 },
+        "data": {
+          "nodeType": "filter",
+          "label": "Keep only at-risk and breached tickets",
+          "config": {
+            "condition": "severity === 'critical' || severity === 'warning'",
+            "input": "{{tickets}}"
+          }
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "workflow",
+        "position": { "x": 1100, "y": 200 },
+        "data": {
+          "nodeType": "loop",
+          "label": "Process each at-risk ticket",
+          "config": {
+            "iterateOver": "{{filteredTickets}}",
+            "maxIterations": 100
+          }
+        }
+      },
+      {
+        "id": "node-6",
+        "type": "workflow",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "nodeType": "switch",
+          "label": "Route alert by breach severity level",
+          "config": {
+            "expression": "{{currentTicket.severity}}",
+            "cases": [
+              {
+                "value": "critical",
+                "label": "Critical: PagerDuty + Slack escalation",
+                "action": {
+                  "channels": ["pagerduty", "slack"],
+                  "escalate": true
+                }
+              },
+              {
+                "value": "warning",
+                "label": "Warning: Team Slack channel",
+                "action": {
+                  "channels": ["slack"],
+                  "escalate": false
+                }
+              }
+            ],
+            "default": {
+              "label": "Info: Log only",
+              "action": {
+                "channels": ["log"],
+                "escalate": false
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "node-7",
+        "type": "workflow",
+        "position": { "x": 1600, "y": 200 },
+        "data": {
+          "nodeType": "send_notification",
+          "label": "Send SLA alert to appropriate channel",
+          "config": {
+            "channel": "{{alertChannel}}",
+            "webhookUrl": "{{secrets.SLACK_SUPPORT_WEBHOOK}}",
+            "pagerdutyKey": "{{secrets.PAGERDUTY_ROUTING_KEY}}",
+            "message": "SLA Alert: {{currentTicket.breachStatus}}\n\nTicket: #{{currentTicket.ticket_id}} - {{currentTicket.subject}}\nPriority: {{currentTicket.priority}}\nCustomer: {{currentTicket.company_name}} ({{currentTicket.customer_plan}})\nAssigned To: {{currentTicket.assigned_to}}\nTime Remaining: {{currentTicket.minutesRemaining}} minutes\nStatus: {{currentTicket.breachStatus}}\n\nAction required immediately."
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1-2", "source": "node-1", "target": "node-2", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e2-3", "source": "node-2", "target": "node-3", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e3-4", "source": "node-3", "target": "node-4", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e4-5", "source": "node-4", "target": "node-5", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e5-6", "source": "node-5", "target": "node-6", "sourceHandle": "output", "targetHandle": "input" },
+      { "id": "e6-7", "source": "node-6", "target": "node-7", "sourceHandle": "output", "targetHandle": "input" }
+    ]
+  }
+}
