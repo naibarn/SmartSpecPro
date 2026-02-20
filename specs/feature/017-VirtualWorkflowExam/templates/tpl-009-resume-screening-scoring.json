@@ -123,7 +123,8 @@
           "label": "Save screening results to candidates table",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO candidate_screenings (job_id, candidate_name, resume_file_url, technical_score, experience_score, education_score, communication_score, overall_score, recommendation, summary, screened_at) VALUES ('{{jobId}}', '{{candidateName}}', '{{resumeFileUrl}}', {{technicalScore}}, {{experienceScore}}, {{educationScore}}, {{communicationScore}}, {{overallScore}}, '{{recommendation}}', '{{summary}}', NOW())"
+            "query": "INSERT INTO candidate_screenings (job_id, candidate_name, resume_file_url, technical_score, experience_score, education_score, communication_score, overall_score, recommendation, summary, screened_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())",
+            "params": ["{{jobId}}", "{{candidateName}}", "{{resumeFileUrl}}", "{{technicalScore}}", "{{experienceScore}}", "{{educationScore}}", "{{communicationScore}}", "{{overallScore}}", "{{recommendation}}", "{{summary}}"]
           }
         }
       }

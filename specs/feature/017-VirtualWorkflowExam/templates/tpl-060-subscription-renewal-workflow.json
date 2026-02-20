@@ -152,7 +152,11 @@
           "label": "Update subscription status and billing record",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "{{#if paymentSucceeded}}UPDATE subscriptions SET current_period_end = current_period_end + INTERVAL '1 {{currentSubscription.billing_cycle}}', retry_count = 0, last_payment_at = NOW(), last_payment_status = 'succeeded' WHERE id = '{{currentSubscription.subscription_id}}'{{else}}UPDATE subscriptions SET retry_count = retry_count + 1, last_payment_status = 'failed', last_payment_error = '{{chargeResult.error}}' WHERE id = '{{currentSubscription.subscription_id}}'{{/if}}"
+            "queryCondition": "{{paymentSucceeded}}",
+            "queryIfTrue": "UPDATE subscriptions SET current_period_end = current_period_end + INTERVAL '1 ' || $1, retry_count = 0, last_payment_at = NOW(), last_payment_status = 'succeeded' WHERE id = $2",
+            "paramsIfTrue": ["{{currentSubscription.billing_cycle}}", "{{currentSubscription.subscription_id}}"],
+            "queryIfFalse": "UPDATE subscriptions SET retry_count = retry_count + 1, last_payment_status = 'failed', last_payment_error = $1 WHERE id = $2",
+            "paramsIfFalse": ["{{chargeResult.error}}", "{{currentSubscription.subscription_id}}"]
           }
         }
       }

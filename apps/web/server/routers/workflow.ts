@@ -6,11 +6,12 @@
  */
 
 import { z } from "zod";
-import { router, protectedProcedure } from "../_core/trpc";
+import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { db } from "../db";
 import { workflows, workflowTemplates, templateCategories } from "@db/schema";
 import { eq, and, desc, sql, count, asc, type SQL } from "drizzle-orm";
+import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 
 // Python backend URL from environment (default to localhost:8000)
 const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
@@ -363,11 +364,21 @@ export const workflowRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        // Normalize generic "output"/"input" handle names to null before sending to Python.
+        // Template-seeded edges use these generic placeholder names. The Python validator
+        // skips port compatibility checks when handles are null/falsy, which is correct
+        // because these edges represent simple sequential connections.
+        const normalizedEdges = input.edges.map((edge: Record<string, any>) => ({
+          ...edge,
+          sourceHandle: edge.sourceHandle === "output" ? null : (edge.sourceHandle ?? null),
+          targetHandle: edge.targetHandle === "input" ? null : (edge.targetHandle ?? null),
+        }));
+
         const response = await fetchPythonBackend(
           "/api/v1/workflows/compile",
           {
             method: "POST",
-            body: JSON.stringify(input),
+            body: JSON.stringify({ ...input, edges: normalizedEdges }),
           },
           ctx.userToken
         );
@@ -415,12 +426,13 @@ export const workflowRouter = router({
    * Returns a taskId immediately — frontend polls autoGenerateStatus for result.
    */
   autoGenerate: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "workflow-generate", limit: 10, windowMs: 60_000 }))
     .input(
       z.object({
-        prompt: z.string().min(1).max(150000),
-        nodeTypes: z.array(z.record(z.any())).optional(),
-        modelId: z.string().optional(),
-        defaultModel: z.string().optional(),
+        prompt: z.string().min(1).max(50000),
+        nodeTypes: z.array(z.record(z.any())).max(100).optional(),
+        modelId: z.string().max(100).optional(),
+        defaultModel: z.string().max(100).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -469,11 +481,11 @@ export const workflowRouter = router({
    * Returns status + result when completed.
    */
   autoGenerateStatus: protectedProcedure
-    .input(z.object({ taskId: z.string() }))
+    .input(z.object({ taskId: z.string().regex(/^wfgen-[a-f0-9]{12}$/) }))
     .query(async ({ input, ctx }) => {
       try {
         const response = await fetchPythonBackend(
-          `/api/v1/workflows/generate/status/${input.taskId}`,
+          `/api/v1/workflows/generate/status/${encodeURIComponent(input.taskId)}`,
           { method: "GET" },
           ctx.userToken
         );
@@ -618,11 +630,11 @@ export const workflowRouter = router({
    * Returns detailed execution report including status, outputs, and error details.
    */
   getStatus: protectedProcedure
-    .input(z.object({ executionId: z.string() }))
+    .input(z.object({ executionId: z.string().regex(/^exec-[a-f0-9]{12}$/).max(17) }))
     .query(async ({ input, ctx }) => {
       try {
         const response = await fetchPythonBackend(
-          `/api/v1/workflows/report/${input.executionId}`,
+          `/api/v1/workflows/report/${encodeURIComponent(input.executionId)}`,
           {
             method: "GET",
           },
@@ -658,11 +670,11 @@ export const workflowRouter = router({
    * Cancel a running workflow execution
    */
   cancel: protectedProcedure
-    .input(z.object({ executionId: z.string() }))
+    .input(z.object({ executionId: z.string().regex(/^exec-[a-f0-9]{12}$/).max(17) }))
     .mutation(async ({ input, ctx }) => {
       try {
         const response = await fetchPythonBackend(
-          `/api/v1/workflows/${input.executionId}/cancel`,
+          `/api/v1/workflows/${encodeURIComponent(input.executionId)}/cancel`,
           {
             method: "POST",
           },
@@ -840,14 +852,14 @@ export const workflowRouter = router({
   reprocessDLQ: protectedProcedure
     .input(
       z.object({
-        dlqId: z.string(),
+        dlqId: z.string().regex(/^[a-zA-Z0-9_-]{1,50}$/).max(50),
         overrideInput: z.record(z.any()).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
       try {
         const response = await fetchPythonBackend(
-          `/api/v1/workflows/dlq/${input.dlqId}/reprocess`,
+          `/api/v1/workflows/dlq/${encodeURIComponent(input.dlqId)}/reprocess`,
           {
             method: "POST",
             body: JSON.stringify({
@@ -984,7 +996,7 @@ export const workflowRouter = router({
    * List published public templates for the Gallery grid.
    * Excludes workflowJson and previewSvg (fetched lazily via getTemplate).
    */
-  listTemplates: protectedProcedure
+  listTemplates: publicProcedure
     .input(
       z.object({
         category: z.string().optional(),
@@ -1031,7 +1043,7 @@ export const workflowRouter = router({
             id: workflowTemplates.id,
             name: workflowTemplates.name,
             description: workflowTemplates.description,
-            categoryId: workflowTemplates.categoryId,
+            category: templateCategories.name,
             tags: workflowTemplates.tags,
             isPublic: workflowTemplates.isPublic,
             isFeatured: workflowTemplates.isFeatured,
@@ -1046,6 +1058,7 @@ export const workflowRouter = router({
             updatedAt: workflowTemplates.updatedAt,
           })
           .from(workflowTemplates)
+          .leftJoin(templateCategories, eq(workflowTemplates.categoryId, templateCategories.id))
           .where(whereClause)
           .orderBy(desc(workflowTemplates.downloadCount))
           .limit(input.limit)
@@ -1075,7 +1088,7 @@ export const workflowRouter = router({
    * List all template categories with count of published public templates.
    * Zero-count categories still appear.
    */
-  listTemplateCategories: protectedProcedure.query(async () => {
+  listTemplateCategories: publicProcedure.query(async () => {
     try {
       const categories = await db
         .select({
@@ -1113,17 +1126,37 @@ export const workflowRouter = router({
    * Get full template record including workflowJson and previewSvg.
    * Called lazily when user opens template detail.
    */
-  getTemplate: protectedProcedure
+  getTemplate: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
       try {
+        // M-03: Explicit column selection — excludes authorId, tenantId, searchVector
         const [template] = await db
-          .select()
+          .select({
+            id: workflowTemplates.id,
+            name: workflowTemplates.name,
+            description: workflowTemplates.description,
+            workflowJson: workflowTemplates.workflowJson,
+            previewSvg: workflowTemplates.previewSvg,
+            tags: workflowTemplates.tags,
+            isPublic: workflowTemplates.isPublic,
+            isFeatured: workflowTemplates.isFeatured,
+            status: workflowTemplates.status,
+            downloadCount: workflowTemplates.downloadCount,
+            version: workflowTemplates.version,
+            industry: workflowTemplates.industry,
+            stepCount: workflowTemplates.stepCount,
+            estimatedSetupMinutes: workflowTemplates.estimatedSetupMinutes,
+            templateKey: workflowTemplates.templateKey,
+            createdAt: workflowTemplates.createdAt,
+            updatedAt: workflowTemplates.updatedAt,
+          })
           .from(workflowTemplates)
           .where(
             and(
               eq(workflowTemplates.id, input.id),
-              eq(workflowTemplates.isPublic, true)
+              eq(workflowTemplates.isPublic, true),
+              eq(workflowTemplates.status, "published") // M-01: require published status
             )
           )
           .limit(1);
@@ -1135,7 +1168,17 @@ export const workflowRouter = router({
           });
         }
 
-        return template;
+        // H-06: SVG sanitization — defense-in-depth against stored XSS
+        let safeSvg = template.previewSvg;
+        if (safeSvg) {
+          const forbiddenSvgPattern = /<script|javascript:|on\w+\s*=|<foreignObject|<iframe|xlink:href\s*=\s*["']javascript/i;
+          if (forbiddenSvgPattern.test(safeSvg)) {
+            console.error("[Security] Rejected poisoned previewSvg from DB, templateId:", input.id);
+            safeSvg = null;
+          }
+        }
+
+        return { ...template, previewSvg: safeSvg };
       } catch (error: any) {
         console.error("[Workflow] getTemplate error:", error.message);
         if (error instanceof TRPCError) throw error;
@@ -1151,10 +1194,11 @@ export const workflowRouter = router({
    * Increments downloadCount on the source template.
    */
   useTemplate: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "gallery-use-template", limit: 20, windowMs: 60_000 }))
     .input(
       z.object({
         templateId: z.number(),
-        name: z.string().optional(),
+        name: z.string().max(255).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {

@@ -102,7 +102,8 @@
           "label": "Mark reminder as sent in database",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "UPDATE appointments SET reminder_sent = true, reminder_sent_at = NOW(), reminder_channel = '{{channelUsed}}' WHERE id = {{appointment.id}}"
+            "query": "UPDATE appointments SET reminder_sent = true, reminder_sent_at = NOW(), reminder_channel = $1 WHERE id = $2",
+            "params": ["{{channelUsed}}", "{{appointment.id}}"]
           }
         }
       }

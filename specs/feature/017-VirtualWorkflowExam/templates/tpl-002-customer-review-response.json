@@ -126,7 +126,8 @@
           "label": "Log response in review history table",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO review_responses (review_id, platform, rating, sentiment, response_text, approved_by, responded_at) VALUES ('{{reviewId}}', '{{platform}}', {{rating}}, '{{sentiment}}', '{{responseText}}', '{{approvedBy}}', NOW())"
+            "query": "INSERT INTO review_responses (review_id, platform, rating, sentiment, response_text, approved_by, responded_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
+            "params": ["{{reviewId}}", "{{platform}}", "{{rating}}", "{{sentiment}}", "{{responseText}}", "{{approvedBy}}"]
           }
         }
       }

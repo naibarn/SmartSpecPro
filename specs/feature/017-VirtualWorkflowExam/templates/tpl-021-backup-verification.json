@@ -65,7 +65,8 @@
           "label": "Record verification result in audit log",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO backup_audit_log (backup_date, file_size_bytes, checksum, storage_path, verified_at, status) VALUES (CURRENT_DATE, {{fileSize}}, '{{checksum}}', '{{storagePath}}', NOW(), '{{verificationStatus}}')"
+            "query": "INSERT INTO backup_audit_log (backup_date, file_size_bytes, checksum, storage_path, verified_at, status) VALUES (CURRENT_DATE, $1, $2, $3, NOW(), $4)",
+            "params": ["{{fileSize}}", "{{checksum}}", "{{storagePath}}", "{{verificationStatus}}"]
           }
         }
       },

@@ -117,7 +117,8 @@
           "label": "Log reminder sent to invoice history",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO invoice_reminders (invoice_id, severity, sent_at, recipient_email, reminder_number) VALUES ({{invoice.invoice_id}}, '{{severity}}', NOW(), '{{invoice.customer_email}}', {{invoice.reminders_sent}} + 1)"
+            "query": "INSERT INTO invoice_reminders (invoice_id, severity, sent_at, recipient_email, reminder_number) VALUES ($1, $2, NOW(), $3, $4 + 1)",
+            "params": ["{{invoice.invoice_id}}", "{{severity}}", "{{invoice.customer_email}}", "{{invoice.reminders_sent}}"]
           }
         }
       }

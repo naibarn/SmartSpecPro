@@ -88,7 +88,8 @@
           "label": "Store updated price in price history",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO competitor_price_history (competitor_product_id, price, currency, in_stock, checked_at) VALUES ('{{product.id}}', {{extractedPrice}}, '{{currency}}', {{inStock}}, NOW()); UPDATE competitor_products SET last_competitor_price = {{extractedPrice}}, last_checked_at = NOW() WHERE id = '{{product.id}}'"
+            "query": "INSERT INTO competitor_price_history (competitor_product_id, price, currency, in_stock, checked_at) VALUES ($1, $2, $3, $4, NOW()); UPDATE competitor_products SET last_competitor_price = $2, last_checked_at = NOW() WHERE id = $1",
+            "params": ["{{product.id}}", "{{extractedPrice}}", "{{currency}}", "{{inStock}}"]
           }
         }
       },

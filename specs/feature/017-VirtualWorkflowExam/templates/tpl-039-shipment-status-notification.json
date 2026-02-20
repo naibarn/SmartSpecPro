@@ -37,7 +37,8 @@
           "label": "Look up order and customer details",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "SELECT o.id AS order_id, o.order_number, o.total_amount, c.id AS customer_id, c.first_name, c.last_name, c.email, c.phone, c.push_token, c.notification_preferences, s.carrier, s.estimated_delivery FROM shipments s JOIN orders o ON s.order_id = o.id JOIN customers c ON o.customer_id = c.id WHERE s.tracking_number = '{{webhook.trackingNumber}}' LIMIT 1"
+            "query": "SELECT o.id AS order_id, o.order_number, o.total_amount, c.id AS customer_id, c.first_name, c.last_name, c.email, c.phone, c.push_token, c.notification_preferences, s.carrier, s.estimated_delivery FROM shipments s JOIN orders o ON s.order_id = o.id JOIN customers c ON o.customer_id = c.id WHERE s.tracking_number = $1 LIMIT 1",
+            "params": ["{{webhook.trackingNumber}}"]
           }
         }
       },

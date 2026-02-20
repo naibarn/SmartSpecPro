@@ -14,8 +14,8 @@ setInterval(() => {
 }, 60_000).unref();
 
 function getIp(ctx: TrpcContext): string {
-  const xff = ctx.req.headers["x-forwarded-for"];
-  if (typeof xff === "string") return xff.split(",")[0].trim();
+  // M-14 fix: Use req.ip which respects the trust proxy setting (set to 1 = trust
+  // only Nginx). This returns the correct client IP without XFF spoofing risk.
   return (ctx.req as any).ip || "unknown";
 }
 

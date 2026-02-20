@@ -98,6 +98,12 @@ const SVG_TIMEOUT_MS = 10_000;
 const SYSTEM_USER_OPEN_ID = "system-seeder-workflow-templates";
 const SYSTEM_USER_EMAIL = "system@smartspecpro.internal";
 
+/** M-05: Scrub credentials from error messages before logging */
+function sanitizeError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.replace(/postgresql?:\/\/[^\s@]*@[^\s/]*/gi, "postgresql://***:***@***");
+}
+
 // -- Helpers -------------------------------------------------------------
 
 function slugify(name: string): string {
@@ -212,12 +218,20 @@ async function seedTemplates(
   for (const filename of files) {
     let template: TemplateJson;
 
+    // M-06: Path traversal defense — verify resolved path stays within TEMPLATES_DIR
+    const filePath = path.join(TEMPLATES_DIR, filename);
+    if (!filePath.startsWith(TEMPLATES_DIR + path.sep) && filePath !== TEMPLATES_DIR) {
+      console.error(`[SECURITY] Rejected suspicious path: ${filePath}`);
+      stats.errored++;
+      continue;
+    }
+
     // 1. Parse JSON
     try {
-      const raw = fs.readFileSync(path.join(TEMPLATES_DIR, filename), "utf-8");
+      const raw = fs.readFileSync(filePath, "utf-8");
       template = JSON.parse(raw) as TemplateJson;
     } catch (err) {
-      console.error(`[ERROR] ${filename} — JSON parse error: ${err}`);
+      console.error(`[ERROR] ${filename} — JSON parse error: ${sanitizeError(err)}`);
       stats.errored++;
       continue;
     }
@@ -288,7 +302,7 @@ async function seedTemplates(
       console.log(`[OK]   ${template.id} — ${template.name}${svgNote}`);
       stats.ok++;
     } catch (err) {
-      console.error(`[ERROR] ${template.id} — DB upsert failed: ${err}`);
+      console.error(`[ERROR] ${template.id} — DB upsert failed: ${sanitizeError(err)}`);
       stats.errored++;
     }
   }
@@ -338,6 +352,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error("Seeder failed (unrecoverable):", err);
+  console.error("Seeder failed (unrecoverable):", sanitizeError(err));
   process.exit(1);
 });

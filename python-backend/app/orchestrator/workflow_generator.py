@@ -7,9 +7,11 @@ centrally — exactly the same as every other LLM call in the platform.
 """
 from __future__ import annotations
 
+import html
 import json
 import os
 import re
+import threading
 import time
 from typing import Any
 
@@ -25,6 +27,7 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 _few_shot_cache: list[dict[str, Any]] = []
 _few_shot_loaded_at: float = 0.0
+_few_shot_lock = threading.Lock()
 _FEW_SHOT_TTL = 86400.0  # 24 hours
 
 # Static selection — one per major category from the 60 seeded templates
@@ -304,10 +307,30 @@ def load_few_shot_examples(force: bool = False) -> list[dict[str, Any]]:
     if not force and _few_shot_cache and (now - _few_shot_loaded_at) < _FEW_SHOT_TTL:
         return _few_shot_cache
 
-    raw = _load_from_db()
-    _few_shot_cache = _truncate_to_token_budget(raw)
-    _few_shot_loaded_at = now
-    return _few_shot_cache
+    with _few_shot_lock:
+        # Double-check after acquiring lock (another thread may have refreshed)
+        if not force and _few_shot_cache and (time.monotonic() - _few_shot_loaded_at) < _FEW_SHOT_TTL:
+            return _few_shot_cache
+        raw = _load_from_db()
+        _few_shot_cache = _truncate_to_token_budget(raw)
+        _few_shot_loaded_at = time.monotonic()
+        return _few_shot_cache
+
+
+def _sanitize_few_shot_text(text: str, max_len: int = 200) -> str:
+    """Sanitize template name/description before injecting into LLM system prompt.
+
+    H-03 fix: Prevents cache poisoning where a malicious template name/description
+    could override LLM instructions (e.g., "Ignore above instructions...").
+    """
+    if not text:
+        return ""
+    # Strip control characters and known LLM-sensitive markers
+    cleaned = re.sub(r"[\x00-\x1f\x7f]", "", text)
+    # Truncate to max length
+    if len(cleaned) > max_len:
+        cleaned = cleaned[:max_len] + "..."
+    return cleaned
 
 
 def _build_system_prompt(few_shot_examples: list[dict[str, Any]]) -> str:
@@ -321,8 +344,11 @@ def _build_system_prompt(few_shot_examples: list[dict[str, Any]]) -> str:
         "════════════════════════════════════════\n\n"
     )
     for i, ex in enumerate(few_shot_examples, 1):
-        examples_text += f"# Example {i}: {ex['name']}\n"
-        examples_text += f"Description: {ex['description']}\n"
+        # H-03: Sanitize name/description before injection into LLM context
+        safe_name = _sanitize_few_shot_text(ex.get("name", ""), max_len=100)
+        safe_desc = _sanitize_few_shot_text(ex.get("description", ""), max_len=300)
+        examples_text += f"# Example {i}: {safe_name}\n"
+        examples_text += f"Description: {safe_desc}\n"
         examples_text += f"Workflow JSON:\n{json.dumps(ex['workflowJson'], indent=2)}\n\n"
 
     return _SYSTEM_PROMPT + "\n" + examples_text
@@ -542,7 +568,9 @@ class WorkflowGenerator:
 
         nodes: list[dict] = data.get("nodes", [])
         edges: list[dict] = data.get("edges", [])
-        description: str = data.get("description", "AI-generated workflow")
+        # M-13: Sanitize LLM-generated description — defense-in-depth against XSS
+        raw_desc = data.get("description", "AI-generated workflow")
+        description: str = html.escape(str(raw_desc))[:500]
 
         if not isinstance(nodes, list) or not nodes:
             raise WorkflowGenerationError("Generated workflow has no nodes.")
@@ -607,6 +635,9 @@ class WorkflowGenerator:
                 node["position"] = {"x": 0, "y": 0}
             node.setdefault("data", {})
             node["data"].setdefault("config", {})
+            # M-13: Sanitize LLM-generated labels — defense-in-depth against stored XSS
+            if "label" in node["data"]:
+                node["data"]["label"] = html.escape(str(node["data"]["label"]))[:200]
 
             ntype = node["data"].get("nodeType", "")
             config = node["data"]["config"]
@@ -738,6 +769,10 @@ class WorkflowGenerator:
         """Make a single LLM call and return the parsed workflow dict."""
         effective_node_types = node_types or []
         node_types_text = self._format_node_types(effective_node_types)
+        # LOW-19: Cap node_types_text to prevent unbounded input token usage
+        _MAX_NODE_TYPES_CHARS = 8000
+        if len(node_types_text) > _MAX_NODE_TYPES_CHARS:
+            node_types_text = node_types_text[:_MAX_NODE_TYPES_CHARS] + "\n... (truncated)"
         workflow_model = default_model or model or "gpt-4o-mini"
 
         user_message = (
@@ -781,9 +816,15 @@ class WorkflowGenerator:
         elapsed_ms = int((time.monotonic() - t0) * 1000)
 
         if response.status_code != 200:
+            # M-12: Log full body server-side, return only status code to client
             body_text = response.text[:500]
+            logger.error(
+                "workflow_generator_gateway_http_error",
+                status_code=response.status_code,
+                body=body_text,
+            )
             raise WorkflowGenerationError(
-                f"Gateway returned HTTP {response.status_code}: {body_text}"
+                f"Workflow generation service unavailable (HTTP {response.status_code}). Please try again."
             )
 
         try:
@@ -807,6 +848,8 @@ class WorkflowGenerator:
     # _build_retry_prompt — append correction context for retries
     # ------------------------------------------------------------------
 
+    _MAX_ERROR_CHARS = 300
+
     def _build_retry_prompt(
         self,
         original_prompt: str,
@@ -816,11 +859,15 @@ class WorkflowGenerator:
         """Append validation error context to prompt for retry attempts."""
         if previous_error is None or attempt == 1:
             return original_prompt
+        # Truncate error to avoid exceeding token budget
+        error_text = previous_error
+        if len(error_text) > self._MAX_ERROR_CHARS:
+            error_text = error_text[: self._MAX_ERROR_CHARS] + "…"
         return (
             f"{original_prompt}\n\n"
             f"[CORRECTION REQUIRED — Attempt {attempt}]\n"
             f"Your previous response failed validation with this error:\n"
-            f"{previous_error}\n"
+            f"{error_text}\n"
             f"Fix ONLY the specific issue described above. Do not change other parts of the workflow."
         )
 

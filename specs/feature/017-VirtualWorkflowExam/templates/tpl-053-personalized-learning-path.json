@@ -84,7 +84,8 @@
           "label": "Save learning path to database",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO learning_paths (learner_id, title, total_weeks, milestones_json, learning_style, weekly_hours, status, created_at) VALUES ('{{learnerId}}', '{{pathTitle}}', {{totalWeeks}}, '{{milestonesJson}}', '{{learningStyle}}', {{weeklyHours}}, 'active', NOW()) RETURNING id"
+            "query": "INSERT INTO learning_paths (learner_id, title, total_weeks, milestones_json, learning_style, weekly_hours, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW()) RETURNING id",
+            "params": ["{{learnerId}}", "{{pathTitle}}", "{{totalWeeks}}", "{{milestonesJson}}", "{{learningStyle}}", "{{weeklyHours}}"]
           }
         }
       },
@@ -100,7 +101,8 @@
             "maxIterations": 10,
             "body": {
               "action": "database_insert",
-              "query": "INSERT INTO milestones (learning_path_id, title, description, week_number, resources, exercises, status) VALUES ({{learningPathId}}, '{{milestone.title}}', '{{milestone.description}}', {{milestone.weeks}}, '{{milestone.resources}}', '{{milestone.exercises}}', 'pending')"
+              "query": "INSERT INTO milestones (learning_path_id, title, description, week_number, resources, exercises, status) VALUES ($1, $2, $3, $4, $5, $6, 'pending')",
+              "params": ["{{learningPathId}}", "{{milestone.title}}", "{{milestone.description}}", "{{milestone.weeks}}", "{{milestone.resources}}", "{{milestone.exercises}}"]
             }
           }
         }

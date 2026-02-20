@@ -96,7 +96,8 @@
           "label": "Create service case in case management system",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO service_cases (case_number, citizen_name, citizen_email, category, department, priority, description, location, case_title, estimated_resolution_days, status, created_at) VALUES (CONCAT('SR-', TO_CHAR(NOW(), 'YYYYMMDD'), '-', LPAD(nextval('case_seq')::text, 4, '0')), '{{citizenName}}', '{{email}}', '{{category}}', '{{department}}', '{{priority}}', '{{description}}', '{{location}}', '{{caseTitle}}', {{estimatedDays}}, 'open', NOW()) RETURNING case_number, id"
+            "query": "INSERT INTO service_cases (case_number, citizen_name, citizen_email, category, department, priority, description, location, case_title, estimated_resolution_days, status, created_at) VALUES (CONCAT('SR-', TO_CHAR(NOW(), 'YYYYMMDD'), '-', LPAD(nextval('case_seq')::text, 4, '0')), $1, $2, $3, $4, $5, $6, $7, $8, $9, 'open', NOW()) RETURNING case_number, id",
+            "params": ["{{citizenName}}", "{{email}}", "{{category}}", "{{department}}", "{{priority}}", "{{description}}", "{{location}}", "{{caseTitle}}", "{{estimatedDays}}"]
           }
         }
       },

@@ -117,7 +117,8 @@
           "label": "Update quote status in database",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "UPDATE quotes SET status = '{{approvalStatus}}', approved_by = '{{approverEmail}}', approved_at = NOW(), sent_to_client_at = CASE WHEN '{{approvalStatus}}' = 'approved' THEN NOW() ELSE NULL END WHERE id = '{{quoteId}}'"
+            "query": "UPDATE quotes SET status = $1, approved_by = $2, approved_at = NOW(), sent_to_client_at = CASE WHEN $1 = 'approved' THEN NOW() ELSE NULL END WHERE id = $3",
+            "params": ["{{approvalStatus}}", "{{approverEmail}}", "{{quoteId}}"]
           }
         }
       }

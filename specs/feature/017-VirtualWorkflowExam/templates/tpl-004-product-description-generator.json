@@ -116,7 +116,8 @@
           "label": "Save approved descriptions to product table",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "UPDATE products SET website_description = '{{websiteDesc}}', marketplace_description = '{{marketplaceDesc}}', social_caption = '{{socialCaption}}', descriptions_approved_at = NOW() WHERE id = '{{productId}}'"
+            "query": "UPDATE products SET website_description = $1, marketplace_description = $2, social_caption = $3, descriptions_approved_at = NOW() WHERE id = $4",
+            "params": ["{{websiteDesc}}", "{{marketplaceDesc}}", "{{socialCaption}}", "{{productId}}"]
           }
         }
       },

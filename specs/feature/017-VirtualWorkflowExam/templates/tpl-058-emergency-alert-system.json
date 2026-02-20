@@ -152,7 +152,8 @@
           "label": "Log emergency incident in database",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO emergency_incidents (title, severity, description, affected_areas, action_required, coordinator_name, broadcast_scope, status, created_at) VALUES ('{{alertTitle}}', '{{severity}}', '{{description}}', '{{affectedAreas}}', '{{actionRequired}}', '{{coordinatorName}}', '{{broadcastScope}}', 'active', NOW()) RETURNING id"
+            "query": "INSERT INTO emergency_incidents (title, severity, description, affected_areas, action_required, coordinator_name, broadcast_scope, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NOW()) RETURNING id",
+            "params": ["{{alertTitle}}", "{{severity}}", "{{description}}", "{{affectedAreas}}", "{{actionRequired}}", "{{coordinatorName}}", "{{broadcastScope}}"]
           }
         }
       },

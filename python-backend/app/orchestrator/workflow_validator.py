@@ -157,6 +157,24 @@ class GeneratedWorkflow(BaseModel):
                     f"Use one of the registered node types from KNOWN_NODE_TYPES."
                 )
 
+        # --- Validator 4: code_runner config safety (C-02) ---
+        # Block dangerous patterns in code_runner node configs that could
+        # allow arbitrary code execution when the workflow runs.
+        _DANGEROUS_CODE_PATTERNS = {
+            "__import__", "exec(", "eval(", "subprocess",
+            "os.system", "os.popen", "open(", "socket.",
+            "importlib", "compile(", "globals(", "locals(",
+        }
+        for node in self.nodes:
+            if node.data.nodeType == "code_runner":
+                config_str = str(node.data.config).lower()
+                for pattern in _DANGEROUS_CODE_PATTERNS:
+                    if pattern.lower() in config_str:
+                        raise ValueError(
+                            f"Node '{node.id}' (code_runner) contains blocked pattern "
+                            f"'{pattern}' in its config. Remove unsafe code patterns."
+                        )
+
         return self
 
 

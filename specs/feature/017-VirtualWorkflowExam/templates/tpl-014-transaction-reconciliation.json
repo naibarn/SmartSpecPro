@@ -113,7 +113,8 @@
           "label": "Log reconciliation results to audit table",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO reconciliation_log (run_date, total_bank_txns, total_internal_txns, matched_count, unmatched_bank_count, unmatched_internal_count, amount_mismatch_count, status) VALUES (CURRENT_DATE - INTERVAL '1 day', {{summary.totalBank}}, {{summary.totalInternal}}, {{summary.matchedCount}}, {{unmatched_bank.length}}, {{unmatched_internal.length}}, {{amount_mismatches.length}}, CASE WHEN {{summary.discrepancies}} = 0 THEN 'clean' ELSE 'needs_review' END)"
+            "query": "INSERT INTO reconciliation_log (run_date, total_bank_txns, total_internal_txns, matched_count, unmatched_bank_count, unmatched_internal_count, amount_mismatch_count, status) VALUES (CURRENT_DATE - INTERVAL '1 day', $1, $2, $3, $4, $5, $6, CASE WHEN $7 = 0 THEN 'clean' ELSE 'needs_review' END)",
+            "params": ["{{summary.totalBank}}", "{{summary.totalInternal}}", "{{summary.matchedCount}}", "{{unmatched_bank.length}}", "{{unmatched_internal.length}}", "{{amount_mismatches.length}}", "{{summary.discrepancies}}"]
           }
         }
       }

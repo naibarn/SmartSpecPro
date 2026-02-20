@@ -31,7 +31,8 @@
           "label": "Fetch last week's transactions",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "SELECT t.id, t.amount, t.description, t.merchant_name, t.category, t.transaction_date, t.payment_method FROM transactions t WHERE t.user_id = '{{env.USER_ID}}' AND t.transaction_date >= CURRENT_DATE - INTERVAL '7 days' AND t.transaction_date < CURRENT_DATE ORDER BY t.transaction_date DESC"
+            "query": "SELECT t.id, t.amount, t.description, t.merchant_name, t.category, t.transaction_date, t.payment_method FROM transactions t WHERE t.user_id = $1 AND t.transaction_date >= CURRENT_DATE - INTERVAL '7 days' AND t.transaction_date < CURRENT_DATE ORDER BY t.transaction_date DESC",
+            "params": ["{{env.USER_ID}}"]
           }
         }
       },

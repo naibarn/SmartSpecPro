@@ -2,7 +2,7 @@
 import asyncio
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import structlog
@@ -59,7 +59,7 @@ class FlowCompileResponse(BaseModel):
 class WorkflowGenerateRequest(BaseModel):
     """Request to auto-generate a workflow from a natural language prompt."""
 
-    prompt: str = Field(..., min_length=1, max_length=150000)
+    prompt: str = Field(..., min_length=10, max_length=50000)
     node_types: list[dict[str, Any]] | None = Field(
         default=None, description="Available node type specs for LLM context"
     )
@@ -207,8 +207,12 @@ async def generate_workflow(
 
     task_id = create_task_id()
 
-    # Set initial queued status in Redis
-    _set_status(task_id, {"status": "queued", "message": "Waiting in queue..."})
+    # Set initial queued status in Redis (H-01: include user_id for ownership tracking)
+    _set_status(task_id, {
+        "status": "queued",
+        "message": "Waiting in queue...",
+        "_user_id": current_user.id,
+    })
 
     # Submit to Celery queue
     try:
@@ -219,12 +223,17 @@ async def generate_workflow(
             model=body.model_id,
             default_model=body.default_model,
             user_token=user_token,
+            user_id=current_user.id,
         )
     except Exception as exc:
         logger.error("workflow_gen_queue_submit_failed", error=str(exc))
         # Fallback: run synchronously if Celery is not available
         logger.warning("workflow_gen_falling_back_to_sync", task_id=task_id)
-        _set_status(task_id, {"status": "processing", "message": "Running directly (queue unavailable)..."})
+        _set_status(task_id, {
+            "status": "processing",
+            "message": "Running directly (queue unavailable)...",
+            "_user_id": current_user.id,
+        })
         try:
             generator = WorkflowGenerator()
             result = await generator.generate(
@@ -234,11 +243,24 @@ async def generate_workflow(
                 user_token=user_token,
                 default_model=body.default_model,
             )
-            _set_status(task_id, {"status": "completed", "result": result})
+            _set_status(task_id, {
+                "status": "completed",
+                "result": result,
+                "_user_id": current_user.id,
+            })
         except WorkflowGenerationError as gen_exc:
-            _set_status(task_id, {"status": "failed", "error": gen_exc.message})
+            _set_status(task_id, {
+                "status": "failed",
+                "error": gen_exc.message,
+                "_user_id": current_user.id,
+            })
         except Exception as gen_exc:
-            _set_status(task_id, {"status": "failed", "error": str(gen_exc)})
+            logger.error("workflow_gen_sync_error", error=str(gen_exc), exc_info=True)
+            _set_status(task_id, {
+                "status": "failed",
+                "error": "An internal error occurred. Please try again.",
+                "_user_id": current_user.id,
+            })
 
     logger.info(
         "workflow_gen_submitted",
@@ -266,7 +288,8 @@ async def get_generate_status(
     if not task_id.startswith("wfgen-") or len(task_id) != 18:
         raise HTTPException(status_code=400, detail="Invalid task_id format")
 
-    status_data = get_status(task_id)
+    # H-01: Enforce ownership — returns None if user doesn't own this task
+    status_data = get_status(task_id, user_id=current_user.id)
     if status_data is None:
         raise HTTPException(status_code=404, detail="Task not found or expired")
 
@@ -331,9 +354,18 @@ async def compile_flow(
             edge_count=len(flow_json.get("edges", [])),
         )
 
+        # result is a CompileResult(graph, warnings). The graph is a
+        # CompiledStateGraph — not JSON-serialisable — so we build a
+        # lightweight manifest dict from the input for the frontend.
         return FlowCompileResponse(
             success=True,
-            manifest=result.manifest,
+            manifest={
+                "nodes": flow_json.get("nodes", []),
+                "edges": flow_json.get("edges", []),
+                "metadata": metadata,
+                "node_count": len(flow_json.get("nodes", [])),
+                "edge_count": len(flow_json.get("edges", [])),
+            },
             warnings=result.warnings or None,
         )
 
@@ -568,9 +600,17 @@ async def receive_webhook(
     - Rate limiting
     - Signature verification (for GitHub, Stripe, etc.)
     """
-    # Extract request data
+    # H-09: Only forward safe, relevant headers — never auth/cookie/internal headers.
+    _SAFE_WEBHOOK_HEADERS = {
+        "content-type", "content-length", "user-agent",
+        "x-github-event", "x-hub-signature-256", "x-hub-signature",
+        "stripe-signature", "x-request-id",
+    }
     method = request.method
-    headers = dict(request.headers)
+    headers = {
+        k.lower(): v for k, v in request.headers.items()
+        if k.lower() in _SAFE_WEBHOOK_HEADERS
+    }
     query = dict(request.query_params)
 
     # Parse request body
@@ -659,10 +699,11 @@ async def receive_webhook(
     except HTTPException:
         raise
     except Exception as e:
+        # H-02: Log full error server-side, return sanitized message to client
         logger.exception("webhook_execution_failed", webhook_id=webhook_id, error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=f"Webhook execution failed: {str(e)}",
+            detail="Webhook execution failed. Please check the workflow configuration.",
         )
 
 
@@ -855,6 +896,11 @@ async def get_workflow_report(
     Returns execution status, node results, and timing information.
     Enforces tenant isolation.
     """
+    # LOW-18: Validate execution_id format (same pattern as stream/resume endpoints)
+    EXECUTION_ID_PATTERN = re.compile(r"^exec-[a-f0-9]{12}$")
+    if not execution_id or not EXECUTION_ID_PATTERN.match(execution_id):
+        raise HTTPException(status_code=400, detail="Invalid execution_id format")
+
     # TODO: Query executions table once it exists
     # query = select(ExecutionRecord).where(
     #     ExecutionRecord.execution_id == execution_id,

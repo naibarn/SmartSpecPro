@@ -34,7 +34,8 @@
           "label": "Fetch new customer profile details",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "SELECT u.id, u.email, u.full_name, u.company_name, u.plan, u.created_at, up.industry, up.team_size FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.id = '{{customerId}}'"
+            "query": "SELECT u.id, u.email, u.full_name, u.company_name, u.plan, u.created_at, up.industry, up.team_size FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.id = $1",
+            "params": ["{{customerId}}"]
           }
         }
       },
@@ -137,7 +138,8 @@
           "label": "Check customer activation status",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "SELECT u.id, COUNT(p.id) AS project_count, COUNT(DISTINCT tm.invited_user_id) AS invited_members, MAX(s.last_active_at) AS last_active FROM users u LEFT JOIN projects p ON u.id = p.owner_id LEFT JOIN team_members tm ON u.id = tm.inviter_id LEFT JOIN sessions s ON u.id = s.user_id WHERE u.id = '{{customerId}}' GROUP BY u.id"
+            "query": "SELECT u.id, COUNT(p.id) AS project_count, COUNT(DISTINCT tm.invited_user_id) AS invited_members, MAX(s.last_active_at) AS last_active FROM users u LEFT JOIN projects p ON u.id = p.owner_id LEFT JOIN team_members tm ON u.id = tm.inviter_id LEFT JOIN sessions s ON u.id = s.user_id WHERE u.id = $1 GROUP BY u.id",
+            "params": ["{{customerId}}"]
           }
         }
       },

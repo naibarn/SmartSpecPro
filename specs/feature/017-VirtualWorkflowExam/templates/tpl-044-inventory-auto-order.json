@@ -122,7 +122,8 @@
           "label": "Update inventory with pending order status",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "UPDATE inventory SET pending_order_id = {{orderId}}, pending_order_date = NOW(), last_reorder_date = NOW() WHERE id = ANY({{orderItemIds}}) RETURNING id, item_name, pending_order_id"
+            "query": "UPDATE inventory SET pending_order_id = $1, pending_order_date = NOW(), last_reorder_date = NOW() WHERE id = ANY($2) RETURNING id, item_name, pending_order_id",
+            "params": ["{{orderId}}", "{{orderItemIds}}"]
           }
         }
       }

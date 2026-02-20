@@ -138,7 +138,8 @@
           "label": "Log interaction for analytics and KB improvement",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "INSERT INTO faq_interactions (question_id, session_id, customer_email, question_text, ai_answer, confidence_score, referenced_faq_ids, was_auto_responded, suggested_category, channel, created_at) VALUES ({{webhook.questionId}}, {{webhook.sessionId}}, {{webhook.customerEmail}}, {{webhook.question}}, {{parsedResult.answer}}, {{parsedResult.confidence}}, {{parsedResult.referencedFaqIds}}, {{parsedResult.confidence >= 0.75}}, {{parsedResult.suggestedCategory}}, {{webhook.channel}}, NOW()) RETURNING id"
+            "query": "INSERT INTO faq_interactions (question_id, session_id, customer_email, question_text, ai_answer, confidence_score, referenced_faq_ids, was_auto_responded, suggested_category, channel, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING id",
+            "params": ["{{webhook.questionId}}", "{{webhook.sessionId}}", "{{webhook.customerEmail}}", "{{webhook.question}}", "{{parsedResult.answer}}", "{{parsedResult.confidence}}", "{{parsedResult.referencedFaqIds}}", "{{parsedResult.confidence >= 0.75}}", "{{parsedResult.suggestedCategory}}", "{{webhook.channel}}"]
           }
         }
       }

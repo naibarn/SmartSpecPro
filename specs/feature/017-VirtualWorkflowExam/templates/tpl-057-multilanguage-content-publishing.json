@@ -35,7 +35,8 @@
           "label": "Fetch original article content and metadata",
           "config": {
             "connectionString": "{{env.DATABASE_URL}}",
-            "query": "SELECT a.id, a.title, a.body, a.summary, a.author_name, a.category, a.tags, a.slug, a.published_at FROM articles a WHERE a.id = '{{articleId}}' AND a.status = 'published'"
+            "query": "SELECT a.id, a.title, a.body, a.summary, a.author_name, a.category, a.tags, a.slug, a.published_at FROM articles a WHERE a.id = $1 AND a.status = 'published'",
+            "params": ["{{articleId}}"]
           }
         }
       },

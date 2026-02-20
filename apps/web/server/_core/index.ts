@@ -63,9 +63,10 @@ app.disable("x-powered-by");
 // Correlation ID middleware — generates or propagates X-Request-ID
 app.use(correlationIdMiddleware);
 
-// Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For) from nginx
-// This is required for secure cookies to work behind HTTPS proxy
-app.set("trust proxy", true);
+// Trust exactly one proxy hop (Nginx) — prevents X-Forwarded-For spoofing.
+// "true" trusts ALL hops which allows IP spoofing to bypass rate limiters.
+// "1" means Express uses only the last XFF entry (appended by Nginx). (M-14 fix)
+app.set("trust proxy", 1);
 
 
 // Trusted origin check (shared between CORS and CSRF middleware)
