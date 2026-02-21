@@ -24,7 +24,7 @@ async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
     Fetch OAuth config from system_settings table, with env var fallback.
 
     Returns dict with keys:
-        googleClientId, googleClientSecret, googleRedirectUri,
+        googleClientId, googleClientSecret, googleRedirectUri, googleDriveRedirectUri,
         githubClientId, githubClientSecret, githubRedirectUri
     """
     config: Dict[str, str] = {}
@@ -55,6 +55,7 @@ async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
         "googleClientId": "GOOGLE_CLIENT_ID",
         "googleClientSecret": "GOOGLE_CLIENT_SECRET",
         "googleRedirectUri": "GOOGLE_REDIRECT_URI",
+        "googleDriveRedirectUri": "GOOGLE_DRIVE_REDIRECT_URI",
         "githubClientId": "GITHUB_CLIENT_ID",
         "githubClientSecret": "GITHUB_CLIENT_SECRET",
         "githubRedirectUri": "GITHUB_REDIRECT_URI",
@@ -62,6 +63,7 @@ async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
 
     defaults = {
         "googleRedirectUri": "https://smartaihub.app/auth/callback/google",
+        "googleDriveRedirectUri": "https://smartaihub.app/auth/callback/google-drive",
         "githubRedirectUri": "https://smartaihub.app/auth/callback/github",
     }
 

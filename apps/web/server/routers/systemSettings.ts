@@ -635,6 +635,7 @@ export const systemSettingsRouter = router({
       googleClientSecret: undefined,
       googleClientSecretConfigured: false,
       googleRedirectUri: undefined,
+      googleDriveRedirectUri: undefined,
       githubClientId: undefined,
       githubClientSecret: undefined,
       githubClientSecretConfigured: false,
@@ -649,6 +650,8 @@ export const systemSettingsRouter = router({
         result.googleClientSecretConfigured = true;
       } else if (setting.key === "googleRedirectUri") {
         result.googleRedirectUri = setting.value || undefined;
+      } else if (setting.key === "googleDriveRedirectUri") {
+        result.googleDriveRedirectUri = setting.value || undefined;
       } else if (setting.key === "githubClientId") {
         result.githubClientId = setting.value || undefined;
       } else if (setting.key === "githubClientSecret" && setting.value) {
@@ -670,6 +673,7 @@ export const systemSettingsRouter = router({
       googleClientId: z.string().optional(),
       googleClientSecret: z.string().optional(),
       googleRedirectUri: z.string().optional(),
+      googleDriveRedirectUri: z.string().optional(),
       githubClientId: z.string().optional(),
       githubClientSecret: z.string().optional(),
       githubRedirectUri: z.string().optional(),
@@ -682,6 +686,7 @@ export const systemSettingsRouter = router({
         { key: "googleClientId", value: input.googleClientId, sensitive: false },
         { key: "googleClientSecret", value: input.googleClientSecret, sensitive: true },
         { key: "googleRedirectUri", value: input.googleRedirectUri, sensitive: false },
+        { key: "googleDriveRedirectUri", value: input.googleDriveRedirectUri, sensitive: false },
         { key: "githubClientId", value: input.githubClientId, sensitive: false },
         { key: "githubClientSecret", value: input.githubClientSecret, sensitive: true },
         { key: "githubRedirectUri", value: input.githubRedirectUri, sensitive: false },

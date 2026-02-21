@@ -111,6 +111,7 @@ export default function AdminSettings() {
     googleClientId?: string;
     googleClientSecret?: string;
     googleRedirectUri?: string;
+    googleDriveRedirectUri?: string;
     githubClientId?: string;
     githubClientSecret?: string;
     githubRedirectUri?: string;
@@ -529,6 +530,7 @@ export default function AdminSettings() {
       setOauthForm({
         googleClientId: (oauthSettings.googleClientId as string) || "",
         googleRedirectUri: (oauthSettings.googleRedirectUri as string) || "",
+        googleDriveRedirectUri: (oauthSettings.googleDriveRedirectUri as string) || "",
         githubClientId: (oauthSettings.githubClientId as string) || "",
         githubRedirectUri: (oauthSettings.githubRedirectUri as string) || "",
       });
@@ -568,6 +570,7 @@ export default function AdminSettings() {
       googleClientId: oauthForm.googleClientId,
       googleClientSecret: oauthForm.googleClientSecret,
       googleRedirectUri: oauthForm.googleRedirectUri,
+      googleDriveRedirectUri: oauthForm.googleDriveRedirectUri,
       githubClientId: oauthForm.githubClientId,
       githubClientSecret: oauthForm.githubClientSecret,
       githubRedirectUri: oauthForm.githubRedirectUri,
@@ -890,19 +893,35 @@ export default function AdminSettings() {
                       </Button>
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="googleRedirectUri">Redirect URI</Label>
-                    <Input
-                      id="googleRedirectUri"
-                      placeholder="https://smartaihub.app/auth/callback/google"
-                      value={oauthForm.googleRedirectUri || ""}
-                      onChange={(e) =>
-                        setOauthForm((prev) => ({ ...prev, googleRedirectUri: e.target.value }))
-                      }
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Must match the authorized redirect URI in Google Cloud Console
-                    </p>
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="googleRedirectUri">Login Redirect URI</Label>
+                      <Input
+                        id="googleRedirectUri"
+                        placeholder="https://smartaihub.app/auth/callback/google"
+                        value={oauthForm.googleRedirectUri || ""}
+                        onChange={(e) =>
+                          setOauthForm((prev) => ({ ...prev, googleRedirectUri: e.target.value }))
+                        }
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Used for Sign Up / Sign In with Google. Must match an authorized redirect URI in Google Cloud Console.
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="googleDriveRedirectUri">Google Drive Redirect URI</Label>
+                      <Input
+                        id="googleDriveRedirectUri"
+                        placeholder="https://smartaihub.app/auth/callback/google-drive"
+                        value={oauthForm.googleDriveRedirectUri || ""}
+                        onChange={(e) =>
+                          setOauthForm((prev) => ({ ...prev, googleDriveRedirectUri: e.target.value }))
+                        }
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Used when users connect their Google Drive. Must also be added as an authorized redirect URI in Google Cloud Console.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Google OAuth Setup Guide */}
@@ -914,6 +933,18 @@ export default function AdminSettings() {
                     </summary>
                     <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <div className="text-sm text-blue-900 dark:text-blue-100 space-y-4">
+                        {/* Overview */}
+                        <div className="p-3 bg-blue-100/50 dark:bg-blue-900/30 rounded-md">
+                          <p className="font-semibold">What this enables:</p>
+                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
+                            <li><strong>Sign Up / Sign In with Google</strong> &mdash; users can register and log in using their Google account</li>
+                            <li><strong>Google Drive integration</strong> &mdash; users can connect their Google Drive to import and export documents</li>
+                          </ul>
+                          <p className="text-blue-600 dark:text-blue-400 text-xs mt-2">
+                            Both features share the same Client ID and Client Secret, but use different redirect URIs.
+                          </p>
+                        </div>
+
                         {/* Step 1 */}
                         <div>
                           <p className="font-semibold">Step 1: Create a Google Cloud Project</p>
@@ -930,14 +961,17 @@ export default function AdminSettings() {
                         <div>
                           <p className="font-semibold">Step 2: Enable required APIs</p>
                           <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            In your project, go to <strong>APIs & Services &gt; Library</strong> and enable:
+                            In your project, go to <strong>APIs & Services &gt; Library</strong> and enable these APIs:
                           </p>
                           <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
-                            <li>Google Drive API</li>
-                            <li>Google Docs API</li>
-                            <li>Google Sheets API</li>
-                            <li>Google Slides API</li>
+                            <li><strong>Google Drive API</strong> &mdash; required for Google Drive integration</li>
+                            <li><strong>Google Docs API</strong> &mdash; required for reading/writing Google Docs</li>
+                            <li><strong>Google Sheets API</strong> &mdash; required for spreadsheet access</li>
+                            <li><strong>Google Slides API</strong> &mdash; required for presentation access</li>
                           </ul>
+                          <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">
+                            If you only need Sign Up / Sign In (no Drive integration), you can skip this step.
+                          </p>
                         </div>
 
                         {/* Step 3 */}
@@ -949,8 +983,14 @@ export default function AdminSettings() {
                           <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
                             <li>User Type: <strong>External</strong> (or Internal for Google Workspace)</li>
                             <li>Fill in App name, User support email, and Developer contact</li>
-                            <li>Add scopes: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">openid</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">email</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">profile</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.readonly</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.file</code></li>
-                            <li>Add test users if in Testing status</li>
+                            <li>
+                              Add scopes:
+                              <div className="ml-4 mt-1 space-y-0.5">
+                                <p><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">openid</code> <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">email</code> <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">profile</code> &mdash; required for Sign Up / Sign In</p>
+                                <p><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.readonly</code> <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">drive.file</code> &mdash; required for Google Drive integration</p>
+                              </div>
+                            </li>
+                            <li>Add test users if the app is still in &quot;Testing&quot; status (max 100 test users)</li>
                           </ul>
                         </div>
 
@@ -962,15 +1002,23 @@ export default function AdminSettings() {
                           </p>
                           <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
                             <li>Application type: <strong>Web application</strong></li>
+                            <li>Name: e.g. &quot;SmartSpec Web&quot;</li>
+                            <li>Authorized JavaScript origins: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs font-mono">https://smartaihub.app</code></li>
                             <li>
-                              Authorized redirect URIs &mdash; add both:
+                              Authorized redirect URIs &mdash; add <strong>both</strong> of these:
                               <div className="ml-4 mt-1 space-y-1">
-                                <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
-                                  https://smartaihub.app/auth/callback/google
-                                </code>
-                                <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
-                                  https://smartaihub.app/auth/callback/google-drive
-                                </code>
+                                <div className="flex items-start gap-2">
+                                  <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
+                                    https://smartaihub.app/auth/callback/google
+                                  </code>
+                                  <span className="text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap mt-0.5">&larr; for Sign Up / Sign In</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <code className="block bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs font-mono">
+                                    https://smartaihub.app/auth/callback/google-drive
+                                  </code>
+                                  <span className="text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap mt-0.5">&larr; for Google Drive</span>
+                                </div>
                               </div>
                             </li>
                           </ul>
@@ -980,14 +1028,28 @@ export default function AdminSettings() {
                         <div>
                           <p className="font-semibold">Step 5: Copy credentials here</p>
                           <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Google Cloud Console and paste them in the fields above. Then click <strong>Save Settings</strong>.
+                            Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Google Cloud Console and paste them in the fields above.
+                            The redirect URIs are pre-filled with defaults &mdash; only change them if your domain is different. Then click <strong>Save OAuth Settings</strong>.
                           </p>
                         </div>
 
-                        <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
+                        {/* Step 6 */}
+                        <div>
+                          <p className="font-semibold">Step 6: Verify</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            After saving, use the <strong>Test Google Connection</strong> button below to verify your credentials.
+                            Then visit the Sign Up page to confirm the Google button appears.
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-blue-200 dark:border-blue-700 space-y-1">
                           <p className="text-blue-600 dark:text-blue-400 text-xs flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
                             Client Secret is encrypted before storage. It will not be shown after saving.
+                          </p>
+                          <p className="text-blue-600 dark:text-blue-400 text-xs flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Both redirect URIs must be registered in Google Cloud Console, even if you only use one feature.
                           </p>
                         </div>
                       </div>
@@ -1063,7 +1125,7 @@ export default function AdminSettings() {
                     <Label htmlFor="githubRedirectUri">Redirect URI</Label>
                     <Input
                       id="githubRedirectUri"
-                      placeholder="http://localhost:3000/auth/callback/github"
+                      placeholder="https://smartaihub.app/auth/callback/github"
                       value={oauthForm.githubRedirectUri || ""}
                       onChange={(e) =>
                         setOauthForm((prev) => ({ ...prev, githubRedirectUri: e.target.value }))
