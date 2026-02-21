@@ -162,7 +162,12 @@ export default function Pricing() {
   // Fetch packages from API
   const { data: packages, isLoading, error } = trpc.packages.list.useQuery();
 
-  // Parse tenant content HTML for text sections (hero, FAQ, CTA)
+  // Extract structured sections (primary source — set in domain-admin/content)
+  const heroSection = tenantPage?.sections?.find((s: { type: string }) => s.type === 'hero');
+  const ctaSection  = tenantPage?.sections?.find((s: { type: string }) => s.type === 'cta');
+  const faqSection  = tenantPage?.sections?.find((s: { type: string }) => s.type === 'faq');
+
+  // Parse tenant content HTML for text sections (hero, FAQ, CTA) — legacy fallback
   const parsed = (() => {
     if (!tenantPage?.content) return null;
     const html = tenantPage.content;
@@ -302,7 +307,7 @@ export default function Pricing() {
               transition={{ delay: 0.2 }}
               className="text-5xl sm:text-6xl md:text-7xl font-bold mb-6 tracking-tight"
             >
-              {parsed?.heroTitle || (<><span className="text-gray-900">Choose Your</span><br /><span className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">Perfect Plan</span></>)}
+              {heroSection?.title || parsed?.heroTitle || (<><span className="text-gray-900">Choose Your</span><br /><span className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">Perfect Plan</span></>)}
             </motion.h1>
 
             <motion.p
@@ -311,7 +316,7 @@ export default function Pricing() {
               transition={{ delay: 0.3 }}
               className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto"
             >
-              {parsed?.heroDesc || 'All plans include full access to every feature. Choose based on the credits you need.'}
+              {heroSection?.subtitle || heroSection?.content || parsed?.heroDesc || 'All plans include full access to every feature. Choose based on the credits you need.'}
             </motion.p>
 
             {/* Billing Period Toggle */}
@@ -716,7 +721,7 @@ export default function Pricing() {
               <HelpCircle className="w-4 h-4" />
               Got Questions?
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">{parsed?.faqTitle || 'Frequently Asked Questions'}</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">{faqSection?.title || parsed?.faqTitle || 'Frequently Asked Questions'}</h2>
             <p className="text-xl text-gray-600">
               Everything you need to know about our pricing and plans
             </p>
@@ -771,10 +776,10 @@ export default function Pricing() {
                     Enterprise Solutions
                   </div>
                   <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-                    {parsed?.ctaTitle || 'Need a Custom Solution?'}
+                    {ctaSection?.title || parsed?.ctaTitle || 'Need a Custom Solution?'}
                   </h2>
                   <p className="text-xl text-white/80 mb-8 max-w-xl">
-                    {parsed?.ctaDesc || 'Get dedicated support, custom integrations, on-premise deployment, and volume discounts tailored to your organization.'}
+                    {ctaSection?.subtitle || ctaSection?.content || parsed?.ctaDesc || 'Get dedicated support, custom integrations, on-premise deployment, and volume discounts tailored to your organization.'}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                     <Link href="/contact">

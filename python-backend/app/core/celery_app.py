@@ -64,6 +64,8 @@ celery_app.conf.update(
         "app.tasks.google_drive_tasks.disconnect_google_drive_cleanup": {"queue": "media"},
         # Workflow generation (LLM call) -> media queue (network-bound)
         "app.tasks.workflow_gen_tasks.generate_workflow": {"queue": "media"},
+        # Workflow AI editing (LLM call) -> media queue (network-bound, same as gen)
+        "app.tasks.workflow_edit_tasks.edit_workflow": {"queue": "media"},
         # Workflow tasks -> celery queue (lightweight, frequent)
         "app.tasks.workflow_tasks.check_scheduled_workflows": {"queue": "celery"},
         "app.tasks.workflow_tasks.process_system_event": {"queue": "celery"},

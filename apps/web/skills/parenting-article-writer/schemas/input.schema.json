@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/parenting-article-writer/schemas/input.schema.json",
+  "title": "Parenting Article Writer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Topic",
+      "description": "The article topic. Can be broad (e.g., 'newborn sleep') or specific (e.g., 'diaper rash prevention').",
+      "default": "Newborn sleep and soothing"
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": [
+        "en",
+        "th"
+      ],
+      "default": "en"
+    },
+    "age_range": {
+      "title": "Child age range (optional)",
+      "description": "Optional child age range to tailor the article. If null or omitted, write generally and include brief age notes.",
+      "default": null,
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "unit": {
+              "type": "string",
+              "description": "Age unit for min/max.",
+              "enum": [
+                "months",
+                "years"
+              ],
+              "default": "months"
+            },
+            "min": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Minimum age in the chosen unit.",
+              "default": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maximum age in the chosen unit. Must be >= min.",
+              "default": 24
+            }
+          },
+          "required": [
+            "unit",
+            "min",
+            "max"
+          ]
+        }
+      ]
+    },
+    "article_style": {
+      "type": "string",
+      "title": "Article style",
+      "description": "High-level writing style / structure. Use 'how_to_guide' for step-by-step guidance, or choose another style if it fits the topic.",
+      "enum": [
+        "how_to_guide",
+        "faq",
+        "checklist",
+        "myth_busting",
+        "development_overview",
+        "illness_care_overview"
+      ],
+      "default": "how_to_guide"
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate article length.",
+      "enum": [
+        "short",
+        "medium",
+        "long"
+      ],
+      "default": "medium"
+    },
+    "include_checklist": {
+      "type": "boolean",
+      "title": "Include checklist",
+      "description": "Whether to include a practical checklist section.",
+      "default": true
+    },
+    "include_red_flags": {
+      "type": "boolean",
+      "title": "Include red flags",
+      "description": "Whether to include a 'red flags / when to seek care' section (strongly recommended).",
+      "default": true
+    },
+    "output_format": {
+      "type": "string",
+      "title": "Output format (standard article only)",
+      "description": "Preferred format for standard article mode. If response_mode='json', this setting is ignored.",
+      "enum": [
+        "markdown",
+        "plain_text"
+      ],
+      "default": "markdown"
+    },
+    "response_mode": {
+      "type": "string",
+      "title": "Response mode",
+      "description": "Choose the output mode: a standard human-readable article or a structured JSON object.",
+      "enum": [
+        "standard_article",
+        "json"
+      ],
+      "default": "standard_article"
+    },
+    "show_references": {
+      "type": "string",
+      "title": "Show references",
+      "description": "Whether to include a short references section (non-clickable titles/domains).",
+      "enum": [
+        "yes",
+        "no"
+      ],
+      "default": "no"
+    }
+  }
+}

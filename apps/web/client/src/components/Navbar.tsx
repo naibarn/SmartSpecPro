@@ -14,6 +14,7 @@ import { useTenant } from '@/contexts/TenantContext';
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/features', label: 'Features' },
+  { href: '/workflows/gallery', label: 'Workflows' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/gallery', label: 'Gallery' },
   { href: '/marketplace', label: 'Marketplace' },
@@ -61,13 +62,17 @@ export function Navbar() {
               whileTap={{ scale: 0.98 }}
             >
               {(tenant?.websiteLogoUrl || tenant?.logoUrl) ? (
-                <img src={tenant.websiteLogoUrl || tenant.logoUrl} alt={tenant.name || "Logo"} className="h-10 w-auto object-contain" />
+                <img
+                  src={tenant.websiteLogoUrl || tenant.logoUrl}
+                  alt={tenant.name || "Logo"}
+                  className="h-8 sm:h-10 lg:h-12 w-auto max-w-[160px] lg:max-w-[200px] object-contain"
+                />
               ) : (
                 <>
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center shadow-lg">
-                    <Sparkles className="w-5 h-5 text-white" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center shadow-lg shrink-0">
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                   </div>
-                  <span className="text-xl font-bold gradient-text">SmartSpec</span>
+                  <span className="text-lg sm:text-xl lg:text-2xl font-bold gradient-text">SmartSpec</span>
                   <span className="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">
                     Pro
                   </span>

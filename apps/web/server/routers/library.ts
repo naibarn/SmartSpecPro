@@ -170,7 +170,7 @@ export const libraryRouter = router({
         role: ctx.user.role,
       };
 
-      return listLibraryDocuments(
+      const result = await listLibraryDocuments(
         {
           query: input?.query,
           scope: input?.scope,
@@ -181,6 +181,7 @@ export const libraryRouter = router({
         },
         actor,
       );
+      return result;
     }),
 
   uploadFile: protectedProcedure
@@ -242,7 +243,7 @@ export const libraryRouter = router({
     .input(
       z.object({
         id: z.number().int().positive(),
-        content: z.string().max(1_000_000),
+        content: z.string().max(5_000_000),
         expectedUpdatedAt: z.coerce.date().optional(),
         changeDescription: z.string().max(500).optional(),
       }),

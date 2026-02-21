@@ -30,8 +30,10 @@ import {
   Sparkles,
   Bot,
   ImagePlus,
+  Palette,
   Music,
   Zap,
+  ChevronDown,
   ChevronsUp,
   ChevronsDown,
 } from "lucide-react";
@@ -58,6 +60,7 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useChatSkillForm, SkillCommandButton, SkillFormErrorBoundary } from "@/components/chat/skill";
 import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FallbackConsent } from "./FallbackConsent";
 import { formatModelCost, getCheapestProvider, type AvailableModel, type ModelProvider } from "@/lib/modelPricing";
 import {
@@ -194,6 +197,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const lastLocalAddTime = useRef<number>(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
@@ -219,6 +223,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
   // Get available models from LLM providers
   const { data: modelsData } = trpc.llmProviders.availableModels.useQuery();
+
+  // Get media generation models (image/video/audio)
+  const { data: allMediaModelsData } = trpc.media.getModels.useQuery(undefined, { staleTime: 300_000 });
 
   // Get multi-provider models (with provider info, pricing, FREE badges)
   const { data: multiProviderModels } = trpc.multiProvider.getAvailableModelsWithProviders.useQuery(
@@ -255,6 +262,11 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     () => localStorage.getItem("smartspec_lastModel") || ""
   );
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
+
+  // Media model selection for image/video generation in the detection bar
+  const [selectedMediaModel, setSelectedMediaModel] = useState<string>("");
+  const [mediaModelSearch, setMediaModelSearch] = useState<string>("");
+  const [mediaModelOpen, setMediaModelOpen] = useState(false);
 
   // Fallback consent state (for handling free→paid tier transitions)
   interface FallbackRequestData {
@@ -298,7 +310,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   const detectSkillMutation = trpc.chat.detectSkill.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
   const addSkillCreditsMutation = trpc.chat.addSkillCreditsToConversation.useMutation();
-  const buildPromptMutation = trpc.skills.buildPrompt.useMutation();
+  const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
 
   // Memory auto-save state
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -333,6 +345,27 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   // Dynamic Skill Form integration
   const isSkillFormEnabled = useFeatureFlag('chat.dynamicSkillForm');
   const skillForm = useChatSkillForm(conversationId ?? 0);
+
+  // Auto-open skill form when navigated from another page with prefill data
+  useEffect(() => {
+    const raw = sessionStorage.getItem('isc_skill_prefill');
+    if (!raw) return;
+    sessionStorage.removeItem('isc_skill_prefill');
+    try {
+      const { skillId, values: prefillValues } = JSON.parse(raw) as {
+        skillId: string;
+        values: Record<string, any>;
+      };
+      // Small delay so the chat view finishes mounting before opening the form
+      const timer = setTimeout(() => {
+        skillForm.openSkillForm(skillId, prefillValues);
+      }, 400);
+      return () => clearTimeout(timer);
+    } catch {
+      // ignore malformed data
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once on mount
 
   // Ctrl+K to open Skill Selector
   useEffect(() => {
@@ -429,6 +462,37 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     patternChainTo: string | null;
   } | null>(null);
 
+  // Filter media models by detected skill type (image / video)
+  const filteredMediaModels = useMemo(() => {
+    if (!allMediaModelsData?.models || !detectedSkill) return [];
+    const type = detectedSkill.type === "video-generation" ? "video" : "image";
+    return allMediaModelsData.models.filter(m => m.type === type);
+  }, [allMediaModelsData?.models, detectedSkill]);
+
+  // Auto-select default media model when skill type changes (reads localStorage first)
+  useEffect(() => {
+    if (!detectedSkill || detectedSkill.executionMode !== "media-generate") {
+      setSelectedMediaModel("");
+      return;
+    }
+    if (filteredMediaModels.length === 0) return;
+    const isVideo = detectedSkill.type === "video-generation";
+    const storageKey = isVideo ? "smartspec_lastVideoModel" : "smartspec_lastImageModel";
+    const savedModel = localStorage.getItem(storageKey);
+    setSelectedMediaModel(prev => {
+      // Keep current in-session selection if still valid for this type
+      if (prev && filteredMediaModels.some(m => m.id === prev)) return prev;
+      // Restore from localStorage (user's previous choice for this type)
+      if (savedModel && filteredMediaModels.some(m => m.id === savedModel)) return savedModel;
+      // Fall back to API default, then first in list
+      const defaultId = isVideo
+        ? allMediaModelsData?.defaults?.video
+        : allMediaModelsData?.defaults?.image;
+      const preferred = defaultId && filteredMediaModels.find(m => m.id === defaultId);
+      return (preferred?.id ?? filteredMediaModels[0]?.id) || "";
+    });
+  }, [filteredMediaModels, detectedSkill, allMediaModelsData?.defaults]);
+
   // Schedule confirm card state
   const [pendingSchedule, setPendingSchedule] = useState<any>(null);
 
@@ -461,8 +525,11 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       }
 
       try {
+        // Skill triggers always appear at the start — truncate to first 500 chars
+        // to avoid hitting the server 5000-char limit on very long prompts
+        const detectionMessage = debouncedInput.slice(0, 500);
         const result = await detectSkillMutation.mutateAsync({
-          message: debouncedInput,
+          message: detectionMessage,
           conversationId,
         });
 
@@ -490,31 +557,63 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     detectSkills();
   }, [debouncedInput, conversationId]);
 
+  // Parse language/aspectRatio intent from natural language and return cleaned input
+  const parseEnhanceIntent = (text: string): {
+    cleanInput: string;
+    language: "en" | "th";
+    aspectRatio?: string;
+  } => {
+    let clean = text;
+    let language: "en" | "th" = "en"; // default English
+
+    // Thai language requested
+    if (/ภาษาไทย|prompt\s*ไทย|เป็นไทย|ขอไทย/i.test(clean)) {
+      language = "th";
+      clean = clean.replace(/(?:ขอ\s*)?(?:prompt\s*)?(?:เป็น\s*)?ภาษาไทย|prompt\s*ไทย|เป็นไทย|ขอไทย/gi, "");
+    // English explicitly requested
+    } else if (/ภาษาอังกฤษ|prompt\s*อังกฤษ|เป็นอังกฤษ|ขออังกฤษ|in\s*english/i.test(clean)) {
+      language = "en";
+      clean = clean.replace(/(?:ขอ\s*)?(?:prompt\s*)?(?:เป็น\s*)?ภาษาอังกฤษ|prompt\s*อังกฤษ|เป็นอังกฤษ|ขออังกฤษ|in\s*english/gi, "");
+    }
+
+    // Detect aspect ratio (e.g. "ขนาด 9:16", "9:16", "16:9", "1:1")
+    const ratioMatch = clean.match(/(?:ขนาด\s*)?(\d+:\d+)/);
+    const aspectRatio = ratioMatch ? ratioMatch[1] : undefined;
+    if (ratioMatch) {
+      clean = clean.replace(/(?:ขนาด\s*)?\d+:\d+/g, "");
+    }
+
+    clean = clean.replace(/\s+/g, " ").trim();
+    return { cleanInput: clean || text, language, aspectRatio };
+  };
+
   // Handle Auto Prompt enhancement
   const handleAutoPrompt = async () => {
     if (!input.trim() || isEnhancingPrompt) return;
 
     setIsEnhancingPrompt(true);
     try {
-      // Get reference images from attachments
       const referenceImages = attachments
         .filter(a => a.fileType.startsWith("image/"))
         .map(a => a.url)
         .slice(0, 5);
 
-      const result = await buildPromptMutation.mutateAsync({
-        userInput: input,
+      const { cleanInput, language, aspectRatio } = parseEnhanceIntent(input);
+
+      const result = await enhancePromptMutation.mutateAsync({
+        userInput: cleanInput,
         referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
-        language: "both",
+        language,
+        ...(aspectRatio && { aspectRatio }),
       });
 
-      if (result.success && result.userPrompt) {
-        // The userPrompt now includes the enhanced content
-        // For the full prompt enhancement, we'd need to call LLM with systemPrompt + userPrompt
-        // For now, prefix with instruction to enhance
-        const enhanced = `Generate an image of: ${input}\n\n[PromptDepth Pro v8.9 Enhanced]`;
-        setInput(enhanced);
-        setEnhancedPrompt(enhanced);
+      if (result.success) {
+        const promptText = language === "th" ? result.promptTh : result.promptEn;
+        if (promptText) {
+          const enhanced = `create image: ${promptText}`;
+          setInput(enhanced);
+          setEnhancedPrompt(enhanced);
+        }
       }
     } catch (error) {
       console.error("Auto prompt enhancement failed:", error);
@@ -567,6 +666,15 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages, streamingContent, scrollToBottom]);
+
+  // Auto-resize textarea when input changes (e.g. after prompt enhancement)
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
+    }
+  }, [input]);
 
   // File handling
   const handlePickFile = () => fileRef.current?.click();
@@ -1181,11 +1289,13 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     // Per-pattern chainTo takes precedence over skill-level chainTo
     const currentPatternChainTo = resolvedSkill?.patternChainTo;
 
-    // Detect image edit patterns - "แก้ไขภาพนี้", "ช่วยแก้ไขภาพ", "แก้ไขภาพ", "edit image"
-    const imageEditPattern = /(?:แก้ไขภาพนี้|ช่วยแก้ไขภาพ|แก้ไขภาพ|edit\s*(?:this\s*)?image|modify\s*(?:this\s*)?image|change\s*(?:this\s*)?image)/i;
-    const isImageEditRequest = imageEditPattern.test(text);
+    // Detect image reference patterns — image edit OR video-from-image requests
+    // Thai: แก้ไขภาพ, ด้วยรูปนี้, จากภาพนี้, ตามภาพ, รูปอ้างอิง, ภาพอ้างอิง, ภาพ reference
+    // English: edit/modify/change image, with/from/using this image, image ref, image reference, ref image
+    const imageReferencePattern = /(?:แก้ไขภาพนี้|ช่วยแก้ไขภาพ|แก้ไขภาพ|ด้วยรูปนี้|ด้วยภาพนี้|จากรูปนี้|จากภาพนี้|ตามรูปนี้|ตามภาพนี้|ด้วยรูป|ด้วยภาพ|ตามรูป|ตามภาพ|รูปอ้างอิง|ภาพอ้างอิง|ภาพ\s*ref(?:erence)?|รูป\s*ref(?:erence)?|edit\s*(?:this\s*)?image|modify\s*(?:this\s*)?image|change\s*(?:this\s*)?image|with\s+this\s+image|from\s+this\s+image|using\s+this\s+image|based\s+on\s+this\s+image|image\s+ref(?:erence)?|ref(?:erence)?\s+image|img\s+ref(?:erence)?|use\s+(?:the\s+)?(?:above|previous|last)\s+image)/i;
+    const isImageEditRequest = imageReferencePattern.test(text);
 
-    // Find reference image for image-to-image editing
+    // Find reference image for image-to-image or image-to-video generation
     let referenceImageUrl: string | null = null;
     if (isImageEditRequest) {
       // Check user's current attachments first
@@ -1363,12 +1473,16 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
     if (executionMode === "media-generate" && currentSkillId) {
       // media-generate: LLM generates structured prompt+params, then auto-call media API
+      // For video generation: use video-prompt-engineer's richer cinematic system prompt
+      const isVideoGeneration = resolvedSkill?.type === "video-generation";
+      const promptSkillId = isVideoGeneration ? "video-prompt-engineer" : currentSkillId;
+
       const generatedContent = await streamResponse({
         id: userMessage.id,
         role: "user",
         content: typeof content === "string" ? content : textWithLibraryContext,
         createdAt: new Date(userMessage.createdAt),
-      }, currentSkillId);
+      }, promptSkillId);
 
       if (generatedContent) {
         // Parse structured JSON from LLM response
@@ -1385,12 +1499,16 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           const parsed = JSON.parse(jsonContent);
           if (parsed.prompt) {
             mediaPrompt = parsed.prompt;
+            // Image creator format
             if (parsed.aspectRatio) mediaParams.aspectRatio = parsed.aspectRatio;
             if (parsed.style) mediaParams.style = parsed.style;
             if (parsed.numImages) mediaParams.numImages = parsed.numImages;
             if (parsed.quality) mediaParams.quality = parsed.quality;
             if (parsed.model) mediaParams.model = parsed.model;
             if (parsed.duration) mediaParams.duration = parsed.duration;
+            // Video prompt engineer format: params nested under metadata
+            if (parsed.metadata?.aspect_ratio) mediaParams.aspectRatio = parsed.metadata.aspect_ratio;
+            if (parsed.metadata?.duration) mediaParams.duration = parsed.metadata.duration;
           }
         } catch {
           // LLM didn't return valid JSON — use raw text as prompt
@@ -1408,6 +1526,8 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             prompt: mediaPrompt,
             conversationId,
             ...mediaParams,
+            // User-selected model overrides any model in mediaParams
+            ...(selectedMediaModel ? { model: selectedMediaModel } : {}),
             // Pass reference image if this is an image edit request
             ...(referenceImageUrl ? { referenceImageUrls: [referenceImageUrl] } : {}),
           });
@@ -2288,6 +2408,52 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             <span className="text-xs text-muted-foreground">
               ({Math.round(detectedSkill.confidence * 100)}%)
             </span>
+            {detectedSkill.executionMode === "media-generate" && filteredMediaModels.length > 0 && (
+              <Popover open={mediaModelOpen} onOpenChange={setMediaModelOpen}>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-1 rounded-md border border-purple-200 bg-white px-2 py-0.5 text-xs text-purple-700 hover:bg-purple-50 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300">
+                    {filteredMediaModels.find(m => m.id === selectedMediaModel)?.name ?? "Select model"}
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-0" align="start" side="top">
+                  <div className="border-b px-2 py-1.5">
+                    <input
+                      autoFocus
+                      placeholder="Search models..."
+                      className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                      value={mediaModelSearch}
+                      onChange={e => setMediaModelSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="max-h-48 overflow-y-auto p-1">
+                    {filteredMediaModels
+                      .filter(m => m.name.toLowerCase().includes(mediaModelSearch.toLowerCase()))
+                      .map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            setSelectedMediaModel(m.id);
+                            setMediaModelOpen(false);
+                            setMediaModelSearch("");
+                            const storageKey = detectedSkill?.type === "video-generation"
+                              ? "smartspec_lastVideoModel"
+                              : "smartspec_lastImageModel";
+                            localStorage.setItem(storageKey, m.id);
+                          }}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs hover:bg-accent",
+                            selectedMediaModel === m.id && "bg-purple-50 text-purple-700 dark:bg-purple-900/40"
+                          )}
+                        >
+                          <span className="font-medium">{m.name}</span>
+                          <span className="text-muted-foreground">{m.creditCost}cr</span>
+                        </button>
+                      ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
             {detectedSkill.executionMode === "media-generate" && (
               <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 font-medium">
                 <Zap className="h-3 w-3" />
@@ -2372,7 +2538,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   disabled={uploadMutation.isPending || isStreaming}
                   className="shrink-0"
                 >
-                  <ImagePlus className="h-4 w-4" />
+                  <ImagePlus className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -2498,7 +2664,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   disabled={isStreaming}
                   className="shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700 hidden sm:inline-flex"
                 >
-                  <Wand2 className="h-4 w-4" />
+                  <Palette className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -2516,7 +2682,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   disabled={isStreaming}
                   className="shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hidden sm:inline-flex"
                 >
-                  <Video className="h-4 w-4" />
+                  <Video className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -2535,14 +2701,14 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                   className="shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700 hidden sm:inline-flex"
                 >
                   {isEnhancingPrompt ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <Sparkles className="h-4 w-4" />
+                    <Zap className="h-5 w-5" />
                   )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Auto Prompt (PromptDepth Pro)</p>
+                <p>Enhance Image Prompt (AI)</p>
               </TooltipContent>
             </Tooltip>
 
@@ -2580,6 +2746,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
               onClose={() => setShowSlashMenu(false)}
             />
             <Textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => {
                 const val = e.target.value;
@@ -2592,7 +2759,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 }
               }}
               placeholder="Type a message or / for skills..."
-              className="!min-h-0 h-9 max-h-[120px] resize-none !py-2 text-sm"
+              className="!min-h-[36px] max-h-[240px] resize-none !py-2 text-sm overflow-y-auto"
               onKeyDown={(e) => {
                 if (showSlashMenu) return; // Let SlashCommandMenu handle keys
                 if (e.key === "Enter" && !e.shiftKey) {

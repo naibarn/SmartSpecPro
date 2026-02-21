@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/parenting-article-writer/schemas/output.schema.json",
+  "title": "Parenting Article Writer - Output Schema (informative)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "th"
+      ]
+    },
+    "age_range": {
+      "title": "Child age range (optional)",
+      "description": "Optional child age range to tailor the article. If null or omitted, write generally and include brief age notes.",
+      "default": null,
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "unit": {
+              "type": "string",
+              "description": "Age unit for min/max.",
+              "enum": [
+                "months",
+                "years"
+              ],
+              "default": "months"
+            },
+            "min": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Minimum age in the chosen unit.",
+              "default": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maximum age in the chosen unit. Must be >= min.",
+              "default": 24
+            }
+          },
+          "required": [
+            "unit",
+            "min",
+            "max"
+          ]
+        }
+      ]
+    },
+    "response_mode": {
+      "type": "string",
+      "title": "Response mode",
+      "description": "Choose the output mode: a standard human-readable article or a structured JSON object.",
+      "enum": [
+        "standard_article",
+        "json"
+      ],
+      "default": "standard_article"
+    },
+    "show_references": {
+      "type": "string",
+      "title": "Show references",
+      "description": "Whether to include a short references section (non-clickable titles/domains).",
+      "enum": [
+        "yes",
+        "no"
+      ],
+      "default": "no"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "High-level section headings used in the article."
+    },
+    "body": {
+      "description": "If response_mode='standard_article', this is a string. If response_mode='json', this is an object mapping section titles to content.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "disclaimer": {
+      "type": "string"
+    },
+    "references": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Optional references list when show_references='yes'.",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    }
+  },
+  "required": [
+    "title",
+    "language",
+    "body",
+    "disclaimer",
+    "sections"
+  ]
+}

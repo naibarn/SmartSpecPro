@@ -1,0 +1,73 @@
+{
+  "version": "1.0",
+  "skillId": "video-creator",
+  "title": "Video Creator",
+  "titleTh": "สร้างวิดีโอ AI",
+  "description": "Generate short videos from text descriptions",
+  "descriptionTh": "สร้างวิดีโอสั้นจากคำอธิบายข้อความ",
+  "sections": [
+    {
+      "id": "generate",
+      "title": "Generate Video",
+      "titleTh": "สร้างวิดีโอ",
+      "icon": "video",
+      "fields": [
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "Video Description",
+          "labelTh": "คำอธิบายวิดีโอ",
+          "placeholder": "Describe the video scene, action, and atmosphere...",
+          "placeholderTh": "อธิบายฉาก การเคลื่อนไหว และบรรยากาศของวิดีโอ...",
+          "helpText": "Describe the scene, camera movement, action, and mood. Be cinematic and specific.",
+          "helpTextTh": "อธิบายฉาก การเคลื่อนกล้อง การกระทำ และอารมณ์ ให้มีความเป็นภาพยนตร์",
+          "required": true,
+          "rows": 3
+        },
+        {
+          "id": "duration",
+          "type": "slider",
+          "label": "Duration (seconds)",
+          "labelTh": "ความยาว (วินาที)",
+          "helpText": "Video length in seconds",
+          "helpTextTh": "ความยาวของวิดีโอ (วินาที)",
+          "min": 2,
+          "max": 10,
+          "step": 1,
+          "default": 5
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "default": "16:9",
+          "options": [
+            { "value": "16:9", "label": "16:9 (Landscape)", "labelTh": "16:9 (แนวนอน)" },
+            { "value": "9:16", "label": "9:16 (Vertical/TikTok)", "labelTh": "9:16 (แนวตั้ง/TikTok)" },
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" }
+          ]
+        },
+        {
+          "id": "style",
+          "type": "select",
+          "label": "Video Style",
+          "labelTh": "สไตล์วิดีโอ",
+          "default": "cinematic",
+          "options": [
+            { "value": "cinematic", "label": "Cinematic", "labelTh": "ซีเนมาติก" },
+            { "value": "documentary", "label": "Documentary", "labelTh": "สารคดี" },
+            { "value": "animated", "label": "Animated", "labelTh": "แอนิเมชัน" },
+            { "value": "artistic", "label": "Artistic", "labelTh": "ศิลปะ" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "description": "description",
+    "duration": "duration",
+    "aspectRatio": "aspectRatio",
+    "style": "style"
+  }
+}

@@ -352,6 +352,21 @@ app.get("/api/media/image-proxy", async (req, res) => {
   }
 });
 
+// Valid credit source types — must match creditSourceTypeEnum in schema.ts
+const VALID_SOURCE_TYPES = new Set([
+  "chat", "skill", "media_image", "media_video", "media_audio",
+  "indexing", "rag", "stt", "translation", "brainstorm",
+  "scheduler", "admin", "other",
+]);
+
+// Helper: derive sourceType from service tag when not explicitly provided
+function deriveSourceTypeFromService(service: string): string {
+  if (service.startsWith("library.") || service.startsWith("gdrive.index")) return "indexing";
+  if (service.startsWith("rag.")) return "rag";
+  if (service.startsWith("gdrive.mcp")) return "indexing";
+  return "other";
+}
+
 // Internal credit billing endpoint (Python backend -> Node.js)
 app.post("/api/internal/credits/charge", async (req, res) => {
   // Authenticate via gateway token
@@ -365,7 +380,7 @@ app.post("/api/internal/credits/charge", async (req, res) => {
   }
 
   try {
-    const { userId, amount, chunkCount, service, idempotencyKey, metadata } = req.body;
+    const { userId, amount, chunkCount, service, idempotencyKey, metadata, sourceType } = req.body;
     if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
       return res.status(400).json({ success: false, error: "userId must be a positive number" });
     }
@@ -399,6 +414,7 @@ app.post("/api/internal/credits/charge", async (req, res) => {
         amount,
         description: `Service charge (${service})`,
         idempotencyKey,
+        sourceType: (VALID_SOURCE_TYPES.has(sourceType) ? sourceType : null) || deriveSourceTypeFromService(service),
         metadata: { ...metadata, service },
       });
       return res.json({ success: true, creditsUsed: result.creditsUsed, transactionId: result.transactionId });

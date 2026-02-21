@@ -20,7 +20,7 @@ class WorkflowExecution(Base):
     workflow_id = Column(String, nullable=True, index=True)
 
     # Tenant isolation
-    tenant_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     user_id = Column(Integer, nullable=False, index=True)
 
     # Execution state

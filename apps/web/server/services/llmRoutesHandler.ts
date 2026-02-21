@@ -49,6 +49,8 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
         inputTokens,
         outputTokens,
         costUsd,
+        sourceType: "chat",
+        conversationId,
       });
 
       // Append credit info to response
@@ -124,6 +126,8 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
         inputTokens,
         outputTokens,
         costUsd,
+        sourceType: "chat",
+        conversationId,
       });
 
       // Send the response as SSE data

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workflow AI Editor UI Schema",
+  "description": "UI configuration for the Workflow AI Editor skill",
+  "type": "object",
+  "properties": {
+    "instructions": {
+      "type": "string",
+      "title": "Additional Instructions",
+      "description": "Optional: describe specific improvements or changes you want",
+      "ui:widget": "textarea",
+      "ui:placeholder": "e.g. 'Add a form to collect user input' or 'Fix the type mismatch errors'"
+    }
+  }
+}

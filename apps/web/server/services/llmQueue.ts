@@ -138,7 +138,7 @@ export async function addCreditJob(data: CreditJob): Promise<string | null> {
   const startTime = Date.now();
   try {
     const { deductCreditsForModel } = await import('./creditService');
-    await deductCreditsForModel(data);
+    await deductCreditsForModel({ ...data, sourceType: "chat" });
     updateQueueStats(QUEUE_NAMES.CREDITS, 'completed', Date.now() - startTime);
     debugLog('Queue', `Credit deduction processed in-process for user ${data.userId}`);
     return 'sync';

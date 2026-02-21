@@ -14,6 +14,7 @@ import {
   Loader2,
   Music2,
   PlayCircle,
+  Trash2,
   Video,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ interface DocumentGridListProps {
   className?: string;
   onSelect: (item: DocumentLibraryItem) => void;
   onOpen?: (item: DocumentLibraryItem) => void;
+  onDelete?: (item: DocumentLibraryItem) => void;
 }
 
 export default function DocumentGridList({
@@ -35,6 +37,7 @@ export default function DocumentGridList({
   className,
   onSelect,
   onOpen,
+  onDelete,
 }: DocumentGridListProps) {
   function handleCardKeyDown(
     event: KeyboardEvent<HTMLDivElement>,
@@ -191,21 +194,37 @@ export default function DocumentGridList({
 
                     <div className="flex items-start justify-between gap-2 sm:flex-col sm:items-end">
                       <Badge className={statusMeta.className}>{statusMeta.label}</Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 rounded-lg px-3"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          if (onOpen) {
-                            onOpen(item);
-                            return;
-                          }
-                          onSelect(item);
-                        }}
-                      >
-                        Open
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-lg px-3"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (onOpen) {
+                              onOpen(item);
+                              return;
+                            }
+                            onSelect(item);
+                          }}
+                        >
+                          Open
+                        </Button>
+                        {onDelete && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 rounded-lg p-0 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                            title="Move to trash"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onDelete(item);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
 

@@ -16,6 +16,7 @@ import {
   List,
   ListOrdered,
   Loader2,
+  Music2,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -25,6 +26,7 @@ import {
   Save,
   Underline,
   Undo2,
+  Video,
 } from "lucide-react";
 
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
@@ -68,6 +70,12 @@ export default function MarkdownFileEditor({
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [imageSearchQuery, setImageSearchQuery] = useState("");
   const [debouncedImageQuery, setDebouncedImageQuery] = useState("");
+  const [videoPickerOpen, setVideoPickerOpen] = useState(false);
+  const [videoSearchQuery, setVideoSearchQuery] = useState("");
+  const [debouncedVideoQuery, setDebouncedVideoQuery] = useState("");
+  const [audioPickerOpen, setAudioPickerOpen] = useState(false);
+  const [audioSearchQuery, setAudioSearchQuery] = useState("");
+  const [debouncedAudioQuery, setDebouncedAudioQuery] = useState("");
   const [editorCollapsed, setEditorCollapsed] = useState(false);
   const [previewCollapsed, setPreviewCollapsed] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false); // Start in view mode
@@ -79,6 +87,20 @@ export default function MarkdownFileEditor({
     }, 300);
     return () => clearTimeout(timer);
   }, [imageSearchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedVideoQuery(videoSearchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [videoSearchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAudioQuery(audioSearchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [audioSearchQuery]);
 
   const imageSearchInput = useMemo(() => ({
     query: debouncedImageQuery || undefined,
@@ -103,6 +125,53 @@ export default function MarkdownFileEditor({
         thumbnail_url: (item.thumbnail_url ?? item.source_url) as string | null,
       }));
   }, [imageSearchData]);
+
+  const videoSearchInput = useMemo(() => ({
+    query: debouncedVideoQuery || undefined,
+    limit: 50,
+    offset: 0,
+    scope: "all" as const,
+    filters: { itemType: "video" },
+  }), [debouncedVideoQuery]);
+
+  const { data: videoSearchData, isLoading: videoSearchLoading } =
+    trpc.library.listDocuments.useQuery(videoSearchInput, {
+      enabled: videoPickerOpen,
+    });
+
+  const availableVideos = useMemo(() => {
+    return (videoSearchData?.results || [])
+      .filter((item: any) => Boolean(item.source_url))
+      .map((item: any) => ({
+        id: item.id as number,
+        title: item.title as string,
+        source_url: item.source_url as string | null,
+        thumbnail_url: item.thumbnail_url as string | null,
+      }));
+  }, [videoSearchData]);
+
+  const audioSearchInput = useMemo(() => ({
+    query: debouncedAudioQuery || undefined,
+    limit: 50,
+    offset: 0,
+    scope: "all" as const,
+    filters: { itemType: "audio" },
+  }), [debouncedAudioQuery]);
+
+  const { data: audioSearchData, isLoading: audioSearchLoading } =
+    trpc.library.listDocuments.useQuery(audioSearchInput, {
+      enabled: audioPickerOpen,
+    });
+
+  const availableAudios = useMemo(() => {
+    return (audioSearchData?.results || [])
+      .filter((item: any) => Boolean(item.source_url))
+      .map((item: any) => ({
+        id: item.id as number,
+        title: item.title as string,
+        source_url: item.source_url as string | null,
+      }));
+  }, [audioSearchData]);
 
   function wrapSelection(prefix: string, suffix: string, fallbackText: string) {
     if (!editorRef.current) return;
@@ -152,6 +221,23 @@ export default function MarkdownFileEditor({
     const markdown = `![${alt}](${image.source_url})`;
     editorRef.current.insertText(markdown);
     setImagePickerOpen(false);
+  }
+
+  function insertVideoFromLibrary(video: { title: string; source_url: string | null }) {
+    if (!video.source_url || !editorRef.current) return;
+
+    const html = `<video src="${video.source_url}" controls width="100%" style="border-radius:8px;max-width:720px;"></video>`;
+    editorRef.current.insertText(html);
+    setVideoPickerOpen(false);
+  }
+
+  function insertAudioFromLibrary(audio: { title: string; source_url: string | null }) {
+    if (!audio.source_url || !editorRef.current) return;
+
+    const title = audio.title.trim() || "Audio";
+    const html = `**${title}**\n<audio src="${audio.source_url}" controls style="width:100%;"></audio>`;
+    editorRef.current.insertText(html);
+    setAudioPickerOpen(false);
   }
 
   function handleUndo() {
@@ -351,6 +437,96 @@ export default function MarkdownFileEditor({
                   </div>
                 </PopoverContent>
               </Popover>
+              <Popover open={videoPickerOpen} onOpenChange={(open) => { setVideoPickerOpen(open); if (!open) setVideoSearchQuery(""); }}>
+                <PopoverTrigger asChild>
+                  <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Insert video from library">
+                    <Video className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[480px] p-2" align="start">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Search videos in library..."
+                      value={videoSearchQuery}
+                      onChange={(event) => setVideoSearchQuery(event.target.value)}
+                    />
+                    <ScrollArea className="h-[280px] rounded-md border">
+                      {videoSearchLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : availableVideos.length ? (
+                        <div className="space-y-1 p-2">
+                          {availableVideos.map((video) => (
+                            <button
+                              key={video.id}
+                              type="button"
+                              className="flex w-full items-center gap-3 rounded-lg border bg-white p-2 text-left transition-all hover:border-primary hover:shadow-sm"
+                              onClick={() => insertVideoFromLibrary(video)}
+                            >
+                              {video.thumbnail_url ? (
+                                <img src={video.thumbnail_url} alt={video.title} className="h-12 w-20 shrink-0 rounded object-cover" loading="lazy" />
+                              ) : (
+                                <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded bg-slate-100">
+                                  <Video className="h-6 w-6 text-slate-400" />
+                                </div>
+                              )}
+                              <span className="truncate text-sm font-medium text-slate-700">{video.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-2 py-8 text-center text-sm text-muted-foreground">
+                          {videoSearchQuery ? "No videos found matching your search." : "No videos in library."}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Popover open={audioPickerOpen} onOpenChange={(open) => { setAudioPickerOpen(open); if (!open) setAudioSearchQuery(""); }}>
+                <PopoverTrigger asChild>
+                  <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Insert audio from library">
+                    <Music2 className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-2" align="start">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Search audio in library..."
+                      value={audioSearchQuery}
+                      onChange={(event) => setAudioSearchQuery(event.target.value)}
+                    />
+                    <ScrollArea className="h-[280px] rounded-md border">
+                      {audioSearchLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : availableAudios.length ? (
+                        <div className="space-y-1 p-2">
+                          {availableAudios.map((audio) => (
+                            <button
+                              key={audio.id}
+                              type="button"
+                              className="flex w-full items-center gap-3 rounded-lg border bg-white p-2 text-left transition-all hover:border-primary hover:shadow-sm"
+                              onClick={() => insertAudioFromLibrary(audio)}
+                            >
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                                <Music2 className="h-5 w-5 text-slate-500" />
+                              </div>
+                              <span className="truncate text-sm font-medium text-slate-700">{audio.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-2 py-8 text-center text-sm text-muted-foreground">
+                          {audioSearchQuery ? "No audio found matching your search." : "No audio files in library."}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Bulleted list" onClick={() => prefixLines("- ", "list item")}><List className="h-5 w-5" /></Button>
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Numbered list" onClick={() => prefixLines("1. ", "list item")}><ListOrdered className="h-5 w-5" /></Button>
               <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Quote" onClick={() => prefixLines("> ", "quote")}><Quote className="h-5 w-5" /></Button>
@@ -403,11 +579,11 @@ export default function MarkdownFileEditor({
                 Edit
               </Button>
             </div>
-            <ScrollArea className={`${editorMinHeightClass} pr-4`}>
+            <div className="pr-4">
               <SafeMarkdown className="md-preview prose max-w-none">
                 {value || "_Empty markdown file_"}
               </SafeMarkdown>
-            </ScrollArea>
+            </div>
           </div>
         )}
       </div>
@@ -519,6 +695,96 @@ export default function MarkdownFileEditor({
                   ) : (
                     <div className="px-2 py-8 text-center text-sm text-muted-foreground">
                       {imageSearchQuery ? "No images found matching your search." : "No images in library."}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Popover open={videoPickerOpen} onOpenChange={(open) => { setVideoPickerOpen(open); if (!open) setVideoSearchQuery(""); }}>
+            <PopoverTrigger asChild>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Insert video from library">
+                <Video className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[480px] p-2" align="start">
+              <div className="space-y-2">
+                <Input
+                  placeholder="Search videos in library..."
+                  value={videoSearchQuery}
+                  onChange={(event) => setVideoSearchQuery(event.target.value)}
+                />
+                <ScrollArea className="h-[280px] rounded-md border">
+                  {videoSearchLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : availableVideos.length ? (
+                    <div className="space-y-1 p-2">
+                      {availableVideos.map((video) => (
+                        <button
+                          key={video.id}
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-lg border bg-white p-2 text-left transition-all hover:border-primary hover:shadow-sm"
+                          onClick={() => insertVideoFromLibrary(video)}
+                        >
+                          {video.thumbnail_url ? (
+                            <img src={video.thumbnail_url} alt={video.title} className="h-12 w-20 shrink-0 rounded object-cover" loading="lazy" />
+                          ) : (
+                            <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded bg-slate-100">
+                              <Video className="h-6 w-6 text-slate-400" />
+                            </div>
+                          )}
+                          <span className="truncate text-sm font-medium text-slate-700">{video.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-2 py-8 text-center text-sm text-muted-foreground">
+                      {videoSearchQuery ? "No videos found matching your search." : "No videos in library."}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Popover open={audioPickerOpen} onOpenChange={(open) => { setAudioPickerOpen(open); if (!open) setAudioSearchQuery(""); }}>
+            <PopoverTrigger asChild>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10" title="Insert audio from library">
+                <Music2 className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-2" align="start">
+              <div className="space-y-2">
+                <Input
+                  placeholder="Search audio in library..."
+                  value={audioSearchQuery}
+                  onChange={(event) => setAudioSearchQuery(event.target.value)}
+                />
+                <ScrollArea className="h-[280px] rounded-md border">
+                  {audioSearchLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : availableAudios.length ? (
+                    <div className="space-y-1 p-2">
+                      {availableAudios.map((audio) => (
+                        <button
+                          key={audio.id}
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-lg border bg-white p-2 text-left transition-all hover:border-primary hover:shadow-sm"
+                          onClick={() => insertAudioFromLibrary(audio)}
+                        >
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                            <Music2 className="h-5 w-5 text-slate-500" />
+                          </div>
+                          <span className="truncate text-sm font-medium text-slate-700">{audio.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-2 py-8 text-center text-sm text-muted-foreground">
+                      {audioSearchQuery ? "No audio found matching your search." : "No audio files in library."}
                     </div>
                   )}
                 </ScrollArea>

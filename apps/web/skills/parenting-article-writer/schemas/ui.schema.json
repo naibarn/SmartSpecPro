@@ -1,0 +1,206 @@
+{
+  "version": "1.0",
+  "skillId": "parenting-article-writer",
+  "title": "Parenting Article Writer",
+  "titleTh": "ผู้เขียนบทความเลี้ยงลูก",
+  "description": "Write structured, practical parenting articles with medical safety guidance",
+  "descriptionTh": "เขียนบทความเลี้ยงลูกที่มีโครงสร้าง ปฏิบัติได้จริง พร้อมข้อมูลความปลอดภัยทางการแพทย์",
+  "sections": [
+    {
+      "id": "article",
+      "title": "Article",
+      "titleTh": "บทความ",
+      "icon": "file-text",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Topic",
+          "labelTh": "หัวข้อ",
+          "placeholder": "e.g., Newborn sleep routines, How to handle diaper rash, Baby feeding schedule",
+          "placeholderTh": "เช่น การนอนหลับของทารกแรกเกิด, วิธีรับมือผื่นผ้าอ้อม, ตารางให้นมทารก",
+          "helpText": "What should the article be about?",
+          "helpTextTh": "บทความเกี่ยวกับอะไร?",
+          "required": true,
+          "rows": 2
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Article output language (entire article including headings)",
+          "helpTextTh": "ภาษาที่ใช้เขียนบทความ (รวมหัวข้อทั้งหมด)",
+          "required": true,
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "age_range",
+      "title": "Age Range (Optional)",
+      "titleTh": "ช่วงอายุ (ไม่บังคับ)",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "age_unit",
+          "type": "select",
+          "label": "Age Unit",
+          "labelTh": "หน่วยอายุ",
+          "helpText": "Select to target a specific age group, or leave blank for general advice",
+          "helpTextTh": "เลือกเพื่อกำหนดกลุ่มอายุ หรือปล่อยว่างไว้สำหรับคำแนะนำทั่วไป",
+          "default": "",
+          "options": [
+            { "value": "", "label": "No age targeting (general)", "labelTh": "ไม่กำหนดอายุ (ทั่วไป)" },
+            { "value": "months", "label": "Months", "labelTh": "เดือน" },
+            { "value": "years", "label": "Years", "labelTh": "ปี" }
+          ]
+        },
+        {
+          "id": "age_min",
+          "type": "number",
+          "label": "Minimum Age",
+          "labelTh": "อายุต่ำสุด",
+          "helpText": "Minimum child age (in selected unit)",
+          "helpTextTh": "อายุต่ำสุดของเด็ก (ตามหน่วยที่เลือก)",
+          "min": 0,
+          "default": 0,
+          "dependsOn": { "field": "age_unit", "notEmpty": true }
+        },
+        {
+          "id": "age_max",
+          "type": "number",
+          "label": "Maximum Age",
+          "labelTh": "อายุสูงสุด",
+          "helpText": "Maximum child age (in selected unit)",
+          "helpTextTh": "อายุสูงสุดของเด็ก (ตามหน่วยที่เลือก)",
+          "min": 0,
+          "default": 12,
+          "dependsOn": { "field": "age_unit", "notEmpty": true }
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Article Style",
+      "titleTh": "สไตล์บทความ",
+      "icon": "wand2",
+      "fields": [
+        {
+          "id": "article_style",
+          "type": "select",
+          "label": "Writing Style",
+          "labelTh": "สไตล์การเขียน",
+          "helpText": "How the article should be structured",
+          "helpTextTh": "โครงสร้างของบทความ",
+          "required": true,
+          "default": "how_to_guide",
+          "options": [
+            { "value": "how_to_guide", "label": "How-to Guide", "labelTh": "คู่มือขั้นตอน" },
+            { "value": "faq", "label": "FAQ (Q&A Format)", "labelTh": "ถาม-ตอบ (FAQ)" },
+            { "value": "checklist", "label": "Checklist", "labelTh": "รายการตรวจสอบ" },
+            { "value": "myth_busting", "label": "Myth Busting", "labelTh": "หักล้างความเข้าใจผิด" },
+            { "value": "development_overview", "label": "Development Overview", "labelTh": "ภาพรวมพัฒนาการ" },
+            { "value": "illness_care_overview", "label": "Illness Care Overview", "labelTh": "ภาพรวมการดูแลเมื่อเจ็บป่วย" }
+          ]
+        },
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Article Length",
+          "labelTh": "ความยาวบทความ",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (~400 words)", "labelTh": "สั้น (~400 คำ)" },
+            { "value": "medium", "label": "Medium (~700 words)", "labelTh": "กลาง (~700 คำ)" },
+            { "value": "long", "label": "Long (~1,200 words)", "labelTh": "ยาว (~1,200 คำ)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content_options",
+      "title": "Content Options",
+      "titleTh": "ตัวเลือกเนื้อหา",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "include_checklist",
+          "type": "boolean",
+          "label": "Include Checklist Section",
+          "labelTh": "เพิ่มส่วนรายการตรวจสอบ",
+          "helpText": "Add a practical checklist at the end",
+          "helpTextTh": "เพิ่มรายการตรวจสอบที่ปฏิบัติได้ตอนท้าย",
+          "default": true
+        },
+        {
+          "id": "include_red_flags",
+          "type": "boolean",
+          "label": "Include Red Flags / When to Seek Care",
+          "labelTh": "เพิ่มส่วนสัญญาณเตือน / เมื่อใดควรพบแพทย์",
+          "helpText": "Strongly recommended for health-related topics",
+          "helpTextTh": "แนะนำอย่างยิ่งสำหรับหัวข้อที่เกี่ยวกับสุขภาพ",
+          "default": true
+        },
+        {
+          "id": "show_references",
+          "type": "select",
+          "label": "Show References",
+          "labelTh": "แสดงแหล่งอ้างอิง",
+          "helpText": "Append a brief non-clickable references section",
+          "helpTextTh": "เพิ่มส่วนแหล่งอ้างอิงสั้นๆ ที่ท้ายบทความ",
+          "default": "no",
+          "options": [
+            { "value": "no", "label": "No", "labelTh": "ไม่แสดง" },
+            { "value": "yes", "label": "Yes", "labelTh": "แสดง" }
+          ]
+        },
+        {
+          "id": "output_format",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "helpText": "Format for standard article mode",
+          "helpTextTh": "รูปแบบสำหรับโหมดบทความปกติ",
+          "default": "markdown",
+          "options": [
+            { "value": "markdown", "label": "Markdown", "labelTh": "Markdown" },
+            { "value": "plain_text", "label": "Plain Text", "labelTh": "ข้อความธรรมดา" }
+          ]
+        },
+        {
+          "id": "response_mode",
+          "type": "select",
+          "label": "Response Mode",
+          "labelTh": "โหมดตอบกลับ",
+          "helpText": "Standard human-readable article or structured JSON object",
+          "helpTextTh": "บทความปกติที่อ่านได้ หรือ JSON โครงสร้างที่เป็นระเบียบ",
+          "default": "standard_article",
+          "options": [
+            { "value": "standard_article", "label": "Standard Article", "labelTh": "บทความปกติ" },
+            { "value": "json", "label": "JSON Output", "labelTh": "ผลลัพธ์แบบ JSON" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "language": "language",
+    "age_unit": "age_unit",
+    "age_min": "age_min",
+    "age_max": "age_max",
+    "article_style": "article_style",
+    "length": "length",
+    "include_checklist": "include_checklist",
+    "include_red_flags": "include_red_flags",
+    "show_references": "show_references",
+    "output_format": "output_format",
+    "response_mode": "response_mode"
+  }
+}

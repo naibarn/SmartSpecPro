@@ -9,12 +9,41 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { db } from "../db";
-import { workflows, workflowTemplates, templateCategories } from "@db/schema";
-import { eq, and, desc, sql, count, asc, type SQL } from "drizzle-orm";
+import { workflows, workflowTemplates, templateCategories, workflowVersions } from "@db/schema";
+import { eq, and, desc, sql, count, asc, max, inArray, type SQL } from "drizzle-orm";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
+import { createHash } from "crypto";
 
 // Python backend URL from environment (default to localhost:8000)
 const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+
+// Loose but structural Zod schemas for workflow nodes/edges.
+// Enforce minimum shape to prevent prototype pollution and unbounded payloads
+// while remaining compatible with ReactFlow's flexible node/edge format.
+const workflowNodeSchema = z
+  .object({
+    id: z.string().max(256),
+    type: z.string().max(64).optional(),
+    data: z.record(z.unknown()).optional(),
+    position: z
+      .object({ x: z.number(), y: z.number() })
+      .optional(),
+  })
+  .passthrough();
+
+const workflowEdgeSchema = z
+  .object({
+    id: z.string().max(256),
+    source: z.string().max(256),
+    target: z.string().max(256),
+  })
+  .passthrough();
+
+const workflowJsonSchema = z.object({
+  nodes: z.array(workflowNodeSchema).max(500),
+  edges: z.array(workflowEdgeSchema).max(2000),
+  viewport: z.record(z.unknown()).optional(),
+});
 
 function workflowOwnershipConditions(
   workflowId: number,
@@ -55,6 +84,65 @@ async function fetchPythonBackend(
 }
 
 /**
+ * Create a workflow version snapshot.
+ * Skips if content is identical to the latest version (SHA-256 dedup).
+ * Prunes to max 50 versions per workflow.
+ */
+async function _createWorkflowVersion(params: {
+  workflowId: number;
+  tenantId: string | null;
+  userId: number;
+  name: string;
+  description: string | null;
+  defaultModel: string | null;
+  workflowJson: object;
+  changeDescription?: string | null;
+}) {
+  const contentHash = createHash("sha256")
+    .update(JSON.stringify(params.workflowJson))
+    .digest("hex");
+
+  // Deduplication: skip if content unchanged
+  const [latest] = await db
+    .select({ contentHash: workflowVersions.contentHash })
+    .from(workflowVersions)
+    .where(eq(workflowVersions.workflowId, params.workflowId))
+    .orderBy(desc(workflowVersions.createdAt))
+    .limit(1);
+  if (latest?.contentHash === contentHash) return;
+
+  const maxResult = await db
+    .select({ maxVer: max(workflowVersions.versionNumber) })
+    .from(workflowVersions)
+    .where(eq(workflowVersions.workflowId, params.workflowId));
+  const nextVersionNumber = ((maxResult[0]?.maxVer as number | null) ?? 0) + 1;
+
+  await db.insert(workflowVersions).values({
+    workflowId: params.workflowId,
+    tenantId: params.tenantId,
+    versionNumber: nextVersionNumber,
+    workflowJson: params.workflowJson as any,
+    name: params.name,
+    description: params.description,
+    defaultModel: params.defaultModel,
+    contentHash,
+    changeDescription: params.changeDescription ?? null,
+    createdByUserId: params.userId,
+  });
+
+  // Prune: keep only latest 50 versions per workflow (single SQL DELETE, no memory load)
+  await db.instance.execute(sql`
+    DELETE FROM workflow_versions
+    WHERE id IN (
+      SELECT id FROM workflow_versions
+      WHERE "workflowId" = ${params.workflowId}
+      ORDER BY "createdAt" DESC
+      OFFSET 50
+    )
+  `);
+}
+
+/**
  * tRPC Router for Workflow operations
  */
 export const workflowRouter = router({
@@ -70,10 +158,12 @@ export const workflowRouter = router({
         name: z.string().min(1, "Workflow name is required"),
         description: z.string().optional(),
         defaultModel: z.string().optional(),
-        workflowJson: z.object({
-          nodes: z.array(z.any()),
-          edges: z.array(z.any()),
-        }),
+        workflowJson: workflowJsonSchema,
+        changeDescription: z
+          .string()
+          .max(500)
+          .transform((s) => s.replace(/[\r\n\0]/g, " ").trim())
+          .optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -104,6 +194,18 @@ export const workflowRouter = router({
             });
           }
 
+          // Auto-create version snapshot
+          await _createWorkflowVersion({
+            workflowId: updated.id as number,
+            tenantId,
+            userId,
+            name: input.name,
+            description: input.description ?? null,
+            defaultModel: input.defaultModel ?? null,
+            workflowJson: input.workflowJson,
+            changeDescription: input.changeDescription ?? null,
+          });
+
           console.log("[Workflow] Updated workflow", {
             workflowId: updated.id,
             userId,
@@ -125,6 +227,18 @@ export const workflowRouter = router({
               schemaVersion: "1.0.0",
             })
             .returning();
+
+          // Auto-create initial version snapshot
+          await _createWorkflowVersion({
+            workflowId: created.id as number,
+            tenantId,
+            userId,
+            name: input.name,
+            description: input.description ?? null,
+            defaultModel: input.defaultModel ?? null,
+            workflowJson: input.workflowJson,
+            changeDescription: input.changeDescription ?? null,
+          });
 
           console.log("[Workflow] Created workflow", {
             workflowId: created.id,
@@ -297,10 +411,7 @@ export const workflowRouter = router({
   estimateCost: protectedProcedure
     .input(
       z.object({
-        workflowJson: z.object({
-          nodes: z.array(z.any()),
-          edges: z.array(z.any()),
-        }),
+        workflowJson: workflowJsonSchema,
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -521,6 +632,113 @@ export const workflowRouter = router({
     }),
 
   /**
+   * Submit async workflow AI editing to the task queue.
+   * Takes existing workflow JSON + errors/warnings + instructions.
+   * Returns a taskId immediately — frontend polls autoEditStatus for result.
+   */
+  autoEdit: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "workflow-edit", limit: 10, windowMs: 60_000 }))
+    .input(
+      z.object({
+        currentWorkflow: z.record(z.any()),
+        errors: z.array(z.string()).max(50).optional().default([]),
+        warnings: z.array(z.string()).max(50).optional().default([]),
+        instructions: z.string().max(5000).optional().default(""),
+        nodeTypes: z.array(z.record(z.any())).max(100).optional(),
+        modelId: z.string().max(100).optional(),
+        defaultModel: z.string().max(100).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const response = await fetchPythonBackend(
+          "/api/v1/workflows/edit",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              current_workflow: input.currentWorkflow,
+              errors: input.errors ?? [],
+              warnings: input.warnings ?? [],
+              instructions: input.instructions ?? "",
+              node_types: input.nodeTypes ?? [],
+              model_id: input.modelId ?? null,
+              default_model: input.defaultModel ?? input.modelId ?? null,
+            }),
+          },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({
+            detail: `HTTP ${response.status}: ${response.statusText}`,
+          }));
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: err.detail || "Workflow editing failed",
+          });
+        }
+
+        const data = await response.json();
+        console.log("[Workflow] Auto-edit submitted to queue", {
+          userId: ctx.user.id,
+          taskId: data.task_id,
+        });
+        return { taskId: data.task_id as string };
+      } catch (error: any) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to submit workflow editing",
+        });
+      }
+    }),
+
+  /**
+   * Poll async workflow AI editing status.
+   * Returns status + fixed workflow result when completed.
+   */
+  autoEditStatus: protectedProcedure
+    .input(z.object({ taskId: z.string().regex(/^wfedit-[a-f0-9]{12}$/) }))
+    .query(async ({ input, ctx }) => {
+      try {
+        const response = await fetchPythonBackend(
+          `/api/v1/workflows/edit/status/${encodeURIComponent(input.taskId)}`,
+          { method: "GET" },
+          ctx.userToken
+        );
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            return { status: "not_found" as const, error: "Task not found or expired" };
+          }
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Failed to check edit status",
+          });
+        }
+
+        const data = await response.json();
+        return data as {
+          status: "queued" | "processing" | "completed" | "failed";
+          message?: string;
+          error?: string;
+          nodes?: unknown[];
+          edges?: unknown[];
+          description?: string;
+          changes?: string[];
+          validationError?: string;
+          hint?: string;
+        };
+      } catch (error: any) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to check edit status",
+        });
+      }
+    }),
+
+  /**
    * List user's workflow executions
    *
    * Returns paginated list of workflow execution history with filters.
@@ -582,16 +800,24 @@ export const workflowRouter = router({
         workflowJson: z.object({
           nodes: z.array(z.any()),
           edges: z.array(z.any()),
+          _compiledMetadata: z.record(z.unknown()).optional(),
         }),
+        inputData: z.record(z.unknown()).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
         const response = await fetchPythonBackend(
           "/api/v1/workflows/execute",
           {
             method: "POST",
-            body: JSON.stringify({ workflowJson: input.workflowJson }),
+            body: JSON.stringify({
+              workflowJson: input.workflowJson,
+              workflow_id: input.id ?? null,
+              tenant_id: tenantId,
+              input_data: input.inputData ?? null,
+            }),
           },
           ctx.userToken
         );
@@ -1268,5 +1494,151 @@ export const workflowRouter = router({
           message: "Failed to use template",
         });
       }
+    }),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Workflow Version History
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * List version metadata for a workflow (no full JSON — fast).
+   * Includes server-computed nodeCount and edgeCount via SQL.
+   * Returns items + total count for pagination.
+   */
+  listVersions: protectedProcedure
+    .input(
+      z.object({
+        workflowId: z.number().int().positive(),
+        limit: z.number().int().min(1).max(100).default(50),
+        offset: z.number().int().min(0).default(0),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
+
+      // Verify ownership with tenantId for multi-tenant isolation
+      const ownershipConditions = workflowOwnershipConditions(input.workflowId, userId, tenantId);
+      const [wf] = await db
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(and(...ownershipConditions))
+        .limit(1);
+      if (!wf) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow not found" });
+
+      const [items, [{ total }]] = await Promise.all([
+        db
+          .select({
+            id: workflowVersions.id,
+            versionNumber: workflowVersions.versionNumber,
+            name: workflowVersions.name,
+            changeDescription: workflowVersions.changeDescription,
+            nodeCount: sql<number>`jsonb_array_length((workflow_versions."workflowJson"::jsonb->'nodes'))`,
+            edgeCount: sql<number>`jsonb_array_length((workflow_versions."workflowJson"::jsonb->'edges'))`,
+            createdAt: workflowVersions.createdAt,
+          })
+          .from(workflowVersions)
+          .where(eq(workflowVersions.workflowId, input.workflowId))
+          .orderBy(desc(workflowVersions.createdAt))
+          .limit(input.limit)
+          .offset(input.offset),
+        db
+          .select({ total: count() })
+          .from(workflowVersions)
+          .where(eq(workflowVersions.workflowId, input.workflowId)),
+      ]);
+
+      return { items, total };
+    }),
+
+  /**
+   * Get full version content (workflowJson) for preview or restore.
+   * Checks ownership BEFORE fetching version content (ownership-then-fetch pattern).
+   */
+  getVersion: protectedProcedure
+    .input(z.object({ versionId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
+
+      // Fetch version to learn its workflowId, then verify ownership with tenantId
+      const [version] = await db
+        .select()
+        .from(workflowVersions)
+        .where(eq(workflowVersions.id, input.versionId))
+        .limit(1);
+      if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "Version not found" });
+
+      // Ownership check with tenantId for multi-tenant isolation
+      const ownershipConditions = workflowOwnershipConditions(version.workflowId, userId, tenantId);
+      const [wf] = await db
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(and(...ownershipConditions))
+        .limit(1);
+      if (!wf) throw new TRPCError({ code: "NOT_FOUND", message: "Version not found" });
+
+      return version;
+    }),
+
+  /**
+   * Restore a previous version.
+   * Auto-saves current state first, then overwrites workflow with the snapshot.
+   */
+  restoreVersion: protectedProcedure
+    .input(z.object({ versionId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
+
+      // Fetch version first, then verify ownership with tenantId
+      const [version] = await db
+        .select()
+        .from(workflowVersions)
+        .where(eq(workflowVersions.id, input.versionId))
+        .limit(1);
+      if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "Version not found" });
+
+      // Ownership check with tenantId for multi-tenant isolation
+      const ownershipConditions = workflowOwnershipConditions(version.workflowId, userId, tenantId);
+      const [wf] = await db
+        .select()
+        .from(workflows)
+        .where(and(...ownershipConditions))
+        .limit(1);
+      if (!wf) throw new TRPCError({ code: "NOT_FOUND", message: "Version not found" });
+
+      // Snapshot current state BEFORE overwriting
+      await _createWorkflowVersion({
+        workflowId: wf.id,
+        tenantId,
+        userId,
+        name: wf.name,
+        description: wf.description,
+        defaultModel: wf.defaultModel,
+        workflowJson: wf.workflowJson as object,
+        changeDescription: `Auto-saved before restoring version ${version.versionNumber}`,
+      });
+
+      // Restore: overwrite workflow with version snapshot
+      await db
+        .update(workflows)
+        .set({
+          workflowJson: version.workflowJson,
+          name: version.name,
+          description: version.description,
+          defaultModel: version.defaultModel,
+          status: "draft",
+          updatedAt: new Date(),
+        })
+        .where(eq(workflows.id, wf.id));
+
+      console.log("[Workflow] Restored version", {
+        workflowId: wf.id,
+        versionNumber: version.versionNumber,
+        userId,
+      });
+
+      return { workflowId: wf.id, restoredVersionNumber: version.versionNumber };
     }),
 });

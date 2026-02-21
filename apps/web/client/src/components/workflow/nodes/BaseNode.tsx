@@ -11,6 +11,8 @@ import type { NodeProps } from "reactflow";
 import { useNodeRegistry } from "@/lib/workflow/useNodeRegistry";
 import { dataTypeColorMap, nodeColorMap } from "@/lib/workflow/colorMap";
 import * as LucideIcons from "lucide-react";
+import { useExecutionStore } from "@/stores/executionStore";
+import { ExecutionOverlay } from "../execution/ExecutionOverlay";
 
 export interface WorkflowNodeData {
   nodeType: string;
@@ -21,9 +23,11 @@ export interface WorkflowNodeData {
 /**
  * BaseNode component for all workflow nodes.
  */
-export function BaseNode({ data, selected }: NodeProps<WorkflowNodeData>) {
+export function BaseNode({ id, data, selected }: NodeProps<WorkflowNodeData>) {
   const { getNodeType } = useNodeRegistry();
   const nodeTypeDef = getNodeType(data.nodeType);
+  const { getNodeStatus } = useExecutionStore();
+  const nodeStatus = getNodeStatus(id);
 
   if (!nodeTypeDef) {
     return (
@@ -55,6 +59,20 @@ export function BaseNode({ data, selected }: NodeProps<WorkflowNodeData>) {
         shadow-md hover:shadow-lg transition-shadow
       `}
     >
+      {/* Invisible fallback handles for template-seeded edges that use generic "input"/"output" IDs */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="input"
+        style={{ opacity: 0, pointerEvents: "none", width: 1, height: 1, top: "50%" }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="output"
+        style={{ opacity: 0, pointerEvents: "none", width: 1, height: 1, top: "50%" }}
+      />
+
       {/* Input Handles (left side) */}
       {nodeTypeDef.inputs
         .filter((input) => input.accepts_connection)
@@ -132,6 +150,9 @@ export function BaseNode({ data, selected }: NodeProps<WorkflowNodeData>) {
           />
         </div>
       )}
+
+      {/* Execution Status Overlay */}
+      <ExecutionOverlay nodeId={id} status={nodeStatus} />
     </div>
   );
 }

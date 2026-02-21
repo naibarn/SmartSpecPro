@@ -8,12 +8,13 @@ version: "1.0.0"
 author: SmartSpec
 isAutoTrigger: true
 enabledByDefault: true
-priority: 80
+priority: 95
 creditMultiplier: 1.0
 defaultModel: gpt-4o-image
 triggerPatterns:
   - "สร้างภาพ|สร้างรูป|สร้างรูปภาพ|สร้างภาพถ่าย|ทำภาพ|วาดภาพ|วาดรูป"
-  - "generate\\s+(an?\\s+)?image|create\\s+(an?\\s+)?image|make\\s+(an?\\s+)?image|generate\\s+(an?\\s+)?picture|create\\s+(an?\\s+)?picture|make\\s+(an?\\s+)?picture|draw\\s+(an?\\s+)?image"
+  - "generate image|generate an image|generate a image|create image|create an image|create a image"
+  - "make image|make an image|make a image|generate picture|create picture|make picture|draw image|draw a image|draw an image"
   - "gen image|img gen|create photo|generate photo"
 tags:
   - image

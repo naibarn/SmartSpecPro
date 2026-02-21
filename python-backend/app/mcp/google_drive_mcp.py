@@ -215,6 +215,7 @@ async def read_drive_file(
                 service="gdrive.mcp_read",
                 idempotency_key=idempotency_key,
                 metadata={"file_id": file_id, "char_count": char_count},
+                source_type="indexing",
             )
 
         return {
@@ -298,6 +299,7 @@ async def read_sheet_data(
                 service="gdrive.mcp_sheet",
                 idempotency_key=idempotency_key,
                 metadata={"file_id": file_id, "total_cells": total_cells},
+                source_type="indexing",
             )
 
         return {

@@ -1,0 +1,4 @@
+display_name: Parenting Article Writer
+short_description: Generate practical parenting articles (EN/TH), with optional age targeting and JSON output mode.
+default_prompt: >
+  Write a parenting article using this skill. Ask for a topic, language (en/th), and optional age range if missing.

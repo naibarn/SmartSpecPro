@@ -391,10 +391,14 @@ export function AutoCreateWorkflowModal({
           </div>
 
           {/* Generation status */}
-          {isGenerating && (
+          {(isGenerating || phase === "done") && (
             <div className="border border-purple-200 dark:border-purple-700 rounded-lg bg-purple-50 dark:bg-purple-900/20 p-4">
               <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-purple-500 shrink-0" />
+                {isGenerating ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-purple-500 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
                     {PHASE_LABELS[phase]}

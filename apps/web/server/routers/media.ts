@@ -27,7 +27,7 @@ import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
 import { mediaModels } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
@@ -133,19 +133,49 @@ const voiceSchema = z.enum([
 // ==================== Router ====================
 
 export const mediaRouter = router({
-  // Get available models
+  // Get available models (from DB, falls back to hardcoded registry)
   getModels: protectedProcedure
     .input(
       z.object({
         type: mediaTypeSchema.optional(),
       }).optional()
     )
-    .query(({ input }) => {
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (db) {
+        const conditions = [eq(mediaModels.isEnabled, true)];
+        if (input?.type) {
+          conditions.push(eq(mediaModels.modelType, input.type as "image" | "video" | "audio"));
+        }
+        const rows = await db
+          .select({
+            id: mediaModels.modelId,
+            name: mediaModels.name,
+            description: mediaModels.description,
+            type: mediaModels.modelType,
+            provider: mediaModels.provider,
+            creditCost: mediaModels.creditCost,
+            supportsAspectRatios: mediaModels.aspectRatios,
+            supportsSizes: mediaModels.sizes,
+            supportsDurations: mediaModels.durations,
+          })
+          .from(mediaModels)
+          .where(and(...conditions))
+          .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id));
+
+        // Derive defaults: first model per type in sorted order
+        const defaultImage = rows.find(m => m.type === "image")?.id ?? DEFAULT_MODELS.image;
+        const defaultVideo = rows.find(m => m.type === "video")?.id ?? DEFAULT_MODELS.video;
+        const defaultAudio = rows.find(m => m.type === "audio")?.id ?? DEFAULT_MODELS.audio;
+
+        return {
+          models: rows,
+          defaults: { image: defaultImage, video: defaultVideo, audio: defaultAudio },
+        };
+      }
+      // Fallback to hardcoded registry if DB unavailable
       const models = mediaGenerationService.getModels(input?.type);
-      return {
-        models,
-        defaults: DEFAULT_MODELS,
-      };
+      return { models, defaults: DEFAULT_MODELS };
     }),
 
   // Get single model details
@@ -238,6 +268,7 @@ export const mediaRouter = router({
           userId: ctx.user.id,
           amount: result.creditsUsed || creditCost,
           description: `Image generation: ${model}`,
+          sourceType: "media_image",
           metadata: {
             model,
             provider: modelMeta.provider,
@@ -325,6 +356,7 @@ export const mediaRouter = router({
           userId: ctx.user.id,
           amount: result.creditsUsed || creditCost,
           description: `Video generation: ${model}`,
+          sourceType: "media_video",
           metadata: {
             model,
             provider: modelMeta.provider,
@@ -405,6 +437,7 @@ export const mediaRouter = router({
           userId: ctx.user.id,
           amount: result.creditsUsed || creditCost,
           description: `Audio generation: ${model}`,
+          sourceType: "media_audio",
           metadata: {
             model,
             provider: modelMeta.provider,
@@ -480,6 +513,7 @@ export const mediaRouter = router({
         userId: ctx.user.id,
         amount: creditCost,
         description: `Async image generation: ${model} (reserved)`,
+        sourceType: "media_image",
         metadata: {
           model,
           provider: modelMeta.provider,
@@ -514,6 +548,7 @@ export const mediaRouter = router({
             userId: ctx.user.id,
             amount: creditCost,
             description: `Refund: Image generation failed (${model})`,
+            sourceType: "media_image",
             metadata: {
               model,
               prompt: input.prompt.slice(0, 100),
@@ -587,6 +622,7 @@ export const mediaRouter = router({
         userId: ctx.user.id,
         amount: creditCost,
         description: `Async video generation: ${model} ${duration}s (reserved)`,
+        sourceType: "media_video",
         metadata: {
           model,
           provider: modelMeta.provider,
@@ -621,6 +657,7 @@ export const mediaRouter = router({
             userId: ctx.user.id,
             amount: creditCost,
             description: `Refund: Video generation failed (${model})`,
+            sourceType: "media_video",
             metadata: {
               model,
               duration,

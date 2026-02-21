@@ -22,6 +22,7 @@ async def charge_credits_post_deduct(
     service: str = "library.upload_index",
     idempotency_key: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    source_type: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Charge credits via the Node.js internal endpoint.
 
@@ -50,6 +51,8 @@ async def charge_credits_post_deduct(
         payload["idempotencyKey"] = idempotency_key
     if metadata:
         payload["metadata"] = metadata
+    if source_type:
+        payload["sourceType"] = source_type
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:

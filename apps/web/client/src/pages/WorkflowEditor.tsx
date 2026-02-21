@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useRoute } from 'wouter';
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
@@ -21,7 +21,6 @@ import ReactFlow, {
   Background,
   BackgroundVariant,
   MarkerType,
-  useViewport,
   type Node,
   type Edge,
   type Connection,
@@ -40,6 +39,7 @@ import {
   Plus,
   X,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   FileJson,
   Wrench,
@@ -52,6 +52,8 @@ import {
   HelpCircle,
   Layers,
   Wand2,
+  Clock,
+  Terminal,
 } from 'lucide-react';
 import {
   Dialog,
@@ -59,9 +61,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { AutoCreateWorkflowModal } from '@/components/workflow/AutoCreateWorkflowModal';
-import { ConvertToSkillDialog } from '@/components/workflow/ConvertToSkillDialog';
+import { AutoEditWorkflowModal } from '@/components/workflow/AutoEditWorkflowModal';
+import { ConvertWithISCDialog } from '@/components/workflow/ConvertWithISCDialog';
+import { WorkflowVersionHistory } from '@/components/workflow/WorkflowVersionHistory';
 
 // Step 1: Import BaseNode and registry hook
 import { BaseNode } from '@/components/workflow/nodes/BaseNode';
@@ -77,9 +84,10 @@ import { DynamicNodeConfig } from '@/components/workflow/config/DynamicNodeConfi
 
 // Step 6: Import Execution components
 import { useExecutionStore } from '@/stores/executionStore';
-import { ExecutionOverlay } from '@/components/workflow/execution/ExecutionOverlay';
 import { ExecutionLogPanel } from '@/components/workflow/execution/ExecutionLogPanel';
+import { ConsolePanel } from '@/components/workflow/execution/ConsolePanel';
 import { CostEstimation } from '@/components/workflow/execution/CostEstimation';
+import { WorkflowRunDialog } from '@/components/workflow/execution/WorkflowRunDialog';
 
 // Step 10: Import TemplateBrowser
 import { TemplateBrowser } from '@/components/workflow/TemplateBrowser';
@@ -102,6 +110,7 @@ const nodeTypes: NodeTypes = {
 
 function FlowEditor() {
   const [, setLocation] = useLocation();
+  const [, routeParams] = useRoute('/workflows/editor/:id');
   const [workflowId, setWorkflowId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState('');
   const [workflowDescription, setWorkflowDescription] = useState('');
@@ -129,6 +138,7 @@ function FlowEditor() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [compilationWarnings, setCompilationWarnings] = useState<string[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const sidebarDragRef = useRef(false);
@@ -136,8 +146,6 @@ function FlowEditor() {
   const sidebarDragStartWidth = useRef(320);
   const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
   const [compiledManifest, setCompiledManifest] = useState<any>(null);
-  const viewport = useViewport();
-
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const [edgeContextMenu, setEdgeContextMenu] = useState<{ x: number; y: number; edgeId: string } | null>(null);
@@ -148,7 +156,18 @@ function FlowEditor() {
   const [helpDialog, setHelpDialog] = useState<string | null>(null); // nodeType string
   // Auto Create Workflow modal
   const [showAutoCreate, setShowAutoCreate] = useState(false);
+  // Auto Edit Workflow modal
+  const [showAutoEdit, setShowAutoEdit] = useState(false);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveChangeDescription, setSaveChangeDescription] = useState('');
+  // Run dialog
+  const [showRunDialog, setShowRunDialog] = useState(false);
+  // Console panel
+  const [showConsolePanel, setShowConsolePanel] = useState(false);
+  const [consolePanelHeight, setConsolePanelHeight] = useState(200);
+  const handleToggleConsolePanel = useCallback(() => setShowConsolePanel((v) => !v), []);
 
   // Step 2: Use node registry instead of hardcoded options
   const { nodeTypes: registryNodeTypes, isLoading: registryLoading, getNodeTypesByCategory } = useNodeRegistry();
@@ -157,7 +176,6 @@ function FlowEditor() {
   const {
     isExecuting,
     executionId,
-    nodeStatuses,
     logs,
     startExecution,
     updateNodeStatus,
@@ -186,20 +204,25 @@ function FlowEditor() {
   const compileMutation = (trpc as any).workflow.compile.useMutation();
   const executeMutation = (trpc as any).workflow.execute.useMutation();
   const saveWorkflowMutation = (trpc as any).workflow.save.useMutation();
+  const numericWorkflowId = workflowId ? Number(workflowId) : null;
   const loadWorkflowQuery = (trpc as any).workflow.load.useQuery(
-    { id: workflowId! },
-    { enabled: !!workflowId }
+    { id: numericWorkflowId! },
+    { enabled: !!numericWorkflowId && !isNaN(numericWorkflowId) }
   );
   const templatesQuery = (trpc as any).workflow.listSaved.useQuery({});
 
-  // Load workflow from URL parameter
+  // Load workflow from URL — supports both /editor/:id and /editor?id=xxx
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const idFromUrl = urlParams.get('id');
-    if (idFromUrl) {
-      setWorkflowId(idFromUrl);
+    const idFromRoute = routeParams?.id;
+    if (idFromRoute) {
+      setWorkflowId(idFromRoute);
+      return;
     }
-  }, []);
+    const idFromQuery = new URLSearchParams(window.location.search).get('id');
+    if (idFromQuery) {
+      setWorkflowId(idFromQuery);
+    }
+  }, [routeParams?.id]);
 
   // Load workflow data when query returns
   useEffect(() => {
@@ -664,6 +687,45 @@ function FlowEditor() {
     toast.success(`Added ${generatedNodes.length} nodes and ${generatedEdges.length} connections`);
   }, [nodes, setNodes, setEdges]);
 
+  // ---- Auto Edit: apply AI-fixed workflow (always replaces canvas) ----
+  const handleAutoEdited = useCallback(async (
+    editedNodes: Node[],
+    editedEdges: Edge[],
+    _description: string,
+    changes: string[],
+  ) => {
+    const timestamp = Date.now();
+    const edgesWithIds = editedEdges.map((edge, index) => ({
+      ...edge,
+      id: edge.id || `edge-${edge.source}-${edge.target}-${index}-${timestamp}`,
+    }));
+    setNodes(editedNodes);
+    setEdges(edgesWithIds);
+    setCompiledManifest(null); // require re-compile after AI edits
+    setValidationErrors([]);
+    setCompilationWarnings([]);
+
+    // Auto-save version snapshot so user can restore the pre-AI state via History
+    if (workflowId) {
+      try {
+        const changeDesc = changes.length > 0
+          ? `AI: ${changes.slice(0, 3).join("; ")}${changes.length > 3 ? ` (+${changes.length - 3} more)` : ""}`
+          : "Improved by AI";
+        await saveWorkflowMutation.mutateAsync({
+          id: Number(workflowId),
+          name: workflowName || "Untitled Workflow",
+          description: workflowDescription,
+          defaultModel: defaultModel || undefined,
+          workflowJson: { nodes: editedNodes, edges: edgesWithIds },
+          changeDescription: changeDesc,
+        });
+      } catch (err) {
+        // Best-effort auto-save — user can always save manually
+        console.warn("[AI Edit] Auto-save version snapshot failed:", err);
+      }
+    }
+  }, [setNodes, setEdges, workflowId, workflowName, workflowDescription, defaultModel, saveWorkflowMutation]);
+
   const handleConfigChange = useCallback(
     (newConfig: Record<string, unknown>) => {
       if (!selectedNodeId) return;
@@ -677,6 +739,52 @@ function FlowEditor() {
     },
     [selectedNodeId, setNodes]
   );
+
+  // Focus a node on the canvas by ID (pan + zoom + select)
+  const focusNode = useCallback((nodeId: string) => {
+    if (!reactFlowInstance) return;
+    const node = nodes.find((n: Node) => n.id === nodeId);
+    if (node) {
+      reactFlowInstance.fitView({ nodes: [node], padding: 0.8, duration: 500 });
+    }
+    setSelectedNodeId(nodeId);
+  }, [reactFlowInstance, nodes]);
+
+  // Parse an error/warning message and render node IDs as clickable badges.
+  // Backend error format: "... nodeId.handle -> nodeId.handle ..."
+  // Node IDs have the pattern: word-chars + hyphen + digits (e.g. trigger_1-1771552294131)
+  const renderErrorParts = useCallback((message: string, variant: 'error' | 'warning' = 'error') => {
+    const badgeClass = variant === 'error'
+      ? 'inline-flex items-center gap-0.5 mx-0.5 px-1.5 py-0 rounded bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 text-red-900 dark:text-red-100 font-medium cursor-pointer hover:underline'
+      : 'inline-flex items-center gap-0.5 mx-0.5 px-1.5 py-0 rounded bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 font-medium cursor-pointer hover:underline';
+
+    const pattern = /([a-zA-Z][\w]*-\d+)\.([\w]+)/g;
+    const segments: React.ReactNode[] = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+
+    while ((m = pattern.exec(message)) !== null) {
+      if (m.index > last) segments.push(message.slice(last, m.index));
+      const nodeId = m[1];
+      const handle = m[2];
+      const nodeData = nodes.find((n: Node) => n.id === nodeId);
+      const label = (nodeData?.data as any)?.label || nodeId;
+      segments.push(
+        <button
+          key={m.index}
+          onClick={() => focusNode(nodeId)}
+          className={badgeClass}
+          title={`Click to focus: ${nodeId}`}
+        >
+          <span>{label}</span>
+          <span className="opacity-60 text-xs">.{handle}</span>
+        </button>
+      );
+      last = m.index + m[0].length;
+    }
+    if (last < message.length) segments.push(message.slice(last));
+    return segments.length > 1 ? <>{segments}</> : message;
+  }, [nodes, focusNode]);
 
   // Step 7: Compile workflow
   const handleCompile = async () => {
@@ -694,27 +802,43 @@ function FlowEditor() {
       if (result.success) {
         setCompiledManifest(result.manifest);
         setValidationErrors([]);
-        toast.success('Workflow compiled successfully!');
+        const warns = (result as any).warnings as string[] | undefined;
+        setCompilationWarnings(warns?.length ? warns : []);
+        if (warns?.length) {
+          toast.warning(`Compiled with ${warns.length} warning${warns.length > 1 ? 's' : ''} — check the panel above`);
+        } else {
+          toast.success('Workflow compiled successfully!');
+        }
       } else {
+        setCompilationWarnings([]);
         setValidationErrors(result.errors || [result.error || 'Unknown error']);
       }
     } catch (error: any) {
+      setCompilationWarnings([]);
       setValidationErrors([error.message || 'Compilation failed']);
     }
   };
 
-  // Step 9: Save workflow
-  const handleSave = async () => {
+  // Step 9: Save workflow — opens dialog to capture optional change description
+  const handleSave = () => {
+    setSaveChangeDescription('');
+    setShowSaveDialog(true);
+  };
+
+  const handleSaveConfirm = async () => {
+    setShowSaveDialog(false);
     try {
       const result = await saveWorkflowMutation.mutateAsync({
-        id: workflowId || undefined,
+        id: numericWorkflowId || undefined,
         name: workflowName || 'Untitled Workflow',
         description: workflowDescription,
         defaultModel: defaultModel || undefined,
         workflowJson: { nodes, edges },
+        changeDescription: saveChangeDescription.trim() || undefined,
       });
 
       setWorkflowId(result.id);
+      setSaveChangeDescription('');
       toast.success('Workflow saved successfully!');
     } catch (error: any) {
       toast.error(`Save failed: ${error.message}`);
@@ -745,21 +869,28 @@ function FlowEditor() {
   };
 
   // Step 8: Execute workflow with SSE
-  const handleExecute = async () => {
+  const handleExecute = () => {
     if (!compiledManifest) {
       toast.error('Please compile workflow first');
       return;
     }
+    // Always open run dialog — collects form_input values if present,
+    // or shows a simple confirmation if no inputs are needed.
+    setShowRunDialog(true);
+  };
 
+  const handleRunWithInputs = async (inputData: Record<string, unknown>) => {
+    setShowRunDialog(false);
     try {
       // Start execution
       const result = await executeMutation.mutateAsync({
-        id: workflowId,
+        id: numericWorkflowId,
         workflowJson: {
           nodes,
           edges,
           _compiledMetadata: compiledManifest,
         },
+        inputData,
       });
 
       // Initialize execution store
@@ -834,9 +965,16 @@ function FlowEditor() {
       });
 
       eventSource.addEventListener('workflow_complete', (event: MessageEvent) => {
+        const { nodeStatuses: finalStatuses } = useExecutionStore.getState();
+        const failedCount = Object.values(finalStatuses).filter(s => s.status === 'failed').length;
         completeExecution();
         eventSource.close();
         eventSourceRef.current = null;
+        if (failedCount > 0) {
+          toast.error(`Workflow completed with ${failedCount} node${failedCount > 1 ? 's' : ''} failed`);
+        } else {
+          toast.success('Workflow completed successfully');
+        }
       });
 
       eventSource.addEventListener('workflow_error', (event: MessageEvent) => {
@@ -845,14 +983,14 @@ function FlowEditor() {
         eventSource.close();
         eventSourceRef.current = null;
         const errorMsg = data?.error || 'Unknown workflow error';
-        setValidationErrors([`Workflow failed: ${errorMsg}`]);
+        toast.error(`Workflow failed: ${errorMsg}`);
       });
 
       eventSource.onerror = () => {
         eventSource.close();
         eventSourceRef.current = null;
         completeExecution();
-        setValidationErrors(['Execution stream connection lost']);
+        toast.error('Execution stream connection lost');
       };
     } catch (error: any) {
       if (error.message?.includes('402') || error.message?.includes('Insufficient')) {
@@ -980,14 +1118,49 @@ function FlowEditor() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowConvertDialog(true)}
-                  disabled={isExecuting}
-                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  onClick={() => setShowVersionHistory(true)}
                 >
-                  <Wand2 className="h-4 w-4 mr-1" />
-                  Convert to Skill
+                  <Clock className="h-4 w-4 mr-1" />
+                  History
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleConsolePanel}
+                className={showConsolePanel ? "bg-gray-100 dark:bg-gray-700" : ""}
+                title="Toggle console panel"
+              >
+                <Terminal className="h-4 w-4 mr-1" />
+                Console
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isExecuting || saveWorkflowMutation.isPending}
+                onClick={async () => {
+                  try {
+                    const result = await saveWorkflowMutation.mutateAsync({
+                      id: numericWorkflowId || undefined,
+                      name: workflowName || 'Untitled Workflow',
+                      description: workflowDescription,
+                      defaultModel: defaultModel || undefined,
+                      workflowJson: { nodes, edges },
+                    });
+                    setWorkflowId(String(result.id));
+                    setShowConvertDialog(true);
+                  } catch (err: any) {
+                    toast.error(`Save failed: ${err.message}`);
+                  }
+                }}
+                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+              >
+                {saveWorkflowMutation.isPending ? (
+                  <><Wand2 className="h-4 w-4 mr-1 animate-pulse" />Saving…</>
+                ) : (
+                  <><Wand2 className="h-4 w-4 mr-1" />Convert to Skill</>
+                )}
+              </Button>
               <Button
                 size="sm"
                 onClick={handleExecute}
@@ -1008,23 +1181,35 @@ function FlowEditor() {
 
       {/* Validation Errors */}
       {validationErrors.length > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-6 py-3">
-          <div className="max-w-full mx-auto">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">
-                  Validation Errors
-                </h3>
-                <ul className="text-sm text-red-800 dark:text-red-200 space-y-1">
-                  {validationErrors.map((error, i) => (
-                    <li key={i}>• {error}</li>
-                  ))}
-                </ul>
-              </div>
+        <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-4 py-2.5">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1.5 uppercase tracking-wide">
+                Compilation Errors — fix these before running
+              </p>
+              <ul className="space-y-1">
+                {validationErrors.map((error, i) => (
+                  <li key={i} className="text-sm text-red-800 dark:text-red-200 flex items-start gap-1.5">
+                    <span className="text-red-400 mt-0.5 flex-shrink-0">•</span>
+                    <span className="leading-snug">{renderErrorParts(error, 'error')}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
-                onClick={() => setValidationErrors([])}
-                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+                onClick={() => setShowAutoEdit(true)}
+                className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                title="Fix with AI"
+              >
+                <Wrench className="h-3 w-3" />
+                Fix with AI
+              </button>
+              <button
+                onClick={() => { setValidationErrors([]); setCompilationWarnings([]); }}
+                className="text-red-500 hover:text-red-700 flex-shrink-0"
+                title="Dismiss"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1033,7 +1218,48 @@ function FlowEditor() {
         </div>
       )}
 
-      <div className="flex h-[calc(100vh-80px)]">
+      {/* Compilation Warnings (shown after successful compile) */}
+      {compilationWarnings.length > 0 && validationErrors.length === 0 && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-4 py-2.5">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1.5 uppercase tracking-wide">
+                {compilationWarnings.length} Warning{compilationWarnings.length > 1 ? 's' : ''} — workflow will run but may behave unexpectedly
+              </p>
+              <ul className="space-y-1">
+                {compilationWarnings.map((warn, i) => (
+                  <li key={i} className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-1.5">
+                    <span className="text-amber-400 mt-0.5 flex-shrink-0">•</span>
+                    <span className="leading-snug">{renderErrorParts(warn, 'warning')}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setShowAutoEdit(true)}
+                className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                title="Fix with AI"
+              >
+                <Wrench className="h-3 w-3" />
+                Fix with AI
+              </button>
+              <button
+                onClick={() => setCompilationWarnings([])}
+                className="text-amber-500 hover:text-amber-700 flex-shrink-0"
+                title="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
+        {/* ── Sidebar + Canvas + Right panel ── */}
+        <div className="flex flex-1 min-h-0">
         {/* Left Sidebar - Node Palette (resizable) */}
         <div
           className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto relative flex-shrink-0"
@@ -1127,6 +1353,15 @@ function FlowEditor() {
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
                   Auto Create with AI
+                </Button>
+                <Button
+                  onClick={() => setShowAutoEdit(true)}
+                  variant="outline"
+                  className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 mt-2"
+                  size="sm"
+                >
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Improve Workflow with AI
                 </Button>
               </div>
 
@@ -1608,34 +1843,6 @@ function FlowEditor() {
             />
             <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
 
-            {/* Step 6: Execution Overlays */}
-            {isExecuting && nodes.map((node) => {
-              const status = nodeStatuses[node.id];
-              if (!status) return null;
-
-              // Transform node position to viewport coordinates (accounting for zoom/pan)
-              const x = node.position.x * viewport.zoom + viewport.x;
-              const y = node.position.y * viewport.zoom + viewport.y;
-
-              return (
-                <div
-                  key={`overlay-${node.id}`}
-                  style={{
-                    position: 'absolute',
-                    left: x,
-                    top: y,
-                    transform: `scale(${viewport.zoom})`,
-                    transformOrigin: 'top left',
-                    pointerEvents: 'none',
-                  }}
-                >
-                  <ExecutionOverlay
-                    nodeId={node.id}
-                    status={status.status}
-                  />
-                </div>
-              );
-            })}
           </ReactFlow>
         </div>
 
@@ -1748,6 +1955,16 @@ function FlowEditor() {
             </div>
           </div>
         )}
+        </div> {/* end flex-1 min-h-0 (sidebar + canvas + right panel) */}
+
+        {/* ── Console Panel (collapsible bottom) ── */}
+        <ConsolePanel
+          nodes={nodes}
+          isOpen={showConsolePanel}
+          height={consolePanelHeight}
+          onToggle={handleToggleConsolePanel}
+          onHeightChange={setConsolePanelHeight}
+        />
       </div>
 
       {/* Step 6: Execution Log Panel (bottom drawer when executing) */}
@@ -1780,6 +1997,15 @@ function FlowEditor() {
           </div>
         </div>
       )}
+
+      {/* Run Dialog — collects form_input values before execution */}
+      <WorkflowRunDialog
+        open={showRunDialog}
+        onClose={() => setShowRunDialog(false)}
+        onRun={handleRunWithInputs}
+        nodes={nodes}
+        isRunning={isExecuting}
+      />
 
       {/* ---- Context Menu ---- */}
       {contextMenu && (() => {
@@ -1822,6 +2048,12 @@ function FlowEditor() {
               onClick={() => { setShowAutoCreate(true); setContextMenu(null); }}
             >
               <Sparkles className="h-4 w-4" /> Auto Create Workflow
+            </button>
+            <button
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              onClick={() => { setShowAutoEdit(true); setContextMenu(null); }}
+            >
+              <Wrench className="h-4 w-4" /> Improve Workflow with AI
             </button>
           </div>
         );
@@ -1978,19 +2210,86 @@ function FlowEditor() {
         onGenerated={handleAutoGenerated}
       />
 
-      {/* ---- Convert to Skill Dialog ---- */}
-      {workflowId && (
-        <ConvertToSkillDialog
-          workflowId={parseInt(workflowId)}
-          workflowName={workflowName || 'Untitled Workflow'}
+      {/* ---- Auto Edit Workflow Modal ---- */}
+      <AutoEditWorkflowModal
+        open={showAutoEdit}
+        onOpenChange={setShowAutoEdit}
+        currentNodes={nodes}
+        currentEdges={edges}
+        errors={validationErrors}
+        warnings={compilationWarnings}
+        nodeTypes={registryNodeTypes?.map(nt => ({
+          type: nt.type,
+          display_name: nt.display_name,
+          description: nt.description,
+          inputs: (nt.inputs ?? []) as unknown as Record<string, unknown>[],
+          outputs: (nt.outputs ?? []) as unknown as Record<string, unknown>[],
+        }))}
+        modelId={defaultModel || undefined}
+        onEdited={handleAutoEdited}
+      />
+
+      {/* ---- Convert to Skill (ISC) Dialog ---- */}
+      {showConvertDialog && numericWorkflowId && (
+        <ConvertWithISCDialog
           open={showConvertDialog}
           onClose={() => setShowConvertDialog(false)}
-          onSuccess={(skillId) => {
-            setShowConvertDialog(false);
-            toast.success(`Skill created successfully! (ID: ${skillId})`);
+          workflowId={numericWorkflowId}
+          defaultModel={defaultModel || ''}
+        />
+      )}
+
+      {/* ---- Workflow Version History ---- */}
+      {workflowId && showVersionHistory && (
+        <WorkflowVersionHistory
+          workflowId={parseInt(workflowId)}
+          onClose={() => setShowVersionHistory(false)}
+          onRestore={() => {
+            setShowVersionHistory(false);
+            loadWorkflowQuery.refetch();
           }}
         />
       )}
+
+      {/* ---- Save with Change Description dialog ---- */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save Workflow</DialogTitle>
+            <DialogDescription>
+              Optionally describe what changed in this version. Leave blank to save without a note.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Label htmlFor="change-description" className="text-sm font-medium">
+              Change description <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="change-description"
+              className="mt-1.5"
+              placeholder="e.g. Added email notification node"
+              maxLength={500}
+              value={saveChangeDescription}
+              onChange={(e) => setSaveChangeDescription(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveConfirm();
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveConfirm} disabled={saveWorkflowMutation.isPending}>
+              {saveWorkflowMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

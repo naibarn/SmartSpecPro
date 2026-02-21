@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { SkillInputSchema, SkillInputField } from '@/components/media/DynamicSkillForm';
 
 export interface UseSkillFormOptions {
@@ -177,6 +177,21 @@ export function useSkillForm(options: UseSkillFormOptions): UseSkillFormReturn {
 
   const [values, setValues] = useState<Record<string, any>>(defaultValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // When the schema loads asynchronously (e.g. skill form opened after mount),
+  // apply any default values that haven't been set yet by the user.
+  // We use the functional updater to avoid overwriting values the user already typed.
+  useEffect(() => {
+    setValues((prev) => {
+      const missing: Record<string, any> = {};
+      Object.entries(defaultValues).forEach(([key, val]) => {
+        if (prev[key] === undefined) {
+          missing[key] = val;
+        }
+      });
+      return Object.keys(missing).length > 0 ? { ...prev, ...missing } : prev;
+    });
+  }, [defaultValues]);
 
   const validateField = useCallback(
     (fieldId: string, value: any): string | null => {

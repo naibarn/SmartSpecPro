@@ -1,5 +1,6 @@
 """Compiler: transforms ReactFlow JSON into a compiled LangGraph StateGraph."""
 
+from dataclasses import dataclass, field
 from typing import Any
 
 import structlog
@@ -12,6 +13,22 @@ from app.orchestrator.data_types import is_compatible_connection
 from app.orchestrator.workflow_state import WorkflowState
 
 logger = structlog.get_logger()
+
+# Allowlist: executor dotpaths MUST start with one of these prefixes.
+# This prevents arbitrary module loading if executor paths ever originate
+# from user-supplied or database-stored data in the future.
+_ALLOWED_EXECUTOR_PREFIXES = (
+    "app.orchestrator.node_executors.",
+)
+
+
+@dataclass
+class CompileResult:
+    """Return value of WorkflowCompiler.compile()."""
+
+    graph: Any
+    warnings: list[str] = field(default_factory=list)
+
 
 # Node types that produce conditional edges
 CONDITIONAL_NODE_TYPES = {"conditional", "switch", "if"}
@@ -78,7 +95,7 @@ class WorkflowCompiler:
             edge_count=len(edges),
         )
 
-        return compiled
+        return CompileResult(graph=compiled, warnings=warnings)
 
     # ------------------------------------------------------------------
     # Validation
@@ -144,7 +161,7 @@ class WorkflowCompiler:
             self._check_cycles(node_ids, edges, errors)
 
         # 7. Port type compatibility
-        self._validate_port_compatibility(nodes, edges, errors)
+        self._validate_port_compatibility(nodes, edges, errors, warnings)
 
         if errors:
             raise CompilationError(
@@ -193,8 +210,15 @@ class WorkflowCompiler:
         nodes: list[dict],
         edges: list[dict],
         errors: list[str],
+        warnings: list[str],
     ) -> None:
-        """Validate that connected ports have compatible data types."""
+        """Validate that connected ports have compatible data types.
+
+        Invalid ports (non-existent handle names) → hard errors.
+        Type mismatches (e.g. text → json) → warnings only, because LLM nodes
+        commonly output text whose content happens to be JSON/arrays, and
+        runtime coercion handles the conversion.
+        """
         node_map = {n["id"]: n for n in nodes}
 
         for edge in edges:
@@ -222,14 +246,27 @@ class WorkflowCompiler:
             out_spec = next((o for o in src_spec.outputs if o.name == src_handle), None)
             in_spec = next((i for i in tgt_spec.inputs if i.name == tgt_handle), None)
 
+            # Fallback: generic "output"/"input" handles map to the first port.
+            # Template-seeded workflows use these generic names; named ports are
+            # resolved when users build workflows in the visual editor.
+            if out_spec is None and src_handle == "output" and src_spec.outputs:
+                out_spec = src_spec.outputs[0]
+            if in_spec is None and tgt_handle == "input":
+                connectable = [i for i in tgt_spec.inputs if getattr(i, "accepts_connection", True)]
+                in_spec = connectable[0] if connectable else (tgt_spec.inputs[0] if tgt_spec.inputs else None)
+
             if not out_spec or not in_spec:
-                errors.append(
-                    f"Invalid port: {src_id}.{src_handle} -> {tgt_id}.{tgt_handle}"
+                # Warn but do not block compilation — the edge will be skipped at
+                # runtime. AI-generated workflows sometimes produce handle names
+                # that don't match the registry (e.g. "trigger" on form_input).
+                warnings.append(
+                    f"Invalid port: {src_id}.{src_handle} -> {tgt_id}.{tgt_handle} "
+                    f"(edge skipped)"
                 )
                 continue
 
             if not is_compatible_connection(out_spec.data_type, in_spec.data_type):
-                errors.append(
+                warnings.append(
                     f"Incompatible types: {out_spec.data_type} -> {in_spec.data_type} "
                     f"({src_id}.{src_handle} -> {tgt_id}.{tgt_handle})"
                 )
@@ -374,21 +411,36 @@ class WorkflowCompiler:
                 target = next(iter(handle_to_target.values()))
             return target
 
+        # routing_fn already resolves to the final target node ID — do NOT
+        # pass handle_to_target as path_map.  LangGraph would try to look up
+        # the returned node ID as a key in that dict (whose keys are handle
+        # strings like "true"/"false"), causing a KeyError at runtime.
         graph.add_conditional_edges(
             node_id,
             routing_fn,
-            handle_to_target,
         )
 
     def _instantiate_executor(self, executor_path: str) -> Any:
         """Instantiate an executor from its dotted path string.
 
+        Only paths under ``app.orchestrator.node_executors.*`` are permitted.
+        This allowlist prevents arbitrary module loading if executor paths ever
+        originate from user-supplied or database-stored data.
+
         Args:
             executor_path: e.g. "app.orchestrator.node_executors.llm_executor.LLMExecutor"
 
         Returns:
-            An instance of the executor class.
+            An instance of the executor class, or None on failure.
         """
+        if not any(executor_path.startswith(p) for p in _ALLOWED_EXECUTOR_PREFIXES):
+            logger.error(
+                "Rejected executor path outside allowlist",
+                path=executor_path,
+                allowed_prefixes=_ALLOWED_EXECUTOR_PREFIXES,
+            )
+            return None
+
         try:
             module_path, class_name = executor_path.rsplit(".", 1)
             import importlib

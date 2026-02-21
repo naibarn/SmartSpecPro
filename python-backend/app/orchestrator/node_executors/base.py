@@ -26,6 +26,16 @@ class NodeExecutionData:
     state: dict[str, Any]  # Execution state (outputs from previous nodes)
 
 
+@dataclass
+class NodeExecutionResult:
+    """Structured result returned by executors that need richer output than a plain dict."""
+
+    outputs: dict[str, Any] = field(default_factory=dict)
+    success: bool = True
+    error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 class NodeExecutor(Protocol):
     """Protocol for node executors."""
 

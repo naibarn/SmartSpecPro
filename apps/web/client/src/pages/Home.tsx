@@ -12,19 +12,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { useTenantPage } from '@/hooks/useTenantPage';
-import { 
-  Sparkles, 
-  Code2, 
-  Zap, 
-  Shield, 
-  Layers, 
+import {
+  Sparkles,
+  Code2,
+  Zap,
+  Shield,
+  Layers,
   GitBranch,
   Play,
   ArrowRight,
   CheckCircle2,
   Star,
   Users,
-  Rocket
+  Rocket,
+  Brain,
+  Globe,
+  Mail,
+  Database,
+  LayoutGrid,
 } from 'lucide-react';
 
 const fadeInUp = {
@@ -91,9 +96,29 @@ export default function Home() {
   const { page: tenantPage } = useTenantPage('home');
 
   // Extract tenant section data if available, to merge into the luxurious design
-  const heroSection = tenantPage?.sections?.find(s => s.type === 'hero');
-  const featuresSection = tenantPage?.sections?.find(s => s.type === 'features');
-  const ctaSection = tenantPage?.sections?.find(s => s.type === 'cta');
+  const heroSection        = tenantPage?.sections?.find(s => s.type === 'hero');
+  const featuresSection    = tenantPage?.sections?.find(s => s.type === 'features');
+  const ctaSection         = tenantPage?.sections?.find(s => s.type === 'cta');
+  const statsSection       = tenantPage?.sections?.find(s => s.type === 'stats');
+  const processSection     = tenantPage?.sections?.find(s => s.type === 'process');
+  const testimonialsSection = tenantPage?.sections?.find(s => s.type === 'testimonials');
+
+  // Content-managed display data (sections → hardcoded fallback)
+  const displayStats = (statsSection?.items as Array<{value:string;label:string}> | undefined)?.length
+    ? (statsSection!.items as Array<{value:string;label:string}>)
+    : stats;
+
+  const displayHowItWorks = (processSection?.items as Array<{step:string;title:string;description:string}> | undefined)?.length
+    ? (processSection!.items as Array<{step:string;title:string;description:string}>)
+    : howItWorks;
+
+  const displayTestimonials = (testimonialsSection?.items as Array<{quote:string;author:string;role:string;avatar:string}> | undefined)?.length
+    ? (testimonialsSection!.items as Array<{quote:string;author:string;role:string;avatar:string}>)
+    : [
+        { quote: "SmartSpec Pro has completely transformed how we build applications. What used to take weeks now takes days.", author: "Sarah Chen", role: "CTO at TechStart", avatar: "SC" },
+        { quote: "The AI code generation is incredibly accurate. It understands context and produces clean, maintainable code.", author: "Michael Park", role: "Senior Developer", avatar: "MP" },
+        { quote: "Finally, a tool that actually delivers on its promises. The ROI has been phenomenal for our team.", author: "Emily Rodriguez", role: "Engineering Lead", avatar: "ER" },
+      ];
 
   // Parse content HTML as fallback when sections are null
   const parsedContent = (() => {
@@ -183,21 +208,44 @@ export default function Home() {
             
             {/* CTA Buttons */}
             <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Button 
-                size="lg" 
-                className="bg-gradient-to-r from-violet-500 to-teal-400 hover:from-violet-600 hover:to-teal-500 text-white shadow-xl shadow-violet-500/25 text-lg px-8"
-              >
-                Start Building Free
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="text-lg px-8 bg-background/50 backdrop-blur-sm"
-              >
-                <Play className="mr-2 w-5 h-5" />
-                Watch Demo
-              </Button>
+              {heroSection?.buttons && heroSection.buttons.length > 0
+                ? heroSection.buttons.map((btn, i) => (
+                    <Link key={i} href={btn.link}>
+                      <Button
+                        size="lg"
+                        variant={btn.style === 'outline' ? 'outline' : 'default'}
+                        className={btn.style !== 'outline'
+                          ? "bg-gradient-to-r from-violet-500 to-teal-400 hover:from-violet-600 hover:to-teal-500 text-white shadow-xl shadow-violet-500/25 text-lg px-8"
+                          : "text-lg px-8 bg-background/50 backdrop-blur-sm"
+                        }
+                      >
+                        {i === 0 && btn.style !== 'outline' && <Sparkles className="mr-2 w-5 h-5" />}
+                        {i > 0 && btn.style === 'outline' && <Play className="mr-2 w-5 h-5" />}
+                        {btn.text}
+                        {btn.style !== 'outline' && <ArrowRight className="ml-2 w-5 h-5" />}
+                      </Button>
+                    </Link>
+                  ))
+                : (
+                  <>
+                    <Button
+                      size="lg"
+                      className="bg-gradient-to-r from-violet-500 to-teal-400 hover:from-violet-600 hover:to-teal-500 text-white shadow-xl shadow-violet-500/25 text-lg px-8"
+                    >
+                      Start Building Free
+                      <ArrowRight className="ml-2 w-5 h-5" />
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="text-lg px-8 bg-background/50 backdrop-blur-sm"
+                    >
+                      <Play className="mr-2 w-5 h-5" />
+                      Watch Demo
+                    </Button>
+                  </>
+                )
+              }
             </motion.div>
             
             {/* Social Proof */}
@@ -241,7 +289,7 @@ export default function Home() {
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
+            {displayStats.map((stat, index) => (
               <motion.div
                 key={stat.label}
                 initial={{ opacity: 0, y: 20 }}
@@ -330,8 +378,129 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Workflow Gallery Section */}
+      <section className="py-24 bg-muted/30 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl" />
+
+        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left: Copy */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+                <LayoutGrid className="w-4 h-4" />
+                Workflow Gallery
+              </span>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+                60+ Ready-to-Use{' '}
+                <span className="gradient-text">Workflow Templates</span>
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6">
+                Browse our curated library of AI automation workflows — from content generation to data pipelines, customer support to media creation. Pick a template and get started in minutes.
+              </p>
+
+              {/* Category pills */}
+              <div className="flex flex-wrap gap-2 mb-8">
+                {[
+                  { label: 'Content & Marketing', color: 'bg-violet-100 text-violet-700' },
+                  { label: 'Customer Support', color: 'bg-blue-100 text-blue-700' },
+                  { label: 'Data & Analytics', color: 'bg-orange-100 text-orange-700' },
+                  { label: 'Media Generation', color: 'bg-amber-100 text-amber-700' },
+                  { label: 'DevOps & Code', color: 'bg-teal-100 text-teal-700' },
+                  { label: 'E-commerce', color: 'bg-pink-100 text-pink-700' },
+                ].map((cat) => (
+                  <span
+                    key={cat.label}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${cat.color}`}
+                  >
+                    {cat.label}
+                  </span>
+                ))}
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                  +9 more
+                </span>
+              </div>
+
+              <Link href="/workflows/gallery">
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-violet-500 to-teal-400 hover:from-violet-600 hover:to-teal-500 text-white shadow-xl shadow-violet-500/25"
+                >
+                  <LayoutGrid className="mr-2 w-5 h-5" />
+                  Browse All Templates
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+            </motion.div>
+
+            {/* Right: Visual template cards preview */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.15 }}
+              className="relative"
+            >
+              {/* Decorative grid of mini cards */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: Brain, title: 'AI Blog Writer', steps: 5, category: 'Content', color: '#3B82F6' },
+                  { icon: Mail, title: 'Email Campaign', steps: 4, category: 'Marketing', color: '#8B5CF6' },
+                  { icon: Database, title: 'Data Pipeline', steps: 7, category: 'Analytics', color: '#F97316' },
+                  { icon: Globe, title: 'Web Scraper', steps: 6, category: 'Integration', color: '#06B6D4' },
+                  { icon: Layers, title: 'Image Generator', steps: 3, category: 'Media', color: '#F59E0B' },
+                  { icon: GitBranch, title: 'CI/CD Monitor', steps: 8, category: 'DevOps', color: '#10B981' },
+                ].map((card, i) => (
+                  <motion.div
+                    key={card.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 + i * 0.07 }}
+                    className="glass-card rounded-xl p-4 hover:shadow-lg transition-all duration-200 group cursor-default"
+                  >
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+                      style={{ backgroundColor: `${card.color}18`, border: `1.5px solid ${card.color}40` }}
+                    >
+                      <card.icon className="w-4 h-4" style={{ color: card.color }} />
+                    </div>
+                    <p className="text-sm font-semibold leading-tight mb-1">{card.title}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-muted-foreground">{card.steps} steps</span>
+                      <span
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                        style={{ backgroundColor: `${card.color}15`, color: card.color }}
+                      >
+                        {card.category}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Floating stats badge */}
+              <div className="absolute -bottom-4 -right-4 bg-white dark:bg-card border rounded-2xl shadow-xl px-5 py-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-teal-400 flex items-center justify-center">
+                  <LayoutGrid className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-lg font-bold leading-none">60+</div>
+                  <div className="text-xs text-muted-foreground">Templates</div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works Section */}
-      <section className="py-24 bg-muted/30">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -344,7 +513,7 @@ export default function Home() {
               Simple Process
             </span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-              How It <span className="gradient-text">Works</span>
+              {processSection?.title || (<>How It <span className="gradient-text">Works</span></>)}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Get from idea to deployed application in three simple steps.
@@ -355,7 +524,7 @@ export default function Home() {
             {/* Connection Line */}
             <div className="hidden md:block absolute top-24 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-violet-500 via-coral-400 to-teal-400" />
             
-            {howItWorks.map((item, index) => (
+            {displayHowItWorks.map((item, index) => (
               <motion.div
                 key={item.step}
                 initial={{ opacity: 0, y: 30 }}
@@ -398,26 +567,7 @@ export default function Home() {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                quote: "SmartSpec Pro has completely transformed how we build applications. What used to take weeks now takes days.",
-                author: "Sarah Chen",
-                role: "CTO at TechStart",
-                avatar: "SC"
-              },
-              {
-                quote: "The AI code generation is incredibly accurate. It understands context and produces clean, maintainable code.",
-                author: "Michael Park",
-                role: "Senior Developer",
-                avatar: "MP"
-              },
-              {
-                quote: "Finally, a tool that actually delivers on its promises. The ROI has been phenomenal for our team.",
-                author: "Emily Rodriguez",
-                role: "Engineering Lead",
-                avatar: "ER"
-              }
-            ].map((testimonial, index) => (
+            {displayTestimonials.map((testimonial, index) => (
               <motion.div
                 key={testimonial.author}
                 initial={{ opacity: 0, y: 30 }}

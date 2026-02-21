@@ -12,7 +12,7 @@
  * - Lazy loading for performance
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@smartspec/shared';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,9 @@ import {
   Tag,
   Loader2,
   Cpu,
-  Trash2
+  Trash2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import {
   Select,
@@ -116,6 +118,34 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
+/** Returns true if the URL points to an image file (not a video) */
+function isImageUrl(url?: string | null): boolean {
+  if (!url) return false;
+  return /\.(png|jpe?g|gif|webp|avif|svg|bmp)([?#].*)?$/i.test(url);
+}
+
+/**
+ * Video thumbnail card — seeks to the first frame after metadata loads
+ * so the browser shows a real frame instead of a blank/black box.
+ */
+function VideoThumbnailCard({ src, className }: { src: string; className: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const handleMetadata = useCallback(() => {
+    const el = videoRef.current;
+    if (el) el.currentTime = 0.5; // seek to 0.5s to get a representative frame
+  }, []);
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      className={className}
+      preload="metadata"
+      muted
+      playsInline
+      onLoadedMetadata={handleMetadata}
+    />
+  );
+}
 
 export default function Gallery() {
   const { user } = useAuth();
@@ -126,6 +156,7 @@ export default function Gallery() {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Fetch gallery items from API
   const { data: items, isLoading, error, refetch } = trpc.gallery.list.useQuery({
@@ -423,12 +454,30 @@ export default function Gallery() {
                       >
                         {/* Thumbnail */}
                         <div className={`relative ${aspectRatioStyles[item.aspectRatio]} bg-muted overflow-hidden`}>
-                          <img
-                            src={item.thumbnailUrl || item.fileUrl || '/placeholder.jpg'}
-                            alt={item.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            loading="lazy"
-                          />
+                          {item.type === 'video' ? (
+                            isImageUrl(item.thumbnailUrl) ? (
+                              // Has a real image thumbnail — show it instantly, no video loading
+                              <img
+                                src={item.thumbnailUrl!}
+                                alt={item.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                loading="lazy"
+                              />
+                            ) : (
+                              // No image thumbnail — load video metadata and seek to first frame
+                              <VideoThumbnailCard
+                                src={item.fileUrl || ''}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                            )
+                          ) : (
+                            <img
+                              src={item.thumbnailUrl || item.fileUrl || '/placeholder.jpg'}
+                              alt={item.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              loading="lazy"
+                            />
+                          )}
                           
                           {/* Overlay */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -574,148 +623,136 @@ export default function Gallery() {
 
         {/* Lightbox */}
         <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
-          <DialogContent className="max-w-5xl p-0 overflow-hidden">
+          <DialogContent className="max-w-6xl w-[95vw] h-[92vh] p-0 overflow-hidden flex flex-col">
             {selectedItem && (
-              <div className="relative">
-                {/* Navigation */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
-                  onClick={() => navigateLightbox('prev')}
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
-                  onClick={() => navigateLightbox('next')}
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </Button>
+              <>
+                {/* Media area — fills all available vertical space */}
+                <div className="relative flex-1 min-h-0 bg-black flex items-center justify-center overflow-hidden">
+                  {/* Prev / Next navigation */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                    onClick={() => navigateLightbox('prev')}
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                    onClick={() => navigateLightbox('next')}
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </Button>
 
-                {/* Content */}
-                <div className="aspect-video bg-black flex items-center justify-center">
                   {selectedItem.type === 'video' ? (
                     <video
+                      key={selectedItem.id}
                       src={selectedItem.fileUrl || ''}
                       controls
                       autoPlay
-                      className="max-w-full max-h-full"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
                     <img
                       src={selectedItem.fileUrl || selectedItem.thumbnailUrl || ''}
                       alt={selectedItem.title}
-                      className="max-w-full max-h-full object-contain"
+                      className="w-full h-full object-contain"
                     />
                   )}
                 </div>
 
-                {/* Info */}
-                <div className="p-6 bg-background">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl">{selectedItem.title}</DialogTitle>
-                  </DialogHeader>
-                  
-                  {selectedItem.description && (
-                    <p className="text-muted-foreground mt-2">{selectedItem.description}</p>
-                  )}
+                {/* Info panel — fixed height with scroll so media stays large */}
+                <div className="flex-shrink-0 h-[180px] overflow-y-auto px-5 py-3 bg-background border-t">
+                  {/* Title + actions row */}
+                  <div className="flex items-start justify-between gap-3">
+                    <DialogHeader className="min-w-0 flex-1">
+                      <DialogTitle className="text-sm font-semibold leading-snug">
+                        {selectedItem.title}
+                      </DialogTitle>
+                    </DialogHeader>
 
-                  <div className="flex flex-wrap items-center gap-4 mt-4">
-                    {/* Author */}
-                    {selectedItem.authorName && (
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <span>{selectedItem.authorName}</span>
-                      </div>
-                    )}
-
-                    {/* Model */}
-                    {selectedItem.model && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Cpu className="w-4 h-4" />
-                        <span>{selectedItem.model}</span>
-                      </div>
-                    )}
-
-                    {/* Date */}
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatDate(selectedItem.createdAt)}</span>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        {formatNumber(selectedItem.views)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Heart className="w-4 h-4" />
-                        {formatNumber(selectedItem.likes)}
-                      </span>
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button size="sm" variant="ghost" className="h-7 px-2" onClick={(e) => handleLike(selectedItem, e)}>
+                        <Heart className="w-3.5 h-3.5 mr-1" />
+                        <span className="text-xs">{formatNumber(selectedItem.likes)}</span>
+                      </Button>
+                      {selectedItem.type === 'image' && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => handleDownload(selectedItem, e)}>
+                          <Download className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => handleShare(selectedItem, e)}>
+                        <Share2 className="w-3.5 h-3.5" />
+                      </Button>
+                      {selectedItem.type === 'website' && selectedItem.demoUrl && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                          onClick={() => window.open(selectedItem.demoUrl!, '_blank', 'noopener,noreferrer')}>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={(e) => handleDelete(selectedItem, e)} disabled={deleteMutation.isPending}>
+                          {deleteMutation.isPending
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />}
+                        </Button>
+                      )}
                     </div>
                   </div>
 
+                  {/* Meta row */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-xs text-muted-foreground">
+                    {selectedItem.model && (
+                      <span className="flex items-center gap-1"><Cpu className="w-3 h-3" />{selectedItem.model}</span>
+                    )}
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(selectedItem.createdAt)}</span>
+                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(selectedItem.views)}</span>
+                    {selectedItem.authorName && (
+                      <span className="flex items-center gap-1"><User className="w-3 h-3" />{selectedItem.authorName}</span>
+                    )}
+                  </div>
+
+                  {/* Description / Prompt — full text, copyable */}
+                  {selectedItem.description && (
+                    <div className="mt-2 group/desc relative">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs text-muted-foreground leading-relaxed flex-1">
+                          {selectedItem.description}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-xs flex-shrink-0 mt-0.5"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedItem.description!);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                        >
+                          {copied
+                            ? <><Check className="w-3 h-3 mr-1 text-green-500" />Copied</>
+                            : <><Copy className="w-3 h-3 mr-1" />Copy</>}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tags */}
                   {selectedItem.tags && selectedItem.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
+                    <div className="flex flex-wrap gap-1 mt-2">
                       {selectedItem.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted text-sm"
-                        >
-                          <Tag className="w-3 h-3" />
-                          {tag}
+                        <span key={index} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs">
+                          <Tag className="w-2.5 h-2.5" />{tag}
                         </span>
                       ))}
                     </div>
                   )}
-
-                  {/* Actions */}
-                  <div className="flex gap-3 mt-6">
-                    <Button onClick={(e) => handleLike(selectedItem, e)}>
-                      <Heart className="w-4 h-4 mr-2" />
-                      Like
-                    </Button>
-                    {selectedItem.type === 'image' && (
-                      <Button variant="outline" onClick={(e) => handleDownload(selectedItem, e)}>
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
-                    )}
-                    <Button variant="outline" onClick={(e) => handleShare(selectedItem, e)}>
-                      <Share2 className="w-4 h-4 mr-2" />
-                      Share
-                    </Button>
-                    {selectedItem.type === 'website' && selectedItem.demoUrl && (
-                      <Button
-                        variant="outline"
-                        onClick={() => window.open(selectedItem.demoUrl!, '_blank', 'noopener,noreferrer')}
-                      >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        View Demo
-                      </Button>
-                    )}
-                    {isAdmin && (
-                      <Button
-                        variant="destructive"
-                        onClick={(e) => handleDelete(selectedItem, e)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        {deleteMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4 mr-2" />
-                        )}
-                        Delete
-                      </Button>
-                    )}
-                  </div>
                 </div>
-              </div>
+              </>
             )}
           </DialogContent>
         </Dialog>

@@ -3,65 +3,141 @@
   "skillId": "intelligence-skill-creator",
   "title": "Intelligence Skill Creator",
   "titleTh": "ตัวสร้าง Skill อัจฉริยะ",
-  "description": "Multi-agent LLM-powered tool for creating and improving skills",
-  "descriptionTh": "เครื่องมือสร้างและปรับปรุง Skill ด้วย Multi-agent LLM",
+  "description": "Create complete SmartSpecPro skills with schemas, code, and tests — or improve existing ones",
+  "descriptionTh": "สร้าง Skill ใหม่พร้อม schemas, code และ tests ครบชุด หรือปรับปรุง Skill ที่มีอยู่",
   "sections": [
     {
-      "id": "basic",
-      "title": "Skill Setup",
-      "titleTh": "ตั้งค่า Skill",
-      "icon": "sparkles",
+      "id": "operation",
+      "title": "Operation Mode",
+      "titleTh": "โหมดการทำงาน",
+      "icon": "brain",
+      "collapsed": false,
       "fields": [
-        {
-          "id": "skill_name",
-          "type": "text",
-          "label": "Skill Name",
-          "labelTh": "ชื่อ Skill",
-          "placeholder": "skill_math_tutor",
-          "helpText": "Name of the skill to create or improve (snake_case)",
-          "helpTextTh": "ชื่อ Skill ที่ต้องการสร้างหรือปรับปรุง (snake_case)",
-          "required": true
-        },
         {
           "id": "mode",
           "type": "select",
           "label": "Mode",
           "labelTh": "โหมด",
-          "helpText": "How to process the skill",
-          "helpTextTh": "วิธีการประมวลผล Skill",
-          "default": "auto",
+          "helpText": "Create a new skill from scratch, improve an existing ISC sandbox skill, or convert a Virtual Workflow to a skill",
+          "helpTextTh": "สร้าง Skill ใหม่จากศูนย์, ปรับปรุง Skill ที่มีอยู่ใน ISC sandbox, หรือแปลง Virtual Workflow เป็น Skill",
+          "default": "create",
           "options": [
-            { "value": "auto", "label": "Auto (Recommended)", "labelTh": "อัตโนมัติ (แนะนำ)" },
-            { "value": "llm", "label": "LLM-based", "labelTh": "ใช้ LLM" },
-            { "value": "heuristic", "label": "Heuristic", "labelTh": "Heuristic" }
+            { "value": "create",           "label": "Create New Skill",           "labelTh": "สร้าง Skill ใหม่" },
+            { "value": "improve",          "label": "Improve Existing Skill",     "labelTh": "ปรับปรุง Skill ที่มีอยู่" },
+            { "value": "convert_workflow", "label": "Convert Virtual Workflow",   "labelTh": "แปลง Virtual Workflow เป็น Skill" },
+            { "value": "auto",             "label": "Auto-detect",                "labelTh": "ตรวจจับอัตโนมัติ" }
           ]
-        },
-        {
-          "id": "rounds",
-          "type": "number",
-          "label": "Improvement Rounds",
-          "labelTh": "รอบการปรับปรุง",
-          "helpText": "Number of refine-test-validate iterations",
-          "helpTextTh": "จำนวนรอบของการแก้ไข-ทดสอบ-ตรวจสอบ",
-          "min": 1,
-          "max": 10,
-          "default": 3
         }
       ]
     },
     {
-      "id": "behavior",
-      "title": "Behavior",
-      "titleTh": "พฤติกรรม",
-      "icon": "settings",
+      "id": "create_settings",
+      "title": "New Skill Settings",
+      "titleTh": "ตั้งค่า Skill ใหม่",
+      "icon": "sparkles",
+      "collapsed": false,
       "fields": [
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "Skill Description",
+          "labelTh": "คำอธิบาย Skill",
+          "placeholder": "Describe what this skill should do in detail...\nExample: A skill that converts Thai dates between Buddhist Era (BE) and Common Era (CE) formats, supporting formats like '15/04/2567' or 'April 15, 2024'",
+          "placeholderTh": "อธิบายสิ่งที่ Skill ควรทำอย่างละเอียด...\nตัวอย่าง: Skill แปลงวันที่ไทยระหว่าง พ.ศ. และ ค.ศ. รองรับรูปแบบ '15/04/2567' หรือ '15 เมษายน 2567'",
+          "helpText": "Be specific — describe inputs, outputs, and use cases. More detail = better generated skill.",
+          "helpTextTh": "ระบุให้ชัดเจน — บอก input, output และการใช้งาน ยิ่งละเอียดยิ่งได้ Skill ที่ดีกว่า",
+          "rows": 5,
+          "required": false,
+          "dependsOn": { "field": "mode", "value": "create" }
+        },
+        {
+          "id": "skill_language",
+          "type": "select",
+          "label": "Implementation Language",
+          "labelTh": "ภาษา Programming",
+          "helpText": "Python: math, NLP, data processing. JavaScript: async, JSON, templating",
+          "helpTextTh": "Python: math, NLP, ประมวลผลข้อมูล. JavaScript: async, JSON, template",
+          "default": "auto",
+          "options": [
+            { "value": "auto",       "label": "Auto (ISC chooses best)",  "labelTh": "อัตโนมัติ (ISC เลือกให้)" },
+            { "value": "python",     "label": "Python",                   "labelTh": "Python" },
+            { "value": "javascript", "label": "JavaScript (Node.js)",     "labelTh": "JavaScript (Node.js)" }
+          ]
+        },
+        {
+          "id": "complexity",
+          "type": "select",
+          "label": "Complexity Level",
+          "labelTh": "ระดับความซับซ้อน",
+          "helpText": "Affects depth of planning, number of helper functions, and edge-case handling",
+          "helpTextTh": "ส่งผลต่อความลึกของการวางแผน จำนวน helper function และการจัดการ edge case",
+          "default": "moderate",
+          "options": [
+            { "value": "simple",   "label": "Simple — single-purpose, few inputs",              "labelTh": "ง่าย — ทำงานเดียว, input น้อย" },
+            { "value": "moderate", "label": "Moderate — multiple inputs, business logic",       "labelTh": "ปานกลาง — หลาย input, มี logic ธุรกิจ" },
+            { "value": "complex",  "label": "Complex — multi-step pipeline, advanced logic",    "labelTh": "ซับซ้อน — หลายขั้นตอน, อัลกอริทึมขั้นสูง" }
+          ]
+        },
+        {
+          "id": "skill_name",
+          "type": "text",
+          "label": "Skill Name (optional)",
+          "labelTh": "ชื่อ Skill (ไม่บังคับ)",
+          "placeholder": "my-skill-name  (leave blank to auto-generate from description)",
+          "placeholderTh": "my-skill-name  (เว้นว่างเพื่อสร้างชื่ออัตโนมัติจากคำอธิบาย)",
+          "helpText": "kebab-case slug. Auto-generated if blank. Also used as the skill slug for improve mode.",
+          "helpTextTh": "Slug รูปแบบ kebab-case. หากเว้นว่างจะสร้างอัตโนมัติ ใช้เป็น slug สำหรับโหมด improve ด้วย",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "workflow_settings",
+      "title": "Virtual Workflow Source",
+      "titleTh": "แหล่ง Virtual Workflow",
+      "icon": "layers",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "workflow_selector",
+          "type": "workflow-selector",
+          "label": "Select or Paste Workflow",
+          "labelTh": "เลือกหรือวาง Workflow",
+          "placeholder": "Select a saved workflow from the list...",
+          "placeholderTh": "เลือก workflow ที่บันทึกไว้จากรายการ...",
+          "helpText": "Pick a saved workflow from the list — its JSON will be filled automatically. Or paste exported workflow JSON in the textarea below.",
+          "helpTextTh": "เลือก workflow ที่บันทึกไว้ — JSON จะถูกกรอกโดยอัตโนมัติ หรือวาง JSON ที่ export จาก Workflow Editor ในช่อง textarea ด้านล่าง",
+          "rows": 6,
+          "required": false,
+          "dependsOn": { "field": "mode", "value": "convert_workflow" }
+        }
+      ]
+    },
+    {
+      "id": "improve_settings",
+      "title": "Improve Settings",
+      "titleTh": "ตั้งค่าการปรับปรุง",
+      "icon": "zap",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "rounds",
+          "type": "number",
+          "label": "Improvement Rounds",
+          "labelTh": "จำนวนรอบการปรับปรุง",
+          "helpText": "Number of iterate → test → patch cycles (improve mode only)",
+          "helpTextTh": "จำนวนรอบ iterate → ทดสอบ → patch (โหมด improve เท่านั้น)",
+          "min": 1,
+          "max": 10,
+          "default": 3
+        },
         {
           "id": "ask_user",
           "type": "boolean",
-          "label": "Ask User for Clarification",
-          "labelTh": "ถามผู้ใช้เพื่อความชัดเจน",
-          "helpText": "Pause and ask for input when uncertain",
-          "helpTextTh": "หยุดและถามผู้ใช้เมื่อไม่แน่ใจ",
+          "label": "Ask for Clarification",
+          "labelTh": "ขอคำชี้แจงจากผู้ใช้",
+          "helpText": "Pause and ask when ISC is uncertain about the right approach",
+          "helpTextTh": "หยุดและถามเมื่อ ISC ไม่แน่ใจในแนวทาง",
           "default": false
         },
         {
@@ -69,8 +145,8 @@
           "type": "boolean",
           "label": "Allow Test Expansion",
           "labelTh": "อนุญาตขยายการทดสอบ",
-          "helpText": "Allow the agent to create additional test cases",
-          "helpTextTh": "อนุญาตให้ agent สร้าง test case เพิ่มเติม",
+          "helpText": "Allow ISC to add new test cases during the improvement loop",
+          "helpTextTh": "อนุญาตให้ ISC เพิ่ม test cases ระหว่างการปรับปรุง",
           "default": false
         }
       ]
@@ -79,33 +155,63 @@
       "id": "llm_config",
       "title": "LLM Connection",
       "titleTh": "การเชื่อมต่อ LLM",
-      "icon": "zap",
+      "icon": "globe",
+      "collapsed": false,
       "fields": [
+        {
+          "id": "llm_gateway_mode",
+          "type": "select",
+          "label": "LLM Gateway",
+          "labelTh": "Gateway LLM",
+          "helpText": "Use the system's built-in gateway (credits tracked automatically) or provide your own API key",
+          "helpTextTh": "ใช้ gateway ของระบบ (หักเครดิตอัตโนมัติ) หรือระบุ API key ของตัวเอง",
+          "default": "system",
+          "options": [
+            { "value": "system", "label": "System Gateway (use credits)", "labelTh": "Gateway ระบบ (ใช้เครดิต)" },
+            { "value": "custom", "label": "Custom API Key",               "labelTh": "API Key ของตัวเอง" }
+          ]
+        },
+        {
+          "id": "llm_model_search",
+          "type": "model-search",
+          "label": "Model",
+          "labelTh": "โมเดล",
+          "placeholder": "Search and select a model...",
+          "placeholderTh": "ค้นหาและเลือกโมเดล...",
+          "helpText": "Choose the LLM model from the system. Powerful models (Opus, GPT-4o) give better results for complex skills.",
+          "helpTextTh": "เลือกโมเดล LLM จากระบบ โมเดลที่ทรงพลัง (Opus, GPT-4o) ให้ผลลัพธ์ดีกว่าสำหรับ Skill ที่ซับซ้อน",
+          "required": true,
+          "dependsOn": { "field": "llm_gateway_mode", "value": "system" }
+        },
         {
           "id": "llm_base_url",
           "type": "text",
           "label": "API Base URL",
           "labelTh": "Base URL ของ API",
-          "placeholder": "https://your-gateway/v1",
-          "helpText": "OpenAI-compatible endpoint (optional, uses default if blank)",
-          "helpTextTh": "Endpoint ที่ compatible กับ OpenAI (ไม่บังคับ)"
+          "placeholder": "https://api.openai.com/v1",
+          "placeholderTh": "https://api.openai.com/v1",
+          "helpText": "OpenAI-compatible endpoint. Leave blank to use ISC_LLM_BASE_URL environment variable.",
+          "helpTextTh": "Endpoint แบบ OpenAI-compatible เว้นว่างเพื่อใช้ ISC_LLM_BASE_URL จาก environment",
+          "dependsOn": { "field": "llm_gateway_mode", "value": "custom" }
         },
         {
           "id": "llm_model",
           "type": "text",
           "label": "Model",
           "labelTh": "โมเดล",
-          "placeholder": "gpt-4o, claude-opus-4-6",
-          "helpText": "Model name to use for this run",
-          "helpTextTh": "ชื่อโมเดลที่ใช้ในการทำงาน"
+          "placeholder": "gpt-4o  /  claude-opus-4-6  /  claude-sonnet-4-6",
+          "placeholderTh": "gpt-4o  /  claude-opus-4-6  /  claude-sonnet-4-6",
+          "helpText": "Model for code & schema generation. Use a powerful model for complex skills.",
+          "helpTextTh": "โมเดลสำหรับสร้าง code และ schema. ใช้โมเดลที่ทรงพลังสำหรับ Skill ที่ซับซ้อน",
+          "dependsOn": { "field": "llm_gateway_mode", "value": "custom" }
         },
         {
           "id": "llm_temperature",
           "type": "slider",
           "label": "Temperature",
           "labelTh": "Temperature",
-          "helpText": "Creativity level (0 = deterministic, 2 = highly creative)",
-          "helpTextTh": "ระดับความสร้างสรรค์ (0 = แน่นอน, 2 = สร้างสรรค์สูง)",
+          "helpText": "0 = deterministic, 0.5 = balanced, 1.0 = creative, 2.0 = experimental",
+          "helpTextTh": "0 = แน่นอน, 0.5 = สมดุล, 1.0 = สร้างสรรค์, 2.0 = ทดลอง",
           "min": 0,
           "max": 2,
           "step": 0.1,
@@ -116,7 +222,9 @@
           "type": "number",
           "label": "Timeout (seconds)",
           "labelTh": "Timeout (วินาที)",
-          "min": 10,
+          "helpText": "Max seconds per LLM call. Complex skills with many phases need more time.",
+          "helpTextTh": "เวลาสูงสุดต่อการเรียก LLM หนึ่งครั้ง Skill ซับซ้อนใช้เวลามากกว่า",
+          "min": 30,
           "max": 600,
           "default": 180
         }
@@ -127,14 +235,17 @@
       "title": "Research Settings",
       "titleTh": "ตั้งค่าการวิจัย",
       "icon": "search",
+      "collapsed": true,
       "fields": [
         {
           "id": "research_max_topics",
           "type": "number",
           "label": "Max Research Topics",
           "labelTh": "หัวข้อวิจัยสูงสุด",
+          "helpText": "Max web search topics per improve round",
+          "helpTextTh": "หัวข้อค้นหาเว็บสูงสุดต่อรอบการปรับปรุง",
           "min": 1,
-          "max": 10,
+          "max": 15,
           "default": 10
         },
         {
@@ -142,6 +253,8 @@
           "type": "number",
           "label": "Max Results per Topic",
           "labelTh": "ผลลัพธ์สูงสุดต่อหัวข้อ",
+          "helpText": "Max search results per topic",
+          "helpTextTh": "จำนวนผลค้นหาสูงสุดต่อหัวข้อ",
           "min": 1,
           "max": 5,
           "default": 3
@@ -150,7 +263,9 @@
           "id": "research_max_snippet_chars",
           "type": "number",
           "label": "Max Snippet Characters",
-          "labelTh": "ตัวอักษรข้อมูลสูงสุด",
+          "labelTh": "ตัวอักษร Snippet สูงสุด",
+          "helpText": "Max research content characters passed to each LLM prompt",
+          "helpTextTh": "จำนวนตัวอักษรสูงสุดของเนื้อหาวิจัยที่ส่งให้ LLM",
           "min": 500,
           "max": 20000,
           "default": 6000
@@ -162,37 +277,50 @@
       "title": "Safety Settings",
       "titleTh": "ตั้งค่าความปลอดภัย",
       "icon": "settings",
+      "collapsed": true,
       "fields": [
         {
           "id": "safety_restrict_paths",
           "type": "boolean",
-          "label": "Restrict File Paths to Skills Directory",
-          "labelTh": "จำกัดเส้นทางไฟล์ในโฟลเดอร์ Skills",
+          "label": "Restrict File Paths to Skill Directory",
+          "labelTh": "จำกัดเส้นทางไฟล์ในโฟลเดอร์ Skill",
+          "helpText": "Restrict generated patches and code to the skill's own directory",
+          "helpTextTh": "จำกัด patch และ code ที่สร้างให้อยู่ในโฟลเดอร์ของ Skill เท่านั้น",
           "default": true
         },
         {
           "id": "safety_disallow_new_deps",
           "type": "boolean",
-          "label": "Disallow New Dependencies in skill.py",
-          "labelTh": "ไม่อนุญาตเพิ่ม dependency ใหม่ใน skill.py",
+          "label": "Disallow New External Dependencies",
+          "labelTh": "ไม่อนุญาตเพิ่ม Dependency ภายนอกใหม่",
+          "helpText": "Prevent importing new external packages during improvement",
+          "helpTextTh": "ป้องกันการ import package ภายนอกใหม่ระหว่างการปรับปรุง",
           "default": true
         },
         {
           "id": "safety_require_signature",
           "type": "boolean",
           "label": "Require respond() Signature",
-          "labelTh": "บังคับใช้ signature respond()",
+          "labelTh": "บังคับ signature ของ respond()",
+          "helpText": "Enforce that respond(input, context) entry point signature stays intact",
+          "helpTextTh": "บังคับให้ entry point respond(input, context) ยังคง signature ที่ถูกต้อง",
           "default": true
         }
       ]
     }
   ],
   "outputMapping": {
-    "skill_name": "skill_name",
     "mode": "mode",
+    "description": "description",
+    "skill_language": "skill_language",
+    "complexity": "complexity",
+    "skill_name": "skill_name",
+    "workflow_selector": "workflow_json",
     "rounds": "rounds",
     "ask_user": "ask_user",
     "allow_test_expansion": "allow_test_expansion",
+    "llm_gateway_mode": "llm_gateway_mode",
+    "llm_model_search": "llm_model_search",
     "llm_base_url": "llm_base_url",
     "llm_model": "llm_model",
     "llm_temperature": "llm_temperature",

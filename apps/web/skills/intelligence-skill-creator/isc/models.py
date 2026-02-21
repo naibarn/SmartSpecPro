@@ -1,6 +1,7 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
 
 @dataclass(frozen=True)
 class SkillManifest:
@@ -9,7 +10,7 @@ class SkillManifest:
     description: str
     entrypoint: str = "skill.py"
     author: str = ""
-    tags: List[str] = None
+    tags: List[str] = field(default_factory=list)
 
 @dataclass(frozen=True)
 class TestCase:
@@ -39,3 +40,35 @@ class PatchProposal:
     created_at_iso: str
     rationale: str
     unified_diff: str
+
+
+# ── Creation models (ISC v0.4.0) ───────────────────────────────────────────────
+
+@dataclass
+class SkillPlan:
+    """Architecture plan produced in Phase 1 of skill creation."""
+    skill_name: str
+    skill_title: str
+    description: str
+    language: str                    # "python" | "javascript"
+    complexity: str                  # "simple" | "moderate" | "complex"
+    purpose: str
+    inputs: List[Dict[str, Any]]     # [{name, type, required, description, example}]
+    outputs: List[Dict[str, Any]]    # [{name, type, description}]
+    logic_steps: List[str]
+    algorithms: List[str]
+    external_apis: List[str]
+    categories: List[str]
+    tags: List[str]
+    trigger_patterns: List[str]
+
+
+@dataclass
+class CreatedSkill:
+    """Result artifact after a successful skill creation pipeline."""
+    skill_name: str
+    skill_path: str
+    files_written: List[str]
+    language: str
+    summary: str
+    warnings: List[str] = field(default_factory=list)

@@ -1648,11 +1648,15 @@ export async function listLibraryDocuments(
   const groupIds = userGroupsList.map(g => String(g.id));
   const groupIdNums = userGroupsList.map(g => g.id);
 
+  console.log("[listLibraryDocuments] START", { actorTenantId, scope, sort, limit, offset, query, filters: input.filters, actor: { userId: actor.userId, role: actor.role } });
+
   const itemRows = await db
     .select()
     .from(libraryItems)
     .where(and(eq(libraryItems.tenantId, actorTenantId), isNull(libraryItems.deletedAt)))
     .orderBy(desc(libraryItems.updatedAt), desc(libraryItems.createdAt), desc(libraryItems.id));
+
+  console.log("[listLibraryDocuments] DB rows found:", itemRows.length, itemRows.map(r => ({ id: r.id, title: r.title, ownerUserId: r.ownerUserId, tenantId: r.tenantId, visibility: r.visibility, status: r.status })));
 
   if (!itemRows.length) {
     return {
@@ -1699,17 +1703,24 @@ export async function listLibraryDocuments(
       ),
     );
 
-  const visible = itemRows
-    .filter((item) => itemMatchesDocumentFilters(item, input.filters))
-    .filter((item) => itemMatchesDocumentQuery(item, query))
+  console.log("[listLibraryDocuments] Permission rows found:", permissionRows.length);
+
+  const afterFilters = itemRows.filter((item) => itemMatchesDocumentFilters(item, input.filters));
+  const afterQuery = afterFilters.filter((item) => itemMatchesDocumentQuery(item, query));
+  console.log("[listLibraryDocuments] After filters:", afterFilters.length, "After query:", afterQuery.length);
+
+  const visible = afterQuery
     .map((item) => {
       const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
-      if (!canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel)) {
+      const canRead = canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel);
+      if (!canRead) {
+        console.log("[listLibraryDocuments] FILTERED OUT by canRead:", { id: item.id, title: item.title, ownerUserId: item.ownerUserId, actorUserId: actor.userId, permLevel: permissionInfo.effectivePermissionLevel });
         return null;
       }
 
       const accessSource = getDocumentAccessSource(item, actor, permissionInfo);
       if (!matchesDocumentScope(scope, accessSource)) {
+        console.log("[listLibraryDocuments] FILTERED OUT by scope:", { id: item.id, title: item.title, scope, accessSource });
         return null;
       }
 
@@ -1779,6 +1790,10 @@ export async function getLibraryMarkdownContent(
     return null;
   }
 
+  // Read the markdown_source chunk specifically — NOT indexed text chunks.
+  // The indexer writes text chunks starting at chunk_index 0 when no
+  // markdown_source exists, which would return metadata-derived text instead
+  // of the actual user-authored markdown content.
   const rows = await db
     .select({
       content: libraryChunks.content,
@@ -1789,6 +1804,7 @@ export async function getLibraryMarkdownContent(
         eq(libraryChunks.tenantId, actorTenantId),
         eq(libraryChunks.libraryItemId, item.id),
         eq(libraryChunks.chunkIndex, 0),
+        eq(libraryChunks.contentType, "markdown_source"),
       ),
     )
     .limit(1);
@@ -1890,14 +1906,25 @@ export async function saveLibraryMarkdown(
   const normalizedContent = input.content.replace(/\r\n/g, "\n");
   const now = new Date();
 
-  // Save current content as version before overwriting
+  // Debug log: track exactly what is being saved so we can diagnose data-loss issues.
+  console.log("[saveLibraryMarkdown]", {
+    itemId: existing.id,
+    contentLen: normalizedContent.length,
+    contentIsEmpty: normalizedContent.trim().length === 0,
+    contentPreview: normalizedContent.slice(0, 80).replace(/\n/g, "\\n"),
+    at: now.toISOString(),
+  });
+
+  // Save current content as version before overwriting.
+  // Filter by contentType="markdown_source" (not chunkIndex=0) so we don't
+  // accidentally capture a text/embedding chunk if the indexer ran concurrently.
   const currentChunk = await db
     .select()
     .from(libraryChunks)
     .where(
       and(
         eq(libraryChunks.libraryItemId, existing.id),
-        eq(libraryChunks.chunkIndex, 0),
+        eq(libraryChunks.contentType, "markdown_source"),
       ),
     )
     .limit(1);

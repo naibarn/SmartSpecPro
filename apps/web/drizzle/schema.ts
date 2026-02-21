@@ -45,6 +45,14 @@ export const templateStatusEnum = pgEnum("template_status", [
   "archived",
 ]);
 
+// Skill visibility enum
+export const skillVisibilityEnum = pgEnum("skill_visibility", [
+  "private",          // Only owner + assigned groups can use
+  "pending_approval", // Owner requested public, awaiting admin approval
+  "public",           // Admin approved, visible to all tenant users
+  "rejected",         // Admin rejected public request
+]);
+
 // Workflow execution status enum (Section 13)
 export const workflowExecutionStatusEnum = pgEnum("workflow_execution_status", [
   "pending",
@@ -83,6 +91,23 @@ export const policyActionEnum = pgEnum("policy_action", [
   "allow",
   "deny",
   "require_approval",
+]);
+
+// Credit source type enum — categorizes what generated a credit transaction
+export const creditSourceTypeEnum = pgEnum("credit_source_type", [
+  "chat",
+  "skill",
+  "media_image",
+  "media_video",
+  "media_audio",
+  "indexing",
+  "rag",
+  "stt",
+  "translation",
+  "brainstorm",
+  "scheduler",
+  "admin",
+  "other",
 ]);
 
 // Google Drive indexing mode enum
@@ -218,12 +243,27 @@ export const creditTransactions = pgTable("credit_transactions", {
   /** Idempotency key to prevent duplicate charges for the same operation */
   idempotencyKey: varchar("idempotencyKey", { length: 256 }),
 
+  /** Trace ID linking to providerUsageLog and apiAuditEvents for audit trail */
+  traceId: varchar("traceId", { length: 32 }),
+
+  /** Conversation this transaction belongs to (nullable — not all transactions come from conversations) */
+  conversationId: integer("conversationId").references(() => conversations.id, { onDelete: "set null" }),
+
+  /** Skill slug used for this transaction (nullable) */
+  skillSlug: varchar("skillSlug", { length: 128 }),
+
+  /** Source type categorizing what generated this transaction */
+  sourceType: creditSourceTypeEnum("sourceType"),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("credit_transactions_idempotency_key_unique")
     .on(t.idempotencyKey)
     .where(sql`"idempotencyKey" IS NOT NULL`),
   index("credit_transactions_type_created_idx").on(t.type, t.createdAt),
+  index("credit_transactions_trace_id_idx").on(t.traceId),
+  index("credit_transactions_conversation_id_idx").on(t.conversationId),
+  index("credit_transactions_source_type_idx").on(t.sourceType),
 ]);
 
 export type CreditTransaction = typeof creditTransactions.$inferSelect;
@@ -999,7 +1039,7 @@ export const tenantPages = pgTable("tenant_pages", {
   /** Structured content sections (JSON) */
   sections: json("sections").$type<Array<{
     id: string;
-    type: "hero" | "features" | "testimonials" | "cta" | "content" | "gallery" | "pricing" | "faq" | "team" | "contact" | "custom";
+    type: "hero" | "features" | "testimonials" | "cta" | "content" | "gallery" | "pricing" | "faq" | "team" | "contact" | "custom" | "stats" | "process";
     title?: string;
     subtitle?: string;
     content?: string;
@@ -1911,12 +1951,45 @@ export const skills = pgTable("skills", {
   /** User who created/imported this skill */
   createdBy: integer("createdBy").references(() => users.id),
 
+  /** Tenant that owns this skill */
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id),
+
+  /** Skill visibility: private, pending_approval, public, rejected */
+  visibility: skillVisibilityEnum("visibility").default("private").notNull(),
+
+  /** Admin who approved the skill for public visibility */
+  approvedBy: integer("approvedBy").references(() => users.id),
+
+  /** When the skill was approved */
+  approvedAt: timestamp("approvedAt", { withTimezone: true }),
+
+  /** Reason for rejection (if visibility = 'rejected') */
+  rejectionReason: text("rejectionReason"),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type Skill = typeof skills.$inferSelect;
 export type InsertSkill = typeof skills.$inferInsert;
+
+/**
+ * Skill Permissions — controls which groups can use a private skill
+ * Simplified model: only group-based access (no per-user or role subjects)
+ */
+export const skillPermissions = pgTable("skill_permissions", {
+  id: serial("id").primaryKey(),
+  skillId: integer("skillId").notNull().references(() => skills.id, { onDelete: "cascade" }),
+  groupId: integer("groupId").notNull().references(() => userGroups.id, { onDelete: "cascade" }),
+  grantedByUserId: integer("grantedByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("skill_permissions_unique").on(t.skillId, t.groupId),
+  index("skill_permissions_group_idx").on(t.groupId),
+]);
+
+export type SkillPermission = typeof skillPermissions.$inferSelect;
+export type InsertSkillPermission = typeof skillPermissions.$inferInsert;
 
 /**
  * Skill Likes — per-user like tracking for marketplace
@@ -2562,6 +2635,47 @@ export const workflows = pgTable("workflows", {
 
 export type Workflow = typeof workflows.$inferSelect;
 export type InsertWorkflow = typeof workflows.$inferInsert;
+
+/**
+ * Workflow Versions — Snapshot history for every saved workflow.
+ * Auto-created on every workflow.save (with SHA-256 deduplication).
+ * Allows users to preview and restore previous states.
+ * Max 50 versions per workflow (oldest pruned automatically).
+ */
+export const workflowVersions = pgTable(
+  "workflow_versions",
+  {
+    id: serial("id").primaryKey(),
+    workflowId: integer("workflowId")
+      .notNull()
+      .references(() => workflows.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
+    versionNumber: integer("versionNumber").notNull(),
+    workflowJson: json("workflowJson")
+      .$type<{ nodes: any[]; edges: any[]; viewport?: any }>()
+      .notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    defaultModel: varchar("defaultModel", { length: 255 }),
+    contentHash: varchar("contentHash", { length: 64 }).notNull(),
+    changeDescription: text("changeDescription"),
+    createdByUserId: integer("createdByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("wv_workflow_version_unique").on(t.workflowId, t.versionNumber),
+    index("wv_workflow_created_idx").on(t.workflowId, t.createdAt),
+    index("wv_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("wv_content_hash_idx").on(t.contentHash),
+  ]
+);
+
+export type WorkflowVersion = typeof workflowVersions.$inferSelect;
+export type InsertWorkflowVersion = typeof workflowVersions.$inferInsert;
 
 /**
  * Template Categories — Hierarchical organization

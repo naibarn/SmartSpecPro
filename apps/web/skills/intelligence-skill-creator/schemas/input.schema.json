@@ -1,111 +1,250 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/isc/input.schema.json",
-  "title": "ISC Input Schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smartaihub.app/isc/input.schema.json",
+  "title": "Intelligence Skill Creator Input Schema",
+  "description": "Create new SmartSpecPro skills from scratch, or iteratively improve existing ones",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "skill_name"
-  ],
   "properties": {
-    "skill_name": {
-      "type": "string",
-      "minLength": 1
-    },
+
     "mode": {
       "type": "string",
-      "enum": [
-        "auto",
-        "llm",
-        "heuristic"
-      ],
-      "default": "auto"
+      "enum": ["create", "improve", "convert_workflow", "auto"],
+      "default": "create",
+      "description": "Operation mode",
+      "enumDescriptions": {
+        "create": "Create a brand-new skill with full schemas, code, and tests",
+        "improve": "Iteratively improve an existing ISC sandbox skill via LLM + research",
+        "convert_workflow": "Convert a Virtual Workflow JSON to a complete skill",
+        "auto": "Auto-detect from description/skill_name presence"
+      }
     },
+
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 2000,
+      "description": "What the new skill should do (required for create mode)",
+      "examples": [
+        "A skill that converts Thai dates to Buddhist Era format",
+        "A skill that extracts structured product info from unstructured text",
+        "A skill that generates SEO-optimized meta tags from a page title and content"
+      ]
+    },
+
+    "skill_language": {
+      "type": "string",
+      "enum": ["python", "javascript", "auto"],
+      "default": "auto",
+      "description": "Programming language for the skill implementation",
+      "enumDescriptions": {
+        "python": "Python — best for math, NLP, data processing, algorithms",
+        "javascript": "JavaScript/Node.js — best for async ops, JSON transformation, templating",
+        "auto": "Let ISC choose the best language automatically"
+      }
+    },
+
+    "complexity": {
+      "type": "string",
+      "enum": ["simple", "moderate", "complex"],
+      "default": "moderate",
+      "description": "Expected skill complexity — influences depth of planning and code generation",
+      "enumDescriptions": {
+        "simple": "Single-purpose, few inputs, straightforward logic",
+        "moderate": "Multiple inputs, business logic, validation",
+        "complex": "Multi-step pipeline, advanced algorithms, rich output"
+      }
+    },
+
+    "skill_name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9_-]*[a-z0-9]$",
+      "description": "For create: optional slug override (auto-generated if blank). For improve: required ISC sandbox skill name. Must be kebab-case or snake_case (lowercase letters, digits, hyphens, underscores).",
+      "examples": ["my-date-converter", "skill_math_tutor", "seo-meta-generator"]
+    },
+
     "rounds": {
       "type": "integer",
       "minimum": 1,
       "maximum": 10,
-      "default": 3
+      "default": 3,
+      "description": "Number of improve iterations (improve mode only)"
     },
+
     "ask_user": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Pause and ask user for clarification when uncertain (improve mode only)"
     },
+
     "allow_test_expansion": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Allow ISC to add new test cases during improvement (improve mode only)"
     },
+
+    "workflow_json": {
+      "type": "string",
+      "description": "Virtual Workflow JSON exported from the Workflow Editor (required for convert_workflow mode)",
+      "minLength": 2
+    },
+
+    "llm_gateway_mode": {
+      "type": "string",
+      "enum": ["system", "custom"],
+      "default": "system",
+      "description": "LLM gateway mode: 'system' uses the platform's built-in gateway (credits tracked), 'custom' uses a user-provided API key and base URL",
+      "enumDescriptions": {
+        "system": "Use the SmartSpecPro system gateway — LLM costs deducted from user credits automatically",
+        "custom": "Provide your own API key and base URL for an OpenAI-compatible endpoint"
+      }
+    },
+
+    "llm_model_search": {
+      "type": "string",
+      "description": "Model ID selected from the system model list (used when llm_gateway_mode = system)",
+      "examples": ["claude-opus-4-6", "claude-sonnet-4-6", "gpt-4o"]
+    },
+
+    "llm_base_url": {
+      "type": "string",
+      "description": "OpenAI-compatible API base URL (used when llm_gateway_mode = custom; leave blank to use environment default)"
+    },
+
+    "llm_model": {
+      "type": "string",
+      "description": "Model to use for code and schema generation",
+      "examples": ["gpt-4o", "claude-opus-4-6", "claude-sonnet-4-6"]
+    },
+
+    "llm_temperature": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2,
+      "default": 0,
+      "description": "LLM temperature — 0 = deterministic, 1+ = more creative"
+    },
+
+    "llm_timeout_s": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 600,
+      "default": 180,
+      "description": "LLM request timeout in seconds"
+    },
+
     "llm": {
       "type": "object",
+      "description": "Nested LLM config (alternative to llm_* flat fields, for CLI/API use)",
       "additionalProperties": false,
       "properties": {
-        "base_url": {
-          "type": "string",
-          "minLength": 1
-        },
-        "api_key": {
-          "type": "string",
-          "minLength": 1
-        },
-        "model": {
-          "type": "string",
-          "minLength": 1
-        },
-        "temperature": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 2,
-          "default": 0
-        },
-        "timeout_s": {
-          "type": "integer",
-          "minimum": 10,
-          "maximum": 600,
-          "default": 180
-        }
+        "base_url":    { "type": "string" },
+        "api_key":     { "type": "string" },
+        "model":       { "type": "string" },
+        "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+        "timeout_s":   { "type": "integer", "minimum": 10, "maximum": 600 }
       }
     },
-    "research": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "max_topics": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 10,
-          "default": 10
-        },
-        "max_results_per_topic": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 5,
-          "default": 3
-        },
-        "max_snippet_chars": {
-          "type": "integer",
-          "minimum": 500,
-          "maximum": 20000,
-          "default": 6000
-        }
-      }
+
+    "research_max_topics": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15,
+      "default": 10,
+      "description": "Max web research topics per improve round"
     },
-    "safety": {
-      "type": "object",
-      "additionalProperties": false,
+
+    "research_max_results": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "default": 3,
+      "description": "Max search results per research topic"
+    },
+
+    "research_max_snippet_chars": {
+      "type": "integer",
+      "minimum": 500,
+      "maximum": 20000,
+      "default": 6000,
+      "description": "Max characters of research content per LLM prompt"
+    },
+
+    "safety_restrict_paths": {
+      "type": "boolean",
+      "default": true,
+      "description": "Restrict generated patches to the skill's own directory"
+    },
+
+    "safety_disallow_new_deps": {
+      "type": "boolean",
+      "default": true,
+      "description": "Disallow adding new external dependencies during improvement"
+    },
+
+    "safety_require_signature": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enforce that respond() signature remains intact during improvement"
+    }
+  },
+
+  "if": {
+    "properties": { "mode": { "const": "improve" } },
+    "required": ["mode"]
+  },
+  "then": {
+    "required": ["skill_name"],
+    "properties": {
+      "skill_name": {
+        "description": "Required in improve mode — the slug of the existing ISC sandbox skill to improve."
+      }
+    }
+  },
+  "else": {
+    "if": {
+      "properties": { "mode": { "const": "create" } },
+      "required": ["mode"]
+    },
+    "then": {
+      "required": ["description"],
       "properties": {
-        "restrict_paths_under_skills": {
-          "type": "boolean",
-          "default": true
-        },
-        "disallow_new_deps_in_skill_py": {
-          "type": "boolean",
-          "default": true
-        },
-        "require_respond_signature": {
-          "type": "boolean",
-          "default": true
+        "description": {
+          "description": "Required in create mode — natural language description of what the new skill should do."
         }
       }
     }
-  }
+  },
+
+  "examples": [
+    {
+      "mode": "create",
+      "description": "A skill that converts Thai dates between Buddhist Era (BE) and Common Era (CE) formats, supporting multiple date string formats",
+      "skill_language": "python",
+      "complexity": "simple",
+      "llm_model": "gpt-4o"
+    },
+    {
+      "mode": "create",
+      "description": "A skill that extracts structured product data (name, price, features, pros, cons) from unstructured product description text using NLP techniques",
+      "skill_language": "python",
+      "complexity": "moderate",
+      "skill_name": "product-data-extractor",
+      "llm_model": "claude-opus-4-6"
+    },
+    {
+      "mode": "create",
+      "description": "A skill that generates a professional weekly schedule in multiple formats (JSON, Markdown table, plain text) given a list of tasks with priorities and time estimates",
+      "skill_language": "javascript",
+      "complexity": "complex"
+    },
+    {
+      "mode": "improve",
+      "skill_name": "skill_math_tutor",
+      "rounds": 3,
+      "llm_model": "gpt-4o"
+    }
+  ]
 }

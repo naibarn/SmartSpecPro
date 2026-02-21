@@ -31,7 +31,6 @@ import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -224,7 +223,7 @@ export default function DocumentManagement() {
     scope: listScope,
     sort: queryState.sort,
     query: debouncedQuery || undefined,
-    limit: 60,
+    limit: 50,
     offset: 0,
     filters: {
       itemType: queryState.itemType || undefined,
@@ -232,7 +231,7 @@ export default function DocumentManagement() {
     },
   }), [debouncedQuery, listScope, queryState.sort, queryState.itemType, queryState.status]);
 
-  const { data: documentData, isLoading: listLoading } = trpc.library.listDocuments.useQuery(listInput, {
+  const { data: documentData, isLoading: listLoading, error: listError } = trpc.library.listDocuments.useQuery(listInput, {
     enabled: shouldListDocuments,
   });
   const documents = shouldListDocuments
@@ -256,6 +255,9 @@ export default function DocumentManagement() {
     { id: selectedItem?.id || 0 },
     {
       enabled: Boolean(selectedItem && previewType === "markdown"),
+      // Prevent window-focus events (e.g. from screen-capture hotkeys) from
+      // overwriting the local draft state with potentially stale server data.
+      refetchOnWindowFocus: false,
     },
   );
   const activeMarkdownValue = selectedMarkdownDraft?.value ?? markdownContentQuery.data?.content ?? "";
@@ -264,6 +266,7 @@ export default function DocumentManagement() {
   const uploadFileMutation = trpc.library.uploadFile.useMutation();
   const createItemMutation = trpc.library.createItem.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
+  const deleteItemMutation = trpc.library.deleteItem.useMutation();
   const importDriveFileMutation = trpc.googleDrive.importDriveFile.useMutation();
 
   function isEditorTabDirty(tabId: number): boolean {
@@ -509,6 +512,13 @@ export default function DocumentManagement() {
         return prev;
       }
 
+      // Never overwrite a known-good (non-empty) saved draft with empty server
+      // data.  This can happen if the server refetches during a transient state
+      // (e.g. mid-indexing race) and would silently wipe the local draft.
+      if (!incomingContent.trim() && current.savedValue.trim()) {
+        return prev;
+      }
+
       return {
         ...prev,
         [docId]: {
@@ -553,16 +563,17 @@ export default function DocumentManagement() {
     if (!selectedItem || previewType !== "markdown") return;
     const draft = markdownDraftByDocId[selectedItem.id];
     const contentToSave = draft?.value ?? "";
+
+    // Safety guard: refuse to persist an empty document.  This prevents data
+    // loss if an external hotkey (e.g. screen-capture) clears the editor state
+    // and a save is somehow triggered before the user notices.
+    if (!contentToSave.trim()) {
+      toast.error("Cannot save an empty document. Please enter content first.");
+      return;
+    }
     const expectedUpdatedAt = new Date(draft?.updatedAt ?? selectedItem.updated_at);
 
-    try {
-      setMarkdownError(undefined);
-      const result = await saveMarkdownMutation.mutateAsync({
-        id: selectedItem.id,
-        content: contentToSave,
-        expectedUpdatedAt,
-      });
-      toast.success("Markdown saved. Re-indexing started.");
+    async function applySuccessResult(result: Awaited<ReturnType<typeof saveMarkdownMutation.mutateAsync>>) {
       const updatedItem = toProvisionalDocumentItem(result.item);
       setProvisionalSelectedItem(updatedItem);
       upsertEditorTab(updatedItem);
@@ -579,7 +590,36 @@ export default function DocumentManagement() {
         trpcUtils.library.listDocuments.invalidate(),
         trpcUtils.library.getMarkdownContent.invalidate({ id: selectedItem.id }),
       ]);
+    }
+
+    try {
+      setMarkdownError(undefined);
+      const result = await saveMarkdownMutation.mutateAsync({
+        id: selectedItem.id,
+        content: contentToSave,
+        expectedUpdatedAt,
+      });
+      toast.success("Markdown saved. Re-indexing started.");
+      await applySuccessResult(result);
     } catch (error) {
+      // Version conflict from system updates (index job). Retry without version check.
+      const isVersionConflict = error instanceof Error && error.message.toLowerCase().includes("version conflict");
+      if (isVersionConflict) {
+        try {
+          const retryResult = await saveMarkdownMutation.mutateAsync({
+            id: selectedItem.id,
+            content: contentToSave,
+          });
+          toast.success("Markdown saved. Re-indexing started.");
+          await applySuccessResult(retryResult);
+          return;
+        } catch (retryError) {
+          const retryMessage = retryError instanceof Error ? retryError.message : "Failed to save markdown";
+          setMarkdownError(retryMessage);
+          toast.error(retryMessage);
+          return;
+        }
+      }
       const message = error instanceof Error ? error.message : "Failed to save markdown";
       setMarkdownError(message);
       toast.error(message);
@@ -599,6 +639,23 @@ export default function DocumentManagement() {
       delete next[selectedItem.id];
       return next;
     });
+  }
+
+  async function handleDeleteItem(item: DocumentLibraryItem) {
+    try {
+      await deleteItemMutation.mutateAsync({ id: item.id });
+      toast.success(`"${item.title}" moved to trash.`);
+      await trpcUtils.library.listDocuments.invalidate();
+      // Close the tab if this item is currently open
+      const tabOpen = openEditorTabs.some((t) => t.id === item.id);
+      if (tabOpen) {
+        closeEditorTab(item.id);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to move item to trash",
+      );
+    }
   }
 
   async function fileToBase64(file: File): Promise<string> {
@@ -977,6 +1034,7 @@ export default function DocumentManagement() {
                   <div className="text-base font-semibold text-slate-900">Library</div>
                   <div className="text-xs text-slate-500">
                     Browse files and open in editor tabs
+                    {" "}({documents.length} items{listLoading ? ", loading..." : ""}{listError ? `, error: ${listError.message}` : ""})
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1041,6 +1099,11 @@ export default function DocumentManagement() {
                   </div>
 
                   <div className="overflow-y-auto xl:h-[1000px]">
+                    {listError && (
+                      <div className="text-sm text-destructive px-4 py-2 mb-2 rounded bg-destructive/10">
+                        Failed to load documents: {listError.message}
+                      </div>
+                    )}
                     <DocumentGridList
                       items={documents}
                       selectedId={selectedId}
@@ -1057,6 +1120,7 @@ export default function DocumentManagement() {
                         setProvisionalSelectedItem(null);
                         openEditorTab(item, { scope: queryState.scope });
                       }}
+                      onDelete={handleDeleteItem}
                     />
                   </div>
                 </>
@@ -1096,9 +1160,9 @@ export default function DocumentManagement() {
           {!isEditorPanelCollapsed ? (
             <section
               ref={editorWorkspaceRef}
-              className="min-w-0 flex-1 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300"
+              className="min-w-0 flex-1 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:flex xl:min-h-0 xl:flex-col"
             >
-            <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="text-base font-semibold text-slate-900">Document Editor</div>
                 {hasUnsavedTabs ? (
@@ -1139,7 +1203,7 @@ export default function DocumentManagement() {
               </div>
             </div>
 
-            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="mb-3 flex shrink-0 items-center gap-2 overflow-x-auto pb-1">
               {openEditorTabs.length ? openEditorTabs.map((tab) => {
                 const isActive = tab.id === selectedId;
                 const isDirty = isEditorTabDirty(tab.id);
@@ -1191,7 +1255,7 @@ export default function DocumentManagement() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
               <DocumentPreviewPanel
                 item={selectedItem}
                 previewType={previewType}
@@ -1269,12 +1333,12 @@ export default function DocumentManagement() {
           ) : null}
 
           {isMarkdownPreviewPanelOpen ? (
-            <aside className={`space-y-3 rounded-3xl border border-slate-200/80 bg-white p-3 shadow-md transition-all duration-300 ${
+            <aside className={`space-y-3 rounded-3xl border border-slate-200/80 bg-white p-3 shadow-md transition-all duration-300 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden ${
               isPreviewFullWidth ? "xl:min-w-0 xl:flex-1" : "xl:shrink-0"
             }`}
             style={isDesktopLayout && !isPreviewFullWidth ? { width: `${previewPanelWidth}px` } : undefined}
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex shrink-0 items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   {isEditorPanelCollapsed ? (
                     <Button
@@ -1341,11 +1405,11 @@ export default function DocumentManagement() {
               </div>
 
               {selectedItem && previewType === "markdown" ? (
-                <ScrollArea className="h-[1000px] rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="min-h-[200px] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 xl:flex-1 xl:min-h-0">
                   <SafeMarkdown className="md-preview">
                     {activeMarkdownValue || "_Empty markdown file_"}
                   </SafeMarkdown>
-                </ScrollArea>
+                </div>
               ) : (
                 <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-muted-foreground">
                   Open a markdown file to see live preview here.

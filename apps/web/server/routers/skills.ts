@@ -1328,6 +1328,8 @@ export const skillsRouter = router({
           userId,
           amount: creditsUsed,
           description: "Auto Prompt enhancement (CreateImagePrompt skill)",
+          skillSlug: "create-image-prompt",
+          sourceType: "skill",
           metadata: {
             model: visionModel,
             skill: "create-image-prompt",
@@ -1503,6 +1505,8 @@ export const skillsRouter = router({
           userId,
           amount: creditsUsed,
           description: `Skill execution: ${skill.name}`,
+          skillSlug: input.skillId,
+          sourceType: "skill",
           metadata: {
             model: visionModel,
             skill: input.skillId,

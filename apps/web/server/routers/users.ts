@@ -249,6 +249,7 @@ export const usersRouter = router({
         userId: input.userId,
         amount: input.amount,
         description: input.description,
+        sourceType: "admin",
         metadata: {
           adminId: ctx.user.id,
           adminName: ctx.user.name || ctx.user.email,
@@ -330,6 +331,7 @@ export const usersRouter = router({
           userId: input.userId,
           amount: Math.abs(difference),
           description,
+          sourceType: "admin",
           metadata: {
             adminId: ctx.user.id,
             adminName: ctx.user.name || ctx.user.email,
@@ -681,6 +683,7 @@ export const usersRouter = router({
         userId: ctx.user.id,
         amount: input.amount,
         description: `Transfer to ${targetUser.email || targetUser.name}: ${input.note || 'Credit transfer'}`,
+        sourceType: "admin",
         metadata: {
           action: 'domain_admin_transfer',
           toUserId: input.toUserId,

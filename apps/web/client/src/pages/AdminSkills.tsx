@@ -57,6 +57,10 @@ import {
   FolderSync,
   Check,
   ChevronsUpDown,
+  Lock,
+  Clock,
+  Users,
+  X,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -94,6 +98,12 @@ interface Skill {
   createdBy: number | null;
   createdAt: string;
   updatedAt: string;
+  visibility: "private" | "pending_approval" | "public" | "rejected";
+  tenantId: string | null;
+  approvedBy: number | null;
+  approvedAt: string | null;
+  rejectionReason: string | null;
+  ownerName?: string | null;
 }
 
 interface FolderInfo {
@@ -161,6 +171,8 @@ export default function AdminSkills() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [showEnabledOnly, setShowEnabledOnly] = useState(false);
   const [activeTab, setActiveTab] = useState("skills");
+  const [rejectingSkill, setRejectingSkill] = useState<Skill | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   // ZIP import state
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -186,11 +198,14 @@ export default function AdminSkills() {
     systemPrompt: "",
     skillContent: "",
     marketplaceContent: "",
+    visibility: "private" as "private" | "public",
   });
 
-  // Check auth
+  // Check auth — any authenticated user can access, not just admins
+  const isAdmin = user?.role === "admin";
+
   useEffect(() => {
-    if (!authLoading && (!user || user.role !== "admin")) {
+    if (!authLoading && !user) {
       setLocation("/");
     }
   }, [user, authLoading, setLocation]);
@@ -211,6 +226,23 @@ export default function AdminSkills() {
   // Fetch media models (image/video/audio) for media-generate skills
   const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
   const { data: videoModels } = trpc.mediaModels.list.useQuery({ type: "video" });
+
+  // Fetch pending skills for admin approval tab
+  const { data: pendingSkills } = trpc.skills.listPending.useQuery(undefined, {
+    enabled: !!isAdmin,
+  });
+
+  // Fetch groups for sharing (used in edit dialog)
+  const { data: userGroups } = trpc.groups.list.useQuery(
+    { scope: "my_groups" } as any,
+    { enabled: !!editingSkill }
+  );
+
+  // Fetch shared groups for the currently editing skill
+  const { data: sharedGroups } = trpc.skills.getSkillGroups.useQuery(
+    { skillId: editingSkill?.id ?? 0 },
+    { enabled: !!editingSkill && editingSkill.visibility === "private" }
+  );
 
   // Scan folders
   const { data: folders, refetch: refetchFolders } = trpc.skills.scanFolders.useQuery(undefined, {
@@ -340,6 +372,86 @@ export default function AdminSkills() {
     },
   });
 
+  // Approve skill mutation (admin only)
+  const approveMutation = trpc.skills.approveSkill.useMutation({
+    onSuccess: () => {
+      utils.skills.listFromDb.invalidate();
+      utils.skills.listPending.invalidate();
+      toast({
+        title: "Skill Approved",
+        description: "The skill is now publicly visible to all users.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve skill",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reject skill mutation (admin only)
+  const rejectMutation = trpc.skills.rejectSkill.useMutation({
+    onSuccess: () => {
+      utils.skills.listFromDb.invalidate();
+      utils.skills.listPending.invalidate();
+      setRejectingSkill(null);
+      setRejectReason("");
+      toast({
+        title: "Skill Rejected",
+        description: "The skill owner has been notified.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject skill",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Share with groups mutation
+  const shareWithGroupsMutation = trpc.skills.shareWithGroups.useMutation({
+    onSuccess: () => {
+      if (editingSkill) {
+        utils.skills.getSkillGroups.invalidate({ skillId: editingSkill.id });
+      }
+      toast({
+        title: "Group Added",
+        description: "The skill is now shared with the selected group.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to share with group",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Unshare group mutation
+  const unshareGroupMutation = trpc.skills.unshareGroup.useMutation({
+    onSuccess: () => {
+      if (editingSkill) {
+        utils.skills.getSkillGroups.invalidate({ skillId: editingSkill.id });
+      }
+      toast({
+        title: "Group Removed",
+        description: "The group no longer has access to this skill.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove group sharing",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetNewSkillForm = () => {
     setNewSkillData({
       slug: "",
@@ -360,6 +472,7 @@ export default function AdminSkills() {
       systemPrompt: "",
       skillContent: "",
       marketplaceContent: "",
+      visibility: "private",
     });
   };
 
@@ -371,6 +484,7 @@ export default function AdminSkills() {
       systemPrompt: newSkillData.systemPrompt || undefined,
       skillContent: newSkillData.skillContent || undefined,
       marketplaceContent: newSkillData.marketplaceContent || undefined,
+      visibility: newSkillData.visibility,
     });
   };
 
@@ -398,6 +512,9 @@ export default function AdminSkills() {
       skillContent: editingSkill.skillContent,
       marketplaceContent: editingSkill.marketplaceContent,
       knowledgebase: editingSkill.knowledgebase,
+      visibility: (editingSkill.visibility === "rejected" || editingSkill.visibility === "private")
+        ? "private"
+        : "public" as "private" | "public",
     });
   };
 
@@ -423,7 +540,7 @@ export default function AdminSkills() {
     return <Icon className="h-4 w-4" />;
   };
 
-  if (authLoading || !user || user.role !== "admin") {
+  if (authLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
@@ -472,6 +589,17 @@ export default function AdminSkills() {
             <FolderSync className="mr-2 h-4 w-4" />
             Import Folders
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="pending">
+              <Clock className="mr-2 h-4 w-4" />
+              Pending Approval
+              {pendingSkills && pendingSkills.length > 0 && (
+                <Badge className="ml-2" variant="destructive">
+                  {pendingSkills.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="skills" className="space-y-6">
@@ -561,6 +689,8 @@ export default function AdminSkills() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Visibility</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Auto-Trigger</TableHead>
                       <TableHead>Credits</TableHead>
@@ -573,7 +703,7 @@ export default function AdminSkills() {
                   <TableBody>
                     {skills?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center text-muted-foreground">
+                        <TableCell colSpan={10} className="text-center text-muted-foreground">
                           No skills found. Create one or import from folders.
                         </TableCell>
                       </TableRow>
@@ -590,6 +720,37 @@ export default function AdminSkills() {
                                 </div>
                               </div>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground">
+                              {(skill as any).ownerName || "System"}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {(skill as any).visibility === "private" && (
+                              <Badge variant="outline" className="border-gray-400 text-gray-600">
+                                <Lock className="mr-1 h-3 w-3" />
+                                Private
+                              </Badge>
+                            )}
+                            {(skill as any).visibility === "pending_approval" && (
+                              <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">
+                                <Clock className="mr-1 h-3 w-3" />
+                                Pending Approval
+                              </Badge>
+                            )}
+                            {(skill as any).visibility === "public" && (
+                              <Badge variant="outline" className="border-green-500 text-green-600 bg-green-50">
+                                <Globe className="mr-1 h-3 w-3" />
+                                Public
+                              </Badge>
+                            )}
+                            {(skill as any).visibility === "rejected" && (
+                              <Badge variant="outline" className="border-red-500 text-red-600 bg-red-50">
+                                <XCircle className="mr-1 h-3 w-3" />
+                                Rejected
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">
@@ -632,29 +793,33 @@ export default function AdminSkills() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  setEditingSkill({
-                                    ...(skill as any),
-                                    triggerPatterns: ((skill as any).triggerPatterns || []).map((pattern: any) =>
-                                      typeof pattern === "string" ? pattern : pattern?.pattern || ""
-                                    ),
-                                    executionMode: (skill as any).executionMode ?? "llm-only",
-                                    marketplaceContent: (skill as any).marketplaceContent ?? null,
-                                  } as Skill)
-                                }
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteMutation.mutate({ id: skill.id })}
-                              >
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              </Button>
+                              {(isAdmin || skill.createdBy === Number(user?.id)) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    setEditingSkill({
+                                      ...(skill as any),
+                                      triggerPatterns: ((skill as any).triggerPatterns || []).map((pattern: any) =>
+                                        typeof pattern === "string" ? pattern : pattern?.pattern || ""
+                                      ),
+                                      executionMode: (skill as any).executionMode ?? "llm-only",
+                                      marketplaceContent: (skill as any).marketplaceContent ?? null,
+                                    } as Skill)
+                                  }
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {(isAdmin || skill.createdBy === Number(user?.id)) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteMutation.mutate({ id: skill.id })}
+                                >
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -764,7 +929,148 @@ export default function AdminSkills() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Pending Approval Tab — Admin Only */}
+        {isAdmin && (
+          <TabsContent value="pending" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Skills Pending Approval
+                </CardTitle>
+                <CardDescription>
+                  Review and approve or reject user-submitted public skills.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(!pendingSkills || pendingSkills.length === 0) ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                          No skills pending approval.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      pendingSkills.map((skill: any) => (
+                        <TableRow key={skill.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getCategoryIcon(skill.category)}
+                              <div>
+                                <div className="font-medium">{skill.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {skill.slug}
+                                </div>
+                                {skill.description && (
+                                  <div className="text-xs text-muted-foreground mt-0.5 max-w-[300px] truncate">
+                                    {skill.description}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground">
+                              {skill.ownerName || "Unknown"}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {categoryLabels[skill.category] || skill.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(skill.createdAt).toLocaleDateString()}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-green-600 border-green-300 hover:bg-green-50"
+                                onClick={() => approveMutation.mutate({ id: skill.id })}
+                                disabled={approveMutation.isPending}
+                              >
+                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                Approve
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-300 hover:bg-red-50"
+                                onClick={() => setRejectingSkill(skill)}
+                              >
+                                <XCircle className="mr-1 h-3 w-3" />
+                                Reject
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
+
+      {/* Reject Skill Dialog */}
+      <Dialog open={!!rejectingSkill} onOpenChange={() => { setRejectingSkill(null); setRejectReason(""); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Skill</DialogTitle>
+            <DialogDescription>
+              Provide a reason for rejecting "{rejectingSkill?.name}". The skill owner will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="reject-reason">Rejection Reason *</Label>
+              <Textarea
+                id="reject-reason"
+                placeholder="Please provide a reason for rejection..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectingSkill(null); setRejectReason(""); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (rejectingSkill && rejectReason.trim()) {
+                  rejectMutation.mutate({
+                    id: rejectingSkill.id,
+                    reason: rejectReason.trim(),
+                  });
+                }
+              }}
+              disabled={!rejectReason.trim() || rejectMutation.isPending}
+            >
+              {rejectMutation.isPending ? "Rejecting..." : "Reject Skill"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Skill Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -867,6 +1173,29 @@ export default function AdminSkills() {
                   }
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Visibility</Label>
+              <Select
+                value={newSkillData.visibility || "private"}
+                onValueChange={(v) =>
+                  setNewSkillData({ ...newSkillData, visibility: v as "private" | "public" })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="private">Private (only you and shared groups)</SelectItem>
+                  <SelectItem value="public">Public (requires admin approval)</SelectItem>
+                </SelectContent>
+              </Select>
+              {newSkillData.visibility === "public" && !isAdmin && (
+                <p className="text-xs text-muted-foreground">
+                  Public skills require admin approval before becoming visible to all users.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
@@ -1020,6 +1349,121 @@ export default function AdminSkills() {
                   }
                 />
               </div>
+
+              {/* Visibility Selector */}
+              <div className="space-y-2">
+                <Label>Visibility</Label>
+                <Select
+                  value={editingSkill.visibility === "pending_approval" ? "public" : editingSkill.visibility === "rejected" ? "private" : editingSkill.visibility}
+                  onValueChange={(v) =>
+                    setEditingSkill({ ...editingSkill, visibility: v as any })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="private">Private (only you and shared groups)</SelectItem>
+                    <SelectItem value="public">Public (requires admin approval)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {editingSkill.visibility === "public" && !isAdmin && (
+                  <p className="text-xs text-muted-foreground">
+                    Public skills require admin approval before becoming visible to all users.
+                  </p>
+                )}
+                {editingSkill.visibility === "pending_approval" && (
+                  <p className="text-xs text-amber-600">
+                    This skill is currently awaiting admin approval.
+                  </p>
+                )}
+              </div>
+
+              {/* Rejection Reason */}
+              {editingSkill.visibility === "rejected" && editingSkill.rejectionReason && (
+                <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                  <strong>Rejection reason:</strong> {editingSkill.rejectionReason}
+                </div>
+              )}
+
+              {/* Group Sharing Section — only shown for private skills */}
+              {editingSkill.visibility === "private" && (
+                <div className="space-y-3 border rounded-lg p-4">
+                  <Label className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Shared with Groups
+                  </Label>
+                  {/* Currently shared groups */}
+                  <div className="flex flex-wrap gap-2">
+                    {sharedGroups && sharedGroups.length > 0 ? (
+                      sharedGroups.map((group: any) => (
+                        <Badge
+                          key={group.id}
+                          variant="secondary"
+                          className="flex items-center gap-1 pl-3 pr-1 py-1"
+                        >
+                          <span>{group.name}</span>
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({group.memberCount} members)
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20 rounded-full"
+                            onClick={() =>
+                              unshareGroupMutation.mutate({
+                                skillId: editingSkill.id,
+                                groupId: group.id,
+                              })
+                            }
+                            disabled={unshareGroupMutation.isPending}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        Not shared with any groups yet.
+                      </p>
+                    )}
+                  </div>
+                  {/* Add group selector */}
+                  {userGroups && userGroups.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Select
+                        onValueChange={(groupId) => {
+                          shareWithGroupsMutation.mutate({
+                            skillId: editingSkill.id,
+                            groupIds: [parseInt(groupId)],
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Add a group..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(userGroups as any[])
+                            .filter(
+                              (g: any) =>
+                                !sharedGroups?.some(
+                                  (sg: any) => sg.id === g.id
+                                )
+                            )
+                            .map((group: any) => (
+                              <SelectItem
+                                key={group.id}
+                                value={String(group.id)}
+                              >
+                                {group.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div>

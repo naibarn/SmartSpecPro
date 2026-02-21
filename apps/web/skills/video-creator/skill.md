@@ -13,7 +13,7 @@ creditMultiplier: 2.0
 defaultModel: veo-3-1
 triggerPatterns:
   - "สร้างวีดีโอ|สร้างวิดีโอ|สร้างคลิป|ทำวีดีโอ|ทำวิดีโอ|ทำคลิป"
-  - "generate\\s+(a\\s+)?video|create\\s+(a\\s+)?video|make\\s+(a\\s+)?video|generate\\s+(a\\s+)?clip|create\\s+(a\\s+)?clip|make\\s+(a\\s+)?clip"
+  - "generate video|generate a video|create video|create a video|make video|make a video|generate clip|create clip|make clip"
   - "gen video|vid gen"
 tags:
   - video

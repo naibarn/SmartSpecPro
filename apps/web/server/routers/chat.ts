@@ -34,17 +34,17 @@ import {
 } from "../services/chatService";
 import { hasEnoughCredits, calculateCreditsForLLM } from "../services/creditService";
 import { TRPCError } from "@trpc/server";
-import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills } from "../services/skillRegistry";
+import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills, syncSingleSkillIfChanged } from "../services/skillRegistry";
 import { detectSkill, extractSkillParams, getSkillDetectionSummary } from "../services/skillDetector";
 import { getSlashCommands as _getSlashCommands } from "../services/userSkillService";
-import { executeSkill, estimateSkillCost, canAutoExecute, type SkillCreateAction } from "../services/skillExecutor";
+import { executeSkill, startPythonSkillTask, estimateSkillCost, canAutoExecute, type SkillCreateAction, type SkillExecutionResult } from "../services/skillExecutor";
 import { signBearerToken } from "../_core/tokens";
 import { skillDetectionLimiter, skillExecutionLimiter } from "../services/rateLimiter";
 import { debugLog, debugError } from "../_core/logger";
 import { ENABLE_FUNNEL_TRACKING, trackFirstConversation } from "../services/funnelMilestones";
 import { getDb } from "../db";
 import { skills as skillsTable, userSkillVisibility } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
@@ -98,23 +98,43 @@ async function handleIscCreateSkill(
 
   const db = await getDb();
 
-  // 3. Deduplication: same slug + same createdBy
-  const existing = await db
-    .select({ id: skillsTable.id })
+  // 3. Deduplication with auto-rename: find all existing slugs that start with
+  //    this base slug so we can pick the next available suffix (-2, -3, …).
+  const existingRows = await db
+    .select({ slug: skillsTable.slug })
     .from(skillsTable)
-    .where(and(eq(skillsTable.slug, safeSlug), eq(skillsTable.createdBy, userId)))
-    .limit(1);
+    .where(and(like(skillsTable.slug, `${safeSlug}%`), eq(skillsTable.createdBy, userId)));
 
-  if (existing.length > 0) {
-    return { ok: false, reason: `You already have a skill named '${safeSlug}'` };
+  const slugSet = new Set(existingRows.map((r) => r.slug));
+
+  let finalSlug = safeSlug;
+  let finalName = action.name.slice(0, 255);
+
+  if (slugSet.has(safeSlug)) {
+    let counter = 2;
+    let found = false;
+    while (counter <= 99) {
+      const candidate = `${safeSlug.slice(0, 77)}-${counter}`;
+      if (!slugSet.has(candidate)) {
+        finalSlug = candidate;
+        finalName = `${action.name.slice(0, 250)} (${counter})`;
+        found = true;
+        break;
+      }
+      counter++;
+    }
+    if (!found) {
+      return { ok: false, reason: `Too many skills with the name '${safeSlug}' — please delete some before creating more.` };
+    }
+    console.log(`[ISC] Slug '${safeSlug}' already exists for user ${userId} — using '${finalSlug}' instead`);
   }
 
   // 4. Insert skill (user-private: visibleByDefault=false, enabledByDefault=false)
   const [newSkill] = await db
     .insert(skillsTable)
     .values({
-      slug:               safeSlug,
-      name:               action.name.slice(0, 255),
+      slug:               finalSlug,
+      name:               finalName,
       description:        action.description.slice(0, 1000),
       skillContent:       action.skillContent,
       systemPrompt:       action.skillContent,
@@ -142,7 +162,7 @@ async function handleIscCreateSkill(
     })
     .onConflictDoNothing();
 
-  console.log(`[ISC] Created private skill '${safeSlug}' (id=${newSkill.id}) for user ${userId}`);
+  console.log(`[ISC] Created private skill '${finalSlug}' (id=${newSkill.id}) for user ${userId}`);
   return { ok: true, skillId: newSkill.id };
 }
 
@@ -187,7 +207,7 @@ const artifactSchema = z.object({
 const skillAspectRatioSchema = z.enum(["1:1", "16:9", "9:16", "4:3", "3:4"]);
 const skillVoiceSchema = z.enum(["alloy", "echo", "fable", "onyx", "nova", "shimmer"]);
 const skillQualitySchema = z.enum(["low", "medium", "high"]);
-const skillStyleSchema = z.enum(["realistic", "artistic", "cartoon", "3d"]);
+const skillStyleSchema = z.string().max(50); // Accept any style value (cinematic, realistic, artistic, etc.)
 
 const skillSettingsSchema = z.object({
   autoDetect: z.boolean().default(true),
@@ -1207,34 +1227,278 @@ export const chatRouter = router({
         }
       }
 
+      // Sync skill if SKILL.md has changed since last load (updates systemPrompt in DB)
+      await syncSingleSkillIfChanged(input.skillId);
+
+      // Check execution mode for LLM-based skills (enhance-prompt, llm-only)
+      const executionMode = (skill as any).executionMode as string | undefined;
+      const isLLMSkill = executionMode === "enhance-prompt" || executionMode === "llm-only";
+
       // Check if skill can be auto-executed
       // Python-mode skills are always executable (they handle their own subprocess)
-      const isPythonMode = (skill as any).executionMode === "python";
-      if (!isPythonMode && !canAutoExecute(skill)) {
+      // LLM-based skills are handled below via executeWithFallback
+      const isPythonMode = executionMode === "python";
+      if (!isPythonMode && !isLLMSkill && !canAutoExecute(skill)) {
         return {
           success: false,
           skillId: input.skillId,
           type: "text" as const,
           error: `Skill '${skill.name}' cannot be automatically executed`,
+          message: undefined as string | undefined,
+          resultUrl: undefined as string | undefined,
+          resultUrls: undefined as string[] | undefined,
         };
+      }
+
+      // ── LLM-based skills: call LLM with skill system prompt + user form data ──
+      if (isLLMSkill) {
+        const { getProviderForModel } = await import("../services/llmRouter");
+        const { deductCreditsForModel } = await import("../services/creditService");
+
+        // Load skill's systemPrompt and knowledgebase from DB
+        const skillDb = await getDb();
+        const [skillRow] = await skillDb
+          .select({ systemPrompt: skillsTable.systemPrompt, knowledgebase: skillsTable.knowledgebase })
+          .from(skillsTable)
+          .where(eq(skillsTable.slug, input.skillId))
+          .limit(1);
+
+        // Build LLM messages
+        const llmMessages: Array<{ role: string; content: string }> = [];
+        let userPrompt = input.prompt || "";
+
+        // For image_prompt_engineer, use the specialized prompt builder
+        if (input.skillId === "image_prompt_engineer" || input.skillId === "create-image-prompt") {
+          try {
+            const { buildSystemPrompt, buildUserPrompt } = await import("../services/promptEnhancementService");
+            const request = {
+              userInput: mergedExtraParams.request || input.prompt || "",
+              ...mergedExtraParams,
+            };
+            llmMessages.push({ role: "system", content: buildSystemPrompt(request) });
+            userPrompt = buildUserPrompt(request);
+          } catch (err) {
+            console.error("[executeSkill] Failed to build prompt enhancement prompts:", err);
+            // Fallback to generic skill system prompt
+            if (skillRow?.systemPrompt) {
+              llmMessages.push({ role: "system", content: skillRow.systemPrompt });
+            }
+          }
+        } else {
+          // Generic LLM skill: use DB systemPrompt + knowledgebase
+          if (skillRow?.systemPrompt) {
+            let sysPrompt = skillRow.systemPrompt.substring(0, 12000);
+            if (skillRow.knowledgebase) {
+              sysPrompt += `\n\n[DOMAIN KNOWLEDGE]\n${skillRow.knowledgebase.substring(0, 8000)}`;
+            }
+            llmMessages.push({ role: "system", content: sysPrompt });
+          }
+
+          // Format dynamicParams as additional context in the user prompt
+          if (Object.keys(mergedExtraParams).length > 0) {
+            const paramSummary = Object.entries(mergedExtraParams)
+              .filter(([, v]) => v !== undefined && v !== null && v !== "")
+              .map(([k, v]) => `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
+              .join("\n");
+            if (paramSummary) {
+              userPrompt += `\n\nForm inputs:\n${paramSummary}`;
+            }
+          }
+        }
+
+        llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
+
+        // Determine model: use conversation model or a default
+        let llmModel = "gpt-4o-mini";
+        if (input.conversationId) {
+          const conversation = await getConversationById(input.conversationId, ctx.user.id);
+          if (conversation?.model) {
+            llmModel = conversation.model;
+          }
+        }
+
+        // Resolve provider using the same path as normal chat (with legacy fallback)
+        const provider = await getProviderForModel(llmModel);
+        if (!provider) {
+          return {
+            success: false,
+            skillId: input.skillId,
+            type: "text" as const,
+            error: "No LLM provider available. Please check provider settings.",
+            message: undefined as string | undefined,
+            resultUrl: undefined as string | undefined,
+            resultUrls: undefined as string[] | undefined,
+          };
+        }
+
+        debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, providerModel=${provider.providerModelId}, provider=${provider.providerName}`);
+
+        try {
+          // Call provider API directly (same approach as proxyChatWithCredits)
+          const baseUrl = provider.baseUrl.replace(/\/+$/, "");
+          const apiUrl = baseUrl.includes("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
+
+          const llmResponse = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${provider.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: provider.providerModelId,
+              messages: llmMessages,
+              stream: false,
+            }),
+          });
+
+          if (!llmResponse.ok) {
+            const errorText = await llmResponse.text().catch(() => "Unknown error");
+            console.error(`[executeSkill] LLM API error ${llmResponse.status}:`, errorText);
+            return {
+              success: false,
+              skillId: input.skillId,
+              type: "text" as const,
+              error: `LLM API error (${llmResponse.status}): ${errorText.substring(0, 200)}`,
+              message: undefined as string | undefined,
+              resultUrl: undefined as string | undefined,
+              resultUrls: undefined as string[] | undefined,
+            };
+          }
+
+          const llmData = await llmResponse.json();
+          const content = llmData?.choices?.[0]?.message?.content || "No response generated";
+          const inputTokens = llmData?.usage?.prompt_tokens ?? 0;
+          const outputTokens = llmData?.usage?.completion_tokens ?? 0;
+
+          // Deduct credits
+          const { creditsUsed } = await deductCreditsForModel({
+            userId: ctx.user.id,
+            model: llmModel,
+            provider: provider.providerName,
+            inputTokens,
+            outputTokens,
+            costUsd: llmData?.usage?.cost,
+            conversationId: input.conversationId,
+            skillSlug: input.skillId,
+            sourceType: "skill",
+          });
+
+          // Save as assistant message in conversation
+          if (input.conversationId) {
+            try {
+              await createMessage({
+                conversationId: input.conversationId,
+                role: "assistant",
+                content,
+                inputTokens,
+                outputTokens,
+                creditsUsed: creditsUsed.toString(),
+                modelUsed: llmModel,
+                skillUsed: input.skillId,
+              });
+            } catch (err) {
+              console.error("[executeSkill] Failed to save LLM skill message:", err);
+            }
+          }
+
+          return {
+            success: true,
+            skillId: input.skillId,
+            type: "text" as const,
+            message: content,
+            creditsUsed,
+            resultUrl: undefined as string | undefined,
+            resultUrls: undefined as string[] | undefined,
+            error: undefined as string | undefined,
+          };
+        } catch (err) {
+          console.error("[executeSkill] LLM skill execution failed:", err);
+          return {
+            success: false,
+            skillId: input.skillId,
+            type: "text" as const,
+            error: err instanceof Error ? err.message : "LLM skill execution failed",
+            message: undefined as string | undefined,
+            resultUrl: undefined as string | undefined,
+            resultUrls: undefined as string[] | undefined,
+          };
+        }
       }
 
       // Use the user's session token for media generation (from context)
       // This ensures the Python backend receives a valid token signed with the same secret
       const userToken = ctx.userToken || createSkillToken(ctx.user.id);
 
-      // Execute the skill
+      // Python skills: run asynchronously to prevent HTTP timeout (Cloudflare 100s limit).
+      // We return a taskId immediately; the client polls chat.getSkillTaskResult until done.
+      if (isPythonMode) {
+        const skillParams = {
+          prompt: input.prompt || "",
+          model: input.model,
+          aspectRatio: input.aspectRatio ?? (mergedExtraParams.aspectRatio as string | undefined),
+          numImages: input.numImages ?? (mergedExtraParams.numImages !== undefined ? Number(mergedExtraParams.numImages) : undefined),
+          duration: input.duration ?? (mergedExtraParams.duration !== undefined ? Number(mergedExtraParams.duration) : undefined),
+          voice: input.voice,
+          quality: (input.quality ?? mergedExtraParams.quality) as string | undefined,
+          style: (input.style ?? mergedExtraParams.style) as string | undefined,
+          referenceImageUrls: input.referenceImageUrls,
+          referenceStyleUrl: input.referenceStyleUrl,
+          resolution: input.resolution,
+          apiConfig: input.apiConfig,
+          extraParams: mergedExtraParams,
+          publicUrl: ctx.publicUrl ?? undefined,
+        };
+
+        const userId = ctx.user.id;
+        const { taskId } = await startPythonSkillTask(
+          skill,
+          skillParams,
+          userId,
+          userToken,
+          async (result) => {
+            // Post-process ISC create_skill actions
+            if (result.success && result._action?.type === "create_skill") {
+              const createResult = await handleIscCreateSkill(result._action, userId);
+              return {
+                ...result,
+                message:
+                  (result.message ?? "") +
+                  (createResult.ok
+                    ? `\n\n✅ **Skill saved** (id: ${createResult.skillId}) — visible in your Skills panel.`
+                    : `\n\n⚠️ **Could not save skill**: ${createResult.reason}`),
+              };
+            }
+            return result;
+          },
+        );
+
+        return {
+          success: true,
+          skillId: input.skillId,
+          type: "text" as const,
+          isAsync: true,
+          taskId,
+          message: "⏳ กำลังประมวลผล — Python skill กำลังทำงานในพื้นหลัง กรุณารอสักครู่...",
+          resultUrl: undefined as string | undefined,
+          resultUrls: undefined as string[] | undefined,
+        };
+      }
+
+      // Execute the skill (media generation and python skills)
+      // When params come from a dynamic form (dynamicParams), they arrive in mergedExtraParams
+      // rather than as top-level inputs. Fall back to mergedExtraParams values so form-submitted
+      // aspectRatio, numImages, duration, quality, style are honoured.
       let result = await executeSkill(
         skill,
         {
           prompt: input.prompt || '',
           model: input.model,
-          aspectRatio: input.aspectRatio,
-          numImages: input.numImages,
-          duration: input.duration,
+          aspectRatio: input.aspectRatio ?? (mergedExtraParams.aspectRatio as string | undefined),
+          numImages: input.numImages ?? (mergedExtraParams.numImages !== undefined ? Number(mergedExtraParams.numImages) : undefined),
+          duration: input.duration ?? (mergedExtraParams.duration !== undefined ? Number(mergedExtraParams.duration) : undefined),
           voice: input.voice,
-          quality: input.quality,
-          style: input.style,
+          quality: (input.quality ?? mergedExtraParams.quality) as string | undefined,
+          style: (input.style ?? mergedExtraParams.style) as string | undefined,
           referenceImageUrls: input.referenceImageUrls,
           referenceStyleUrl: input.referenceStyleUrl,
           resolution: input.resolution,
@@ -1381,5 +1645,34 @@ export const chatRouter = router({
       }
 
       return { success: true, creditsAdded: input.creditsUsed };
+    }),
+
+  /**
+   * Poll the result of an async Python skill task.
+   * The task is stored in Redis by startPythonSkillTask().
+   */
+  getSkillTaskResult: protectedProcedure
+    .input(z.object({ taskId: z.string().max(200) }))
+    .query(async ({ ctx, input }) => {
+      const { getRedisClient } = await import("../services/redis");
+      const redis = getRedisClient();
+      const raw = await redis.get(`skill:task:${input.taskId}`);
+      if (!raw) {
+        return { status: "not_found" as const, skillId: "", result: null };
+      }
+      const task = JSON.parse(raw) as {
+        status: "running" | "done";
+        skillId: string;
+        userId: number;
+        result?: SkillExecutionResult;
+      };
+      if (task.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+      return {
+        status: task.status,
+        skillId: task.skillId,
+        result: task.result ?? null,
+      };
     }),
 });

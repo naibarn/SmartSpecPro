@@ -14,11 +14,17 @@ from typing import Any, Optional
 _active_executions: dict[str, dict[str, Any]] = {}
 
 
-def register_execution(execution_id: str, graph: Any, config: dict) -> None:
+def register_execution(
+    execution_id: str,
+    graph: Any,
+    config: dict,
+    input_data: dict | None = None,
+) -> None:
     """Register a compiled graph for an active execution."""
     _active_executions[execution_id] = {
         "graph": graph,
         "config": config,
+        "input_data": input_data or {},
         "started_at": datetime.utcnow(),
     }
 

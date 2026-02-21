@@ -4,11 +4,17 @@
  */
 
 import { db } from "../db";
-import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings } from "../../drizzle/schema";
+import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings, conversations } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { getRedisClient, isRedisAvailable } from "./redis";
+import { getTraceId } from "./traceContext";
 
 export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription";
+
+export type CreditSourceType =
+  | "chat" | "skill" | "media_image" | "media_video" | "media_audio"
+  | "indexing" | "rag" | "stt" | "translation" | "brainstorm"
+  | "scheduler" | "admin" | "other";
 
 export class BudgetExceededError extends Error {
   public readonly monthlyLimit: number;
@@ -31,6 +37,10 @@ export interface DeductCreditsParams {
   tenantId?: string;
   idempotencyKey?: string;
   skipBudgetCheck?: boolean;
+  /** Context fields for rich transaction tracking */
+  conversationId?: number;
+  skillSlug?: string;
+  sourceType?: CreditSourceType;
   metadata?: {
     model?: string;
     provider?: string;
@@ -50,6 +60,10 @@ export interface AddCreditsParams {
   description: string;
   referenceId?: string;
   metadata?: Record<string, any>;
+  /** Context fields for rich transaction tracking */
+  conversationId?: number;
+  skillSlug?: string;
+  sourceType?: CreditSourceType;
 }
 
 export interface CreditBalance {
@@ -62,6 +76,7 @@ export interface TransactionHistoryParams {
   limit?: number;
   offset?: number;
   type?: TransactionType;
+  sourceType?: CreditSourceType;
   startDate?: Date;
   endDate?: Date;
 }
@@ -185,6 +200,10 @@ export async function deductCredits(params: DeductCreditsParams) {
         metadata,
         balanceAfter: newBalance,
         idempotencyKey: idempotencyKey ?? null,
+        traceId: getTraceId() ?? metadata?.traceId ?? null,
+        conversationId: params.conversationId ?? null,
+        skillSlug: params.skillSlug ?? null,
+        sourceType: params.sourceType ?? null,
       }).returning({ id: creditTransactions.id });
 
       transactionId = txRecord?.id || 0;
@@ -290,6 +309,10 @@ export async function addCredits(params: AddCreditsParams) {
       metadata,
       balanceAfter: newBalance,
       referenceId,
+      traceId: getTraceId() ?? null,
+      conversationId: params.conversationId ?? null,
+      skillSlug: params.skillSlug ?? null,
+      sourceType: params.sourceType ?? null,
     }).returning({ id: creditTransactions.id });
 
     transactionId = txRecord?.id || 0;
@@ -312,6 +335,9 @@ export async function refundCredits(params: {
   description: string;
   originalTransactionId?: number;
   metadata?: Record<string, any>;
+  sourceType?: CreditSourceType;
+  conversationId?: number;
+  skillSlug?: string;
 }) {
   const { userId, amount, description, originalTransactionId, metadata } = params;
 
@@ -326,6 +352,9 @@ export async function refundCredits(params: {
       originalTransactionId,
       reason: "operation_failed",
     },
+    sourceType: params.sourceType,
+    conversationId: params.conversationId,
+    skillSlug: params.skillSlug,
   });
 }
 
@@ -333,12 +362,16 @@ export async function refundCredits(params: {
  * Get transaction history for a user
  */
 export async function getTransactionHistory(params: TransactionHistoryParams) {
-  const { userId, limit = 50, offset = 0, type, startDate, endDate } = params;
+  const { userId, limit = 50, offset = 0, type, sourceType, startDate, endDate } = params;
 
   const conditions = [eq(creditTransactions.userId, userId)];
 
   if (type) {
     conditions.push(eq(creditTransactions.type, type));
+  }
+
+  if (sourceType) {
+    conditions.push(eq(creditTransactions.sourceType, sourceType));
   }
 
   if (startDate) {
@@ -350,8 +383,25 @@ export async function getTransactionHistory(params: TransactionHistoryParams) {
   }
 
   const transactions = await db
-    .select()
+    .select({
+      id: creditTransactions.id,
+      amount: creditTransactions.amount,
+      type: creditTransactions.type,
+      description: creditTransactions.description,
+      metadata: creditTransactions.metadata,
+      balanceAfter: creditTransactions.balanceAfter,
+      createdAt: creditTransactions.createdAt,
+      traceId: creditTransactions.traceId,
+      conversationId: creditTransactions.conversationId,
+      skillSlug: creditTransactions.skillSlug,
+      sourceType: creditTransactions.sourceType,
+      conversationTitle: conversations.title,
+    })
     .from(creditTransactions)
+    .leftJoin(conversations, and(
+      eq(creditTransactions.conversationId, conversations.id),
+      eq(conversations.userId, userId),
+    ))
     .where(and(...conditions))
     .orderBy(desc(creditTransactions.createdAt))
     .limit(limit)
@@ -428,6 +478,9 @@ export async function deductCreditsForModel(params: {
   outputTokens: number;
   costUsd?: number;
   description?: string;
+  conversationId?: number;
+  skillSlug?: string;
+  sourceType?: CreditSourceType;
 }): Promise<{ creditsUsed: number; wasFree: boolean }> {
   // Skip for static tokens (server-to-server calls)
   if (params.userId === 0) {
@@ -451,6 +504,10 @@ export async function deductCreditsForModel(params: {
         outputTokens: params.outputTokens
       },
       balanceAfter: (await getCreditBalance(params.userId))?.credits ?? 0,
+      traceId: getTraceId() ?? null,
+      conversationId: params.conversationId ?? null,
+      skillSlug: params.skillSlug ?? null,
+      sourceType: params.sourceType ?? null,
     });
     return { creditsUsed: 0, wasFree: true };
   }
@@ -464,6 +521,9 @@ export async function deductCreditsForModel(params: {
     userId: params.userId,
     amount: credits,
     description: params.description ?? `LLM usage: ${params.model}`,
+    conversationId: params.conversationId,
+    skillSlug: params.skillSlug,
+    sourceType: params.sourceType ?? "chat",
     metadata: {
       model: params.model,
       provider: params.provider,
@@ -695,6 +755,7 @@ export async function chargeForIndexing(params: {
     tenantId: params.tenantId,
     description: `Indexing (${params.service}): ${params.chunkCount} chunks`,
     idempotencyKey: params.idempotencyKey,
+    sourceType: "indexing",
     metadata: { ...params.metadata, service: params.service, chunkCount: params.chunkCount },
   });
 
@@ -727,6 +788,7 @@ export async function chargeForRagQuery(params: {
     tenantId: params.tenantId,
     description: `RAG query (${params.service})`,
     idempotencyKey: params.idempotencyKey,
+    sourceType: "rag",
     metadata: { ...params.metadata, service: params.service },
   });
 

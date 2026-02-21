@@ -518,6 +518,14 @@ class NodeRegistry:
                 category="inputs",
                 inputs=[
                     InputSpec(
+                        name="trigger",
+                        display_name="Trigger",
+                        data_type="any",
+                        ui_type="hidden",
+                        required=False,
+                        accepts_connection=True,
+                    ),
+                    InputSpec(
                         name="fields",
                         display_name="Form Fields",
                         data_type="json",
@@ -2168,6 +2176,50 @@ class NodeRegistry:
             )
         )
 
+        # Write to Console
+        self.register_node_type(
+            NodeTypeSpec(
+                type="write_to_console",
+                display_name="Write to Console",
+                description="Emit a debug/info message to the workflow console panel for monitoring variable values and execution state",
+                icon="terminal",
+                color="slate",
+                category="outputs",
+                inputs=[
+                    InputSpec(
+                        name="message",
+                        display_name="Message",
+                        data_type="any",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Value or text to log. Use {{nodeId.output}} for dynamic values...",
+                        validation={"max_length": 10000},
+                    ),
+                    InputSpec(
+                        name="level",
+                        display_name="Log Level",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="info",
+                        options=[
+                            {"label": "Debug", "value": "debug"},
+                            {"label": "Info", "value": "info"},
+                            {"label": "Warning", "value": "warning"},
+                            {"label": "Error", "value": "error"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="message", display_name="Message", data_type="text"),
+                    OutputSpec(name="level", display_name="Log Level", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.output_executors.write_to_console_executor.WriteToConsoleExecutor",
+            )
+        )
+
         # 16. Error Trigger
         self.register_node_type(
             NodeTypeSpec(
@@ -2736,89 +2788,6 @@ class NodeRegistry:
         
         # ===== PHASE B: HIGH-PRIORITY NODES =====
         
-        # HTTP Request Node
-        self.register_node_type(
-            NodeTypeSpec(
-                type="http_request",
-                display_name="HTTP Request",
-                description="Execute HTTP requests to external APIs",
-                icon="globe",
-                color="blue",
-                category="integration",
-                inputs=[
-                    InputSpec(
-                        name="url",
-                        display_name="URL",
-                        data_type="text",
-                        ui_type="text",
-                        required=True,
-                        accepts_connection=True,
-                        placeholder="https://api.example.com/endpoint",
-                    ),
-                    InputSpec(
-                        name="method",
-                        display_name="Method",
-                        data_type="text",
-                        ui_type="select",
-                        required=False,
-                        accepts_connection=False,
-                        default="GET",
-                        options=[
-                            {"label": "GET", "value": "GET"},
-                            {"label": "POST", "value": "POST"},
-                            {"label": "PUT", "value": "PUT"},
-                            {"label": "PATCH", "value": "PATCH"},
-                            {"label": "DELETE", "value": "DELETE"},
-                        ],
-                    ),
-                    InputSpec(
-                        name="headers",
-                        display_name="Headers",
-                        data_type="json",
-                        ui_type="json_editor",
-                        required=False,
-                        accepts_connection=True,
-                        default={},
-                        placeholder='{"Authorization": "Bearer token"}',
-                    ),
-                    InputSpec(
-                        name="body",
-                        display_name="Request Body",
-                        data_type="json",
-                        ui_type="json_editor",
-                        required=False,
-                        accepts_connection=True,
-                        placeholder='{"key": "value"}',
-                    ),
-                    InputSpec(
-                        name="query_params",
-                        display_name="Query Parameters",
-                        data_type="json",
-                        ui_type="json_editor",
-                        required=False,
-                        accepts_connection=True,
-                        placeholder='{"page": 1, "limit": 10}',
-                    ),
-                    InputSpec(
-                        name="timeout",
-                        display_name="Timeout (seconds)",
-                        data_type="number",
-                        ui_type="number",
-                        required=False,
-                        accepts_connection=False,
-                        default=30,
-                        validation={"min": 1, "max": 300},
-                    ),
-                ],
-                outputs=[
-                    OutputSpec(name="status_code", display_name="Status Code", data_type="number"),
-                    OutputSpec(name="body", display_name="Response Body", data_type="json"),
-                    OutputSpec(name="headers", display_name="Response Headers", data_type="json"),
-                ],
-                executor="app.orchestrator.node_executors.integration_executors.http_executor.HTTPExecutor",
-            )
-        )
-
         # Send Email Node
         self.register_node_type(
             NodeTypeSpec(
@@ -2880,51 +2849,6 @@ class NodeRegistry:
                     OutputSpec(name="message_id", display_name="Message ID", data_type="text"),
                 ],
                 executor="app.orchestrator.node_executors.integration_executors.email_executor.EmailExecutor",
-            )
-        )
-
-        # Schedule Trigger Node
-        self.register_node_type(
-            NodeTypeSpec(
-                type="schedule_trigger",
-                display_name="Schedule Trigger",
-                description="Trigger workflow on a cron schedule",
-                icon="calendar-clock",
-                color="green",
-                category="triggers",
-                inputs=[
-                    InputSpec(
-                        name="cron",
-                        display_name="Cron Expression",
-                        data_type="text",
-                        ui_type="text",
-                        required=True,
-                        accepts_connection=False,
-                        placeholder="0 9 * * 1 (Mon at 9am)",
-                    ),
-                    InputSpec(
-                        name="timezone",
-                        display_name="Timezone",
-                        data_type="text",
-                        ui_type="select",
-                        required=False,
-                        accepts_connection=False,
-                        default="UTC",
-                        options=[
-                            {"label": "UTC", "value": "UTC"},
-                            {"label": "America/New_York", "value": "America/New_York"},
-                            {"label": "America/Los_Angeles", "value": "America/Los_Angeles"},
-                            {"label": "Europe/London", "value": "Europe/London"},
-                            {"label": "Asia/Tokyo", "value": "Asia/Tokyo"},
-                            {"label": "Asia/Bangkok", "value": "Asia/Bangkok"},
-                        ],
-                    ),
-                ],
-                outputs=[
-                    OutputSpec(name="triggered_at", display_name="Triggered At", data_type="text"),
-                    OutputSpec(name="scheduled_time", display_name="Scheduled Time", data_type="text"),
-                ],
-                executor="app.orchestrator.node_executors.trigger_executors.schedule_trigger_executor.ScheduleTriggerExecutor",
             )
         )
 
@@ -3019,90 +2943,6 @@ class NodeRegistry:
         )
 
         # ===== PHASE C: MEDIUM-PRIORITY NODES =====
-
-        # Webhook Trigger Node
-        self.register_node_type(
-            NodeTypeSpec(
-                type="webhook_trigger",
-                display_name="Webhook Trigger",
-                description="Trigger workflow via HTTP webhook",
-                icon="webhook",
-                color="green",
-                category="triggers",
-                inputs=[
-                    InputSpec(
-                        name="webhook_id",
-                        display_name="Webhook ID",
-                        data_type="text",
-                        ui_type="text",
-                        required=False,
-                        accepts_connection=False,
-                        placeholder="Auto-generated if empty",
-                    ),
-                    InputSpec(
-                        name="secret",
-                        display_name="Secret (for signature verification)",
-                        data_type="text",
-                        ui_type="text",
-                        required=False,
-                        accepts_connection=False,
-                        placeholder="Shared secret for HMAC verification",
-                    ),
-                ],
-                outputs=[
-                    OutputSpec(name="triggered_at", display_name="Triggered At", data_type="text"),
-                    OutputSpec(name="method", display_name="HTTP Method", data_type="text"),
-                    OutputSpec(name="body", display_name="Request Body", data_type="json"),
-                    OutputSpec(name="headers", display_name="Headers", data_type="json"),
-                    OutputSpec(name="query", display_name="Query Params", data_type="json"),
-                ],
-                executor="app.orchestrator.node_executors.trigger_executors.webhook_trigger_executor.WebhookTriggerExecutor",
-            )
-        )
-
-        # Webhook Response Node
-        self.register_node_type(
-            NodeTypeSpec(
-                type="webhook_response",
-                display_name="Webhook Response",
-                description="Send response back to webhook caller",
-                icon="reply",
-                color="green",
-                category="outputs",
-                inputs=[
-                    InputSpec(
-                        name="status_code",
-                        display_name="Status Code",
-                        data_type="number",
-                        ui_type="number",
-                        required=False,
-                        accepts_connection=False,
-                        default=200,
-                        validation={"min": 100, "max": 599},
-                    ),
-                    InputSpec(
-                        name="body",
-                        display_name="Response Body",
-                        data_type="json",
-                        ui_type="json_editor",
-                        required=False,
-                        accepts_connection=True,
-                        default={"success": True},
-                    ),
-                    InputSpec(
-                        name="headers",
-                        display_name="Custom Headers",
-                        data_type="json",
-                        ui_type="json_editor",
-                        required=False,
-                        accepts_connection=True,
-                        default={},
-                    ),
-                ],
-                outputs=[],
-                executor="app.orchestrator.node_executors.trigger_executors.webhook_trigger_executor.WebhookResponseExecutor",
-            )
-        )
 
         # File Read Node
         self.register_node_type(
@@ -3322,61 +3162,6 @@ class NodeRegistry:
             )
         )
 
-        # Retry Node
-        self.register_node_type(
-            NodeTypeSpec(
-                type="retry",
-                display_name="Retry",
-                description="Retry failed operations with configurable strategies",
-                icon="refresh-cw",
-                color="red",
-                category="flow_control",
-                inputs=[
-                    InputSpec(
-                        name="max_attempts",
-                        display_name="Max Attempts",
-                        data_type="number",
-                        ui_type="number",
-                        required=False,
-                        accepts_connection=False,
-                        default=3,
-                        validation={"min": 1, "max": 10},
-                    ),
-                    InputSpec(
-                        name="delay",
-                        display_name="Base Delay (seconds)",
-                        data_type="number",
-                        ui_type="number",
-                        required=False,
-                        accepts_connection=False,
-                        default=1,
-                        validation={"min": 0, "max": 300},
-                    ),
-                    InputSpec(
-                        name="strategy",
-                        display_name="Strategy",
-                        data_type="text",
-                        ui_type="select",
-                        required=False,
-                        accepts_connection=False,
-                        default="exponential",
-                        options=[
-                            {"label": "Fixed", "value": "fixed"},
-                            {"label": "Linear", "value": "linear"},
-                            {"label": "Exponential", "value": "exponential"},
-                            {"label": "Exponential + Jitter", "value": "exponential_jitter"},
-                        ],
-                    ),
-                ],
-                outputs=[
-                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
-                    OutputSpec(name="result", display_name="Result", data_type="any"),
-                    OutputSpec(name="attempts", display_name="Attempt Details", data_type="array"),
-                ],
-                executor="app.orchestrator.node_executors.reliability_executors.retry_executor.RetryExecutor",
-            )
-        )
-
         # ===== PHASE D: ADVANCED NODES =====
 
         # Parallel Node
@@ -3510,63 +3295,6 @@ class NodeRegistry:
                     OutputSpec(name="outputs", display_name="Outputs", data_type="json"),
                 ],
                 executor="app.orchestrator.node_executors.flow_executors.subworkflow_executor.SubworkflowExecutor",
-            )
-        )
-
-        # Circuit Breaker Node
-        self.register_node_type(
-            NodeTypeSpec(
-                type="circuit_breaker",
-                display_name="Circuit Breaker",
-                description="Prevent cascading failures",
-                icon="shield-alert",
-                color="red",
-                category="flow_control",
-                inputs=[
-                    InputSpec(
-                        name="circuit_id",
-                        display_name="Circuit ID",
-                        data_type="text",
-                        ui_type="text",
-                        required=False,
-                        accepts_connection=False,
-                        placeholder="Unique ID for this circuit",
-                    ),
-                    InputSpec(
-                        name="failure_threshold",
-                        display_name="Failure Threshold",
-                        data_type="number",
-                        ui_type="number",
-                        required=False,
-                        accepts_connection=False,
-                        default=5,
-                        validation={"min": 1, "max": 20},
-                    ),
-                    InputSpec(
-                        name="recovery_timeout",
-                        display_name="Recovery Timeout (seconds)",
-                        data_type="number",
-                        ui_type="number",
-                        required=False,
-                        accepts_connection=False,
-                        default=60,
-                        validation={"min": 10, "max": 3600},
-                    ),
-                    InputSpec(
-                        name="fallback_value",
-                        display_name="Fallback Value",
-                        data_type="any",
-                        ui_type="json_editor",
-                        required=False,
-                        accepts_connection=True,
-                    ),
-                ],
-                outputs=[
-                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
-                    OutputSpec(name="circuit_state", display_name="Circuit State", data_type="text"),
-                    OutputSpec(name="result", display_name="Result", data_type="any"),
-                ],
-                executor="app.orchestrator.node_executors.reliability_executors.circuit_breaker_executor.CircuitBreakerExecutor",
             )
         )
 

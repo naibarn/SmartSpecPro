@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 import structlog
+from langchain_core.runnables import RunnableConfig
 
 from app.orchestrator.node_executors.base import (
     ExecutionContext,
@@ -42,7 +43,7 @@ def make_langgraph_node(
         An async function compatible with StateGraph.add_node().
     """
 
-    async def _node_fn(state: WorkflowState, config: dict) -> dict:
+    async def _node_fn(state: WorkflowState, config: RunnableConfig) -> dict:
         """Execute the wrapped node executor and return a state update."""
         configurable = config.get("configurable", {})
 
@@ -56,6 +57,7 @@ def make_langgraph_node(
             extra_data={
                 "memory_service": configurable.get("memory_service"),
                 "episodic_memory": configurable.get("episodic_memory"),
+                "form_values": configurable.get("form_values", {}),
             },
         )
 
@@ -85,10 +87,6 @@ def make_langgraph_node(
             # Check output size -- externalize if too large
             output = _check_output_size(output, node_id)
 
-            # Build state update
-            node_outputs = dict(state.get("node_outputs", {}))
-            node_outputs[node_id] = output
-
             audit_complete = {
                 "event": "node_complete",
                 "node_id": node_id,
@@ -96,8 +94,11 @@ def make_langgraph_node(
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
+            # Return only the delta — the _merge_dicts reducer in WorkflowState
+            # merges this into the existing node_outputs dict safely,
+            # even when multiple nodes execute concurrently.
             return {
-                "node_outputs": node_outputs,
+                "node_outputs": {node_id: output},
                 "current_node": node_id,
                 "audit_trail": [audit_entry, audit_complete],
             }

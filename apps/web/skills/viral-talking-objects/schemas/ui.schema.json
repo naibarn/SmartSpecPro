@@ -94,7 +94,7 @@
       "titleTh": "ตั้งค่าภาษา",
       "icon": "globe",
       "collapsible": true,
-      "defaultCollapsed": false,
+      "collapsed": false,
       "fields": [
         {
           "id": "promptLanguage",
@@ -132,7 +132,7 @@
       "titleTh": "ตั้งค่า Output",
       "icon": "settings",
       "collapsible": true,
-      "defaultCollapsed": false,
+      "collapsed": false,
       "fields": [
         {
           "id": "outputType",

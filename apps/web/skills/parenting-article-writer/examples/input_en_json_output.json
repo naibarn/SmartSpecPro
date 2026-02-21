@@ -1,0 +1,13 @@
+{
+  "topic": "Diaper rash: prevention and gentle care at home",
+  "language": "en",
+  "age_range": {
+    "unit": "months",
+    "min": 0,
+    "max": 24
+  },
+  "response_mode": "json",
+  "show_references": "no",
+  "article_style": "how_to_guide",
+  "length": "short"
+}

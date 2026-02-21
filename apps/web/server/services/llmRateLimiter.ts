@@ -107,7 +107,7 @@ export const MEDIA_PROVIDER_LIMITS: Record<string, MediaProviderLimitConfig> = {
     minTime: 500,             // 500ms between requests for smoother distribution
     reservoir: 20,
     reservoirRefreshInterval: 10000, // 20 per 10 seconds (per Kie AI spec)
-    timeout: 120000,          // 2 min max wait (media takes longer)
+    timeout: 300000,          // 5 min max wait (image gen can take 2-3+ min)
     videoMultiplier: 2,       // Video still needs more spacing
     audioMultiplier: 1.5,     // Audio is moderate
   },

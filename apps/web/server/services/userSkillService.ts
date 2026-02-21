@@ -4,8 +4,8 @@
  */
 
 import { getDb } from "../db";
-import { skills as skillsTable, userSkillVisibility } from "../../drizzle/schema";
-import { eq, and, sql, ilike, or, count } from "drizzle-orm";
+import { skills as skillsTable, userSkillVisibility, skillPermissions, groupMembers, users } from "../../drizzle/schema";
+import { eq, and, sql, ilike, or, count, inArray } from "drizzle-orm";
 
 // Per-user cache with TTL
 const userVisibleCache = new Map<number, { skillIds: number[], expiry: number }>();
@@ -30,12 +30,12 @@ async function requireDb() {
 async function initializeUserVisibility(userId: number): Promise<number[]> {
   const db = await requireDb();
 
-  // Insert defaults for this user
+  // Insert defaults for this user (only public skills)
   await db.execute(sql`
     INSERT INTO user_skill_visibility ("userId", "skillId", visible, "autoTriggerEnabled", "createdAt", "updatedAt")
     SELECT ${userId}, s.id, true, true, NOW(), NOW()
     FROM skills s
-    WHERE s."visibleByDefault" = true AND s."isEnabled" = true
+    WHERE s."visibleByDefault" = true AND s."isEnabled" = true AND s."visibility" = 'public'
     ON CONFLICT DO NOTHING
   `);
 
@@ -62,12 +62,12 @@ async function ensureUserInitialized(userId: number): Promise<void> {
   if (!row) {
     await initializeUserVisibility(userId);
   } else {
-    // Sync any newly added skills that are visibleByDefault but not yet in user's visibility
+    // Sync any newly added public skills that are visibleByDefault but not yet in user's visibility
     await db.execute(sql`
       INSERT INTO user_skill_visibility ("userId", "skillId", visible, "autoTriggerEnabled", "createdAt", "updatedAt")
       SELECT ${userId}, s.id, true, true, NOW(), NOW()
       FROM skills s
-      WHERE s."visibleByDefault" = true AND s."isEnabled" = true
+      WHERE s."visibleByDefault" = true AND s."isEnabled" = true AND s."visibility" = 'public'
         AND s.id NOT IN (
           SELECT "skillId" FROM user_skill_visibility WHERE "userId" = ${userId}
         )
@@ -197,7 +197,9 @@ export async function getUserVisibleSkills(
 }
 
 /**
- * Browse ALL skills with user's visibility flag (for settings page)
+ * Browse skills the user has permission to see/use (for settings page).
+ * Shows: public skills, own skills (any visibility), and private skills shared via groups.
+ * Returns ownership info so the frontend can show sharing UI for owned skills.
  */
 export async function getAllSkillsForUser(
   userId: number,
@@ -206,7 +208,7 @@ export async function getAllSkillsForUser(
   const db = await requireDb();
   const { search, category, limit = 20, offset = 0 } = options;
 
-  const conditions = [eq(skillsTable.isEnabled, true)];
+  const conditions: any[] = [eq(skillsTable.isEnabled, true)];
 
   if (category && category !== "all") {
     conditions.push(eq(skillsTable.category, category as any));
@@ -221,25 +223,51 @@ export async function getAllSkillsForUser(
     );
   }
 
+  // Permission filter: public OR owned by user OR shared via group membership
+  const groupSharedSkillIds = db
+    .select({ skillId: skillPermissions.skillId })
+    .from(skillPermissions)
+    .innerJoin(groupMembers, and(
+      eq(groupMembers.groupId, skillPermissions.groupId),
+      eq(groupMembers.userId, userId),
+      eq(groupMembers.status, "active"),
+    ));
+
+  conditions.push(
+    or(
+      eq(skillsTable.visibility, "public"),
+      eq(skillsTable.createdBy, userId),
+      and(
+        eq(skillsTable.visibility, "private"),
+        inArray(skillsTable.id, groupSharedSkillIds),
+      ),
+    )
+  );
+
+  const selectFields = {
+    id: skillsTable.id,
+    slug: skillsTable.slug,
+    name: skillsTable.name,
+    description: skillsTable.description,
+    category: skillsTable.category,
+    icon: skillsTable.icon,
+    tags: skillsTable.tags,
+    isAutoTrigger: skillsTable.isAutoTrigger,
+    creditMultiplier: skillsTable.creditMultiplier,
+    priority: skillsTable.priority,
+    availableModels: skillsTable.availableModels,
+    defaultModel: skillsTable.defaultModel,
+    executionMode: skillsTable.executionMode,
+    createdBy: skillsTable.createdBy,
+    visibility: skillsTable.visibility,
+    visible: userSkillVisibility.visible,
+    autoTriggerEnabled: userSkillVisibility.autoTriggerEnabled,
+    ownerName: users.name,
+  };
+
   const [items, totalResult] = await Promise.all([
     db
-      .select({
-        id: skillsTable.id,
-        slug: skillsTable.slug,
-        name: skillsTable.name,
-        description: skillsTable.description,
-        category: skillsTable.category,
-        icon: skillsTable.icon,
-        tags: skillsTable.tags,
-        isAutoTrigger: skillsTable.isAutoTrigger,
-        creditMultiplier: skillsTable.creditMultiplier,
-        priority: skillsTable.priority,
-        availableModels: skillsTable.availableModels,
-        defaultModel: skillsTable.defaultModel,
-        executionMode: skillsTable.executionMode, // Added for endpoint routing
-        visible: userSkillVisibility.visible,
-        autoTriggerEnabled: userSkillVisibility.autoTriggerEnabled,
-      })
+      .select(selectFields)
       .from(skillsTable)
       .leftJoin(
         userSkillVisibility,
@@ -248,6 +276,7 @@ export async function getAllSkillsForUser(
           eq(userSkillVisibility.userId, userId)
         )
       )
+      .leftJoin(users, eq(skillsTable.createdBy, users.id))
       .where(and(...conditions))
       .orderBy(skillsTable.name)
       .limit(limit)
@@ -255,6 +284,14 @@ export async function getAllSkillsForUser(
     db
       .select({ total: count() })
       .from(skillsTable)
+      .leftJoin(
+        userSkillVisibility,
+        and(
+          eq(userSkillVisibility.skillId, skillsTable.id),
+          eq(userSkillVisibility.userId, userId)
+        )
+      )
+      .leftJoin(users, eq(skillsTable.createdBy, users.id))
       .where(and(...conditions)),
   ]);
 
@@ -263,6 +300,8 @@ export async function getAllSkillsForUser(
       ...s,
       visible: s.visible ?? false,
       autoTriggerEnabled: s.autoTriggerEnabled ?? true,
+      ownerName: s.ownerName ?? null,
+      isOwner: s.createdBy === userId,
     })),
     total: totalResult[0]?.total ?? 0,
   };

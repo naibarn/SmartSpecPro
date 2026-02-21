@@ -2,6 +2,7 @@
  * SafeMarkdown - XSS-safe markdown rendering component
  * Sanitizes content before rendering to prevent script injection
  * Supports clickable images with lightbox integration and download
+ * Supports <video> and <audio> HTML tags rendered as native players
  */
 
 import { useMemo, useCallback } from "react";
@@ -31,6 +32,7 @@ const ALLOWED_TAGS = [
   "a", "img",
   "table", "thead", "tbody", "tr", "th", "td",
   "div", "span",
+  "video", "audio", "source",
 ];
 
 const ALLOWED_ATTR = [
@@ -38,11 +40,23 @@ const ALLOWED_ATTR = [
   "class", "id",
   "target", "rel",
   "colspan", "rowspan",
+  "controls", "autoplay", "loop", "muted", "preload",
+  "type", "width", "height",
 ];
 
 // Sanitize content to prevent XSS
 function sanitizeContent(content: string): string {
-  let sanitized = content
+  // Protect fenced code blocks from DOMPurify's HTML entity encoding.
+  // DOMPurify encodes '>' in text nodes (e.g. '-->' becomes '--&gt;'),
+  // which breaks Mermaid diagrams and other code that uses these characters.
+  const codeBlocks: string[] = [];
+  const withPlaceholders = content.replace(/```[\s\S]*?```/g, (match) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(match);
+    return `SAFEMDBLOCKSM${idx}SMEND`;
+  });
+
+  let sanitized = withPlaceholders
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
     .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "")
     .replace(/javascript:/gi, "")
@@ -56,6 +70,11 @@ function sanitizeContent(content: string): string {
     ADD_ATTR: ["target"],
     FORBID_TAGS: ["style", "script", "iframe", "object", "embed", "form", "input"],
     FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
+  });
+
+  // Restore code blocks after DOMPurify (preserves original characters like -->)
+  codeBlocks.forEach((block, idx) => {
+    sanitized = sanitized.replace(`SAFEMDBLOCKSM${idx}SMEND`, block);
   });
 
   return sanitized;
@@ -181,7 +200,49 @@ function splitContentAndImages(content: string): Array<{ type: "text"; value: st
   return parts;
 }
 
+// Split raw content by <video> and <audio> HTML tags so they can be rendered
+// as native React elements (bypassing Streamdown's internal sanitizer).
+type MediaPart =
+  | { kind: "text"; value: string }
+  | { kind: "video"; src: string }
+  | { kind: "audio"; src: string };
+
+const MEDIA_TAG_REGEX = /<(video|audio)\b[^>]*\bsrc="([^"]*)"[^>]*>(?:<\/\1>)?/g;
+
+function splitByMedia(content: string): MediaPart[] | null {
+  // Fast path: no video/audio tags
+  if (!/<(video|audio)\b[^>]*\bsrc="/.test(content)) return null;
+
+  const parts: MediaPart[] = [];
+  const regex = new RegExp(MEDIA_TAG_REGEX.source, "g");
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ kind: "text", value: content.slice(lastIndex, match.index) });
+    }
+    const tag = match[1] as "video" | "audio";
+    const src = match[2];
+    if (src) parts.push({ kind: tag, src });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    parts.push({ kind: "text", value: content.slice(lastIndex) });
+  }
+
+  return parts;
+}
+
 export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdownProps) {
+  // Split out <video> and <audio> tags BEFORE sanitization so Streamdown never
+  // sees them (Streamdown's rehype-harden strips them regardless of DOMPurify).
+  const mediaParts = useMemo(() => {
+    if (!children || typeof children !== "string") return null;
+    return splitByMedia(children);
+  }, [children]);
+
   const sanitizedContent = useMemo(() => {
     if (!children || typeof children !== "string") return "";
     const urlSanitized = sanitizeUrls(children);
@@ -198,14 +259,54 @@ export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdown
     onImageClick(allImages, index >= 0 ? index : 0);
   }, [allImages, onImageClick]);
 
-  // If images exist and onImageClick is set, split content and render images as React components
-  const hasImages = allImages.length > 0 && onImageClick;
+  const hasImages = allImages.length > 0 && !!onImageClick;
 
   const contentParts = useMemo(() => {
     if (!hasImages) return null;
     return splitContentAndImages(sanitizedContent);
   }, [sanitizedContent, hasImages]);
 
+  // ── Video/audio present: render media elements directly as React elements ──
+  if (mediaParts) {
+    return (
+      <div className={className}>
+        {mediaParts.map((part, i) => {
+          if (part.kind === "video") {
+            return (
+              <video
+                key={i}
+                src={part.src}
+                controls
+                style={{
+                  display: "block",
+                  width: "100%",
+                  maxWidth: "720px",
+                  borderRadius: "8px",
+                  margin: "8px 0",
+                }}
+              />
+            );
+          }
+          if (part.kind === "audio") {
+            return (
+              <audio
+                key={i}
+                src={part.src}
+                controls
+                style={{ display: "block", width: "100%", margin: "4px 0" }}
+              />
+            );
+          }
+          // Text part — sanitize and render through Streamdown
+          if (!part.value.trim()) return null;
+          const sanitized = sanitizeContent(sanitizeUrls(part.value));
+          return sanitized.trim() ? <Streamdown key={i}>{sanitized}</Streamdown> : null;
+        })}
+      </div>
+    );
+  }
+
+  // ── Images with lightbox callback: split and render ImageThumbnail ──
   if (hasImages && contentParts) {
     return (
       <div className={className}>
@@ -228,7 +329,7 @@ export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdown
     );
   }
 
-  // No images or no onImageClick — render normally
+  // ── Default: render normally ──
   return (
     <div className={className}>
       <Streamdown>{sanitizedContent}</Streamdown>

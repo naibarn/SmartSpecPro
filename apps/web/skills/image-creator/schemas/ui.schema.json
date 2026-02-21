@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "skillId": "image-creator",
+  "title": "Image Creator",
+  "titleTh": "สร้างภาพ AI",
+  "description": "Generate images from text descriptions",
+  "descriptionTh": "สร้างภาพจากคำอธิบายข้อความ",
+  "sections": [
+    {
+      "id": "generate",
+      "title": "Generate Image",
+      "titleTh": "สร้างภาพ",
+      "icon": "image",
+      "fields": [
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "Image Description",
+          "labelTh": "คำอธิบายภาพ",
+          "placeholder": "Describe the image you want to create...",
+          "placeholderTh": "อธิบายภาพที่ต้องการสร้าง...",
+          "helpText": "Describe what you want in the image. Be specific about subjects, style, lighting, and mood.",
+          "helpTextTh": "อธิบายสิ่งที่ต้องการในภาพ ระบุรายละเอียด สไตล์ แสง และอารมณ์",
+          "required": true,
+          "rows": 3
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "default": "16:9",
+          "options": [
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" },
+            { "value": "16:9", "label": "16:9 (Landscape)", "labelTh": "16:9 (แนวนอน)" },
+            { "value": "9:16", "label": "9:16 (Portrait/TikTok)", "labelTh": "9:16 (แนวตั้ง/TikTok)" },
+            { "value": "4:3", "label": "4:3 (Standard)", "labelTh": "4:3 (มาตรฐาน)" },
+            { "value": "3:4", "label": "3:4 (Portrait Standard)", "labelTh": "3:4 (แนวตั้งมาตรฐาน)" }
+          ]
+        },
+        {
+          "id": "style",
+          "type": "select",
+          "label": "Image Style",
+          "labelTh": "สไตล์ภาพ",
+          "default": "realistic",
+          "options": [
+            { "value": "realistic", "label": "Realistic / Photorealistic", "labelTh": "สมจริง" },
+            { "value": "artistic", "label": "Artistic / Painterly", "labelTh": "ศิลปะ / ภาพวาด" },
+            { "value": "cartoon", "label": "Cartoon / Illustrated", "labelTh": "การ์ตูน / ภาพประกอบ" },
+            { "value": "3d", "label": "3D Rendered", "labelTh": "3D เรนเดอร์" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "options",
+      "title": "Options",
+      "titleTh": "ตัวเลือก",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "numImages",
+          "type": "select",
+          "label": "Number of Images",
+          "labelTh": "จำนวนภาพ",
+          "default": "1",
+          "options": [
+            { "value": "1", "label": "1 image", "labelTh": "1 ภาพ" },
+            { "value": "2", "label": "2 images", "labelTh": "2 ภาพ" },
+            { "value": "3", "label": "3 images", "labelTh": "3 ภาพ" },
+            { "value": "4", "label": "4 images", "labelTh": "4 ภาพ" }
+          ]
+        },
+        {
+          "id": "quality",
+          "type": "select",
+          "label": "Quality",
+          "labelTh": "คุณภาพ",
+          "default": "high",
+          "options": [
+            { "value": "low", "label": "Low (faster)", "labelTh": "ต่ำ (เร็วกว่า)" },
+            { "value": "medium", "label": "Medium", "labelTh": "ปานกลาง" },
+            { "value": "high", "label": "High (Recommended)", "labelTh": "สูง (แนะนำ)" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "description": "description",
+    "aspectRatio": "aspectRatio",
+    "style": "style",
+    "numImages": "numImages",
+    "quality": "quality"
+  }
+}

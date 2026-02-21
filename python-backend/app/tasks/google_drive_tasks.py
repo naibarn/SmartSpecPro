@@ -476,6 +476,7 @@ async def process_google_drive_index_job(
                 "driveFileId": drive_file_id,
                 "chunkCount": len(chunks),
             },
+            source_type="indexing",
         )
         credits_charged = True
 
@@ -528,6 +529,7 @@ async def process_google_drive_index_job(
                     service="gdrive.index.refund",
                     idempotency_key=f"gdrive_index_refund:{job.id}",
                     metadata={"reason": "indexing_failed", "original_job_id": job.id},
+                    source_type="indexing",
                 )
             except Exception as refund_err:
                 logger.error("gdrive_index_refund_failed job_id=%d error=%s", job.id, str(refund_err))

@@ -1,0 +1,206 @@
+{
+  "version": "1.0",
+  "skillId": "video-storyboard-to-prompts",
+  "title": "Video Storyboard to Prompts",
+  "titleTh": "สร้าง Storyboard และ Prompt วิดีโอ",
+  "description": "Generate storyboard scripts and AI image/video generation prompts for short-form viral content",
+  "descriptionTh": "สร้างสคริปต์ storyboard และ prompt สำหรับสร้างภาพ/วิดีโอด้วย AI สำหรับคลิปสั้นไวรัล",
+  "sections": [
+    {
+      "id": "concept",
+      "title": "Video Concept",
+      "titleTh": "แนวคิดวิดีโอ",
+      "icon": "file-text",
+      "fields": [
+        {
+          "id": "userIdea",
+          "type": "textarea",
+          "label": "Video Idea",
+          "labelTh": "ไอเดียคลิป",
+          "placeholder": "e.g., A Pixar banana explains 3 common sunscreen mistakes",
+          "placeholderTh": "เช่น กล้วยหอม Pixar อธิบาย 3 ข้อผิดพลาดที่คนทำเวลาทากันแดด",
+          "helpText": "What is the clip about? Main point, topic, or scenario",
+          "helpTextTh": "คลิปเกี่ยวกับอะไร? ประเด็นหลัก หัวข้อ หรือสถานการณ์",
+          "required": true,
+          "rows": 3
+        },
+        {
+          "id": "dialogueLanguage",
+          "type": "select",
+          "label": "Dialogue Language",
+          "labelTh": "ภาษาบทพูด",
+          "helpText": "Language spoken by characters in the video",
+          "helpTextTh": "ภาษาที่ตัวละครพูดในวิดีโอ",
+          "required": true,
+          "default": "en",
+          "options": [
+            { "value": "th", "label": "Thai (ไทย)", "labelTh": "ภาษาไทย" },
+            { "value": "en", "label": "English", "labelTh": "ภาษาอังกฤษ" },
+            { "value": "mixed", "label": "Mixed (TH+EN)", "labelTh": "ผสม (ไทย+อังกฤษ)" }
+          ]
+        },
+        {
+          "id": "style",
+          "type": "select",
+          "label": "Visual Style",
+          "labelTh": "สไตล์ภาพ",
+          "helpText": "Art style for the generated visuals",
+          "helpTextTh": "สไตล์ศิลปะสำหรับภาพที่สร้าง",
+          "required": true,
+          "default": "Realistic",
+          "options": [
+            { "value": "Pixar 3D Animated", "label": "Pixar 3D Animated", "labelTh": "Pixar 3D แอนิเมชัน" },
+            { "value": "3D Animated", "label": "3D Animated", "labelTh": "3D แอนิเมชัน" },
+            { "value": "Chibi", "label": "Chibi", "labelTh": "จิบิ" },
+            { "value": "Realistic", "label": "Realistic", "labelTh": "สมจริง" },
+            { "value": "Anime", "label": "Anime", "labelTh": "อนิเมะ" },
+            { "value": "Cartoon", "label": "Cartoon", "labelTh": "การ์ตูน" },
+            { "value": "Claymation", "label": "Claymation", "labelTh": "ดินน้ำมันปั้น" },
+            { "value": "Stop Motion", "label": "Stop Motion", "labelTh": "Stop Motion" },
+            { "value": "Comic", "label": "Comic", "labelTh": "คอมิก" },
+            { "value": "Cinematic", "label": "Cinematic", "labelTh": "ซีเนมาติก" },
+            { "value": "Cyberpunk", "label": "Cyberpunk", "labelTh": "ไซเบอร์พังก์" },
+            { "value": "Minimalist", "label": "Minimalist", "labelTh": "มินิมอลิสต์" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "Video Settings",
+      "titleTh": "ตั้งค่าวิดีโอ",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "targetDurationSeconds",
+          "type": "slider",
+          "label": "Target Duration (seconds)",
+          "labelTh": "ความยาวรวม (วินาที)",
+          "helpText": "Total video length in seconds",
+          "helpTextTh": "ความยาวรวมของวิดีโอ (วินาที)",
+          "min": 40,
+          "max": 120,
+          "step": 8,
+          "default": 64
+        },
+        {
+          "id": "sceneCount",
+          "type": "slider",
+          "label": "Number of Scenes",
+          "labelTh": "จำนวนฉาก",
+          "helpText": "How many scenes to generate",
+          "helpTextTh": "จำนวนฉากที่ต้องการสร้าง",
+          "min": 3,
+          "max": 12,
+          "step": 1,
+          "default": 8
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "Video aspect ratio (TikTok/Reels = 9:16)",
+          "helpTextTh": "อัตราส่วนของวิดีโอ (TikTok/Reels แนะนำ 9:16)",
+          "default": "9:16",
+          "options": [
+            { "value": "9:16", "label": "9:16 (Vertical — TikTok/Reels)", "labelTh": "9:16 (แนวตั้ง — TikTok/Reels)" },
+            { "value": "16:9", "label": "16:9 (Horizontal — YouTube)", "labelTh": "16:9 (แนวนอน — YouTube)" },
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" }
+          ]
+        },
+        {
+          "id": "platform",
+          "type": "select",
+          "label": "Target Platform",
+          "labelTh": "แพลตฟอร์มเป้าหมาย",
+          "default": "tiktok",
+          "options": [
+            { "value": "tiktok", "label": "TikTok", "labelTh": "TikTok" },
+            { "value": "reels", "label": "Instagram Reels", "labelTh": "Instagram Reels" },
+            { "value": "shorts", "label": "YouTube Shorts", "labelTh": "YouTube Shorts" },
+            { "value": "facebook", "label": "Facebook", "labelTh": "Facebook" },
+            { "value": "youtube", "label": "YouTube", "labelTh": "YouTube" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "story",
+      "title": "Story Style",
+      "titleTh": "สไตล์การเล่าเรื่อง",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "viralStrategy",
+          "type": "select",
+          "label": "Viral Strategy",
+          "labelTh": "กลยุทธ์ไวรัล",
+          "helpText": "Content strategy to maximise shareability",
+          "helpTextTh": "กลยุทธ์เนื้อหาเพื่อให้แชร์ได้มากที่สุด",
+          "default": "Pattern Interrupt",
+          "options": [
+            { "value": "Pattern Interrupt", "label": "Pattern Interrupt", "labelTh": "หยุดความสนใจทันที" },
+            { "value": "Reali-TEA", "label": "Reali-TEA (Relatable)", "labelTh": "สมจริง เข้าใจง่าย" },
+            { "value": "Curiosity Detours", "label": "Curiosity Detours", "labelTh": "กระตุ้นความอยากรู้" },
+            { "value": "Shoppertainment", "label": "Shoppertainment", "labelTh": "ความบันเทิงในการซื้อ" },
+            { "value": "Educational", "label": "Educational", "labelTh": "ให้ความรู้" },
+            { "value": "Comedy", "label": "Comedy", "labelTh": "ตลก/ฮา" }
+          ]
+        },
+        {
+          "id": "tone",
+          "type": "select",
+          "label": "Storytelling Tone",
+          "labelTh": "โทนการเล่าเรื่อง",
+          "default": "funny",
+          "options": [
+            { "value": "funny", "label": "Funny / Humorous", "labelTh": "ตลก / อารมณ์ขัน" },
+            { "value": "dramatic", "label": "Dramatic", "labelTh": "ดราม่า" },
+            { "value": "heartwarming", "label": "Heartwarming", "labelTh": "อบอุ่นหัวใจ" },
+            { "value": "nagging", "label": "Nagging / Complaining", "labelTh": "บ่น / ร้องทุกข์" },
+            { "value": "serious", "label": "Serious", "labelTh": "จริงจัง" },
+            { "value": "soft-sell", "label": "Soft Sell", "labelTh": "ขายแบบอ่อนโยน" },
+            { "value": "hype", "label": "Hype / Energetic", "labelTh": "ไฮป์ / พลังงานสูง" },
+            { "value": "geek", "label": "Geek / Educational", "labelTh": "คนรู้จริง / ให้ความรู้" }
+          ]
+        },
+        {
+          "id": "backgroundMode",
+          "type": "select",
+          "label": "Background Mode",
+          "labelTh": "โหมดพื้นหลัง",
+          "helpText": "Normal background or green screen for compositing",
+          "helpTextTh": "พื้นหลังปกติ หรือกรีนสกรีนสำหรับนำไปตัดต่อ",
+          "default": "normal",
+          "options": [
+            { "value": "normal", "label": "Normal Background", "labelTh": "พื้นหลังปกติ" },
+            { "value": "green_screen", "label": "Green Screen", "labelTh": "ฉากเขียว (Green Screen)" }
+          ]
+        },
+        {
+          "id": "includeTextOverlays",
+          "type": "boolean",
+          "label": "Include Text Overlays",
+          "labelTh": "ใส่ข้อความ Overlay",
+          "helpText": "Show on-screen text captions (does not affect character dialogue)",
+          "helpTextTh": "แสดงข้อความบนจอ (ไม่กระทบเสียงพูดของตัวละคร)",
+          "default": false
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "userIdea": "userIdea",
+    "dialogueLanguage": "dialogueLanguage",
+    "style": "style",
+    "targetDurationSeconds": "targetDurationSeconds",
+    "sceneCount": "sceneCount",
+    "aspectRatio": "aspectRatio",
+    "platform": "platform",
+    "viralStrategy": "viralStrategy",
+    "tone": "tone",
+    "backgroundMode": "backgroundMode",
+    "includeTextOverlays": "includeTextOverlays"
+  }
+}

@@ -1,61 +1,139 @@
 ---
 id: intelligence-skill-creator
 name: Intelligence Skill Creator
-version: "0.3.0"
+version: "0.4.0"
 type: automation
 languages: en, th
 category: skill_development
 execution_mode: python
 isAutoTrigger: false
 enabledByDefault: false
-visibleByDefault: false
+visibleByDefault: true
 priority: 10
+tags: [skill-builder, code-generation, llm, python, javascript, schema]
 triggerPatterns:
-  - "create skill|improve skill|สร้าง skill|ปรับปรุง skill"
-  - "intelligence skill creator|ISC|isc improve"
+  - "create skill|build skill|สร้าง skill|ทำ skill ใหม่|ออกแบบ skill"
+  - "improve skill|ปรับปรุง skill|พัฒนา skill|แก้ไข skill"
+  - "intelligence skill creator|ISC|isc create|isc improve"
 ---
 
-# Intelligence Skill Creator (ISC) — v0.3.0
+# Intelligence Skill Creator (ISC) — v0.4.0
 
-Multi-agent LLM-powered tool for creating and improving skills.
+7-phase multi-agent LLM pipeline that creates complete, production-ready SmartSpecPro skills from a natural language description — or iteratively improves existing ones.
 
 ## Capabilities
 
-- **Planner → Researcher → Coder → Critic** pipeline
-- Research-first approach using DuckDuckGo
-- Iterative patch→test→validate loop
-- Provider-agnostic (OpenAI-compatible gateway)
+### 🔨 Create Mode (NEW in v0.4.0)
+- **Phase 1 — Plan:** LLM analyzes description, designs skill architecture (inputs, outputs, logic, language)
+- **Phase 2 — Schemas:** Generates all 3 mandatory schemas in sequence:
+  - `schemas/input.schema.json` — full input validation with enums, ranges, examples
+  - `schemas/output.schema.json` — structured output specification
+  - `schemas/ui.schema.json` — SmartSpecPro UI form with Thai + English labels
+- **Phase 3 — skill.md:** Generates manifest with YAML frontmatter, input/output tables, usage examples
+- **Phase 4 — Code:** Generates complete `python/skill.py` OR `js/skill.js` with stdlib only
+- **Phase 5 — Critic:** Second LLM pass reviews and fixes correctness, edge cases, security
+- **Phase 6 — Tests:** Generates `tests/tests.json` with happy path, edge cases, error cases
+- **Phase 7 — Write:** Writes all artifacts to `apps/web/skills/{skill-name}/`
 
-## Usage
+### 🔧 Improve Mode (since v0.3.0)
+- Iterative **evaluate → research → patch → test** loop
+- DuckDuckGo web research informs LLM patch generation
+- Heuristic fallback when LLM unavailable
+- Safety constraints: path restriction, no new deps, respond() signature enforcement
 
-Provide a skill name to improve, along with optional LLM config:
+## Schema Contract
+
+Every skill created by ISC **must** (and will) include:
+
+```
+skills/{skill-name}/
+├── schemas/
+│   ├── input.schema.json    ← MANDATORY (JSON Schema draft-07, full validation)
+│   ├── output.schema.json   ← MANDATORY (output structure spec)
+│   └── ui.schema.json       ← MANDATORY (SmartSpecPro UI form, Thai + English)
+├── skill.md                 ← manifest + YAML frontmatter
+├── python/skill.py          ← if language=python (respond() entry point)
+│   OR js/skill.js           ← if language=javascript
+├── tests/tests.json         ← 5-6 test cases (happy path + edge + error)
+└── README.md                ← auto-generated documentation
+```
+
+## Usage — Create Mode
 
 ```json
 {
-  "skill_name": "skill_math_tutor",
-  "mode": "llm",
-  "rounds": 3,
-  "llm": {
-    "base_url": "https://your-gateway/v1",
-    "api_key": "sk-...",
-    "model": "gpt-4o"
-  }
+  "mode": "create",
+  "description": "A skill that converts Thai dates between Buddhist Era (BE) and Common Era (CE), supporting formats like '15/04/2567', '15 เมษายน 2567', and ISO '2024-04-15'",
+  "skill_language": "python",
+  "complexity": "moderate",
+  "llm_base_url": "https://api.openai.com/v1",
+  "llm_model": "gpt-4o"
 }
 ```
 
-## Input Format (stdin JSON)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `skill_name` | string | required | Skill folder name under `skills/` |
-| `mode` | auto\|llm\|heuristic | auto | Improvement strategy |
-| `rounds` | int 1-10 | 3 | Iteration rounds |
-| `llm.base_url` | string | — | OpenAI-compatible endpoint |
-| `llm.api_key` | string | — | API key |
-| `llm.model` | string | — | Model name |
-
-## Output Format (stdout JSON)
+## Usage — Improve Mode
 
 ```json
-{ "success": true, "output": "Improved skill_math_tutor in 3 rounds..." }
+{
+  "mode": "improve",
+  "skill_name": "skill_math_tutor",
+  "rounds": 3,
+  "llm_model": "gpt-4o"
+}
+```
+
+## Input Parameters
+
+| Parameter | Mode | Type | Default | Description |
+|-----------|------|------|---------|-------------|
+| `mode` | both | string | `auto` | `create` \| `improve` \| `auto` |
+| `description` | create | string | — | What the new skill should do |
+| `skill_language` | create | string | `auto` | `python` \| `javascript` \| `auto` |
+| `complexity` | create | string | `moderate` | `simple` \| `moderate` \| `complex` |
+| `skill_name` | both | string | — | Slug override (create) or existing skill (improve) |
+| `rounds` | improve | int | `3` | Improvement iterations (1-10) |
+| `llm_base_url` | both | string | env | OpenAI-compatible API endpoint |
+| `llm_model` | both | string | env | Model name (e.g. `gpt-4o`, `claude-opus-4-6`) |
+| `llm_temperature` | both | float | `0` | 0=deterministic, 1=creative |
+| `llm_timeout_s` | both | int | `180` | Max seconds per LLM call |
+
+## Output Format
+
+```json
+{
+  "success": true,
+  "output": "✅ Skill `thai-date-converter` created successfully!\n\n📁 Location: ...\n📄 Files created:\n  ✅ schemas/input.schema.json\n  ✅ schemas/output.schema.json\n  ✅ schemas/ui.schema.json\n  ✅ skill.md\n  ✅ python/skill.py\n  ✅ tests/tests.json\n  ✅ README.md",
+  "skill_path": "/path/to/apps/web/skills/thai-date-converter"
+}
+```
+
+## Language Selection Guide
+
+| Use Python when... | Use JavaScript when... |
+|--------------------|------------------------|
+| Math / statistics | Async/event-driven logic |
+| NLP / text analysis | JSON transformation |
+| Data parsing (CSV, XML) | URL manipulation |
+| Complex algorithms | Template rendering |
+| File processing | HTTP-heavy operations |
+
+## Architecture
+
+```
+python/skill.py (entry point)
+  ↓ respond(input, context) → _normalise() → _detect_mode()
+  ↓
+  ├── CREATE → isc/creator.py → SkillCreator.create()
+  │     Phase 1: _phase_plan()           → LLM JSON
+  │     Phase 2: _phase_input_schema()   → LLM JSON
+  │             _phase_output_schema()  → LLM JSON
+  │             _phase_ui_schema()      → LLM JSON
+  │     Phase 3: _phase_skill_md()       → string
+  │     Phase 4: _phase_code()           → Python or JS string
+  │     Phase 5: _phase_critic()         → fixed code + issues
+  │     Phase 6: _phase_tests()          → list[dict]
+  │     Phase 7: _phase_write()          → writes ALL files
+  │
+  └── IMPROVE → isc/runner.py → iterate_improve()
+        evaluate → research (DuckDuckGo) → LLM patch → validate → apply → repeat
 ```

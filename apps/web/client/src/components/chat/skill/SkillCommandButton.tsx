@@ -19,7 +19,7 @@ export function SkillCommandButton({ onClick, disabled }: SkillCommandButtonProp
           onClick={onClick}
           disabled={disabled}
         >
-          <Sparkles className="h-4 w-4" />
+          <Sparkles className="h-5 w-5" />
           <span className="sr-only">Use Skill</span>
         </Button>
       </TooltipTrigger>

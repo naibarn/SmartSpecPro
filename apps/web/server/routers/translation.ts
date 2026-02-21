@@ -104,6 +104,7 @@ export const translationRouter = router({
         userId: ctx.user.id,
         amount: credits,
         description: `Translation (${textIsEnglish ? "EN→" + targetLang.toUpperCase() : "→EN"})`,
+        sourceType: "translation",
         metadata: { model, provider: provider.providerName, tokens: usage },
       });
 

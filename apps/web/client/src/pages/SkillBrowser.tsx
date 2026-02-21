@@ -1,7 +1,8 @@
 /**
  * Skill Browser Page
- * Browse all skills with search, category filter, pagination.
+ * Browse permitted skills with search, category filter, pagination.
  * Toggle visibility and auto-trigger per skill.
+ * Owners can manage group sharing for their private skills.
  */
 
 import { useState, useCallback } from "react";
@@ -49,6 +50,13 @@ import {
   EyeOff,
   Loader2,
   ArrowLeft,
+  Lock,
+  Clock,
+  Users,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -85,13 +93,123 @@ const categoryLabels: Record<string, string> = {
   other: "Other",
 };
 
+const visibilityConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  public: { label: "Public", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: Globe },
+  private: { label: "Private", color: "bg-slate-100 text-slate-700 border-slate-200", icon: Lock },
+  pending_approval: { label: "Pending", color: "bg-amber-100 text-amber-700 border-amber-200", icon: Clock },
+  rejected: { label: "Rejected", color: "bg-red-100 text-red-700 border-red-200", icon: X },
+};
+
+function GroupSharingPanel({ skillId }: { skillId: number }) {
+  const utils = trpc.useUtils();
+
+  const { data: sharedGroups, isLoading: groupsLoading } = trpc.skills.getSkillGroups.useQuery(
+    { skillId },
+  );
+
+  const { data: userGroups } = trpc.groups.list.useQuery(
+    { scope: "my_groups" } as any,
+  );
+
+  const shareWithGroupsMutation = trpc.skills.shareWithGroups.useMutation({
+    onSuccess: () => {
+      utils.skills.getSkillGroups.invalidate({ skillId });
+      toast.success("Group added");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const unshareGroupMutation = trpc.skills.unshareGroup.useMutation({
+    onSuccess: () => {
+      utils.skills.getSkillGroups.invalidate({ skillId });
+      toast.success("Group removed");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (groupsLoading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        <span className="text-xs text-muted-foreground">Loading groups...</span>
+      </div>
+    );
+  }
+
+  const availableGroups = (userGroups as any[] | undefined)?.filter(
+    (g: any) => !sharedGroups?.some((sg: any) => sg.id === g.id)
+  ) ?? [];
+
+  return (
+    <div className="space-y-2 pt-2 border-t">
+      <div className="flex items-center gap-1.5">
+        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-xs font-medium">Shared with Groups</span>
+      </div>
+
+      {/* Shared groups badges */}
+      <div className="flex flex-wrap gap-1.5">
+        {sharedGroups && sharedGroups.length > 0 ? (
+          sharedGroups.map((group: any) => (
+            <Badge
+              key={group.id}
+              variant="secondary"
+              className="flex items-center gap-1 pl-2 pr-0.5 py-0.5 text-xs"
+            >
+              <span>{group.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 ml-0.5 hover:bg-destructive/20 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  unshareGroupMutation.mutate({ skillId, groupId: group.id });
+                }}
+                disabled={unshareGroupMutation.isPending}
+              >
+                <X className="h-2.5 w-2.5" />
+              </Button>
+            </Badge>
+          ))
+        ) : (
+          <span className="text-xs text-muted-foreground italic">Not shared with any groups</span>
+        )}
+      </div>
+
+      {/* Add group selector */}
+      {availableGroups.length > 0 && (
+        <Select
+          onValueChange={(groupId) => {
+            shareWithGroupsMutation.mutate({
+              skillId,
+              groupIds: [parseInt(groupId)],
+            });
+          }}
+        >
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder="Add a group..." />
+          </SelectTrigger>
+          <SelectContent>
+            {availableGroups.map((group: any) => (
+              <SelectItem key={group.id} value={String(group.id)}>
+                {group.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
+
 export default function SkillBrowser() {
   const [, navigate] = useLocation();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(0);
+  const [expandedSkillId, setExpandedSkillId] = useState<number | null>(null);
 
   // Debounce search
   const debounceTimer = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -210,8 +328,13 @@ export default function SkillBrowser() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence mode="popLayout">
-                {data.skills.map((skill) => {
+                {data.skills.map((skill: any) => {
                   const Icon = iconMap[skill.icon ?? "sparkles"] || Sparkles;
+                  const vis = visibilityConfig[skill.visibility] || visibilityConfig.public;
+                  const VisIcon = vis.icon;
+                  const isOwner = skill.isOwner;
+                  const isExpanded = expandedSkillId === skill.id;
+
                   return (
                     <motion.div
                       key={skill.id}
@@ -228,12 +351,31 @@ export default function SkillBrowser() {
                               <Icon className={`h-5 w-5 ${skill.visible ? "text-primary" : "text-muted-foreground"}`} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                                 <span className="font-medium text-sm truncate">{skill.name}</span>
                                 <Badge variant="outline" className="text-xs shrink-0">
                                   {categoryLabels[skill.category] ?? skill.category}
                                 </Badge>
+                                {/* Visibility badge */}
+                                <Badge variant="outline" className={`text-xs shrink-0 ${vis.color}`}>
+                                  <VisIcon className="h-2.5 w-2.5 mr-0.5" />
+                                  {vis.label}
+                                </Badge>
+                                {/* Owner badge */}
+                                {isOwner && (
+                                  <Badge className="text-xs shrink-0 bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                    Mine
+                                  </Badge>
+                                )}
                               </div>
+
+                              {/* Owner info */}
+                              {skill.ownerName && !isOwner && (
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  by {skill.ownerName}
+                                </p>
+                              )}
+
                               <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                                 {skill.description || "No description"}
                               </p>
@@ -297,6 +439,33 @@ export default function SkillBrowser() {
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
+
+                                {/* Share button for owned private skills */}
+                                {isOwner && skill.visibility === "private" && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 px-2 text-xs"
+                                          onClick={() => setExpandedSkillId(isExpanded ? null : skill.id)}
+                                        >
+                                          <Share2 className="h-3.5 w-3.5 mr-1" />
+                                          Share
+                                          {isExpanded ? (
+                                            <ChevronUp className="h-3 w-3 ml-0.5" />
+                                          ) : (
+                                            <ChevronDown className="h-3 w-3 ml-0.5" />
+                                          )}
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        Manage which groups can use this skill
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                               </div>
 
                               {/* Credit multiplier */}
@@ -304,6 +473,11 @@ export default function SkillBrowser() {
                                 <Badge variant="secondary" className="text-xs mt-2">
                                   {skill.creditMultiplier}x credits
                                 </Badge>
+                              )}
+
+                              {/* Expandable group sharing panel */}
+                              {isOwner && skill.visibility === "private" && isExpanded && (
+                                <GroupSharingPanel skillId={skill.id} />
                               )}
                             </div>
                           </div>

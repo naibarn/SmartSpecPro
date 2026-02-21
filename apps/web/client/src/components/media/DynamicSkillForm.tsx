@@ -18,6 +18,19 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import {
   ImagePlus,
@@ -38,6 +51,8 @@ import {
   Camera,
   Film,
   Layers,
+  Check,
+  ChevronsUpDown,
   LucideIcon,
 } from "lucide-react";
 import {
@@ -46,6 +61,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { trpc } from "@/lib/trpc";
 
 // Icon mapping for section icons
 const iconMap: Record<string, LucideIcon> = {
@@ -67,7 +83,7 @@ const iconMap: Record<string, LucideIcon> = {
 // Schema Types
 export interface SkillInputField {
   id: string;
-  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images" | "imageUpload";
+  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images" | "imageUpload" | "model-search" | "workflow-selector";
   label: string;
   labelTh?: string;
   placeholder?: string;
@@ -131,6 +147,290 @@ export interface SkillInputSchema {
 interface ReferenceImage {
   url: string;
   name: string;
+}
+
+/** Searchable model picker that loads available models from the system via tRPC. */
+function ModelSearchField({
+  field,
+  value,
+  onChange,
+  label,
+  description,
+}: {
+  field: SkillInputField;
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  description: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const { data: models = [], isLoading } =
+    trpc.multiProvider.getAvailableModelsWithProviders.useQuery();
+
+  const filtered = models.filter(
+    (m) =>
+      !search ||
+      m.modelId.toLowerCase().includes(search.toLowerCase()) ||
+      m.modelName.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const selected = models.find((m) => m.modelId === value);
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1.5">
+        {label}
+        {field.required && <span className="text-red-500">*</span>}
+        {description && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-[200px] text-xs">{description}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between font-normal h-9"
+          >
+            <span className="truncate text-sm">
+              {selected
+                ? selected.modelName
+                : (field.placeholder || "Search models...")}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-0"
+          align="start"
+        >
+          <Command>
+            <CommandInput
+              placeholder="Search by name or ID..."
+              value={search}
+              onValueChange={setSearch}
+            />
+            <CommandList>
+              {isLoading ? (
+                <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading models...
+                </div>
+              ) : (
+                <>
+                  <CommandEmpty>No models found.</CommandEmpty>
+                  <CommandGroup>
+                    {filtered.map((model) => (
+                      <CommandItem
+                        key={model.modelId}
+                        value={model.modelId}
+                        onSelect={(selected) => {
+                          onChange(selected === value ? "" : selected);
+                          setOpen(false);
+                          setSearch("");
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4 shrink-0",
+                            value === model.modelId
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm truncate">
+                            {model.modelName}
+                          </span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {model.modelId}
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+/** Combobox that lists the user's saved workflows and auto-fills the JSON textarea on selection. */
+function WorkflowSelectorField({
+  field,
+  value,
+  onChange,
+  label,
+  description,
+}: {
+  field: SkillInputField;
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  description: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  type WfItem = { id: number; name: string; description: string | null; workflowJson: Record<string, unknown>; status: string };
+  const { data: _rawWorkflows, isLoading } = trpc.workflow.listSaved.useQuery({});
+  const workflows = (_rawWorkflows ?? []) as WfItem[];
+
+  const filtered = workflows.filter(
+    (w: WfItem) =>
+      !search ||
+      w.name.toLowerCase().includes(search.toLowerCase()) ||
+      (w.description ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const selected = workflows.find((w: WfItem) => w.id === selectedId);
+
+  // Clear selection when the value is cleared externally (e.g. form reset)
+  if (!value && selectedId !== null) {
+    setSelectedId(null);
+  }
+
+  // Auto-select by ID when value is a bare numeric string (e.g. passed programmatically)
+  useEffect(() => {
+    if (!value || isLoading || !workflows.length || selectedId !== null) return;
+    const numericId = /^\d+$/.test(value.trim()) ? Number(value.trim()) : null;
+    if (numericId === null) return;
+    const wf = workflows.find((w) => w.id === numericId);
+    if (wf) {
+      setSelectedId(numericId);
+      onChange(JSON.stringify(wf.workflowJson, null, 2));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflows, isLoading]);
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5">
+        {label}
+        {field.required && <span className="text-red-500">*</span>}
+        {description && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-[200px] text-xs">{description}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </Label>
+
+      {/* Saved workflow combobox */}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between font-normal h-9"
+          >
+            <span className="truncate text-sm">
+              {selected
+                ? selected.name
+                : (field.placeholder || "Select a saved workflow...")}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-0"
+          align="start"
+        >
+          <Command>
+            <CommandInput
+              placeholder="Search workflows..."
+              value={search}
+              onValueChange={setSearch}
+            />
+            <CommandList>
+              {isLoading ? (
+                <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading workflows...
+                </div>
+              ) : (
+                <>
+                  <CommandEmpty>No saved workflows found.</CommandEmpty>
+                  <CommandGroup>
+                    {filtered.map((w) => (
+                      <CommandItem
+                        key={w.id}
+                        value={String(w.id)}
+                        onSelect={() => {
+                          setSelectedId(w.id);
+                          onChange(JSON.stringify(w.workflowJson, null, 2));
+                          setOpen(false);
+                          setSearch("");
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4 shrink-0",
+                            selectedId === w.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm truncate">{w.name}</span>
+                          {w.description && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {w.description}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {(w.workflowJson as any)?.nodes?.length ?? 0} nodes
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      {/* Manual JSON textarea */}
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">
+          Or paste exported workflow JSON manually:
+        </p>
+        <Textarea
+          value={value}
+          rows={field.rows ?? 6}
+          placeholder="Paste exported workflow JSON here..."
+          onChange={(e) => {
+            setSelectedId(null);
+            onChange(e.target.value);
+          }}
+          className="font-mono text-xs resize-y"
+        />
+      </div>
+    </div>
+  );
 }
 
 /** Special style actions that can trigger parent behaviors */
@@ -517,7 +817,7 @@ export default function DynamicSkillForm({
               min={field.min ?? 0}
               max={field.max ?? 100}
               step={field.step ?? 1}
-              className="py-2"
+              className="py-2 [&_[data-slot=slider-track]]:bg-gray-300 dark:[&_[data-slot=slider-track]]:bg-gray-600 [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-thumb]]:border-2"
             />
           </div>
         );
@@ -655,6 +955,30 @@ export default function DynamicSkillForm({
               <p className="text-xs text-muted-foreground">{description}</p>
             )}
           </div>
+        );
+
+      case "model-search":
+        return (
+          <ModelSearchField
+            key={field.id}
+            field={field}
+            value={value}
+            onChange={(v) => updateValue(field.id, v)}
+            label={label}
+            description={description}
+          />
+        );
+
+      case "workflow-selector":
+        return (
+          <WorkflowSelectorField
+            key={field.id}
+            field={field}
+            value={String(values[field.id] ?? "")}
+            onChange={(v) => updateValue(field.id, v)}
+            label={label}
+            description={description}
+          />
         );
 
       default:

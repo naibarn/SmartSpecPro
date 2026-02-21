@@ -146,6 +146,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
       userId: schedule.userId,
       amount: creditsUsed,
       description: `Chat Alert: ${schedule.description || schedule.prompt.slice(0, 50)}`,
+      sourceType: "scheduler",
       metadata: {
         type: "chat-alert",
         scheduleId,

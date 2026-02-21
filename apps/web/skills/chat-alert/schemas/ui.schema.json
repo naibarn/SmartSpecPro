@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "skillId": "chat-alert",
+  "title": "Chat Alert",
+  "titleTh": "ตั้งการแจ้งเตือน",
+  "description": "Schedule recurring or one-time AI-powered chat alerts",
+  "descriptionTh": "ตั้งการแจ้งเตือน AI แบบครั้งเดียวหรือซ้ำๆ",
+  "sections": [
+    {
+      "id": "schedule",
+      "title": "Schedule",
+      "titleTh": "การตั้งเวลา",
+      "icon": "zap",
+      "fields": [
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "What should I remind you about?",
+          "labelTh": "ต้องการให้แจ้งเตือนอะไร?",
+          "placeholder": "e.g., Every morning at 8AM, summarize today's important tech news\ne.g., Every day at 7AM, check today's gold price and compare to yesterday\ne.g., Remind me of my meeting with Company A on Feb 1 at 10AM",
+          "placeholderTh": "เช่น ทุกวันตอน 8 โมงเช้า สรุปข่าวเทคโนโลยีสำคัญของวันนี้\nเช่น ทุกวันตอน 7 โมง เช็คราคาทองวันนี้\nเช่น เตือนฉันนัดประชุมกับบริษัท A วันที่ 1 กุมภา เวลา 10 โมง",
+          "helpText": "Describe when and what you want to be notified about. You can use natural language.",
+          "helpTextTh": "อธิบายว่าเมื่อไหร่และต้องการแจ้งเตือนอะไร สามารถพิมพ์เป็นภาษาธรรมชาติได้",
+          "required": true,
+          "rows": 4
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "description": "description"
+  }
+}

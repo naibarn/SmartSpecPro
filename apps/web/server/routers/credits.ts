@@ -31,10 +31,17 @@ const transactionTypeSchema = z.enum([
   "subscription",
 ]);
 
+const creditSourceTypeSchema = z.enum([
+  "chat", "skill", "media_image", "media_video", "media_audio",
+  "indexing", "rag", "stt", "translation", "brainstorm",
+  "scheduler", "admin", "other",
+]);
+
 const historyFiltersSchema = z.object({
   limit: z.number().min(1).max(100).default(50),
   offset: z.number().min(0).default(0),
   type: transactionTypeSchema.optional(),
+  sourceType: creditSourceTypeSchema.optional(),
   startDate: z.date().optional(),
   endDate: z.date().optional(),
 });
@@ -62,19 +69,43 @@ export const creditsRouter = router({
         limit: input.limit,
         offset: input.offset,
         type: input.type as TransactionType | undefined,
+        sourceType: input.sourceType,
         startDate: input.startDate,
         endDate: input.endDate,
       });
 
-      return transactions.map((t: (typeof transactions)[number]) => ({
-        id: t.id,
-        amount: t.amount,
-        type: t.type,
-        description: t.description,
-        balanceAfter: t.balanceAfter,
-        createdAt: t.createdAt,
-        metadata: t.metadata,
-      }));
+      // Allowlist safe metadata fields — strip internal/sensitive keys
+      const safeMetadataKeys = ["model", "provider", "tokensUsed", "costUsd", "inputTokens", "outputTokens", "skill", "reason"];
+
+      return transactions.map((t: (typeof transactions)[number]) => {
+        const safeMeta = t.metadata
+          ? Object.fromEntries(
+              Object.entries(t.metadata).filter(([k]) => safeMetadataKeys.includes(k))
+            )
+          : null;
+
+        // Truncate conversation title to prevent leaking sensitive content
+        const title = t.conversationTitle
+          ? t.conversationTitle.length > 50
+            ? t.conversationTitle.slice(0, 50) + "…"
+            : t.conversationTitle
+          : null;
+
+        return {
+          id: t.id,
+          amount: t.amount,
+          type: t.type,
+          description: t.description,
+          balanceAfter: t.balanceAfter,
+          createdAt: t.createdAt,
+          metadata: safeMeta,
+          traceId: t.traceId,
+          conversationId: t.conversationId,
+          skillSlug: t.skillSlug,
+          sourceType: t.sourceType,
+          conversationTitle: title,
+        };
+      });
     }),
 
   /**

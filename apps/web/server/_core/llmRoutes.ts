@@ -787,7 +787,8 @@ async function checkCredits(
  */
 async function deductCreditsForUsage(
   userId: number,
-  usage: LLMUsageInfo
+  usage: LLMUsageInfo,
+  options?: { sourceType?: import("../services/creditService").CreditSourceType; conversationId?: number }
 ): Promise<void> {
   if (userId === 0) return; // Skip for static tokens
 
@@ -811,6 +812,8 @@ async function deductCreditsForUsage(
       userId,
       amount: creditsToDeduct,
       description: `LLM usage: ${usage.model}`,
+      sourceType: options?.sourceType,
+      conversationId: options?.conversationId,
       metadata: {
         model: usage.model,
         provider: cachedProvider?.providerName || "unknown",
@@ -984,6 +987,8 @@ async function proxyChatWithCredits(
       inputTokens,
       outputTokens,
       costUsd,
+      sourceType: "chat",
+      conversationId,
     });
 
     // Record model usage for analytics
@@ -1107,6 +1112,8 @@ async function proxyChatWithCredits(
       inputTokens,
       outputTokens,
       costUsd: providerCostUsd,
+      sourceType: "chat",
+      conversationId,
     });
 
     // Record model usage for analytics
@@ -1588,6 +1595,7 @@ export function registerLLMRoutes(app: Express) {
             userId: check.userId,
             amount: creditsUsed,
             description: `STT transcription (${Math.round(result.duration || 0)}s)`,
+            sourceType: "stt",
           });
         }
 
@@ -1997,7 +2005,7 @@ Be comprehensive but avoid redundancy.`;
             userId, openId: null, model: modelA,
             promptTokens: resultA.inputTokens, completionTokens: resultA.outputTokens,
             totalTokens: resultA.inputTokens + resultA.outputTokens,
-          });
+          }, { sourceType: "brainstorm", conversationId });
           const creditsA = calculateCreditsForLLM(resultA.inputTokens, resultA.outputTokens, modelA);
           totalCredits += creditsA;
           res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round, role: "model_a", credits: creditsA, totalCredits })}\n\n`);
@@ -2029,7 +2037,7 @@ Be comprehensive but avoid redundancy.`;
             userId, openId: null, model: modelB,
             promptTokens: resultB.inputTokens, completionTokens: resultB.outputTokens,
             totalTokens: resultB.inputTokens + resultB.outputTokens,
-          });
+          }, { sourceType: "brainstorm", conversationId });
           const creditsB = calculateCreditsForLLM(resultB.inputTokens, resultB.outputTokens, modelB);
           totalCredits += creditsB;
           res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round, role: "model_b", credits: creditsB, totalCredits })}\n\n`);
@@ -2061,7 +2069,7 @@ Be comprehensive but avoid redundancy.`;
           userId, openId: null, model: modelA,
           promptTokens: summaryResult.inputTokens, completionTokens: summaryResult.outputTokens,
           totalTokens: summaryResult.inputTokens + summaryResult.outputTokens,
-        });
+        }, { sourceType: "brainstorm", conversationId });
         const creditsSummary = calculateCreditsForLLM(summaryResult.inputTokens, summaryResult.outputTokens, modelA);
         totalCredits += creditsSummary;
         res.write(`event: brainstorm_credits\ndata: ${JSON.stringify({ round: 0, role: "summary", credits: creditsSummary, totalCredits })}\n\n`);

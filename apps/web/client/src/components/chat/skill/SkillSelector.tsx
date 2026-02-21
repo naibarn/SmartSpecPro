@@ -68,12 +68,13 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
     { enabled: open }
   );
 
+  const utils = trpc.useUtils();
+
   // Pre-fetch schema info for all skills
   useEffect(() => {
     if (!open || !skillsData?.skills) return;
 
     const checkSchemas = async () => {
-      const utils = trpc.useUtils();
       const status: Record<string, boolean> = {};
 
       for (const skill of skillsData.skills) {
@@ -90,7 +91,7 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
     };
 
     checkSchemas();
-  }, [open, skillsData]);
+  }, [open, skillsData, utils]);
 
   // Filter and group skills
   const groupedSkills = useMemo(() => {

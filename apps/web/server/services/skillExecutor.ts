@@ -4,9 +4,10 @@
  */
 
 import path from "path";
-import { spawnSync } from "child_process";
+import { spawnSync, spawn } from "child_process";
 import fs from "fs";
 import { SkillDefinition } from "./skillRegistry";
+import { getRedisClient } from "./redis";
 import {
   mediaGenerationService,
   ImageModel,
@@ -111,6 +112,7 @@ export async function executeSkill(
     id: skill.id,
     name: skill.name,
     type: skill.type,
+    executionMode: (skill as any).executionMode,
     userId,
     prompt: params.prompt?.substring(0, 100),
   });
@@ -125,6 +127,27 @@ export async function executeSkill(
     };
   }
 
+  // Route by executionMode first — type is for categorization only
+  const executionMode = (skill as any).executionMode as string | undefined;
+
+  // Python skills: always use subprocess regardless of type
+  if (executionMode === "python") {
+    console.log(`[SkillExecutor] Routing to executePythonSkill (executionMode: python)`);
+    return await executePythonSkill(skill, params, userToken);
+  }
+
+  // LLM-only and prompt-enhancement skills: return form data as text for chat LLM to process
+  if (executionMode === "llm-only" || executionMode === "enhance-prompt") {
+    console.log(`[SkillExecutor] Skill '${skill.id}' has executionMode '${executionMode}' — returning text result for LLM processing`);
+    return {
+      success: true,
+      skillId: skill.id,
+      type: "text",
+      message: params.prompt || `Using skill: ${skill.name}`,
+    };
+  }
+
+  // Media generation: route by type
   switch (skill.type) {
     case "image-generation":
       console.log(`[SkillExecutor] Routing to executeImageGeneration`);
@@ -144,19 +167,13 @@ export async function executeSkill(
     case "web-search":
     case "document-analysis":
     case "translation":
-    case "prompt-enhancement": {
-      // For python execution mode, run python/skill.py subprocess
-      if ((skill as any).executionMode === "python") {
-        return executePythonSkill(skill, params);
-      }
-      // Fall through to default for non-python modes
+    case "prompt-enhancement":
       return {
         success: false,
         skillId: skill.id,
         type: "text",
         error: `Skill type '${skill.type}' requires executionMode: python or an LLM handler`,
       };
-    }
 
     default:
       console.error(`[SkillExecutor] Unknown skill type '${skill.type}' for skill '${skill.id}'`);
@@ -485,22 +502,26 @@ export async function executeAudioGeneration(
 /**
  * Execute a Python skill via subprocess (executionMode: "python")
  *
+ * Uses async spawn (NOT spawnSync) to keep the Node.js event loop free.
+ * This is critical for skills like ISC that call back to the system LLM
+ * gateway (smartaihub.app/v1) during execution — spawnSync would deadlock
+ * because Node.js can't handle the incoming gateway request while blocked.
+ *
  * Convention:
  *   - Skill must have: <skill_dir>/python/skill.py
- *   - Input:  JSON written to stdin → { skill_name, prompt, params }
+ *   - Input:  JSON written to stdin → { skill_name, prompt, params, context: { publicUrl, userToken } }
  *   - Output: JSON on stdout       → { success: true, output: string }
  *                                  | { success: false, error: string }
  *
  * Python executable: python-backend/.venv/bin/python (project venv)
  */
-function executePythonSkill(
+async function executePythonSkill(
   skill: SkillDefinition,
-  params: SkillExecutionParams
-): SkillExecutionResult {
+  params: SkillExecutionParams,
+  userToken: string = ""
+): Promise<SkillExecutionResult> {
   // Resolve skill directory from skillFilePath or derive from skill id
-  const skillsDir = path.resolve(
-    path.join(process.cwd(), "skills")
-  );
+  const skillsDir = path.resolve(path.join(process.cwd(), "skills"));
   const skillDir = skill.skillFilePath
     ? path.dirname(skill.skillFilePath)
     : path.join(skillsDir, skill.id);
@@ -524,62 +545,152 @@ function executePythonSkill(
     skill_name: skill.id,
     prompt: params.prompt,
     params: params.extraParams ?? {},
+    context: {
+      publicUrl: params.publicUrl ?? "",
+      userToken,
+    },
   });
 
-  console.log(`[SkillExecutor] Running Python skill: ${scriptPath}`);
+  console.log(`[SkillExecutor] Running Python skill (async): ${scriptPath}`);
 
-  const result = spawnSync(pythonBin, [scriptPath], {
-    input,
-    encoding: "utf8",
-    timeout: 120_000, // 2 minutes
-  });
+  const TIMEOUT_MS = 600_000; // 10 minutes
 
-  if (result.error) {
-    return {
-      success: false,
-      skillId: skill.id,
-      type: "text",
-      error: `Python process error: ${result.error.message}`,
+  return new Promise<SkillExecutionResult>((resolve) => {
+    const child = spawn(pythonBin, [scriptPath], { stdio: ["pipe", "pipe", "pipe"] });
+
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+
+    const settle = (result: SkillExecutionResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
     };
-  }
 
-  if (result.status !== 0) {
-    const stderr = result.stderr?.trim() || "Unknown error";
-    return {
-      success: false,
-      skillId: skill.id,
-      type: "text",
-      error: `Python skill exited with code ${result.status}: ${stderr}`,
-    };
-  }
-
-  try {
-    const parsed = JSON.parse(result.stdout.trim());
-    if (!parsed.success) {
-      return {
+    // Kill process and resolve on timeout
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      settle({
         success: false,
         skillId: skill.id,
         type: "text",
-        error: parsed.error ?? "Python skill returned failure",
-      };
-    }
-    return {
-      success: true,
-      skillId: skill.id,
-      type: "text",
-      message: parsed.output ?? result.stdout.trim(),
-      // Pass through structured action if present (e.g. create_skill)
-      ...(parsed._action ? { _action: parsed._action as SkillCreateAction } : {}),
-    };
-  } catch {
-    // Non-JSON stdout — return raw output
-    return {
-      success: true,
-      skillId: skill.id,
-      type: "text",
-      message: result.stdout.trim(),
-    };
-  }
+        error: `Python skill timed out after ${TIMEOUT_MS / 1000}s`,
+      });
+    }, TIMEOUT_MS);
+
+    child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+    child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+
+    child.stdin.write(input);
+    child.stdin.end();
+
+    child.on("error", (err) => {
+      settle({
+        success: false,
+        skillId: skill.id,
+        type: "text",
+        error: `Python process error: ${err.message}`,
+      });
+    });
+
+    child.on("close", (code) => {
+      // Log stderr (ISC progress lines) now that process completed
+      if (stderr.trim()) {
+        console.log(`[SkillExecutor] Python stderr:\n${stderr.trim()}`);
+      }
+
+      if (code !== 0) {
+        const errDetail = stderr.trim() || "Unknown error";
+        console.error(`[SkillExecutor] Python skill exited ${code}: ${errDetail}`);
+        settle({
+          success: false,
+          skillId: skill.id,
+          type: "text",
+          error: `Python skill exited with code ${code}: ${errDetail}`,
+        });
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        if (!parsed.success) {
+          // Python returns errors in "output" field (user-facing message), not "error"
+          const errorMsg = parsed.error ?? parsed.output ?? "Python skill returned failure";
+          console.error(`[SkillExecutor] Python skill failure: ${errorMsg}`);
+          settle({ success: false, skillId: skill.id, type: "text", error: errorMsg });
+          return;
+        }
+        settle({
+          success: true,
+          skillId: skill.id,
+          type: "text",
+          message: parsed.output ?? stdout.trim(),
+          ...(parsed._action ? { _action: parsed._action as SkillCreateAction } : {}),
+        });
+      } catch {
+        // Non-JSON stdout — return raw output
+        settle({ success: true, skillId: skill.id, type: "text", message: stdout.trim() });
+      }
+    });
+  });
+}
+
+const TASK_TTL_SECONDS = 3600; // 1 hour
+
+/**
+ * Start a Python skill in the background and store the result in Redis.
+ *
+ * Returns a taskId immediately so the HTTP request can close while Python
+ * continues running. The caller should poll `skill:task:<taskId>` in Redis
+ * via the `chat.getSkillTaskResult` tRPC query.
+ *
+ * @param onComplete  Optional post-processing callback applied to the raw
+ *                    Python result before it's stored (e.g. handleIscCreateSkill).
+ */
+export async function startPythonSkillTask(
+  skill: SkillDefinition,
+  params: SkillExecutionParams,
+  userId: number,
+  userToken: string = "",
+  onComplete?: (result: SkillExecutionResult) => Promise<SkillExecutionResult>,
+): Promise<{ taskId: string }> {
+  const redis = getRedisClient();
+  const taskId = `${skill.id}:${userId}:${Date.now()}`;
+
+  // Mark task as running immediately
+  await redis.setex(
+    `skill:task:${taskId}`,
+    TASK_TTL_SECONDS,
+    JSON.stringify({ status: "running", skillId: skill.id, userId, startedAt: Date.now() }),
+  );
+
+  // Run Python skill in background — do NOT await
+  executePythonSkill(skill, params, userToken)
+    .then(async (result) => {
+      const finalResult = onComplete ? await onComplete(result) : result;
+      await redis.setex(
+        `skill:task:${taskId}`,
+        TASK_TTL_SECONDS,
+        JSON.stringify({ status: "done", skillId: skill.id, userId, result: finalResult }),
+      );
+    })
+    .catch(async (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      await redis.setex(
+        `skill:task:${taskId}`,
+        TASK_TTL_SECONDS,
+        JSON.stringify({
+          status: "done",
+          skillId: skill.id,
+          userId,
+          result: { success: false, skillId: skill.id, type: "text", error: msg },
+        }),
+      );
+    });
+
+  return { taskId };
 }
 
 /**

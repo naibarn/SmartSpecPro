@@ -87,12 +87,34 @@ export function useSkillExecution(
       setError(null);
 
       try {
-        const data = await mutation.mutateAsync({
+        const _data = await mutation.mutateAsync({
           skillId: params.skillId,
           prompt: params.prompt,
           dynamicParams: params.dynamicParams,
           conversationId,
         });
+        // Cast to include isAsync/taskId fields present on the Python skill fast-return path
+        const data = _data as typeof _data & { isAsync?: boolean; taskId?: string };
+
+        // Long-running Python skills return isAsync:true + taskId immediately.
+        // Poll until the background task finishes (avoids Cloudflare 100s timeout).
+        if (data.isAsync && data.taskId) {
+          const taskId = data.taskId;
+          while (true) {
+            await new Promise<void>((r) => setTimeout(r, 3000));
+            const task = await utils.chat.getSkillTaskResult.fetch({ taskId });
+            if (task.status === "done") {
+              if (!task.result) {
+                return { success: false, skillId: params.skillId, type: "text", error: "Task completed with no result" };
+              }
+              return task.result as SkillExecutionResult;
+            }
+            if (task.status === "not_found") {
+              return { success: false, skillId: params.skillId, type: "text", error: "Task not found or expired" };
+            }
+            // status === "running" → keep polling
+          }
+        }
 
         return data as SkillExecutionResult;
       } catch (err) {
@@ -100,7 +122,7 @@ export function useSkillExecution(
         return undefined;
       }
     },
-    [conversationId, mutation]
+    [conversationId, mutation, utils]
   );
 
   const reset = useCallback(() => {

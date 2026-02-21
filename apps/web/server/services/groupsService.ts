@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "../db";
 import { getRedisClient, isRedisAvailable } from "./redis";
-import { groupMembers, libraryPermissions, userGroups, users } from "../../drizzle/schema";
+import { groupMembers, libraryPermissions, tenants, userGroups, users } from "../../drizzle/schema";
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -237,11 +237,28 @@ async function requireAdminOrOwner(db: DbClient, groupId: number, actor: GroupsA
   return group;
 }
 
+async function getTenantDomains(db: DbClient, tenantId: string): Promise<string[]> {
+  const rows = await db
+    .select({ primaryDomain: tenants.primaryDomain, domains: tenants.domains })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+
+  const tenant = rows[0];
+  const result: string[] = [];
+  if (tenant?.primaryDomain) result.push(tenant.primaryDomain);
+  if (tenant?.domains && Array.isArray(tenant.domains)) {
+    result.push(...tenant.domains);
+  }
+  return result;
+}
+
 async function requireTargetUserInTenant(db: DbClient, userId: number, tenantId: string): Promise<void> {
   const rows = await db
     .select({
       id: users.id,
       currentTenantId: users.currentTenantId,
+      registeredDomain: users.registeredDomain,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -255,11 +272,20 @@ async function requireTargetUserInTenant(db: DbClient, userId: number, tenantId:
     });
   }
 
-  if (target.currentTenantId === null || String(target.currentTenantId) !== tenantId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Cannot add users from another tenant",
-    });
+  // Check by currentTenantId (if set)
+  const matchesByTenantId = target.currentTenantId !== null && String(target.currentTenantId) === tenantId;
+
+  if (!matchesByTenantId) {
+    // Fallback: check by registeredDomain matching tenant's domains
+    const tenantDomains = await getTenantDomains(db, tenantId);
+    const matchesByDomain = target.registeredDomain !== null && tenantDomains.includes(target.registeredDomain);
+
+    if (!matchesByDomain) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Cannot add users from another tenant",
+      });
+    }
   }
 }
 
@@ -1067,9 +1093,14 @@ export async function searchTenantUsers(
     )!,
   ];
 
-  // Filter to users in the same tenant (by registeredDomain or currentTenantId)
-  // Using currentTenantId for tenant scoping
-  conditions.push(sql`${users.currentTenantId}::text = ${normalizedTenantId}`);
+  // Filter to users in the same tenant by registeredDomain (primary) or currentTenantId (fallback)
+  const tenantDomains = await getTenantDomains(db, normalizedTenantId);
+  const tenantConditions: SQL[] = [];
+  if (tenantDomains.length > 0) {
+    tenantConditions.push(inArray(users.registeredDomain, tenantDomains));
+  }
+  tenantConditions.push(sql`${users.currentTenantId}::text = ${normalizedTenantId}`);
+  conditions.push(or(...tenantConditions)!);
 
   if (excludeGroupId) {
     // Exclude users already in the group

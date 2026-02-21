@@ -1,0 +1,16 @@
+{
+  "topic": "Newborn sleep and soothing: building a gentle routine",
+  "language": "en",
+  "age_range": {
+    "unit": "months",
+    "min": 0,
+    "max": 3
+  },
+  "article_style": "how_to_guide",
+  "length": "medium",
+  "include_checklist": true,
+  "include_red_flags": true,
+  "response_mode": "standard_article",
+  "show_references": "no",
+  "output_format": "markdown"
+}

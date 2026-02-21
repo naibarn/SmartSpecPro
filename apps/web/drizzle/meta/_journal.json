@@ -197,6 +197,27 @@
       "when": 1771256822169,
       "tag": "0027_outgoing_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1771590628772,
+      "tag": "0028_solid_captain_midlands",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1771615120595,
+      "tag": "0029_same_jamie_braddock",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1771643953665,
+      "tag": "0030_zippy_iceman",
+      "breakpoints": true
     }
   ]
 }

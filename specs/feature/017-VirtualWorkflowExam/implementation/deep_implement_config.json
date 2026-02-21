@@ -1,0 +1,62 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/017-VirtualWorkflowExam/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/017-VirtualWorkflowExam/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-schema-extension",
+    "section-02-svg-generator",
+    "section-03-template-json-files",
+    "section-04-seeder-script",
+    "section-05-trpc-endpoints",
+    "section-06-gallery-frontend",
+    "section-07-python-validator",
+    "section-08-python-generator"
+  ],
+  "sections_state": {
+    "section-01-schema-extension": {
+      "status": "complete",
+      "commit_hash": "187a692"
+    },
+    "section-02-svg-generator": {
+      "status": "complete",
+      "commit_hash": "3989758"
+    },
+    "section-03-template-json-files": {
+      "status": "complete",
+      "commit_hash": "ef6ff97"
+    },
+    "section-04-seeder-script": {
+      "status": "complete",
+      "commit_hash": "188c953"
+    },
+    "section-05-trpc-endpoints": {
+      "status": "complete",
+      "commit_hash": "28d64cf"
+    },
+    "section-06-gallery-frontend": {
+      "status": "complete",
+      "commit_hash": "4e4de58"
+    },
+    "section-07-python-validator": {
+      "status": "complete",
+      "commit_hash": "f6dcb47"
+    },
+    "section-08-python-generator": {
+      "status": "complete",
+      "commit_hash": "219729a"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-19T17:33:58.327679+00:00"
+}

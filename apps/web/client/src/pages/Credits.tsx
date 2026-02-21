@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
+import { TransactionDetailDialog } from '@/components/analytics/TransactionDetailDialog';
 import {
   Zap,
   CreditCard,
@@ -26,7 +27,35 @@ import {
   Download,
   Loader2,
   RefreshCw,
+  MessageCircle,
+  Image,
+  Film,
+  Volume2,
+  Database,
+  Search,
+  Mic,
+  Globe,
+  Lightbulb,
+  Bell,
+  Shield,
+  Eye,
 } from 'lucide-react';
+
+/** Source type display labels and colors */
+const SOURCE_LABELS: Record<string, { label: string; color: string; icon: typeof Zap }> = {
+  chat:        { label: "Chat",       color: "bg-blue-100 text-blue-700",    icon: MessageCircle },
+  skill:       { label: "Skill",      color: "bg-purple-100 text-purple-700", icon: Sparkles },
+  media_image: { label: "Image",      color: "bg-pink-100 text-pink-700",    icon: Image },
+  media_video: { label: "Video",      color: "bg-red-100 text-red-700",      icon: Film },
+  media_audio: { label: "Audio",      color: "bg-orange-100 text-orange-700", icon: Volume2 },
+  indexing:    { label: "Indexing",    color: "bg-green-100 text-green-700",  icon: Database },
+  rag:         { label: "Search",     color: "bg-teal-100 text-teal-700",    icon: Search },
+  stt:         { label: "STT",        color: "bg-indigo-100 text-indigo-700", icon: Mic },
+  translation: { label: "Translate",  color: "bg-cyan-100 text-cyan-700",    icon: Globe },
+  brainstorm:  { label: "Brainstorm", color: "bg-amber-100 text-amber-700",  icon: Lightbulb },
+  scheduler:   { label: "Alert",      color: "bg-yellow-100 text-yellow-700", icon: Bell },
+  admin:       { label: "Admin",      color: "bg-gray-100 text-gray-700",    icon: Shield },
+};
 
 export default function Credits() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -34,6 +63,8 @@ export default function Credits() {
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
   const [buyCreditsExpanded, setBuyCreditsExpanded] = useState(false);
   const [page, setPage] = useState(0);
+  type CreditSourceType = "chat" | "skill" | "media_image" | "media_video" | "media_audio" | "indexing" | "rag" | "stt" | "translation" | "brainstorm" | "scheduler" | "admin" | "other";
+  const [sourceFilter, setSourceFilter] = useState<CreditSourceType | "">("");
   const pageSize = 20;
 
   // Fetch real data from API
@@ -41,6 +72,7 @@ export default function Credits() {
   const { data: history, isLoading: historyLoading, refetch: refetchHistory } = trpc.credits.history.useQuery({
     limit: pageSize,
     offset: page * pageSize,
+    sourceType: sourceFilter || undefined,
   });
   const { data: usageStats } = trpc.credits.stats.useQuery({ days: 30 });
   const { data: packages, isLoading: packagesLoading } = trpc.packages.list.useQuery();
@@ -318,10 +350,23 @@ export default function Credits() {
               <Clock className="w-5 h-5 text-gray-400" />
               <h2 className="text-xl font-bold text-gray-900">Transaction History</h2>
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-3">
+              {/* Source type filter */}
+              <select
+                value={sourceFilter}
+                onChange={(e) => { setSourceFilter(e.target.value as CreditSourceType | ""); setPage(0); }}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              >
+                <option value="">All Sources</option>
+                {Object.entries(SOURCE_LABELS).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+              <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 overflow-hidden">
@@ -339,30 +384,44 @@ export default function Credits() {
                 <table className="w-full">
                   <thead className="bg-gray-50/50 border-b border-gray-100">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Type
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Source
+                      </th>
+                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Description
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Details
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Credits
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Balance After
+                      <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Balance
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Date
+                      </th>
+                      <th className="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Audit
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {history.map((transaction: any) => (
+                    {history.map((transaction: any) => {
+                      const srcInfo = transaction.sourceType ? SOURCE_LABELS[transaction.sourceType] : null;
+                      const SrcIcon = srcInfo?.icon ?? Zap;
+                      const dateStr = transaction.createdAt
+                        ? new Date(transaction.createdAt).toISOString().slice(0, 10)
+                        : undefined;
+
+                      return (
                       <tr key={transaction.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4">
+                        {/* Type */}
+                        <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                               transaction.type === 'purchase' || transaction.type === 'bonus'
@@ -375,34 +434,53 @@ export default function Credits() {
                             }`}
                           >
                             {transaction.type === 'purchase' ? (
-                              <>
-                                <CreditCard className="w-3 h-3" />
-                                Purchase
-                              </>
+                              <><CreditCard className="w-3 h-3" /> Purchase</>
                             ) : transaction.type === 'usage' ? (
-                              <>
-                                <Zap className="w-3 h-3" />
-                                Usage
-                              </>
+                              <><Zap className="w-3 h-3" /> Usage</>
                             ) : transaction.type === 'bonus' ? (
-                              <>
-                                <Sparkles className="w-3 h-3" />
-                                Bonus
-                              </>
+                              <><Sparkles className="w-3 h-3" /> Bonus</>
                             ) : (
-                              <>
-                                <Package className="w-3 h-3" />
-                                {transaction.type}
-                              </>
+                              <><Package className="w-3 h-3" /> {transaction.type}</>
                             )}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm font-medium text-gray-900">
+
+                        {/* Source */}
+                        <td className="px-4 py-3">
+                          {srcInfo ? (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${srcInfo.color}`}>
+                              <SrcIcon className="w-3 h-3" />
+                              {srcInfo.label}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">&mdash;</span>
+                          )}
+                        </td>
+
+                        {/* Description + Conversation + Skill */}
+                        <td className="px-4 py-3 max-w-[280px]">
+                          <span className="text-sm font-medium text-gray-900 block truncate">
                             {transaction.description}
                           </span>
+                          {transaction.conversationTitle && (
+                            <a
+                              href={`/chat/${transaction.conversationId}`}
+                              className="text-xs text-purple-600 hover:text-purple-800 mt-0.5 flex items-center gap-1 truncate"
+                            >
+                              <MessageCircle className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{transaction.conversationTitle}</span>
+                            </a>
+                          )}
+                          {transaction.skillSlug && !transaction.metadata?.skill && (
+                            <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 flex-shrink-0" />
+                              {transaction.skillSlug}
+                            </div>
+                          )}
                         </td>
-                        <td className="px-6 py-4">
+
+                        {/* Details */}
+                        <td className="px-4 py-3">
                           {transaction.metadata && (
                             <div className="text-xs text-gray-500 space-y-0.5">
                               {transaction.metadata.provider && (
@@ -422,7 +500,7 @@ export default function Credits() {
                                   <span className="font-medium">Tokens:</span>
                                   <span className="text-gray-700">
                                     {transaction.metadata.inputTokens && transaction.metadata.outputTokens
-                                      ? `${transaction.metadata.inputTokens}→${transaction.metadata.outputTokens}`
+                                      ? `${transaction.metadata.inputTokens}\u2192${transaction.metadata.outputTokens}`
                                       : transaction.metadata.tokensUsed}
                                   </span>
                                 </div>
@@ -448,7 +526,9 @@ export default function Credits() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4">
+
+                        {/* Credits */}
+                        <td className="px-4 py-3 text-right">
                           <span
                             className={`text-sm font-semibold ${
                               transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
@@ -458,18 +538,35 @@ export default function Credits() {
                             {transaction.amount}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+
+                        {/* Balance After */}
+                        <td className="px-4 py-3 text-right">
                           <span className="text-sm text-gray-900">
                             {transaction.balanceAfter}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+
+                        {/* Date */}
+                        <td className="px-4 py-3">
                           <span className="text-sm text-gray-500">
                             {formatDateTime(transaction.createdAt)}
                           </span>
                         </td>
+
+                        {/* Audit Trail Button */}
+                        <td className="px-4 py-3 text-center">
+                          {transaction.traceId ? (
+                            <TransactionDetailDialog
+                              traceId={transaction.traceId}
+                              date={dateStr}
+                            />
+                          ) : (
+                            <span className="text-xs text-gray-300">&mdash;</span>
+                          )}
+                        </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
 

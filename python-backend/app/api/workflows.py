@@ -21,7 +21,7 @@ from app.models.workflow_dlq import WorkflowDeadLetterQueue
 from app.models.workflow_schedule import WorkflowSchedule
 from app.models.workflow_event_subscription import WorkflowEventSubscription
 from app.orchestrator.cost_estimator import CostEstimator
-from app.orchestrator.execution_registry import get_active_execution, register_execution
+from app.orchestrator.execution_registry import get_active_execution, register_execution, unregister_execution
 from app.orchestrator.langgraph_runtime import get_langgraph_runtime
 from app.orchestrator.node_registry import NodeRegistry
 from app.orchestrator.ring_buffer import get_ring_buffer_store
@@ -86,10 +86,49 @@ class WorkflowGenerateSubmitResponse(BaseModel):
     status: str  # "queued"
 
 
+class WorkflowEditRequest(BaseModel):
+    """Request to auto-edit/fix an existing workflow using AI."""
+
+    current_workflow: dict[str, Any] = Field(..., description="Current ReactFlow workflow JSON")
+    errors: list[str] = Field(default_factory=list, description="Compilation errors to fix", max_length=50)
+    warnings: list[str] = Field(default_factory=list, description="Compilation warnings to address", max_length=50)
+    instructions: str = Field(default="", max_length=5000, description="Optional user instructions")
+    node_types: list[dict[str, Any]] | None = Field(
+        default=None, description="Available node type specs for LLM context"
+    )
+    model_id: str | None = Field(default=None, description="LLM model for the edit call itself")
+    default_model: str | None = Field(
+        default=None, description="Workflow-level default model for llm_call nodes"
+    )
+
+
+class WorkflowEditSubmitResponse(BaseModel):
+    """Response from async workflow edit submission."""
+
+    task_id: str
+    status: str  # "queued"
+
+
+class WorkflowEditStatusResponse(BaseModel):
+    """Response from workflow edit task status poll."""
+
+    status: str  # queued | processing | completed | failed
+    message: str | None = None
+    error: str | None = None
+    validationError: str | None = None
+    hint: str | None = None
+    nodes: list[dict[str, Any]] | None = None
+    edges: list[dict[str, Any]] | None = None
+    description: str | None = None
+    changes: list[str] | None = None
+
+
 class ExecuteWorkflowRequest(BaseModel):
     """Request to execute a compiled workflow."""
 
     workflowJson: dict[str, Any] = Field(..., description="Compiled workflow JSON with _compiledMetadata")
+    workflow_id: int | None = Field(default=None, description="Saved workflow ID (from Node.js router)")
+    tenant_id: str | None = Field(default=None, description="Tenant ID (from Node.js router context)")
     input_data: dict[str, Any] | None = Field(
         default=None,
         description="Optional input data for the trigger node",
@@ -317,6 +356,138 @@ async def get_generate_status(
         )
 
 
+@router.post("/edit", response_model=WorkflowEditSubmitResponse)
+async def edit_workflow(
+    body: WorkflowEditRequest,
+    http_request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Submit async workflow editing to the task queue.
+
+    Returns a task_id immediately. The client polls /edit/status/{task_id}
+    until the result is ready.
+    """
+    from app.tasks.workflow_edit_tasks import edit_workflow_task, create_edit_task_id, _set_edit_status
+    from app.orchestrator.workflow_editor import WorkflowEditor, WorkflowEditError
+
+    auth_header = http_request.headers.get("authorization", "")
+    user_token: str | None = None
+    if auth_header.lower().startswith("bearer "):
+        user_token = auth_header.split(" ", 1)[1].strip()
+
+    task_id = create_edit_task_id()
+
+    _set_edit_status(task_id, {
+        "status": "queued",
+        "message": "Waiting in queue...",
+        "_user_id": current_user.id,
+    })
+
+    try:
+        edit_workflow_task.delay(
+            task_id=task_id,
+            current_workflow=body.current_workflow,
+            errors=body.errors,
+            warnings=body.warnings,
+            instructions=body.instructions,
+            node_types=body.node_types,
+            model=body.model_id,
+            default_model=body.default_model,
+            user_token=user_token,
+            user_id=current_user.id,
+        )
+    except Exception as exc:
+        logger.error("workflow_edit_queue_submit_failed", error=str(exc))
+        # Fallback: run synchronously if Celery is not available
+        logger.warning("workflow_edit_falling_back_to_sync", task_id=task_id)
+        _set_edit_status(task_id, {
+            "status": "processing",
+            "message": "Running directly (queue unavailable)...",
+            "_user_id": current_user.id,
+        })
+        try:
+            editor = WorkflowEditor()
+            result = await editor.edit(
+                current_workflow=body.current_workflow,
+                errors=body.errors,
+                warnings=body.warnings,
+                instructions=body.instructions,
+                node_types=body.node_types,
+                model=body.model_id,
+                user_token=user_token,
+                default_model=body.default_model,
+            )
+            _set_edit_status(task_id, {
+                "status": "completed",
+                "result": result,
+                "_user_id": current_user.id,
+            })
+        except WorkflowEditError as edit_exc:
+            _set_edit_status(task_id, {
+                "status": "failed",
+                "error": edit_exc.message,
+                "_user_id": current_user.id,
+            })
+        except Exception as edit_exc:
+            logger.error("workflow_edit_sync_error", error=str(edit_exc), exc_info=True)
+            _set_edit_status(task_id, {
+                "status": "failed",
+                "error": "An internal error occurred. Please try again.",
+                "_user_id": current_user.id,
+            })
+
+    logger.info(
+        "workflow_edit_submitted",
+        task_id=task_id,
+        user_id=current_user.id,
+        error_count=len(body.errors),
+        warning_count=len(body.warnings),
+    )
+
+    return WorkflowEditSubmitResponse(task_id=task_id, status="queued")
+
+
+@router.get("/edit/status/{task_id}", response_model=WorkflowEditStatusResponse)
+async def get_edit_status(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Poll workflow edit task status."""
+    from app.tasks.workflow_edit_tasks import get_edit_status as _get_edit_status
+
+    if not task_id.startswith("wfedit-") or len(task_id) != 19:
+        raise HTTPException(status_code=400, detail="Invalid task_id format")
+
+    status_data = _get_edit_status(task_id, user_id=current_user.id)
+    if status_data is None:
+        raise HTTPException(status_code=404, detail="Task not found or expired")
+
+    status = status_data.get("status", "unknown")
+
+    if status == "completed":
+        result = status_data.get("result", {})
+        return WorkflowEditStatusResponse(
+            status="completed",
+            nodes=result.get("nodes", []),
+            edges=result.get("edges", []),
+            description=result.get("description", ""),
+            changes=result.get("changes", []),
+        )
+    elif status == "failed":
+        return WorkflowEditStatusResponse(
+            status="failed",
+            error=status_data.get("error", "Unknown error"),
+            validationError=status_data.get("validationError"),
+            hint=status_data.get("hint"),
+        )
+    else:
+        return WorkflowEditStatusResponse(
+            status=status,
+            message=status_data.get("message"),
+        )
+
+
 @router.post("/compile", response_model=FlowCompileResponse)
 async def compile_flow(
     request: FlowCompileRequest,
@@ -475,8 +646,8 @@ async def execute_workflow(
 
     execution_record = WorkflowExecution(
         id=execution_id,
-        workflow_id=workflow_json.get("id"),
-        tenant_id=current_user.currentTenantId,
+        workflow_id=str(request.workflow_id) if request.workflow_id is not None else None,
+        tenant_id=request.tenant_id or current_user.currentTenantId or None,
         user_id=current_user.id,
         status="running",
         input_data=request.input_data or {},
@@ -490,31 +661,33 @@ async def execute_workflow(
     runtime = get_langgraph_runtime()
 
     try:
-        compiled_graph = await runtime.compile(workflow_json)
+        compile_result = await runtime.compile(workflow_json)
+        compiled_graph = compile_result.graph
     except CompilationError as e:
         await db.rollback()
         logger.error("workflow_compilation_failed_on_execute", execution_id=execution_id, errors=e.errors)
         raise HTTPException(status_code=400, detail=f"Failed to compile workflow: {e.errors[0] if e.errors else str(e)}")
 
     # 5. Build config
+    resolved_tenant_id = request.tenant_id or current_user.currentTenantId or str(current_user.id)
+    resolved_workflow_id = request.workflow_id or workflow_json.get("id")
+    input_data = request.input_data or {}
     config = {
         "configurable": {
-            "thread_id": f"{current_user.currentTenantId}:{execution_id}",
+            "thread_id": f"{resolved_tenant_id}:{execution_id}",
             "user_id": current_user.id,
-            "tenant_id": current_user.currentTenantId,
-            "workflow_id": workflow_json.get("id"),
+            "tenant_id": resolved_tenant_id,
+            "workflow_id": resolved_workflow_id,
             "execution_id": execution_id,
             "credits_available": user_balance,
+            "form_values": input_data.get("form_values", {}),
         }
     }
 
-    # 6. Register execution in execution_registry (Section 02)
-    register_execution(execution_id, compiled_graph, config)
-
-    # 7. Fire-and-forget execution (results streamed via SSE)
-    asyncio.create_task(
-        runtime.execute(compiled_graph, request.input_data or {}, config)
-    )
+    # 6. Register execution in execution_registry — execution is DRIVEN by the
+    #    SSE stream endpoint, not started here.  This avoids a race condition
+    #    where the graph completes before the SSE client connects.
+    register_execution(execution_id, compiled_graph, config, input_data)
 
     logger.info(
         "workflow_execution_started",
@@ -751,6 +924,7 @@ async def stream_workflow_execution(
     translator = StreamTranslator(execution_id)
 
     async def event_generator():
+        import json as _json
         try:
             logger.info(
                 "sse_connection_established",
@@ -768,40 +942,87 @@ async def stream_workflow_execution(
                     for evt in missed:
                         yield evt.to_sse_string()
 
-            # Get the active compiled graph for this execution
+            # Get the registered execution entry
             active = get_active_execution(execution_id)
             if not active:
-                import json
-                yield f'event: error\ndata: {json.dumps({"error": "Execution not found or already completed"})}\n\n'
+                yield f'event: workflow_error\ndata: {_json.dumps({"error": "Execution not found"})}\n\n'
                 return
 
             compiled_graph = active["graph"]
             config = active["config"]
+            input_data = active.get("input_data") or {}
 
-            # Stream LangGraph events and translate to SSE
+            # Build initial LangGraph state from input_data
+            from app.orchestrator.workflow_state import WorkflowState
+            initial_state: WorkflowState = {
+                "node_outputs": {},
+                "current_node": "",
+                "messages": [],
+                "errors": [],
+                "audit_trail": [],
+                "cache_hits": 0,
+                "schema_version": 1,
+                **input_data,
+            }
+
+            # Drive execution via astream_events — this starts AND streams simultaneously
+            event_count = 0
+            translated_count = 0
             async for event in compiled_graph.astream_events(
-                input=None,  # Already started, just subscribing to events
+                initial_state,
                 config=config,
                 version="v2",
             ):
+                event_count += 1
+                event_type = event.get("event", "")
+                metadata = event.get("metadata", {})
+                node_name = metadata.get("langgraph_node", "")
+
+                # Debug: log every chain/custom event to trace filtering
+                if event_type in ("on_chain_start", "on_chain_end", "on_chain_error", "on_custom_event"):
+                    logger.info(
+                        "sse_raw_event",
+                        execution_id=execution_id,
+                        event_type=event_type,
+                        node_name=node_name,
+                        metadata_keys=list(metadata.keys()),
+                    )
+
                 # Check if client disconnected
                 if await request.is_disconnected():
                     logger.info("sse_client_disconnected", execution_id=execution_id)
-                    break
+                    return
 
                 sse_event = translator.translate_event(event)
                 if sse_event:
+                    translated_count += 1
+                    logger.info(
+                        "sse_event_translated",
+                        execution_id=execution_id,
+                        sse_type=sse_event.event_type,
+                        node_name=node_name,
+                    )
                     yield sse_event.to_sse_string()
 
-                    # If workflow_complete, close the stream
+                    # If workflow_complete custom event, stop
                     if sse_event.event_type == "workflow_complete":
-                        break
+                        return
+
+            logger.info(
+                "sse_stream_finished",
+                execution_id=execution_id,
+                total_events=event_count,
+                translated_events=translated_count,
+            )
+            # Graph finished without emitting workflow_complete — send it now
+            yield f'event: workflow_complete\ndata: {_json.dumps({"executionId": execution_id})}\n\n'
 
         except Exception as e:
             logger.exception("sse_stream_error", execution_id=execution_id, error=str(e))
-            import json
-            safe_error = json.dumps({"error": "Internal execution error"})
-            yield f"event: error\ndata: {safe_error}\n\n"
+            safe_error = _json.dumps({"error": str(e)})
+            yield f"event: workflow_error\ndata: {safe_error}\n\n"
+        finally:
+            unregister_execution(execution_id)
 
     return StreamingResponse(
         event_generator(),

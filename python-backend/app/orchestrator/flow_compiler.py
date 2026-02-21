@@ -270,6 +270,15 @@ class FlowCompiler:
             output_spec = next((o for o in source_spec.outputs if o.name == source_handle), None)
             input_spec = next((i for i in target_spec.inputs if i.name == target_handle), None)
 
+            # Fallback: generic "output"/"input" handles map to the first port.
+            # Template-seeded workflows use these generic names; named ports are
+            # resolved when users build workflows in the visual editor.
+            if output_spec is None and source_handle == "output" and source_spec.outputs:
+                output_spec = source_spec.outputs[0]
+            if input_spec is None and target_handle == "input":
+                connectable = [i for i in target_spec.inputs if getattr(i, "accepts_connection", True)]
+                input_spec = connectable[0] if connectable else (target_spec.inputs[0] if target_spec.inputs else None)
+
             if not output_spec or not input_spec:
                 raise CompilationError(
                     f"Invalid port connection: {source_node_id}.{source_handle} → {target_node_id}.{target_handle}"

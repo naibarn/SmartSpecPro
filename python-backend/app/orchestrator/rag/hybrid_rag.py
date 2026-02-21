@@ -414,6 +414,7 @@ class HybridRAGEngine:
                         amount=1,
                         service="rag.semantic_search",
                         idempotency_key=f"rag-search:{query_hash}:{user_id}:{ts_minute}",
+                        source_type="rag",
                     )
                 except Exception as billing_err:
                     logger.warning("rag_billing_failed", error=str(billing_err))

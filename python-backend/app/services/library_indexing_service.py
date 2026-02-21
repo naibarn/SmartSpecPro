@@ -973,7 +973,40 @@ async def process_library_index_job(
         if not item:
             raise LookupError(f"library_item_not_found:{job.library_item_id}")
 
-        indexable_text = extract_library_item_text(item)
+        # ── Step 1: Read markdown_source (for content to index) ─────────────────
+        # NOTE: This read is advisory only.  A concurrent saveLibraryMarkdown
+        # call may commit a markdown_source AFTER this read (race condition).
+        # The delete step below is designed to be safe regardless of timing.
+        markdown_source_row = await db.scalar(
+            select(LibraryChunk).where(
+                and_(
+                    LibraryChunk.library_item_id == item.id,
+                    LibraryChunk.content_type == "markdown_source",
+                )
+            )
+        )
+        markdown_source_content = (
+            markdown_source_row.content if markdown_source_row and markdown_source_row.content else None
+        )
+        markdown_source_metadata = (
+            markdown_source_row.metadata if markdown_source_row else None
+        )
+
+        logger.info(
+            "library_index_step1_read_markdown_source",
+            job_id=job.id,
+            item_id=item.id,
+            found=markdown_source_row is not None,
+            content_len=len(markdown_source_content) if markdown_source_content else 0,
+        )
+
+        # For markdown documents, use the saved markdown content for indexing
+        # instead of the item metadata (which is just auto-generated title/description).
+        if markdown_source_content:
+            indexable_text = markdown_source_content
+        else:
+            indexable_text = extract_library_item_text(item)
+
         if not indexable_text:
             raise ValueError("No indexable text content found for library item")
 
@@ -995,15 +1028,61 @@ async def process_library_index_job(
         if len(vector_ids) != len(chunks):
             raise RuntimeError("vector_id_count_mismatch")
 
-        await db.execute(delete(LibraryChunk).where(LibraryChunk.library_item_id == item.id))
+        # ── Step 2: Delete ONLY non-markdown_source chunks ───────────────────────
+        # IMPORTANT: We ALWAYS preserve markdown_source regardless of what we
+        # read in Step 1.  A concurrent saveLibraryMarkdown may have committed a
+        # markdown_source between Step 1 and now — deleting all chunks would
+        # destroy user content (race condition).  By filtering to
+        # content_type != "markdown_source" we are safe in all cases.
+        deleted_result = await db.execute(
+            delete(LibraryChunk).where(
+                and_(
+                    LibraryChunk.library_item_id == item.id,
+                    LibraryChunk.content_type != "markdown_source",
+                )
+            )
+        )
+
+        logger.info(
+            "library_index_step2_deleted_non_source_chunks",
+            job_id=job.id,
+            item_id=item.id,
+            rows_deleted=deleted_result.rowcount if hasattr(deleted_result, "rowcount") else "?",
+        )
+
+        # ── Step 3: Re-read markdown_source AFTER delete ─────────────────────────
+        # The delete above may have exposed a markdown_source that was committed
+        # by saveLibraryMarkdown AFTER our Step 1 read.  Re-reading here gives us
+        # the authoritative state: does a markdown_source exist right now?
+        markdown_source_exists_now = await db.scalar(
+            select(func.count(LibraryChunk.id)).where(
+                and_(
+                    LibraryChunk.library_item_id == item.id,
+                    LibraryChunk.content_type == "markdown_source",
+                )
+            )
+        )
+        markdown_source_exists_now = (markdown_source_exists_now or 0) > 0
+
+        logger.info(
+            "library_index_step3_reread_after_delete",
+            job_id=job.id,
+            item_id=item.id,
+            markdown_source_exists_now=markdown_source_exists_now,
+        )
 
         created_at = datetime.utcnow()
+
+        # If a markdown_source chunk exists it occupies chunk_index 0;
+        # search/embedding chunks start at chunk_index 1 to avoid conflict.
+        chunk_index_offset = 1 if markdown_source_exists_now else 0
+
         for chunk, vector_id in zip(chunks, vector_ids):
             db.add(
                 LibraryChunk(
                     tenant_id=job.tenant_id,
                     library_item_id=item.id,
-                    chunk_index=chunk["chunk_index"],
+                    chunk_index=chunk["chunk_index"] + chunk_index_offset,
                     content=chunk["content"],
                     content_type=chunk.get("content_type") or "text",
                     token_count=chunk.get("token_count"),
@@ -1017,7 +1096,9 @@ async def process_library_index_job(
             )
 
         item.status = "ready"
-        item.updated_at = datetime.utcnow()
+        # Do NOT update item.updated_at here — it should only reflect user actions,
+        # not system indexing. Changing it causes version conflicts when the user
+        # tries to save again (their expectedUpdatedAt becomes stale).
 
         job.status = COMPLETED_STATUS
         job.completed_at = datetime.utcnow()
@@ -1070,6 +1151,7 @@ async def process_library_index_job(
             chunk_count=len(chunks),
             service=service_tag,
             idempotency_key=f"library-index:{job.id}",
+            source_type="indexing",
         )
 
         return {
@@ -1094,7 +1176,6 @@ async def process_library_index_job(
             job.updated_at = datetime.utcnow()
             if item:
                 item.status = "failed"
-                item.updated_at = datetime.utcnow()
             await db.commit()
 
             logger.warning(

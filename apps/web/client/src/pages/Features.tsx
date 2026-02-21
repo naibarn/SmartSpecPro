@@ -133,9 +133,20 @@ const integrations = [
 export default function Features() {
   const { page: tenantPage } = useTenantPage('features');
 
-  // Parse content HTML when sections are null
+  // Sections-first approach (same pattern as Home.tsx)
+  const heroSection    = tenantPage?.sections?.find(s => s.type === 'hero');
+  const featuresSection = tenantPage?.sections?.find(s => s.type === 'features');
+  const ctaSection     = tenantPage?.sections?.find(s => s.type === 'cta');
+  const mainFeaturesSection = tenantPage?.sections?.find(
+    s => s.type === 'content' && (s.settings as Record<string,string> | undefined)?.sectionType === 'main-features'
+  );
+  const integrationsSection = tenantPage?.sections?.find(
+    s => s.type === 'content' && (s.settings as Record<string,string> | undefined)?.sectionType === 'integrations'
+  );
+
+  // Parse content HTML as fallback when sections are absent (FIXED condition: skip if sections cover it)
   const parsed = (() => {
-    if (!tenantPage?.content || tenantPage?.sections) return null;
+    if (heroSection || !tenantPage?.content) return null;
     const html = tenantPage.content;
     const getText = (tag: string, src: string) => {
       const m = src.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
@@ -185,23 +196,54 @@ export default function Features() {
     return { heroTitle, heroDesc, mainItems, addTitle, addItems, ctaTitle, ctaDesc };
   })();
 
-  // Merge parsed data into display arrays
-  const displayMainFeatures = parsed?.mainItems && parsed.mainItems.length > 0
-    ? parsed.mainItems.map((item, i) => ({
-        ...mainFeatures[i] || mainFeatures[0],
-        title: item.title,
-        description: item.description,
-        benefits: item.benefits.length > 0 ? item.benefits : (mainFeatures[i]?.benefits || []),
-      }))
-    : mainFeatures;
+  // Integrations: sections → hardcoded fallback
+  const displayIntegrations = (integrationsSection?.items as Array<{name:string;logo:string}> | undefined)?.length
+    ? (integrationsSection!.items as Array<{name:string;logo:string}>)
+    : integrations;
 
-  const displayAdditionalFeatures = parsed?.addItems && parsed.addItems.length > 0
-    ? parsed.addItems.map((item, i) => ({
+  // Additional features: sections items → parsed → hardcoded
+  const displayAdditionalFeatures = (() => {
+    const items = featuresSection?.items as Array<{ title: string; description: string }> | undefined;
+    if (items && items.length > 0) {
+      return items.map((item, i) => ({
         icon: additionalFeatures[i]?.icon || Sparkles,
         title: item.title,
         description: item.description,
-      }))
-    : additionalFeatures;
+      }));
+    }
+    if (parsed?.addItems && parsed.addItems.length > 0) {
+      return parsed.addItems.map((item, i) => ({
+        icon: additionalFeatures[i]?.icon || Sparkles,
+        title: item.title,
+        description: item.description,
+      }));
+    }
+    return additionalFeatures;
+  })();
+
+  // Main features: sections → parsed HTML → hardcoded
+  const displayMainFeatures = (() => {
+    type SectionMainItem = { title: string; description: string; benefits?: string[]; image?: string };
+    const sItems = mainFeaturesSection?.items as SectionMainItem[] | undefined;
+    if (sItems?.length) {
+      return sItems.map((item, i) => ({
+        ...(mainFeatures[i] ?? mainFeatures[0]),
+        title: item.title,
+        description: item.description,
+        benefits: item.benefits?.length ? item.benefits : (mainFeatures[i]?.benefits ?? []),
+        image: item.image ?? mainFeatures[i]?.image ?? mainFeatures[0].image,
+      }));
+    }
+    if (parsed?.mainItems && parsed.mainItems.length > 0) {
+      return parsed.mainItems.map((item, i) => ({
+        ...(mainFeatures[i] || mainFeatures[0]),
+        title: item.title,
+        description: item.description,
+        benefits: item.benefits.length > 0 ? item.benefits : (mainFeatures[i]?.benefits || []),
+      }));
+    }
+    return mainFeatures;
+  })();
 
   return (
     <div className="min-h-screen bg-background">
@@ -224,10 +266,10 @@ export default function Features() {
               Powerful Features
             </span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
-              {parsed?.heroTitle || (<>Everything You Need to{' '}<span className="gradient-text">Build Faster</span></>)}
+              {heroSection?.title || parsed?.heroTitle || (<>Everything You Need to{' '}<span className="gradient-text">Build Faster</span></>)}
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              {parsed?.heroDesc || 'SmartSpec Pro combines cutting-edge AI with developer-friendly tools to supercharge your productivity.'}
+              {heroSection?.subtitle || heroSection?.content || parsed?.heroDesc || 'SmartSpec Pro combines cutting-edge AI with developer-friendly tools to supercharge your productivity.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -305,7 +347,7 @@ export default function Features() {
               And Much More
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              {parsed?.addTitle || (<>Packed with <span className="gradient-text">Powerful Tools</span></>)}
+              {featuresSection?.title || parsed?.addTitle || (<>Packed with <span className="gradient-text">Powerful Tools</span></>)}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Every feature is designed to help you build better software, faster.
@@ -358,7 +400,7 @@ export default function Features() {
           </motion.div>
 
           <div className="flex flex-wrap justify-center gap-6">
-            {integrations.map((integration, index) => (
+            {displayIntegrations.map((integration, index) => (
               <motion.div
                 key={integration.name}
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -386,10 +428,10 @@ export default function Features() {
           >
             <Sparkles className="w-16 h-16 mx-auto mb-6 text-primary" />
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              {parsed?.ctaTitle || 'Ready to Experience the Future of Development?'}
+              {ctaSection?.title || parsed?.ctaTitle || 'Ready to Experience the Future of Development?'}
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              {parsed?.ctaDesc || 'Join thousands of developers who are already building faster with SmartSpec Pro.'}
+              {ctaSection?.subtitle || ctaSection?.content || parsed?.ctaDesc || 'Join thousands of developers who are already building faster with SmartSpec Pro.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 

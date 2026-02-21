@@ -54,8 +54,20 @@ export default function AuthCallback() {
 
         const data = await response.json();
 
-        // Auth token is set via httpOnly cookie by the server response.
-        // Do NOT store in localStorage (XSS-vulnerable).
+        // Exchange the Python OAuth token for a Node.js session cookie
+        const sessionRes = await fetch('/trpc/auth.oauthExchangeSession', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ json: { accessToken: data.access_token, provider } }),
+        });
+
+        if (!sessionRes.ok) {
+          const sessionErr = await sessionRes.json().catch(() => null);
+          throw new Error(
+            sessionErr?.error?.json?.message || 'Failed to create session'
+          );
+        }
 
         setStatus('success');
         setMessage('Authentication successful! Redirecting...');
