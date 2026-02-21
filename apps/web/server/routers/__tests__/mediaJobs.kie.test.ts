@@ -24,7 +24,7 @@ describe("Kie AI Job Submission (Cloud Tasks)", () => {
     // Simulate enqueuing a polling task
     await enqueueTask({
       queueName: "polling-tasks",
-      handlerPath: "/tasks/poll-job",
+      handlerPath: "/_internal/tasks/poll-job",
       payload: {
         job_id: "test-job-123",
         kie_job_id: "kie-task-abc",
@@ -38,7 +38,7 @@ describe("Kie AI Job Submission (Cloud Tasks)", () => {
     expect(mockEnqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         queueName: "polling-tasks",
-        handlerPath: "/tasks/poll-job",
+        handlerPath: "/_internal/tasks/poll-job",
         delaySeconds: 120,
         payload: expect.objectContaining({
           job_id: "test-job-123",

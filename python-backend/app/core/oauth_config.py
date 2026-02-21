@@ -16,7 +16,7 @@ from app.core.smartspecweb_crypto import decrypt_smartspecweb
 logger = structlog.get_logger(__name__)
 
 # Keys that are encrypted in the DB
-_SENSITIVE_KEYS = {"googleClientSecret", "githubClientSecret"}
+_SENSITIVE_KEYS = {"googleClientSecret", "githubClientSecret", "microsoftClientSecret"}
 
 
 async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
@@ -25,7 +25,8 @@ async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
 
     Returns dict with keys:
         googleClientId, googleClientSecret, googleRedirectUri, googleDriveRedirectUri,
-        githubClientId, githubClientSecret, githubRedirectUri
+        githubClientId, githubClientSecret, githubRedirectUri,
+        microsoftClientId, microsoftClientSecret, microsoftOneDriveRedirectUri
     """
     config: Dict[str, str] = {}
 
@@ -59,12 +60,16 @@ async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
         "githubClientId": "GITHUB_CLIENT_ID",
         "githubClientSecret": "GITHUB_CLIENT_SECRET",
         "githubRedirectUri": "GITHUB_REDIRECT_URI",
+        "microsoftClientId": "MICROSOFT_CLIENT_ID",
+        "microsoftClientSecret": "MICROSOFT_CLIENT_SECRET",
+        "microsoftOneDriveRedirectUri": "MICROSOFT_ONEDRIVE_REDIRECT_URI",
     }
 
     defaults = {
         "googleRedirectUri": "https://smartaihub.app/auth/callback/google",
         "googleDriveRedirectUri": "https://smartaihub.app/auth/callback/google-drive",
         "githubRedirectUri": "https://smartaihub.app/auth/callback/github",
+        "microsoftOneDriveRedirectUri": "https://smartaihub.app/auth/callback/onedrive",
     }
 
     for config_key, env_key in env_mapping.items():

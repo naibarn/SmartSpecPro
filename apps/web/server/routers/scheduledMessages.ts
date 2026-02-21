@@ -11,6 +11,8 @@ import { getDb } from "../db";
 import { scheduledMessages, scheduledMessageLogs, userNotifications } from "../../drizzle/schema";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { createScheduledJob, cancelScheduledJob } from "../services/scheduler";
+import { auditLogger } from "../services/auditLogger";
+import { deductCreditsForModel } from "../services/creditService";
 
 /**
  * Validates cron expression for security and rate limiting
@@ -522,6 +524,23 @@ Cron: 0 8 * * * = daily 8AM, 0 8 * * 1-5 = weekdays 8AM, 0 */2 * * * = every 2h
 For reminders, set scheduledAt 30 min before the event.
 Return ONLY the JSON, no markdown, no explanation.`;
 
+      // Audit: log scheduled message LLM request
+      const schedStartTime = Date.now();
+      auditLogger.log({
+        eventType: "llm_request",
+        userId: ctx.user.id,
+        providerName: provider.providerName,
+        model,
+        requestType: "scheduler",
+        requestPayload: {
+          messageCount: 2,
+          messages: [
+            { role: "system", contentLength: systemPrompt.length },
+            { role: "user", contentLength: input.message.length },
+          ],
+        },
+      });
+
       const response = await fetch(`${provider.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -539,11 +558,57 @@ Return ONLY the JSON, no markdown, no explanation.`;
       });
 
       if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        auditLogger.log({
+          eventType: "llm_response",
+          userId: ctx.user.id,
+          providerName: provider.providerName,
+          model,
+          requestType: "scheduler",
+          statusCode: response.status,
+          errorType: `http_${response.status}`,
+          errorMessage: errText.slice(0, 500),
+          timing: { totalMs: Date.now() - schedStartTime },
+        });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM request failed" });
       }
 
       const data = await response.json() as any;
       const content = data?.choices?.[0]?.message?.content || "";
+      const inputTokens = data?.usage?.prompt_tokens ?? 0;
+      const outputTokens = data?.usage?.completion_tokens ?? 0;
+
+      // Audit: log scheduled message LLM response
+      auditLogger.log({
+        eventType: "llm_response",
+        userId: ctx.user.id,
+        providerName: provider.providerName,
+        model,
+        requestType: "scheduler",
+        inputTokens,
+        outputTokens,
+        statusCode: 200,
+        timing: { totalMs: Date.now() - schedStartTime },
+        responsePayload: {
+          usage: { prompt_tokens: inputTokens, completion_tokens: outputTokens },
+          contentLength: content.length,
+        },
+      });
+
+      // Deduct credits for the LLM call (was missing — free usage gap)
+      try {
+        await deductCreditsForModel({
+          userId: ctx.user.id,
+          model,
+          provider: provider.providerName,
+          inputTokens,
+          outputTokens,
+          sourceType: "scheduler",
+        });
+      } catch (err) {
+        // Non-blocking — don't fail the schedule parse if credit deduction fails
+        console.error("[parseIntent] Credit deduction failed:", err);
+      }
 
       try {
         // Extract JSON from response (handle markdown code blocks)

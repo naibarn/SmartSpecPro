@@ -26,6 +26,7 @@ import DocumentGridList from "@/components/library/DocumentGridList";
 import DocumentLibraryTabs from "@/components/library/DocumentLibraryTabs";
 import DocumentPreviewPanel from "@/components/library/DocumentPreviewPanel";
 import GoogleDriveBrowser from "@/components/library/GoogleDriveBrowser";
+import OneDriveBrowser from "@/components/library/OneDriveBrowser";
 import { TrashPanel } from "@/components/library/TrashPanel";
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
 import { Badge } from "@/components/ui/badge";
@@ -215,8 +216,8 @@ export default function DocumentManagement() {
     });
   }, [selectedId, queryState.viewMode]);
 
-  const shouldListDocuments = queryState.scope !== "trash" && queryState.scope !== "my_drive";
-  const listScope = queryState.scope === "trash" || queryState.scope === "my_drive"
+  const shouldListDocuments = queryState.scope !== "trash" && queryState.scope !== "my_drive" && queryState.scope !== "my_onedrive";
+  const listScope = queryState.scope === "trash" || queryState.scope === "my_drive" || queryState.scope === "my_onedrive"
     ? "my_library"
     : queryState.scope;
   const listInput = useMemo(() => ({
@@ -464,6 +465,7 @@ export default function DocumentManagement() {
     if (tab.accessSource === "shared_direct") return "Shared With Me";
     if (tab.accessSource === "shared_group") return "My Group";
     if (tab.openedFromScope === "my_drive") return "My Drive";
+    if (tab.openedFromScope === "my_onedrive") return "OneDrive";
     if (tab.openedFromScope === "shared_with_me") return "Shared With Me";
     if (tab.openedFromScope === "shared_groups") return "My Group";
     return "My Library";
@@ -471,6 +473,7 @@ export default function DocumentManagement() {
 
   function getCurrentScopeLabel(scope: DocumentQueryState["scope"]): string {
     if (scope === "my_drive") return "My Drive";
+    if (scope === "my_onedrive") return "OneDrive";
     if (scope === "shared_with_me") return "Shared With Me";
     if (scope === "shared_groups") return "My Group";
     if (scope === "trash") return "Trash";
@@ -1068,6 +1071,13 @@ export default function DocumentManagement() {
               ) : queryState.scope === "my_drive" ? (
                 <div className="min-h-[200px] max-h-[70vh] overflow-y-auto xl:max-h-none xl:min-h-0 xl:flex-1">
                   <GoogleDriveBrowser
+                    onImportFile={handleImportFromDrive}
+                    importingFileId={importingDriveFileId}
+                  />
+                </div>
+              ) : queryState.scope === "my_onedrive" ? (
+                <div className="min-h-[200px] max-h-[70vh] overflow-y-auto xl:max-h-none xl:min-h-0 xl:flex-1">
+                  <OneDriveBrowser
                     onImportFile={handleImportFromDrive}
                     importingFileId={importingDriveFileId}
                   />

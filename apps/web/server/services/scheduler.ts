@@ -355,7 +355,7 @@ export async function createScheduledJob(
 
     const taskName = await enqueueTask({
       queueName: "periodic-tasks",
-      handlerPath: "/tasks/deliver-scheduled-message",
+      handlerPath: "/_internal/tasks/deliver-scheduled-message",
       payload: { scheduleId },
       delaySeconds,
       taskId: `schedule-${scheduleId}`,
@@ -413,7 +413,7 @@ export async function sweepUndeliveredMessages(): Promise<number> {
       if (USE_CLOUD_TASKS()) {
         await enqueueTask({
           queueName: "periodic-tasks",
-          handlerPath: "/tasks/deliver-scheduled-message",
+          handlerPath: "/_internal/tasks/deliver-scheduled-message",
           payload: { scheduleId: msg.id },
           taskId: `sweep-${msg.id}-${Date.now()}`,
           targetService: "node",

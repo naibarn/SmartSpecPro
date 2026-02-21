@@ -29,14 +29,14 @@ describe("enqueueTask", () => {
 
     await enqueueTask({
       queueName: "media-jobs",
-      handlerPath: "/tasks/process-media",
+      handlerPath: "/_internal/tasks/process-media",
       payload: { job_id: "test-123" },
     });
 
     expect(mockCreateTask).toHaveBeenCalledOnce();
     const [request] = mockCreateTask.mock.calls[0];
     expect(request.task.httpRequest.url).toBe(
-      "https://python-service.run.app/tasks/process-media"
+      "https://python-service.run.app/_internal/tasks/process-media"
     );
   });
 
@@ -46,7 +46,7 @@ describe("enqueueTask", () => {
     const payload = { job_id: "test-123", user_id: "user-456" };
     await enqueueTask({
       queueName: "media-jobs",
-      handlerPath: "/tasks/process-media",
+      handlerPath: "/_internal/tasks/process-media",
       payload,
     });
 
@@ -60,7 +60,7 @@ describe("enqueueTask", () => {
 
     await enqueueTask({
       queueName: "media-jobs",
-      handlerPath: "/tasks/process-media",
+      handlerPath: "/_internal/tasks/process-media",
       payload: { job_id: "test-123" },
       delaySeconds: 120,
     });

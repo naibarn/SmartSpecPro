@@ -64,6 +64,7 @@ INTENT RECOGNITION MAP — phrase → node type
   "call API/เรียก API/REST/ดึงข้อมูลจาก URL/HTTP request"   → http_request
   "graphql/call GraphQL query"                              → graphql_request
   "generate image/สร้างภาพ/text to image/AI image"          → generate_image
+  "generate video/สร้างวิดีโอ/text to video/AI video"        → generate_video
   "translate/แปลภาษา/translation/เป็นภาษา"                  → llm_call (translation prompt)
   "parallel/ทำพร้อมกัน/concurrently/ควบคู่"                  → parallel + join
   "loop/batch/ทีละรายการ/process list/วนซ้ำ"                → map_array or batch
@@ -209,6 +210,14 @@ FEATURE ADDITION PATTERNS (Mode 2 & 3)
   Ports in:[prompt(text,required),negativePrompt(text),style(text),size(text)]
         out:[imageUrl(text),thumbnailUrl(text),metadata(json)]
   → Recommended chain: llm_call (craft detailed image prompt) → generate_image → workflow_response
+
+━━━ VIDEO GENERATION / สร้างวิดีโอ AI ━━━
+  prompt_node.output → generate_video.prompt
+  generate_video config: {"model":"kling-video-v1"}
+  Ports in:[prompt(text,required),referenceImages(array,optional)]
+        out:[videoUrl(text),metadata(json)]
+  → Models loaded from media_models DB (type=video), dynamic inputs from configJson.inputFields
+  → Recommended chain: llm_call (craft detailed video prompt) → generate_video → workflow_response
 
 ━━━ FILE EXPORT / ส่งออกไฟล์ ━━━
   a) CSV/Excel:

@@ -20,6 +20,8 @@ class InputSpec:
     options_endpoint: str | None = None  # For dynamic options (API endpoint)
     validation: dict | None = None  # {min, max, pattern, min_length, max_length}
     placeholder: str | None = None
+    depends_on: str | None = None  # Parent field name for dependent selects
+    option_groups: dict[str, list[dict]] | None = None  # Grouped options keyed by parent value
 
 
 @dataclass
@@ -115,7 +117,7 @@ class NodeRegistry:
                         required=True,
                         accepts_connection=False,
                         default="gpt-4o-mini",
-                        options_endpoint="/api/v1/workflow/available-models",
+                        options_endpoint="/api/v1/workflows/available-models",
                     ),
                     InputSpec(
                         name="temperature",
@@ -181,7 +183,7 @@ class NodeRegistry:
                         ui_type="select",
                         required=True,
                         accepts_connection=False,
-                        options_endpoint="/api/v1/workflow/rag-collections",
+                        options_endpoint="/api/v1/workflows/rag-collections",
                     ),
                     InputSpec(
                         name="topK",
@@ -298,7 +300,7 @@ class NodeRegistry:
             NodeTypeSpec(
                 type="approval_gate",
                 display_name="Approval Gate",
-                description="Pause workflow for human approval",
+                description="Pause workflow for human approval. Supports user IDs, emails, role:name, and group:name as approvers.",
                 icon="user-check",
                 color="orange",
                 category="human",
@@ -319,7 +321,8 @@ class NodeRegistry:
                         ui_type="multiselect",
                         required=True,
                         accepts_connection=False,
-                        options_endpoint="/api/v1/workflow/available-approvers",
+                        options_endpoint="/api/v1/workflows/available-approvers",
+                        placeholder="User ID, email, role:name, or group:name",
                     ),
                     InputSpec(
                         name="message",
@@ -359,12 +362,15 @@ class NodeRegistry:
             )
         )
 
-        # 6. Generate Image Node
+        # 6. Generate Image Node (Kie AI via Media Studio pipeline)
+        # Models are fetched dynamically from the media_models DB table via options_endpoint.
+        # Each model's configJson.inputFields defines dynamic inputs (aspect_ratio, resolution,
+        # etc.) which the frontend renders automatically — no hardcoded fields needed here.
         self.register_node_type(
             NodeTypeSpec(
                 type="generate_image",
                 display_name="Generate Image",
-                description="Generate an image from a text prompt",
+                description="Generate an image using Kie AI (same pipeline as Media Studio)",
                 icon="image",
                 color="pink",
                 category="media",
@@ -376,66 +382,26 @@ class NodeRegistry:
                         ui_type="textarea",
                         required=True,
                         accepts_connection=True,
-                        placeholder="Describe the image...",
+                        placeholder="Describe the image you want to generate...",
                     ),
                     InputSpec(
-                        name="negativePrompt",
-                        display_name="Negative Prompt",
-                        data_type="text",
-                        ui_type="textarea",
-                        required=False,
-                        accepts_connection=True,
-                        placeholder="What to avoid in the image...",
-                    ),
-                    InputSpec(
-                        name="provider",
-                        display_name="Provider",
+                        name="model",
+                        display_name="Media AI Model",
                         data_type="text",
                         ui_type="select",
                         required=True,
                         accepts_connection=False,
-                        default="openai",
-                        options_endpoint="/api/v1/workflow/image-providers",
+                        default="google-nano-banana-pro",
+                        options_endpoint="/api/v1/workflows/media-models?type=image",
                     ),
                     InputSpec(
-                        name="size",
-                        display_name="Size",
-                        data_type="text",
-                        ui_type="select",
+                        name="referenceImages",
+                        display_name="Reference Images (optional)",
+                        data_type="array",
+                        ui_type="text",
                         required=False,
-                        accepts_connection=False,
-                        default="1024x1024",
-                        options=[
-                            {"label": "Square (1024x1024)", "value": "1024x1024"},
-                            {"label": "Portrait (1024x1792)", "value": "1024x1792"},
-                            {"label": "Landscape (1792x1024)", "value": "1792x1024"},
-                        ],
-                    ),
-                    InputSpec(
-                        name="quality",
-                        display_name="Quality",
-                        data_type="text",
-                        ui_type="select",
-                        required=False,
-                        accepts_connection=False,
-                        default="standard",
-                        options=[
-                            {"label": "Standard", "value": "standard"},
-                            {"label": "HD", "value": "hd"},
-                        ],
-                    ),
-                    InputSpec(
-                        name="style",
-                        display_name="Style",
-                        data_type="text",
-                        ui_type="select",
-                        required=False,
-                        accepts_connection=False,
-                        default="natural",
-                        options=[
-                            {"label": "Natural", "value": "natural"},
-                            {"label": "Vivid", "value": "vivid"},
-                        ],
+                        accepts_connection=True,
+                        placeholder="Connect from upstream node or enter image URLs (comma-separated)",
                     ),
                 ],
                 outputs=[
@@ -445,6 +411,57 @@ class NodeRegistry:
                     ),
                 ],
                 executor="app.orchestrator.node_executors.image_executor.ImageExecutor",
+            )
+        )
+
+        # 7. Generate Video Node (Kie AI via Media Studio pipeline)
+        # Same architecture as Generate Image — models from media_models DB (type=video).
+        # Each model's configJson.inputFields defines dynamic inputs (duration, resolution, etc.)
+        self.register_node_type(
+            NodeTypeSpec(
+                type="generate_video",
+                display_name="Generate Video",
+                description="Generate a video using Kie AI (same pipeline as Media Studio)",
+                icon="video",
+                color="purple",
+                category="media",
+                inputs=[
+                    InputSpec(
+                        name="prompt",
+                        display_name="Prompt",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Describe the video you want to generate...",
+                    ),
+                    InputSpec(
+                        name="model",
+                        display_name="Media AI Model",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        default="",
+                        options_endpoint="/api/v1/workflows/media-models?type=video",
+                    ),
+                    InputSpec(
+                        name="referenceImages",
+                        display_name="Reference Images (optional)",
+                        data_type="array",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Connect from upstream node or enter image URLs (comma-separated)",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="videoUrl", display_name="Video URL", data_type="text"),
+                    OutputSpec(
+                        name="metadata", display_name="Generation Metadata", data_type="json"
+                    ),
+                ],
+                executor="app.orchestrator.node_executors.video_executor.VideoExecutor",
             )
         )
 
@@ -3412,6 +3429,221 @@ class NodeRegistry:
             )
         )
 
+        # ===== PHASE E: LIBRARY & DATA NODES =====
+
+        # Excel Parser Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="excel_parser",
+                display_name="Excel Parser",
+                description="Parse Excel (.xlsx) files into structured row data",
+                icon="file-spreadsheet",
+                color="green",
+                category="data",
+                inputs=[
+                    InputSpec(
+                        name="excel_input",
+                        display_name="Excel File Path",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="/path/to/file.xlsx",
+                    ),
+                    InputSpec(
+                        name="sheet_name",
+                        display_name="Sheet Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="Sheet1 (default: active sheet)",
+                    ),
+                    InputSpec(
+                        name="has_header",
+                        display_name="Has Header Row",
+                        data_type="boolean",
+                        ui_type="toggle",
+                        required=False,
+                        accepts_connection=False,
+                        default=True,
+                    ),
+                    InputSpec(
+                        name="skip_rows",
+                        display_name="Skip Rows",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=0,
+                        validation={"min": 0, "max": 1000},
+                    ),
+                    InputSpec(
+                        name="max_rows",
+                        display_name="Max Rows",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=10000,
+                        validation={"min": 1, "max": 100000},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="rows", display_name="Rows", data_type="array"),
+                    OutputSpec(name="row_count", display_name="Row Count", data_type="number"),
+                    OutputSpec(name="columns", display_name="Columns", data_type="array"),
+                    OutputSpec(name="sheet_names", display_name="Sheet Names", data_type="array"),
+                ],
+                executor="app.orchestrator.node_executors.data_executors.excel_parser_executor.ExcelParserExecutor",
+            )
+        )
+
+        # Library Input Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="library_input",
+                display_name="Library Input",
+                description="Read a file from My Library (Document Management) into the workflow",
+                icon="book-open",
+                color="indigo",
+                category="inputs",
+                inputs=[
+                    InputSpec(
+                        name="item_id",
+                        display_name="Library Item ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Library item ID (numeric)",
+                    ),
+                    InputSpec(
+                        name="format",
+                        display_name="Output Format",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="raw",
+                        options=[
+                            {"label": "Raw (URL & metadata only)", "value": "raw"},
+                            {"label": "Text (decode file content)", "value": "text"},
+                            {"label": "Rows (parse CSV/Excel)", "value": "rows"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="sheet_name",
+                        display_name="Sheet Name (for Excel)",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=False,
+                        placeholder="Sheet1",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="content", display_name="Content", data_type="text"),
+                    OutputSpec(name="file_url", display_name="File URL", data_type="text"),
+                    OutputSpec(name="file_name", display_name="File Name", data_type="text"),
+                    OutputSpec(name="mime_type", display_name="MIME Type", data_type="text"),
+                    OutputSpec(name="rows", display_name="Rows", data_type="array"),
+                    OutputSpec(name="row_count", display_name="Row Count", data_type="number"),
+                    OutputSpec(name="columns", display_name="Columns", data_type="array"),
+                    OutputSpec(name="metadata", display_name="Metadata", data_type="json"),
+                ],
+                executor="app.orchestrator.node_executors.io_executors.library_input_executor.LibraryInputExecutor",
+            )
+        )
+
+        # Save to Library Node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="save_to_library",
+                display_name="Save to Library",
+                description="Save workflow output as a document in My Library",
+                icon="save",
+                color="indigo",
+                category="outputs",
+                inputs=[
+                    InputSpec(
+                        name="content",
+                        display_name="Content",
+                        data_type="any",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Content to save...",
+                    ),
+                    InputSpec(
+                        name="file_name",
+                        display_name="File Name",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="report.md",
+                    ),
+                    InputSpec(
+                        name="content_type",
+                        display_name="Content Type",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="",
+                        options=[
+                            {"label": "Auto-detect", "value": ""},
+                            {"label": "Markdown", "value": "markdown"},
+                            {"label": "Plain Text", "value": "text"},
+                            {"label": "JSON", "value": "json"},
+                            {"label": "CSV", "value": "csv"},
+                            {"label": "HTML", "value": "html"},
+                        ],
+                    ),
+                    InputSpec(
+                        name="title",
+                        display_name="Display Title",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Optional display title",
+                    ),
+                    InputSpec(
+                        name="tags",
+                        display_name="Tags",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=False,
+                        default=[],
+                        placeholder='["tag1", "tag2"]',
+                    ),
+                    InputSpec(
+                        name="visibility",
+                        display_name="Visibility",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        default="private",
+                        options=[
+                            {"label": "Private", "value": "private"},
+                            {"label": "Team", "value": "team"},
+                            {"label": "Public", "value": "public"},
+                        ],
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="item_id", display_name="Library Item ID", data_type="number"),
+                    OutputSpec(name="file_url", display_name="File URL", data_type="text"),
+                    OutputSpec(name="success", display_name="Success", data_type="boolean"),
+                ],
+                executor="app.orchestrator.node_executors.io_executors.save_to_library_executor.SaveToLibraryExecutor",
+            )
+        )
+
         # Prompt Template Node
         self.register_node_type(
             NodeTypeSpec(
@@ -3602,11 +3834,16 @@ def get_executor(node_type: str):
     from app.orchestrator.node_executors.io_executors.file_read_executor import FileReadExecutor
     from app.orchestrator.node_executors.io_executors.file_write_executor import FileWriteExecutor
     from app.orchestrator.node_executors.data_executors.csv_parser_executor import CSVParserExecutor
+    from app.orchestrator.node_executors.data_executors.excel_parser_executor import ExcelParserExecutor
     from app.orchestrator.node_executors.data_executors.template_engine_executor import TemplateEngineExecutor
+    from app.orchestrator.node_executors.io_executors.library_input_executor import LibraryInputExecutor
+    from app.orchestrator.node_executors.io_executors.save_to_library_executor import SaveToLibraryExecutor
     from app.orchestrator.node_executors.ai_executors.prompt_template_executor import PromptTemplateExecutor
     from app.orchestrator.node_executors.ai_executors.output_parser_executor import OutputParserExecutor
     from app.orchestrator.node_executors.ai_executors.multi_model_router_executor import MultiModelRouterExecutor
-    
+    from app.orchestrator.node_executors.approval_executor import ApprovalExecutor
+    from app.orchestrator.node_executors.loop_executor import LoopExecutor
+
     executor_map = {
         # Integration
         "http_request": HTTPExecutor,
@@ -3629,13 +3866,20 @@ def get_executor(node_type: str):
         # IO
         "read_file": FileReadExecutor,
         "write_file": FileWriteExecutor,
+        # IO (Library)
+        "library_input": LibraryInputExecutor,
+        "save_to_library": SaveToLibraryExecutor,
         # Data
         "csv_parser": CSVParserExecutor,
+        "excel_parser": ExcelParserExecutor,
         "template_engine": TemplateEngineExecutor,
         # AI
         "prompt_template": PromptTemplateExecutor,
         "output_parser": OutputParserExecutor,
         "multi_model_router": MultiModelRouterExecutor,
+        # Flow (approval + loop)
+        "approval_gate": ApprovalExecutor,
+        "loop": LoopExecutor,
     }
     
     return executor_map.get(node_type)

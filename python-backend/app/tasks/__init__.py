@@ -12,6 +12,14 @@ from app.tasks.media_tasks import (
 from app.tasks.media_job_worker import execute_media_job
 from app.tasks.workflow_gen_tasks import generate_workflow_task
 from app.tasks.workflow_edit_tasks import edit_workflow_task
+from app.tasks.onedrive_tasks import (
+    initial_onedrive_sync,
+    process_onedrive_changes,
+    renew_onedrive_subscriptions,
+    cleanup_expired_onedrive_edit_sessions,
+    disconnect_onedrive_cleanup,
+)
+from app.tasks.approval_timeout_tasks import check_expired_approvals
 
 __all__ = [
     "generate_image_task",
@@ -22,4 +30,10 @@ __all__ = [
     "execute_media_job",
     "generate_workflow_task",
     "edit_workflow_task",
+    "initial_onedrive_sync",
+    "process_onedrive_changes",
+    "renew_onedrive_subscriptions",
+    "cleanup_expired_onedrive_edit_sessions",
+    "disconnect_onedrive_cleanup",
+    "check_expired_approvals",
 ]

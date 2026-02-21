@@ -197,23 +197,34 @@ export function useSSEWorkflowStream(
       });
     });
 
-    // Approval required event (new - for HITL)
+    // Approval required event (for HITL approval gates)
     eventSource.addEventListener('approval_required', (event: MessageEvent) => {
       const data = safeJsonParse(event.data);
       if (!data) return;
       lastEventIdRef.current = data.event_id || event.lastEventId;
 
+      const approvalData = {
+        approval_id: data.approval_id || data.event_id,
+        message: data.message || 'Approval required',
+        approval_type: data.approval_type || 'approve_reject',
+        options: data.options || [],
+        timeout_minutes: data.timeout_minutes || 0,
+        data: data.data,
+      };
+
       updateNodeStatus(data.nodeId, {
         status: 'pending',
+        output: { _approvalData: approvalData },
       });
 
       addLog({
         id: data.event_id,
         timestamp: Date.now(),
         nodeId: data.nodeId,
-        nodeName: data.nodeId,
-        eventType: 'node_start',
+        nodeName: data.nodeName || data.nodeId,
+        eventType: 'approval_required',
         status: 'pending',
+        approvalData,
       });
     });
 

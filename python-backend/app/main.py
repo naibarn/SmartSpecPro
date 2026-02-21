@@ -59,6 +59,8 @@ from app.api import (
     telegram_webhook,  # Telegram bot webhook for account linking
     internal_mcp,  # Internal MCP tools API (Google Drive)
     internal_gdrive,  # Internal Google Drive sync API
+    onedrive,  # OneDrive file operations API
+    internal_onedrive,  # Internal OneDrive sync API
     admin_alerts,  # Admin alert threshold checking
 )
 from app.api.v1 import (
@@ -278,6 +280,8 @@ app.include_router(approvals.router, tags=["Approvals"])
 app.include_router(oauth.router, tags=["OAuth"])
 app.include_router(internal_mcp.router, tags=["Internal MCP"])
 app.include_router(internal_gdrive.router, tags=["Internal GDrive"])
+app.include_router(onedrive.router, tags=["OneDrive"])
+app.include_router(internal_onedrive.router, tags=["Internal OneDrive"])
 app.include_router(admin_alerts.router, tags=["Admin Alerts"])
 
 @app.get("/")

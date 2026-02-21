@@ -67,7 +67,19 @@ export const usageRouter = router({
         traceId: z.string().min(1).max(128).optional(),
         txId: z.number().optional(),
         txType: z.enum(["llm", "media"]).optional(),
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().refine(
+          (val) => {
+            if (!val) return true;
+            const d = new Date(val);
+            if (isNaN(d.getTime())) return false;
+            const now = new Date();
+            now.setDate(now.getDate() + 1); // allow today
+            const minDate = new Date();
+            minDate.setDate(minDate.getDate() - 90); // max 90 days back
+            return d <= now && d >= minDate;
+          },
+          { message: "Date must be a valid date within the last 90 days" },
+        ),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -91,6 +103,7 @@ export const usageRouter = router({
         errorType: providerUsageLog.errorType,
         errorMessage: providerUsageLog.errorMessage,
         wasFallback: providerUsageLog.wasFallback,
+        fallbackFromProviderId: providerUsageLog.fallbackFromProviderId,
         requestType: providerUsageLog.requestType,
         traceId: providerUsageLog.traceId,
         createdAt: providerUsageLog.createdAt,
@@ -151,6 +164,33 @@ export const usageRouter = router({
         return { entries: [], summary: null, authorized: false };
       }
 
+      // Look up original provider name for fallback chain
+      let fallbackFromProviderName: string | null = null;
+      if (llmRow?.wasFallback && llmRow?.fallbackFromProviderId) {
+        const [origProvider] = await db.select({ name: llmProviders.providerName })
+          .from(llmProviders)
+          .where(eq(llmProviders.id, llmRow.fallbackFromProviderId))
+          .limit(1);
+        fallbackFromProviderName = origProvider?.name ?? null;
+      }
+
+      // Read JSONL entries for request/response payloads (only if traceId exists)
+      const resolvedTraceId = input.traceId || llmRow?.traceId || mediaRow?.traceId;
+      let entries: any[] = [];
+      if (resolvedTraceId) {
+        const date = input.date ? new Date(input.date) : new Date();
+        entries = await auditLogger.readEntries({
+          date,
+          traceId: resolvedTraceId,
+          limit: 50,
+        });
+      }
+
+      // Extract costCalculationMethod and timing from JSONL entries (if available)
+      const llmResponseEntry = entries.find((e: any) => e.eventType === "llm_response" && !e.errorType);
+      const costCalculationMethod = llmResponseEntry?.costCalculationMethod ?? null;
+      const timingBreakdown = llmResponseEntry?.timing ?? null;
+
       // Build structured summary from DB data
       const summary = llmRow
         ? {
@@ -166,6 +206,9 @@ export const usageRouter = router({
             errorType: llmRow.errorType,
             errorMessage: llmRow.errorMessage,
             wasFallback: llmRow.wasFallback,
+            fallbackFromProviderName,
+            costCalculationMethod,
+            timingBreakdown,
             requestType: llmRow.requestType,
             createdAt: llmRow.createdAt,
           }
@@ -189,19 +232,17 @@ export const usageRouter = router({
             }
           : null;
 
-      // Read JSONL entries for request/response payloads (only if traceId exists)
-      const resolvedTraceId = input.traceId || llmRow?.traceId || mediaRow?.traceId;
-      let entries: any[] = [];
-      if (resolvedTraceId) {
-        const date = input.date ? new Date(input.date) : new Date();
-        entries = await auditLogger.readEntries({
-          date,
-          traceId: resolvedTraceId,
-          limit: 50,
-        });
-      }
+      // Strip internal fields from JSONL entries before returning to users
+      const internalKeys = new Set(["fallbackFromProviderId", "providerId", "userId"]);
+      const sanitizedEntries = entries.map((e: any) => {
+        const cleaned = { ...e };
+        for (const key of internalKeys) {
+          delete cleaned[key];
+        }
+        return cleaned;
+      });
 
-      return { entries, summary, authorized: true };
+      return { entries: sanitizedEntries, summary, authorized: true };
     }),
 
   /**

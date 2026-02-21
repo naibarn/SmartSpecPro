@@ -1188,6 +1188,8 @@ async def get_node_types() -> dict:
                         "options_endpoint": inp.options_endpoint,
                         "validation": inp.validation,
                         "placeholder": inp.placeholder,
+                        "depends_on": inp.depends_on,
+                        "option_groups": inp.option_groups,
                     }
                     for inp in spec.inputs
                 ],
@@ -1209,44 +1211,60 @@ async def get_node_types() -> dict:
 @router.get("/available-models")
 async def get_available_models(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Get available LLM models with cost and quality info, sorted by recommendation.
+    Get available LLM models from model_provider_map, joined with llm_providers.
+    Returns unique models with provider info, sorted by priority.
     """
-    # TODO: Integrate with existing LLM Gateway provider registry
-    # For now, return stub structure
-    models = [
-        {
-            "id": "gpt-4o-mini",
-            "name": "GPT-4o Mini",
-            "provider": "openai",
-            "cost_per_token": 0.00015,
-            "quality_rating": 8.5,
-            "recommendation_score": 9.2,
-            "recommended": True,
-        },
-        {
-            "id": "gpt-4o",
-            "name": "GPT-4o",
-            "provider": "openai",
-            "cost_per_token": 0.00250,
-            "quality_rating": 9.5,
-            "recommendation_score": 8.8,
-            "recommended": False,
-        },
-        {
-            "id": "claude-3-5-sonnet-20241022",
-            "name": "Claude 3.5 Sonnet",
-            "provider": "anthropic",
-            "cost_per_token": 0.00300,
-            "quality_rating": 9.8,
-            "recommendation_score": 8.5,
-            "recommended": False,
-        },
-    ]
+    from sqlalchemy import text as sa_text
 
-    # Sort by recommendation_score descending
-    models.sort(key=lambda m: m.get("recommendation_score", 0), reverse=True)
+    query = sa_text("""
+        SELECT DISTINCT ON (mpm."modelId")
+            mpm."modelId" AS id,
+            mpm."modelName" AS name,
+            lp."providerName" AS provider,
+            mpm."pricingInput" AS pricing_input,
+            mpm."pricingOutput" AS pricing_output,
+            mpm."isFree" AS is_free,
+            mpm."contextLength" AS context_length,
+            mpm.priority
+        FROM model_provider_map mpm
+        INNER JOIN llm_providers lp ON mpm."providerId" = lp.id
+        WHERE mpm."isEnabled" = true AND lp."isEnabled" = true
+        ORDER BY mpm."modelId", mpm.priority ASC
+    """)
+    result = await db.execute(query)
+    rows = result.mappings().all()
+
+    models = []
+    for row in rows:
+        pricing_input = float(row.get("pricing_input") or 0)
+        pricing_output = float(row.get("pricing_output") or 0)
+        is_free = bool(row.get("is_free", False))
+        provider = row.get("provider", "")
+        model_name = row["name"]
+
+        # Build display label: "Model Name (Provider)" or "Model Name [FREE]"
+        label = model_name
+        if provider:
+            label = f"{model_name} ({provider})"
+        if is_free:
+            label = f"{label} [FREE]"
+
+        models.append({
+            "id": row["id"],
+            "name": label,
+            "provider": provider,
+            "pricingInput": pricing_input,
+            "pricingOutput": pricing_output,
+            "isFree": is_free,
+            "contextLength": row.get("context_length"),
+            "priority": row.get("priority", 0),
+        })
+
+    # Sort: free models first, then by priority ascending
+    models.sort(key=lambda m: (0 if m["isFree"] else 1, m.get("priority", 0)))
 
     return {"models": models}
 
@@ -1413,29 +1431,76 @@ async def reprocess_dlq_item(
     )
 
 
-@router.get("/image-providers")
+@router.get("/media-models")
+async def get_media_models(
+    type: str = Query(default="image", description="Media type filter: image, video, audio"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Get available media generation models from database.
+
+    Returns the same data as the tRPC mediaModels.list endpoint.
+    Each model includes configJson with inputFields for dynamic UI rendering.
+    """
+    from sqlalchemy import text as sa_text
+
+    query = sa_text("""
+        SELECT "modelId", name, description, "modelType", provider,
+               "creditCost", "aspectRatios", sizes, durations, voices,
+               "configJson", priority
+        FROM media_models
+        WHERE "isEnabled" = true
+        AND (CAST(:type_filter AS text) IS NULL OR "modelType"::text = :type_filter)
+        ORDER BY "sortOrder" ASC NULLS LAST, priority ASC NULLS LAST
+    """)
+
+    result = await db.execute(query, {"type_filter": type or None})
+    rows = result.mappings().all()
+
+    models = []
+    for row in rows:
+        models.append({
+            "id": row["modelId"],
+            "name": row["name"],
+            "description": row.get("description"),
+            "type": row["modelType"],
+            "provider": row["provider"],
+            "creditCost": row["creditCost"],
+            "aspectRatios": row.get("aspectRatios"),
+            "sizes": row.get("sizes"),
+            "durations": row.get("durations"),
+            "voices": row.get("voices"),
+            "configJson": row.get("configJson"),
+            "priority": row.get("priority"),
+        })
+
+    return {"models": models}
+
+
+@router.get("/image-providers", deprecated=True)
 async def get_image_providers(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     """
-    Get available image generation providers.
+    Deprecated: Use /media-models instead.
+
+    Returns legacy format for backward compatibility.
     """
-    # TODO: Integrate with MediaTaskService provider registry
+    logger.warning("deprecated_image_providers_endpoint_called", user_id=current_user.id)
+    # Redirect to new format mapped to legacy shape
     return {
         "providers": [
             {
-                "id": "openai",
-                "name": "DALL-E 3",
-                "sizes": ["1024x1024", "1024x1792", "1792x1024"],
-                "qualities": ["standard", "hd"],
-                "styles": ["natural", "vivid"],
-            },
-            {
-                "id": "stability",
-                "name": "Stable Diffusion XL",
-                "sizes": ["1024x1024", "1152x896", "896x1152"],
-                "qualities": ["standard", "premium"],
-                "styles": ["photographic", "digital-art", "anime"],
+                "id": "kie.ai",
+                "name": "Kie AI (Media Studio)",
+                "models": [
+                    "google-nano-banana-pro",
+                    "flux-2.0",
+                    "z-image",
+                    "grok-imagine",
+                ],
+                "note": "Deprecated. Use GET /media-models instead.",
             },
         ]
     }

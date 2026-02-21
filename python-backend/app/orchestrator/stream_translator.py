@@ -225,9 +225,12 @@ class StreamTranslator:
             data = json.dumps(
                 {
                     "nodeId": node_id,
+                    "approval_id": custom_data.get("approval_id", ""),
+                    "approval_type": custom_data.get("approval_type", "approve_reject"),
                     "message": custom_data.get("message", ""),
                     "options": custom_data.get("options", []),
-                    "timeout": custom_data.get("timeout_minutes", 30),
+                    "timeout_minutes": custom_data.get("timeout_minutes", 30),
+                    "required_approvers": custom_data.get("required_approvers", 1),
                     "event_id": event_id,
                     "timestamp": ts,
                 }

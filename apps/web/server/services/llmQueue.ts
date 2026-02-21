@@ -173,7 +173,7 @@ export async function addSkillJob(data: SkillJob): Promise<string | null> {
     const { enqueueTask } = await import('./cloudTasks');
     const taskName = await enqueueTask({
       queueName: 'workflow-tasks',
-      handlerPath: '/tasks/execute-skill-step',
+      handlerPath: '/_internal/tasks/execute-skill-step',
       payload: {
         userId: data.userId,
         skillId: data.skillId,

@@ -44,15 +44,17 @@ export async function logRequest(params: {
 
 // --- Cost Calculation ---
 
+export type CostMethod = "provider_reported" | "model_lookup" | "default_rate";
+
 export async function calculateCost(params: {
   providerReportedCost?: number;
   modelId: string;
   inputTokens: number;
   outputTokens: number;
-}): Promise<number> {
+}): Promise<{ cost: number; method: CostMethod }> {
   // Priority 1: Provider-reported cost
   if (params.providerReportedCost != null && params.providerReportedCost > 0) {
-    return params.providerReportedCost;
+    return { cost: params.providerReportedCost, method: "provider_reported" };
   }
 
   // Priority 2: Model pricing from model_provider_map
@@ -75,17 +77,17 @@ export async function calculateCost(params: {
 
     if (rows.length > 0) {
       const row = rows[0];
-      if (row.isFree) return 0;
+      if (row.isFree) return { cost: 0, method: "model_lookup" };
       const inputCost = (params.inputTokens / 1_000_000) * Number(row.pricingInput);
       const outputCost = (params.outputTokens / 1_000_000) * Number(row.pricingOutput);
-      return inputCost + outputCost;
+      return { cost: inputCost + outputCost, method: "model_lookup" };
     }
   }
 
   // Priority 3: Default pricing
   const inputCost = (params.inputTokens / 1_000_000) * DEFAULT_INPUT_PRICE_PER_1M;
   const outputCost = (params.outputTokens / 1_000_000) * DEFAULT_OUTPUT_PRICE_PER_1M;
-  return inputCost + outputCost;
+  return { cost: inputCost + outputCost, method: "default_rate" };
 }
 
 // --- Dashboard Aggregation ---

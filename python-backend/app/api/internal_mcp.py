@@ -13,7 +13,11 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from app.core.config import settings
-from app.mcp.google_drive_mcp import GOOGLE_DRIVE_TOOLS, TOOL_HANDLERS, ToolError
+from app.mcp.google_drive_mcp import GOOGLE_DRIVE_TOOLS, TOOL_HANDLERS as GDRIVE_HANDLERS, ToolError
+from app.mcp.onedrive_mcp import ONEDRIVE_TOOLS, TOOL_HANDLERS as ONEDRIVE_HANDLERS
+
+# Merge tool handlers from both providers
+TOOL_HANDLERS = {**GDRIVE_HANDLERS, **ONEDRIVE_HANDLERS}
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +69,18 @@ async def list_tools(
     """
     await _verify_proxy_token(x_proxy_token)
 
+    tools = []
     if user_id is not None:
-        has_connection = await _check_google_connection(user_id)
-        if not has_connection:
-            return {"tools": []}
+        has_google = await _check_provider_connection(user_id, "google")
+        has_microsoft = await _check_provider_connection(user_id, "microsoft")
+        if has_google:
+            tools.extend(GOOGLE_DRIVE_TOOLS)
+        if has_microsoft:
+            tools.extend(ONEDRIVE_TOOLS)
+    else:
+        tools = GOOGLE_DRIVE_TOOLS + ONEDRIVE_TOOLS
 
-    return {"tools": GOOGLE_DRIVE_TOOLS}
+    return {"tools": tools}
 
 
 @router.post("/tools/call")
@@ -121,8 +131,8 @@ async def call_tool(
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 
-async def _check_google_connection(user_id: int) -> bool:
-    """Check if the user has an active Google OAuth connection."""
+async def _check_provider_connection(user_id: int, provider: str) -> bool:
+    """Check if the user has an active OAuth connection for the given provider."""
     try:
         from sqlalchemy import select, and_
         from app.core.database import AsyncSessionLocal
@@ -133,12 +143,12 @@ async def _check_google_connection(user_id: int) -> bool:
                 select(OAuthConnection).where(
                     and_(
                         OAuthConnection.user_id == user_id,
-                        OAuthConnection.provider == "google",
+                        OAuthConnection.provider == provider,
                         OAuthConnection.status == "active",
                     )
                 )
             )
             return conn is not None
     except Exception:
-        logger.warning("Failed to check Google connection for user %d", user_id)
+        logger.warning("Failed to check %s connection for user %d", provider, user_id)
         return False

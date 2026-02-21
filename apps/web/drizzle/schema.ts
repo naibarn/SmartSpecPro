@@ -1765,6 +1765,67 @@ export const googleDriveEditSessions = pgTable("google_drive_edit_sessions", {
 export type GoogleDriveEditSession = typeof googleDriveEditSessions.$inferSelect;
 export type InsertGoogleDriveEditSession = typeof googleDriveEditSessions.$inferInsert;
 
+// ============================================================
+// OneDrive (Microsoft Graph) Integration Tables
+// ============================================================
+
+/**
+ * Stores per-user OneDrive sync configuration and subscription tracking.
+ * One row per user per tenant. Mirrors google_drive_sync_state but uses
+ * Microsoft Graph delta queries + subscriptions instead of Google's
+ * Changes API + webhook channels.
+ */
+export const onedriveSyncState = pgTable("onedrive_sync_state", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  indexingMode: indexingModeEnum("indexing_mode").notNull().default("none"),
+  folderSelections: jsonb("folder_selections").$type<string[]>().default([]),
+  fileTypeFilter: jsonb("file_type_filter").$type<string[]>().default([]),
+  maxFileSizeBytes: integer("max_file_size_bytes").default(52428800),
+  deltaLink: text("delta_link"),
+  subscriptionId: varchar("subscription_id", { length: 128 }),
+  subscriptionExpiry: timestamp("subscription_expiry", { withTimezone: true }),
+  filesTotal: integer("files_total").default(0),
+  filesProcessed: integer("files_processed").default(0),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  autoSyncEnabled: boolean("auto_sync_enabled").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("onedrive_sync_tenant_user_unique").on(t.tenantId, t.userId),
+  index("onedrive_sync_subscription_id_idx").on(t.subscriptionId),
+]);
+
+export type OnedriveSyncState = typeof onedriveSyncState.$inferSelect;
+export type InsertOnedriveSyncState = typeof onedriveSyncState.$inferInsert;
+
+/**
+ * Tracks active editing sessions where a library file has been uploaded
+ * to OneDrive for editing in Office Online (Word/Excel/PowerPoint).
+ */
+export const onedriveEditSessions = pgTable("onedrive_edit_sessions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  driveItemId: varchar("drive_item_id", { length: 256 }).notNull(),
+  editUrl: text("edit_url").notNull(),
+  originalSourceUrl: text("original_source_url"),
+  status: editSessionStatusEnum("status").notNull().default("active"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("onedrive_edit_tenant_user_status_idx").on(t.tenantId, t.userId, t.status),
+  index("onedrive_edit_library_item_idx").on(t.libraryItemId),
+  index("onedrive_edit_expires_at_idx").on(t.expiresAt),
+]);
+
+export type OnedriveEditSession = typeof onedriveEditSessions.$inferSelect;
+export type InsertOnedriveEditSession = typeof onedriveEditSessions.$inferInsert;
+
 /**
  * Per-user monthly credit budget limits.
  * Applies to ALL credit-consuming operations system-wide.

@@ -2,7 +2,8 @@ import { eq, and } from "drizzle-orm";
 import { getDb } from "../db";
 import { modelProviderMap, llmProviders, routingRules } from "../../drizzle/schema";
 import { isAvailable, recordSuccess, recordFailure } from "./providerHealth";
-import { logRequest, calculateCost } from "./costTracker";
+import { logRequest, calculateCost, type CostMethod } from "./costTracker";
+import { auditLogger } from "./auditLogger";
 import { decrypt } from "./crypto";
 import type { Message } from "../_core/llm";
 
@@ -243,6 +244,27 @@ export async function executeWithFallback(params: {
 
     try {
       const url = resolveChatUrl(candidate.baseUrl);
+
+      // Log LLM request to JSONL audit trail (scrub message content for PII safety)
+      auditLogger.log({
+        eventType: "llm_request",
+        userId: params.userId,
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        model: candidate.providerModelId,
+        requestType: "chat",
+        requestPayload: {
+          messageCount: params.messages.length,
+          messages: params.messages.map((m) => ({
+            role: m.role,
+            contentLength: typeof m.content === "string" ? m.content.length : 0,
+          })),
+          model: candidate.providerModelId,
+          stream: params.stream,
+        },
+      });
+
+      const fetchStart = Date.now();
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -255,17 +277,20 @@ export async function executeWithFallback(params: {
           stream: params.stream,
         }),
       });
+      const networkMs = Date.now() - fetchStart;
 
       const responseTimeMs = Date.now() - startTime;
 
       if (response.ok) {
         recordSuccess(candidate.providerId);
 
+        const parseStart = Date.now();
         const data = await response.json();
+        const parseMs = Date.now() - parseStart;
         const inputTokens = data?.usage?.prompt_tokens ?? 0;
         const outputTokens = data?.usage?.completion_tokens ?? 0;
 
-        const costUsd = await calculateCost({
+        const { cost: costUsd, method: costMethod } = await calculateCost({
           providerReportedCost: data?.usage?.cost,
           modelId: params.model,
           inputTokens,
@@ -285,6 +310,33 @@ export async function executeWithFallback(params: {
           wasFallback: i > 0,
           fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
         }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
+
+        // Log LLM response to JSONL audit trail (with full payload for transparency)
+        auditLogger.log({
+          eventType: "llm_response",
+          userId: params.userId,
+          providerId: candidate.providerId,
+          providerName: candidate.providerName,
+          model: candidate.providerModelId,
+          inputTokens,
+          outputTokens,
+          costUsd,
+          costCalculationMethod: costMethod,
+          timing: { networkMs, parseMs, totalMs: responseTimeMs },
+          wasFallback: i > 0,
+          fallbackAttempt: i,
+          fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+          statusCode: 200,
+          responsePayload: {
+            usage: {
+              prompt_tokens: data?.usage?.prompt_tokens,
+              completion_tokens: data?.usage?.completion_tokens,
+              total_tokens: data?.usage?.total_tokens,
+            },
+            choiceCount: data?.choices?.length ?? 0,
+            finishReason: data?.choices?.[0]?.finish_reason ?? null,
+          },
+        });
 
         return { type: "success", response: data, providerId: candidate.providerId, providerName: candidate.providerName };
       }
@@ -310,9 +362,25 @@ export async function executeWithFallback(params: {
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
       }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
-      // Non-retriable client error
+      // Log LLM error to JSONL audit trail
+      auditLogger.log({
+        eventType: "llm_response",
+        userId: params.userId,
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        model: candidate.providerModelId,
+        statusCode,
+        errorType: `http_${statusCode}`,
+        errorMessage: errorText.slice(0, 500),
+        timing: { networkMs, totalMs: Date.now() - startTime },
+        wasFallback: i > 0,
+        fallbackAttempt: i,
+        fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+      });
+
+      // Non-retriable client error — truncate error text to avoid leaking provider internals
       if (!isFallbackEligible(statusCode)) {
-        return { type: "error", error: errorText, statusCode };
+        return { type: "error", error: errorText.slice(0, 500), statusCode };
       }
 
       // Check free->paid boundary before fallback

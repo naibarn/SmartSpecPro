@@ -55,6 +55,7 @@ const SOURCE_LABELS: Record<string, { label: string; color: string; icon: typeof
   brainstorm:  { label: "Brainstorm", color: "bg-amber-100 text-amber-700",  icon: Lightbulb },
   scheduler:   { label: "Alert",      color: "bg-yellow-100 text-yellow-700", icon: Bell },
   admin:       { label: "Admin",      color: "bg-gray-100 text-gray-700",    icon: Shield },
+  other:       { label: "Other",      color: "bg-slate-100 text-slate-700",  icon: Zap },
 };
 
 export default function Credits() {
@@ -558,6 +559,7 @@ export default function Credits() {
                           {transaction.traceId ? (
                             <TransactionDetailDialog
                               traceId={transaction.traceId}
+                              txId={transaction.id}
                               date={dateStr}
                             />
                           ) : (

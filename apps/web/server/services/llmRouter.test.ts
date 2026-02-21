@@ -23,7 +23,11 @@ vi.mock("./providerHealth", () => ({
 
 vi.mock("./costTracker", () => ({
   logRequest: vi.fn().mockResolvedValue(undefined),
-  calculateCost: vi.fn().mockResolvedValue(0.001),
+  calculateCost: vi.fn().mockResolvedValue({ cost: 0.001, method: "model_lookup" }),
+}));
+
+vi.mock("./auditLogger", () => ({
+  auditLogger: { log: vi.fn() },
 }));
 
 vi.mock("./crypto", () => ({

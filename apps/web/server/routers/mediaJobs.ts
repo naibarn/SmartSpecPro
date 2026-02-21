@@ -257,7 +257,7 @@ async function enqueuePollingTask(jobId: string, kieJobId: string) {
   const { enqueueTask } = await import("../services/cloudTasks");
   await enqueueTask({
     queueName: "polling-tasks",
-    handlerPath: "/tasks/poll-job",
+    handlerPath: "/_internal/tasks/poll-job",
     payload: {
       job_id: jobId,
       kie_job_id: kieJobId,
@@ -282,7 +282,7 @@ async function dispatchJob(specJson: string, userId: string, jobId: string, requ
     const resolvedSpecJson = resolveRelativeUris(specJson);
     await enqueueTask({
       queueName: "media-jobs",
-      handlerPath: "/tasks/process-media",
+      handlerPath: "/_internal/tasks/process-media",
       payload: { spec_json: resolvedSpecJson, user_id: userId, job_id: jobId, request_id: requestId },
     });
   } else {
@@ -474,7 +474,7 @@ export const mediaJobsRouter = router({
           const { enqueueTask } = await import("../services/cloudTasks");
           await enqueueTask({
             queueName,
-            handlerPath: "/tasks/process-video",
+            handlerPath: "/_internal/tasks/process-video",
             payload: {
               render_spec: renderSpec,
               queue_name: queueName,

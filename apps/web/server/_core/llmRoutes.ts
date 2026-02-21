@@ -15,6 +15,7 @@ import {
 } from "../services/creditService";
 import { debugLog, debugError } from "./logger";
 import { handleChatWithRouter, handleStreamWithRouter } from "../services/llmRoutesHandler";
+import { auditLogger } from "../services/auditLogger";
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -1565,6 +1566,20 @@ export function registerLLMRoutes(app: Express) {
         const baseUrl = sttApiUrl.endsWith("/") ? sttApiUrl : `${sttApiUrl}/`;
         const fullUrl = new URL("v1/audio/transcriptions", baseUrl).toString();
 
+        // Audit: log STT request (no PII — just metadata)
+        const sttStartTime = Date.now();
+        auditLogger.log({
+          eventType: "llm_request",
+          userId: check.userId,
+          model: sttModel,
+          requestType: "stt",
+          requestPayload: {
+            audioSizeMB: sizeMB.toFixed(2),
+            mimeType,
+            language: language || "auto",
+          },
+        });
+
         const whisperRes = await fetch(fullUrl, {
           method: "POST",
           headers: {
@@ -1576,11 +1591,36 @@ export function registerLLMRoutes(app: Express) {
 
         if (!whisperRes.ok) {
           const errText = await whisperRes.text().catch(() => "");
-          res.status(500).json({ error: "Transcription failed", details: errText });
+          auditLogger.log({
+            eventType: "llm_response",
+            userId: check.userId,
+            model: sttModel,
+            requestType: "stt",
+            statusCode: whisperRes.status,
+            errorType: `http_${whisperRes.status}`,
+            errorMessage: errText.slice(0, 500),
+            timing: { totalMs: Date.now() - sttStartTime },
+          });
+          res.status(500).json({ error: "Transcription failed", details: errText.slice(0, 500) });
           return;
         }
 
         const result = await whisperRes.json() as { text: string; language: string; duration: number };
+
+        // Audit: log STT response
+        auditLogger.log({
+          eventType: "llm_response",
+          userId: check.userId,
+          model: sttModel,
+          requestType: "stt",
+          statusCode: 200,
+          timing: { totalMs: Date.now() - sttStartTime },
+          responsePayload: {
+            durationSeconds: result.duration,
+            language: result.language,
+            textLength: result.text?.length ?? 0,
+          },
+        });
 
         // Calculate credits based on provider's creditCostPerMinute
         const durationMin = (result.duration || 0) / 60;
@@ -1841,6 +1881,22 @@ export function registerLLMRoutes(app: Express) {
         const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
         await acquireProviderSlot(provider!.providerName, isFreeModel);
 
+        // Audit: log brainstorm LLM request (scrub message content for PII)
+        const turnStartTime = Date.now();
+        auditLogger.log({
+          eventType: "llm_request",
+          userId,
+          providerName: provider!.providerName,
+          model,
+          requestType: "brainstorm",
+          requestPayload: {
+            messageCount: msgs.length,
+            round: meta.round,
+            role: meta.role,
+            stream: true,
+          },
+        });
+
         let upstream: globalThis.Response;
         try {
           upstream = await fetch(url, {
@@ -1851,12 +1907,33 @@ export function registerLLMRoutes(app: Express) {
           });
         } catch (fetchError: any) {
           releaseProviderSlot(provider!.providerName);
+          auditLogger.log({
+            eventType: "llm_response",
+            userId,
+            providerName: provider!.providerName,
+            model,
+            requestType: "brainstorm",
+            errorType: "network_error",
+            errorMessage: (fetchError?.message || "Network error").slice(0, 500),
+            timing: { totalMs: Date.now() - turnStartTime },
+          });
           throw new Error(`Model ${model} failed: ${fetchError?.message || "Network error"}`);
         }
 
         if (!upstream.ok || !upstream.body) {
           releaseProviderSlot(provider!.providerName);
           const errText = await upstream.text().catch(() => "LLM request failed");
+          auditLogger.log({
+            eventType: "llm_response",
+            userId,
+            providerName: provider!.providerName,
+            model,
+            requestType: "brainstorm",
+            statusCode: upstream.status,
+            errorType: `http_${upstream.status}`,
+            errorMessage: errText.slice(0, 500),
+            timing: { totalMs: Date.now() - turnStartTime },
+          });
           throw new Error(`Model ${model} failed: ${errText}`);
         }
 
@@ -1922,6 +1999,24 @@ export function registerLLMRoutes(app: Express) {
 
         // Send turn end
         res.write(`event: brainstorm_turn\ndata: ${JSON.stringify({ round: meta.round, role: meta.role, model, status: "end" })}\n\n`);
+
+        // Audit: log brainstorm LLM response
+        auditLogger.log({
+          eventType: "llm_response",
+          userId,
+          providerName: provider!.providerName,
+          model,
+          requestType: "brainstorm",
+          inputTokens,
+          outputTokens,
+          statusCode: 200,
+          timing: { totalMs: Date.now() - turnStartTime },
+          responsePayload: {
+            contentLength: fullContent.length,
+            round: meta.round,
+            role: meta.role,
+          },
+        });
 
         return { content: fullContent, inputTokens, outputTokens };
       }

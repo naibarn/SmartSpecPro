@@ -100,7 +100,7 @@ describe("LLM Queue Migration", () => {
     expect(enqueueTask).toHaveBeenCalledWith(
       expect.objectContaining({
         queueName: "workflow-tasks",
-        handlerPath: "/tasks/execute-skill-step",
+        handlerPath: "/_internal/tasks/execute-skill-step",
         payload: expect.objectContaining({
           userId: 1,
           skillId: "test-skill",

@@ -29,7 +29,7 @@ type CloudTasksClientLike = {
 export interface EnqueueTaskOptions {
   /** Which Cloud Tasks queue to use (e.g., 'media-jobs') */
   queueName: QueueName;
-  /** Endpoint path on the handler service (e.g., '/tasks/process-media') */
+  /** Endpoint path on the handler service (e.g., '/_internal/tasks/process-media') */
   handlerPath: string;
   /** JSON body for the task */
   payload: Record<string, unknown>;

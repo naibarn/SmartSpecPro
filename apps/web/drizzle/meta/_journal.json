@@ -218,6 +218,13 @@
       "when": 1771643953665,
       "tag": "0030_zippy_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1771648575243,
+      "tag": "0031_polite_silver_sable",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,7 @@ import {
   CheckCircle,
   XCircle,
   Zap,
+  Calculator,
 } from "lucide-react";
 import { formatCurrency, formatLatency, formatTokenCount } from "@/lib/formatters";
 
@@ -251,13 +252,32 @@ export function TransactionDetailDialog({
                       </>
                     )}
 
-                    {/* Fallback indicator */}
+                    {/* Fallback indicator with provider chain */}
                     {"wasFallback" in summary && summary.wasFallback && (
                       <div className="flex items-center gap-2">
                         <Zap className="h-3.5 w-3.5 text-yellow-500" />
                         <div>
                           <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Fallback</div>
-                          <div className="text-sm font-medium text-yellow-600">Yes</div>
+                          <div className="text-sm font-medium text-yellow-600">
+                            {"fallbackFromProviderName" in summary && summary.fallbackFromProviderName
+                              ? `From: ${summary.fallbackFromProviderName}`
+                              : "Yes"}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cost Calculation Method */}
+                    {"costCalculationMethod" in summary && summary.costCalculationMethod && (
+                      <div className="flex items-center gap-2">
+                        <Calculator className="h-3.5 w-3.5 text-emerald-500" />
+                        <div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Cost Method</div>
+                          <div className="text-sm font-medium">
+                            {summary.costCalculationMethod === "provider_reported" ? "Provider Reported"
+                              : summary.costCalculationMethod === "model_lookup" ? "Model Pricing"
+                              : "Default Rate"}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -321,6 +341,21 @@ export function TransactionDetailDialog({
                             <span className="text-xs text-muted-foreground">
                               {formatLatency(entry.timing.totalMs)}
                             </span>
+                          )}
+                          {entry.timing && (entry.timing.networkMs != null || entry.timing.parseMs != null) && (
+                            <span className="text-[10px] text-muted-foreground/70">
+                              ({[
+                                entry.timing.networkMs != null && `net: ${entry.timing.networkMs}ms`,
+                                entry.timing.parseMs != null && `parse: ${entry.timing.parseMs}ms`,
+                              ].filter(Boolean).join(", ")})
+                            </span>
+                          )}
+                          {entry.costCalculationMethod && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                              {entry.costCalculationMethod === "provider_reported" ? "provider cost"
+                                : entry.costCalculationMethod === "model_lookup" ? "model pricing"
+                                : "default rate"}
+                            </Badge>
                           )}
                         </div>
 

@@ -18,7 +18,8 @@ from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.core.oauth_config import get_oauth_config
 from app.services.oauth_service import OAuthService
-from app.services.google_token_service import GoogleTokenService, InvalidGrantError
+from app.services.google_token_service import GoogleTokenService, InvalidGrantError as GoogleInvalidGrantError
+from app.services.microsoft_token_service import MicrosoftTokenService, InvalidGrantError as MicrosoftInvalidGrantError
 from app.models.user import User
 
 router = APIRouter(prefix="/api/oauth", tags=["oauth"])
@@ -437,5 +438,78 @@ async def drive_disconnect(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No Google Drive connection found",
+        )
+    return {"success": True}
+
+
+# ─── Microsoft OneDrive OAuth (per-user consent) ───
+
+
+class OneDriveCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
+@router.get("/microsoft/onedrive/authorize")
+async def onedrive_authorize(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get Microsoft OAuth URL with OneDrive scopes for an authenticated user."""
+    try:
+        svc = MicrosoftTokenService(db)
+        return await svc.build_onedrive_auth_url(user_id=current_user.id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        )
+
+
+@router.post("/microsoft/onedrive/callback")
+async def onedrive_callback(
+    request: OneDriveCallbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Exchange OneDrive OAuth code for tokens and store them."""
+    try:
+        svc = MicrosoftTokenService(db)
+        result = await svc.exchange_onedrive_code(
+            user_id=current_user.id,
+            code=request.code,
+            state=request.state,
+            tenant_id=getattr(current_user, "tenant_id", None),
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.get("/microsoft/onedrive/status")
+async def onedrive_status(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current user's OneDrive connection status."""
+    svc = MicrosoftTokenService(db)
+    return await svc.get_connection_status(user_id=current_user.id)
+
+
+@router.delete("/microsoft/onedrive/disconnect")
+async def onedrive_disconnect(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect OneDrive for the current user."""
+    svc = MicrosoftTokenService(db)
+    success = await svc.disconnect(user_id=current_user.id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No OneDrive connection found",
         )
     return {"success": True}

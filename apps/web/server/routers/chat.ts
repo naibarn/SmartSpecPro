@@ -46,6 +46,7 @@ import { getDb } from "../db";
 import { skills as skillsTable, userSkillVisibility } from "../../drizzle/schema";
 import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
+import { auditLogger } from "../services/auditLogger";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -1338,6 +1339,25 @@ export const chatRouter = router({
           const baseUrl = provider.baseUrl.replace(/\/+$/, "");
           const apiUrl = baseUrl.includes("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
 
+          // Audit: log LLM skill request (scrub message content for PII)
+          const skillStartTime = Date.now();
+          auditLogger.log({
+            eventType: "llm_request",
+            userId: ctx.user.id,
+            providerId: provider.providerId,
+            providerName: provider.providerName,
+            model: provider.providerModelId,
+            requestType: "skill",
+            requestPayload: {
+              skillSlug: input.skillId,
+              messageCount: llmMessages.length,
+              messages: llmMessages.map((m) => ({
+                role: m.role,
+                contentLength: m.content.length,
+              })),
+            },
+          });
+
           const llmResponse = await fetch(apiUrl, {
             method: "POST",
             headers: {
@@ -1354,6 +1374,18 @@ export const chatRouter = router({
           if (!llmResponse.ok) {
             const errorText = await llmResponse.text().catch(() => "Unknown error");
             console.error(`[executeSkill] LLM API error ${llmResponse.status}:`, errorText);
+            auditLogger.log({
+              eventType: "llm_response",
+              userId: ctx.user.id,
+              providerId: provider.providerId,
+              providerName: provider.providerName,
+              model: provider.providerModelId,
+              requestType: "skill",
+              statusCode: llmResponse.status,
+              errorType: `http_${llmResponse.status}`,
+              errorMessage: errorText.slice(0, 500),
+              timing: { totalMs: Date.now() - skillStartTime },
+            });
             return {
               success: false,
               skillId: input.skillId,
@@ -1369,6 +1401,28 @@ export const chatRouter = router({
           const content = llmData?.choices?.[0]?.message?.content || "No response generated";
           const inputTokens = llmData?.usage?.prompt_tokens ?? 0;
           const outputTokens = llmData?.usage?.completion_tokens ?? 0;
+
+          // Audit: log LLM skill response
+          auditLogger.log({
+            eventType: "llm_response",
+            userId: ctx.user.id,
+            providerId: provider.providerId,
+            providerName: provider.providerName,
+            model: provider.providerModelId,
+            requestType: "skill",
+            inputTokens,
+            outputTokens,
+            statusCode: 200,
+            timing: { totalMs: Date.now() - skillStartTime },
+            responsePayload: {
+              usage: {
+                prompt_tokens: inputTokens,
+                completion_tokens: outputTokens,
+              },
+              contentLength: content.length,
+              skillSlug: input.skillId,
+            },
+          });
 
           // Deduct credits
           const { creditsUsed } = await deductCreditsForModel({

@@ -55,6 +55,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
+import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
 import { BudgetPanel } from '@/components/settings/BudgetPanel';
 
 type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing' | 'integrations';
@@ -1476,6 +1477,7 @@ export default function Settings() {
                     <p className="text-gray-600 dark:text-gray-400">Connect external services to enhance your workflow</p>
                   </div>
                   <GoogleDrivePanel />
+                  <OneDrivePanel />
                 </div>
               )}
             </div>

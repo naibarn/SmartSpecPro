@@ -60,7 +60,7 @@ describe("Scheduled Messages via Cloud Tasks", () => {
     expect(enqueueTask).toHaveBeenCalledWith(
       expect.objectContaining({
         queueName: "periodic-tasks",
-        handlerPath: "/tasks/deliver-scheduled-message",
+        handlerPath: "/_internal/tasks/deliver-scheduled-message",
         payload: { scheduleId: 42 },
         delaySeconds: expect.any(Number),
       })

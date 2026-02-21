@@ -207,26 +207,49 @@ function FlowEditor() {
   const numericWorkflowId = workflowId ? Number(workflowId) : null;
   const loadWorkflowQuery = (trpc as any).workflow.load.useQuery(
     { id: numericWorkflowId! },
-    { enabled: !!numericWorkflowId && !isNaN(numericWorkflowId) }
+    {
+      enabled: !!numericWorkflowId && !isNaN(numericWorkflowId),
+      // Prevent background refetches from overwriting unsaved canvas edits.
+      // The canvas is the user's local working copy; server data is only the
+      // initial snapshot. A refetch triggered by window focus or reconnect
+      // would call setNodes/setEdges and discard any nodes the user has dragged
+      // onto the canvas since the page loaded.
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }
   );
   const templatesQuery = (trpc as any).workflow.listSaved.useQuery({});
+
+  // Track whether the canvas has been initialised from server data.
+  // Only the very first successful load should populate nodes/edges.
+  // Subsequent query data changes (e.g. a manual refetch after version restore)
+  // must not silently clobber the user's unsaved work.
+  const canvasInitialisedRef = useRef(false);
 
   // Load workflow from URL — supports both /editor/:id and /editor?id=xxx
   useEffect(() => {
     const idFromRoute = routeParams?.id;
     if (idFromRoute) {
       setWorkflowId(idFromRoute);
+      // Reset initialisation flag when the workflow ID changes so a fresh
+      // load populates the canvas for the new workflow.
+      canvasInitialisedRef.current = false;
       return;
     }
     const idFromQuery = new URLSearchParams(window.location.search).get('id');
     if (idFromQuery) {
       setWorkflowId(idFromQuery);
+      canvasInitialisedRef.current = false;
     }
   }, [routeParams?.id]);
 
-  // Load workflow data when query returns
+  // Load workflow data when query returns — only on initial load.
+  // Do NOT re-run when data changes due to background refetches; that would
+  // overwrite nodes the user has added to the canvas since the initial load.
   useEffect(() => {
-    if (loadWorkflowQuery.data) {
+    if (loadWorkflowQuery.data && !canvasInitialisedRef.current) {
+      canvasInitialisedRef.current = true;
       const workflow = loadWorkflowQuery.data;
       setWorkflowName(workflow.name || '');
       setWorkflowDescription(workflow.description || '');
@@ -2246,6 +2269,9 @@ function FlowEditor() {
           onClose={() => setShowVersionHistory(false)}
           onRestore={() => {
             setShowVersionHistory(false);
+            // Reset the initialisation guard so the refetch result is applied
+            // to the canvas (version restore is an intentional canvas reset).
+            canvasInitialisedRef.current = false;
             loadWorkflowQuery.refetch();
           }}
         />

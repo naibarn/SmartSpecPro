@@ -196,10 +196,42 @@ export const creditsRouter = router({
     )
     .query(async ({ input }) => {
       const { userId, ...filters } = input;
-      return getTransactionHistory({
+      const transactions = await getTransactionHistory({
         userId,
         ...filters,
         type: filters.type as TransactionType | undefined,
+      });
+
+      // Apply same sanitization as user-facing endpoint
+      const safeMetadataKeys = ["model", "provider", "tokensUsed", "costUsd", "inputTokens", "outputTokens", "skill", "reason"];
+
+      return transactions.map((t: (typeof transactions)[number]) => {
+        const safeMeta = t.metadata
+          ? Object.fromEntries(
+              Object.entries(t.metadata).filter(([k]) => safeMetadataKeys.includes(k))
+            )
+          : null;
+
+        const title = t.conversationTitle
+          ? t.conversationTitle.length > 50
+            ? t.conversationTitle.slice(0, 50) + "…"
+            : t.conversationTitle
+          : null;
+
+        return {
+          id: t.id,
+          amount: t.amount,
+          type: t.type,
+          description: t.description,
+          balanceAfter: t.balanceAfter,
+          createdAt: t.createdAt,
+          metadata: safeMeta,
+          traceId: t.traceId,
+          conversationId: t.conversationId,
+          skillSlug: t.skillSlug,
+          sourceType: t.sourceType,
+          conversationTitle: title,
+        };
       });
     }),
 

@@ -32,6 +32,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   ChevronLeft,
   ChevronRight,
@@ -57,6 +67,7 @@ import {
   ChevronUp,
   X,
   Share2,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -247,6 +258,21 @@ export default function SkillBrowser() {
   const toggleAutoTrigger = trpc.skills.toggleAutoTrigger.useMutation({
     onSuccess: () => {
       utils.skills.browseAllSkills.invalidate();
+    },
+  });
+
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+
+  const deleteOwnMutation = trpc.skills.deleteOwn.useMutation({
+    onSuccess: () => {
+      utils.skills.browseAllSkills.invalidate();
+      utils.skills.getUserVisibleSkills.invalidate();
+      toast.success("Skill deleted");
+      setDeleteTarget(null);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setDeleteTarget(null);
     },
   });
 
@@ -466,6 +492,25 @@ export default function SkillBrowser() {
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
+
+                                {/* Delete button for owned skills */}
+                                {isOwner && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                          onClick={() => setDeleteTarget({ id: skill.id, name: skill.name })}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Delete this skill</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                               </div>
 
                               {/* Credit multiplier */}
@@ -518,6 +563,39 @@ export default function SkillBrowser() {
           </>
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Skill</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteOwnMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteOwnMutation.isPending}
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteOwnMutation.mutate({ id: deleteTarget.id });
+                }
+              }}
+            >
+              {deleteOwnMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

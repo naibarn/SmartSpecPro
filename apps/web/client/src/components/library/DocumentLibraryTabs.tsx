@@ -29,6 +29,12 @@ const PRIMARY_TABS: TabDef[] = [
     activeClass: "border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm",
   },
   {
+    value: "my_onedrive",
+    label: "OneDrive",
+    icon: Cloud,
+    activeClass: "border-blue-300 bg-blue-50 text-blue-800 shadow-sm",
+  },
+  {
     value: "shared_with_me",
     label: "Shared With Me",
     icon: Share2,

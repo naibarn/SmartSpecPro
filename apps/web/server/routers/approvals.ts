@@ -166,7 +166,7 @@ export const approvalsRouter = router({
    * Get approval request details
    */
   getRequest: protectedProcedure
-    .input(z.object({ requestId: z.string().min(1) }))
+    .input(z.object({ requestId: z.string().uuid() }))
     .query(async ({ input, ctx }) => {
       try {
         const response = await fetch(
@@ -213,7 +213,7 @@ export const approvalsRouter = router({
   submitDecision: protectedProcedure
     .input(
       z.object({
-        requestId: z.string().min(1),
+        requestId: z.string().uuid(),
         decision: z.enum(["approved", "rejected"]),
         comment: z.string().max(1000).optional(),
       })
@@ -274,7 +274,7 @@ export const approvalsRouter = router({
   cancel: protectedProcedure
     .input(
       z.object({
-        requestId: z.string().min(1),
+        requestId: z.string().uuid(),
         reason: z.string().max(500).optional(),
       })
     )

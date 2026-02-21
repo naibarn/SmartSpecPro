@@ -20,6 +20,7 @@ export interface CostEstimationProps {
 interface CostBreakdown {
   llmNodes: { count: number; estimatedCredits: number };
   imageNodes: { count: number; estimatedCredits: number };
+  videoNodes: { count: number; estimatedCredits: number };
   skillNodes: { count: number; estimatedCredits: number };
   otherNodes: { count: number; estimatedCredits: number };
   totalEstimated: number;
@@ -32,10 +33,12 @@ interface CostBreakdown {
 function estimateCost(nodes: Node[]): CostBreakdown {
   let llmCount = 0,
     imageCount = 0,
+    videoCount = 0,
     skillCount = 0,
     otherCount = 0;
   let llmCredits = 0,
     imageCredits = 0,
+    videoCredits = 0,
     skillCredits = 0,
     otherCredits = 0;
 
@@ -48,8 +51,14 @@ function estimateCost(nodes: Node[]): CostBreakdown {
       llmCredits += 5;
     } else if (nodeType === "generate_image") {
       imageCount++;
-      // Rough estimate: 15 credits per image (varies by size and provider)
-      imageCredits += 15;
+      // Use actual model credit cost from node config if available
+      const modelCreditCost = node.data?.config?.modelCreditCost;
+      imageCredits += typeof modelCreditCost === "number" ? modelCreditCost : 10;
+    } else if (nodeType === "generate_video") {
+      videoCount++;
+      // Use actual model credit cost from node config if available
+      const modelCreditCost = node.data?.config?.modelCreditCost;
+      videoCredits += typeof modelCreditCost === "number" ? modelCreditCost : 30;
     } else if (nodeType.startsWith("skill_")) {
       skillCount++;
       // Rough estimate: 3 credits per skill execution
@@ -64,9 +73,10 @@ function estimateCost(nodes: Node[]): CostBreakdown {
   return {
     llmNodes: { count: llmCount, estimatedCredits: llmCredits },
     imageNodes: { count: imageCount, estimatedCredits: imageCredits },
+    videoNodes: { count: videoCount, estimatedCredits: videoCredits },
     skillNodes: { count: skillCount, estimatedCredits: skillCredits },
     otherNodes: { count: otherCount, estimatedCredits: otherCredits },
-    totalEstimated: llmCredits + imageCredits + skillCredits + otherCredits,
+    totalEstimated: llmCredits + imageCredits + videoCredits + skillCredits + otherCredits,
   };
 }
 
@@ -119,6 +129,14 @@ export function CostEstimation({
               Image Generation ({breakdown.imageNodes.count} nodes):
             </span>
             <span className="font-medium">{breakdown.imageNodes.estimatedCredits} credits</span>
+          </div>
+        )}
+        {breakdown.videoNodes.count > 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">
+              Video Generation ({breakdown.videoNodes.count} nodes):
+            </span>
+            <span className="font-medium">{breakdown.videoNodes.estimatedCredits} credits</span>
           </div>
         )}
         {breakdown.skillNodes.count > 0 && (

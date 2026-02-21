@@ -68,6 +68,7 @@ import Settings from "./pages/Settings";
 import SkillBrowser from "./pages/SkillBrowser";
 import DockerRedirect from "./pages/DockerRedirect";
 import GoogleDriveCallback from "./pages/GoogleDriveCallback";
+import OneDriveCallback from "./pages/OneDriveCallback";
 import DocPage from "./pages/DocPage";
 import About from "./pages/About";
 import Changelog from "./pages/Changelog";
@@ -172,6 +173,7 @@ function Router() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/auth/callback/google-drive" component={GoogleDriveCallback} />
+      <Route path="/auth/callback/onedrive" component={OneDriveCallback} />
       <Route path="/auth/callback/:provider" component={AuthCallback} />
       <Route path="/auth/device" component={DeviceAuth} />
       <Route path="/factory" component={Factory} />

@@ -58,6 +58,7 @@ import { libraryOpsRouter } from "./routers/libraryOps";
 import { factoryRouter } from "./routers/factory";
 import { groupsRouter } from "./routers/groups";
 import { googleDriveRouter } from "./routers/googleDrive";
+import { oneDriveRouter } from "./routers/oneDrive";
 import { searchRouter } from "./routers/search";
 import { adminOpsRouter } from "./routers/adminOps";
 import { funnelAnalyticsRouter } from "./routers/funnelAnalytics";
@@ -134,7 +135,7 @@ export const appRouter = router({
       const { systemSettings } = await import("../drizzle/schema");
       const { eq } = await import("drizzle-orm");
 
-      const result = { google: false, github: false };
+      const result = { google: false, github: false, microsoft: false };
 
       try {
         const db = await getDb();
@@ -146,10 +147,11 @@ export const appRouter = router({
           for (const row of rows) {
             if (row.key === "googleClientId" && row.value) result.google = true;
             if (row.key === "githubClientId" && row.value) result.github = true;
+            if (row.key === "microsoftClientId" && row.value) result.microsoft = true;
           }
         }
       } catch {
-        // DB not available — return defaults (both false)
+        // DB not available — return defaults (all false)
       }
 
       return result;
@@ -1359,6 +1361,9 @@ export const appRouter = router({
 
   // Google Drive integration (OAuth, sync, editing)
   googleDrive: googleDriveRouter,
+
+  // OneDrive integration (OAuth, sync, editing)
+  oneDrive: oneDriveRouter,
 
   // Skills management and prompt enhancement
   skills: skillsRouter,

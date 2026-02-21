@@ -3,12 +3,14 @@ SmartSpec Pro - Approvals API
 Phase 3: Human-in-the-loop Approval Endpoints
 """
 
+import asyncio
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
@@ -16,6 +18,8 @@ from app.models.user import User
 from app.services.approval_db_service import ApprovalDBService
 from app.core.database import AsyncSessionLocal
 from app.multitenancy.tenant_context import get_current_tenant_id
+
+_logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/approvals")
 
@@ -43,8 +47,8 @@ class ApprovalStatus(str, Enum):
 
 
 class ApprovalDecision(str, Enum):
-    APPROVE = "approve"
-    REJECT = "reject"
+    APPROVED = "approved"
+    REJECTED = "rejected"
 
 
 class RiskLevel(str, Enum):
@@ -159,6 +163,171 @@ class ApprovalListResponse(BaseModel):
 
 
 # ==========================================
+# Workflow Resume Helper
+# ==========================================
+
+
+async def _resume_workflow_after_decision(
+    approval_request,
+    decision: str,
+    approver_id: int,
+    comment: Optional[str],
+) -> None:
+    """Resume a paused LangGraph workflow after an approval decision.
+
+    Called as a fire-and-forget background coroutine so the API response
+    is not blocked by the (potentially slow) graph resumption.
+
+    The compiled graph is looked up in the in-process execution_registry
+    first (fast path). If the process was restarted since the workflow
+    paused, we recompile from the DB (slow path, same as the timeout task).
+    """
+    execution_id = approval_request.execution_id
+    tenant_id = approval_request.tenant_id
+
+    if not execution_id:
+        _logger.warning(
+            "approval_resume_no_execution_id",
+            request_id=approval_request.id,
+        )
+        return
+
+    thread_id = f"{tenant_id}:{execution_id}" if tenant_id else execution_id
+
+    # Build the resume value matching HITLResumeHandler format
+    is_approved = decision == "approved"
+    resume_value = {
+        "approved": is_approved,
+        "rejected": not is_approved,
+        "decision": decision,
+        "input_value": comment if not is_approved else None,
+        "comment": comment,
+        "approved_by": str(approver_id) if is_approved else None,
+        "rejected_by": str(approver_id) if not is_approved else None,
+        "responded_at": datetime.now(timezone.utc).isoformat(),
+        "timeout": False,
+    }
+
+    try:
+        from langgraph.types import Command
+
+        command = Command(resume=resume_value)
+
+        # Fast path: get compiled graph from in-process registry
+        from app.orchestrator.execution_registry import get_active_execution
+
+        active = get_active_execution(execution_id)
+        compiled_graph = active["graph"] if active else None
+
+        if compiled_graph is None:
+            # Slow path: recompile from DB (process may have restarted)
+            _logger.info(
+                "approval_resume_recompiling_graph",
+                execution_id=execution_id,
+            )
+            from app.core.database import get_db_context
+            from app.models.workflow import Workflow
+            from app.models.workflow_execution import WorkflowExecution
+            from sqlalchemy import select
+
+            async with get_db_context() as db:
+                result = await db.execute(
+                    select(WorkflowExecution).where(
+                        WorkflowExecution.id == execution_id,
+                    )
+                )
+                execution = result.scalar_one_or_none()
+
+                if not execution or not execution.workflow_id:
+                    _logger.warning(
+                        "approval_resume_execution_not_found",
+                        execution_id=execution_id,
+                    )
+                    return
+
+                wf_result = await db.execute(
+                    select(Workflow).where(
+                        Workflow.id == int(execution.workflow_id)
+                    )
+                )
+                workflow = wf_result.scalar_one_or_none()
+
+                if not workflow or not workflow.workflowJson:
+                    _logger.warning(
+                        "approval_resume_workflow_not_found",
+                        workflow_id=execution.workflow_id,
+                    )
+                    return
+
+            from app.orchestrator.langgraph_runtime import get_langgraph_runtime
+
+            runtime = get_langgraph_runtime()
+            compiled_graph = await runtime.compile(workflow.workflowJson)
+        else:
+            from app.orchestrator.langgraph_runtime import get_langgraph_runtime
+
+            runtime = get_langgraph_runtime()
+
+        # Resume the workflow
+        await runtime.resume(
+            compiled_graph=compiled_graph,
+            thread_id=thread_id,
+            command=command,
+        )
+
+        # Update execution status back to running
+        from app.core.database import get_db_context
+        from app.models.workflow_execution import WorkflowExecution
+        from sqlalchemy import select
+
+        async with get_db_context() as db:
+            result = await db.execute(
+                select(WorkflowExecution).where(
+                    WorkflowExecution.id == execution_id,
+                )
+            )
+            execution = result.scalar_one_or_none()
+            if execution and execution.status == "interrupted":
+                execution.status = "running"
+                await db.commit()
+
+        # Clean up the Redis interrupt tracker entry
+        try:
+            import redis.asyncio as aioredis
+            from app.core.config import settings
+            from app.orchestrator.hitl import PendingInterruptTracker
+
+            redis_client = aioredis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            )
+            try:
+                tracker = PendingInterruptTracker(redis_client)
+                # The node_id is stored in the approval request's extra_data
+                node_id = (approval_request.extra_data or {}).get("node_id", "")
+                if node_id:
+                    await tracker.remove_interrupt(thread_id, node_id)
+            finally:
+                await redis_client.aclose()
+        except Exception:
+            _logger.debug("approval_resume_redis_cleanup_failed", exc_info=True)
+
+        _logger.info(
+            "approval_workflow_resumed",
+            execution_id=execution_id,
+            thread_id=thread_id,
+            decision=decision,
+            approver_id=approver_id,
+        )
+
+    except Exception:
+        _logger.exception(
+            "approval_resume_failed",
+            execution_id=execution_id,
+            request_id=approval_request.id,
+        )
+
+
+# ==========================================
 # Approval Request Endpoints
 # ==========================================
 
@@ -222,18 +391,14 @@ async def list_approval_requests(
         tenant_id=tenant_id,
         status=status_filter.value if status_filter else None,
         request_type=request_type,
-        project_id=project_id,
-        user_id=current_user.id,
-        page=page,
-        page_size=page_size,
+        limit=page_size,
+        offset=(page - 1) * page_size,
     )
 
     total = await approval_service.count_requests(
         tenant_id=tenant_id,
         status=status_filter.value if status_filter else None,
         request_type=request_type,
-        project_id=project_id,
-        user_id=current_user.id,
     )
 
     return ApprovalListResponse(
@@ -266,6 +431,7 @@ async def list_pending_approvals(
 async def get_approval_request(
     request_id: str,
     current_user: User = Depends(get_current_user),
+    tenant_id: Optional[str] = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -273,7 +439,7 @@ async def get_approval_request(
     """
     approval_service = ApprovalDBService(db)
 
-    request = await approval_service.get_request(request_id)
+    request = await approval_service.get_request(request_id, tenant_id=tenant_id)
 
     if not request:
         raise HTTPException(
@@ -289,14 +455,29 @@ async def respond_to_approval(
     request_id: str,
     data: ApprovalResponseCreate,
     current_user: User = Depends(get_current_user),
+    tenant_id: Optional[str] = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
     Respond to an approval request (approve or reject).
+
+    Authorization checks:
+    - Request must exist and be in PENDING status
+    - User must not have already responded to this request
+    - User must be in the request's approvers list (extra_data.approvers)
+      OR have admin/domain_admin role (admin bypass)
     """
     approval_service = ApprovalDBService(db)
 
-    # Check if user can approve
+    # Verify the request exists first (return 404 if not found)
+    approval_request = await approval_service.get_request(request_id, tenant_id=tenant_id)
+    if not approval_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Approval request not found",
+        )
+
+    # Check if user is authorized to approve this request
     can_approve = await approval_service.can_user_approve(
         request_id=request_id,
         user_id=current_user.id,
@@ -308,18 +489,37 @@ async def respond_to_approval(
             detail="You are not authorized to respond to this request",
         )
 
-    # Submit response
-    request = await approval_service.submit_response(
-        request_id=request_id,
-        approver_id=current_user.id,
-        decision=data.decision.value,
-        comment=data.comment,
-    )
+    # Submit response (skip_auth_check=True since we already validated above)
+    try:
+        request = await approval_service.submit_response(
+            request_id=request_id,
+            approver_id=current_user.id,
+            decision=data.decision.value,
+            comment=data.comment,
+        )
+    except PermissionError:
+        # Defense-in-depth: catch authorization errors from the service layer
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to respond to this request",
+        )
 
     if not request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to submit response. Request may already be resolved.",
+        )
+
+    # If the approval request is now fully resolved (APPROVED or REJECTED),
+    # resume the paused LangGraph workflow in the background.
+    if request.status in ("approved", "rejected"):
+        asyncio.ensure_future(
+            _resume_workflow_after_decision(
+                approval_request=request,
+                decision=data.decision.value,
+                approver_id=current_user.id,
+                comment=data.comment,
+            )
         )
 
     return request
@@ -329,6 +529,7 @@ async def respond_to_approval(
 async def cancel_approval_request(
     request_id: str,
     current_user: User = Depends(get_current_user),
+    tenant_id: Optional[str] = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -338,7 +539,7 @@ async def cancel_approval_request(
     """
     approval_service = ApprovalDBService(db)
 
-    request = await approval_service.get_request(request_id)
+    request = await approval_service.get_request(request_id, tenant_id=tenant_id)
 
     if not request:
         raise HTTPException(
@@ -366,12 +567,21 @@ async def cancel_approval_request(
 async def list_approval_responses(
     request_id: str,
     current_user: User = Depends(get_current_user),
+    tenant_id: Optional[str] = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
     List responses for an approval request.
     """
     approval_service = ApprovalDBService(db)
+
+    # Verify the parent request belongs to the tenant before returning responses
+    request = await approval_service.get_request(request_id, tenant_id=tenant_id)
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Approval request not found",
+        )
 
     responses = await approval_service.list_responses(request_id)
     return responses
@@ -392,7 +602,14 @@ async def create_approval_rule(
     Create an approval rule.
 
     Rules define when approval is required and who can approve.
+    Only administrators can manage approval rules.
     """
+    if not hasattr(current_user, 'role') or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can manage approval rules",
+        )
+
     approval_service = ApprovalDBService(db)
 
     rule = await approval_service.create_rule(
@@ -472,7 +689,15 @@ async def update_approval_rule(
 ):
     """
     Update an approval rule.
+
+    Only administrators can manage approval rules.
     """
+    if not hasattr(current_user, 'role') or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can manage approval rules",
+        )
+
     approval_service = ApprovalDBService(db)
 
     rule = await approval_service.update_rule(
@@ -497,7 +722,15 @@ async def delete_approval_rule(
 ):
     """
     Delete an approval rule.
+
+    Only administrators can manage approval rules.
     """
+    if not hasattr(current_user, 'role') or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can manage approval rules",
+        )
+
     approval_service = ApprovalDBService(db)
 
     await approval_service.delete_rule(rule_id)
@@ -512,7 +745,15 @@ async def toggle_approval_rule(
 ):
     """
     Enable or disable an approval rule.
+
+    Only administrators can manage approval rules.
     """
+    if not hasattr(current_user, 'role') or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can manage approval rules",
+        )
+
     approval_service = ApprovalDBService(db)
 
     rule = await approval_service.toggle_rule(rule_id, is_active)

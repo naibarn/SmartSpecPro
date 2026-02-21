@@ -1998,6 +1998,46 @@ export const skillsRouter = router({
     }),
 
   /**
+   * Delete a skill owned by the current user
+   */
+  deleteOwn: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Verify the skill exists and belongs to the current user
+      const [skill] = await dbInstance
+        .select({ id: skills.id, slug: skills.slug, createdBy: skills.createdBy })
+        .from(skills)
+        .where(eq(skills.id, input.id))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+      }
+
+      if (skill.createdBy !== ctx.user?.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only delete skills you own" });
+      }
+
+      await dbInstance.delete(skills).where(eq(skills.id, input.id));
+
+      // Delete skill folder to prevent auto-sync re-import
+      if (skill.slug) {
+        const fs = await import("fs");
+        const path = await import("path");
+        const skillDir = path.resolve(process.cwd(), "skills", skill.slug);
+        if (fs.existsSync(skillDir)) {
+          fs.rmSync(skillDir, { recursive: true, force: true });
+        }
+      }
+
+      await refreshSkillCache();
+      return { success: true };
+    }),
+
+  /**
    * Regenerate marketplace content from skillContent (admin only)
    */
   regenerateMarketplaceContent: adminProcedure

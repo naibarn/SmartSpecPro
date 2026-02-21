@@ -72,6 +72,14 @@ celery_app.conf.update(
         "app.tasks.workflow_tasks.process_queue_message": {"queue": "celery"},
         "app.tasks.workflow_tasks.execute_webhook_workflow": {"queue": "celery"},
         "app.tasks.workflow_tasks.execute_delayed_node": {"queue": "celery"},
+        # OneDrive sync & maintenance -> media queue (network-bound)
+        "onedrive.initial_sync": {"queue": "media"},
+        "onedrive.process_changes": {"queue": "media"},
+        "onedrive.renew_subscriptions": {"queue": "media"},
+        "onedrive.cleanup_edit_sessions": {"queue": "media"},
+        "onedrive.disconnect_cleanup": {"queue": "media"},
+        # Approval timeout checker -> celery queue (lightweight, periodic)
+        "app.tasks.approval_timeout_tasks.check_expired_approvals": {"queue": "celery"},
     },
 )
 
@@ -112,6 +120,18 @@ celery_app.conf.beat_schedule = {
     "poll-drive-changes": {
         "task": "poll_drive_changes",
         "schedule": crontab(minute="*/15"),  # Every 15 min - fallback polling when webhook is down
+    },
+    "renew-onedrive-subscriptions": {
+        "task": "onedrive.renew_subscriptions",
+        "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours - renew expiring OneDrive subscriptions
+    },
+    "cleanup-onedrive-edit-sessions": {
+        "task": "onedrive.cleanup_edit_sessions",
+        "schedule": crontab(minute=0, hour="*"),  # Every hour - expire stale OneDrive edit sessions
+    },
+    "check-expired-approvals": {
+        "task": "app.tasks.approval_timeout_tasks.check_expired_approvals",
+        "schedule": 300.0,  # Every 5 minutes - auto-reject expired workflow approvals
     },
 }
 

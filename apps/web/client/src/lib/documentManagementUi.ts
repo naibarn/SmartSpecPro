@@ -1,6 +1,6 @@
 export const DOCUMENT_MANAGEMENT_ROUTE = "/document-management";
 
-export type DocumentScopeTab = "my_library" | "my_drive" | "shared_with_me" | "shared_groups" | "trash";
+export type DocumentScopeTab = "my_library" | "my_drive" | "my_onedrive" | "shared_with_me" | "shared_groups" | "trash";
 export type DocumentSortOrder = "updated_desc" | "created_desc";
 export type DocumentViewMode = "library" | "editor";
 export type DocumentAccessSource = "owner" | "shared_direct" | "shared_group";
@@ -68,7 +68,8 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
       scope === "shared_with_me" ||
       scope === "shared_groups" ||
       scope === "trash" ||
-      scope === "my_drive"
+      scope === "my_drive" ||
+      scope === "my_onedrive"
         ? scope
         : "my_library",
     sort: sort === "created_desc" ? "created_desc" : "updated_desc",

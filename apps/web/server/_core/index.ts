@@ -325,7 +325,8 @@ app.get("/api/storage/files/*", async (req, res) => {
 app.use("/api/webhooks", createWebhookRouter());
 
 // Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
-app.use("/tasks", createTasksRouter());
+// Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
+app.use("/_internal/tasks", createTasksRouter());
 
 // REST/SSE endpoints
 registerLLMRoutes(app);

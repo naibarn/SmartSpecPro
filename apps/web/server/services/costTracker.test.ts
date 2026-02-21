@@ -101,7 +101,7 @@ describe("calculateCost", () => {
       inputTokens: 1000,
       outputTokens: 500,
     });
-    expect(cost).toBe(0.0035);
+    expect(cost).toEqual({ cost: 0.0035, method: "provider_reported" });
   });
 
   it("uses model pricing from model_provider_map as fallback", async () => {
@@ -124,7 +124,8 @@ describe("calculateCost", () => {
     });
 
     // (1000/1M * 2.50) + (500/1M * 10.00) = 0.0025 + 0.005 = 0.0075
-    expect(cost).toBeCloseTo(0.0075, 10);
+    expect(cost.cost).toBeCloseTo(0.0075, 10);
+    expect(cost.method).toBe("model_lookup");
   });
 
   it("uses default pricing when model not in map", async () => {
@@ -145,7 +146,7 @@ describe("calculateCost", () => {
     });
 
     // (1M/1M * 1.0) + (1M/1M * 4.0) = 5.0
-    expect(cost).toBe(5.0);
+    expect(cost).toEqual({ cost: 5.0, method: "default_rate" });
   });
 
   it("returns cost = 0 for free models", async () => {
@@ -167,7 +168,7 @@ describe("calculateCost", () => {
       outputTokens: 5000,
     });
 
-    expect(cost).toBe(0);
+    expect(cost).toEqual({ cost: 0, method: "model_lookup" });
   });
 });
 

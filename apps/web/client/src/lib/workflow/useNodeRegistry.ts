@@ -20,6 +20,8 @@ export interface InputSpec {
   options_endpoint?: string;
   validation?: Record<string, unknown>;
   placeholder?: string;
+  depends_on?: string;
+  option_groups?: Record<string, Array<{ value: string; label: string }>>;
 }
 
 export interface OutputSpec {

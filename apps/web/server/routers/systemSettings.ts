@@ -640,6 +640,10 @@ export const systemSettingsRouter = router({
       githubClientSecret: undefined,
       githubClientSecretConfigured: false,
       githubRedirectUri: undefined,
+      microsoftClientId: undefined,
+      microsoftClientSecret: undefined,
+      microsoftClientSecretConfigured: false,
+      microsoftOneDriveRedirectUri: undefined,
     };
 
     for (const setting of settings) {
@@ -659,6 +663,13 @@ export const systemSettingsRouter = router({
         result.githubClientSecretConfigured = true;
       } else if (setting.key === "githubRedirectUri") {
         result.githubRedirectUri = setting.value || undefined;
+      } else if (setting.key === "microsoftClientId") {
+        result.microsoftClientId = setting.value || undefined;
+      } else if (setting.key === "microsoftClientSecret" && setting.value) {
+        result.microsoftClientSecret = "****" + "*".repeat(20);
+        result.microsoftClientSecretConfigured = true;
+      } else if (setting.key === "microsoftOneDriveRedirectUri") {
+        result.microsoftOneDriveRedirectUri = setting.value || undefined;
       }
     }
 
@@ -677,6 +688,9 @@ export const systemSettingsRouter = router({
       githubClientId: z.string().optional(),
       githubClientSecret: z.string().optional(),
       githubRedirectUri: z.string().optional(),
+      microsoftClientId: z.string().optional(),
+      microsoftClientSecret: z.string().optional(),
+      microsoftOneDriveRedirectUri: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -690,6 +704,9 @@ export const systemSettingsRouter = router({
         { key: "githubClientId", value: input.githubClientId, sensitive: false },
         { key: "githubClientSecret", value: input.githubClientSecret, sensitive: true },
         { key: "githubRedirectUri", value: input.githubRedirectUri, sensitive: false },
+        { key: "microsoftClientId", value: input.microsoftClientId, sensitive: false },
+        { key: "microsoftClientSecret", value: input.microsoftClientSecret, sensitive: true },
+        { key: "microsoftOneDriveRedirectUri", value: input.microsoftOneDriveRedirectUri, sensitive: false },
       ];
 
       for (const update of updates) {

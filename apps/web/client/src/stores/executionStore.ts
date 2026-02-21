@@ -19,11 +19,20 @@ export interface LogEntry {
     | "node_complete"
     | "node_error"
     | "workflow_complete"
-    | "workflow_error";
+    | "workflow_error"
+    | "approval_required";
   status: ExecutionStatus;
   duration?: number; // milliseconds
   output?: Record<string, unknown>;
   error?: string;
+  approvalData?: {
+    approval_id: string;
+    message: string;
+    approval_type: "approve_reject" | "decision" | "input";
+    options?: string[];
+    timeout_minutes?: number;
+    data?: unknown;
+  };
 }
 
 export interface NodeStatus {

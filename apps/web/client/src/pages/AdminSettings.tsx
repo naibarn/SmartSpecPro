@@ -115,11 +115,16 @@ export default function AdminSettings() {
     githubClientId?: string;
     githubClientSecret?: string;
     githubRedirectUri?: string;
+    microsoftClientId?: string;
+    microsoftClientSecret?: string;
+    microsoftOneDriveRedirectUri?: string;
   }>({});
   const [showGoogleSecret, setShowGoogleSecret] = useState(false);
   const [showGithubSecret, setShowGithubSecret] = useState(false);
+  const [showMicrosoftSecret, setShowMicrosoftSecret] = useState(false);
   const [googleSecretConfigured, setGoogleSecretConfigured] = useState(false);
   const [githubSecretConfigured, setGithubSecretConfigured] = useState(false);
+  const [microsoftSecretConfigured, setMicrosoftSecretConfigured] = useState(false);
 
   // Queries
   const { data: stripeSettings, isLoading: stripeLoading, refetch: refetchStripe } =
@@ -533,9 +538,12 @@ export default function AdminSettings() {
         googleDriveRedirectUri: (oauthSettings.googleDriveRedirectUri as string) || "",
         githubClientId: (oauthSettings.githubClientId as string) || "",
         githubRedirectUri: (oauthSettings.githubRedirectUri as string) || "",
+        microsoftClientId: (oauthSettings.microsoftClientId as string) || "",
+        microsoftOneDriveRedirectUri: (oauthSettings.microsoftOneDriveRedirectUri as string) || "",
       });
       setGoogleSecretConfigured(!!oauthSettings.googleClientSecretConfigured);
       setGithubSecretConfigured(!!oauthSettings.githubClientSecretConfigured);
+      setMicrosoftSecretConfigured(!!oauthSettings.microsoftClientSecretConfigured);
     }
   }, [oauthSettings]);
 
@@ -574,6 +582,9 @@ export default function AdminSettings() {
       githubClientId: oauthForm.githubClientId,
       githubClientSecret: oauthForm.githubClientSecret,
       githubRedirectUri: oauthForm.githubRedirectUri,
+      microsoftClientId: oauthForm.microsoftClientId,
+      microsoftClientSecret: oauthForm.microsoftClientSecret,
+      microsoftOneDriveRedirectUri: oauthForm.microsoftOneDriveRedirectUri,
     });
   };
 
@@ -1135,6 +1146,90 @@ export default function AdminSettings() {
                       Must match the callback URL in GitHub OAuth App settings. Recommended: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono select-all">https://smartaihub.app/auth/callback/github</code>
                     </p>
                   </div>
+                </div>
+
+                {/* Microsoft / OneDrive OAuth */}
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-500" viewBox="0 0 23 23" fill="currentColor">
+                      <path d="M1 1h10v10H1zM12 1h10v10H12zM1 12h10v10H1zM12 12h10v10H12z" />
+                    </svg>
+                    <h4 className="font-medium">Microsoft / OneDrive</h4>
+                  </div>
+                  <div>
+                    <Label htmlFor="microsoftClientId">Application (Client) ID</Label>
+                    <Input
+                      id="microsoftClientId"
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      value={oauthForm.microsoftClientId || ""}
+                      onChange={(e) =>
+                        setOauthForm((prev) => ({ ...prev, microsoftClientId: e.target.value }))
+                      }
+                    />
+                    <p className="text-xs text-gray-500 mt-1">UUID format from Azure App Registration</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="microsoftClientSecret">
+                      Client Secret
+                      {microsoftSecretConfigured && (
+                        <span className="ml-2 text-xs text-green-600 bg-green-50 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded">Configured</span>
+                      )}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="microsoftClientSecret"
+                        type={showMicrosoftSecret ? "text" : "password"}
+                        placeholder={microsoftSecretConfigured ? "Leave blank to keep current secret" : "Enter Client Secret from Azure"}
+                        value={oauthForm.microsoftClientSecret || ""}
+                        onChange={(e) =>
+                          setOauthForm((prev) => ({ ...prev, microsoftClientSecret: e.target.value }))
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2"
+                        onClick={() => setShowMicrosoftSecret(!showMicrosoftSecret)}
+                      >
+                        {showMicrosoftSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="microsoftOneDriveRedirectUri">OneDrive Redirect URI</Label>
+                    <Input
+                      id="microsoftOneDriveRedirectUri"
+                      placeholder="https://smartaihub.app/auth/callback/onedrive"
+                      value={oauthForm.microsoftOneDriveRedirectUri || ""}
+                      onChange={(e) =>
+                        setOauthForm((prev) => ({ ...prev, microsoftOneDriveRedirectUri: e.target.value }))
+                      }
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Must match the Redirect URI in Azure. Recommended: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono select-all">https://smartaihub.app/auth/callback/onedrive</code>
+                    </p>
+                  </div>
+                  <details className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                    <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-300">Azure App Registration Setup Guide</summary>
+                    <ol className="mt-2 space-y-1.5 pl-5 list-decimal">
+                      <li>Go to <strong>Azure Portal</strong> &gt; <strong>App registrations</strong> &gt; <strong>New registration</strong></li>
+                      <li>Name: e.g. &quot;SmartSpec OneDrive&quot;</li>
+                      <li>Supported account types: <strong>&quot;Accounts in any organizational directory and personal Microsoft accounts&quot;</strong></li>
+                      <li>Redirect URI: select <strong>Web</strong>, enter: <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-xs font-mono">https://smartaihub.app/auth/callback/onedrive</code></li>
+                      <li>Go to <strong>Certificates &amp; secrets</strong> &gt; <strong>New client secret</strong> &gt; copy the Value (not the ID)</li>
+                      <li>Go to <strong>API permissions</strong> &gt; <strong>Add a permission</strong> &gt; <strong>Microsoft Graph</strong> &gt; <strong>Delegated permissions</strong>:
+                        <ul className="list-disc pl-5 mt-1">
+                          <li><code className="text-xs font-mono">Files.Read</code></li>
+                          <li><code className="text-xs font-mono">Files.ReadWrite</code></li>
+                          <li><code className="text-xs font-mono">User.Read</code></li>
+                          <li><code className="text-xs font-mono">offline_access</code></li>
+                        </ul>
+                      </li>
+                      <li>Copy the <strong>Application (client) ID</strong> from the Overview page and paste above</li>
+                    </ol>
+                    <p className="mt-2 text-xs text-gray-500">Azure App Registration and Microsoft Graph API are free — no additional cost.</p>
+                  </details>
                 </div>
 
                 {/* Save Button */}
