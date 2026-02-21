@@ -62,7 +62,7 @@ async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:
 
     defaults = {
         "googleRedirectUri": "https://smartaihub.app/auth/callback/google",
-        "githubRedirectUri": "http://localhost:3000/auth/callback/github",
+        "githubRedirectUri": "https://smartaihub.app/auth/callback/github",
     }
 
     for config_key, env_key in env_mapping.items():

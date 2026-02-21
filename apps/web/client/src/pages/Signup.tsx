@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { trpc } from '../lib/trpc';
 import {
   Mail,
   Lock,
@@ -25,6 +26,7 @@ import {
   Chrome,
   Check,
   Building2,
+  Info,
 } from 'lucide-react';
 
 type PlanType = 'free' | 'pro';
@@ -77,6 +79,10 @@ export default function Signup() {
       navigate('/dashboard');
     }
   }, [authLoading, user, navigate]);
+
+  // Check which OAuth providers are configured
+  const { data: oauthProviders } = trpc.auth.oauthProviders.useQuery();
+  const hasAnySocial = oauthProviders?.google || oauthProviders?.github;
 
   // Generate device fingerprint on mount (stored as __fp cookie)
   useEffect(() => { generateFingerprint().catch(() => {}); }, []);
@@ -159,15 +165,19 @@ export default function Signup() {
       const API_BASE_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_BASE_URL}/api/oauth/${provider.toLowerCase()}/authorize`);
       if (!response.ok) {
-        const err = await response.json();
-        toast.error(err.detail || `${provider} signup not available`);
+        const err = await response.json().catch(() => null);
+        if (response.status === 503) {
+          toast.error(`${provider} OAuth is not configured. Please contact your administrator.`);
+        } else {
+          toast.error(err?.detail || `${provider} signup is currently unavailable`);
+        }
         return;
       }
       const data = await response.json();
       sessionStorage.setItem('oauth_state', data.state);
       window.location.href = data.authorization_url;
-    } catch (error) {
-      toast.error(`Failed to initiate ${provider} signup`);
+    } catch {
+      toast.error(`Could not connect to authentication service. Please try email registration.`);
     }
   };
 
@@ -299,35 +309,43 @@ export default function Signup() {
                   </p>
                 </div>
 
-                {/* Social Signup Buttons */}
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSocialSignup('Google')}
-                    className="bg-white hover:bg-gray-50 border-gray-200"
-                  >
-                    <Chrome className="w-5 h-5 mr-2 text-[#4285F4]" />
-                    Google
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSocialSignup('GitHub')}
-                    className="bg-white hover:bg-gray-50 border-gray-200"
-                  >
-                    <Github className="w-5 h-5 mr-2" />
-                    GitHub
-                  </Button>
-                </div>
+                {/* Social Signup Buttons — shown only when OAuth is configured */}
+                {hasAnySocial && (
+                  <>
+                    <div className={`grid ${oauthProviders?.google && oauthProviders?.github ? 'grid-cols-2' : 'grid-cols-1'} gap-3 mb-6`}>
+                      {oauthProviders?.google && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleSocialSignup('Google')}
+                          className="bg-white hover:bg-gray-50 border-gray-200"
+                        >
+                          <Chrome className="w-5 h-5 mr-2 text-[#4285F4]" />
+                          Google
+                        </Button>
+                      )}
+                      {oauthProviders?.github && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleSocialSignup('GitHub')}
+                          className="bg-white hover:bg-gray-50 border-gray-200"
+                        >
+                          <Github className="w-5 h-5 mr-2" />
+                          GitHub
+                        </Button>
+                      )}
+                    </div>
 
-                {/* Divider */}
-                <div className="relative mb-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white text-gray-500">or continue with email</span>
-                  </div>
-                </div>
+                    {/* Divider */}
+                    <div className="relative mb-6">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200" />
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-4 bg-white text-gray-500">or continue with email</span>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Signup Form Step 1 */}
                 <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-5">

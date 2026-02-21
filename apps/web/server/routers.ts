@@ -128,6 +128,32 @@ export const appRouter = router({
         role: user.role
       };
     }),
+    /** Check which OAuth providers are configured (public — no auth required) */
+    oauthProviders: publicProcedure.query(async () => {
+      const { getDb } = await import("./db");
+      const { systemSettings } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const result = { google: false, github: false };
+
+      try {
+        const db = await getDb();
+        if (db) {
+          const rows = await db.select({ key: systemSettings.key, value: systemSettings.value })
+            .from(systemSettings)
+            .where(eq(systemSettings.category, "oauth"));
+
+          for (const row of rows) {
+            if (row.key === "googleClientId" && row.value) result.google = true;
+            if (row.key === "githubClientId" && row.value) result.github = true;
+          }
+        }
+      } catch {
+        // DB not available — return defaults (both false)
+      }
+
+      return result;
+    }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       // Revoke the session token before clearing the cookie
       const cookieValue = ctx.req.cookies?.[COOKIE_NAME];
@@ -1181,6 +1207,113 @@ export const appRouter = router({
           .where(eq(emailVerificationTokens.id, token.id));
 
         return { success: true };
+      }),
+
+    /** Exchange a Python OAuth token for a Node.js session cookie */
+    oauthExchangeSession: publicProcedure
+      .input(z.object({
+        accessToken: z.string().min(1),
+        provider: z.enum(['google', 'github']),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { getUserByEmail } = await import("./db");
+        const { getDb } = await import("./db");
+        const { sdk } = await import("./_core/sdk");
+        const { users, systemSettings, tenants } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+
+        // 1. Verify the Python OAuth token by calling Python backend
+        const PYTHON_BACKEND = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+        let pythonUser: { id: string; email: string; full_name: string | null; is_admin: boolean; email_verified: boolean };
+
+        try {
+          const verifyRes = await fetch(`${PYTHON_BACKEND}/api/auth/me`, {
+            headers: { 'Authorization': `Bearer ${input.accessToken}` },
+          });
+          if (!verifyRes.ok) {
+            throw new Error('Token verification failed');
+          }
+          pythonUser = await verifyRes.json();
+        } catch {
+          throw new Error('Invalid or expired OAuth token');
+        }
+
+        if (!pythonUser.email) {
+          throw new Error('OAuth profile does not include an email address');
+        }
+
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+
+        // 2. Check if user already exists in Node.js DB
+        const existing = await getUserByEmail(pythonUser.email);
+
+        if (existing) {
+          // Existing user — block if disabled and email-registered (need email verification)
+          if (existing.isDisabled && existing.loginMethod === 'email') {
+            throw new Error('Please verify your email before logging in');
+          }
+
+          // Create session for existing user
+          const token = await sdk.createSessionToken(existing.openId, {
+            name: existing.name || existing.email || '',
+          });
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
+
+          return { success: true, user: { id: existing.id, email: existing.email, name: existing.name } };
+        }
+
+        // 3. New user — insert into Node.js users table
+        const openId = `oauth_${input.provider}_${pythonUser.id}`;
+
+        // Read signup bonus from system settings (same as register)
+        let signupBonus = 100;
+        try {
+          const [bonusSetting] = await db.select().from(systemSettings)
+            .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "signup_bonus_credits")))
+            .limit(1);
+          if (bonusSetting?.value) signupBonus = parseInt(bonusSetting.value, 10) || 100;
+        } catch { /* use default */ }
+
+        // Auto-assign tenant by domain (same as register)
+        const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
+        let tenantId: number | null = null;
+        try {
+          const [autoSetting] = await db.select().from(systemSettings)
+            .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "auto_assign_tenant")))
+            .limit(1);
+          const autoAssign = autoSetting?.value !== "false";
+          if (autoAssign) {
+            const [tenant] = await db.select().from(tenants)
+              .where(eq(tenants.primaryDomain, hostname))
+              .limit(1);
+            if (tenant) tenantId = parseInt(tenant.id, 10) || null;
+          }
+        } catch { /* skip tenant assignment */ }
+
+        await db.insert(users).values({
+          openId,
+          email: pythonUser.email,
+          name: pythonUser.full_name || pythonUser.email.split('@')[0],
+          loginMethod: input.provider,
+          role: 'user',
+          plan: 'free',
+          credits: signupBonus,
+          isDisabled: false,
+          registeredDomain: hostname,
+          ...(tenantId ? { currentTenantId: tenantId } : {}),
+          lastSignedIn: new Date(),
+        });
+
+        // 4. Create session
+        const token = await sdk.createSessionToken(openId, {
+          name: pythonUser.full_name || pythonUser.email.split('@')[0],
+        });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
+
+        return { success: true, user: { id: 0, email: pythonUser.email, name: pythonUser.full_name } };
       }),
   }),
 
