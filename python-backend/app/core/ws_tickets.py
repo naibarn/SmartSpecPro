@@ -32,7 +32,7 @@ async def mint_ws_ticket(channel: str, ttl_seconds: int = 60, meta: Optional[Dic
     
     # Verify it was stored
     verify = await cache_manager.get(key)
-    logger.info(f"Ticket stored verification: {verify is not None}")
+    logger.info("ws_ticket_stored", stored=verify is not None)
     
     return {"ticket": ticket, "ttl_seconds": ttl, "expires_at": _now() + ttl}
 
@@ -60,5 +60,5 @@ async def consume_ws_ticket(ticket: str, channel: str) -> bool:
     
     # single-use
     await cache_manager.delete(key)
-    logger.info(f"consume_ws_ticket: success for channel '{channel}'")
+    logger.info("ws_ticket_consumed")
     return True

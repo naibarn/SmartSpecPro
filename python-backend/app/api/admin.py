@@ -646,7 +646,7 @@ async def admin_list_tenants(
         return tenants
 
     except Exception as e:
-        print(f"[admin_list_tenants] Error: {e}")
+        logger.error("admin_list_tenants_error", error=type(e).__name__)
         # Return empty list if table doesn't exist or other error
         return []
 
