@@ -2,6 +2,7 @@
 Admin API Endpoints
 """
 
+import logging
 import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
@@ -10,6 +11,8 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, text
 from jose import jwt, JWTError
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
@@ -54,7 +57,7 @@ async def get_user_from_session_cookie(request: Request, db: AsyncSession) -> Op
         # Verify JWT using the same secret as SmartSpecWeb
         jwt_secret = settings.JWT_SECRET
         if not jwt_secret:
-            print("[Admin Auth] JWT_SECRET not configured")
+            logger.warning("admin_auth_jwt_secret_not_configured")
             return None
 
         payload = jwt.decode(
@@ -65,7 +68,7 @@ async def get_user_from_session_cookie(request: Request, db: AsyncSession) -> Op
 
         open_id = payload.get("openId")
         if not open_id:
-            print("[Admin Auth] No openId in session payload")
+            logger.warning("admin_auth_no_openid_in_payload")
             return None
 
         # Look up user by openId
@@ -75,15 +78,15 @@ async def get_user_from_session_cookie(request: Request, db: AsyncSession) -> Op
         user = result.scalar_one_or_none()
 
         if user:
-            print(f"[Admin Auth] Found user from cookie: {user.email}, role: {user.role}")
+            logger.info("admin_auth_cookie_success", extra={"user_id": user.id, "role": user.role})
 
         return user
 
     except JWTError as e:
-        print(f"[Admin Auth] JWT verification failed: {e}")
+        logger.warning("admin_auth_jwt_failed", extra={"error": str(e)[:100]})
         return None
     except Exception as e:
-        print(f"[Admin Auth] Error getting user from cookie: {e}")
+        logger.warning("admin_auth_cookie_error", extra={"error": str(e)[:100]})
         return None
 
 
@@ -117,7 +120,7 @@ async def require_admin(
                         )
                         user = result.scalar_one_or_none()
             except Exception as e:
-                print(f"[Admin Auth] Bearer token auth failed: {e}")
+                logger.warning("admin_auth_bearer_failed", extra={"error": str(e)[:100]})
 
     # Check if we have a valid admin user
     if not user:
@@ -1102,7 +1105,7 @@ async def get_vectordb_health(
             "port": os.getenv("PGVECTOR_PORT"),
             "database": os.getenv("PGVECTOR_DATABASE"),
             "user": os.getenv("PGVECTOR_USER"),
-            "password": os.getenv("PGVECTOR_PASSWORD"),
+            "password_configured": bool(os.getenv("PGVECTOR_PASSWORD")),
         }
         connection_health = {
             "healthy": bool(provider_config["host"] and provider_config["database"]),
@@ -1116,12 +1119,12 @@ async def get_vectordb_health(
         }
     elif provider == "cloudflare_vectorize":
         provider_config = {
-            "account_id": (
+            "account_id_configured": bool(
                 os.getenv("VECTORIZE_ACCOUNT_ID")
                 or os.getenv("CF_ACCOUNT_ID")
                 or os.getenv("CLOUDFLARE_ACCOUNT_ID")
             ),
-            "api_token": (
+            "api_token_configured": bool(
                 os.getenv("VECTORIZE_API_TOKEN")
                 or os.getenv("CF_VECTORIZE_API_TOKEN")
                 or os.getenv("CLOUDFLARE_AI_API_KEY")
@@ -1129,10 +1132,10 @@ async def get_vectordb_health(
             "index_name": os.getenv("VECTORIZE_INDEX_NAME") or os.getenv("CF_VECTORIZE_INDEX"),
         }
         connection_health = {
-            "healthy": bool(provider_config["account_id"] and provider_config["api_token"]),
+            "healthy": provider_config["account_id_configured"] and provider_config["api_token_configured"],
             "status": (
                 "configured"
-                if (provider_config["account_id"] and provider_config["api_token"])
+                if (provider_config["account_id_configured"] and provider_config["api_token_configured"])
                 else "misconfigured"
             ),
             "message": "Cloudflare Vectorize credentials detected",

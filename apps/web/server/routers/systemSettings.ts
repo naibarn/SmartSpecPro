@@ -739,15 +739,13 @@ export const systemSettingsRouter = router({
       .from(systemSettings)
       .where(eq(systemSettings.category, "oauth"));
 
-    const result: Record<string, string> = {};
+    const result: Record<string, string | boolean> = {};
 
     for (const setting of settings) {
       if (setting.value) {
         if (setting.isSensitive) {
-          const decrypted = decrypt(setting.value);
-          if (decrypted) {
-            result[setting.key] = decrypted;
-          }
+          // Never return decrypted secrets over tRPC — only confirm configured
+          result[setting.key] = "configured";
         } else {
           result[setting.key] = setting.value;
         }

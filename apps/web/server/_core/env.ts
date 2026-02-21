@@ -25,13 +25,9 @@ export const ENV = {
 
   // Forge API integration (server-side storage/media proxy path).
   forgeApiUrl:
-    process.env.FORGE_API_URL ??
-    process.env.VITE_FORGE_API_URL ??
-    "",
+    process.env.FORGE_API_URL ?? "",
   forgeApiKey:
-    process.env.FORGE_API_KEY ??
-    process.env.VITE_FORGE_API_KEY ??
-    "",
+    process.env.FORGE_API_KEY ?? "",
 
   // OAuth and workflow backend endpoints
   oAuthServerUrl:

@@ -502,6 +502,30 @@ Node.js and `smartspecweb_crypto.py` share the same key (`LLM_ENCRYPTION_KEY`) �
 - **Database backups (.sql) are safe** — they contain only encrypted ciphertext, not plaintext secrets
 - **Exception**: `tenants.settings` JSON may contain plaintext integration keys (being migrated to encrypted storage)
 
+### Secret Exposure Prevention — MANDATORY
+
+**NEVER expose secrets through ANY channel.** These rules apply to all code, agents, logs, and AI interactions.
+
+**Code rules:**
+- **NEVER return decrypted secrets in API/tRPC responses** — admin endpoints must return `configured: true/false`, not the actual value
+- **NEVER `console.log` / `logger.info` / `print()` secret values** — log only key names, not values
+- **NEVER include `process.env` secrets in error messages** returned to clients — sanitize before sending
+- **NEVER use `VITE_` prefix for server-only secrets** — `VITE_*` vars are bundled into the client JavaScript
+- **NEVER pass secrets as URL query parameters** — use request headers instead
+- **NEVER serialize `process.env` or `os.environ`** — only read individual named vars
+
+**AI/LLM rules:**
+- **NEVER include `.env` file contents, API keys, passwords, tokens, or encryption keys in prompts sent to LLMs** — whether via the skills engine, chat, or agent orchestration
+- **NEVER pass secret values as context to AI agents** (Task tool, subagents, etc.) — pass only key names or `configured: true/false`
+- **NEVER log decrypted values in audit trails** that may be sent to LLM for analysis
+- If a feature requires an LLM to use an API key (e.g., function calling), pass it **server-side only** through secure headers — never embed in the prompt
+
+**Logging rules:**
+- Use structured loggers (`logger.*`) — never `print()` or `console.log` for production code
+- Sanitize all error messages: strip connection strings (`postgresql://...`), file paths, token fragments
+- Log `user_id` not `user.email` for PII compliance
+- Mask partial tokens: never log more than 4 characters of any token/key
+
 ### When Adding New Sensitive Fields
 
 ```typescript

@@ -1492,11 +1492,6 @@ export const skillsRouter = router({
       // Substitute template variables with actual values
       systemPrompt = substituteTemplateVariables(systemPrompt, mergedUserInputs);
 
-      // DEBUG: Log substitution results
-      console.log(`[Skills] Executing skill '${input.skillId}'`);
-      console.log(`[Skills]   User inputs: ${JSON.stringify(mergedUserInputs)}`);
-      console.log(`[Skills]   System prompt (after substitution, first 500 chars): ${systemPrompt.slice(0, 500).replace(/\n/g, '\\n')}`);
-
       // Build user prompt - simpler now since template variables are already substituted
       let userPrompt = "Please execute the skill based on the inputs provided in the system prompt template and generate the output as specified.";
 

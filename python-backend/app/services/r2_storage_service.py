@@ -122,7 +122,6 @@ class R2StorageService:
 
             # Convert row to dict using SQLAlchemy 2.0 _mapping for compatibility
             settings = dict(row._mapping)
-            logger.debug("r2_storage_raw_settings", keys=list(settings.keys()))
 
             # Decrypt credentials
             if settings.get("accessKeyIdEncrypted"):

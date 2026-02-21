@@ -356,13 +356,17 @@ export const mediaProvidersRouter = router({
     }
   }),
 
-  // Get decrypted API key (for internal use by Python backend proxy)
-  // This is admin-only and should only be called internally
+  // Check if API key is configured (never returns the actual key)
   getApiKey: adminProcedure
     .input(z.object({ providerName: z.string() }))
     .query(async ({ input }) => {
       const [provider] = await db
-        .select()
+        .select({
+          apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
+          baseUrl: mediaProviders.baseUrl,
+          callbackUrl: mediaProviders.callbackUrl,
+          configJson: mediaProviders.configJson,
+        })
         .from(mediaProviders)
         .where(eq(mediaProviders.providerName, input.providerName));
 
@@ -370,8 +374,9 @@ export const mediaProvidersRouter = router({
         return null;
       }
 
+      const decrypted = decrypt(provider.apiKeyEncrypted);
       return {
-        apiKey: decrypt(provider.apiKeyEncrypted),
+        configured: !!decrypted,
         baseUrl: provider.baseUrl,
         callbackUrl: provider.callbackUrl,
         configJson: provider.configJson,

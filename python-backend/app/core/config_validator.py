@@ -69,19 +69,19 @@ class ConfigValidator:
         providers = {
             "openai": {
                 "configured": bool(os.getenv("OPENAI_API_KEY")),
-                "key_length": len(os.getenv("OPENAI_API_KEY", ""))
+                "key_valid": os.getenv("OPENAI_API_KEY", "").startswith("sk-") if os.getenv("OPENAI_API_KEY") else False,
             },
             "anthropic": {
                 "configured": bool(os.getenv("ANTHROPIC_API_KEY")),
-                "key_length": len(os.getenv("ANTHROPIC_API_KEY", ""))
+                "key_valid": os.getenv("ANTHROPIC_API_KEY", "").startswith("sk-ant-") if os.getenv("ANTHROPIC_API_KEY") else False,
             },
             "google": {
                 "configured": bool(os.getenv("GOOGLE_API_KEY")),
-                "key_length": len(os.getenv("GOOGLE_API_KEY", ""))
+                "key_valid": len(os.getenv("GOOGLE_API_KEY", "")) > 10 if os.getenv("GOOGLE_API_KEY") else False,
             },
             "groq": {
                 "configured": bool(os.getenv("GROQ_API_KEY")),
-                "key_length": len(os.getenv("GROQ_API_KEY", ""))
+                "key_valid": os.getenv("GROQ_API_KEY", "").startswith("gsk_") if os.getenv("GROQ_API_KEY") else False,
             },
             "ollama": {
                 "configured": True,  # Always available (local)

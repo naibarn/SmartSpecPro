@@ -26,7 +26,7 @@ async def mint_ws_ticket(channel: str, ttl_seconds: int = 60, meta: Optional[Dic
     payload: Dict[str, Any] = {"channel": channel, "meta": meta or {}, "iat": _now()}
     
     key = _key(ticket)
-    logger.info(f"Minting WS ticket for channel '{channel}': key={key[:30]}..., ttl={ttl}s")
+    logger.info("ws_ticket_minted", channel=channel, ttl=ttl)
     
     await cache_manager.set(key, payload, ttl=ttl)
     
@@ -43,10 +43,10 @@ async def consume_ws_ticket(ticket: str, channel: str) -> bool:
         return False
     
     key = _key(ticket)
-    logger.info(f"Consuming WS ticket for channel '{channel}': key={key[:30]}...")
+    logger.info("ws_ticket_consuming", channel=channel)
     
     data = await cache_manager.get(key)
-    logger.info(f"Ticket data from cache: {data}")
+    logger.info("ws_ticket_found", channel=channel)
     
     if not data:
         logger.warning(f"consume_ws_ticket: ticket not found in cache")

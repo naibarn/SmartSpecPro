@@ -19,7 +19,7 @@ class TestConfigValidator:
             assert result["has_any_provider"] is True
             assert result["configured_count"] >= 1
             assert result["providers"]["openai"]["configured"] is True
-            assert result["providers"]["openai"]["key_length"] > 0
+            assert result["providers"]["openai"]["key_valid"] is True
     
     def test_validate_llm_providers_with_multiple(self):
         """Test LLM provider validation with multiple providers"""

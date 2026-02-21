@@ -514,8 +514,7 @@ export const llmProvidersRouter = router({
       }
     }),
 
-  // Get API key for internal use (not exposed to client)
-  // This is used by the LLM gateway
+  // Check if API key is configured (never returns the actual key)
   getApiKey: adminProcedure
     .input(z.object({ providerName: z.string() }))
     .query(async ({ input }) => {
@@ -527,12 +526,14 @@ export const llmProvidersRouter = router({
         .from(llmProviders)
         .where(eq(llmProviders.providerName, input.providerName))
         .limit(1);
-      
+
       if (!provider || !provider.isEnabled || !provider.apiKeyEncrypted) {
-        return null;
+        return { configured: false };
       }
-      
-      return decrypt(provider.apiKeyEncrypted);
+
+      // Verify the key can be decrypted without returning it
+      const decrypted = decrypt(provider.apiKeyEncrypted);
+      return { configured: !!decrypted };
     }),
 
   // Get provider stats (admin)

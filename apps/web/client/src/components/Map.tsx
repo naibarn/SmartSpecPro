@@ -86,6 +86,8 @@ declare global {
   }
 }
 
+// This is a PUBLIC restricted API key for the Maps proxy — intentionally client-side.
+// It is NOT a secret. If you need a secret Maps key, proxy through the Express server.
 const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
 const FORGE_BASE_URL =
   import.meta.env.VITE_FRONTEND_FORGE_API_URL ||
