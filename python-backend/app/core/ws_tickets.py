@@ -53,7 +53,7 @@ async def consume_ws_ticket(ticket: str, channel: str) -> bool:
         return False
     
     if str(data.get("channel")) != str(channel):
-        logger.warning(f"consume_ws_ticket: channel mismatch (expected={channel}, got={data.get('channel')})")
+        logger.warning("ws_ticket_channel_mismatch")
         # channel mismatch: still delete to prevent probing reuse
         await cache_manager.delete(key)
         return False

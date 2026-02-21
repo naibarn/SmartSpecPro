@@ -389,14 +389,14 @@ export const infrastructureRouter = router({
       if (dbValues[key]?.value) {
         const val = dbValues[key].value;
         result[key] = {
-          value: val,
+          value: isSensitive ? "" : val,
           maskedValue: isSensitive ? maskUrl(val) : val,
           source: "db",
         };
       } else if (process.env[REDIS_ENV_FALLBACK[key]]) {
         const val = process.env[REDIS_ENV_FALLBACK[key]]!;
         result[key] = {
-          value: val,
+          value: isSensitive ? "" : val,
           maskedValue: isSensitive ? maskUrl(val) : val,
           source: "env",
         };
@@ -427,6 +427,8 @@ export const infrastructureRouter = router({
         const value = input[key];
         if (value !== undefined) {
           const sensitive = REDIS_SENSITIVE_KEYS.has(key);
+          // Skip empty strings for sensitive keys — means "keep existing value"
+          if (sensitive && value === "") continue;
           await upsertSetting(db, key, value, ctx.user?.id, sensitive);
         }
       }
@@ -540,7 +542,7 @@ export const infrastructureRouter = router({
       if (dbValues[key]?.value) {
         const val = dbValues[key].value;
         result[key] = {
-          value: val,
+          value: isSensitive ? "" : val,
           maskedValue: isSensitive
             ? (key.includes("dsn") ? maskDsn(val) : maskApiKey(val))
             : val,
@@ -549,7 +551,7 @@ export const infrastructureRouter = router({
       } else if (process.env[MONITORING_ENV_FALLBACK[key]]) {
         const val = process.env[MONITORING_ENV_FALLBACK[key]]!;
         result[key] = {
-          value: val,
+          value: isSensitive ? "" : val,
           maskedValue: isSensitive
             ? (key.includes("dsn") ? maskDsn(val) : maskApiKey(val))
             : val,
@@ -589,6 +591,8 @@ export const infrastructureRouter = router({
         const value = input[key];
         if (value !== undefined) {
           const sensitive = MONITORING_SENSITIVE_KEYS.has(key);
+          // Skip empty strings for sensitive keys — means "keep existing value"
+          if (sensitive && value === "") continue;
           await upsertSetting(db, key, value, ctx.user?.id, sensitive);
         }
       }

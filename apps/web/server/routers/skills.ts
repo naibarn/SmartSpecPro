@@ -146,7 +146,6 @@ function decryptApiKey(text: string): string {
 async function convertImageUrlForLLM(url: string): Promise<string> {
   // If it's already a data URL or full HTTP URL, return as-is
   if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
-    console.log(`[Skills] Image URL is already accessible: ${url.substring(0, 50)}...`);
     return url;
   }
 
@@ -157,10 +156,6 @@ async function convertImageUrlForLLM(url: string): Promise<string> {
       const uploadsDir = getUploadsDir();
       const relativePath = url.replace("/uploads/", "");
       const filePath = path.join(uploadsDir, relativePath);
-
-      console.log(`[Skills] Converting image to base64: ${url}`);
-      console.log(`[Skills] Uploads dir: ${uploadsDir}`);
-      console.log(`[Skills] Full path: ${filePath}`);
 
       if (fs.existsSync(filePath)) {
         const fileBuffer = fs.readFileSync(filePath);
@@ -177,13 +172,11 @@ async function convertImageUrlForLLM(url: string): Promise<string> {
         };
         const mimeType = mimeTypes[ext] || "image/png";
 
-        console.log(`[Skills] Successfully converted image to base64 (${fileBuffer.length} bytes, ${mimeType})`);
         return `data:${mimeType};base64,${base64}`;
       } else {
         console.warn(`[Skills] Image file not found: ${filePath}`);
         // Try alternate path (cwd-relative)
         const altPath = path.resolve(process.cwd(), "uploads", relativePath);
-        console.log(`[Skills] Trying alternate path: ${altPath}`);
         if (fs.existsSync(altPath)) {
           const fileBuffer = fs.readFileSync(altPath);
           const base64 = fileBuffer.toString("base64");
@@ -196,7 +189,6 @@ async function convertImageUrlForLLM(url: string): Promise<string> {
             ".webp": "image/webp",
           };
           const mimeType = mimeTypes[ext] || "image/png";
-          console.log(`[Skills] Successfully converted from alternate path (${fileBuffer.length} bytes)`);
           return `data:${mimeType};base64,${base64}`;
         }
         console.error(`[Skills] Image not found at either path`);
@@ -1094,7 +1086,6 @@ export const skillsRouter = router({
         );
       }
 
-      console.log(`[Skills] Returning ${allModels.length} models for skill selection`);
       return { models: allModels };
     } catch (error) {
       console.error("[Skills] Error fetching models:", error);
@@ -1202,9 +1193,6 @@ export const skillsRouter = router({
       }
 
       try {
-        // DEBUG: Log maxPromptLength to verify it's being passed
-        console.log(`[Skills] enhancePrompt called with maxPromptLength: ${input.maxPromptLength}`);
-
         // Build prompts using the CreateImagePrompt skill
         const systemPrompt = buildSystemPrompt(input);
 
@@ -1321,7 +1309,6 @@ export const skillsRouter = router({
 
           finalPromptEn = truncatedPrompt;
           wasTruncated = true;
-          console.log(`[Skills] Truncated prompt to ${finalPromptEn.length} chars`);
         }
 
         // Also truncate Thai prompt if provided
@@ -1419,9 +1406,7 @@ export const skillsRouter = router({
       // Sync skill if contentHash changed (ensures latest skill.md is used)
       const syncResult = await syncSingleSkillIfChanged(input.skillId);
       if (syncResult.synced) {
-        console.log(`[Skills] Skill '${input.skillId}' was auto-synced before execution`);
-      } else {
-        console.log(`[Skills] Skill '${input.skillId}' already up-to-date, no sync needed`);
+        // Skill was auto-synced before execution
       }
 
       // Get skill from database
@@ -1465,7 +1450,6 @@ export const skillsRouter = router({
           if (fs.existsSync(promptPath)) {
             try {
               systemPrompt = fs.readFileSync(promptPath, 'utf-8');
-              console.log(`[Skills] Loaded prompt template from: ${promptPath}`);
               break;
             } catch (error) {
               console.warn(`[Skills] Failed to read prompt template at ${promptPath}:`, error);

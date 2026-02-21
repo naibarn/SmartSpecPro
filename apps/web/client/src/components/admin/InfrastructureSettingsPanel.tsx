@@ -1414,7 +1414,7 @@ REDIS_URL=redis://10.0.0.3:6379`}
               type={showRedisPasswords ? "text" : "password"}
               value={redisForm.redis_local_url}
               onChange={(e) => setRedisForm({ ...redisForm, redis_local_url: e.target.value })}
-              placeholder="redis://localhost:6379"
+              placeholder={redisConfig?.redis_local_url?.maskedValue || "redis://localhost:6379"}
             />
             <p className="text-xs text-muted-foreground">
               Used as <code className="bg-gray-100 px-1 rounded">REDIS_URL</code>. Required for BullMQ, Bottleneck, and Celery broker.
@@ -1434,7 +1434,7 @@ REDIS_URL=redis://10.0.0.3:6379`}
               type={showRedisPasswords ? "text" : "password"}
               value={redisForm.redis_upstash_url}
               onChange={(e) => setRedisForm({ ...redisForm, redis_upstash_url: e.target.value })}
-              placeholder="rediss://default:token@host.upstash.io:6379"
+              placeholder={redisConfig?.redis_upstash_url?.maskedValue || "rediss://default:token@host.upstash.io:6379"}
             />
             <p className="text-xs text-muted-foreground">
               Used as <code className="bg-gray-100 px-1 rounded">REDIS_UPSTASH_URL</code>. Cache client connects here when set.
@@ -1454,7 +1454,7 @@ REDIS_URL=redis://10.0.0.3:6379`}
               type={showRedisPasswords ? "text" : "password"}
               value={redisForm.redis_cloud_url}
               onChange={(e) => setRedisForm({ ...redisForm, redis_cloud_url: e.target.value })}
-              placeholder="redis://default:password@redis-12345.c1.us-central1-1.gce.redns.redis-cloud.com:12345"
+              placeholder={redisConfig?.redis_cloud_url?.maskedValue || "redis://default:password@redis-12345.c1.us-central1-1.gce.redns.redis-cloud.com:12345"}
             />
             <p className="text-xs text-muted-foreground">
               Used as <code className="bg-gray-100 px-1 rounded">REDIS_CLOUD_URL</code>. Redis Cloud Essentials (redis.com). Full BullMQ and pub/sub support.
@@ -1474,7 +1474,7 @@ REDIS_URL=redis://10.0.0.3:6379`}
               type={showRedisPasswords ? "text" : "password"}
               value={redisForm.redis_memorystore_url}
               onChange={(e) => setRedisForm({ ...redisForm, redis_memorystore_url: e.target.value })}
-              placeholder="redis://10.0.0.3:6379"
+              placeholder={redisConfig?.redis_memorystore_url?.maskedValue || "redis://10.0.0.3:6379"}
             />
             <p className="text-xs text-muted-foreground">
               Used as <code className="bg-gray-100 px-1 rounded">REDIS_MEMORYSTORE_URL</code>. Realtime client for pub/sub. Falls back to Local Redis URL.
@@ -1494,7 +1494,7 @@ REDIS_URL=redis://10.0.0.3:6379`}
               type={showRedisPasswords ? "text" : "password"}
               value={redisForm.redis_password}
               onChange={(e) => setRedisForm({ ...redisForm, redis_password: e.target.value })}
-              placeholder="Leave empty if no password"
+              placeholder={redisConfig?.redis_password?.maskedValue || "Leave empty if no password"}
             />
             <p className="text-xs text-muted-foreground">
               Used as <code className="bg-gray-100 px-1 rounded">REDIS_PASSWORD</code>. Applies to local Redis connections.
@@ -2035,7 +2035,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 type={showMonitoringSecrets ? "text" : "password"}
                 value={monitoringForm.sentry_dsn_node}
                 onChange={(e) => setMonitoringForm({ ...monitoringForm, sentry_dsn_node: e.target.value })}
-                placeholder="https://xxx@o123456.ingest.sentry.io/789"
+                placeholder={monitoringConfig?.sentry_dsn_node?.maskedValue || "https://xxx@o123456.ingest.sentry.io/789"}
               />
             </div>
 
@@ -2051,7 +2051,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 type={showMonitoringSecrets ? "text" : "password"}
                 value={monitoringForm.sentry_dsn_python}
                 onChange={(e) => setMonitoringForm({ ...monitoringForm, sentry_dsn_python: e.target.value })}
-                placeholder="https://xxx@o123456.ingest.sentry.io/101"
+                placeholder={monitoringConfig?.sentry_dsn_python?.maskedValue || "https://xxx@o123456.ingest.sentry.io/101"}
               />
             </div>
 
@@ -2109,7 +2109,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 type={showMonitoringSecrets ? "text" : "password"}
                 value={monitoringForm.posthog_api_key_node}
                 onChange={(e) => setMonitoringForm({ ...monitoringForm, posthog_api_key_node: e.target.value })}
-                placeholder="phc_xxxxxxxxxxxxxxxxxxxx"
+                placeholder={monitoringConfig?.posthog_api_key_node?.maskedValue || "phc_xxxxxxxxxxxxxxxxxxxx"}
               />
             </div>
 
@@ -2125,7 +2125,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 type={showMonitoringSecrets ? "text" : "password"}
                 value={monitoringForm.posthog_api_key_python}
                 onChange={(e) => setMonitoringForm({ ...monitoringForm, posthog_api_key_python: e.target.value })}
-                placeholder="phc_xxxxxxxxxxxxxxxxxxxx"
+                placeholder={monitoringConfig?.posthog_api_key_python?.maskedValue || "phc_xxxxxxxxxxxxxxxxxxxx"}
               />
             </div>
 
@@ -2183,7 +2183,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                   type={showMonitoringSecrets ? "text" : "password"}
                   value={monitoringForm.ga4_api_secret}
                   onChange={(e) => setMonitoringForm({ ...monitoringForm, ga4_api_secret: e.target.value })}
-                  placeholder="Measurement Protocol API secret"
+                  placeholder={monitoringConfig?.ga4_api_secret?.maskedValue || "Measurement Protocol API secret"}
                 />
                 <p className="text-xs text-muted-foreground">
                   Admin &rarr; Data Streams &rarr; Measurement Protocol API secrets &rarr; Create
@@ -2214,7 +2214,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 type={showMonitoringSecrets ? "text" : "password"}
                 value={monitoringForm.firebase_api_key}
                 onChange={(e) => setMonitoringForm({ ...monitoringForm, firebase_api_key: e.target.value })}
-                placeholder="AIzaSyXXXXXXXXXXXXXXXXXXXXX"
+                placeholder={monitoringConfig?.firebase_api_key?.maskedValue || "AIzaSyXXXXXXXXXXXXXXXXXXXXX"}
               />
             </div>
 
