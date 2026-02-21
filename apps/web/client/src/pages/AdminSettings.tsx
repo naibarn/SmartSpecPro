@@ -905,7 +905,7 @@ export default function AdminSettings() {
                         }
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        Used for Sign Up / Sign In with Google. Must match an authorized redirect URI in Google Cloud Console.
+                        Used for Sign Up / Sign In with Google. Recommended: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono select-all">https://smartaihub.app/auth/callback/google</code>
                       </p>
                     </div>
                     <div>
@@ -919,7 +919,7 @@ export default function AdminSettings() {
                         }
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        Used when users connect their Google Drive. Must also be added as an authorized redirect URI in Google Cloud Console.
+                        Used when users connect their Google Drive. Recommended: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono select-all">https://smartaihub.app/auth/callback/google-drive</code>
                       </p>
                     </div>
                   </div>
@@ -1132,7 +1132,7 @@ export default function AdminSettings() {
                       }
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Must match the authorization callback URL in GitHub OAuth App settings
+                      Must match the callback URL in GitHub OAuth App settings. Recommended: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono select-all">https://smartaihub.app/auth/callback/github</code>
                     </p>
                   </div>
                 </div>
