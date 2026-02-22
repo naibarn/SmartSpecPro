@@ -37,6 +37,13 @@ from app.orchestrator.rag.guardrails import (
     QualityAssessment,
 )
 from app.orchestrator.rag.query_router import QueryRouter, QueryIntent, QueryRouteDecision
+from app.orchestrator.rag.evaluator import (
+    RAGEvaluator,
+    EvalDatasetGenerator,
+    EvalMetrics,
+    EvalItem,
+    EvalDataset,
+)
 
 __all__ = [
     "HybridRAGEngine",
@@ -61,4 +68,9 @@ __all__ = [
     "QueryRouter",
     "QueryIntent",
     "QueryRouteDecision",
+    "RAGEvaluator",
+    "EvalDatasetGenerator",
+    "EvalMetrics",
+    "EvalItem",
+    "EvalDataset",
 ]

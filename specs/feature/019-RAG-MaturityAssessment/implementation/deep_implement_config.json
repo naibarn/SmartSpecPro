@@ -40,6 +40,10 @@
     "section-06-guardrails-and-citations": {
       "status": "complete",
       "commit_hash": "c5b0eda"
+    },
+    "section-07-rag-executor": {
+      "status": "complete",
+      "commit_hash": "c66a43e"
     }
   },
   "pre_commit": {

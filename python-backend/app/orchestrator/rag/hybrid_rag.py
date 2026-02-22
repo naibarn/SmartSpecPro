@@ -423,7 +423,29 @@ class HybridRAGEngine:
         if self.config.use_cache and cache_key in self._cache:
             cached_result, cached_time = self._cache[cache_key]
             if (datetime.utcnow() - cached_time).total_seconds() < self.config.cache_ttl_seconds:
-                logger.debug("cache_hit", query=query[:50])
+                scope_count = len(effective_scopes) if effective_scopes else 0
+                _cached_quality = "unknown"
+                _cached_confidence = 0.0
+                try:
+                    from app.orchestrator.rag.guardrails import RetrievalGuardrails
+                    _cached_assessment = RetrievalGuardrails(failure_mode="permissive").assess(cached_result)
+                    _cached_quality = _cached_assessment.quality.value
+                    _cached_confidence = _cached_assessment.confidence_score
+                except (ImportError, AttributeError):
+                    pass
+                logger.info(
+                    "rag_retrieval_complete",
+                    query=query[:50],
+                    mode=mode.value,
+                    results=cached_result.final_count,
+                    total_ms=cached_result.total_time_ms,
+                    quality=_cached_quality,
+                    confidence=_cached_confidence,
+                    query_strategy=strategy_val,
+                    rerank_strategy="none",
+                    scope_filter_count=scope_count,
+                    cache_hit=True,
+                )
                 return cached_result
 
         start_time = datetime.utcnow()
@@ -524,12 +546,35 @@ class HybridRAGEngine:
             if self.config.use_cache:
                 self._cache[cache_key] = (result, datetime.utcnow())
             
+            # Compute observability fields
+            _quality = "unknown"
+            _confidence = 0.0
+            try:
+                from app.orchestrator.rag.guardrails import RetrievalGuardrails
+                _assessment = RetrievalGuardrails(failure_mode="permissive").assess(result)
+                _quality = _assessment.quality.value
+                _confidence = _assessment.confidence_score
+            except (ImportError, AttributeError):
+                pass
+
+            _query_strategy = getattr(processed, "strategy_used", "passthrough")
+            _rerank_strategy = "none"
+            if self.config.use_rerank and mode == SearchMode.HYBRID:
+                _rerank_strategy = self.reranker.strategy.value
+            _scope_count = len(effective_scopes) if effective_scopes else 0
+
             logger.info(
                 "rag_retrieval_complete",
                 query=query[:50],
                 mode=mode.value,
                 results=result.final_count,
                 total_ms=result.total_time_ms,
+                quality=_quality,
+                confidence=_confidence,
+                query_strategy=_query_strategy,
+                rerank_strategy=_rerank_strategy,
+                scope_filter_count=_scope_count,
+                cache_hit=False,
             )
 
             # Bill for semantic/hybrid searches (BM25-only is free)
