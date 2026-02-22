@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -1591,6 +1591,7 @@ export const libraryItems = pgTable("library_items", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
+  uniqueIndex("library_items_id_tenant_unique").on(t.id, t.tenantId),
   index("library_items_tenant_visibility_status_idx").on(t.tenantId, t.visibility, t.status),
   index("library_items_tenant_owner_status_idx").on(t.tenantId, t.ownerUserId, t.status),
   index("library_items_source_item_type_idx").on(t.source, t.itemType),
@@ -1630,12 +1631,16 @@ export const libraryChunks = pgTable("library_chunks", {
   metadata: json("metadata").$type<Record<string, any>>().notNull().default({}),
   // Denormalized scope cache — mirrors parent item's allowed_scopes
   allowedScopes: text("allowed_scopes").array().default(sql`'{}'`),
+  // Parent-child chunk support for RAG
+  isParent: boolean("is_parent").default(false).notNull(),
+  parentChunkId: text("parent_chunk_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("library_chunks_item_chunk_index_unique").on(t.libraryItemId, t.chunkIndex),
   index("library_chunks_tenant_content_type_idx").on(t.tenantId, t.contentType),
   index("library_chunks_vector_ref_idx").on(t.vectorRefId),
   index("library_chunks_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+  index("library_chunks_parent_chunk_idx").on(t.parentChunkId),
 ]);
 
 export type LibraryChunk = typeof libraryChunks.$inferSelect;
@@ -1728,6 +1733,7 @@ export const presentationDecks = pgTable("presentation_decks", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("presentation_decks_library_item_unique").on(t.libraryItemId),
+  uniqueIndex("presentation_decks_id_tenant_unique").on(t.id, t.tenantId),
   index("presentation_decks_tenant_idx").on(t.tenantId),
   index("presentation_decks_tenant_updated_idx").on(t.tenantId, t.updatedAt),
 ]);
@@ -1747,6 +1753,7 @@ export const presentationSlides = pgTable("presentation_slides", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("presentation_slides_deck_order_unique").on(t.deckId, t.orderIndex),
+  uniqueIndex("presentation_slides_deck_id_unique").on(t.deckId, t.id),
   index("presentation_slides_deck_idx").on(t.deckId),
   index("presentation_slides_deck_updated_idx").on(t.deckId, t.updatedAt),
 ]);
@@ -1766,6 +1773,21 @@ export const presentationAssetLinks = pgTable("presentation_asset_links", {
   uniqueIndex("presentation_asset_links_unique").on(t.deckId, t.slideId, t.libraryItemId),
   index("presentation_asset_links_deck_idx").on(t.deckId),
   index("presentation_asset_links_slide_idx").on(t.slideId),
+  foreignKey({
+    name: "presentation_asset_links_deck_tenant_fk",
+    columns: [t.deckId, t.tenantId],
+    foreignColumns: [presentationDecks.id, presentationDecks.tenantId],
+  }).onDelete("cascade"),
+  foreignKey({
+    name: "presentation_asset_links_library_item_tenant_fk",
+    columns: [t.libraryItemId, t.tenantId],
+    foreignColumns: [libraryItems.id, libraryItems.tenantId],
+  }).onDelete("cascade"),
+  foreignKey({
+    name: "presentation_asset_links_slide_deck_fk",
+    columns: [t.deckId, t.slideId],
+    foreignColumns: [presentationSlides.deckId, presentationSlides.id],
+  }),
 ]);
 
 export type PresentationAssetLink = typeof presentationAssetLinks.$inferSelect;
@@ -1788,6 +1810,44 @@ export const presentationSourceAttachments = pgTable("presentation_source_attach
 
 export type PresentationSourceAttachment = typeof presentationSourceAttachments.$inferSelect;
 export type InsertPresentationSourceAttachment = typeof presentationSourceAttachments.$inferInsert;
+
+export const presentationConversionRecords = pgTable("presentation_conversion_records", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  sourceItemId: integer("source_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  sourceFormat: varchar("source_format", { length: 16 }).notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
+  deckLibraryItemId: integer("deck_library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  deckId: integer("deck_id").notNull().references(() => presentationDecks.id, { onDelete: "cascade" }),
+  partialFidelity: boolean("partial_fidelity").notNull().default(false),
+  fidelityWarnings: json("fidelity_warnings").$type<string[]>().notNull().default([]),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("presentation_conversion_records_source_unique").on(t.tenantId, t.sourceItemId),
+  index("presentation_conversion_records_idempotency_idx").on(t.tenantId, t.sourceItemId, t.idempotencyKey),
+  index("presentation_conversion_records_expires_at_idx").on(t.expiresAt),
+]);
+
+export type PresentationConversionRecord = typeof presentationConversionRecords.$inferSelect;
+export type InsertPresentationConversionRecord = typeof presentationConversionRecords.$inferInsert;
+
+export const presentationConversionLocks = pgTable("presentation_conversion_locks", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  sourceItemId: integer("source_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  lockToken: varchar("lock_token", { length: 64 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("presentation_conversion_locks_source_unique").on(t.tenantId, t.sourceItemId),
+  index("presentation_conversion_locks_expires_at_idx").on(t.expiresAt),
+]);
+
+export type PresentationConversionLock = typeof presentationConversionLocks.$inferSelect;
+export type InsertPresentationConversionLock = typeof presentationConversionLocks.$inferInsert;
 
 // ============================================================
 // Google Drive Integration Tables

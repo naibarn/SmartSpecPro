@@ -113,6 +113,10 @@ class LibraryChunk(Base):
     # Denormalized scope cache — mirrors parent item's allowed_scopes
     allowed_scopes = Column(ARRAY(Text), default=list, server_default="{}")
 
+    # Parent-child chunk support for RAG
+    is_parent = Column(Boolean, nullable=False, default=False, server_default="false")
+    parent_chunk_id = Column(Text, nullable=True)
+
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (

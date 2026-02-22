@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.vectordb import VectorCollection
 from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
+from app.orchestrator.rag.chunker import SmartChunker, ChunkConfig
 from app.services.embedding_service import EmbeddingService, get_embedding_service
 from app.services.library_observability import emit_metric, log_observability_event
 from app.services.credit_billing_client import charge_credits_post_deduct
@@ -225,7 +226,13 @@ def extract_library_item_text(item: LibraryItem) -> str:
 
 
 def chunk_text_content(text: str, max_chars: int = 500, overlap_chars: int = 80) -> list[dict[str, Any]]:
-    """Deterministically split content into overlapping chunks."""
+    """Deterministically split content into overlapping chunks.
+
+    .. deprecated::
+        Use :class:`~app.orchestrator.rag.chunker.SmartChunker` instead.
+        This function uses fixed character-based splitting without token accuracy
+        or parent-child chunk support.
+    """
     normalized = " ".join(text.split())
     if not normalized:
         return []
@@ -1010,22 +1017,37 @@ async def process_library_index_job(
         if not indexable_text:
             raise ValueError("No indexable text content found for library item")
 
-        chunks = chunk_text_content(indexable_text)
-        if not chunks:
+        smart_chunker = SmartChunker()
+        all_chunks = smart_chunker.chunk(
+            indexable_text,
+            doc_id=str(item.id),
+            doc_title=item.title or "",
+            tenant_id=job.tenant_id,
+            allowed_scopes=item.allowed_scopes or [f"u:{item.owner_user_id}"],
+        )
+        if not all_chunks:
             raise ValueError("Chunking produced no content")
 
+        child_chunks = [c for c in all_chunks if not c.is_parent]
+        parent_chunks = [c for c in all_chunks if c.is_parent]
+
+        # Only embed and upsert child chunks (parents stored for context only)
         embedder = embedding_service or get_embedding_service()
-        embeddings = embedder.embed_batch([chunk["content"] for chunk in chunks])
+        embeddings = embedder.embed_batch([c.content for c in child_chunks])
 
         upsert = _resolve_vector_upsert_fn(vector_upsert_fn)
+        chunks_for_upsert = [
+            {"content": c.content, "chunk_index": c.index, "metadata": c.metadata}
+            for c in child_chunks
+        ]
         vector_ids = upsert(
             tenant_id=job.tenant_id,
             item_id=job.library_item_id,
-            chunks=chunks,
+            chunks=chunks_for_upsert,
             embeddings=embeddings,
         )
 
-        if len(vector_ids) != len(chunks):
+        if len(vector_ids) != len(child_chunks):
             raise RuntimeError("vector_id_count_mismatch")
 
         # ── Step 2: Delete ONLY non-markdown_source chunks ───────────────────────
@@ -1077,18 +1099,48 @@ async def process_library_index_job(
         # search/embedding chunks start at chunk_index 1 to avoid conflict.
         chunk_index_offset = 1 if markdown_source_exists_now else 0
 
-        for chunk, vector_id in zip(chunks, vector_ids):
+        # Store parent chunks (no vector reference — not indexed)
+        for parent in parent_chunks:
             db.add(
                 LibraryChunk(
                     tenant_id=job.tenant_id,
                     library_item_id=item.id,
-                    chunk_index=chunk["chunk_index"] + chunk_index_offset,
-                    content=chunk["content"],
-                    content_type=chunk.get("content_type") or "text",
-                    token_count=chunk.get("token_count"),
-                    vector_ref_id=vector_id,
+                    chunk_index=parent.index + chunk_index_offset,
+                    content=parent.content,
+                    content_type="text",
+                    token_count=parent.token_count,
+                    vector_ref_id=None,
+                    is_parent=True,
+                    parent_chunk_id=None,
+                    allowed_scopes=parent.allowed_scopes,
                     metadata={
-                        **(chunk.get("metadata") or {}),
+                        "section_heading": parent.section_heading,
+                        "strategy": parent.metadata.get("strategy", "recursive"),
+                        "job_id": job.id,
+                    },
+                    created_at=created_at,
+                )
+            )
+
+        # Store child chunks with vector references
+        for child, vector_id in zip(child_chunks, vector_ids):
+            db.add(
+                LibraryChunk(
+                    tenant_id=job.tenant_id,
+                    library_item_id=item.id,
+                    chunk_index=child.index + chunk_index_offset,
+                    content=child.content,
+                    content_type="text",
+                    token_count=child.token_count,
+                    vector_ref_id=vector_id,
+                    is_parent=False,
+                    parent_chunk_id=child.parent_chunk_id,
+                    allowed_scopes=child.allowed_scopes,
+                    metadata={
+                        "section_heading": child.section_heading,
+                        "start_char": child.start_char,
+                        "end_char": child.end_char,
+                        "strategy": child.metadata.get("strategy", "recursive"),
                         "job_id": job.id,
                     },
                     created_at=created_at,
@@ -1112,7 +1164,9 @@ async def process_library_index_job(
             "library_index_job_completed",
             job_id=job.id,
             library_item_id=job.library_item_id,
-            chunk_count=len(chunks),
+            chunk_count=len(all_chunks),
+            parent_chunks=len(parent_chunks),
+            child_chunks=len(child_chunks),
             attempt_count=job.attempt_count,
         )
         emit_metric(

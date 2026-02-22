@@ -2,6 +2,12 @@ I now have all the context needed. Let me produce the section content.
 
 # Section 03: Smart Chunking Engine
 
+## Implementation Status: COMPLETE
+
+**Implemented:** 2026-02-22
+**Tests:** 42 section tests (107 total RAG tests), all passing
+**Commit:** (pending)
+
 ## Overview
 
 This section implements a new smart chunking engine (`SmartChunker`) in the Python backend that replaces the legacy fixed-character chunking with token-based, strategy-aware splitting. It introduces the parent-child chunk pattern (small child chunks for precise retrieval, larger parent chunks for LLM context), adds the required schema columns, integrates into the existing indexing pipeline, and creates a Celery batch re-indexing task.
@@ -584,32 +590,43 @@ No changes are needed to `vectorize.ts` in this section. The Python SmartChunker
 
 ---
 
-## File Summary
+## File Summary (Actual)
 
 ### New files
 
-| File | Purpose |
-|------|---------|
-| `/home/dev/projects/SmartSpecPro/python-backend/app/orchestrator/rag/chunker.py` | `SmartChunker`, `ChunkStrategy`, `ChunkConfig`, `Chunk` classes |
-| `/home/dev/projects/SmartSpecPro/python-backend/tests/orchestrator/rag/test_chunker.py` | Unit tests for all chunking strategies, edge cases, scope inheritance |
-| `/home/dev/projects/SmartSpecPro/python-backend/tests/orchestrator/rag/test_indexing_pipeline.py` | Integration tests for SmartChunker in the indexing pipeline |
-| `/home/dev/projects/SmartSpecPro/python-backend/tests/orchestrator/rag/test_reindex_task.py` | Tests for Celery batch re-indexing task |
+| File | Purpose | Lines |
+|------|---------|-------|
+| `python-backend/app/orchestrator/rag/chunker.py` | `SmartChunker`, `ChunkStrategy`, `ChunkConfig`, `Chunk` classes | ~520 |
+| `python-backend/app/tasks/reindex_tasks.py` | Celery `smart_reindex_library_items` task (Option A: enqueue jobs) | ~130 |
+| `python-backend/tests/orchestrator/rag/test_chunker.py` | 26 tests: strategies, splitting, tokens, parent-child, edge cases, scopes | ~500 |
+| `python-backend/tests/orchestrator/rag/test_indexing_pipeline.py` | 7 tests: pipeline integration, embedding standardization | ~155 |
+| `python-backend/tests/orchestrator/rag/test_reindex_task.py` | 7 tests: batch processing, progress, error handling | ~175 |
+| `python-backend/tests/orchestrator/rag/test_library_model.py` | 2 tests: is_parent default, parent_chunk_id nullable | ~25 |
+| `apps/web/drizzle/0034_parched_supernaut.sql` | Auto-generated migration for is_parent + parent_chunk_id | ~5 |
 
 ### Modified files
 
 | File | Changes |
 |------|---------|
-| `/home/dev/projects/SmartSpecPro/python-backend/app/models/library.py` | Add `is_parent` (Boolean, default False) and `parent_chunk_id` (Text, nullable) columns to `LibraryChunk` |
-| `/home/dev/projects/SmartSpecPro/apps/web/drizzle/schema.ts` | Add `isParent` and `parentChunkId` columns to `libraryChunks` table (line ~1617-1632) |
-| `/home/dev/projects/SmartSpecPro/python-backend/app/services/library_indexing_service.py` | Replace `chunk_text_content()` call with `SmartChunker` in `process_library_index_job()`, store parent/child metadata |
-| `/home/dev/projects/SmartSpecPro/python-backend/app/tasks/media_tasks.py` | Add `smart_reindex_library_items` Celery task (or create separate `reindex_tasks.py`) |
+| `python-backend/app/models/library.py` | Added `is_parent` (Boolean, default False, server_default="false") and `parent_chunk_id` (Text, nullable) to `LibraryChunk` |
+| `apps/web/drizzle/schema.ts` | Added `isParent` and `parentChunkId` columns + `library_chunks_parent_chunk_idx` index to `libraryChunks` |
+| `python-backend/app/services/library_indexing_service.py` | Replaced `chunk_text_content()` with `SmartChunker` in `process_library_index_job()`, separate parent/child storage loops with `allowed_scopes` propagation, deprecation notice on legacy function |
 
-### Unchanged files (context only)
+### Unchanged files
 
 | File | Reason |
 |------|--------|
-| `/home/dev/projects/SmartSpecPro/apps/web/server/services/vectorize.ts` | Keep as-is for lightweight non-library embeddings; library items use Python pipeline |
-| `/home/dev/projects/SmartSpecPro/python-backend/requirements.txt` | `tiktoken>=0.5.0` and `sentence-transformers>=2.2.0` already present; no additions needed |
+| `apps/web/server/services/vectorize.ts` | Kept as-is for lightweight non-library embeddings |
+| `python-backend/requirements.txt` | `tiktoken>=0.5.0` already present |
+
+## Deviations from Plan
+
+1. **Reindex task in separate file** — Created `reindex_tasks.py` instead of adding to `media_tasks.py` (cleaner separation of concerns)
+2. **Option A for reindexing** — Used job-enqueue pattern (enqueue `LibraryIndexJob` per item) rather than direct processing, reusing existing retry/deduplication/observability infrastructure
+3. **Code review fix: allowed_scopes propagation** — Initial implementation missed passing `allowed_scopes` to `LibraryChunk()` constructors in the indexing service. Fixed during code review to include `allowed_scopes=parent.allowed_scopes` and `allowed_scopes=child.allowed_scopes`
+4. **Strategy auto-detection refinement** — Changed code marker detection from `sum(1 for m in markers if m in sample)` (unique presence) to `sum(sample.count(m) for m in markers)` (total occurrences) for more accurate CODE strategy detection
+5. **No `const ` or `import ` in code markers** — Plan listed these but implementation uses only `["def ", "class ", "function ", "async function "]` since `const` and `import` are too common in non-code contexts
+6. **Drizzle migration via `npm run db:push`** — Used npm instead of pnpm as the project root uses npm
 
 ---
 
