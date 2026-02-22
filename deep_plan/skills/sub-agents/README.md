@@ -114,6 +114,32 @@ The pre-merge security check uses a 5-step flow:
 
 ---
 
+## Native .claude/agents/ Definitions
+
+The 17 agents in this registry each have a corresponding native definition in `.claude/agents/` that enables Claude Code's auto-dispatch mechanism. These files use YAML frontmatter to configure model, tools, permissions, and isolation.
+
+| Agent File | Native Definition |
+|---|---|
+| `research.md` | `.claude/agents/ssp-research.md` |
+| `architect.md` | `.claude/agents/ssp-architect.md` |
+| `frontend.md` | `.claude/agents/ssp-frontend.md` |
+| `backend.md` | `.claude/agents/ssp-backend.md` |
+| `python.md` | `.claude/agents/ssp-python.md` |
+| `database.md` | `.claude/agents/ssp-database.md` |
+| `test-qa.md` | `.claude/agents/ssp-test-qa.md` |
+| `reviewer.md` | `.claude/agents/ssp-reviewer.md` |
+| `security.md` | `.claude/agents/ssp-security.md` |
+| `debugger.md` | `.claude/agents/ssp-debugger.md` |
+| `error-detective.md` | `.claude/agents/ssp-error-detective.md` |
+| `infrastructure.md` | `.claude/agents/ssp-infrastructure.md` |
+| `docs-release.md` | `.claude/agents/ssp-docs-release.md` |
+| `security-review.md` | `.claude/agents/ssp-security-review.md` |
+| `security-trpc.md` | `.claude/agents/ssp-security-trpc.md` |
+| `security-fastapi.md` | `.claude/agents/ssp-security-fastapi.md` |
+| `security-frontend.md` | `.claude/agents/ssp-security-frontend.md` |
+
+---
+
 ## Maintenance Notes
 
 - **Keep registry in sync:** the table above must always match the actual `.md` files in `agents/`. An agent file without a registry row, or a registry row without a file, will cause silent dispatch failures.
