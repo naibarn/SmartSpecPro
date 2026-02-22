@@ -1,3 +1,6 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+
 import { protectedProcedure, router } from "../_core/trpc";
 import {
   PRESENTATION_EDITOR_ROUTE_BASE,
@@ -13,6 +16,24 @@ import {
   type PresentationRouteBlockedResult,
   type PresentationRouteGuardResult,
 } from "@shared/presentation/contracts";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
+import {
+  PresentationServiceError,
+  addSlideToDeck,
+  attachAssetToDeck,
+  createPresentationDeckForLibraryItem,
+  deletePresentationDeck,
+  deleteSlideFromDeck,
+  detachAssetFromDeck,
+  duplicateSlideInDeck,
+  getPresentationDeckByLibraryItem,
+  getPresentationDeckDetail,
+  listAssetsForDeck,
+  listSlidesForDeck,
+  reorderSlidesInDeck,
+  updatePresentationDeckMetadata,
+  updateSlideInDeck,
+} from "../services/presentationService";
 
 const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
@@ -57,10 +78,312 @@ function getAvailability(): PresentationAvailability {
   return { enabled: true };
 }
 
+function ensureFeatureEnabled(): void {
+  if (isPresentationFeatureEnabled()) {
+    return;
+  }
+
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.FEATURE_DISABLED,
+    `${PRESENTATION_ERROR_CODE.FEATURE_DISABLED}: presentation editor is currently disabled`,
+  );
+}
+
+function resolvePresentationTenantId(
+  ctx: { tenantId: unknown; user: { currentTenantId?: unknown } },
+): string {
+  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+  if (!tenantId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Tenant context is required for presentation operations",
+    });
+  }
+
+  return tenantId;
+}
+
+function mapPresentationServiceError(error: PresentationServiceError): TRPCError {
+  if (error.code === PRESENTATION_ERROR_CODE.NOT_FOUND) {
+    return new TRPCError({ code: "NOT_FOUND", message: error.message });
+  }
+
+  if (
+    error.code === PRESENTATION_ERROR_CODE.PERMISSION_DENIED
+    || error.code === PRESENTATION_ERROR_CODE.LIFECYCLE_RESTRICTED
+    || error.code === PRESENTATION_ERROR_CODE.FEATURE_DISABLED
+  ) {
+    return new TRPCError({ code: "FORBIDDEN", message: error.message });
+  }
+
+  return new TRPCError({ code: "BAD_REQUEST", message: error.message });
+}
+
+function toPresentationActor(ctx: {
+  tenantId: unknown;
+  user: { id: number; role?: string | null; currentTenantId?: unknown };
+}) {
+  return {
+    userId: ctx.user.id,
+    tenantId: resolvePresentationTenantId(ctx),
+    role: ctx.user.role,
+  };
+}
+
+const deckIdSchema = z.object({
+  deckId: z.number().int().positive(),
+});
+
 export const presentationRouter = router({
   availability: protectedProcedure.query(() => {
     return presentationAvailabilitySchema.parse(getAvailability());
   }),
+
+  getDeck: protectedProcedure
+    .input(deckIdSchema)
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await getPresentationDeckDetail(input.deckId, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  getDeckByLibraryItem: protectedProcedure
+    .input(z.object({
+      libraryItemId: z.number().int().positive(),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        const deck = await getPresentationDeckByLibraryItem(input.libraryItemId, toPresentationActor(ctx));
+        if (!deck) {
+          throw new PresentationServiceError(
+            PRESENTATION_ERROR_CODE.NOT_FOUND,
+            `${PRESENTATION_ERROR_CODE.NOT_FOUND}: no presentation deck exists for library item ${input.libraryItemId}`,
+          );
+        }
+        return deck;
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  createDeck: protectedProcedure
+    .input(z.object({
+      libraryItemId: z.number().int().positive(),
+      title: z.string().min(1).max(255).optional(),
+      description: z.string().max(2000).nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await createPresentationDeckForLibraryItem(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  updateDeck: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      title: z.string().min(1).max(255).optional(),
+      description: z.string().max(2000).nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await updatePresentationDeckMetadata(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  deleteDeck: protectedProcedure
+    .input(deckIdSchema)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await deletePresentationDeck(input.deckId, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  listSlides: protectedProcedure
+    .input(deckIdSchema)
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await listSlidesForDeck(input.deckId, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  addSlide: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      title: z.string().min(1).max(255).optional(),
+      slideContent: z.record(z.any()).optional(),
+      notes: z.string().max(5_000).nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await addSlideToDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  duplicateSlide: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      slideId: z.number().int().positive(),
+      targetIndex: z.number().int().min(0).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await duplicateSlideInDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  updateSlide: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      slideId: z.number().int().positive(),
+      title: z.string().min(1).max(255).optional(),
+      slideContent: z.record(z.any()).optional(),
+      notes: z.string().max(5_000).nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await updateSlideInDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  deleteSlide: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      slideId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await deleteSlideFromDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  reorderSlides: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      movedSlideId: z.number().int().positive(),
+      targetIndex: z.number().int().min(0),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await reorderSlidesInDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  listAssets: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      slideId: z.number().int().positive().nullable().optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await listAssetsForDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  attachAsset: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      slideId: z.number().int().positive().nullable().optional(),
+      libraryItemId: z.number().int().positive(),
+      byteSize: z.number().int().min(0),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await attachAssetToDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  detachAsset: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      linkId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await detachAssetFromDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
 
   guardEditorOpen: protectedProcedure
     .input(presentationRouteGuardInputSchema)

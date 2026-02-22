@@ -39,3 +39,19 @@
 - decision_taken: `bounded_full_rewrite`
 - mode_used: `auto`
 - rationale: Simpler correctness under uniqueness constraints; bounded cost is acceptable at MVP slide limit.
+
+## 2026-02-22 - Section 03 - Service Orchestration Boundary
+- options_considered:
+  - `router_heavy`: keep permission/lifecycle/limit logic directly in tRPC router procedures
+  - `service_layer`: move orchestration to dedicated `presentationService` and keep router focused on validation + error mapping
+- decision_taken: `service_layer`
+- mode_used: `auto`
+- rationale: Aligns with section objective, keeps policy logic reusable for future frontend/export flows, and reduces router complexity.
+
+## 2026-02-22 - Section 03 - Error Contract Strategy
+- options_considered:
+  - `trpc_code_only`: rely only on generic tRPC error codes
+  - `stable_presentation_codes`: include deterministic presentation machine codes in service errors and map them to tRPC classes
+- decision_taken: `stable_presentation_codes`
+- mode_used: `auto`
+- rationale: Frontend needs deterministic limit/lifecycle handling; stable presentation codes keep client branching robust while preserving existing tRPC semantics.
