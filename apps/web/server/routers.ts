@@ -63,6 +63,7 @@ import { searchRouter } from "./routers/search";
 import { adminOpsRouter } from "./routers/adminOps";
 import { funnelAnalyticsRouter } from "./routers/funnelAnalytics";
 import { infrastructureRouter } from "./routers/infrastructure";
+import { presentationRouter } from "./routers/presentation";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1349,6 +1350,9 @@ export const appRouter = router({
 
   // Library domain APIs
   library: libraryRouter,
+
+  // Presentation domain APIs
+  presentation: presentationRouter,
 
   // Library operations (admin)
   libraryOps: libraryOpsRouter,

@@ -49,6 +49,7 @@ import {
   type DocumentLibraryItem,
   type DocumentQueryState,
 } from "@/lib/documentManagementUi";
+import { getEditorOpenRouteForItem } from "@/lib/presentationRouting";
 import {
   closeDocumentEditorTab,
   upsertDocumentEditorTab,
@@ -336,6 +337,15 @@ export default function DocumentManagement() {
     item: Pick<DocumentLibraryItem, "id" | "title" | "item_type"> & Partial<Pick<DocumentLibraryItem, "access_source">>,
     options?: { scope?: DocumentQueryState["scope"] },
   ) {
+    const openTarget = getEditorOpenRouteForItem({
+      id: item.id,
+      item_type: item.item_type,
+    });
+    if (openTarget.kind === "presentation") {
+      setLocation(openTarget.href);
+      return;
+    }
+
     upsertEditorTab(item, { openedFromScope: options?.scope });
     setIsLibraryPanelOpen(true);
     setSelectedId(item.id);
