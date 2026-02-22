@@ -56,7 +56,21 @@ class Document:
     # Source information
     source_type: str = ""  # memory, file, code, doc
     source_id: Optional[str] = None
-    
+
+    # Citation fields
+    chunk_id: Optional[str] = None
+    parent_doc_id: Optional[str] = None
+    parent_doc_title: Optional[str] = None
+    section_heading: Optional[str] = None
+
+    def citation_ref(self) -> str:
+        """Generate a citation reference string for this document."""
+        if self.parent_doc_title and self.section_heading:
+            return f"[{self.parent_doc_title} - section {self.section_heading}]"
+        if self.parent_doc_title:
+            return f"[{self.parent_doc_title}]"
+        return "[Unknown Source]"
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "doc_id": self.doc_id,
@@ -70,6 +84,10 @@ class Document:
             },
             "source_type": self.source_type,
             "source_id": self.source_id,
+            "chunk_id": self.chunk_id,
+            "parent_doc_id": self.parent_doc_id,
+            "parent_doc_title": self.parent_doc_title,
+            "section_heading": self.section_heading,
         }
 
 
@@ -91,7 +109,10 @@ class RAGResult:
     
     # Mode used
     mode: SearchMode = SearchMode.HYBRID
-    
+
+    # Citation metadata
+    citations: List[Dict[str, Any]] = field(default_factory=list)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "query": self.query,
@@ -107,24 +128,73 @@ class RAGResult:
                 "final_count": self.final_count,
             },
             "mode": self.mode.value,
+            "citations": self.citations,
         }
-    
+
     def get_context(self, max_tokens: int = 4000) -> str:
         """Get combined context from documents."""
         context_parts = []
         current_tokens = 0
-        
+
         for doc in self.documents:
             # Estimate tokens (rough: 4 chars per token)
             doc_tokens = len(doc.content) // 4
-            
+
             if current_tokens + doc_tokens > max_tokens:
                 break
-            
+
             context_parts.append(doc.content)
             current_tokens += doc_tokens
-        
+
         return "\n\n---\n\n".join(context_parts)
+
+    def get_context_with_citations(
+        self, max_tokens: int = 4000,
+    ) -> Tuple[str, List[Dict[str, Any]]]:
+        """Get combined context with inline [Source N: ...] markers.
+
+        Returns:
+            Tuple of (context_string, citations_list).
+        """
+        if not self.documents:
+            return "", []
+
+        context_parts: List[str] = []
+        citations: List[Dict[str, Any]] = []
+        seen_keys: Dict[Tuple[Optional[str], Optional[str]], int] = {}
+        current_tokens = 0
+
+        for doc in self.documents:
+            doc_tokens = len(doc.content) // 4
+            # Account for the header line too (~20 chars overhead)
+            header_tokens = 20
+
+            if current_tokens + doc_tokens + header_tokens > max_tokens:
+                break
+
+            # Deduplicate by (parent_doc_id, section_heading); fall back to doc_id
+            cite_key = (
+                doc.parent_doc_id or doc.doc_id,
+                doc.section_heading,
+            )
+            if cite_key not in seen_keys:
+                idx = len(citations) + 1
+                seen_keys[cite_key] = idx
+                citations.append({
+                    "index": idx,
+                    "title": doc.parent_doc_title or "Unknown Source",
+                    "section": doc.section_heading,
+                    "doc_id": doc.parent_doc_id,
+                    "chunk_id": doc.chunk_id,
+                })
+
+            source_idx = seen_keys[cite_key]
+            ref = doc.citation_ref()
+            header = f"[Source {source_idx}: {ref[1:-1]}]"  # strip outer brackets from ref
+            context_parts.append(f"{header}\n{doc.content}")
+            current_tokens += doc_tokens + header_tokens
+
+        return "\n\n---\n\n".join(context_parts), citations
 
 
 @dataclass

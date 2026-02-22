@@ -31,6 +31,12 @@ from app.orchestrator.rag.query_processor import (
     QueryStrategy,
     ProcessedQuery,
 )
+from app.orchestrator.rag.guardrails import (
+    RetrievalGuardrails,
+    RetrievalQuality,
+    QualityAssessment,
+)
+from app.orchestrator.rag.query_router import QueryRouter, QueryIntent
 
 __all__ = [
     "HybridRAGEngine",
@@ -49,4 +55,9 @@ __all__ = [
     "QueryProcessor",
     "QueryStrategy",
     "ProcessedQuery",
+    "RetrievalGuardrails",
+    "RetrievalQuality",
+    "QualityAssessment",
+    "QueryRouter",
+    "QueryIntent",
 ]

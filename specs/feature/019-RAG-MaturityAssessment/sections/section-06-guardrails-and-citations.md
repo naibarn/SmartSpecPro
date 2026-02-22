@@ -494,3 +494,34 @@ Custom thresholds can also be stored in tenant settings and passed to the constr
 6. Run all tests. Verify they pass (`pytest python-backend/tests/orchestrator/rag/test_guardrails.py python-backend/tests/orchestrator/rag/test_citations.py python-backend/tests/orchestrator/rag/test_query_router.py -v`).
 7. Run the full RAG test suite to ensure no regressions: `pytest python-backend/tests/orchestrator/rag/ -v`.
 8. Verify coverage meets the 80% threshold on the new files.
+
+---
+
+## Actual Implementation Summary
+
+### Files Created
+| File | Lines | Tests |
+|------|-------|-------|
+| `python-backend/app/orchestrator/rag/guardrails.py` | ~170 | 22 tests |
+| `python-backend/app/orchestrator/rag/query_router.py` | ~115 | 14 tests |
+| `python-backend/tests/orchestrator/rag/test_guardrails.py` | ~316 | — |
+| `python-backend/tests/orchestrator/rag/test_citations.py` | ~168 | 14 tests |
+| `python-backend/tests/orchestrator/rag/test_query_router.py` | ~130 | — |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `python-backend/app/orchestrator/rag/hybrid_rag.py` | Added 4 citation fields to Document, `citation_ref()`, `citations` field + `get_context_with_citations()` to RAGResult, updated `to_dict()` |
+| `python-backend/app/orchestrator/rag/__init__.py` | Added exports for `RetrievalGuardrails`, `RetrievalQuality`, `QualityAssessment`, `QueryRouter`, `QueryIntent` |
+
+### Test Results
+- 58 new tests (22 guardrails + 14 citations + 14 query router + 8 enum/dataclass)
+- 210 total RAG tests passing, 0 failures
+
+### Deviations from Plan
+1. **failure_mode validation**: Added `ValueError` on invalid `failure_mode` values (code review G07).
+2. **Explanation strings**: Removed raw numeric scores from user-facing explanations to prevent metadata leakage (code review G01).
+3. **Citation dedup key**: Uses `doc_id` as fallback when `parent_doc_id` is None to prevent untagged documents from collapsing into a single citation (code review G04).
+4. **Conversational pattern guard**: Added word-count check (< 8 words) to prevent misclassifying "Hi, what is the refund policy?" as conversational (code review G05).
+5. **MEDIUM system prompt suffix**: Removed dead if/else duplication — both strict and permissive modes use the same MEDIUM suffix (code review G02).
+6. **LLM classification stub**: `_classify_with_llm` returns None; deferred to Section 07 as planned.
