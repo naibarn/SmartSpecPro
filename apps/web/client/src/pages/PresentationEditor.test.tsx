@@ -14,19 +14,8 @@ const mutationMocks = {
   triggerExport: vi.fn(),
 };
 
-const queryState = {
-  libraryItem: {
-    id: 42,
-    item_type: "presentation",
-    itemType: "presentation",
-    title: "Product Pitch",
-  },
-  guard: {
-    allowed: true,
-    itemId: 42,
-    editorRoute: "/presentation-editor/42",
-  },
-  deckByItem: {
+function buildDeckByItem() {
+  return {
     deck: {
       id: 7,
       libraryItemId: 42,
@@ -59,7 +48,23 @@ const queryState = {
       },
     ],
     assets: [],
+  };
+}
+
+const queryState = {
+  libraryItem: {
+    id: 42,
+    item_type: "presentation",
+    itemType: "presentation",
+    title: "Product Pitch",
   },
+  guard: {
+    allowed: true,
+    itemId: 42,
+    editorRoute: "/presentation-editor/42",
+  },
+  deckByItem: buildDeckByItem(),
+  deckError: null as Error | null,
 };
 
 vi.mock("wouter", () => ({
@@ -119,7 +124,7 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: vi.fn(() => ({
           data: queryState.deckByItem,
           isLoading: false,
-          error: null,
+          error: queryState.deckError,
           refetch: vi.fn(),
         })),
       },
@@ -191,6 +196,8 @@ describe("PresentationEditor", () => {
       itemId: 42,
       editorRoute: "/presentation-editor/42",
     };
+    queryState.deckByItem = buildDeckByItem();
+    queryState.deckError = null;
   });
 
   it("renders labeled controls for slide and canvas editing", () => {
@@ -254,5 +261,49 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(screen.getByText(/retry later/i)).toBeInTheDocument();
     });
+  });
+
+  it("navigates back to Document Management from editor header", () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /back to document management/i }));
+    expect(setLocationMock).toHaveBeenCalledWith("/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=42");
+  });
+
+  it("auto-initializes deck when deck is missing", async () => {
+    queryState.deckByItem = null as any;
+    queryState.deckError = new Error("PRESENTATION_NOT_FOUND: no presentation deck exists for library item 42");
+
+    render(<PresentationEditor />);
+
+    await waitFor(() => {
+      expect(mutationMocks.createDeck).toHaveBeenCalledWith({
+        libraryItemId: 42,
+        title: "Product Pitch",
+      });
+    });
+  });
+
+  it("renders canvas shell stage layers from serialized slide content", () => {
+    render(<PresentationEditor />);
+
+    expect(screen.getByTestId("canvas-shell")).toBeInTheDocument();
+    expect(screen.getByTestId("canvas-stage-layer-background")).toBeInTheDocument();
+    expect(screen.getByTestId("canvas-stage-layer-content")).toBeInTheDocument();
+    expect(screen.getByTestId("canvas-stage-layer-selection-guides")).toBeInTheDocument();
+    expect(screen.getByTestId("canvas-stage-layer-interaction-overlay")).toBeInTheDocument();
+    expect(screen.getByTestId("canvas-stage-layer-content")).toHaveTextContent(/hello/i);
+  });
+
+  it("cleans up canvas stage listeners on unmount/remount", () => {
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener");
+    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
+
+    const { unmount } = render(<PresentationEditor />);
+    unmount();
+    render(<PresentationEditor />);
+
+    expect(addEventListenerSpy).toHaveBeenCalledWith("resize", expect.any(Function));
+    expect(removeEventListenerSpy).toHaveBeenCalledWith("resize", expect.any(Function));
   });
 });

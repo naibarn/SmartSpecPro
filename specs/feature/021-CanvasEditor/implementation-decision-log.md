@@ -1,0 +1,7 @@
+# Implementation Decision Log
+
+| timestamp | section_or_step | options_considered | decision_taken | mode_used | rationale |
+|---|---|---|---|---|---|
+| 2026-02-22 | Preflight dirty tree handling | stop; switch_branch; proceed_here | proceed_here | asked | User explicitly approved continuing on `main` with existing dirty worktree. |
+| 2026-02-22 | Section 01 runtime shell implementation | full `react-konva` integration now; staged runtime shell boundary | staged runtime shell boundary | auto | `react-konva` dependency is not present; establishing module/layer contract now unblocks section flow while minimizing route-risk. |
+| 2026-02-22 | Section commit isolation strategy | unstage unrelated index; isolated path commit | isolated path commit (`git commit --only`) | auto | Existing repository contains unrelated staged changes; isolated path commits avoid contaminating section history. |

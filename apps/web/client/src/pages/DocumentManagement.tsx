@@ -267,6 +267,7 @@ export default function DocumentManagement() {
   const saveMarkdownMutation = trpc.library.saveMarkdown.useMutation();
   const uploadFileMutation = trpc.library.uploadFile.useMutation();
   const createItemMutation = trpc.library.createItem.useMutation();
+  const createPresentationDeckMutation = trpc.presentation.createDeck.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
   const deleteItemMutation = trpc.library.deleteItem.useMutation();
   const importDriveFileMutation = trpc.googleDrive.importDriveFile.useMutation();
@@ -574,7 +575,8 @@ export default function DocumentManagement() {
 
   async function handleSaveMarkdown() {
     if (!selectedItem || previewType !== "markdown") return;
-    const draft = markdownDraftByDocId[selectedItem.id];
+    const selectedItemId = selectedItem.id;
+    const draft = markdownDraftByDocId[selectedItemId];
     const contentToSave = draft?.value ?? "";
 
     // Safety guard: refuse to persist an empty document.  This prevents data
@@ -601,14 +603,14 @@ export default function DocumentManagement() {
       setSelectedId(updatedItem.id);
       await Promise.all([
         trpcUtils.library.listDocuments.invalidate(),
-        trpcUtils.library.getMarkdownContent.invalidate({ id: selectedItem.id }),
+        trpcUtils.library.getMarkdownContent.invalidate({ id: selectedItemId }),
       ]);
     }
 
     try {
       setMarkdownError(undefined);
       const result = await saveMarkdownMutation.mutateAsync({
-        id: selectedItem.id,
+        id: selectedItemId,
         content: contentToSave,
         expectedUpdatedAt,
       });
@@ -620,7 +622,7 @@ export default function DocumentManagement() {
       if (isVersionConflict) {
         try {
           const retryResult = await saveMarkdownMutation.mutateAsync({
-            id: selectedItem.id,
+            id: selectedItemId,
             content: contentToSave,
           });
           toast.success("Markdown saved. Re-indexing started.");
@@ -785,6 +787,56 @@ export default function DocumentManagement() {
       toast.success("New markdown document created.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create document");
+    }
+  }
+
+  async function handleCreateNewPresentation() {
+    try {
+      const now = new Date();
+      const title = `New Presentation ${now.toLocaleString()}`;
+      const createResult = await createItemMutation.mutateAsync({
+        itemType: "presentation",
+        source: "document_management",
+        title,
+        description: "Presentation deck",
+        status: "ready",
+        visibility: "private",
+        metadata: {
+          extension: "presentation",
+          source_type: "presentation_document",
+        },
+      });
+
+      let deckInitialized = true;
+      try {
+        await createPresentationDeckMutation.mutateAsync({
+          libraryItemId: createResult.item.id,
+          title: createResult.item.title || title,
+        });
+      } catch {
+        deckInitialized = false;
+      }
+
+      setDebouncedQuery("");
+      setQueryState((prev) => ({
+        ...prev,
+        scope: "my_library",
+      }));
+      setPendingAutoSelectId(createResult.item.id);
+      const provisionalItem = toProvisionalDocumentItem(createResult.item);
+      setProvisionalSelectedItem(provisionalItem);
+      openEditorTab(provisionalItem, { scope: "my_library" });
+      await Promise.all([
+        trpcUtils.library.listDocuments.invalidate(),
+        trpcUtils.library.getItem.invalidate({ id: createResult.item.id }),
+      ]);
+      toast.success(
+        deckInitialized
+          ? "New presentation created."
+          : "New presentation created. Deck will initialize on open.",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create presentation");
     }
   }
 
@@ -965,6 +1017,15 @@ export default function DocumentManagement() {
               >
                 <FilePlus2 className="mr-1 h-4 w-4" />
                 New Document
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleCreateNewPresentation}
+                disabled={createItemMutation.isPending || createPresentationDeckMutation.isPending}
+              >
+                <FilePlus2 className="mr-1 h-4 w-4" />
+                New Presentation
               </Button>
             </div>
           </div>
