@@ -495,3 +495,28 @@ import structlog
 5. Run `cd /home/dev/projects/SmartSpecPro/python-backend && pytest tests/orchestrator/rag/test_e2e_scope.py -v -m integration` to verify integration tests pass
 6. Run `cd /home/dev/projects/SmartSpecPro/python-backend && pytest tests/orchestrator/rag/ -v` to verify no regressions in existing RAG tests
 7. Run `cd /home/dev/projects/SmartSpecPro/python-backend && pytest --cov=app/orchestrator/node_executors/rag_executor --cov-fail-under=80` to verify coverage
+
+---
+
+## Actual Implementation Notes
+
+### Files Created/Modified
+- `python-backend/app/orchestrator/node_executors/rag_executor.py` — Full replacement of 25-line stub with ~180-line implementation
+- `python-backend/tests/orchestrator/rag/test_rag_executor.py` — 15 unit tests across 7 test classes
+- `python-backend/tests/orchestrator/rag/test_e2e_scope.py` — 2 integration tests
+
+### Deviations from Plan
+- Added `TestRAGExecutorEdgeCases` class (not in plan) with tests for missing tenant_id and no-chunks scenarios
+- Total test count: 17 (plan specified ~14 across 6 classes)
+
+### Code Review Fixes Applied
+- **H1**: Sanitized error response — `_failed_response` no longer leaks raw exception strings; uses generic "internal retrieval error"
+- **H2**: Enterprise tenants now default to `rag_failure_mode="strict"` based on `tenant.plan.value == "enterprise"`
+- **H3**: Removed unused `import time`
+- **M1**: `citations` list from `get_context_with_citations()` now included in response dict
+- **M3**: Added query length validation (empty or >10000 chars rejected before DB access)
+- **M4**: Added `MAX_CHUNKS = 10000` hard ceiling with `.limit()` on chunk query and warning log
+
+### Test Results
+- 17 new tests (15 unit + 2 integration): all passing
+- 225 total RAG tests: all passing, zero regressions

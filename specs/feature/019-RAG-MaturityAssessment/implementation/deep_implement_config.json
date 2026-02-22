@@ -20,6 +20,26 @@
     "section-01-acl-schema-and-scopes": {
       "status": "complete",
       "commit_hash": "5ddcfbf"
+    },
+    "section-02-scope-propagation": {
+      "status": "complete",
+      "commit_hash": "7677a99"
+    },
+    "smart-chunking": {
+      "status": "complete",
+      "commit_hash": "6b2181e"
+    },
+    "hybrid-search": {
+      "status": "complete",
+      "commit_hash": "33ef9f7"
+    },
+    "section-05-reranking": {
+      "status": "complete",
+      "commit_hash": "78d6e2f"
+    },
+    "section-06-guardrails-and-citations": {
+      "status": "complete",
+      "commit_hash": "c5b0eda"
     }
   },
   "pre_commit": {

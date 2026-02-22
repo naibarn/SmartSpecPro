@@ -1,21 +1,21 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TRPCError } from '@trpc/server';
 
 // Mock dependencies
-jest.mock('../services/skillRegistry');
-jest.mock('../services/skillExecutor');
-jest.mock('../services/rateLimiter');
-jest.mock('../db');
+vi.mock('../services/skillRegistry');
+vi.mock('../services/skillExecutor');
+vi.mock('../services/rateLimiter');
+vi.mock('../db');
 
 describe('executeSkill API', () => {
   const mockCaller = {
     chat: {
-      executeSkill: jest.fn(),
+      executeSkill: vi.fn(),
     },
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Input Validation', () => {
@@ -52,7 +52,7 @@ describe('executeSkill API', () => {
     });
 
     it('merges dynamicParams with extraParams (dynamicParams takes precedence)', async () => {
-      const mockExecute = jest.fn().mockResolvedValue({ success: true });
+      const mockExecute = vi.fn().mockResolvedValue({ success: true });
       mockCaller.chat.executeSkill.mockImplementation(async (input: any) => {
         // Simulate merging logic
         const merged = { ...input.extraParams, ...input.dynamicParams };

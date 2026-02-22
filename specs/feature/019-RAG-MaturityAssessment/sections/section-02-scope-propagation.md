@@ -345,15 +345,35 @@ Look for the update function that handles `UpdateLibraryItemInput` (which includ
 
 ---
 
-## File Summary
+## File Summary (Actual Implementation)
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `/home/dev/projects/SmartSpecPro/python-backend/app/orchestrator/rag/scope_engine.py` | Modify (extend) | Add `propagate_scopes_to_vector_stores()`, `invalidate_rag_cache_for_item()`, `handle_permission_change()` |
-| `/home/dev/projects/SmartSpecPro/apps/web/server/services/libraryService.ts` | Modify | Add `recomputeAndPropagateScopes()` utility, hook into `shareLibraryItem()`, `removeLibraryShare()`, `updateLibrarySharePermission()`, and visibility change in `updateLibraryItem()` |
-| `/home/dev/projects/SmartSpecPro/python-backend/app/tasks/backfill_allowed_scopes.py` | Create | Celery task for backfilling `allowed_scopes` on existing documents |
-| `/home/dev/projects/SmartSpecPro/python-backend/tests/orchestrator/rag/test_scope_propagation.py` | Create | Unit tests for scope propagation to vector stores |
-| `/home/dev/projects/SmartSpecPro/python-backend/tests/orchestrator/rag/test_tenant_isolation.py` | Create | Integration tests for cross-tenant isolation |
+| `python-backend/app/orchestrator/rag/scope_engine.py` | Modified | Added `propagate_scopes_to_vector_stores()`, `invalidate_rag_cache_for_item()`, `handle_permission_change()` |
+| `python-backend/app/orchestrator/rag/__init__.py` | Modified | Added exports for 3 new functions |
+| `apps/web/server/services/libraryService.ts` | Modified | Added `recomputeAndPropagateScopes()` utility, hooked into `shareLibraryItem()`, `removeLibraryShare()`, `updateLibrarySharePermission()`, and visibility change in `updateLibraryItem()` |
+| `python-backend/app/tasks/backfill_allowed_scopes.py` | Created | Async utility for backfilling `allowed_scopes` on existing documents |
+| `python-backend/tests/orchestrator/rag/test_scope_propagation.py` | Created | 9 unit tests for scope propagation to vector stores |
+| `python-backend/tests/orchestrator/rag/test_tenant_isolation.py` | Created | 6 unit tests for cross-tenant isolation |
+| `python-backend/tests/orchestrator/rag/test_allowed_scopes.py` | Modified | Fixed subject_type from "tenant" to "tenant_role" |
+| `python-backend/app/api/v1/__init__.py` | Unchanged | No new v1 router (uses existing `internal_library.py`) |
+
+**NOT created (per code review):**
+- `python-backend/app/api/v1/rag_scopes.py` — Deleted. Existing `app/api/internal_library.py` already provides this endpoint with proper auth (`secrets.compare_digest` + `SMARTSPEC_PROXY_TOKEN`).
+
+---
+
+## Deviations from Plan
+
+1. **No new internal API endpoint**: Plan called for creating `/api/v1/rag/internal/propagate-scopes`. Existing `internal_library.py` already provides `/api/internal/library/propagate-scopes` with proper token-based auth. TypeScript side calls this existing endpoint instead.
+
+2. **Backfill is async utility, not Celery task**: Plan suggested a Celery task or management command. Implementation is a plain `async def` function that can be called from any context. Celery wrapper can be added later if needed.
+
+3. **subject_type mapping fixed**: Plan referenced `"tenant"` for subject_type, but the actual DB stores `"tenant_role"`. Fixed to use `"tenant_role"` in the prefix mapping.
+
+4. **chunk_ids parameter dropped**: Plan's `propagate_scopes_to_vector_stores()` signature included `chunk_ids: list[str]`. Implementation queries chunk IDs from the database instead, which is more correct (avoids stale chunk_id lists).
+
+5. **Tenant filter added to chunk queries**: Code review caught a missing defense-in-depth `tenant_id` filter on the chunk lookup SQL. Added for both Python and TypeScript sides.
 
 ---
 
@@ -363,8 +383,14 @@ Look for the update function that handles `UpdateLibraryItemInput` (which includ
 
 2. **Immediate revocation**: When a permission is removed, the SQL UPDATE to `allowed_scopes` happens in the same request. Cache invalidation also happens immediately. There is no window where a revoked user can still retrieve the document through stale cache.
 
-3. **Cloudflare Vectorize delete+re-insert**: Cloudflare Vectorize does not support in-place metadata updates. The propagation function must fetch existing vectors, delete them, and re-insert with updated metadata. This is batched per item for efficiency.
+3. **Cloudflare Vectorize delete+re-insert**: Cloudflare Vectorize does not support in-place metadata updates. The propagation function fetches existing vectors, deletes them, and re-inserts with updated metadata.
 
-4. **Fire-and-forget Python call**: The Node.js to Python HTTP call for vector store propagation is non-blocking. If it fails, the system still works correctly because the RAG pipeline reads `allowed_scopes` from PostgreSQL for filtering. The vector store metadata is a performance optimization (enables pre-filtering in vector search), not the source of truth.
+4. **Fire-and-forget Python call**: The Node.js to Python HTTP call for vector store propagation is non-blocking. If `SMARTSPEC_PROXY_TOKEN` is not configured, no call is made. If it fails, the system still works correctly because the RAG pipeline reads `allowed_scopes` from PostgreSQL for filtering.
 
-5. **Backfill as separate operation**: Backfill of existing documents is a batch operation run once after the `allowed_scopes` column is added. It is idempotent -- running it multiple times produces the same result. New documents created after Section 01 is deployed will already have correct `allowed_scopes` set at creation time.
+5. **Backfill as separate operation**: Backfill of existing documents is a batch operation run once after the `allowed_scopes` column is added. It is idempotent.
+
+## Test Coverage
+
+- 152 total RAG tests pass (including 15 new tests from this section)
+- 9 scope propagation tests: pgvector, chromadb, cloudflare, no-chunks, provider-error-isolation, cache invalidation, handle_permission_change orchestration
+- 6 tenant isolation tests: cross-tenant scope separation, group membership enforcement, pending member exclusion, immediate revocation, public doc access

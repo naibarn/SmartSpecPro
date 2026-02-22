@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import {
   createLibraryItem,
   getLibraryItemById,
@@ -8,7 +10,16 @@ import {
   PresentationServiceError,
   type PresentationActor,
 } from "./presentationService";
-import { upsertPresentationSourceAttachment } from "./presentationPersistence";
+import {
+  cleanupExpiredPresentationConversionState,
+  getActivePresentationConversionByIdempotency,
+  getActivePresentationConversionBySource,
+  releasePresentationConversionLock,
+  tryAcquirePresentationConversionLock,
+  upsertPresentationConversionRecord,
+  upsertPresentationSourceAttachment,
+  type StoredPresentationConversionRecord,
+} from "./presentationPersistence";
 import {
   PRESENTATION_COMPATIBILITY_SCHEMA_VERSION,
   PRESENTATION_CONVERSION_SCHEMA_VERSION,
@@ -29,7 +40,6 @@ import {
 } from "./presentationObservability";
 
 interface ConversionRecord {
-  sourceKey: string;
   sourceItemId: number;
   sourceFormat: "pptx" | "ppt";
   deckLibraryItemId: number;
@@ -38,23 +48,244 @@ interface ConversionRecord {
   fidelityWarnings: string[];
 }
 
-const conversionBySource = new Map<string, ConversionRecord>();
-const conversionByIdempotencyKey = new Map<string, ConversionRecord>();
-const conversionLocks = new Set<string>();
+interface ConversionStateRecord extends ConversionRecord {
+  idempotencyKey: string;
+  expiresAtMs: number;
+}
+
+const CONVERSION_LOCK_TTL_MS = 3 * 60_000;
+const CONVERSION_RECORD_TTL_MS = 24 * 60 * 60_000;
+
+const fallbackConversionBySource = new Map<string, ConversionStateRecord>();
+const fallbackConversionByIdempotency = new Map<string, ConversionStateRecord>();
+const fallbackConversionLocks = new Map<string, { lockToken: string; expiresAtMs: number }>();
 
 export interface PresentationConversionDependencies {
+  useInMemoryStateFallback?: boolean;
   getLibraryItemById: typeof getLibraryItemById;
   createLibraryItem: typeof createLibraryItem;
   createPresentationDeckForLibraryItem: typeof createPresentationDeckForLibraryItem;
   upsertSourceAttachment: typeof upsertPresentationSourceAttachment;
+  cleanupExpiredConversionState: (input: { now: Date }) => Promise<void>;
+  getStoredConversionBySource: (input: {
+    tenantId: string;
+    sourceItemId: number;
+    now: Date;
+  }) => Promise<StoredPresentationConversionRecord | null>;
+  getStoredConversionByIdempotency: (input: {
+    tenantId: string;
+    sourceItemId: number;
+    idempotencyKey: string;
+    now: Date;
+  }) => Promise<StoredPresentationConversionRecord | null>;
+  upsertStoredConversionRecord: (input: {
+    tenantId: string;
+    sourceItemId: number;
+    sourceFormat: "pptx" | "ppt";
+    idempotencyKey: string;
+    deckLibraryItemId: number;
+    deckId: number;
+    partialFidelity: boolean;
+    fidelityWarnings: string[];
+    now: Date;
+    expiresAt: Date;
+  }) => Promise<StoredPresentationConversionRecord>;
+  acquireConversionLock: (input: {
+    tenantId: string;
+    sourceItemId: number;
+    lockToken: string;
+    now: Date;
+    expiresAt: Date;
+  }) => Promise<boolean>;
+  releaseConversionLock: (input: {
+    tenantId: string;
+    sourceItemId: number;
+    lockToken: string;
+  }) => Promise<void>;
+  now: () => number;
+  conversionLockTtlMs: number;
+  conversionRecordTtlMs: number;
 }
+
+const durableStateDependencies = {
+  cleanupExpiredConversionState: cleanupExpiredPresentationConversionState,
+  getStoredConversionBySource: getActivePresentationConversionBySource,
+  getStoredConversionByIdempotency: getActivePresentationConversionByIdempotency,
+  upsertStoredConversionRecord: upsertPresentationConversionRecord,
+  acquireConversionLock: tryAcquirePresentationConversionLock,
+  releaseConversionLock: releasePresentationConversionLock,
+};
 
 const defaultDependencies: PresentationConversionDependencies = {
   getLibraryItemById,
   createLibraryItem,
   createPresentationDeckForLibraryItem,
   upsertSourceAttachment: upsertPresentationSourceAttachment,
+  ...durableStateDependencies,
+  now: Date.now,
+  conversionLockTtlMs: CONVERSION_LOCK_TTL_MS,
+  conversionRecordTtlMs: CONVERSION_RECORD_TTL_MS,
 };
+
+function buildSourceKey(actor: Pick<PresentationActor, "tenantId">, sourceItemId: number): string {
+  return `${actor.tenantId}:${sourceItemId}`;
+}
+
+function buildIdempotencyCacheKey(sourceKey: string, idempotencyKey: string): string {
+  return `${sourceKey}:${idempotencyKey}`;
+}
+
+function pruneFallbackConversionState(nowMs: number): void {
+  for (const [sourceKey, record] of fallbackConversionBySource.entries()) {
+    if (record.expiresAtMs <= nowMs) {
+      fallbackConversionBySource.delete(sourceKey);
+      fallbackConversionByIdempotency.delete(buildIdempotencyCacheKey(sourceKey, record.idempotencyKey));
+    }
+  }
+
+  for (const [sourceKey, lockState] of fallbackConversionLocks.entries()) {
+    if (lockState.expiresAtMs <= nowMs) {
+      fallbackConversionLocks.delete(sourceKey);
+    }
+  }
+}
+
+function toStoredRecord(record: ConversionStateRecord): StoredPresentationConversionRecord {
+  return {
+    sourceItemId: record.sourceItemId,
+    sourceFormat: record.sourceFormat,
+    deckLibraryItemId: record.deckLibraryItemId,
+    deckId: record.deckId,
+    partialFidelity: record.partialFidelity,
+    fidelityWarnings: record.fidelityWarnings,
+  };
+}
+
+const fallbackStateDependencies = {
+  async cleanupExpiredConversionState(): Promise<void> {
+    return;
+  },
+
+  async getStoredConversionBySource(input: {
+    tenantId: string;
+    sourceItemId: number;
+    now: Date;
+  }): Promise<StoredPresentationConversionRecord | null> {
+    const nowMs = input.now.getTime();
+    pruneFallbackConversionState(nowMs);
+    const sourceKey = buildSourceKey({ tenantId: input.tenantId }, input.sourceItemId);
+    const record = fallbackConversionBySource.get(sourceKey);
+    return record ? toStoredRecord(record) : null;
+  },
+
+  async getStoredConversionByIdempotency(input: {
+    tenantId: string;
+    sourceItemId: number;
+    idempotencyKey: string;
+    now: Date;
+  }): Promise<StoredPresentationConversionRecord | null> {
+    const nowMs = input.now.getTime();
+    pruneFallbackConversionState(nowMs);
+    const sourceKey = buildSourceKey({ tenantId: input.tenantId }, input.sourceItemId);
+    const record = fallbackConversionByIdempotency.get(
+      buildIdempotencyCacheKey(sourceKey, input.idempotencyKey),
+    );
+    return record ? toStoredRecord(record) : null;
+  },
+
+  async upsertStoredConversionRecord(input: {
+    tenantId: string;
+    sourceItemId: number;
+    sourceFormat: "pptx" | "ppt";
+    idempotencyKey: string;
+    deckLibraryItemId: number;
+    deckId: number;
+    partialFidelity: boolean;
+    fidelityWarnings: string[];
+    now: Date;
+    expiresAt: Date;
+  }): Promise<StoredPresentationConversionRecord> {
+    const nowMs = input.now.getTime();
+    pruneFallbackConversionState(nowMs);
+    const sourceKey = buildSourceKey({ tenantId: input.tenantId }, input.sourceItemId);
+    const record: ConversionStateRecord = {
+      sourceItemId: input.sourceItemId,
+      sourceFormat: input.sourceFormat,
+      deckLibraryItemId: input.deckLibraryItemId,
+      deckId: input.deckId,
+      partialFidelity: input.partialFidelity,
+      fidelityWarnings: input.fidelityWarnings,
+      idempotencyKey: input.idempotencyKey,
+      expiresAtMs: input.expiresAt.getTime(),
+    };
+    fallbackConversionBySource.set(sourceKey, record);
+    fallbackConversionByIdempotency.set(
+      buildIdempotencyCacheKey(sourceKey, input.idempotencyKey),
+      record,
+    );
+    return toStoredRecord(record);
+  },
+
+  async acquireConversionLock(input: {
+    tenantId: string;
+    sourceItemId: number;
+    lockToken: string;
+    now: Date;
+    expiresAt: Date;
+  }): Promise<boolean> {
+    const nowMs = input.now.getTime();
+    pruneFallbackConversionState(nowMs);
+    const sourceKey = buildSourceKey({ tenantId: input.tenantId }, input.sourceItemId);
+    const existing = fallbackConversionLocks.get(sourceKey);
+    if (existing && existing.expiresAtMs > nowMs) {
+      return false;
+    }
+    fallbackConversionLocks.set(sourceKey, {
+      lockToken: input.lockToken,
+      expiresAtMs: input.expiresAt.getTime(),
+    });
+    return true;
+  },
+
+  async releaseConversionLock(input: {
+    tenantId: string;
+    sourceItemId: number;
+    lockToken: string;
+  }): Promise<void> {
+    const sourceKey = buildSourceKey({ tenantId: input.tenantId }, input.sourceItemId);
+    const existing = fallbackConversionLocks.get(sourceKey);
+    if (existing?.lockToken === input.lockToken) {
+      fallbackConversionLocks.delete(sourceKey);
+    }
+  },
+};
+
+function resolveDependencies(
+  deps?: Partial<PresentationConversionDependencies>,
+): PresentationConversionDependencies {
+  const useFallbackState = deps?.useInMemoryStateFallback === true;
+  const stateDependencies = useFallbackState ? fallbackStateDependencies : durableStateDependencies;
+
+  return {
+    getLibraryItemById: deps?.getLibraryItemById ?? defaultDependencies.getLibraryItemById,
+    createLibraryItem: deps?.createLibraryItem ?? defaultDependencies.createLibraryItem,
+    createPresentationDeckForLibraryItem:
+      deps?.createPresentationDeckForLibraryItem ?? defaultDependencies.createPresentationDeckForLibraryItem,
+    upsertSourceAttachment: deps?.upsertSourceAttachment ?? defaultDependencies.upsertSourceAttachment,
+    cleanupExpiredConversionState:
+      deps?.cleanupExpiredConversionState ?? stateDependencies.cleanupExpiredConversionState,
+    getStoredConversionBySource: deps?.getStoredConversionBySource ?? stateDependencies.getStoredConversionBySource,
+    getStoredConversionByIdempotency:
+      deps?.getStoredConversionByIdempotency ?? stateDependencies.getStoredConversionByIdempotency,
+    upsertStoredConversionRecord:
+      deps?.upsertStoredConversionRecord ?? stateDependencies.upsertStoredConversionRecord,
+    acquireConversionLock: deps?.acquireConversionLock ?? stateDependencies.acquireConversionLock,
+    releaseConversionLock: deps?.releaseConversionLock ?? stateDependencies.releaseConversionLock,
+    now: deps?.now ?? defaultDependencies.now,
+    conversionLockTtlMs: deps?.conversionLockTtlMs ?? defaultDependencies.conversionLockTtlMs,
+    conversionRecordTtlMs: deps?.conversionRecordTtlMs ?? defaultDependencies.conversionRecordTtlMs,
+  };
+}
 
 function normalizeSourceExtension(item: Pick<LibraryItemDto, "metadata" | "sourceUrl" | "title">): string {
   const metadata = item.metadata && typeof item.metadata === "object"
@@ -116,10 +347,6 @@ function collectFidelityWarnings(metadata: Record<string, unknown>): string[] {
   return warnings.slice(0, 25);
 }
 
-function buildSourceKey(actor: PresentationActor, sourceItemId: number): string {
-  return `${actor.tenantId}:${sourceItemId}`;
-}
-
 function toBasePresentationTitle(sourceTitle: string): string {
   const base = sourceTitle.replace(/\.(pptx?|PPTX?)$/, "");
   const trimmed = base.trim();
@@ -148,9 +375,10 @@ function toCompatibilityReadOnly(
 export async function getPresentationCompatibilityOpen(
   itemId: number,
   actor: PresentationActor,
-  deps: PresentationConversionDependencies = defaultDependencies,
+  deps?: Partial<PresentationConversionDependencies>,
 ): Promise<PresentationCompatibilityResult> {
-  const item = await deps.getLibraryItemById(itemId, actor);
+  const resolved = resolveDependencies(deps);
+  const item = await resolved.getLibraryItemById(itemId, actor);
   if (!item) {
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.NOT_FOUND,
@@ -232,10 +460,12 @@ function recordConversionOutcome(
 export async function convertOfficeSourceToPresentation(
   input: { sourceItemId: number; idempotencyKey: string },
   actor: PresentationActor,
-  deps: PresentationConversionDependencies = defaultDependencies,
+  deps?: Partial<PresentationConversionDependencies>,
 ): Promise<PresentationConversionResult> {
+  const resolved = resolveDependencies(deps);
+
   try {
-    const sourceItem = await deps.getLibraryItemById(input.sourceItemId, actor);
+    const sourceItem = await resolved.getLibraryItemById(input.sourceItemId, actor);
     if (!sourceItem) {
       throw new PresentationServiceError(
         PRESENTATION_ERROR_CODE.NOT_FOUND,
@@ -273,21 +503,41 @@ export async function convertOfficeSourceToPresentation(
       );
     }
 
+    const nowMs = resolved.now();
+    const now = new Date(nowMs);
     const sourceKey = buildSourceKey(actor, sourceItem.id);
-    const existingBySource = conversionBySource.get(sourceKey);
+    await resolved.cleanupExpiredConversionState({ now });
+
+    const existingBySource = await resolved.getStoredConversionBySource({
+      tenantId: actor.tenantId,
+      sourceItemId: sourceItem.id,
+      now,
+    });
     if (existingBySource) {
-      recordConversionOutcome(actor, sourceFormat, "existing");
+      recordConversionOutcome(actor, existingBySource.sourceFormat, "existing");
       return toConversionResult("existing", existingBySource);
     }
 
-    const idempotencyCacheKey = `${sourceKey}:${normalizedIdempotencyKey}`;
-    const existingByIdempotency = conversionByIdempotencyKey.get(idempotencyCacheKey);
+    const existingByIdempotency = await resolved.getStoredConversionByIdempotency({
+      tenantId: actor.tenantId,
+      sourceItemId: sourceItem.id,
+      idempotencyKey: normalizedIdempotencyKey,
+      now,
+    });
     if (existingByIdempotency) {
-      recordConversionOutcome(actor, sourceFormat, "existing");
+      recordConversionOutcome(actor, existingByIdempotency.sourceFormat, "existing");
       return toConversionResult("existing", existingByIdempotency);
     }
 
-    if (conversionLocks.has(sourceKey)) {
+    const lockToken = `presentation-conversion-lock-${crypto.randomUUID()}`;
+    const lockAcquired = await resolved.acquireConversionLock({
+      tenantId: actor.tenantId,
+      sourceItemId: sourceItem.id,
+      lockToken,
+      now,
+      expiresAt: new Date(nowMs + resolved.conversionLockTtlMs),
+    });
+    if (!lockAcquired) {
       recordConversionOutcome(actor, sourceFormat, "locked");
       return presentationConversionResultSchema.parse({
         schemaVersion: PRESENTATION_CONVERSION_SCHEMA_VERSION,
@@ -300,10 +550,8 @@ export async function convertOfficeSourceToPresentation(
       });
     }
 
-    conversionLocks.add(sourceKey);
-
     try {
-      const convertedItem = await deps.createLibraryItem(
+      const convertedItem = await resolved.createLibraryItem(
         {
           itemType: PRESENTATION_ITEM_TYPE,
           source: "presentation_conversion",
@@ -323,7 +571,7 @@ export async function convertOfficeSourceToPresentation(
         actor,
       );
 
-      const createdDeck = await deps.createPresentationDeckForLibraryItem(
+      const createdDeck = await resolved.createPresentationDeckForLibraryItem(
         {
           libraryItemId: convertedItem.item.id,
           title: toBasePresentationTitle(sourceItem.title),
@@ -332,7 +580,7 @@ export async function convertOfficeSourceToPresentation(
         actor,
       );
 
-      await deps.upsertSourceAttachment({
+      await resolved.upsertSourceAttachment({
         deckId: createdDeck.deck.id,
         sourceLibraryItemId: sourceItem.id,
         sourceFormat,
@@ -341,22 +589,37 @@ export async function convertOfficeSourceToPresentation(
         fidelityWarnings,
       });
 
-      const record: ConversionRecord = {
-        sourceKey,
+      const persistedAtMs = resolved.now();
+      const persistedRecord = await resolved.upsertStoredConversionRecord({
+        tenantId: actor.tenantId,
         sourceItemId: sourceItem.id,
         sourceFormat,
+        idempotencyKey: normalizedIdempotencyKey,
         deckLibraryItemId: convertedItem.item.id,
         deckId: createdDeck.deck.id,
         partialFidelity: fidelityWarnings.length > 0,
         fidelityWarnings,
-      };
+        now: new Date(persistedAtMs),
+        expiresAt: new Date(persistedAtMs + resolved.conversionRecordTtlMs),
+      });
 
-      conversionBySource.set(sourceKey, record);
-      conversionByIdempotencyKey.set(idempotencyCacheKey, record);
       recordConversionOutcome(actor, sourceFormat, "created");
-      return toConversionResult("created", record);
+      return toConversionResult("created", persistedRecord);
     } finally {
-      conversionLocks.delete(sourceKey);
+      try {
+        await resolved.releaseConversionLock({
+          tenantId: actor.tenantId,
+          sourceItemId: sourceItem.id,
+          lockToken,
+        });
+      } catch (releaseError) {
+        recordPresentationLog("presentation_conversion_lock_release_failed", {
+          tenantId: actor.tenantId,
+          userId: actor.userId,
+          sourceKey,
+          error: releaseError instanceof Error ? releaseError.message : String(releaseError),
+        });
+      }
     }
   } catch (error) {
     if (error instanceof PresentationServiceError) {
@@ -372,7 +635,7 @@ export async function convertOfficeSourceToPresentation(
 }
 
 export function resetPresentationConversionStateForTests(): void {
-  conversionBySource.clear();
-  conversionByIdempotencyKey.clear();
-  conversionLocks.clear();
+  fallbackConversionBySource.clear();
+  fallbackConversionByIdempotency.clear();
+  fallbackConversionLocks.clear();
 }

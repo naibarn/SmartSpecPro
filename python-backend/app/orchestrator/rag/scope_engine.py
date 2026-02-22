@@ -156,7 +156,6 @@ async def recompute_allowed_scopes(
         prefix = {
             "user": _USER,
             "group": _GROUP,
-            "tenant": _TENANT,
             "tenant_role": _TENANT,
         }.get(perm.subject_type)
 

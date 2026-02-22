@@ -158,9 +158,9 @@ class TestRecomputeAllowedScopes:
         assert "u:42" in result
 
     async def test_tenant_permission_adds_tenant_scope(self):
-        """Tenant-type permissions should add t:<subject_id> scope."""
+        """Tenant_role-type permissions should add t:<subject_id> scope."""
         item = _make_item_row(owner_user_id=42)
-        perms = [_make_permission_row("tenant", "org-1", "read")]
+        perms = [_make_permission_row("tenant_role", "org-1", "read")]
         session = _mock_session(item, perms)
 
         result = await recompute_allowed_scopes(library_item_id=1, session=session)

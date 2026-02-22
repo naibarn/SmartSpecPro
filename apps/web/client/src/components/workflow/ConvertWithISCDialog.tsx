@@ -23,8 +23,6 @@ import type { SkillInputSchema } from "@/components/media/DynamicSkillForm";
 import { trpc } from "@/lib/trpc";
 
 const EMPTY_SCHEMA: SkillInputSchema = {
-  version: "1.0",
-  skillId: "",
   title: "",
   sections: [],
   outputMapping: {},

@@ -13,6 +13,7 @@ interface TenantPageData {
     subtitle?: string;
     content?: string;
     image?: string;
+    settings?: Record<string, unknown>;
     buttons?: Array<{ text: string; link: string; style?: string }>;
     items?: Array<any>;
   }>;

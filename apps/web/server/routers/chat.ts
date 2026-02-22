@@ -98,6 +98,9 @@ async function handleIscCreateSkill(
   const safeSlug = action.slug.replace(/[^a-z0-9-]/g, "-").slice(0, 80);
 
   const db = await getDb();
+  if (!db) {
+    return { ok: false, reason: "Database not available" };
+  }
 
   // 3. Deduplication with auto-rename: find all existing slugs that start with
   //    this base slug so we can pick the next available suffix (-2, -3, …).
@@ -1186,6 +1189,12 @@ export const chatRouter = router({
       // Authorization: verify user has access to restricted skills (visibleByDefault=false)
       {
         const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Database not available",
+          });
+        }
         const [accessCheck] = await db
           .select({
             visibleByDefault: skillsTable.visibleByDefault,
@@ -1258,6 +1267,12 @@ export const chatRouter = router({
 
         // Load skill's systemPrompt and knowledgebase from DB
         const skillDb = await getDb();
+        if (!skillDb) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Database not available",
+          });
+        }
         const [skillRow] = await skillDb
           .select({ systemPrompt: skillsTable.systemPrompt, knowledgebase: skillsTable.knowledgebase })
           .from(skillsTable)

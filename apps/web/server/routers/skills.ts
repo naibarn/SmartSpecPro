@@ -25,8 +25,16 @@ import {
   type PromptEnhancementRequest,
 } from "../services/promptEnhancementService";
 import { db, getDb } from "../db";
-import { llmProviders, skills, type Skill, type InsertSkill } from "../../drizzle/schema";
-import { eq, asc, desc, like, or, and, sql } from "drizzle-orm";
+import {
+  llmProviders,
+  skills,
+  skillPermissions,
+  userGroups,
+  users as usersTable,
+  type Skill,
+  type InsertSkill,
+} from "../../drizzle/schema";
+import { eq, asc, desc, like, or, and, sql, inArray } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM, hasEnoughCredits } from "../services/creditService";
 import { getProviderForModel } from "../services/llmRouter";
 import { getUploadsDir } from "../storage";
@@ -1804,6 +1812,268 @@ export const skillsRouter = router({
     }),
 
   /**
+   * List skills waiting for admin approval to become public.
+   */
+  listPending: adminProcedure
+    .query(async () => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const rows = await dbInstance
+        .select({
+          id: skills.id,
+          slug: skills.slug,
+          name: skills.name,
+          description: skills.description,
+          category: skills.category,
+          version: skills.version,
+          author: skills.author,
+          icon: skills.icon,
+          tags: skills.tags,
+          folderPath: skills.folderPath,
+          isAutoTrigger: skills.isAutoTrigger,
+          triggerPatterns: skills.triggerPatterns,
+          isEnabled: skills.isEnabled,
+          enabledByDefault: skills.enabledByDefault,
+          visibleByDefault: skills.visibleByDefault,
+          creditMultiplier: skills.creditMultiplier,
+          priority: skills.priority,
+          availableModels: skills.availableModels,
+          defaultModel: skills.defaultModel,
+          systemPrompt: skills.systemPrompt,
+          skillContent: skills.skillContent,
+          knowledgebase: skills.knowledgebase,
+          configJson: skills.configJson,
+          executionMode: skills.executionMode,
+          marketplaceContent: skills.marketplaceContent,
+          importSource: skills.importSource,
+          importedFromZip: skills.importedFromZip,
+          createdBy: skills.createdBy,
+          createdAt: skills.createdAt,
+          updatedAt: skills.updatedAt,
+          visibility: skills.visibility,
+          tenantId: skills.tenantId,
+          approvedBy: skills.approvedBy,
+          approvedAt: skills.approvedAt,
+          rejectionReason: skills.rejectionReason,
+          ownerName: usersTable.name,
+        })
+        .from(skills)
+        .leftJoin(usersTable, eq(skills.createdBy, usersTable.id))
+        .where(eq(skills.visibility, "pending_approval"))
+        .orderBy(desc(skills.updatedAt), desc(skills.createdAt));
+
+      return rows.map((skill) => ({
+        ...skill,
+        creditMultiplier: Number(skill.creditMultiplier) || 1,
+        tags: skill.tags || [],
+        triggerPatterns: skill.triggerPatterns || [],
+      }));
+    }),
+
+  /**
+   * Approve a pending skill and make it public.
+   */
+  approveSkill: adminProcedure
+    .input(z.object({ skillId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [updated] = await dbInstance
+        .update(skills)
+        .set({
+          visibility: "public",
+          approvedBy: ctx.user.id,
+          approvedAt: new Date(),
+          rejectionReason: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(skills.id, input.skillId))
+        .returning({ id: skills.id, visibility: skills.visibility });
+
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill with id ${input.skillId} not found` });
+      }
+
+      await refreshSkillCache();
+      return { success: true, skillId: updated.id, visibility: updated.visibility };
+    }),
+
+  /**
+   * Reject a pending skill submission.
+   */
+  rejectSkill: adminProcedure
+    .input(
+      z.object({
+        skillId: z.number(),
+        reason: z.string().max(1000).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [updated] = await dbInstance
+        .update(skills)
+        .set({
+          visibility: "rejected",
+          approvedBy: null,
+          approvedAt: null,
+          rejectionReason: input.reason?.trim() || "Rejected by admin",
+          updatedAt: new Date(),
+        })
+        .where(eq(skills.id, input.skillId))
+        .returning({ id: skills.id, visibility: skills.visibility });
+
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill with id ${input.skillId} not found` });
+      }
+
+      await refreshSkillCache();
+      return { success: true, skillId: updated.id, visibility: updated.visibility };
+    }),
+
+  /**
+   * Get groups that currently have access to a private skill.
+   */
+  getSkillGroups: protectedProcedure
+    .input(z.object({ skillId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [skill] = await dbInstance
+        .select({ createdBy: skills.createdBy })
+        .from(skills)
+        .where(eq(skills.id, input.skillId))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill with id ${input.skillId} not found` });
+      }
+
+      const isAdmin = ctx.user.role === "admin";
+      if (!isAdmin && skill.createdBy !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only view groups for your own skills" });
+      }
+
+      return dbInstance
+        .select({
+          id: userGroups.id,
+          name: userGroups.name,
+          description: userGroups.description,
+        })
+        .from(skillPermissions)
+        .innerJoin(userGroups, eq(skillPermissions.groupId, userGroups.id))
+        .where(eq(skillPermissions.skillId, input.skillId))
+        .orderBy(asc(userGroups.name));
+    }),
+
+  /**
+   * Share a private skill with one or more groups.
+   */
+  shareWithGroups: protectedProcedure
+    .input(
+      z.object({
+        skillId: z.number(),
+        groupIds: z.array(z.number()).min(1).max(50),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [skill] = await dbInstance
+        .select({ createdBy: skills.createdBy })
+        .from(skills)
+        .where(eq(skills.id, input.skillId))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill with id ${input.skillId} not found` });
+      }
+
+      const isAdmin = ctx.user.role === "admin";
+      if (!isAdmin && skill.createdBy !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only share your own skills" });
+      }
+
+      const ownedGroups = await dbInstance
+        .select({ id: userGroups.id })
+        .from(userGroups)
+        .where(
+          isAdmin
+            ? inArray(userGroups.id, input.groupIds)
+            : and(inArray(userGroups.id, input.groupIds), eq(userGroups.ownerId, ctx.user.id)),
+        );
+
+      if (ownedGroups.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No valid groups were provided" });
+      }
+
+      for (const group of ownedGroups) {
+        await dbInstance
+          .insert(skillPermissions)
+          .values({
+            skillId: input.skillId,
+            groupId: group.id,
+            grantedByUserId: ctx.user.id,
+          })
+          .onConflictDoNothing();
+      }
+
+      return { success: true, sharedCount: ownedGroups.length };
+    }),
+
+  /**
+   * Remove a group's access to a private skill.
+   */
+  unshareGroup: protectedProcedure
+    .input(
+      z.object({
+        skillId: z.number(),
+        groupId: z.number(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [skill] = await dbInstance
+        .select({ createdBy: skills.createdBy })
+        .from(skills)
+        .where(eq(skills.id, input.skillId))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill with id ${input.skillId} not found` });
+      }
+
+      const isAdmin = ctx.user.role === "admin";
+      if (!isAdmin && skill.createdBy !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only manage sharing for your own skills" });
+      }
+
+      if (!isAdmin) {
+        const [group] = await dbInstance
+          .select({ id: userGroups.id })
+          .from(userGroups)
+          .where(and(eq(userGroups.id, input.groupId), eq(userGroups.ownerId, ctx.user.id)))
+          .limit(1);
+        if (!group) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only unshare groups you own" });
+        }
+      }
+
+      await dbInstance
+        .delete(skillPermissions)
+        .where(and(eq(skillPermissions.skillId, input.skillId), eq(skillPermissions.groupId, input.groupId)));
+
+      return { success: true };
+    }),
+
+  /**
    * Create a new skill (admin only)
    */
   create: adminProcedure
@@ -1829,6 +2099,7 @@ export const skillsRouter = router({
         marketplaceContent: z.string().optional(),
         knowledgebase: z.string().optional(),
         configJson: z.record(z.any()).optional(),
+        visibility: z.enum(["private", "pending_approval", "public", "rejected"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1874,6 +2145,7 @@ export const skillsRouter = router({
           configJson: input.configJson,
           importSource: "manual",
           createdBy: ctx.user?.id,
+          visibility: input.visibility ?? "private",
         })
         .returning();
 
@@ -1911,6 +2183,7 @@ export const skillsRouter = router({
         marketplaceContent: z.string().nullable().optional(),
         knowledgebase: z.string().nullable().optional(),
         configJson: z.record(z.any()).nullable().optional(),
+        visibility: z.enum(["private", "pending_approval", "public", "rejected"]).optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -1943,6 +2216,7 @@ export const skillsRouter = router({
       if (updateData.marketplaceContent !== undefined) updateObj.marketplaceContent = updateData.marketplaceContent;
       if (updateData.knowledgebase !== undefined) updateObj.knowledgebase = updateData.knowledgebase;
       if (updateData.configJson !== undefined) updateObj.configJson = updateData.configJson;
+      if (updateData.visibility !== undefined) updateObj.visibility = updateData.visibility;
 
       const [updated] = await dbInstance
         .update(skills)

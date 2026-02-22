@@ -127,6 +127,7 @@ describe("presentationObservability", () => {
 
   it("records conversion failure metrics for unsupported conversion requests", async () => {
     const deps = {
+      useInMemoryStateFallback: true,
       getLibraryItemById: vi.fn().mockResolvedValue({
         id: 501,
         tenantId: actor.tenantId,

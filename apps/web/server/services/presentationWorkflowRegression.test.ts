@@ -47,6 +47,7 @@ describe("presentation workflow regression", () => {
 
   it("supports read-only open -> convert -> edit -> export -> reopen", async () => {
     const deps = {
+      useInMemoryStateFallback: true,
       getLibraryItemById: vi.fn().mockResolvedValue(buildSourceItem()),
       createLibraryItem: vi.fn().mockResolvedValue({
         item: { id: 901 },
@@ -118,7 +119,7 @@ describe("presentation workflow regression", () => {
           assets: [],
         }),
         enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-workflow-1" }),
-        now: () => 50_000,
+        now: () => Date.parse("2026-02-22T11:00:50.000Z"),
       },
     );
 

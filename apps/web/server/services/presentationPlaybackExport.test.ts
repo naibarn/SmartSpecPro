@@ -101,7 +101,7 @@ describe("presentationPlaybackExport", () => {
         {
           getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
           enqueueExportJob: vi.fn(),
-          now: () => 1_000,
+          now: () => Date.parse("2026-02-22T10:00:01.000Z"),
         },
       ),
     ).rejects.toSatisfy((error: unknown) => {
@@ -130,7 +130,7 @@ describe("presentationPlaybackExport", () => {
         {
           getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
           enqueueExportJob: vi.fn(),
-          now: () => 2_000,
+          now: () => Date.parse("2026-02-22T10:00:02.000Z"),
           acceptedRenderSchemaVersions: ["presentation_render_v0"],
         },
       ),
@@ -145,7 +145,7 @@ describe("presentationPlaybackExport", () => {
   it("dedupes duplicate export requests within the dedupe window", async () => {
     const enqueueExportJob = vi.fn().mockResolvedValue({ jobId: "job-1" });
     const deckDetail = buildDeckDetail();
-    let now = 10_000;
+    let now = Date.parse("2026-02-22T10:00:10.000Z");
 
     const first = await triggerPresentationExport(
       { deckId: 101, format: "png", idempotencyKey: "click-1" },
@@ -175,9 +175,103 @@ describe("presentationPlaybackExport", () => {
     expect(second.deduped).toBe(true);
   });
 
+  it("expires stale export status entries after ttl", async () => {
+    vi.useFakeTimers();
+    try {
+      const deckDetail = buildDeckDetail();
+      const baseMs = Date.parse("2026-02-22T12:00:00.000Z");
+      vi.setSystemTime(baseMs);
+
+      const queued = await triggerPresentationExport(
+        { deckId: 101, format: "mp4", idempotencyKey: "ttl-status" },
+        actor,
+        {
+          getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+          enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-ttl-1" }),
+        },
+      );
+
+      expect(getPresentationExportStatus(queued.exportId, actor).status).toBe("queued");
+
+      vi.setSystemTime(baseMs + 16 * 60_000);
+
+      expect(() => getPresentationExportStatus(queued.exportId, actor)).toThrowError(
+        PresentationServiceError,
+      );
+      expect(() => getPresentationExportStatus(queued.exportId, actor)).toThrow(
+        PRESENTATION_ERROR_CODE.NOT_FOUND,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("evicts oldest dedupe entries when maxDedupeEntries is exceeded", async () => {
+    const enqueueExportJob = vi.fn().mockResolvedValue({ jobId: "job-cap-1" });
+    const deckDetail = buildDeckDetail();
+    let now = Date.parse("2026-02-22T10:00:50.000Z");
+
+    const dependencies = {
+      getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+      enqueueExportJob,
+      now: () => now,
+      maxDedupeEntries: 2,
+      maxStatusEntries: 10,
+      maxResultEntries: 10,
+    };
+
+    await triggerPresentationExport({ deckId: 101, format: "png", idempotencyKey: "cap-a" }, actor, dependencies);
+    now += 100;
+    await triggerPresentationExport({ deckId: 101, format: "png", idempotencyKey: "cap-b" }, actor, dependencies);
+    now += 100;
+    await triggerPresentationExport({ deckId: 101, format: "png", idempotencyKey: "cap-c" }, actor, dependencies);
+    now += 100;
+    await triggerPresentationExport({ deckId: 101, format: "png", idempotencyKey: "cap-a" }, actor, dependencies);
+
+    expect(enqueueExportJob).toHaveBeenCalledTimes(4);
+  });
+
+  it("evicts oldest status entries when maxStatusEntries is exceeded", async () => {
+    const deckDetail = buildDeckDetail();
+    let now = Date.parse("2026-02-22T10:01:00.000Z");
+
+    const dependencies = {
+      getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+      enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-cap-status" }),
+      now: () => now,
+      maxDedupeEntries: 10,
+      maxStatusEntries: 2,
+      maxResultEntries: 2,
+    };
+
+    const first = await triggerPresentationExport(
+      { deckId: 101, format: "mp4", idempotencyKey: "status-cap-a" },
+      actor,
+      dependencies,
+    );
+    now += 100;
+    const second = await triggerPresentationExport(
+      { deckId: 101, format: "mp4", idempotencyKey: "status-cap-b" },
+      actor,
+      dependencies,
+    );
+    now += 100;
+    const third = await triggerPresentationExport(
+      { deckId: 101, format: "mp4", idempotencyKey: "status-cap-c" },
+      actor,
+      dependencies,
+    );
+
+    expect(() => getPresentationExportStatus(first.exportId, actor)).toThrow(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+    );
+    expect(getPresentationExportStatus(second.exportId, actor).status).toBe("queued");
+    expect(getPresentationExportStatus(third.exportId, actor).status).toBe("queued");
+  });
+
   it("enforces per-user and per-deck throttles with stable retry semantics", async () => {
     const deckDetail = buildDeckDetail();
-    let now = 20_000;
+    let now = Date.parse("2026-02-22T10:00:20.000Z");
 
     const dependencies = {
       getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
@@ -215,7 +309,7 @@ describe("presentationPlaybackExport", () => {
       {
         getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
         enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-scope-1" }),
-        now: () => 40_000,
+        now: () => Date.parse("2026-02-22T10:00:40.000Z"),
       },
     );
 

@@ -207,8 +207,8 @@ export function ConsolePanel({
 
   // ── Resize drag ─────────────────────────────────────────────────────────
   // Stable refs so removeEventListener matches addEventListeners
-  const onResizeMouseMoveRef = useRef<(e: MouseEvent) => void>();
-  const onResizeMouseUpRef = useRef<() => void>();
+  const onResizeMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
+  const onResizeMouseUpRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     onResizeMouseMoveRef.current = (e: MouseEvent) => {

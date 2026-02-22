@@ -138,6 +138,53 @@ const skillIconMap: Record<string, React.ElementType> = {
   "prompt-enhancement": Sparkles,
 };
 
+type MediaModelOption = {
+  id: string;
+  type: "image" | "video" | "audio";
+  name: string;
+  description: string | null;
+  provider: string;
+  creditCost: number;
+  supportsAspectRatios: string[] | null;
+  supportsSizes: string[] | null;
+  supportsDurations: number[] | null;
+};
+
+function toMediaModelOption(value: unknown): MediaModelOption | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+
+  const type = candidate.type;
+  if (type !== "image" && type !== "video" && type !== "audio") {
+    return null;
+  }
+  if (
+    typeof candidate.id !== "string" ||
+    typeof candidate.name !== "string" ||
+    typeof candidate.provider !== "string" ||
+    typeof candidate.creditCost !== "number"
+  ) {
+    return null;
+  }
+
+  const normalizeStringArray = (raw: unknown): string[] | null =>
+    Array.isArray(raw) ? raw.filter((v): v is string => typeof v === "string") : null;
+  const normalizeNumberArray = (raw: unknown): number[] | null =>
+    Array.isArray(raw) ? raw.filter((v): v is number => typeof v === "number") : null;
+
+  return {
+    id: candidate.id,
+    type,
+    name: candidate.name,
+    description: typeof candidate.description === "string" ? candidate.description : null,
+    provider: candidate.provider,
+    creditCost: candidate.creditCost,
+    supportsAspectRatios: normalizeStringArray(candidate.supportsAspectRatios),
+    supportsSizes: normalizeStringArray(candidate.supportsSizes),
+    supportsDurations: normalizeNumberArray(candidate.supportsDurations),
+  };
+}
+
 type MessageRole = "user" | "assistant" | "system";
 
 interface Message {
@@ -463,10 +510,17 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
   } | null>(null);
 
   // Filter media models by detected skill type (image / video)
-  const filteredMediaModels = useMemo(() => {
+  const filteredMediaModels = useMemo<MediaModelOption[]>(() => {
     if (!allMediaModelsData?.models || !detectedSkill) return [];
     const type = detectedSkill.type === "video-generation" ? "video" : "image";
-    return allMediaModelsData.models.filter(m => m.type === type);
+    const normalized: MediaModelOption[] = [];
+    for (const model of allMediaModelsData.models) {
+      const option = toMediaModelOption(model);
+      if (option && option.type === type) {
+        normalized.push(option);
+      }
+    }
+    return normalized;
   }, [allMediaModelsData?.models, detectedSkill]);
 
   // Auto-select default media model when skill type changes (reads localStorage first)
@@ -488,7 +542,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       const defaultId = isVideo
         ? allMediaModelsData?.defaults?.video
         : allMediaModelsData?.defaults?.image;
-      const preferred = defaultId && filteredMediaModels.find(m => m.id === defaultId);
+      const preferred = defaultId
+        ? filteredMediaModels.find(m => m.id === defaultId)
+        : undefined;
       return (preferred?.id ?? filteredMediaModels[0]?.id) || "";
     });
   }, [filteredMediaModels, detectedSkill, allMediaModelsData?.defaults]);

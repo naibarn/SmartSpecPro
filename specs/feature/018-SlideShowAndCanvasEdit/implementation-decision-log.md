@@ -209,3 +209,51 @@
 - decision_taken: `shared_schema_plus_service_guard`
 - mode_used: `auto`
 - rationale: Preserves deterministic contracts at API boundary while adding defense-in-depth for non-router call paths and oversized payload protection.
+
+## 2026-02-22 - Hardening Stream C - Durable Conversion and Tenant Integrity Enforcement
+- options_considered:
+  - `service_only_guards`: keep conversion idempotency/locking and tenant-link validation primarily in service logic
+  - `db_enforced_durable_state`: move conversion lock/idempotency to DB-backed state with TTL and enforce tenant/link integrity via schema constraints/migration
+- decision_taken: `db_enforced_durable_state`
+- mode_used: `auto`
+- rationale: Stream C explicitly targets multi-instance durability and schema-level integrity; DB-backed primitives reduce cross-process duplication risk and prevent cross-tenant linkage drift from non-service writes.
+
+## 2026-02-22 - Completeness Remediation - Conversion Fallback Activation Rule
+- options_considered:
+  - `implicit_fallback_on_partial_deps`: activate in-memory fallback whenever any dependency overrides are provided
+  - `explicit_fallback_flag`: require explicit `useInMemoryStateFallback=true` for in-memory fallback activation
+- decision_taken: `explicit_fallback_flag`
+- mode_used: `auto`
+- rationale: Prevents accidental production downgrade from durable DB-backed state when only partial dependency overrides are passed.
+
+## 2026-02-22 - Completeness Remediation - Migration Safety and Metadata Sync
+- options_considered:
+  - `direct_constraints`: add composite constraints with immediate validation only
+  - `safe_additive_constraints`: add constraints as `NOT VALID` with idempotent guards and synchronize drizzle meta snapshots/journal
+- decision_taken: `safe_additive_constraints`
+- mode_used: `auto`
+- rationale: Reduces rollout failure risk on legacy data while preserving enforcement for new writes and keeping migration metadata consistent for future tooling operations.
+
+## 2026-02-22 - Baseline Remediation - Skills API Compatibility Strategy
+- options_considered:
+  - `frontend_bypass`: weaken typing/cast to `any` in AdminSkills/SkillBrowser to bypass missing procedures
+  - `router_contract_restore`: restore missing `skills` router procedures and align mutation inputs with current UI usage
+- decision_taken: `router_contract_restore`
+- mode_used: `auto`
+- rationale: Preserves existing admin/group-sharing workflows and resolves compile failures without degrading type safety.
+
+## 2026-02-22 - Baseline Remediation - Prometheus Typing Strategy
+- options_considered:
+  - `remove_metrics_file`: disable or delete middleware not currently mounted
+  - `declare_missing_module`: keep middleware and add local module declaration for `prom-client`
+- decision_taken: `declare_missing_module`
+- mode_used: `auto`
+- rationale: Fixes compilation while preserving metrics middleware code path for future mount/activation.
+
+## 2026-02-22 - Baseline Remediation - Chat DB Nullability Handling
+- options_considered:
+  - `non_null_assertions`: force `getDb()` results with `!` assertions
+  - `explicit_runtime_guards`: validate DB availability and return structured internal errors
+- decision_taken: `explicit_runtime_guards`
+- mode_used: `auto`
+- rationale: Keeps strict null-safety and prevents hidden runtime crashes when DB bootstrap fails.

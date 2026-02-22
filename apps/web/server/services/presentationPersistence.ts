@@ -1,12 +1,15 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gt, lte, sql } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
   presentationAssetLinks,
+  presentationConversionLocks,
+  presentationConversionRecords,
   presentationDecks,
   presentationSourceAttachments,
   presentationSlides,
   type PresentationAssetLink,
+  type PresentationConversionRecord,
   type PresentationDeck,
   type PresentationSourceAttachment,
   type PresentationSlide,
@@ -83,6 +86,56 @@ export interface UpsertPresentationSourceAttachmentInput {
   conversionStatus: string;
   partialFidelity: boolean;
   fidelityWarnings: string[];
+}
+
+export interface PresentationConversionLookupInput {
+  tenantId: string;
+  sourceItemId: number;
+  now: Date;
+}
+
+export interface PresentationConversionIdempotencyLookupInput extends PresentationConversionLookupInput {
+  idempotencyKey: string;
+}
+
+export interface UpsertPresentationConversionRecordInput {
+  tenantId: string;
+  sourceItemId: number;
+  sourceFormat: "pptx" | "ppt";
+  idempotencyKey: string;
+  deckLibraryItemId: number;
+  deckId: number;
+  partialFidelity: boolean;
+  fidelityWarnings: string[];
+  now: Date;
+  expiresAt: Date;
+}
+
+export interface AcquirePresentationConversionLockInput {
+  tenantId: string;
+  sourceItemId: number;
+  lockToken: string;
+  now: Date;
+  expiresAt: Date;
+}
+
+export interface ReleasePresentationConversionLockInput {
+  tenantId: string;
+  sourceItemId: number;
+  lockToken: string;
+}
+
+export interface StoredPresentationConversionRecord {
+  sourceItemId: number;
+  sourceFormat: "pptx" | "ppt";
+  deckLibraryItemId: number;
+  deckId: number;
+  partialFidelity: boolean;
+  fidelityWarnings: string[];
+}
+
+export interface CleanupExpiredPresentationConversionStateInput {
+  now: Date;
 }
 
 async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
@@ -524,4 +577,186 @@ export async function upsertPresentationSourceAttachment(
   }
 
   return created[0];
+}
+
+function mapStoredConversionRecord(
+  row: PresentationConversionRecord,
+): StoredPresentationConversionRecord {
+  const rawWarnings = Array.isArray(row.fidelityWarnings) ? row.fidelityWarnings : [];
+  return {
+    sourceItemId: row.sourceItemId,
+    sourceFormat: row.sourceFormat === "ppt" ? "ppt" : "pptx",
+    deckLibraryItemId: row.deckLibraryItemId,
+    deckId: row.deckId,
+    partialFidelity: row.partialFidelity,
+    fidelityWarnings: rawWarnings.filter((warning): warning is string => typeof warning === "string"),
+  };
+}
+
+export async function getActivePresentationConversionBySource(
+  input: PresentationConversionLookupInput,
+  dbClient?: DbClient,
+): Promise<StoredPresentationConversionRecord | null> {
+  const db = await resolveDb(dbClient);
+
+  await db
+    .delete(presentationConversionRecords)
+    .where(and(
+      eq(presentationConversionRecords.tenantId, input.tenantId),
+      eq(presentationConversionRecords.sourceItemId, input.sourceItemId),
+      lte(presentationConversionRecords.expiresAt, input.now),
+    ));
+
+  const rows = await db
+    .select()
+    .from(presentationConversionRecords)
+    .where(and(
+      eq(presentationConversionRecords.tenantId, input.tenantId),
+      eq(presentationConversionRecords.sourceItemId, input.sourceItemId),
+      gt(presentationConversionRecords.expiresAt, input.now),
+    ))
+    .limit(1);
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  return mapStoredConversionRecord(rows[0]);
+}
+
+export async function getActivePresentationConversionByIdempotency(
+  input: PresentationConversionIdempotencyLookupInput,
+  dbClient?: DbClient,
+): Promise<StoredPresentationConversionRecord | null> {
+  const db = await resolveDb(dbClient);
+
+  await db
+    .delete(presentationConversionRecords)
+    .where(and(
+      eq(presentationConversionRecords.tenantId, input.tenantId),
+      eq(presentationConversionRecords.sourceItemId, input.sourceItemId),
+      lte(presentationConversionRecords.expiresAt, input.now),
+    ));
+
+  const rows = await db
+    .select()
+    .from(presentationConversionRecords)
+    .where(and(
+      eq(presentationConversionRecords.tenantId, input.tenantId),
+      eq(presentationConversionRecords.sourceItemId, input.sourceItemId),
+      eq(presentationConversionRecords.idempotencyKey, input.idempotencyKey),
+      gt(presentationConversionRecords.expiresAt, input.now),
+    ))
+    .limit(1);
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  return mapStoredConversionRecord(rows[0]);
+}
+
+export async function upsertPresentationConversionRecord(
+  input: UpsertPresentationConversionRecordInput,
+  dbClient?: DbClient,
+): Promise<StoredPresentationConversionRecord> {
+  const db = await resolveDb(dbClient);
+
+  const rows = await db
+    .insert(presentationConversionRecords)
+    .values({
+      tenantId: input.tenantId,
+      sourceItemId: input.sourceItemId,
+      sourceFormat: input.sourceFormat,
+      idempotencyKey: input.idempotencyKey,
+      deckLibraryItemId: input.deckLibraryItemId,
+      deckId: input.deckId,
+      partialFidelity: input.partialFidelity,
+      fidelityWarnings: input.fidelityWarnings,
+      expiresAt: input.expiresAt,
+      createdAt: input.now,
+      updatedAt: input.now,
+    })
+    .onConflictDoUpdate({
+      target: [presentationConversionRecords.tenantId, presentationConversionRecords.sourceItemId],
+      set: {
+        sourceFormat: input.sourceFormat,
+        idempotencyKey: input.idempotencyKey,
+        deckLibraryItemId: input.deckLibraryItemId,
+        deckId: input.deckId,
+        partialFidelity: input.partialFidelity,
+        fidelityWarnings: input.fidelityWarnings,
+        expiresAt: input.expiresAt,
+        updatedAt: input.now,
+      },
+    })
+    .returning();
+
+  if (!rows[0]) {
+    throw new Error("Failed to persist presentation conversion record");
+  }
+
+  return mapStoredConversionRecord(rows[0]);
+}
+
+export async function tryAcquirePresentationConversionLock(
+  input: AcquirePresentationConversionLockInput,
+  dbClient?: DbClient,
+): Promise<boolean> {
+  const db = await resolveDb(dbClient);
+
+  const inserted = await db.transaction(async (tx) => {
+    await tx
+      .delete(presentationConversionLocks)
+      .where(and(
+        eq(presentationConversionLocks.tenantId, input.tenantId),
+        eq(presentationConversionLocks.sourceItemId, input.sourceItemId),
+        lte(presentationConversionLocks.expiresAt, input.now),
+      ));
+
+    return tx
+      .insert(presentationConversionLocks)
+      .values({
+        tenantId: input.tenantId,
+        sourceItemId: input.sourceItemId,
+        lockToken: input.lockToken,
+        expiresAt: input.expiresAt,
+        createdAt: input.now,
+        updatedAt: input.now,
+      })
+      .onConflictDoNothing()
+      .returning({ lockToken: presentationConversionLocks.lockToken });
+  });
+
+  return inserted[0]?.lockToken === input.lockToken;
+}
+
+export async function releasePresentationConversionLock(
+  input: ReleasePresentationConversionLockInput,
+  dbClient?: DbClient,
+): Promise<void> {
+  const db = await resolveDb(dbClient);
+
+  await db
+    .delete(presentationConversionLocks)
+    .where(and(
+      eq(presentationConversionLocks.tenantId, input.tenantId),
+      eq(presentationConversionLocks.sourceItemId, input.sourceItemId),
+      eq(presentationConversionLocks.lockToken, input.lockToken),
+    ));
+}
+
+export async function cleanupExpiredPresentationConversionState(
+  input: CleanupExpiredPresentationConversionStateInput,
+  dbClient?: DbClient,
+): Promise<void> {
+  const db = await resolveDb(dbClient);
+
+  await db
+    .delete(presentationConversionLocks)
+    .where(lte(presentationConversionLocks.expiresAt, input.now));
+
+  await db
+    .delete(presentationConversionRecords)
+    .where(lte(presentationConversionRecords.expiresAt, input.now));
 }

@@ -25,6 +25,24 @@ describe("presentation schema migration", () => {
   });
 });
 
+describe("presentation hardening migration", () => {
+  it("adds durable conversion state and tenant integrity constraints", () => {
+    const migrationPath = path.resolve(
+      import.meta.dirname,
+      "../../drizzle/0033_presentation_hardening_stream_c.sql",
+    );
+    const sql = fs.readFileSync(migrationPath, "utf-8");
+
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS presentation_conversion_records");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS presentation_conversion_locks");
+    expect(sql).toContain("presentation_asset_links_deck_tenant_fk");
+    expect(sql).toContain("presentation_asset_links_library_item_tenant_fk");
+    expect(sql).toContain("presentation_asset_links_slide_deck_fk");
+    expect(sql.toUpperCase()).not.toContain("DROP TABLE");
+    expect(sql.toUpperCase()).not.toContain("DROP COLUMN");
+  });
+});
+
 describe("slide ordering invariants", () => {
   it("rejects duplicate order indexes", () => {
     expect(() => assertNoDuplicateOrderIndexes([0, 1, 1, 2])).toThrow(/duplicate/i);

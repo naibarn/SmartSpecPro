@@ -147,7 +147,7 @@ export function createPrometheusMiddleware() {
     const startTime = Date.now();
 
     let statusCode = "200";
-    let errorCode: string | undefined;
+    let errorCode = "INTERNAL_SERVER_ERROR";
     let cached = "false";
 
     try {

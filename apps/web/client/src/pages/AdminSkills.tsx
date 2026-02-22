@@ -1001,7 +1001,7 @@ export default function AdminSkills() {
                                 variant="outline"
                                 size="sm"
                                 className="text-green-600 border-green-300 hover:bg-green-50"
-                                onClick={() => approveMutation.mutate({ id: skill.id })}
+                                onClick={() => approveMutation.mutate({ skillId: skill.id })}
                                 disabled={approveMutation.isPending}
                               >
                                 <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -1059,7 +1059,7 @@ export default function AdminSkills() {
               onClick={() => {
                 if (rejectingSkill && rejectReason.trim()) {
                   rejectMutation.mutate({
-                    id: rejectingSkill.id,
+                    skillId: rejectingSkill.id,
                     reason: rejectReason.trim(),
                   });
                 }
