@@ -1,0 +1,419 @@
+# Task Packet Construction Guide (Conductor Reference)
+
+This document is the conductor's reference for **building** Task Packets. It covers the same 8-field schema as `deep_plan/skills/sub-agents/contracts/task-packet.schema.md` but from the perspective of the `/orchestra` conductor writing packets — not agents reading them.
+
+**Read `task-packet.schema.md` first** to understand what each field means. This document focuses on *how to construct a correct packet* before dispatching.
+
+---
+
+## Construction Checklist
+
+Before dispatching any Task Packet, verify all of the following:
+
+- [ ] **TASK** starts with an imperative verb and names the exact target (not just the feature area)
+- [ ] **DOMAIN** matches the `subagent_type` you will use in the Task tool call
+- [ ] **FILES** uses absolute paths only (`/home/dev/projects/SmartSpecPro/...`) — no relative paths
+- [ ] **CONTEXT** includes the actual error text or audit log traceId (not a paraphrase)
+- [ ] **CONSTRAINTS** lists every file/table the agent must not touch
+- [ ] **CONTRACT** is filled in for parallel agents, or explicitly `N/A` for solo agents
+- [ ] **OUTPUT** names the specific file to modify or the report format to return
+- [ ] **QUALITY GATE** contains exact shell commands, not descriptions
+
+---
+
+## Field-by-Field Construction Guide
+
+### TASK
+
+Write the task as though it is a Git commit message subject line: imperative, specific, ≤80 characters if possible.
+
+**Conductor note:** If you find yourself writing "look at X" or "investigate Y", you have not decided what to do yet. Finish your analysis before dispatching. Agents that receive vague tasks produce vague outputs.
+
+**Good:** `Add Zod validation to the createSkill tRPC procedure`
+**Bad:** `Check the skills router for issues`
+
+---
+
+### DOMAIN
+
+Match the domain to the `subagent_type` you will pass to the `Task` tool:
+
+| DOMAIN | subagent_type | Edits files in |
+|--------|---------------|----------------|
+| CMD-1 Frontend | `multi-platform-apps:frontend-developer` | `apps/web/client/src/`, `packages/ui/` |
+| CMD-2 Backend | `multi-platform-apps:backend-architect` | `apps/web/server/`, `packages/shared/` |
+| CMD-3 Python | `python-development:fastapi-pro` | `python-backend/app/` |
+| CMD-4 Database | `Explore` (analysis) or direct (migration) | `apps/web/drizzle/`, `packages/db/` |
+| CMD-5 Infra | `Explore` (analysis) | `docker/`, `nginx/`, `docker-compose*.yml` |
+| CMD-6 Security | `backend-api-security:backend-security-coder` | Audit only or targeted fixes |
+
+---
+
+### FILES
+
+**Construction rule:** List every file the agent needs to *read* to understand the codebase, plus every file the agent will *write or modify*. If an agent writes a new file that does not exist yet, include the target path anyway — this signals to the agent where to create it.
+
+**Conductor note:** Agents that receive incomplete file lists make assumptions, read wrong files, and produce incorrect implementations. Err on the side of including more files.
+
+**Resolution shortcut:** If unsure which files are relevant, run a quick Grep before dispatching:
+```bash
+grep -r "functionName" /home/dev/projects/SmartSpecPro/apps/web/server/ --include="*.ts" -l
+```
+
+---
+
+### CONTEXT
+
+**Construction rule:** Copy-paste the actual error message, not a summary. If you are dispatching a bug-fix agent, include:
+1. The exact error text (stack trace, message)
+2. The file:line where it originated
+3. What was already tried and why it failed
+4. The relevant audit log traceId if it is an LLM/media call
+
+**For a new-feature wave:** Describe what the previous wave did and what this wave must build on top of.
+
+---
+
+### CONSTRAINTS
+
+**Construction rule:** Write constraints as if you are writing a code review comment to a junior developer who will do exactly what you say and nothing more. Be explicit about:
+- Off-limits files/tables (especially the database schema if migration is complete)
+- Coding conventions the agent must follow for this domain
+- API surface shapes the agent must preserve
+
+**Conductor note:** The most common constraint violation is a backend agent modifying shared types in ways that break the frontend. Always add: "Do not change the response type shape if it is already in the CONTRACT."
+
+---
+
+### CONTRACT
+
+**Construction rule:** Use the CONTRACT field whenever two or more agents in the same wave must interoperate. The conductor sets the contract *before* dispatching — neither agent defines it unilaterally.
+
+**What to include:**
+- The shared TypeScript type name and its fields
+- The exact tRPC procedure name and route
+- Which agent "owns" the contract (the one that cannot change it once set)
+
+**When to write N/A:** Solo agents (single dispatch, no parallel counterparts) always get `CONTRACT: N/A`.
+
+**Conductor note:** If you set a contract and then one agent changes the shared type, you must re-dispatch the other agent with updated CONTEXT explaining the contract change. Never let agents silently drift from the contract.
+
+---
+
+### OUTPUT
+
+**Construction rule:** The OUTPUT must be parseable. When you integrate the result (SKILL.md Step 5), you need to know exactly what to look for. Write the output spec as a checklist:
+
+```
+OUTPUT:
+  Modify /home/dev/projects/.../skills.ts:
+    - Add createSkillInput Zod schema above router definition
+    - Apply .input(createSkillInput) to the create procedure
+  Return a Result Report per result-report.schema.md with status success or partial.
+```
+
+---
+
+### QUALITY GATE
+
+**Construction rule:** Copy the exact command from CLAUDE.md or the project's README. Do not paraphrase. If the command requires a specific working directory, include `cd X &&` in the gate.
+
+**SmartSpecPro quality gates by domain:**
+
+| Domain | Gate command |
+|--------|-------------|
+| TypeScript (web) | `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check` |
+| Tests (web) | `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm test` |
+| Python type check | `cd /home/dev/projects/SmartSpecPro/python-backend && mypy app/` |
+| Python lint | `cd /home/dev/projects/SmartSpecPro/python-backend && ruff check app/` |
+| Python tests | `cd /home/dev/projects/SmartSpecPro/python-backend && pytest` |
+| Read-only audit | `skipped (read-only — no files modified)` |
+
+---
+
+## Platform-Mode Notes
+
+The Task Packet format is identical across all three platforms. What changes is how you *dispatch* it.
+
+### Mode: `claude-code` (default)
+
+Standard dispatch via the Task tool:
+
+```
+Task(
+  subagent_type="multi-platform-apps:backend-architect",
+  prompt="
+    TASK: Add Zod validation to createSkill procedure
+    DOMAIN: CMD-2 Backend
+    FILES: ...
+    CONTEXT: ...
+    CONSTRAINTS: ...
+    CONTRACT: N/A
+    OUTPUT: ...
+    QUALITY GATE: cd apps/web && pnpm check
+  "
+)
+```
+
+Use the `subagent_type` that matches the DOMAIN (see domain table above).
+
+---
+
+### Mode: `codex`
+
+Codex does not support `subagent_type` specialization. Prepend the full agent definition file content **before** the Task Packet:
+
+```
+Task(
+  subagent_type="general-purpose",
+  prompt="
+    [Full contents of deep_plan/skills/sub-agents/agents/backend.md]
+
+    ---
+
+    TASK: Add Zod validation to createSkill procedure
+    DOMAIN: CMD-2 Backend
+    FILES: ...
+    ...
+  "
+)
+```
+
+**Scope cap warning:** Codex agents have a smaller context window. If the agent definition + packet exceeds 8,000 tokens, split the packet into two dispatches (reduce FILES and CONSTRAINTS per dispatch).
+
+---
+
+### Mode: `open-code`
+
+No Task tool is available. The conductor adopts the agent identity and executes inline:
+
+1. Read `deep_plan/skills/sub-agents/agents/NAME.md`
+2. Follow its Workflow section step-by-step, in-context
+3. Apply all Constraints and Quality Checklist items manually
+4. Write the Result Report inline and continue
+
+**Scope cap:** In open-code mode, limit each "dispatch" to one file or one logical unit of work. Do not attempt multi-file changes in a single inline execution.
+
+**Platform reset:** If the platform changes mid-session (e.g., switching from open-code to claude-code after getting access), run the R4 resume algorithm from `session-resume.md` before continuing with new dispatches.
+
+---
+
+## Worked Construction Examples
+
+### Example 1 — Backend Agent: Adding a tRPC Router
+
+**Situation:** Wave 2. Wave 1 created the Drizzle schema migration. Now adding the `skills.list` tRPC procedure.
+
+```
+TASK: Add a `skills.list` tRPC query procedure to
+      /home/dev/projects/SmartSpecPro/apps/web/server/routers/skills.ts
+      that returns all skills for the authenticated tenant, paginated (page, limit).
+
+DOMAIN: CMD-2 Backend
+
+FILES:
+  Read:
+    - /home/dev/projects/SmartSpecPro/apps/web/server/routers/skills.ts
+    - /home/dev/projects/SmartSpecPro/apps/web/drizzle/schema.ts
+    - /home/dev/projects/SmartSpecPro/apps/web/server/middleware/auth.ts
+    - /home/dev/projects/SmartSpecPro/apps/web/server/trpc.ts
+  Write:
+    - /home/dev/projects/SmartSpecPro/apps/web/server/routers/skills.ts
+
+CONTEXT:
+  The `skills` table was added in drizzle migration 0030. The schema has columns:
+  id (uuid, PK), tenantId (uuid, FK), name (text), category (text), createdAt (timestamp).
+  The skills router currently only has the `create` procedure. This wave adds `list`.
+  Auth middleware sets ctx.tenantId from the JWT session cookie.
+
+CONSTRAINTS:
+  - Do NOT modify the database schema (migration 0030 is already applied)
+  - Do NOT modify frontend files in apps/web/client/
+  - Every query MUST filter by ctx.tenantId
+  - Use Drizzle `.where(eq(skills.tenantId, ctx.tenantId))`
+  - Validate page and limit with Zod: page (number, min 1), limit (number, 1–100)
+
+CONTRACT:
+  Response type: { items: SkillSummary[]; total: number; page: number; limit: number }
+  SkillSummary: { id: string; name: string; category: string; createdAt: string }
+  Frontend agent (CMD-1) will implement SkillCard against this exact shape.
+  Do NOT change the response shape once this packet is dispatched.
+
+OUTPUT:
+  Modify /home/dev/projects/SmartSpecPro/apps/web/server/routers/skills.ts:
+    - Export `SkillSummary` type at the top of the file
+    - Add `list` query procedure with Zod input { page: z.number().min(1), limit: z.number().min(1).max(100) }
+    - Return paginated result matching the CONTRACT shape
+  Return a Result Report per result-report.schema.md.
+
+QUALITY GATE:
+  - TypeScript: cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check
+  - Tests: cd /home/dev/projects/SmartSpecPro/apps/web && pnpm test
+```
+
+---
+
+### Example 2 — Frontend Agent: Building UI against the backend contract
+
+**Situation:** Wave 2, parallel with Example 1. CMD-1 Frontend builds SkillCard component.
+
+```
+TASK: Create /home/dev/projects/SmartSpecPro/apps/web/client/src/components/skills/SkillCard.tsx
+      that displays skill name, category badge, and a "Run" button using the skills.list response.
+
+DOMAIN: CMD-1 Frontend
+
+FILES:
+  Read:
+    - /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/SkillsPage.tsx
+    - /home/dev/projects/SmartSpecPro/apps/web/client/src/utils/trpc.ts
+    - /home/dev/projects/SmartSpecPro/packages/ui/src/components/
+  Write:
+    - /home/dev/projects/SmartSpecPro/apps/web/client/src/components/skills/SkillCard.tsx
+    - /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/SkillsPage.tsx
+
+CONTEXT:
+  SkillsPage.tsx renders a hardcoded list. After this wave, it should use TanStack Query
+  to call trpc.skills.list and render a SkillCard per result.
+  Backend contract (SkillSummary type) is defined in the CONTRACT field below.
+
+CONSTRAINTS:
+  - Do NOT modify any files in apps/web/server/
+  - Use Radix UI + Tailwind utility classes (existing pattern in packages/ui/)
+  - Use TanStack Query via trpc (no raw fetch)
+  - Match badge colors: category "llm" → blue, "media" → purple, "code" → green
+
+CONTRACT:
+  Backend procedure: trpc.skills.list
+  Input: { page: number; limit: number }
+  Response: { items: SkillSummary[]; total: number; page: number; limit: number }
+  SkillSummary: { id: string; name: string; category: string; createdAt: string }
+  Frontend must use this exact response shape. Do not import or re-define SkillSummary
+  locally — import it from the backend router once the backend agent creates it.
+
+OUTPUT:
+  Create /home/dev/projects/SmartSpecPro/apps/web/client/src/components/skills/SkillCard.tsx
+  Modify /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/SkillsPage.tsx:
+    - Replace hardcoded list with trpc.skills.list query
+    - Render SkillCard for each result
+  Return a Result Report per result-report.schema.md.
+
+QUALITY GATE:
+  - TypeScript: cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check
+  - Tests: cd /home/dev/projects/SmartSpecPro/apps/web && pnpm test
+```
+
+---
+
+### Example 3 — Database Agent: Schema change with safety protocol
+
+**Situation:** Adding a new `status` column to the `skills` table. Must follow CLAUDE.md Database Safety Protocol.
+
+```
+TASK: Add a `status` column (enum: "active" | "inactive" | "archived", default "active")
+      to the skills table in
+      /home/dev/projects/SmartSpecPro/apps/web/server/db/schema.ts
+      and generate + apply the Drizzle migration.
+
+DOMAIN: CMD-4 Database
+
+FILES:
+  Read:
+    - /home/dev/projects/SmartSpecPro/apps/web/server/db/schema.ts
+    - /home/dev/projects/SmartSpecPro/apps/web/drizzle/meta/_journal.json
+    - /home/dev/projects/SmartSpecPro/apps/web/drizzle/ (existing migration files)
+  Write:
+    - /home/dev/projects/SmartSpecPro/apps/web/server/db/schema.ts
+    - /home/dev/projects/SmartSpecPro/apps/web/drizzle/ (new migration file)
+
+CONTEXT:
+  The skills table currently has: id, tenantId, name, category, createdAt.
+  Product request: add a status field so skills can be deactivated without deletion.
+  No previous migration for this column. This is the first time status is added.
+
+CONSTRAINTS:
+  - MANDATORY: Follow the CLAUDE.md Database Safety Protocol before running ANY migration:
+      1. Back up the skills table: pg_dump "$DATABASE_URL" --data-only --table=skills
+      2. Record row count: psql "$DATABASE_URL" -c "SELECT count(*) FROM skills"
+      3. THEN run: cd apps/web && pnpm db:push
+      4. Verify row count matches after migration
+  - Add with a DEFAULT ("active") so existing rows are not broken
+  - Do NOT use NOT NULL without a DEFAULT on an existing table
+  - Do NOT modify any routers or frontend files — those are separate waves
+
+CONTRACT: N/A — solo database agent dispatch
+
+OUTPUT:
+  Modify /home/dev/projects/SmartSpecPro/apps/web/server/db/schema.ts:
+    - Add statusEnum definition: pgEnum("skill_status", ["active", "inactive", "archived"])
+    - Add status column to skills table: status: statusEnum("status").default("active").notNull()
+  Run: cd /home/dev/projects/SmartSpecPro/apps/web && pnpm db:push
+  Return a Result Report per result-report.schema.md with pre- and post-migration row counts in next_steps.
+
+QUALITY GATE:
+  - Migration applied: pnpm db:push completes without error
+  - Row count preserved: pre-migration count == post-migration count
+  - TypeScript: cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check
+
+```
+
+---
+
+### Example 4 — Python Agent: Adding a FastAPI endpoint
+
+**Situation:** Wave 3. Adding a new RAG scope endpoint to the Python backend.
+
+```
+TASK: Add a POST `/api/v1/rag/scopes` endpoint to
+      /home/dev/projects/SmartSpecPro/python-backend/app/api/v1/rag_scopes.py
+      that creates a new RAG scope for the authenticated user.
+
+DOMAIN: CMD-3 Python
+
+FILES:
+  Read:
+    - /home/dev/projects/SmartSpecPro/python-backend/app/api/v1/rag_scopes.py
+    - /home/dev/projects/SmartSpecPro/python-backend/app/models/rag_scope.py
+    - /home/dev/projects/SmartSpecPro/python-backend/app/core/auth.py
+    - /home/dev/projects/SmartSpecPro/python-backend/app/main.py
+  Write:
+    - /home/dev/projects/SmartSpecPro/python-backend/app/api/v1/rag_scopes.py
+
+CONTEXT:
+  The RAG scope model was added via Alembic migration in wave 1. The GET endpoint
+  exists. This wave adds the POST (create) endpoint. Auth dependency is
+  `get_current_user` from app.core.auth — it sets request.state.user_id.
+  No previous attempt at this endpoint.
+
+CONSTRAINTS:
+  - Do NOT modify any files in apps/web/ (Node.js side)
+  - Use FastAPI Depends pattern for auth: `current_user: User = Depends(get_current_user)`
+  - Validate input with Pydantic v2 model (not raw dict)
+  - Use async SQLAlchemy session: `async with get_async_session() as session`
+  - Follow Black 100-char line length, ruff E/W/F rules
+  - No print() statements — use `logger = logging.getLogger(__name__)`
+
+CONTRACT: N/A — solo Python agent dispatch
+
+OUTPUT:
+  Modify /home/dev/projects/SmartSpecPro/python-backend/app/api/v1/rag_scopes.py:
+    - Add Pydantic model `RagScopeCreate { name: str; description: str; embedding_model: str }`
+    - Add POST `/api/v1/rag/scopes` route with auth dependency
+    - Return the created scope as `RagScopeResponse`
+  Return a Result Report per result-report.schema.md.
+
+QUALITY GATE:
+  - Type check: cd /home/dev/projects/SmartSpecPro/python-backend && mypy app/
+  - Lint: cd /home/dev/projects/SmartSpecPro/python-backend && ruff check app/
+  - Tests: cd /home/dev/projects/SmartSpecPro/python-backend && pytest tests/api/v1/test_rag_scopes.py
+```
+
+---
+
+## Skill Registration Note
+
+After section 06 creates `deep_plan/skills/orchestra/SKILL.md`, verify whether the `/orchestra` command is auto-discoverable by the Claude Code plugin system. The `deep_plan/` root auto-discovers sibling skills under `skills/` — check if `/orchestra` is available without changes to `.claude/settings.json`.
+
+If explicit registration is required, add an entry to `.claude/settings.json` analogous to the existing `"deep-plan"` entry. The acceptance criterion: invoking `/orchestra` displays the orchestra banner without a "skill not found" error.
+
+This verification step belongs to section 06.
