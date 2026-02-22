@@ -294,6 +294,8 @@ describe("PresentationEditor", () => {
       expect(screen.getByTestId("presentation-export-warnings")).toHaveTextContent(
         /SLIDE_TRANSITION_UNSUPPORTED \(slide 71\)/i,
       );
+      expect(screen.getByTestId("presentation-export-warnings")).toHaveAttribute("role", "status");
+      expect(screen.getByTestId("presentation-export-warnings")).toHaveAttribute("aria-live", "polite");
     });
   });
 

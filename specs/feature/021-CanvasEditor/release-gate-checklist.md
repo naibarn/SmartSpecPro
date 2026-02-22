@@ -40,6 +40,14 @@
 - Disable export writes only: set `PRESENTATION_EXPORTS_ENABLED=false`.
 - Validate stable fallback route: `/document-management?scope=my_library&sort=updated_desc&mode=editor`.
 
+## Regression Command Set
+- `bash -lc "cd apps/web && npm test -- client/src/pages/PresentationEditor.test.tsx client/src/lib/presentationEditorState.test.ts server/routers/presentation.test.ts server/services/presentationService.test.ts server/services/presentationPlaybackExport.test.ts server/services/presentationWorkflowRegression.test.ts client/src/e2e/presentation-editor.desktop.spec.ts client/src/e2e/presentation-editor.mobile.spec.ts client/src/e2e/presentation-editor.accessibility.spec.ts"`
+
+## Flakiness Policy
+- Zero tolerance for tenant-scope and permission boundary failures.
+- Non-deterministic timing failures must be stabilized with fake timers before stage advancement.
+- Any quarantined test requires explicit owner + removal ETA in launch decision log.
+
 ## Completion Checklist
 - [ ] Regression suites completed and attached.
 - [ ] Dashboard readiness check passed with required signals.

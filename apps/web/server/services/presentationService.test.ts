@@ -119,6 +119,42 @@ describe("presentationService", () => {
     });
   });
 
+  it("blocks slide updates when effective permission is read-only", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 2,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+    libraryServiceMocks.getUserEffectivePermission.mockResolvedValue({
+      effectivePermissionLevel: "read",
+      sources: [{ type: "direct", permissionLevel: "read" }],
+    });
+
+    await expect(
+      updateSlideInDeck(
+        {
+          deckId: 101,
+          slideId: 301,
+          expectedVersion: 1,
+          saveMode: "manual",
+          title: "Blocked update",
+        },
+        actor,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof PresentationServiceError)) return false;
+      return error.code === PRESENTATION_ERROR_CODE.PERMISSION_DENIED;
+    });
+  });
+
   it("rejects add-slide when deck limit is reached", async () => {
     persistenceMocks.getPresentationDeckById.mockResolvedValue({
       id: 101,

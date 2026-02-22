@@ -420,6 +420,33 @@ describe("presentationRouter", () => {
       );
     });
   });
+
+  it("forwards tenant-scoped actor to template apply service", async () => {
+    templateServiceMocks.applyTemplateAssetToDeck.mockResolvedValue({
+      applied: true,
+      idempotent: false,
+      link: {
+        id: 1,
+        tenantId: "tenant-1",
+        deckId: 88,
+        slideId: null,
+        libraryItemId: 9101,
+        byteSize: 2048,
+        createdAt: new Date(),
+      },
+    });
+
+    const fn = presentationRouter.applyTemplate as Function;
+    await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 77, role: "user" } },
+      input: { deckId: 88, expectedVersion: 3, templateAssetLibraryItemId: 9101 },
+    });
+
+    expect(templateServiceMocks.applyTemplateAssetToDeck).toHaveBeenCalledWith(
+      { deckId: 88, expectedVersion: 3, templateAssetLibraryItemId: 9101 },
+      { userId: 77, tenantId: "tenant-1", role: "user" },
+    );
+  });
 });
 
 describe("presentation router registration", () => {

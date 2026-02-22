@@ -184,6 +184,46 @@ describe("presentationPlaybackExport", () => {
     expect(renderSpec.slides).toEqual(expected.slides);
   });
 
+  it("keeps warning payload stable across repeated exports for the same deck content", async () => {
+    const deckDetail = buildDeckDetail({
+      slides: [
+        {
+          id: 1,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Stable warnings",
+          slideContent: { elements: [], transition: "wipe" },
+          notes: null,
+          createdAt: new Date("2026-02-22T10:00:00.000Z"),
+          updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+        },
+      ],
+    });
+
+    let now = Date.parse("2026-02-22T10:02:00.000Z");
+    const deps = {
+      getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+      enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-stable-warning" }),
+      now: () => now,
+    };
+
+    const first = await triggerPresentationExport(
+      { deckId: 101, format: "png", idempotencyKey: "stable-a" },
+      actor,
+      deps,
+    );
+    now += 100;
+    const second = await triggerPresentationExport(
+      { deckId: 101, format: "png", idempotencyKey: "stable-b" },
+      actor,
+      deps,
+    );
+
+    expect(first.warnings).toEqual(second.warnings);
+    expect(first.warnings[0]?.code).toBe("SLIDE_TRANSITION_UNSUPPORTED");
+  });
+
   it("includes schema_version in render spec and rejects unknown versions", async () => {
     const deckDetail = buildDeckDetail();
     const renderSpec = buildPresentationRenderSpec({

@@ -1014,7 +1014,12 @@ export default function PresentationEditor() {
           <p className="text-sm text-muted-foreground" role="status">{exportMessage}</p>
         ) : null}
         {exportWarnings.length ? (
-          <p className="text-sm text-amber-700" data-testid="presentation-export-warnings">
+          <p
+            className="text-sm text-amber-700"
+            data-testid="presentation-export-warnings"
+            role="status"
+            aria-live="polite"
+          >
             Export warnings: {exportWarnings.map((warning) => `${warning.code} (slide ${warning.slideId})`).join(", ")}
           </p>
         ) : null}

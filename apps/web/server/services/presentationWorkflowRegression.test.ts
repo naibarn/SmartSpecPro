@@ -11,6 +11,7 @@ import {
   resetPresentationExportStateForTests,
   triggerPresentationExport,
 } from "./presentationPlaybackExport";
+import { applyTemplateAssetToDeck } from "./presentationTemplateService";
 
 const actor = {
   userId: 14,
@@ -204,5 +205,88 @@ describe("presentation workflow regression", () => {
         warningCount: 1,
       }),
     );
+  });
+
+  it("keeps template apply repeatable and tenant-scoped", async () => {
+    const getLibraryItemById = vi.fn().mockResolvedValue({
+      id: 9101,
+      tenantId: actor.tenantId,
+      ownerUserId: actor.userId,
+      itemType: "image",
+      source: "internal_template_catalog",
+      title: "Template image.png",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: { extension: "png", mimeType: "image/png", byteSize: 2048 },
+      sourceUrl: "https://example.com/template.png",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const attachAssetToDeck = vi.fn().mockResolvedValue({
+      link: {
+        id: 5001,
+        tenantId: actor.tenantId,
+        deckId: 902,
+        slideId: null,
+        libraryItemId: 9101,
+        byteSize: 2048,
+        createdAt: new Date(),
+      },
+      totals: {
+        totalAssetBytes: 2048,
+        warningExceeded: false,
+        hardLimitExceeded: false,
+      },
+    });
+    const listAssetsForDeck = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 5001,
+          tenantId: actor.tenantId,
+          deckId: 902,
+          slideId: null,
+          libraryItemId: 9101,
+          byteSize: 2048,
+          createdAt: new Date(),
+        },
+      ]);
+
+    const first = await applyTemplateAssetToDeck(
+      {
+        deckId: 902,
+        expectedVersion: 1,
+        templateAssetLibraryItemId: 9101,
+      },
+      actor,
+      {
+        getLibraryItemById,
+        attachAssetToDeck,
+        listAssetsForDeck,
+        recordLog: vi.fn(),
+      },
+    );
+    const second = await applyTemplateAssetToDeck(
+      {
+        deckId: 902,
+        expectedVersion: 2,
+        templateAssetLibraryItemId: 9101,
+      },
+      actor,
+      {
+        getLibraryItemById,
+        attachAssetToDeck,
+        listAssetsForDeck,
+        recordLog: vi.fn(),
+      },
+    );
+
+    expect(first.idempotent).toBe(false);
+    expect(second.idempotent).toBe(true);
+    expect(attachAssetToDeck).toHaveBeenCalledTimes(1);
   });
 });

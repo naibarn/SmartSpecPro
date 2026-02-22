@@ -23,7 +23,14 @@ export default defineConfig({
     environmentMatchGlobs: [
       ["client/src/**/*.test.tsx", "jsdom"],
     ],
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/src/**/*.test.ts", "client/src/**/*.test.tsx", "shared/**/*.test.ts"],
+    include: [
+      "server/**/*.test.ts",
+      "server/**/*.spec.ts",
+      "client/src/**/*.test.ts",
+      "client/src/**/*.test.tsx",
+      "client/src/**/*.spec.ts",
+      "shared/**/*.test.ts",
+    ],
     setupFiles: ["client/src/test-setup.ts"],
     env: {
       CONTROL_PLANE_API_KEY: "test-control-plane-key-minimum-24-chars",

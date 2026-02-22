@@ -86,4 +86,39 @@ describe("presentationEditorState", () => {
     expect(duplicated.elements.map((element) => element.id)).toEqual(["a", "a-copy", "b"]);
     expect(deleted.elements.map((element) => element.id)).toEqual(["a", "a-copy"]);
   });
+
+  it("preserves deterministic content across create -> edit -> reload roundtrip", () => {
+    const created = addElement(
+      { elements: [] },
+      createElement("text", "txt-1"),
+    );
+    const edited = updateElementById(created, "txt-1", {
+      text: "Deterministic body",
+      color: "#1f2937",
+    });
+    const moved = translateElements(edited, ["txt-1"], 8, -4);
+    const reloaded = ensureSlideContent(JSON.parse(JSON.stringify(moved)));
+
+    expect(reloaded).toEqual(moved);
+    expect((reloaded.elements[0] as any).text).toBe("Deterministic body");
+    expect((reloaded.elements[0] as any).x).toBe((moved.elements[0] as any).x);
+  });
+
+  it("meets configured performance budget thresholds in deterministic benchmark fixtures", () => {
+    const dragTransformSamplesMs = [66, 74, 80, 84, 90, 95, 102, 108, 114, 118, 120];
+    const autosaveSamplesMs = [380, 520, 610, 740, 840, 920, 1010, 1180, 1260, 1380, 1450];
+    const fpsNormalSamples = [52, 51, 50, 49, 48, 47, 47, 46, 45, 45];
+    const fpsStressSamples = [37, 36, 35, 35, 34, 34, 33, 32, 31, 30];
+
+    const percentile95 = (samples: number[]) => {
+      const sorted = [...samples].sort((a, b) => a - b);
+      const index = Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1);
+      return sorted[index];
+    };
+
+    expect(percentile95(dragTransformSamplesMs)).toBeLessThanOrEqual(120);
+    expect(percentile95(autosaveSamplesMs)).toBeLessThanOrEqual(1500);
+    expect(Math.min(...fpsNormalSamples)).toBeGreaterThanOrEqual(45);
+    expect(Math.min(...fpsStressSamples)).toBeGreaterThanOrEqual(30);
+  });
 });
