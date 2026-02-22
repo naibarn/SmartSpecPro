@@ -8,6 +8,7 @@ import {
   patchSelectedElementCommand,
   resizeSelectionCommand,
   rotateSelectionCommand,
+  setCanvasSizeCommand,
   selectElementsCommand,
 } from "./commands";
 
@@ -33,8 +34,8 @@ describe("commands", () => {
       y: 26,
       width: 120,
       height: 55,
+      rotation: 15,
     });
-    expect(next.rotationByElementId.a).toBe(15);
   });
 
   it("keeps arrange ordering deterministic and supports property patching", () => {
@@ -57,5 +58,64 @@ describe("commands", () => {
     bus.execute(selectElementsCommand(["a"]));
     bus.execute(patchSelectedElementCommand({ text: "Edited" }));
     expect((bus.getState().content.elements[1] as any).text).toBe("Edited");
+  });
+
+  it("uniformly scales and repositions canvas content while preserving visual focus", () => {
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        elements: [
+          { id: "a", type: "rect", x: 128, y: 72, width: 640, height: 360, fill: "#93c5fd" },
+        ],
+        canvas: { preset: "16:9", width: 1280, height: 720 },
+      }),
+    );
+
+    bus.execute(setCanvasSizeCommand({ preset: "9:16", width: 720, height: 1280 }));
+    const next = bus.getState();
+
+    expect(next.content.canvas).toEqual({ preset: "9:16", width: 720, height: 1280 });
+    expect(next.content.elements[0]).toMatchObject({
+      id: "a",
+      x: 72,
+      y: 347,
+      width: 360,
+      height: 203,
+    });
+  });
+
+  it("prioritizes selected element focus when resizing canvas ratio", () => {
+    const baseState = {
+      elements: [
+        { id: "bg", type: "rect", x: 0, y: 0, width: 800, height: 600, fill: "#94a3b8" },
+        { id: "headline", type: "text", x: 1000, y: 500, width: 200, height: 120, text: "Focus", color: "#111827" },
+      ],
+      canvas: { preset: "16:9", width: 1280, height: 720 } as const,
+    };
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        ...baseState,
+      }, ["headline"]),
+    );
+    const baselineBus = new CommandBus(createCanvasCommandState({ ...baseState }, []));
+
+    bus.execute(setCanvasSizeCommand({ preset: "9:16", width: 720, height: 1280 }));
+    baselineBus.execute(setCanvasSizeCommand({ preset: "9:16", width: 720, height: 1280 }));
+    const next = bus.getState();
+    const baseline = baselineBus.getState();
+    const selected = next.content.elements.find((element) => element.id === "headline");
+    const baselineSelected = baseline.content.elements.find((element) => element.id === "headline");
+    expect(selected).toBeTruthy();
+    expect(baselineSelected).toBeTruthy();
+
+    const targetCenterX = (1000 + 100) / 1280;
+    const targetCenterY = (500 + 60) / 720;
+
+    const selectedCenterX = (selected!.x + (selected!.width / 2)) / next.content.canvas.width;
+    const selectedCenterY = (selected!.y + (selected!.height / 2)) / next.content.canvas.height;
+    const baselineCenterX = (baselineSelected!.x + (baselineSelected!.width / 2)) / baseline.content.canvas.width;
+    const baselineCenterY = (baselineSelected!.y + (baselineSelected!.height / 2)) / baseline.content.canvas.height;
+
+    expect(Math.abs(selectedCenterX - targetCenterX)).toBeLessThan(0.08);
+    expect(Math.abs(selectedCenterY - targetCenterY)).toBeLessThan(Math.abs(baselineCenterY - targetCenterY));
   });
 });

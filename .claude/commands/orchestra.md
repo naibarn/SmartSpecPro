@@ -34,19 +34,19 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 
 | Reference File | When to Read |
 |----------------|-------------|
-| `deep_plan/skills/orchestra/references/task-analysis.md` | Always — Step 1 |
-| `deep_plan/skills/orchestra/references/routing-decision.md` | Always — Step 2 |
-| `deep_plan/skills/orchestra/references/skill-pack-integration.md` | Only when scope is `large` or `project` — Step 2 |
-| `deep_plan/skills/orchestra/references/wave-planning.md` | Only for `medium` scope and above — Step 3 |
-| `deep_plan/skills/orchestra/references/sub-agent-dispatch.md` | Only for `medium` scope and above — Step 4 |
-| `deep_plan/skills/orchestra/references/task-packet-format.md` | Only for `medium` scope and above — Step 4 |
-| `deep_plan/skills/orchestra/references/platform-compat.md` | Only for `medium` scope and above — Step 4 |
-| `deep_plan/skills/orchestra/references/result-integration.md` | Only for `medium` scope and above — Step 5 |
-| `deep_plan/skills/orchestra/references/quality-gates.md` | Always — Step 6 |
-| `deep_plan/skills/orchestra/references/security-review-protocol.md` | Only when `security_gate_required = true` — Step 5/6 |
-| `deep_plan/skills/orchestra/references/compaction-safety.md` | Only when context state is `yellow` or `red` — Step 8 |
-| `deep_plan/skills/orchestra/references/session-resume.md` | Only on resume path — Step 0 |
-| `deep_plan/skills/orchestra/references/artifact-management.md` | Always on Step 0 when orchestra/ needs to be created, archived, or verified — fresh start, archive path, and first-ever invocation all read this file |
+| `skills/orchestra/references/task-analysis.md` | Always — Step 1 |
+| `skills/orchestra/references/routing-decision.md` | Always — Step 2 |
+| `skills/orchestra/references/skill-pack-integration.md` | Only when scope is `large` or `project` — Step 2 |
+| `skills/orchestra/references/wave-planning.md` | Only for `medium` scope and above — Step 3 |
+| `skills/orchestra/references/sub-agent-dispatch.md` | Only for `medium` scope and above — Step 4 |
+| `skills/orchestra/references/task-packet-format.md` | Only for `medium` scope and above — Step 4 |
+| `skills/orchestra/references/platform-compat.md` | Only for `medium` scope and above — Step 4 |
+| `skills/orchestra/references/result-integration.md` | Only for `medium` scope and above — Step 5 |
+| `skills/orchestra/references/quality-gates.md` | Always — Step 6 |
+| `skills/orchestra/references/security-review-protocol.md` | Only when `security_gate_required = true` — Step 5/6 |
+| `skills/orchestra/references/compaction-safety.md` | Only when context state is `yellow` or `red` — Step 8 |
+| `skills/orchestra/references/session-resume.md` | Only on resume path — Step 0 |
+| `skills/orchestra/references/artifact-management.md` | Always on Step 0 when orchestra/ needs to be created, archived, or verified — fresh start, archive path, and first-ever invocation all read this file |
 
 ---
 
@@ -83,11 +83,11 @@ AskUserQuestion:
       description: "Archive the entire orchestra/ directory to orchestra/archive/<ISO-timestamp>/, then begin a new session"
 ```
 
-- **Resume path:** Read `deep_plan/skills/orchestra/references/session-resume.md`. Execute the R4 algorithm (Read, Restore, Reconcile, Resume). Jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
-- **Fresh start path:** Read `deep_plan/skills/orchestra/references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
+- **Resume path:** Read `skills/orchestra/references/session-resume.md`. Execute the R4 algorithm (Read, Restore, Reconcile, Resume). Jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
+- **Fresh start path:** Read `skills/orchestra/references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
 
 **If no `orchestra/snapshot.json` exists:**
-- Read `deep_plan/skills/orchestra/references/artifact-management.md`.
+- Read `skills/orchestra/references/artifact-management.md`.
 - If `orchestra/` already exists: check for stale session (old files from a previous run without a snapshot). Archive the existing directory to `orchestra/archive/<ISO-8601-timestamp>/` before starting fresh.
 - Create `orchestra/` at the project root if it does not exist.
 - Begin fresh session.
@@ -96,7 +96,7 @@ AskUserQuestion:
 
 ## Step 1: Task Analysis
 
-Read `deep_plan/skills/orchestra/references/task-analysis.md`.
+Read `skills/orchestra/references/task-analysis.md`.
 
 Apply classification in this order:
 
@@ -137,7 +137,7 @@ Print the classification summary to the user before proceeding.
 
 ## Step 2: Routing Decision
 
-Read `deep_plan/skills/orchestra/references/routing-decision.md`.
+Read `skills/orchestra/references/routing-decision.md`.
 
 **Decision mode setup (first time only):** If `orchestra/decision-mode.md` does not exist:
 
@@ -162,8 +162,8 @@ Write the chosen value to `orchestra/decision-mode.md`. Never ask again.
 | `trivial` | Direct edit | Conductor edits file directly. No sub-agents. Skip to Step 7. |
 | `small` | Single agent | Build one Task Packet. Skip Step 3. Proceed to Step 4. |
 | `medium` | Multi-agent waves | Full pipeline. Proceed to Step 3. |
-| `large` | deep-plan-codex chain | Read `deep_plan/skills/orchestra/references/skill-pack-integration.md`. Create requirements spec. Write expected artifact paths to `orchestra/backlog.md`. Print handoff instruction. STOP. |
-| `project` | deep-project decomposition | Read `deep_plan/skills/orchestra/references/skill-pack-integration.md`. Create requirements document. Write `orchestra/backlog.md`. Print handoff instruction. STOP. |
+| `large` | deep-plan-codex chain | Read `skills/orchestra/references/skill-pack-integration.md`. Create requirements spec. Write expected artifact paths to `orchestra/backlog.md`. Print handoff instruction. STOP. |
+| `project` | deep-project decomposition | Read `skills/orchestra/references/skill-pack-integration.md`. Create requirements document. Write `orchestra/backlog.md`. Print handoff instruction. STOP. |
 
 **Large scope handoff instruction (print to user):**
 ```
@@ -184,7 +184,7 @@ When the deep-plan session is complete, return with:
 
 **Skip this step for `trivial` and `small` scope.**
 
-Read `deep_plan/skills/orchestra/references/wave-planning.md`.
+Read `skills/orchestra/references/wave-planning.md`.
 
 **Contract definition (before any dispatch):**
 
@@ -193,7 +193,7 @@ For every pair of agents that will run in parallel, define and write to `orchest
 - Ownership boundaries: which agent owns which files
 - Test boundary: what each agent tests vs. what the other tests
 
-**Contracts are frozen after Wave 1 begins — they are never modified once dispatching has started.** There is a legitimate window between Step 3 completion and Wave 1 dispatch to amend contracts if needed. After Wave 1 begins, amendments are prohibited. See `deep_plan/skills/orchestra/references/artifact-management.md` for the full enforcement rule.
+**Contracts are frozen after Wave 1 begins — they are never modified once dispatching has started.** There is a legitimate window between Step 3 completion and Wave 1 dispatch to amend contracts if needed. After Wave 1 begins, amendments are prohibited. See `skills/orchestra/references/artifact-management.md` for the full enforcement rule.
 
 **Wave grouping:**
 - Assign each task to a wave such that no two tasks in the same wave have a file-level dependency on each other
@@ -206,7 +206,7 @@ For every pair of agents that will run in parallel, define and write to `orchest
 
 ## Step 4: Dispatch
 
-Read `deep_plan/skills/orchestra/references/sub-agent-dispatch.md` and `deep_plan/skills/orchestra/references/platform-compat.md`.
+Read `skills/orchestra/references/sub-agent-dispatch.md` and `skills/orchestra/references/platform-compat.md`.
 
 **Platform detection (REQUIRED before any Task call):**
 
@@ -226,7 +226,7 @@ AskUserQuestion:
 
 Write the chosen value to `orchestra/platform.md`. Never ask again.
 
-**Build Task Packets:** For each agent in the current wave, construct a Task Packet following `deep_plan/skills/orchestra/references/sub-agent-dispatch.md`. See `deep_plan/skills/orchestra/references/task-packet-format.md` for the construction guide. The packet must include all 8 required sections: TASK, DOMAIN, FILES, CONTEXT, CONSTRAINTS, CONTRACT, OUTPUT, QUALITY GATE.
+**Build Task Packets:** For each agent in the current wave, construct a Task Packet following `skills/orchestra/references/sub-agent-dispatch.md`. See `skills/orchestra/references/task-packet-format.md` for the construction guide. The packet must include all 8 required sections: TASK, DOMAIN, FILES, CONTEXT, CONSTRAINTS, CONTRACT, OUTPUT, QUALITY GATE.
 
 **Wave N context injection (for wave 2+):** Prepend prior wave results to each Task Packet's CONTEXT section:
 
@@ -280,7 +280,7 @@ Do NOT dump raw conversation history. Include only file paths, change descriptio
 
 ## Step 5: Result Integration
 
-Read `deep_plan/skills/orchestra/references/result-integration.md`.
+Read `skills/orchestra/references/result-integration.md`.
 
 **Integration sequence:**
 
@@ -314,7 +314,7 @@ If ANY trigger applies: set `security_gate_required = true`. Gate runs in Step 6
 
 ## Step 6: Quality Gates
 
-Read `deep_plan/skills/orchestra/references/quality-gates.md`.
+Read `skills/orchestra/references/quality-gates.md`.
 
 **Gate inventory:**
 
@@ -340,7 +340,7 @@ Read `deep_plan/skills/orchestra/references/quality-gates.md`.
 
 **Pre-merge security gate (when `security_gate_required = true`):**
 
-Read `deep_plan/skills/orchestra/references/security-review-protocol.md`.
+Read `skills/orchestra/references/security-review-protocol.md`.
 
 Orchestra dispatches 3 specialists in a **single message** (parallel):
 1. Task Packet → `ssp-security-trpc` agent — covering changed tRPC routers (`apps/web/server/routers/`)
@@ -382,7 +382,7 @@ Files affected: [list]
 
 ## Step 8: Context Health Check + Repeat or Finalize
 
-Read `deep_plan/skills/orchestra/references/compaction-safety.md` **only** when context state is `yellow` or `red`.
+Read `skills/orchestra/references/compaction-safety.md` **only** when context state is `yellow` or `red`.
 
 **Context state classification:**
 
@@ -434,7 +434,7 @@ Read `deep_plan/skills/orchestra/references/compaction-safety.md` **only** when 
 }
 ```
 
-All paths in `key_files` must be **absolute paths**. See `deep_plan/skills/orchestra/references/compaction-safety.md` for the full field definitions.
+All paths in `key_files` must be **absolute paths**. See `skills/orchestra/references/compaction-safety.md` for the full field definitions.
 
 **Repeat or finalize:**
 
@@ -462,7 +462,7 @@ All paths in `key_files` must be **absolute paths**. See `deep_plan/skills/orche
 6. If `checkpoint.in_progress` is set, that step is where work resumes.
 7. Print a resume banner listing: task, completed waves, in-progress step, pending waves, any blockers.
 
-This is the R4 algorithm from `deep_plan/skills/orchestra/references/session-resume.md`. On resume, read that file for the full procedure including edge cases.
+This is the R4 algorithm from `skills/orchestra/references/session-resume.md`. On resume, read that file for the full procedure including edge cases.
 
 **Key files to read on resume (in order):**
 - `orchestra/snapshot.json` — structured state

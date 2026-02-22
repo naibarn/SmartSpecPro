@@ -59,7 +59,7 @@ class QueryRouter:
     Default assumption: KNOWLEDGE (safe fallback — extra RAG is cheaper than missing context).
     """
 
-    def __init__(self, llm_model: str = "gpt-4.1-nano"):
+    def __init__(self, llm_model: str = "gpt-4.1-nano") -> None:
         self.llm_model = llm_model
 
     async def route(self, query: str) -> QueryRouteDecision:

@@ -14,7 +14,10 @@ import math
 import os
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Dict, List, Optional, Set
+
+if TYPE_CHECKING:
+    from app.orchestrator.rag.hybrid_rag import Document
 
 import structlog
 
@@ -59,7 +62,7 @@ class Reranker:
         fallback_chain: list[RerankStrategy] | None = None,
         # Legacy parameter for backward compatibility
         use_llm: bool | None = None,
-    ):
+    ) -> None:
         self.strategy = strategy
         self.model = model
         self.cohere_api_key = cohere_api_key
@@ -102,10 +105,10 @@ class Reranker:
     async def rerank(
         self,
         query: str,
-        documents: List[Any],
+        documents: list[Document],
         top_k: int = 5,
         effective_scopes: Set[str] | None = None,
-    ) -> List[Any]:
+    ) -> list[Document]:
         """
         Rerank documents using the configured strategy with automatic fallback.
 
@@ -203,7 +206,7 @@ class Reranker:
         logger.info("cross_encoder_loaded", model=self.model)
 
     async def _run_cross_encoder(
-        self, query: str, documents: List[Any]
+        self, query: str, documents: list[Document]
     ) -> list[float]:
         """Run cross-encoder inference in a thread pool to avoid blocking the event loop."""
         # Truncate documents
@@ -229,8 +232,8 @@ class Reranker:
         return [float(s) for s in scores]
 
     async def _cross_encoder_rerank(
-        self, query: str, documents: List[Any], top_k: int
-    ) -> List[Any]:
+        self, query: str, documents: list[Document], top_k: int
+    ) -> list[Document]:
         """Rerank using cross-encoder model."""
         self._ensure_cross_encoder_loaded()
 
@@ -249,8 +252,8 @@ class Reranker:
     # ------------------------------------------------------------------
 
     async def _cohere_rerank(
-        self, query: str, documents: List[Any], top_k: int
-    ) -> List[Any]:
+        self, query: str, documents: list[Document], top_k: int
+    ) -> list[Document]:
         """Rerank using Cohere Rerank API."""
         try:
             import cohere
@@ -287,8 +290,8 @@ class Reranker:
     # ------------------------------------------------------------------
 
     async def _llm_rerank(
-        self, query: str, documents: List[Any], top_k: int
-    ) -> List[Any]:
+        self, query: str, documents: list[Document], top_k: int
+    ) -> list[Document]:
         """Rerank using LLM per-document scoring."""
         try:
             from openai import AsyncOpenAI
@@ -307,7 +310,7 @@ class Reranker:
         scored_docs.sort(key=lambda x: x[0], reverse=True)
         return [doc for score, doc in scored_docs[:top_k]]
 
-    async def _score_document(self, query: str, doc: Any) -> float:
+    async def _score_document(self, query: str, doc: Document) -> float:
         """Score a single document using LLM."""
         prompt = (
             f"Rate the relevance of the following document to the query "
@@ -335,8 +338,8 @@ class Reranker:
     # ------------------------------------------------------------------
 
     def _heuristic_rerank(
-        self, query: str, documents: List[Any], top_k: int
-    ) -> List[Any]:
+        self, query: str, documents: list[Document], top_k: int
+    ) -> list[Document]:
         """Rerank using heuristics combining BM25, vector, and term overlap."""
         query_terms = set(query.lower().split())
 
@@ -373,9 +376,9 @@ class Reranker:
 
     def _verify_scopes(
         self,
-        documents: List[Any],
+        documents: list[Document],
         effective_scopes: Set[str],
-    ) -> List[Any]:
+    ) -> list[Document]:
         """
         Verify all reranked documents pass scope checks.
 
@@ -413,7 +416,7 @@ class Reranker:
         """Return whether the cross-encoder model is currently loaded in memory."""
         return self._cross_encoder_model is not None
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Release model, executor, and client resources."""
         if self._thread_pool is not None:
             self._thread_pool.shutdown(wait=False)

@@ -6,6 +6,7 @@ import {
   deleteElements,
   duplicateElements,
   ensureSlideContent,
+  resizeCanvas,
   reorderElementById,
   resizeElementById,
   translateElements,
@@ -17,6 +18,7 @@ describe("presentationEditorState", () => {
   it("normalizes unknown slide content to a safe default shape", () => {
     expect(ensureSlideContent(null)).toEqual({
       elements: [],
+      canvas: { preset: "16:9", width: 1280, height: 720 },
       transition: undefined,
       durationMs: undefined,
     });
@@ -49,6 +51,46 @@ describe("presentationEditorState", () => {
     expect(next.elements).toHaveLength(2);
     expect(next.elements[0].id).toBe("text-1");
     expect(next.elements[1].id).toBe("rect-1");
+  });
+
+  it("creates video elements with deterministic defaults", () => {
+    const video = createElement("video", "video-1");
+    expect(video).toMatchObject({
+      id: "video-1",
+      type: "video",
+      width: 480,
+      height: 270,
+      src: "",
+      title: "Video",
+      muted: true,
+      rotation: 0,
+    });
+  });
+
+  it("scales elements with preserved aspect ratio and keeps visual focus while auto-arranging", () => {
+    const base: PresentationSlideContent = {
+      canvas: { preset: "16:9", width: 1280, height: 720 },
+      elements: [
+        { id: "a", type: "image", x: 320, y: 180, width: 640, height: 360, src: "", alt: "A" },
+        { id: "b", type: "image", x: 1100, y: 600, width: 300, height: 220, src: "", alt: "B" },
+      ],
+    };
+    const next = resizeCanvas(base, { preset: "9:16", width: 720, height: 1280 });
+    expect(next.canvas).toEqual({ preset: "9:16", width: 720, height: 1280 });
+    expect(next.elements[0]).toMatchObject({
+      id: "a",
+      x: 112,
+      y: 692,
+      width: 360,
+      height: 203,
+    });
+    expect(next.elements[1]).toMatchObject({
+      id: "b",
+      x: 551,
+      y: 929,
+      width: 169,
+      height: 124,
+    });
   });
 
   it("applies deterministic translate/resize/reorder operations", () => {

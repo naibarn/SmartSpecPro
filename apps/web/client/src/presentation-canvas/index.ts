@@ -1,11 +1,15 @@
 export { CanvasShell } from "./CanvasShell";
 export { CanvasStage } from "./CanvasStage";
+export { CANVAS_LIBRARY_ASSET_DRAG_MIME } from "./CanvasStage";
+export type { CanvasStageDropAssetPayload, CanvasStageDroppedAsset } from "./CanvasStage";
 export { CanvasObjects } from "./CanvasObjects";
 export { PropertyPanel } from "./components/PropertyPanel";
 export { TransformHandles } from "./components/TransformHandles";
 export { MobileQuickActions } from "./components/MobileQuickActions";
 export { MobileBottomSheet } from "./components/MobileBottomSheet";
+export { AssetLibraryPanel } from "./components/AssetLibraryPanel";
 export type { MobileBottomSheetTab } from "./components/MobileBottomSheet";
+export type { AssetLibraryTab, CanvasLibraryAsset } from "./components/AssetLibraryPanel";
 export { SelectionEngine } from "./selection/SelectionEngine";
 export { computeSnapPosition } from "./snap/SnapEngine";
 export { CommandBus } from "./commands/CommandBus";

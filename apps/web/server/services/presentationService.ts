@@ -300,7 +300,7 @@ function collectUnsupportedLegacyElementTypes(slideContent: Record<string, unkno
     return [];
   }
 
-  const supportedTypes = new Set(["text", "image", "rect", "line"]);
+  const supportedTypes = new Set(["text", "image", "video", "rect", "line"]);
   const unsupported = new Set<string>();
   for (const element of elements) {
     if (!element || typeof element !== "object") {

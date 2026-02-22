@@ -3,10 +3,12 @@ import {
   deleteElements,
   duplicateElements,
   reorderElementById,
+  resizeCanvas,
   resizeElementById,
   translateElements,
   updateElementById,
   type ArrangeDirection,
+  type PresentationCanvasSize,
   type PresentationElement,
   type PresentationElementPatch,
   type PresentationSlideContent,
@@ -17,7 +19,6 @@ import type { CanvasCommand } from "./CommandBus";
 export interface CanvasCommandState {
   content: PresentationSlideContent;
   selectedElementIds: string[];
-  rotationByElementId: Record<string, number>;
   snapGuides: SnapGuide[];
 }
 
@@ -28,7 +29,6 @@ export function createCanvasCommandState(
   return {
     content,
     selectedElementIds,
-    rotationByElementId: {},
     snapGuides: [],
   };
 }
@@ -175,17 +175,33 @@ export function rotateSelectionCommand(
         return state;
       }
 
-      const current = state.rotationByElementId[targetId] ?? 0;
-      const next = current + deltaDegrees;
+      const current = state.content.elements.find((element) => element.id === targetId);
+      if (!current) {
+        return state;
+      }
+
+      const nextRotation = Math.round(((current.rotation ?? 0) + deltaDegrees) * 10) / 10;
       return {
         ...state,
-        rotationByElementId: {
-          ...state.rotationByElementId,
-          [targetId]: next,
-        },
+        content: updateElementById(state.content, targetId, { rotation: nextRotation }),
         snapGuides: [],
       };
     },
+  };
+}
+
+export function setCanvasSizeCommand(
+  nextCanvas: PresentationCanvasSize,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: `set-canvas-size-${nextCanvas.width}x${nextCanvas.height}`,
+    apply: (state) => ({
+      ...state,
+      content: resizeCanvas(state.content, nextCanvas, {
+        selectedElementIds: state.selectedElementIds,
+      }),
+      snapGuides: [],
+    }),
   };
 }
 

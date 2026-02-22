@@ -149,10 +149,27 @@ export const presentationTransitionSchema = z.enum([
   "cut",
   "fade",
 ]);
+export const presentationCanvasPresetSchema = z.enum([
+  "16:9",
+  "9:16",
+  "4:3",
+  "3:4",
+  "4:5",
+  "5:4",
+  "1:1",
+]);
 
 const presentationElementCoordinateSchema = z.number().finite().min(-100_000).max(100_000);
 const presentationElementSizeSchema = z.number().finite().min(0).max(100_000);
 const presentationElementOpacitySchema = z.number().finite().min(0).max(1);
+const presentationElementRotationSchema = z.number().finite().min(-3600).max(3600);
+const presentationCanvasDimensionSchema = z.number().int().positive().max(10_000);
+
+export const presentationCanvasSizeSchema = z.object({
+  preset: presentationCanvasPresetSchema.optional(),
+  width: presentationCanvasDimensionSchema,
+  height: presentationCanvasDimensionSchema,
+}).strict();
 
 export const presentationTextElementSchema = z.object({
   id: z.string().min(1).max(128),
@@ -162,8 +179,18 @@ export const presentationTextElementSchema = z.object({
   width: presentationElementSizeSchema,
   height: presentationElementSizeSchema,
   opacity: presentationElementOpacitySchema.optional(),
+  rotation: presentationElementRotationSchema.optional(),
   text: z.string().max(10_000),
   color: z.string().min(1).max(64),
+  fontSize: z.number().finite().min(8).max(512).optional(),
+  fontFamily: z.string().min(1).max(128).optional(),
+  fontWeight: z.enum(["normal", "500", "600", "700"]).optional(),
+  fontStyle: z.enum(["normal", "italic"]).optional(),
+  textDecoration: z.enum(["none", "underline", "line-through"]).optional(),
+  textAlign: z.enum(["left", "center", "right", "justify"]).optional(),
+  lineHeight: z.number().finite().min(0.6).max(4).optional(),
+  letterSpacing: z.number().finite().min(-20).max(100).optional(),
+  backgroundColor: z.string().min(1).max(64).optional(),
 }).strict();
 
 export const presentationImageElementSchema = z.object({
@@ -174,8 +201,25 @@ export const presentationImageElementSchema = z.object({
   width: presentationElementSizeSchema,
   height: presentationElementSizeSchema,
   opacity: presentationElementOpacitySchema.optional(),
+  rotation: presentationElementRotationSchema.optional(),
   src: z.string().max(4_096),
   alt: z.string().max(512),
+}).strict();
+
+export const presentationVideoElementSchema = z.object({
+  id: z.string().min(1).max(128),
+  type: z.literal("video"),
+  x: presentationElementCoordinateSchema,
+  y: presentationElementCoordinateSchema,
+  width: presentationElementSizeSchema,
+  height: presentationElementSizeSchema,
+  opacity: presentationElementOpacitySchema.optional(),
+  rotation: presentationElementRotationSchema.optional(),
+  src: z.string().max(4_096),
+  poster: z.string().max(4_096).optional(),
+  title: z.string().max(512).optional(),
+  muted: z.boolean().optional(),
+  loop: z.boolean().optional(),
 }).strict();
 
 export const presentationRectElementSchema = z.object({
@@ -186,7 +230,10 @@ export const presentationRectElementSchema = z.object({
   width: presentationElementSizeSchema,
   height: presentationElementSizeSchema,
   opacity: presentationElementOpacitySchema.optional(),
+  rotation: presentationElementRotationSchema.optional(),
   fill: z.string().min(1).max(64),
+  stroke: z.string().min(1).max(64).optional(),
+  strokeWidth: z.number().finite().min(0).max(1_000).optional(),
 }).strict();
 
 export const presentationLineElementSchema = z.object({
@@ -197,6 +244,8 @@ export const presentationLineElementSchema = z.object({
   width: presentationElementSizeSchema,
   height: presentationElementSizeSchema,
   opacity: presentationElementOpacitySchema.optional(),
+  rotation: presentationElementRotationSchema.optional(),
+  fill: z.string().min(1).max(64).optional(),
   stroke: z.string().min(1).max(64),
   strokeWidth: z.number().finite().min(0).max(1_000),
 }).strict();
@@ -204,12 +253,14 @@ export const presentationLineElementSchema = z.object({
 export const presentationSlideElementSchema = z.discriminatedUnion("type", [
   presentationTextElementSchema,
   presentationImageElementSchema,
+  presentationVideoElementSchema,
   presentationRectElementSchema,
   presentationLineElementSchema,
 ]);
 
 export const presentationSlideContentSchema = z.object({
   elements: z.array(presentationSlideElementSchema).max(PRESENTATION_LIMITS.maxElementsPerSlide),
+  canvas: presentationCanvasSizeSchema.optional(),
   transition: presentationTransitionSchema.optional(),
   durationMs: z.number().finite().min(250).max(120_000).optional(),
 }).strict();

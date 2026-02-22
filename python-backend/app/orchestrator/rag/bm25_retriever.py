@@ -6,13 +6,18 @@ BM25 (Best Matching 25) retriever for keyword-based search.
 Uses the Okapi BM25 algorithm for term frequency-based ranking.
 """
 
+from __future__ import annotations
+
 import math
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 import structlog
+
+if TYPE_CHECKING:
+    from app.orchestrator.rag.hybrid_rag import Document
 
 logger = structlog.get_logger()
 
@@ -24,7 +29,7 @@ class TokenizedDocument:
     tokens: List[str]
     token_counts: Counter
     length: int
-    original_doc: Any  # Reference to original Document
+    original_doc: Document
 
 
 class BM25Retriever:
@@ -60,7 +65,7 @@ class BM25Retriever:
         b: float = 0.75,
         use_stopwords: bool = True,
         min_token_length: int = 2,
-    ):
+    ) -> None:
         """
         Initialize BM25 Retriever.
         
@@ -123,7 +128,7 @@ class BM25Retriever:
         
         return filtered
     
-    async def add_document(self, doc: Any) -> None:
+    async def add_document(self, doc: Document) -> None:
         """
         Add a document to the index.
         
@@ -262,7 +267,7 @@ class BM25Retriever:
         Args:
             query: Search query
             top_k: Number of results to return
-            filters: Metadata filters (not implemented yet)
+            filters: Metadata filters (tenant_id, allowed_scopes)
             
         Returns:
             List of Document objects sorted by BM25 score
@@ -351,7 +356,7 @@ class BM25Retriever:
 
         return True
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Cleanup resources."""
         self._documents.clear()
         self._inverted_index.clear()

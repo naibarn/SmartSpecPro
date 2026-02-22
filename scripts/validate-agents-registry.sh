@@ -16,9 +16,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-SUB_AGENTS_DIR="$REPO_ROOT/deep_plan/skills/sub-agents/agents"
+SUB_AGENTS_DIR="$REPO_ROOT/skills/sub-agents/agents"
 NATIVE_AGENTS_DIR="$REPO_ROOT/.claude/agents"
-README_FILE="$REPO_ROOT/deep_plan/skills/sub-agents/README.md"
+README_FILE="$REPO_ROOT/skills/sub-agents/README.md"
 
 ERRORS=0
 WARNINGS=0

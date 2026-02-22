@@ -14,9 +14,12 @@ import math
 import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from app.orchestrator.rag.hybrid_rag import HybridRAGEngine, Document
 
 logger = structlog.get_logger()
 
@@ -96,7 +99,7 @@ class EvalMetrics:
 class RAGEvaluator:
     """Evaluates RAG pipeline quality against ground-truth datasets."""
 
-    def __init__(self, llm_client: Any | None = None):
+    def __init__(self, llm_client: Any | None = None) -> None:
         self.llm_client = llm_client
 
     # --- Metric Helpers ---
@@ -186,7 +189,7 @@ class RAGEvaluator:
 
     async def evaluate_single(
         self,
-        engine: Any,
+        engine: HybridRAGEngine,
         item: EvalItem,
         k: int = 5,
         tenant_id: str | None = None,
@@ -231,7 +234,7 @@ class RAGEvaluator:
 
     async def evaluate(
         self,
-        engine: Any,
+        engine: HybridRAGEngine,
         dataset: EvalDataset,
         k: int = 5,
         tenant_id: str | None = None,
@@ -354,12 +357,12 @@ class RAGEvaluator:
 class EvalDatasetGenerator:
     """Generates QA evaluation pairs from indexed documents."""
 
-    def __init__(self, llm_client: Any | None = None):
+    def __init__(self, llm_client: Any | None = None) -> None:
         self.llm_client = llm_client
 
     async def generate(
         self,
-        documents: list[Any],
+        documents: list[Document],
         num_pairs: int = 200,
     ) -> EvalDataset:
         """Generate an evaluation dataset from documents."""

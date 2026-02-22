@@ -26,6 +26,12 @@ from app.orchestrator.rag.scope_engine import (
     invalidate_rag_cache_for_item,
     handle_permission_change,
 )
+from app.orchestrator.rag.chunker import (
+    SmartChunker,
+    ChunkStrategy,
+    ChunkConfig,
+    Chunk,
+)
 from app.orchestrator.rag.query_processor import (
     QueryProcessor,
     QueryStrategy,
@@ -52,6 +58,10 @@ __all__ = [
     "SearchMode",
     "BM25Retriever",
     "VectorRetriever",
+    "SmartChunker",
+    "ChunkStrategy",
+    "ChunkConfig",
+    "Chunk",
     "Reranker",
     "RerankStrategy",
     "compute_effective_scopes",

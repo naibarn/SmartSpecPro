@@ -6,13 +6,18 @@ Vector-based retriever using embeddings for semantic similarity search.
 Supports multiple embedding providers and vector stores.
 """
 
+from __future__ import annotations
+
 import asyncio
 import hashlib
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
-import numpy as np
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
+import numpy as np
 import structlog
+
+if TYPE_CHECKING:
+    from app.orchestrator.rag.hybrid_rag import Document
 
 logger = structlog.get_logger()
 
@@ -22,7 +27,7 @@ class VectorDocument:
     """Document with vector embedding."""
     doc_id: str
     embedding: np.ndarray
-    original_doc: Any
+    original_doc: Document
 
 
 class VectorRetriever:
@@ -44,7 +49,7 @@ class VectorRetriever:
         threshold: float = 0.5,
         embedding_model: str = "text-embedding-ada-002",
         use_cache: bool = True,
-    ):
+    ) -> None:
         """
         Initialize Vector Retriever.
         
@@ -180,7 +185,7 @@ class VectorRetriever:
         
         return dot_product / (norm1 * norm2)
     
-    async def add_document(self, doc: Any) -> None:
+    async def add_document(self, doc: Document) -> None:
         """
         Add a document to the index.
         
@@ -215,7 +220,7 @@ class VectorRetriever:
         Args:
             query: Search query
             top_k: Number of results to return
-            filters: Metadata filters (not implemented yet)
+            filters: Metadata filters (tenant_id, allowed_scopes)
             
         Returns:
             List of Document objects sorted by similarity
@@ -280,7 +285,7 @@ class VectorRetriever:
 
         return True
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Cleanup resources."""
         self._documents.clear()
         self._embedding_cache.clear()

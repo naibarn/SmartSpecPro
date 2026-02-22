@@ -51,6 +51,52 @@ function buildDeckByItem() {
   };
 }
 
+function buildLibraryMediaList() {
+  return {
+    total: 2,
+    limit: 50,
+    offset: 0,
+    has_more: false,
+    scope: "all",
+    results: [
+      {
+        id: 401,
+        item_type: "image",
+        source: "media_task",
+        title: "Hero Image",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        source_url: "https://cdn.example.com/hero.png",
+        thumbnail_url: "https://cdn.example.com/hero-thumb.png",
+        owner_user_id: 1,
+        metadata: {},
+        access_source: "owner",
+        permission_level: "owner",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 402,
+        item_type: "video",
+        source: "media_task",
+        title: "Teaser Clip",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        source_url: "https://cdn.example.com/teaser.mp4",
+        thumbnail_url: "https://cdn.example.com/teaser-thumb.png",
+        owner_user_id: 1,
+        metadata: {},
+        access_source: "owner",
+        permission_level: "owner",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ],
+  };
+}
+
 const queryState = {
   libraryItem: {
     id: 42,
@@ -58,6 +104,9 @@ const queryState = {
     itemType: "presentation",
     title: "Product Pitch",
   },
+  libraryMediaList: buildLibraryMediaList(),
+  itemLoading: false,
+  guardLoading: false,
   guard: {
     allowed: true,
     itemId: 42,
@@ -85,9 +134,26 @@ vi.mock("@/lib/trpc", () => ({
       getItem: {
         useQuery: vi.fn(() => ({
           data: queryState.libraryItem,
-          isLoading: false,
+          isLoading: queryState.itemLoading,
           error: null,
         })),
+      },
+      listDocuments: {
+        useQuery: vi.fn((input?: any) => {
+          const itemType = input?.filters?.itemType;
+          const filteredResults = queryState.libraryMediaList.results.filter((item: any) =>
+            itemType ? item.item_type === itemType : true,
+          );
+          return {
+            data: {
+              ...queryState.libraryMediaList,
+              total: filteredResults.length,
+              results: filteredResults,
+            },
+            isLoading: false,
+            error: null,
+          };
+        }),
       },
     },
     presentation: {
@@ -116,7 +182,7 @@ vi.mock("@/lib/trpc", () => ({
       guardEditorOpen: {
         useQuery: vi.fn(() => ({
           data: queryState.guard,
-          isLoading: false,
+          isLoading: queryState.guardLoading,
           error: null,
         })),
       },
@@ -198,6 +264,9 @@ describe("PresentationEditor", () => {
       itemId: 42,
       editorRoute: "/presentation-editor/42",
     };
+    queryState.itemLoading = false;
+    queryState.guardLoading = false;
+    queryState.libraryMediaList = buildLibraryMediaList();
     queryState.deckByItem = buildDeckByItem();
     queryState.deckError = null;
   });
@@ -215,22 +284,211 @@ describe("PresentationEditor", () => {
     expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export png/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export mp4/i })).toBeInTheDocument();
+    expect(screen.getByTestId("slide-preview-1")).toBeInTheDocument();
+    expect(screen.getByTestId("slide-preview-2")).toBeInTheDocument();
+    expect(screen.getByText(/save: ready/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Canvas Aspect Ratio (Properties)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /fit canvas to view/i })).toBeInTheDocument();
+  });
+
+  it("keeps hook order stable when editor transitions from loading to ready", async () => {
+    queryState.itemLoading = true;
+    const { rerender } = render(<PresentationEditor />);
+    expect(screen.getByText(/loading presentation editor/i)).toBeInTheDocument();
+
+    queryState.itemLoading = false;
+    queryState.guardLoading = false;
+    rerender(<PresentationEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
+    });
+  });
+
+  it("inserts image from library panel into canvas content", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open photos library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Image URL")).toHaveValue("https://cdn.example.com/hero.png");
+      expect(screen.getByLabelText("Image Alt Text")).toHaveValue("Hero Image");
+    });
+  });
+
+  it("inserts video from library panel into canvas content", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Video URL")).toHaveValue("https://cdn.example.com/teaser.mp4");
+      expect(screen.getByLabelText("Video Title")).toHaveValue("Teaser Clip");
+    });
+  });
+
+  it("renders fallback video thumbnail in library when thumbnail_url is missing", async () => {
+    queryState.libraryMediaList = {
+      ...queryState.libraryMediaList,
+      results: queryState.libraryMediaList.results.map((item: any) =>
+        item.item_type === "video"
+          ? { ...item, thumbnail_url: null }
+          : item),
+    };
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("asset-video-thumb-402")).toBeInTheDocument();
+    });
+  });
+
+  it("renders video slide previews using poster or video frame", () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Video Intro",
+          slideContent: {
+            elements: [{
+              id: "v-1",
+              type: "video",
+              x: 20,
+              y: 20,
+              width: 360,
+              height: 220,
+              src: "https://cdn.example.com/slide-video.mp4",
+              poster: "https://cdn.example.com/slide-video-poster.png",
+              title: "Clip",
+              muted: true,
+            }],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    expect(screen.getByTestId("slide-preview-media-video-poster-1")).toBeInTheDocument();
+  });
+
+  it("opens playable slideshow overlay and supports closing", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /close slideshow preview/i }));
+    await waitFor(() => {
+      expect(screen.queryByTestId("slideshow-preview-overlay")).not.toBeInTheDocument();
+    });
+  });
+
+  it("exposes standard text styling controls and shape fill/border controls", async () => {
+    render(<PresentationEditor />);
+
+    expect(screen.getByRole("button", { name: /apply heading text preset/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /apply subheading text preset/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /apply body text preset/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /apply citation text preset/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Font Size")).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Font Family")).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Font Weight")).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Font Style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Decoration")).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Align")).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Line Height")).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Letter Spacing")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /add rectangle element/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Rectangle Fill")).toBeInTheDocument();
+      expect(screen.getByLabelText("Rectangle Border")).toBeInTheDocument();
+      expect(screen.getByLabelText("Rectangle Border Width")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add line element/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Line Fill")).toBeInTheDocument();
+      expect(screen.getByLabelText("Line Stroke")).toBeInTheDocument();
+      expect(screen.getByLabelText("Line Stroke Width")).toBeInTheDocument();
+    });
+  });
+
+  it("applies text preset styles with one click", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /apply heading text preset/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Text Font Size")).toHaveValue(64);
+      expect(screen.getByLabelText("Text Font Weight")).toHaveValue("700");
+      expect(screen.getByLabelText("Text Font Style")).toHaveValue("normal");
+      expect(screen.getByLabelText("Text Line Height")).toHaveValue(1.1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /apply citation text preset/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Text Font Size")).toHaveValue(26);
+      expect(screen.getByLabelText("Text Font Weight")).toHaveValue("500");
+      expect(screen.getByLabelText("Text Font Style")).toHaveValue("italic");
+      expect(screen.getByLabelText("Text Align")).toHaveValue("right");
+    });
   });
 
   it("wires slide CRUD and reorder controls to typed API bindings", async () => {
     render(<PresentationEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: /add slide/i }));
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+    });
     fireEvent.click(screen.getByRole("button", { name: /duplicate slide/i }));
+    await waitFor(() => {
+      expect(mutationMocks.duplicateSlide).toHaveBeenCalledTimes(1);
+    });
     fireEvent.click(screen.getByRole("button", { name: /move slide down/i }));
+    await waitFor(() => {
+      expect(mutationMocks.reorderSlides).toHaveBeenCalledTimes(1);
+    });
     fireEvent.click(screen.getByRole("button", { name: /delete slide/i }));
 
     await waitFor(() => {
-      expect(mutationMocks.addSlide).toHaveBeenCalled();
-      expect(mutationMocks.duplicateSlide).toHaveBeenCalled();
-      expect(mutationMocks.reorderSlides).toHaveBeenCalled();
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+      expect(mutationMocks.duplicateSlide).toHaveBeenCalledTimes(1);
+      expect(mutationMocks.reorderSlides).toHaveBeenCalledTimes(1);
       expect(mutationMocks.deleteSlide).toHaveBeenCalled();
     });
+  });
+
+  it("supports adding slides repeatedly with incremented deck expectedVersion", async () => {
+    render(<PresentationEditor />);
+
+    const addSlideButton = screen.getByRole("button", { name: /add slide/i });
+    fireEvent.click(addSlideButton);
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(addSlideButton);
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mutationMocks.addSlide).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      expectedVersion: 5,
+    }));
+    expect(mutationMocks.addSlide).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      expectedVersion: 6,
+    }));
   });
 
   it("shows deterministic wrong-editor recovery CTA when guard blocks", () => {
@@ -362,6 +620,222 @@ describe("PresentationEditor", () => {
     fireEvent.keyDown(window, { key: "y", ctrlKey: true });
     await waitFor(() => {
       expect(screen.getByLabelText("Element X")).toHaveValue(11);
+    });
+  });
+
+  it("supports pointer drag to move selected elements on canvas", async () => {
+    render(<PresentationEditor />);
+    const canvasElement = screen.getByRole("button", { name: /select canvas element 1/i });
+
+    expect(screen.getByLabelText("Element X")).toHaveValue(10);
+    expect(screen.getByLabelText("Element Y")).toHaveValue(10);
+
+    fireEvent.pointerDown(canvasElement, {
+      pointerId: 1,
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      clientX: 135,
+      clientY: 145,
+    });
+    fireEvent.pointerUp(window, {
+      pointerId: 1,
+      clientX: 135,
+      clientY: 145,
+    });
+
+    await waitFor(() => {
+      const xInput = screen.getByLabelText("Element X") as HTMLInputElement;
+      const yInput = screen.getByLabelText("Element Y") as HTMLInputElement;
+      expect(Number(xInput.value)).toBeGreaterThan(10);
+      expect(Number(yInput.value)).toBeGreaterThan(10);
+    });
+  });
+
+  it("supports pointer resize via canvas corner handle", async () => {
+    render(<PresentationEditor />);
+    const resizeHandle = screen.getByLabelText("Resize Selected Element");
+
+    expect(screen.getByLabelText("Element Width")).toHaveValue(200);
+    expect(screen.getByLabelText("Element Height")).toHaveValue(60);
+
+    fireEvent.pointerDown(resizeHandle, {
+      pointerId: 2,
+      button: 0,
+      clientX: 300,
+      clientY: 220,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 2,
+      clientX: 340,
+      clientY: 250,
+    });
+    fireEvent.pointerUp(window, {
+      pointerId: 2,
+      clientX: 340,
+      clientY: 250,
+    });
+
+    await waitFor(() => {
+      const widthInput = screen.getByLabelText("Element Width") as HTMLInputElement;
+      const heightInput = screen.getByLabelText("Element Height") as HTMLInputElement;
+      expect(Number(widthInput.value)).toBeGreaterThan(200);
+      expect(Number(heightInput.value)).toBeGreaterThan(60);
+    });
+  });
+
+  it("updates canvas zoom from toolbar controls", async () => {
+    render(<PresentationEditor />);
+
+    expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.00x (0, 0)");
+
+    fireEvent.click(screen.getByRole("button", { name: /zoom in/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.10x (0, 0)");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /zoom out/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.00x (0, 0)");
+    });
+  });
+
+  it("updates canvas zoom from mouse wheel scrolling on workspace", async () => {
+    render(<PresentationEditor />);
+
+    const workspace = screen.getByLabelText("Canvas workspace");
+    fireEvent.wheel(workspace, { deltaY: -100, clientX: 300, clientY: 260 });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.10x");
+    });
+  });
+
+  it("allows panning after zooming in on desktop canvas", async () => {
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /zoom in/i }));
+
+    const panSurface = screen.getByTestId("canvas-stage-pan-surface");
+    fireEvent.pointerDown(panSurface, {
+      pointerId: 55,
+      button: 0,
+      clientX: 320,
+      clientY: 260,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 55,
+      clientX: 210,
+      clientY: 180,
+    });
+    fireEvent.pointerUp(window, {
+      pointerId: 55,
+      clientX: 210,
+      clientY: 180,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).not.toHaveTextContent("(0, 0)");
+    });
+  });
+
+  it("fits viewport back to defaults after zoom/pan", async () => {
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /zoom in/i }));
+
+    const panSurface = screen.getByTestId("canvas-stage-pan-surface");
+    fireEvent.pointerDown(panSurface, {
+      pointerId: 56,
+      button: 0,
+      clientX: 300,
+      clientY: 240,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 56,
+      clientX: 220,
+      clientY: 180,
+    });
+    fireEvent.pointerUp(window, {
+      pointerId: 56,
+      clientX: 220,
+      clientY: 180,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.10x");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /fit canvas to view/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.00x (0, 0)");
+    });
+  });
+
+  it("supports desktop keyboard shortcuts for zoom in/out and reset", async () => {
+    render(<PresentationEditor />);
+    expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.00x (0, 0)");
+
+    fireEvent.keyDown(window, { key: "=", ctrlKey: true });
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.10x");
+    });
+
+    fireEvent.keyDown(window, { key: "-", ctrlKey: true });
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.00x (0, 0)");
+    });
+
+    fireEvent.keyDown(window, { key: "=", ctrlKey: true });
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.10x");
+    });
+
+    fireEvent.keyDown(window, { key: "0", ctrlKey: true });
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.00x (0, 0)");
+    });
+  });
+
+  it("supports changing canvas preset ratio from toolbar", async () => {
+    render(<PresentationEditor />);
+    expect(screen.getByTestId("canvas-stage-size")).toHaveTextContent("canvas: 1280x720 (16:9)");
+
+    fireEvent.change(screen.getByLabelText("Canvas Aspect Ratio"), {
+      target: { value: "9:16" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-size")).toHaveTextContent("canvas: 720x1280 (9:16)");
+    });
+  });
+
+  it("supports rotating selected element from canvas rotate handle", async () => {
+    render(<PresentationEditor />);
+    const rotateHandle = screen.getByLabelText("Rotate Selected Element");
+    expect(screen.getByLabelText("Element Rotation")).toHaveValue(0);
+
+    fireEvent.pointerDown(rotateHandle, {
+      pointerId: 77,
+      button: 0,
+      clientX: 320,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 77,
+      clientX: 380,
+      clientY: 100,
+    });
+    fireEvent.pointerUp(window, {
+      pointerId: 77,
+      clientX: 380,
+      clientY: 100,
+    });
+
+    await waitFor(() => {
+      const rotation = Number((screen.getByLabelText("Element Rotation") as HTMLInputElement).value);
+      expect(rotation).toBeGreaterThan(0);
     });
   });
 

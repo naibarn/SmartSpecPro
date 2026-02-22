@@ -44,6 +44,10 @@
     "section-07-rag-executor": {
       "status": "complete",
       "commit_hash": "c66a43e"
+    },
+    "evaluation-and-observability": {
+      "status": "complete",
+      "commit_hash": "b971c05"
     }
   },
   "pre_commit": {

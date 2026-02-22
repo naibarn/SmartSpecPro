@@ -252,7 +252,7 @@ class HybridRAGEngine:
         bm25_retriever: Optional["BM25Retriever"] = None,
         vector_retriever: Optional["VectorRetriever"] = None,
         reranker: Optional["Reranker"] = None,
-    ):
+    ) -> None:
         """Initialize the Hybrid RAG Engine."""
         self.config = config or RAGConfig()
         
@@ -672,7 +672,7 @@ class HybridRAGEngine:
             },
         }
     
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Cleanup resources."""
         self._cache.clear()
         self._documents.clear()

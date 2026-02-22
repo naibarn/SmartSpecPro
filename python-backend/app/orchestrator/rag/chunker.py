@@ -59,7 +59,7 @@ class Chunk:
 class SmartChunker:
     """Token-based, strategy-aware chunker with parent-child pattern."""
 
-    def __init__(self, config: ChunkConfig | None = None):
+    def __init__(self, config: ChunkConfig | None = None) -> None:
         self.config = config or ChunkConfig()
 
     @staticmethod
