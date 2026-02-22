@@ -88,6 +88,14 @@ function isConflictError(error: unknown): boolean {
   return message.includes(PRESENTATION_ERROR_CODE.VERSION_CONFLICT);
 }
 
+function getDeckLoadErrorMessage(error: unknown): string {
+  const raw = String((error as any)?.message || "Failed to load deck.");
+  if (raw.includes("PRESENTATION_LEGACY_PAYLOAD_BLOCKED")) {
+    return "Open read-only and convert this deck before editing.";
+  }
+  return raw;
+}
+
 function nextElementId(type: PresentationElementType): string {
   return `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -794,7 +802,7 @@ export default function PresentationEditor() {
     return (
       <div className="min-h-screen p-8 space-y-4">
         <h1 className="text-2xl font-semibold">Presentation Editor</h1>
-        <p className="text-sm text-red-600">{String((deckQuery.error as any)?.message || "Failed to load deck.")}</p>
+        <p className="text-sm text-red-600">{getDeckLoadErrorMessage(deckQuery.error)}</p>
       </div>
     );
   }

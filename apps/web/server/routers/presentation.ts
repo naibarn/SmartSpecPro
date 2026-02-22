@@ -45,6 +45,7 @@ import {
   getPresentationExportStatus,
   triggerPresentationExport,
 } from "../services/presentationPlaybackExport";
+import { applyTemplateAssetToDeck } from "../services/presentationTemplateService";
 
 const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
@@ -510,6 +511,25 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         return await detachAssetFromDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  applyTemplate: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
+      templateAssetLibraryItemId: z.number().int().positive(),
+      slideId: z.number().int().positive().nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await applyTemplateAssetToDeck(input, toPresentationActor(ctx));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

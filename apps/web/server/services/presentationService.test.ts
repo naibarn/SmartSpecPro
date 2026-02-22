@@ -191,6 +191,51 @@ describe("presentationService", () => {
     });
   });
 
+  it("returns deterministic legacy-payload guidance for unsupported editable payload types", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 1,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+
+    await expect(
+      addSlideToDeck(
+        {
+          deckId: 101,
+          expectedVersion: 1,
+          title: "Legacy shape payload",
+          slideContent: {
+            elements: [
+              {
+                id: "legacy-1",
+                type: "shape",
+                x: 10,
+                y: 10,
+                width: 120,
+                height: 80,
+              },
+            ],
+          },
+        },
+        actor,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof PresentationServiceError)) return false;
+      return (
+        error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED
+        && (error.details as any)?.guidanceCode === "PRESENTATION_LEGACY_PAYLOAD_BLOCKED"
+      );
+    });
+  });
+
   it("rejects add-slide when slideContent payload is oversized", async () => {
     persistenceMocks.getPresentationDeckById.mockResolvedValue({
       id: 101,

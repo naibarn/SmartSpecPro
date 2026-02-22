@@ -26,6 +26,10 @@ const serviceMocks = vi.hoisted(() => ({
   updateSlideInDeck: vi.fn(),
 }));
 
+const templateServiceMocks = vi.hoisted(() => ({
+  applyTemplateAssetToDeck: vi.fn(),
+}));
+
 const compatibilityMocks = vi.hoisted(() => ({
   getPresentationCompatibilityOpen: vi.fn(),
   convertOfficeSourceToPresentation: vi.fn(),
@@ -57,6 +61,10 @@ vi.mock("../services/presentationPlaybackExport", () => ({
   buildSlideshowPayload: playbackMocks.buildSlideshowPayload,
   triggerPresentationExport: playbackMocks.triggerPresentationExport,
   getPresentationExportStatus: playbackMocks.getPresentationExportStatus,
+}));
+
+vi.mock("../services/presentationTemplateService", () => ({
+  applyTemplateAssetToDeck: templateServiceMocks.applyTemplateAssetToDeck,
 }));
 
 import { presentationRouter } from "./presentation";
@@ -368,6 +376,29 @@ describe("presentationRouter", () => {
     expect(playbackMocks.triggerPresentationExport).not.toHaveBeenCalled();
     expect(playbackMocks.buildSlideshowPayload).toHaveBeenCalledTimes(1);
     expect(slideshow.schemaVersion).toBe("presentation_slideshow_v1");
+  });
+
+  it("maps template apply permission denials to deterministic forbidden errors", async () => {
+    templateServiceMocks.applyTemplateAssetToDeck.mockRejectedValue(
+      new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.PERMISSION_DENIED,
+        `${PRESENTATION_ERROR_CODE.PERMISSION_DENIED}: template attach is tenant scoped`,
+      ),
+    );
+
+    const fn = presentationRouter.applyTemplate as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+        input: { deckId: 88, expectedVersion: 3, templateAssetLibraryItemId: 9101 },
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof TRPCError)) return false;
+      return (
+        error.code === "FORBIDDEN"
+        && error.message.includes(PRESENTATION_ERROR_CODE.PERMISSION_DENIED)
+      );
+    });
   });
 });
 

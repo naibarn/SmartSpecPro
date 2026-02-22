@@ -254,6 +254,19 @@ describe("PresentationEditor", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows deterministic blocked-edit guidance for unsupported legacy payloads", async () => {
+    queryState.deckByItem = null as any;
+    queryState.deckError = new Error(
+      "PRESENTATION_VALIDATION_FAILED: unsupported legacy payload for editable v2 content [PRESENTATION_LEGACY_PAYLOAD_BLOCKED]",
+    );
+
+    render(<PresentationEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/open read-only and convert this deck before editing/i)).toBeInTheDocument();
+    });
+  });
+
   it("surfaces actionable export failure messaging", async () => {
     mutationMocks.triggerExport.mockRejectedValueOnce(new Error("PRESENTATION_EXPORT_THROTTLED: retry later"));
 

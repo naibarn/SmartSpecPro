@@ -293,9 +293,45 @@ function computeSlideContentBytes(slideContent: unknown): number {
   }
 }
 
+function collectUnsupportedLegacyElementTypes(slideContent: Record<string, unknown>): string[] {
+  const elements = (slideContent as any)?.elements;
+  if (!Array.isArray(elements)) {
+    return [];
+  }
+
+  const supportedTypes = new Set(["text", "image", "rect", "line"]);
+  const unsupported = new Set<string>();
+  for (const element of elements) {
+    if (!element || typeof element !== "object") {
+      continue;
+    }
+
+    const type = String((element as any).type || "").trim().toLowerCase();
+    if (!type || supportedTypes.has(type)) {
+      continue;
+    }
+    unsupported.add(type);
+  }
+
+  return [...unsupported].sort();
+}
+
 function validateSlideContentPayload(slideContent: Record<string, unknown>): Record<string, unknown> {
   const parsed = presentationSlideContentSchema.safeParse(slideContent);
   if (!parsed.success) {
+    const unsupportedLegacyTypes = collectUnsupportedLegacyElementTypes(slideContent);
+    if (unsupportedLegacyTypes.length > 0) {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+        `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: unsupported legacy payload for editable v2 content`,
+        {
+          guidanceCode: "PRESENTATION_LEGACY_PAYLOAD_BLOCKED",
+          unsupportedElementTypes: unsupportedLegacyTypes,
+          guidance: "Open read-only and convert this deck before editing.",
+        },
+      );
+    }
+
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
       `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: slideContent failed schema validation`,
