@@ -7,6 +7,7 @@ import {
   PRESENTATION_ERROR_CODE_VALUES,
   PRESENTATION_EXPORT_SCHEMA_VERSION,
   PRESENTATION_ITEM_TYPE,
+  PRESENTATION_LIMITS,
   PRESENTATION_RENDER_SCHEMA_VERSION,
   PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
 } from "./constants";
@@ -145,6 +146,70 @@ export const presentationTransitionSchema = z.enum([
   "fade",
 ]);
 
+const presentationElementCoordinateSchema = z.number().finite().min(-100_000).max(100_000);
+const presentationElementSizeSchema = z.number().finite().min(0).max(100_000);
+const presentationElementOpacitySchema = z.number().finite().min(0).max(1);
+
+export const presentationTextElementSchema = z.object({
+  id: z.string().min(1).max(128),
+  type: z.literal("text"),
+  x: presentationElementCoordinateSchema,
+  y: presentationElementCoordinateSchema,
+  width: presentationElementSizeSchema,
+  height: presentationElementSizeSchema,
+  opacity: presentationElementOpacitySchema.optional(),
+  text: z.string().max(10_000),
+  color: z.string().min(1).max(64),
+}).strict();
+
+export const presentationImageElementSchema = z.object({
+  id: z.string().min(1).max(128),
+  type: z.literal("image"),
+  x: presentationElementCoordinateSchema,
+  y: presentationElementCoordinateSchema,
+  width: presentationElementSizeSchema,
+  height: presentationElementSizeSchema,
+  opacity: presentationElementOpacitySchema.optional(),
+  src: z.string().max(4_096),
+  alt: z.string().max(512),
+}).strict();
+
+export const presentationRectElementSchema = z.object({
+  id: z.string().min(1).max(128),
+  type: z.literal("rect"),
+  x: presentationElementCoordinateSchema,
+  y: presentationElementCoordinateSchema,
+  width: presentationElementSizeSchema,
+  height: presentationElementSizeSchema,
+  opacity: presentationElementOpacitySchema.optional(),
+  fill: z.string().min(1).max(64),
+}).strict();
+
+export const presentationLineElementSchema = z.object({
+  id: z.string().min(1).max(128),
+  type: z.literal("line"),
+  x: presentationElementCoordinateSchema,
+  y: presentationElementCoordinateSchema,
+  width: presentationElementSizeSchema,
+  height: presentationElementSizeSchema,
+  opacity: presentationElementOpacitySchema.optional(),
+  stroke: z.string().min(1).max(64),
+  strokeWidth: z.number().finite().min(0).max(1_000),
+}).strict();
+
+export const presentationSlideElementSchema = z.discriminatedUnion("type", [
+  presentationTextElementSchema,
+  presentationImageElementSchema,
+  presentationRectElementSchema,
+  presentationLineElementSchema,
+]);
+
+export const presentationSlideContentSchema = z.object({
+  elements: z.array(presentationSlideElementSchema).max(PRESENTATION_LIMITS.maxElementsPerSlide),
+  transition: presentationTransitionSchema.optional(),
+  durationMs: z.number().finite().min(250).max(120_000).optional(),
+}).strict();
+
 export const presentationSlideshowSlideSchema = z.object({
   slideId: z.number().int().positive(),
   orderIndex: z.number().int().nonnegative(),
@@ -211,6 +276,8 @@ export type PresentationConversionResult = z.infer<typeof presentationConversion
 export type PresentationSlideshowPayload = z.infer<typeof presentationSlideshowPayloadSchema>;
 export type PresentationRenderSpec = z.infer<typeof presentationRenderSpecSchema>;
 export type PresentationTransition = z.infer<typeof presentationTransitionSchema>;
+export type PresentationSlideElement = z.infer<typeof presentationSlideElementSchema>;
+export type PresentationSlideContent = z.infer<typeof presentationSlideContentSchema>;
 export type PresentationExportResult = z.infer<typeof presentationExportResultSchema>;
 export type PresentationExportStatusResult = z.infer<typeof presentationExportStatusResultSchema>;
 

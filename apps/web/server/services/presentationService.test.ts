@@ -148,6 +148,95 @@ describe("presentationService", () => {
     });
   });
 
+  it("rejects add-slide when slideContent contains unsupported element schema", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 1,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+
+    await expect(
+      addSlideToDeck(
+        {
+          deckId: 101,
+          expectedVersion: 1,
+          title: "Bad slide",
+          slideContent: {
+            elements: [
+              {
+                id: "el-1",
+                type: "video",
+                x: 10,
+                y: 10,
+                width: 100,
+                height: 100,
+              },
+            ],
+          },
+        },
+        actor,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof PresentationServiceError)) return false;
+      return error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED;
+    });
+  });
+
+  it("rejects add-slide when slideContent payload is oversized", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 1,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+
+    const largeValidElements = Array.from({ length: 40 }).map((_, index) => ({
+      id: `txt-${index}`,
+      type: "text" as const,
+      x: index,
+      y: index,
+      width: 300,
+      height: 80,
+      text: "x".repeat(9_000),
+      color: "#111827",
+    }));
+
+    await expect(
+      addSlideToDeck(
+        {
+          deckId: 101,
+          expectedVersion: 1,
+          title: "Huge slide",
+          slideContent: {
+            elements: largeValidElements,
+          },
+        },
+        actor,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof PresentationServiceError)) return false;
+      return (
+        error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED
+        && error.message.includes("exceeds max bytes")
+      );
+    });
+  });
+
   it("rejects attach asset when referenced item is not readable in tenant scope", async () => {
     persistenceMocks.getPresentationDeckById.mockResolvedValue({
       id: 101,

@@ -11,6 +11,7 @@ import {
 import {
   isPresentationItemType,
   presentationAvailabilitySchema,
+  presentationSlideContentSchema,
   presentationRouteGuardInputSchema,
   presentationRouteGuardResultSchema,
   type PresentationAvailability,
@@ -369,7 +370,7 @@ export const presentationRouter = router({
       deckId: z.number().int().positive(),
       expectedVersion: z.number().int().nonnegative(),
       title: z.string().min(1).max(255).optional(),
-      slideContent: z.record(z.any()).optional(),
+      slideContent: presentationSlideContentSchema.optional(),
       notes: z.string().max(5_000).nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -410,7 +411,7 @@ export const presentationRouter = router({
       expectedVersion: z.number().int().nonnegative(),
       saveMode: z.enum(["manual", "autosave"]).optional(),
       title: z.string().min(1).max(255).optional(),
-      slideContent: z.record(z.any()).optional(),
+      slideContent: presentationSlideContentSchema.optional(),
       notes: z.string().max(5_000).nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {

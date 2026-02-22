@@ -1,0 +1,15 @@
+{
+  "elements": [
+    {
+      "id": "video-1",
+      "type": "video",
+      "x": 100,
+      "y": 120,
+      "width": 320,
+      "height": 200,
+      "src": "https://cdn.example.com/assets/clip.mp4"
+    }
+  ],
+  "transition": "wipe",
+  "durationMs": 100
+}

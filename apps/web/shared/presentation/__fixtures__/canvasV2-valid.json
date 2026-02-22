@@ -1,0 +1,45 @@
+{
+  "elements": [
+    {
+      "id": "text-1",
+      "type": "text",
+      "x": 120,
+      "y": 80,
+      "width": 400,
+      "height": 120,
+      "text": "Quarterly business review",
+      "color": "#111827"
+    },
+    {
+      "id": "image-1",
+      "type": "image",
+      "x": 120,
+      "y": 240,
+      "width": 320,
+      "height": 180,
+      "src": "https://cdn.example.com/assets/chart.png",
+      "alt": "Sales chart"
+    },
+    {
+      "id": "shape-1",
+      "type": "rect",
+      "x": 470,
+      "y": 250,
+      "width": 220,
+      "height": 120,
+      "fill": "#93c5fd"
+    },
+    {
+      "id": "line-1",
+      "type": "line",
+      "x": 120,
+      "y": 460,
+      "width": 560,
+      "height": 0,
+      "stroke": "#1f2937",
+      "strokeWidth": 4
+    }
+  ],
+  "transition": "fade",
+  "durationMs": 3000
+}

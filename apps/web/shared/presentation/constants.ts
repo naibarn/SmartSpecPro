@@ -7,6 +7,8 @@ export const PRESENTATION_LIMITS = {
   maxAssetsPerDeck: 500,
   softDeckSizeBytes: 75 * 1024 * 1024,
   hardDeckSizeBytes: 100 * 1024 * 1024,
+  maxElementsPerSlide: 250,
+  maxSlideContentBytes: 256 * 1024,
 } as const;
 
 export const PRESENTATION_ERROR_CODE_VALUES = [

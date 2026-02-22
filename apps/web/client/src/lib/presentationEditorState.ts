@@ -1,69 +1,22 @@
-export type PresentationElementType = "text" | "image" | "rect" | "line";
+import {
+  presentationSlideContentSchema,
+  type PresentationSlideContent as SharedPresentationSlideContent,
+  type PresentationSlideElement as SharedPresentationElement,
+} from "@shared/presentation/contracts";
 
-interface PresentationElementBase {
-  id: string;
-  type: PresentationElementType;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  opacity?: number;
-}
-
-export interface PresentationTextElement extends PresentationElementBase {
-  type: "text";
-  text: string;
-  color: string;
-}
-
-export interface PresentationImageElement extends PresentationElementBase {
-  type: "image";
-  src: string;
-  alt: string;
-}
-
-export interface PresentationRectElement extends PresentationElementBase {
-  type: "rect";
-  fill: string;
-}
-
-export interface PresentationLineElement extends PresentationElementBase {
-  type: "line";
-  stroke: string;
-  strokeWidth: number;
-}
-
-export type PresentationElement =
-  | PresentationTextElement
-  | PresentationImageElement
-  | PresentationRectElement
-  | PresentationLineElement;
-
-export interface PresentationSlideContent {
-  elements: PresentationElement[];
-  transition?: string;
-  durationMs?: number;
-}
+export type PresentationElementType = SharedPresentationElement["type"];
+export type PresentationElement = SharedPresentationElement;
+export type PresentationElementPatch = Partial<Omit<PresentationElement, "id" | "type">>;
+export type PresentationSlideContent = SharedPresentationSlideContent;
 
 export function ensureSlideContent(input: unknown): PresentationSlideContent {
-  const asObject =
-    input && typeof input === "object" && !Array.isArray(input)
-      ? (input as Record<string, unknown>)
-      : {};
-  const elements = Array.isArray(asObject.elements)
-    ? (asObject.elements as PresentationElement[])
-    : [];
-  const transition =
-    typeof asObject.transition === "string" ? asObject.transition : undefined;
-  const durationMs =
-    typeof asObject.durationMs === "number" && Number.isFinite(asObject.durationMs)
-      ? asObject.durationMs
-      : undefined;
+  const parsed = presentationSlideContentSchema.safeParse(input);
+  if (parsed.success) {
+    return parsed.data;
+  }
 
   return {
-    elements,
-    transition,
-    durationMs,
+    elements: [],
   };
 }
 
@@ -115,17 +68,6 @@ export function createElement(
         stroke: "#1f2937",
         strokeWidth: 2,
       };
-    default:
-      return {
-        id,
-        type: "text",
-        x: 80,
-        y: 80,
-        width: 320,
-        height: 80,
-        text: "New text",
-        color: "#111827",
-      };
   }
 }
 
@@ -142,7 +84,7 @@ export function addElement(
 export function updateElementById(
   content: PresentationSlideContent,
   elementId: string,
-  patch: Partial<PresentationElement>,
+  patch: PresentationElementPatch,
 ): PresentationSlideContent {
   return {
     ...content,
@@ -154,7 +96,7 @@ export function updateElementById(
       return {
         ...element,
         ...patch,
-      };
+      } as PresentationElement;
     }),
   };
 }

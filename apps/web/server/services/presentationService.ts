@@ -30,7 +30,11 @@ import {
   PRESENTATION_ITEM_TYPE,
   PRESENTATION_LIMITS,
 } from "@shared/presentation/constants";
-import { presentationVersionConflictSchema, type PresentationVersionConflict } from "@shared/presentation/contracts";
+import {
+  presentationSlideContentSchema,
+  presentationVersionConflictSchema,
+  type PresentationVersionConflict,
+} from "@shared/presentation/contracts";
 import {
   recordPresentationFailureMetric,
   recordPresentationLog,
@@ -281,6 +285,41 @@ function ensureExpectedDeckVersion(deck: PresentationDeck, expectedVersion: numb
   throwDeckVersionConflict(deck, expectedVersion);
 }
 
+function computeSlideContentBytes(slideContent: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(slideContent), "utf8");
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+}
+
+function validateSlideContentPayload(slideContent: Record<string, unknown>): Record<string, unknown> {
+  const parsed = presentationSlideContentSchema.safeParse(slideContent);
+  if (!parsed.success) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: slideContent failed schema validation`,
+      {
+        issueCount: parsed.error.issues.length,
+      },
+    );
+  }
+
+  const byteSize = computeSlideContentBytes(parsed.data);
+  if (byteSize > PRESENTATION_LIMITS.maxSlideContentBytes) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: slideContent exceeds max bytes (${PRESENTATION_LIMITS.maxSlideContentBytes})`,
+      {
+        maxSlideContentBytes: PRESENTATION_LIMITS.maxSlideContentBytes,
+        byteSize,
+      },
+    );
+  }
+
+  return parsed.data;
+}
+
 async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
   if (dbClient) {
     return dbClient;
@@ -509,11 +548,16 @@ export async function addSlideToDeck(
     );
   }
 
+  const validatedSlideContent =
+    input.slideContent === undefined
+      ? undefined
+      : validateSlideContentPayload(input.slideContent);
+
   return createPresentationSlide(
     {
       deckId: input.deckId,
       title: input.title,
-      slideContent: input.slideContent,
+      slideContent: validatedSlideContent,
       notes: input.notes,
     },
     db,
@@ -572,6 +616,10 @@ export async function updateSlideInDeck(
   dbClient?: DbClient,
 ): Promise<PresentationSlide> {
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  const validatedSlideContent =
+    input.slideContent === undefined
+      ? undefined
+      : validateSlideContentPayload(input.slideContent);
   const currentSlide = await getSlideById(input.slideId, input.deckId, db);
   if (!currentSlide) {
     throw new PresentationServiceError(
@@ -592,7 +640,7 @@ export async function updateSlideInDeck(
     updates.title = input.title;
   }
   if (input.slideContent !== undefined) {
-    updates.slideContent = input.slideContent;
+    updates.slideContent = validatedSlideContent;
   }
   if (input.notes !== undefined) {
     updates.notes = input.notes;
