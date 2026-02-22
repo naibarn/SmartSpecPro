@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  trackAutosaveResult,
   setPresentationEventEmitterForTests,
   trackMobileAccidentalTransformCancelled,
   trackMobileModeSwitch,
@@ -19,6 +20,10 @@ describe("presentationEvents", () => {
       mode: "pan_mode",
       touchTargetPx: 16,
     });
+    trackAutosaveResult({
+      result: "saved",
+      slideId: 71,
+    });
 
     expect(emitter).toHaveBeenCalledWith(
       "presentation_mobile_mode_switch",
@@ -27,6 +32,10 @@ describe("presentationEvents", () => {
     expect(emitter).toHaveBeenCalledWith(
       "presentation_mobile_accidental_transform_cancelled",
       { mode: "pan_mode", touchTargetPx: 16 },
+    );
+    expect(emitter).toHaveBeenCalledWith(
+      "presentation_autosave_result",
+      { result: "saved", slideId: 71 },
     );
 
     setPresentationEventEmitterForTests(null);

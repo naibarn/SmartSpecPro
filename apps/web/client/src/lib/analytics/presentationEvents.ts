@@ -3,7 +3,8 @@ import type { MobileInteractionMode } from "@/presentation-canvas/mobile/MobileI
 
 export type PresentationAnalyticsEvent =
   | "presentation_mobile_mode_switch"
-  | "presentation_mobile_accidental_transform_cancelled";
+  | "presentation_mobile_accidental_transform_cancelled"
+  | "presentation_autosave_result";
 
 export interface MobileModeSwitchPayload {
   fromMode: MobileInteractionMode;
@@ -13,6 +14,11 @@ export interface MobileModeSwitchPayload {
 export interface MobileAccidentalTransformPayload {
   mode: MobileInteractionMode;
   touchTargetPx: number;
+}
+
+export interface AutosaveResultPayload {
+  result: "saved" | "conflict" | "error" | "cooldown" | "stale_blocked";
+  slideId: number;
 }
 
 type EventEmitter = (event: PresentationAnalyticsEvent, payload: Record<string, unknown>) => void;
@@ -40,4 +46,8 @@ export function trackMobileAccidentalTransformCancelled(
   payload: MobileAccidentalTransformPayload,
 ): void {
   emitEvent("presentation_mobile_accidental_transform_cancelled", payload);
+}
+
+export function trackAutosaveResult(payload: AutosaveResultPayload): void {
+  emitEvent("presentation_autosave_result", payload);
 }

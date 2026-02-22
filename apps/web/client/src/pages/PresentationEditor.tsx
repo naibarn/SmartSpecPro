@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { ChevronLeft } from "lucide-react";
 
@@ -24,6 +24,15 @@ import {
 import { SelectionEngine } from "@/presentation-canvas/selection/SelectionEngine";
 import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
 import { useMobileGestures } from "@/presentation-canvas/mobile/useMobileGestures";
+import { useAutosaveController } from "@/presentation-canvas/save/useAutosaveController";
+import {
+  createConflictPolicyState,
+  normalizeConflictPolicy,
+  registerConflict,
+  registerSaveSuccess,
+  releaseStaleBlock,
+  shouldBlockSaveAttempt,
+} from "@/presentation-canvas/save/conflictPolicy";
 import {
   addElementCommand,
   arrangeSelectionCommand,
@@ -37,6 +46,7 @@ import {
   selectElementsCommand,
   type CanvasCommandState,
 } from "@/presentation-canvas/commands/commands";
+import { trackAutosaveResult } from "@/lib/analytics/presentationEvents";
 import {
   PRESENTATION_CONFLICT_SCHEMA_VERSION,
   PRESENTATION_EDITOR_ROUTE_BASE,
@@ -52,6 +62,7 @@ function parseDocId(value: string | undefined): number | null {
 
 type SaveState = "idle" | "pending" | "saved" | "conflict" | "error";
 type PlaybackState = "idle" | "playing";
+type SaveMode = "manual" | "autosave";
 
 function getItemType(item: unknown): string {
   if (!item || typeof item !== "object") {
@@ -78,6 +89,17 @@ function isConflictError(error: unknown): boolean {
 
 function nextElementId(type: PresentationElementType): string {
   return `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function buildDraftSignature(
+  slideId: number | null,
+  content: PresentationSlideContent,
+): string | null {
+  if (!slideId) {
+    return null;
+  }
+
+  return `${slideId}:${JSON.stringify(content)}`;
 }
 
 export default function PresentationEditor() {
@@ -139,6 +161,9 @@ export default function PresentationEditor() {
     new CommandBus<CanvasCommandState>(createCanvasCommandState({ elements: [] })),
   );
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [expectedSlideVersion, setExpectedSlideVersion] = useState<number | null>(null);
+  const [conflictPolicy, setConflictPolicy] = useState(() => createConflictPolicyState());
+  const conflictPolicyRef = useRef(conflictPolicy);
   const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
   const [exportMessage, setExportMessage] = useState<string>("");
   const [lastExportId, setLastExportId] = useState<string | null>(null);
@@ -170,6 +195,10 @@ export default function PresentationEditor() {
   const draftContent = commandState.content;
   const selectedElementIds = commandState.selectedElementIds;
   const selectedElementId = selectedElementIds[0] ?? null;
+  const draftSignature = useMemo(
+    () => buildDraftSignature(selectedSlide?.id ?? null, draftContent),
+    [draftContent, selectedSlide?.id],
+  );
   const isMobilePanMode = isMobileViewport && mobileGestures.state.mode === "pan_mode";
   const selectedElement = useMemo(
     () => draftContent.elements.find((element) => element.id === selectedElementId) || null,
@@ -184,6 +213,10 @@ export default function PresentationEditor() {
   function executeCommand(command: Parameters<CommandBus<CanvasCommandState>["execute"]>[0]) {
     syncCommandState(commandBusRef.current.execute(command));
   }
+
+  useEffect(() => {
+    conflictPolicyRef.current = conflictPolicy;
+  }, [conflictPolicy]);
 
   useEffect(() => {
     const onResize = () => {
@@ -215,6 +248,8 @@ export default function PresentationEditor() {
       commandBusRef.current.reset(empty);
       setCommandState(empty);
       setSaveState("idle");
+      setExpectedSlideVersion(null);
+      setConflictPolicy(releaseStaleBlock());
       return;
     }
 
@@ -224,6 +259,8 @@ export default function PresentationEditor() {
     commandBusRef.current.reset(nextState);
     setCommandState(nextState);
     setSaveState("idle");
+    setExpectedSlideVersion(selectedSlide.version);
+    setConflictPolicy(releaseStaleBlock());
   }, [selectedSlide?.id, selectedSlide?.version]);
 
   async function refreshDeck() {
@@ -407,22 +444,112 @@ export default function PresentationEditor() {
     });
   }
 
-  async function handleSaveSlide() {
-    if (!deck || !selectedSlide) return;
+  const performSave = useCallback(async (saveMode: SaveMode): Promise<"saved" | "skipped"> => {
+    if (!deck || !selectedSlide) {
+      return "skipped";
+    }
+
+    const normalizedPolicy = normalizeConflictPolicy(conflictPolicyRef.current, Date.now());
+    if (normalizedPolicy !== conflictPolicyRef.current) {
+      setConflictPolicy(normalizedPolicy);
+      conflictPolicyRef.current = normalizedPolicy;
+    }
+
+    const blockedReason = shouldBlockSaveAttempt(normalizedPolicy, saveMode, Date.now());
+    if (blockedReason) {
+      if (blockedReason === "stale_blocked") {
+        setSaveState("conflict");
+      }
+
+      if (saveMode === "autosave") {
+        trackAutosaveResult({
+          result: blockedReason,
+          slideId: selectedSlide.id,
+        });
+      }
+      return "skipped";
+    }
+
+    const version = expectedSlideVersion ?? selectedSlide.version;
     setSaveState("pending");
+
     try {
-      await updateSlideMutation.mutateAsync({
+      const nextSlide = await updateSlideMutation.mutateAsync({
         deckId: deck.id,
         slideId: selectedSlide.id,
-        expectedVersion: selectedSlide.version,
-        saveMode: "manual",
+        expectedVersion: version,
+        saveMode,
         title: selectedSlide.title,
         slideContent: draftContent,
       });
+
+      const returnedVersion = Number((nextSlide as any)?.version);
+      setExpectedSlideVersion(
+        Number.isFinite(returnedVersion)
+          ? returnedVersion
+          : version + 1,
+      );
+      setConflictPolicy(registerSaveSuccess());
       setSaveState("saved");
-      await refreshDeck();
+
+      if (saveMode === "autosave") {
+        trackAutosaveResult({
+          result: "saved",
+          slideId: selectedSlide.id,
+        });
+      }
+
+      return "saved";
     } catch (error) {
-      setSaveState(isConflictError(error) ? "conflict" : "error");
+      if (isConflictError(error)) {
+        const nextPolicy = registerConflict(conflictPolicyRef.current, Date.now());
+        setConflictPolicy(nextPolicy);
+        setSaveState("conflict");
+        if (saveMode === "autosave") {
+          trackAutosaveResult({
+            result: nextPolicy.phase === "stale_blocked" ? "stale_blocked" : "conflict",
+            slideId: selectedSlide.id,
+          });
+        }
+        return "skipped";
+      }
+
+      setSaveState("error");
+      if (saveMode === "autosave") {
+        trackAutosaveResult({
+          result: "error",
+          slideId: selectedSlide.id,
+        });
+      }
+      return "skipped";
+    }
+  }, [deck, draftContent, expectedSlideVersion, selectedSlide, updateSlideMutation]);
+
+  const autosaveController = useAutosaveController({
+    enabled: Boolean(deck && selectedSlide && draftSignature),
+    draftSignature,
+    onAutosave: () => performSave("autosave"),
+  });
+
+  useEffect(() => {
+    if (!selectedSlide) {
+      autosaveController.clear();
+      return;
+    }
+
+    autosaveController.markPersisted(
+      buildDraftSignature(
+        selectedSlide.id,
+        ensureSlideContent(selectedSlide.slideContent),
+      ),
+    );
+  }, [autosaveController, selectedSlide?.id, selectedSlide?.version]);
+
+  async function handleSaveSlide() {
+    const result = await performSave("manual");
+    if (result === "saved") {
+      autosaveController.markPersisted(draftSignature);
+      await refreshDeck();
     }
   }
 
@@ -562,6 +689,12 @@ export default function PresentationEditor() {
 
   function handleBackToDocumentManagement() {
     setLocation(documentManagementHref);
+  }
+
+  async function handleReloadLatestSlide() {
+    await refreshDeck();
+    setConflictPolicy(releaseStaleBlock());
+    setSaveState("idle");
   }
 
   if (!docId) {
@@ -837,6 +970,16 @@ export default function PresentationEditor() {
           Presentation #{docId} loaded. Item type: <code>{itemType || PRESENTATION_ITEM_TYPE}</code>
         </p>
         <p className="text-sm text-muted-foreground">Save status: {saveStatusLabel}</p>
+        {saveState === "conflict" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleReloadLatestSlide()}
+            aria-label="Reload Latest Slide"
+          >
+            Reload Latest
+          </Button>
+        ) : null}
         <p className="text-sm text-muted-foreground">Playback status: {playbackStatusLabel}</p>
         <p className="text-sm text-muted-foreground">Export status: {exportStatusLabel}</p>
         {exportMessage ? (

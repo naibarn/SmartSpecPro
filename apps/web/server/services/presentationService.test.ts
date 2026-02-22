@@ -45,6 +45,7 @@ import {
   addSlideToDeck,
   attachAssetToDeck,
   createPresentationDeckForLibraryItem,
+  updateSlideInDeck,
 } from "./presentationService";
 
 const actor = {
@@ -300,6 +301,65 @@ describe("presentationService", () => {
         error.code === PRESENTATION_ERROR_CODE.VERSION_CONFLICT
         && (error.details as any)?.conflict?.conflictSchemaVersion === "presentation_conflict_v1"
         && (error.details as any)?.conflict?.reasonCode === "DECK_VERSION_MISMATCH"
+      );
+    });
+  });
+
+  it("returns autosave conflict payload when slide expectedVersion is stale", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 4,
+      slideCount: 2,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+
+    const currentSlide = {
+      id: 301,
+      deckId: 101,
+      orderIndex: 0,
+      version: 7,
+      title: "Current",
+      slideContent: { elements: [] },
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const dbClient = {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: vi.fn().mockResolvedValue([currentSlide]),
+          })),
+        })),
+      })),
+    } as any;
+
+    await expect(
+      updateSlideInDeck(
+        {
+          deckId: 101,
+          slideId: 301,
+          expectedVersion: 5,
+          saveMode: "autosave",
+          title: "Draft",
+        },
+        actor,
+        dbClient,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof PresentationServiceError)) return false;
+      return (
+        error.code === PRESENTATION_ERROR_CODE.VERSION_CONFLICT
+        && (error.details as any)?.conflict?.saveMode === "autosave"
+        && (error.details as any)?.conflict?.latestSlideVersion === 7
       );
     });
   });

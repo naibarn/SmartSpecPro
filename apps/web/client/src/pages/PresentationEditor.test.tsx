@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const setLocationMock = vi.fn();
 const routeParamsMock = { docId: "42" };
@@ -179,6 +179,7 @@ import PresentationEditor from "./PresentationEditor";
 describe("PresentationEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1200 });
     mutationMocks.addSlide.mockResolvedValue({});
     mutationMocks.duplicateSlide.mockResolvedValue({});
@@ -364,5 +365,118 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Element Width")).toHaveValue(200);
     });
+  });
+
+  it("debounces rapid edits into a single autosave mutation", async () => {
+    vi.useFakeTimers();
+    let version = 3;
+    mutationMocks.updateSlide.mockImplementation(async () => ({ version: ++version }));
+
+    render(<PresentationEditor />);
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(799);
+    });
+    expect(mutationMocks.updateSlide).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
+    expect(mutationMocks.updateSlide).toHaveBeenCalledWith(expect.objectContaining({
+      saveMode: "autosave",
+    }));
+  });
+
+  it("applies cooldown after autosave conflict and suppresses immediate retry", async () => {
+    vi.useFakeTimers();
+    const conflict = new Error("PRESENTATION_VERSION_CONFLICT: stale");
+    mutationMocks.updateSlide
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValue({ version: 5 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(2);
+  });
+
+  it("blocks autosave and manual save when stale guard is active until reload", async () => {
+    vi.useFakeTimers();
+    mutationMocks.updateSlide
+      .mockRejectedValueOnce(new Error("PRESENTATION_VERSION_CONFLICT: stale-1"))
+      .mockRejectedValueOnce(new Error("PRESENTATION_VERSION_CONFLICT: stale-2"))
+      .mockResolvedValue({ version: 8 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(2);
+
+    expect(screen.getByRole("button", { name: /reload latest slide/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /reload latest slide/i }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(3);
+    expect(mutationMocks.updateSlide).toHaveBeenLastCalledWith(expect.objectContaining({
+      saveMode: "manual",
+    }));
   });
 });
