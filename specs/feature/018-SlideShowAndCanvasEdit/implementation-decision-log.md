@@ -87,3 +87,19 @@
 - decision_taken: `state_helper_module`
 - mode_used: `auto`
 - rationale: Keeps page logic manageable and directly validates targeted-element mutation behavior required by section tests.
+
+## 2026-02-22 - Section 06 - Conversion Idempotency Storage Strategy
+- options_considered:
+  - `durable_cross_instance`: implement DB/queue-backed distributed idempotency and lock state in this section
+  - `process_memory_mvp`: use deterministic in-process lock/idempotency registry for MVP section scope
+- decision_taken: `process_memory_mvp`
+- mode_used: `auto`
+- rationale: Keeps section implementation focused on contract semantics and testability while deferring distributed orchestration to later hardening.
+
+## 2026-02-22 - Section 06 - Compatibility Contract Shape
+- options_considered:
+  - `implicit_flags`: expose minimal booleans without source-format/guidance details
+  - `explicit_contract`: include schema version, source format, convertability, and user guidance message
+- decision_taken: `explicit_contract`
+- mode_used: `auto`
+- rationale: Improves frontend determinism and aligns with section requirement for clear read-only/unsupported guidance and parser-stable payloads.

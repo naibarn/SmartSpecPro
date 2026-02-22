@@ -4,9 +4,11 @@ import { getDb } from "../db";
 import {
   presentationAssetLinks,
   presentationDecks,
+  presentationSourceAttachments,
   presentationSlides,
   type PresentationAssetLink,
   type PresentationDeck,
+  type PresentationSourceAttachment,
   type PresentationSlide,
 } from "../../drizzle/schema";
 import { PRESENTATION_LIMITS } from "@shared/presentation/constants";
@@ -54,6 +56,15 @@ export interface AttachPresentationAssetInput {
   slideId: number | null;
   libraryItemId: number;
   byteSize: number;
+}
+
+export interface UpsertPresentationSourceAttachmentInput {
+  deckId: number;
+  sourceLibraryItemId: number | null;
+  sourceFormat: string;
+  conversionStatus: string;
+  partialFidelity: boolean;
+  fidelityWarnings: string[];
 }
 
 async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
@@ -401,4 +412,57 @@ export async function reconcilePresentationByteTotals(
     .groupBy(presentationDecks.id, presentationDecks.totalAssetBytes);
 
   return findPresentationByteInconsistencies(rows);
+}
+
+export async function upsertPresentationSourceAttachment(
+  input: UpsertPresentationSourceAttachmentInput,
+  dbClient?: DbClient,
+): Promise<PresentationSourceAttachment> {
+  const db = await resolveDb(dbClient);
+
+  const existing = await db
+    .select()
+    .from(presentationSourceAttachments)
+    .where(eq(presentationSourceAttachments.deckId, input.deckId))
+    .limit(1);
+
+  if (existing[0]) {
+    const updated = await db
+      .update(presentationSourceAttachments)
+      .set({
+        sourceLibraryItemId: input.sourceLibraryItemId,
+        sourceFormat: input.sourceFormat,
+        conversionStatus: input.conversionStatus,
+        partialFidelity: input.partialFidelity,
+        fidelityWarnings: input.fidelityWarnings,
+        updatedAt: new Date(),
+      })
+      .where(eq(presentationSourceAttachments.deckId, input.deckId))
+      .returning();
+
+    if (!updated[0]) {
+      throw new Error("Failed to update presentation source attachment");
+    }
+    return updated[0];
+  }
+
+  const created = await db
+    .insert(presentationSourceAttachments)
+    .values({
+      deckId: input.deckId,
+      sourceLibraryItemId: input.sourceLibraryItemId,
+      sourceFormat: input.sourceFormat,
+      conversionStatus: input.conversionStatus,
+      partialFidelity: input.partialFidelity,
+      fidelityWarnings: input.fidelityWarnings,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  if (!created[0]) {
+    throw new Error("Failed to create presentation source attachment");
+  }
+
+  return created[0];
 }

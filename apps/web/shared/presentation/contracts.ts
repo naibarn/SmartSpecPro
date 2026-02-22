@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import {
   PRESENTATION_CONFLICT_SCHEMA_VERSION,
+  PRESENTATION_COMPATIBILITY_SCHEMA_VERSION,
+  PRESENTATION_CONVERSION_SCHEMA_VERSION,
   PRESENTATION_ERROR_CODE_VALUES,
   PRESENTATION_ITEM_TYPE,
 } from "./constants";
@@ -79,12 +81,71 @@ export const presentationVersionConflictSchema = z.object({
   latestSlide: presentationSlideConflictSnapshotSchema.optional(),
 });
 
+export const presentationSourceFormatSchema = z.enum([
+  "presentation",
+  "pptx",
+  "ppt",
+  "unknown",
+]);
+
+const presentationReadOnlySourceFormatSchema = z.enum([
+  "pptx",
+  "ppt",
+  "unknown",
+]);
+
+export const presentationCompatibilityEditableSchema = z.object({
+  schemaVersion: z.literal(PRESENTATION_COMPATIBILITY_SCHEMA_VERSION),
+  mode: z.literal("editable"),
+  itemId: z.number().int().positive(),
+  sourceFormat: z.literal("presentation"),
+  canConvert: z.literal(false),
+});
+
+export const presentationCompatibilityReadOnlySchema = z.object({
+  schemaVersion: z.literal(PRESENTATION_COMPATIBILITY_SCHEMA_VERSION),
+  mode: z.literal("read_only"),
+  itemId: z.number().int().positive(),
+  sourceFormat: presentationReadOnlySourceFormatSchema,
+  canConvert: z.boolean(),
+  guidance: z.string().min(1).max(400),
+  partialFidelity: z.boolean(),
+  fidelityWarnings: z.array(z.string().min(1).max(200)).max(25),
+});
+
+export const presentationCompatibilityResultSchema = z.union([
+  presentationCompatibilityEditableSchema,
+  presentationCompatibilityReadOnlySchema,
+]);
+
+export const presentationConversionStatusSchema = z.enum([
+  "created",
+  "existing",
+  "locked",
+  "unsupported",
+]);
+
+export const presentationConversionResultSchema = z.object({
+  schemaVersion: z.literal(PRESENTATION_CONVERSION_SCHEMA_VERSION),
+  sourceItemId: z.number().int().positive(),
+  sourceFormat: z.enum(["pptx", "ppt"]),
+  conversionStatus: presentationConversionStatusSchema,
+  partialFidelity: z.boolean(),
+  fidelityWarnings: z.array(z.string().min(1).max(200)).max(25),
+  deckLibraryItemId: z.number().int().positive().optional(),
+  deckId: z.number().int().positive().optional(),
+  guidance: z.string().min(1).max(400).optional(),
+});
+
 export type PresentationRouteGuardInput = z.infer<typeof presentationRouteGuardInputSchema>;
 export type PresentationRouteAllowedResult = z.infer<typeof presentationRouteAllowedResultSchema>;
 export type PresentationRouteBlockedResult = z.infer<typeof presentationRouteBlockedResultSchema>;
 export type PresentationRouteGuardResult = z.infer<typeof presentationRouteGuardResultSchema>;
 export type PresentationAvailability = z.infer<typeof presentationAvailabilitySchema>;
 export type PresentationVersionConflict = z.infer<typeof presentationVersionConflictSchema>;
+export type PresentationSourceFormat = z.infer<typeof presentationSourceFormatSchema>;
+export type PresentationCompatibilityResult = z.infer<typeof presentationCompatibilityResultSchema>;
+export type PresentationConversionResult = z.infer<typeof presentationConversionResultSchema>;
 
 export function isPresentationItemType(itemType: string): boolean {
   return itemType.trim().toLowerCase() === PRESENTATION_ITEM_TYPE;

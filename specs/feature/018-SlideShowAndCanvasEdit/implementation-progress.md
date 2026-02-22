@@ -57,7 +57,7 @@
 
 ## Section 05 - Frontend Editor and Document Integration
 - section: `section-05-frontend-editor-and-document-integration`
-- commit: `pending`
+- commit: `1d7b3f7`
 - test_command: `cd apps/web && npm test -- client/src/lib/presentationEditorState.test.ts client/src/pages/PresentationEditor.test.tsx`
 - pass_fail_summary:
   - `pass`: `client/src/lib/presentationEditorState.test.ts`
@@ -67,6 +67,21 @@
   - `pass`: `server/services/presentationService.test.ts`
 - notable_deviations:
   - Implemented deterministic button-driven slide reorder (`Move Up`/`Move Down`) for MVP instead of drag-and-drop interaction.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining: none
+
+## Section 06 - Import Conversion and Compatibility
+- section: `section-06-import-conversion-and-compatibility`
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- server/services/presentationCompatibilityService.test.ts server/routers/presentation.test.ts`
+- pass_fail_summary:
+  - `pass`: `server/services/presentationCompatibilityService.test.ts`
+  - `pass`: `server/routers/presentation.test.ts`
+  - `pass`: `server/services/presentationService.test.ts`
+  - `pass`: `server/services/presentationPersistence.test.ts`
+- notable_deviations:
+  - Conversion lock/idempotency registry is process-memory scoped for MVP and will require durable orchestration for multi-instance deployments.
 - blocked_tasks_resolved_remaining:
   - resolved: none
   - remaining: none

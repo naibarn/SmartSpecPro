@@ -26,6 +26,11 @@ const serviceMocks = vi.hoisted(() => ({
   updateSlideInDeck: vi.fn(),
 }));
 
+const compatibilityMocks = vi.hoisted(() => ({
+  getPresentationCompatibilityOpen: vi.fn(),
+  convertOfficeSourceToPresentation: vi.fn(),
+}));
+
 vi.mock("../services/presentationService", async () => {
   const actual = await vi.importActual<any>("../services/presentationService");
   return {
@@ -36,6 +41,11 @@ vi.mock("../services/presentationService", async () => {
     updateSlideInDeck: serviceMocks.updateSlideInDeck,
   };
 });
+
+vi.mock("../services/presentationCompatibilityService", () => ({
+  getPresentationCompatibilityOpen: compatibilityMocks.getPresentationCompatibilityOpen,
+  convertOfficeSourceToPresentation: compatibilityMocks.convertOfficeSourceToPresentation,
+}));
 
 import { presentationRouter } from "./presentation";
 import { PresentationServiceError } from "../services/presentationService";
@@ -48,6 +58,26 @@ describe("presentationRouter", () => {
   beforeEach(() => {
     delete process.env.PRESENTATION_EDITOR_ENABLED;
     vi.clearAllMocks();
+    compatibilityMocks.getPresentationCompatibilityOpen.mockResolvedValue({
+      schemaVersion: "presentation_compatibility_v1",
+      mode: "read_only",
+      itemId: 42,
+      sourceFormat: "pptx",
+      canConvert: true,
+      guidance: "Open read-only and convert when ready.",
+      partialFidelity: false,
+      fidelityWarnings: [],
+    });
+    compatibilityMocks.convertOfficeSourceToPresentation.mockResolvedValue({
+      schemaVersion: "presentation_conversion_v1",
+      sourceItemId: 42,
+      sourceFormat: "pptx",
+      conversionStatus: "created",
+      partialFidelity: false,
+      fidelityWarnings: [],
+      deckLibraryItemId: 77,
+      deckId: 88,
+    });
   });
 
   it("returns disabled availability when feature flag is off", async () => {
@@ -161,6 +191,37 @@ describe("presentationRouter", () => {
       if (!(error instanceof TRPCError)) return false;
       return error.code === "BAD_REQUEST" && error.message.includes(PRESENTATION_ERROR_CODE.DECK_SIZE_LIMIT_EXCEEDED);
     });
+  });
+
+  it("returns read-only compatibility contract for office sources", async () => {
+    const fn = presentationRouter.compatibilityOpen as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { itemId: 42 },
+    });
+
+    expect(compatibilityMocks.getPresentationCompatibilityOpen).toHaveBeenCalledWith(
+      42,
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.mode).toBe("read_only");
+    expect(result.sourceFormat).toBe("pptx");
+    expect(result.canConvert).toBe(true);
+  });
+
+  it("converts office source with idempotency key through service layer", async () => {
+    const fn = presentationRouter.convertSource as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { sourceItemId: 42, idempotencyKey: "request-1" },
+    });
+
+    expect(compatibilityMocks.convertOfficeSourceToPresentation).toHaveBeenCalledWith(
+      { sourceItemId: 42, idempotencyKey: "request-1" },
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.conversionStatus).toBe("created");
+    expect(result.deckId).toBe(88);
   });
 
   it("returns conflict payload with stable schema version for stale expectedVersion", async () => {

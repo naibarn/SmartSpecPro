@@ -34,6 +34,10 @@ import {
   updatePresentationDeckMetadata,
   updateSlideInDeck,
 } from "../services/presentationService";
+import {
+  convertOfficeSourceToPresentation,
+  getPresentationCompatibilityOpen,
+} from "../services/presentationCompatibilityService";
 
 const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
@@ -124,6 +128,10 @@ function mapPresentationServiceError(error: PresentationServiceError): TRPCError
     return new TRPCError({ code: "FORBIDDEN", message: error.message });
   }
 
+  if (error.code === PRESENTATION_ERROR_CODE.CONVERSION_IN_PROGRESS) {
+    return new TRPCError({ code: "TOO_MANY_REQUESTS", message: error.message });
+  }
+
   return new TRPCError({ code: "BAD_REQUEST", message: error.message });
 }
 
@@ -176,6 +184,39 @@ export const presentationRouter = router({
           );
         }
         return deck;
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  compatibilityOpen: protectedProcedure
+    .input(z.object({
+      itemId: z.number().int().positive(),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await getPresentationCompatibilityOpen(input.itemId, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  convertSource: protectedProcedure
+    .input(z.object({
+      sourceItemId: z.number().int().positive(),
+      idempotencyKey: z.string().min(1).max(128),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await convertOfficeSourceToPresentation(input, toPresentationActor(ctx));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);
