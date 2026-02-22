@@ -48,6 +48,17 @@
 - Non-deterministic timing failures must be stabilized with fake timers before stage advancement.
 - Any quarantined test requires explicit owner + removal ETA in launch decision log.
 
+## Evidence Contract (Required Fields)
+- `evidence_id`
+- `pipeline_id`
+- `commit_sha`
+- `captured_at`
+- `suite_result`
+- `metrics_snapshot_ref`
+
+## Documentation Sync Command Set
+- `node specs/feature/021-CanvasEditor/scripts/validate-doc-sync.mjs`
+
 ## Completion Checklist
 - [x] Regression suites completed and attached.
 - [x] Dashboard readiness check passed with required signals.
@@ -57,6 +68,6 @@
 - [x] Launch decision recorded in `launch-decision-log.md`.
 
 ## Section 10 Evidence Links
-- Regression command result: `75/75` passing (`2026-02-22`).
+- Regression command result: `77/77` passing (`2026-02-22`).
 - Backup and restore verification: `migration-verification-report.md`.
 - Launch decision + staged rollout record: `launch-decision-log.md`.

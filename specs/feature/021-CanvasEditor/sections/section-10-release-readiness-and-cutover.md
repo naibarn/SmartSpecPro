@@ -55,23 +55,28 @@ Execute final release readiness checks, backup/restore validation, and controlle
 
 ### Actual Files Changed
 - `apps/web/server/services/presentationReleaseReadiness.ts`
+- `apps/web/server/services/presentationReleaseReadiness.test.ts`
 - `apps/web/server/services/presentationWorkflowRegression.test.ts`
 - `specs/feature/021-CanvasEditor/release-gate-checklist.md`
 - `specs/feature/021-CanvasEditor/rollback-drill-runbook.md`
 - `specs/feature/021-CanvasEditor/migration-verification-report.md`
 - `specs/feature/021-CanvasEditor/launch-decision-log.md`
+- `specs/feature/021-CanvasEditor/scripts/validate-doc-sync.mjs`
 - `specs/feature/021-CanvasEditor/reviews/section-10-review.md`
 
 ### Deviations From Plan
 - Added a typed canary abort evaluator in release-readiness services to make stage-threshold rollback decisions deterministic and unit-testable.
 - Reused existing release-readiness consistency evaluators for restore simulation checks instead of introducing a separate restore simulator module.
+- Added strict fail-safe handling for malformed canary metrics (abort on invalid input) and explicit evidence-contract validation for release artifacts.
 
 ### Tests Added or Updated
 - Updated:
+  - `apps/web/server/services/presentationReleaseReadiness.test.ts`
   - `apps/web/server/services/presentationWorkflowRegression.test.ts`
 - Targeted runs:
   - `bash -lc "source ~/.nvm/nvm.sh && cd apps/web && npm test -- server/services/presentationWorkflowRegression.test.ts server/services/presentationReleaseReadiness.test.ts"`
   - `bash -lc "source ~/.nvm/nvm.sh && cd apps/web && npm test -- client/src/pages/PresentationEditor.test.tsx client/src/lib/presentationEditorState.test.ts server/routers/presentation.test.ts server/services/presentationService.test.ts server/services/presentationPlaybackExport.test.ts server/services/presentationWorkflowRegression.test.ts client/src/e2e/presentation-editor.desktop.spec.ts client/src/e2e/presentation-editor.mobile.spec.ts client/src/e2e/presentation-editor.accessibility.spec.ts"`
+  - `node specs/feature/021-CanvasEditor/scripts/validate-doc-sync.mjs`
 
 ### Known Follow-Ups
 - Complete `ramp_25`/`ramp_50`/`ramp_100` stage timestamps in `launch-decision-log.md` after production canary windows elapse.

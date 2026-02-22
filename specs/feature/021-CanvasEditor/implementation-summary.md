@@ -16,8 +16,9 @@ Feature: 021 CanvasEditor
 - section-10-release-readiness-and-cutover (`fe7d787`)
 
 ## Test Outcomes
-- Section-10 focused gate checks: `14/14` passing.
-- Release checklist regression matrix: `75/75` passing.
+- Section-10 focused gate checks: `21/21` passing.
+- Release checklist regression matrix: `77/77` passing.
+- Documentation sync check: `node specs/feature/021-CanvasEditor/scripts/validate-doc-sync.mjs` passing.
 - Full agreed suite (`bash -lc "source ~/.nvm/nvm.sh && cd apps/web && npm test"`):
   - result: failed in current environment
   - summary: `22` failed test files, `73` failed tests, `10` unhandled errors
@@ -28,8 +29,8 @@ Feature: 021 CanvasEditor
 - Findings:
   - critical: `0`
   - high: `0`
-  - medium: `1`
-  - low: `1`
+  - medium: `0`
+  - low: `0`
 
 ## Stage B Hardening Decision
 - user_choice: `plan_now`
@@ -40,12 +41,9 @@ Feature: 021 CanvasEditor
 - approval_reference: user Stage-B choice `plan_now` on `2026-02-22`.
 
 ## Remaining Risks / Deferred Items
-- Medium: strengthen canary-metric input validation to fail closed.
-- Low: add runtime-attested release evidence checks.
 - Deferred engineering debt: replace DOM stage scaffold with full `react-konva` runtime parity.
 - Full-repository baseline test stability remains outside this feature slice.
 
 ## Suggested Next Steps
-1. Execute Stream A from `implementation-hardening-plan.md` to close the remaining medium finding.
-2. Execute Stream C to retire deferred Konva runtime parity debt.
-3. Re-run the full suite in an environment with Redis and relaxed listen/heap constraints for broader release confidence.
+1. Execute Stream C to retire deferred Konva runtime parity debt.
+2. Re-run the full suite in an environment with Redis and relaxed listen/heap constraints for broader release confidence.

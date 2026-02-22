@@ -26,6 +26,24 @@ const actor = {
   role: "user",
 } as const;
 
+const REQUIRED_EVIDENCE_FIELDS = [
+  "evidence_id",
+  "pipeline_id",
+  "commit_sha",
+  "captured_at",
+  "suite_result",
+  "metrics_snapshot_ref",
+] as const;
+
+const COMMIT_SHA_PATTERN = /^[a-f0-9]{7,40}$/;
+const SUITE_RESULT_PATTERN = /^\d+\/\d+$/;
+
+function extractMarkdownField(content: string, field: string): string | null {
+  const pattern = new RegExp("-\\s*" + field + ":\\s*`([^`]+)`");
+  const match = content.match(pattern);
+  return match?.[1] ?? null;
+}
+
 function buildSourceItem() {
   return {
     id: 501,
@@ -327,6 +345,15 @@ describe("presentation workflow regression", () => {
     expect(report).toContain("presentation_slides");
     expect(report).toContain("presentation_asset_links");
     expect(report).toContain("restore rehearsal");
+
+    for (const field of REQUIRED_EVIDENCE_FIELDS) {
+      expect(extractMarkdownField(report, field)).not.toBeNull();
+    }
+
+    const commitSha = extractMarkdownField(report, "commit_sha");
+    const suiteResult = extractMarkdownField(report, "suite_result");
+    expect(commitSha).toMatch(COMMIT_SHA_PATTERN);
+    expect(suiteResult).toMatch(SUITE_RESULT_PATTERN);
   });
 
   it("requires launch decision artifact with owner signoff before cutover", () => {
@@ -341,6 +368,54 @@ describe("presentation workflow regression", () => {
     expect(decisionLog).toContain("Go/No-Go Decision");
     expect(decisionLog).toContain("Release lead signoff");
     expect(decisionLog).toContain("Timestamp");
+    expect(decisionLog).toContain("go_selected_tenants_only");
+    expect(decisionLog).toContain("scope: `selected_tenants_only`");
+
+    for (const field of REQUIRED_EVIDENCE_FIELDS) {
+      expect(extractMarkdownField(decisionLog, field)).not.toBeNull();
+    }
+
+    const commitSha = extractMarkdownField(decisionLog, "commit_sha");
+    const suiteResult = extractMarkdownField(decisionLog, "suite_result");
+    expect(commitSha).toMatch(COMMIT_SHA_PATTERN);
+    expect(suiteResult).toMatch(SUITE_RESULT_PATTERN);
+  });
+
+  it("keeps release evidence commit references aligned across artifacts", () => {
+    const verificationReportPath = resolve(
+      __dirname,
+      "../../../../specs/feature/021-CanvasEditor/migration-verification-report.md",
+    );
+    const launchDecisionLogPath = resolve(
+      __dirname,
+      "../../../../specs/feature/021-CanvasEditor/launch-decision-log.md",
+    );
+
+    const verificationReport = readFileSync(verificationReportPath, "utf8");
+    const launchDecisionLog = readFileSync(launchDecisionLogPath, "utf8");
+    const reportSha = extractMarkdownField(verificationReport, "commit_sha");
+    const launchSha = extractMarkdownField(launchDecisionLog, "commit_sha");
+
+    expect(reportSha).toBe(launchSha);
+    expect(reportSha).toMatch(COMMIT_SHA_PATTERN);
+  });
+
+  it("keeps progress blocked labels synchronized with blocked-task queue state", () => {
+    const progressPath = resolve(
+      __dirname,
+      "../../../../specs/feature/021-CanvasEditor/implementation-progress.md",
+    );
+    const blockedTasksPath = resolve(
+      __dirname,
+      "../../../../specs/feature/021-CanvasEditor/implementation-blocked-tasks.md",
+    );
+
+    const progress = readFileSync(progressPath, "utf8");
+    const blockedTasks = readFileSync(blockedTasksPath, "utf8");
+
+    expect(blockedTasks).toContain("dropped-with-rationale");
+    expect(progress).not.toContain("(blocked)");
+    expect(progress).toContain("dropped-with-rationale");
   });
 
   it("passes simulated restore consistency checks for sample deck recovery", () => {

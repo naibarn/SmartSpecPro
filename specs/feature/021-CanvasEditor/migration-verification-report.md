@@ -5,6 +5,12 @@
 - Prepared on: `2026-02-22`
 - Prepared by: `@backend-oncall`
 - Verification scope: backup capture, restore rehearsal, and post-deploy consistency checks for canary enablement.
+- evidence_id: `evidence-canvaseditor-20260222-restore-001`
+- pipeline_id: `pipeline-canvaseditor-release-20260222-01`
+- commit_sha: `fe7d787cb338dfb9dc564a851784c0fc67054745`
+- captured_at: `2026-02-22T19:15:00Z`
+- suite_result: `77/77`
+- metrics_snapshot_ref: `grafana://canary/canvaseditor/2026-02-22T19:15:00Z`
 
 ## Backup Snapshot Evidence
 | table | snapshot_id | captured_at (UTC) | owner | retention |

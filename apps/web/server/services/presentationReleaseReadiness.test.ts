@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  evaluatePresentationCanaryAbort,
   evaluatePresentationPostMigrationConsistency,
   evaluatePresentationReleaseGate,
   validatePresentationLaunchOwnership,
@@ -74,5 +75,83 @@ describe("presentationReleaseReadiness", () => {
 
     expect(ownership.ready).toBe(false);
     expect(ownership.missing).toEqual(["conversion", "export"]);
+  });
+
+  it("fails safe when canary metrics include NaN values", () => {
+    const result = evaluatePresentationCanaryAbort({
+      stage: "selected_tenants",
+      conflictRatePercent: Number.NaN,
+      exportFailureRatePercent: 1,
+      degradationWarningRatePercent: 1,
+      queueP95Seconds: 10,
+      autosaveP95Ms: 800,
+    });
+
+    expect(result.shouldAbort).toBe(true);
+    expect(result.reasons).toContain("invalid_metric_input");
+    expect(result.reasons).toContain("invalid_metric_conflictRatePercent");
+    expect(result.rollbackScope).toBe("global_editor_disable");
+  });
+
+  it("fails safe when canary metrics include Infinity", () => {
+    const result = evaluatePresentationCanaryAbort({
+      stage: "selected_tenants",
+      conflictRatePercent: 1,
+      exportFailureRatePercent: Number.POSITIVE_INFINITY,
+      degradationWarningRatePercent: 1,
+      queueP95Seconds: 10,
+      autosaveP95Ms: 800,
+    });
+
+    expect(result.shouldAbort).toBe(true);
+    expect(result.reasons).toContain("invalid_metric_input");
+    expect(result.reasons).toContain("invalid_metric_exportFailureRatePercent");
+    expect(result.rollbackScope).toBe("global_editor_disable");
+  });
+
+  it("fails safe when canary metrics are negative", () => {
+    const result = evaluatePresentationCanaryAbort({
+      stage: "ramp_25",
+      conflictRatePercent: -1,
+      exportFailureRatePercent: 1,
+      degradationWarningRatePercent: 1,
+      queueP95Seconds: 10,
+      autosaveP95Ms: 800,
+    });
+
+    expect(result.shouldAbort).toBe(true);
+    expect(result.reasons).toContain("invalid_metric_input");
+    expect(result.reasons).toContain("invalid_metric_conflictRatePercent");
+  });
+
+  it("fails safe when percent metrics exceed 100", () => {
+    const result = evaluatePresentationCanaryAbort({
+      stage: "ramp_25",
+      conflictRatePercent: 1,
+      exportFailureRatePercent: 101,
+      degradationWarningRatePercent: 1,
+      queueP95Seconds: 10,
+      autosaveP95Ms: 800,
+    });
+
+    expect(result.shouldAbort).toBe(true);
+    expect(result.reasons).toContain("invalid_metric_input");
+    expect(result.reasons).toContain("invalid_metric_exportFailureRatePercent");
+  });
+
+  it("fails safe when denominator-zero derived metrics produce Infinity", () => {
+    const errorRate = 1 / 0;
+    const result = evaluatePresentationCanaryAbort({
+      stage: "ramp_25",
+      conflictRatePercent: 1,
+      exportFailureRatePercent: errorRate,
+      degradationWarningRatePercent: 1,
+      queueP95Seconds: 10,
+      autosaveP95Ms: 800,
+    });
+
+    expect(result.shouldAbort).toBe(true);
+    expect(result.reasons).toContain("invalid_metric_input");
+    expect(result.reasons).toContain("invalid_metric_exportFailureRatePercent");
   });
 });

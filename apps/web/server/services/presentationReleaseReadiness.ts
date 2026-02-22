@@ -65,6 +65,26 @@ export interface PresentationCanaryAbortResult {
   rollbackScope: "global_editor_disable" | "export_write_disable" | null;
 }
 
+function parsePercentMetric(value: number): number | null {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  if (value < 0 || value > 100) {
+    return null;
+  }
+  return value;
+}
+
+function parseNonNegativeMetric(value: number): number | null {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  if (value < 0) {
+    return null;
+  }
+  return value;
+}
+
 function isOrderContiguous(orderIndexes: number[]): boolean {
   if (orderIndexes.length === 0) {
     return true;
@@ -171,21 +191,47 @@ export function validatePresentationLaunchOwnership(
 export function evaluatePresentationCanaryAbort(
   input: PresentationCanaryAbortInput,
 ): PresentationCanaryAbortResult {
+  const parsedMetrics = {
+    conflictRatePercent: parsePercentMetric(input.conflictRatePercent),
+    exportFailureRatePercent: parsePercentMetric(input.exportFailureRatePercent),
+    degradationWarningRatePercent: parsePercentMetric(input.degradationWarningRatePercent),
+    queueP95Seconds: parseNonNegativeMetric(input.queueP95Seconds),
+    autosaveP95Ms: parseNonNegativeMetric(input.autosaveP95Ms),
+  };
+
+  const invalidMetrics = Object.entries(parsedMetrics)
+    .filter(([, value]) => value === null)
+    .map(([metricName]) => metricName);
+
+  if (invalidMetrics.length > 0) {
+    return {
+      shouldAbort: true,
+      reasons: ["invalid_metric_input", ...invalidMetrics.map((metricName) => `invalid_metric_${metricName}`)],
+      rollbackScope: "global_editor_disable",
+    };
+  }
+
+  const conflictRatePercent = parsedMetrics.conflictRatePercent!;
+  const exportFailureRatePercent = parsedMetrics.exportFailureRatePercent!;
+  const degradationWarningRatePercent = parsedMetrics.degradationWarningRatePercent!;
+  const queueP95Seconds = parsedMetrics.queueP95Seconds!;
+  const autosaveP95Ms = parsedMetrics.autosaveP95Ms!;
+
   const reasons: string[] = [];
 
-  if (input.conflictRatePercent > 5) {
+  if (conflictRatePercent > 5) {
     reasons.push("conflict_rate_exceeded");
   }
-  if (input.exportFailureRatePercent > 4) {
+  if (exportFailureRatePercent > 4) {
     reasons.push("export_failure_rate_exceeded");
   }
-  if (input.stage !== "selected_tenants" && input.degradationWarningRatePercent > 25) {
+  if (input.stage !== "selected_tenants" && degradationWarningRatePercent > 25) {
     reasons.push("degradation_warning_rate_exceeded");
   }
-  if (input.stage !== "selected_tenants" && input.queueP95Seconds > 120) {
+  if (input.stage !== "selected_tenants" && queueP95Seconds > 120) {
     reasons.push("export_queue_latency_exceeded");
   }
-  if (input.stage === "ramp_50" && input.autosaveP95Ms > 1500) {
+  if (input.stage === "ramp_50" && autosaveP95Ms > 1500) {
     reasons.push("autosave_latency_exceeded");
   }
 

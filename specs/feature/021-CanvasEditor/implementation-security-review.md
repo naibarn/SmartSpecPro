@@ -10,29 +10,17 @@ Scope: Feature 021 CanvasEditor implementation (sections 01-10)
 - none identified in this review pass.
 
 ## medium
-
-### 1) Canary abort evaluator accepts unbounded/NaN metric inputs
-- files:
-  - `apps/web/server/services/presentationReleaseReadiness.ts`
-- risk statement:
-  - `evaluatePresentationCanaryAbort` assumes numeric, bounded metric inputs. If upstream callers pass `NaN`, negative values, or out-of-range percentages, abort decisions may silently under-trigger or produce misleading rollback scope recommendations.
-- recommended fix direction:
-  - Validate/clamp metric inputs (`0-100` for rates, non-negative latency values) and fail closed when values are non-finite.
-  - Add regression tests for invalid input handling to ensure deterministic fail-safe behavior.
+- none identified in current state.
 
 ## low
-
-### 1) Release evidence artifacts are repository-backed, not runtime-attested
-- files:
-  - `specs/feature/021-CanvasEditor/migration-verification-report.md`
-  - `specs/feature/021-CanvasEditor/launch-decision-log.md`
-- risk statement:
-  - Section-10 readiness tests verify presence/content of markdown artifacts, which can drift from real operational state if not kept synchronized with live telemetry and deployment events.
-- recommended fix direction:
-  - Add CI/runtime attestations that bind artifact updates to actual checklist command outputs and canary metrics snapshots.
+- none identified in current state.
 
 ## notes
+- remediation update:
+  - `evaluatePresentationCanaryAbort` now fails safe on invalid metric inputs (`NaN`, `Infinity`, negative values, out-of-range percents) with deterministic `invalid_metric_input` reason.
+  - release evidence artifacts now include required attestation fields (`evidence_id`, `pipeline_id`, `commit_sha`, `captured_at`, `suite_result`, `metrics_snapshot_ref`) and are validated in regression tests.
+  - progress/blocked-task documentation sync is now enforced by regression tests and `specs/feature/021-CanvasEditor/scripts/validate-doc-sync.mjs`.
 - CanvasEditor targeted regression matrix remains green:
-  - section-10 focused tests: `14/14` passing
-  - release checklist matrix command: `75/75` passing
+  - section-10 focused tests: `21/21` passing
+  - release checklist matrix command: `77/77` passing
 - Full repository command `cd apps/web && npm test` failed outside feature scope with existing baseline failures and Node heap OOM.

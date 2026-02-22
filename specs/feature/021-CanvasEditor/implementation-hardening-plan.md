@@ -7,7 +7,15 @@ Mode: `plan_now`
 ## Objective
 Close remaining medium/low-risk hardening gaps and the deferred runtime parity task without reopening section scope.
 
+## Execution Status
+- Stream A (Canary metric input safety): `implemented` on `2026-02-22`
+- Stream B (Runtime-attested release evidence): `implemented` on `2026-02-22`
+- Stream C (Konva runtime parity): `pending`
+
 ## Stream A: Canary Metric Input Safety (Medium)
+
+### Status
+- `implemented`
 
 ### Target
 - `apps/web/server/services/presentationReleaseReadiness.ts`
@@ -32,6 +40,9 @@ Close remaining medium/low-risk hardening gaps and the deferred runtime parity t
 
 ## Stream B: Runtime-Attested Release Evidence (Low)
 
+### Status
+- `implemented`
+
 ### Target
 - `specs/feature/021-CanvasEditor/release-gate-checklist.md`
 - `specs/feature/021-CanvasEditor/migration-verification-report.md`
@@ -50,6 +61,9 @@ Close remaining medium/low-risk hardening gaps and the deferred runtime parity t
 - Release artifacts are auditable and bound to measurable runtime evidence.
 
 ## Stream C: Konva Runtime Parity Follow-Up (Deferred Engineering Debt)
+
+### Status
+- `pending`
 
 ### Target
 - `apps/web/client/src/presentation-canvas/**`
@@ -71,10 +85,9 @@ Close remaining medium/low-risk hardening gaps and the deferred runtime parity t
 - Runtime parity achieved without regressions in section-09 matrix.
 
 ## Suggested Execution Order
-1. Stream A
-2. Stream C
-3. Stream B
+1. Stream C
 
 ## Validation Command Set
 - `bash -lc "source ~/.nvm/nvm.sh && cd apps/web && npm test -- server/services/presentationReleaseReadiness.test.ts server/services/presentationWorkflowRegression.test.ts"`
 - `bash -lc "source ~/.nvm/nvm.sh && cd apps/web && npm test -- client/src/pages/PresentationEditor.test.tsx client/src/lib/presentationEditorState.test.ts client/src/e2e/presentation-editor.desktop.spec.ts client/src/e2e/presentation-editor.mobile.spec.ts client/src/e2e/presentation-editor.accessibility.spec.ts"`
+- `node specs/feature/021-CanvasEditor/scripts/validate-doc-sync.mjs`
