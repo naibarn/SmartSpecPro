@@ -281,10 +281,19 @@ class BM25Retriever:
         for token in query_tokens:
             if token in self._inverted_index:
                 candidate_ids.update(self._inverted_index[token])
-        
+
         if not candidate_ids:
             return []
-        
+
+        # Apply filters BEFORE scoring for efficiency
+        if filters:
+            candidate_ids = {
+                doc_id for doc_id in candidate_ids
+                if self._apply_filters(doc_id, filters)
+            }
+            if not candidate_ids:
+                return []
+
         # Score candidates
         scored_docs = []
         for doc_id in candidate_ids:
@@ -302,6 +311,46 @@ class BM25Retriever:
         # Return top_k
         return [doc for score, doc in scored_docs[:top_k]]
     
+    def _apply_filters(self, doc_id: str, filters: Dict[str, Any]) -> bool:
+        """Check if a document passes all filter criteria.
+
+        Returns True if the document should be included in results.
+        """
+        doc = self._documents.get(doc_id)
+        if doc is None or doc.original_doc is None:
+            return False
+
+        metadata = getattr(doc.original_doc, "metadata", {}) or {}
+
+        # tenant_id: exact match
+        if "tenant_id" in filters:
+            if metadata.get("tenant_id") != filters["tenant_id"]:
+                return False
+
+        # allowed_scopes: intersection check
+        if "allowed_scopes" in filters:
+            doc_scopes = set(metadata.get("allowed_scopes") or [])
+            filter_scopes = set(filters["allowed_scopes"])
+            if not doc_scopes & filter_scopes:
+                return False
+
+        # doc_type: exact match or list membership
+        if "doc_type" in filters:
+            doc_type = metadata.get("doc_type")
+            filter_type = filters["doc_type"]
+            if isinstance(filter_type, list):
+                if doc_type not in filter_type:
+                    return False
+            elif doc_type != filter_type:
+                return False
+
+        # source: exact match
+        if "source" in filters:
+            if metadata.get("source") != filters["source"]:
+                return False
+
+        return True
+
     async def cleanup(self):
         """Cleanup resources."""
         self._documents.clear()
@@ -310,5 +359,5 @@ class BM25Retriever:
         self._total_docs = 0
         self._avg_doc_length = 0.0
         self._total_length = 0
-        
+
         logger.info("bm25_retriever_cleanup_complete")

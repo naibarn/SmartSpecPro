@@ -133,26 +133,34 @@ class RAGConfig:
     # Retrieval settings
     mode: SearchMode = SearchMode.HYBRID
     top_k: int = 10
-    
+
     # BM25 settings
     bm25_weight: float = 0.3
     bm25_k1: float = 1.5
     bm25_b: float = 0.75
-    
+
     # Vector settings
     vector_weight: float = 0.7
     vector_threshold: float = 0.5
-    
+
     # Rerank settings
     use_rerank: bool = True
     rerank_top_k: int = 5
-    
+
     # RRF settings
     rrf_k: int = 60  # Constant for RRF formula
-    
+
     # Cache settings
     use_cache: bool = True
     cache_ttl_seconds: int = 300
+
+    # Query processing
+    query_strategy: "QueryStrategy" = None  # type: ignore[assignment]  # resolved in __post_init__
+
+    def __post_init__(self):
+        if self.query_strategy is None:
+            from app.orchestrator.rag.query_processor import QueryStrategy as _QS
+            self.query_strategy = _QS.PASSTHROUGH
 
 
 # ==================== HYBRID RAG ENGINE ====================
@@ -182,6 +190,7 @@ class HybridRAGEngine:
         self._bm25_retriever = bm25_retriever
         self._vector_retriever = vector_retriever
         self._reranker = reranker
+        self._query_processor = None
         
         # Document store
         self._documents: Dict[str, Document] = {}
@@ -223,7 +232,15 @@ class HybridRAGEngine:
             from app.orchestrator.rag.reranker import Reranker
             self._reranker = Reranker()
         return self._reranker
-    
+
+    @property
+    def query_processor(self) -> "QueryProcessor":
+        """Get or create query processor."""
+        if self._query_processor is None:
+            from app.orchestrator.rag.query_processor import QueryProcessor
+            self._query_processor = QueryProcessor()
+        return self._query_processor
+
     async def add_document(
         self,
         content: str,
@@ -322,38 +339,65 @@ class HybridRAGEngine:
             )
             return RAGResult(query=query, mode=mode)
 
-        # Check cache — include tenant_id and scope hash for isolation
+        # Enforce tenant and scope isolation — server-side, non-bypassable
+        enforced_filters = dict(filters or {})
+        if tenant_id:
+            enforced_filters["tenant_id"] = tenant_id
+        if effective_scopes is not None:
+            enforced_filters["allowed_scopes"] = effective_scopes
+
+        # Check cache — include tenant_id, scope hash, and query strategy
         scope_hash = hashlib.sha256(str(sorted(effective_scopes or [])).encode()).hexdigest()[:16]
-        cache_key = f"{tenant_id}:{scope_hash}:{query}:{top_k}:{mode.value}"
+        strategy_val = getattr(self.config.query_strategy, "value", "passthrough")
+        cache_key = f"{tenant_id}:{scope_hash}:{query}:{top_k}:{mode.value}:{strategy_val}"
         if self.config.use_cache and cache_key in self._cache:
             cached_result, cached_time = self._cache[cache_key]
-            if (datetime.utcnow() - cached_time).seconds < self.config.cache_ttl_seconds:
+            if (datetime.utcnow() - cached_time).total_seconds() < self.config.cache_ttl_seconds:
                 logger.debug("cache_hit", query=query[:50])
                 return cached_result
-        
+
         start_time = datetime.utcnow()
         result = RAGResult(query=query, mode=mode)
-        
+
         try:
+            # Step 0: Query processing
+            from app.orchestrator.rag.query_processor import ProcessedQuery, QueryStrategy as QS
+
+            if mode == SearchMode.FAST:
+                processed = ProcessedQuery(
+                    original=query,
+                    processed=query,
+                    alternatives=[],
+                    strategy_used="passthrough",
+                    hypothetical_doc=None,
+                )
+            else:
+                processed = await self.query_processor.process(
+                    query=query,
+                    strategy=self.config.query_strategy,
+                )
+
+            retrieval_query = processed.processed
+
             # Step 1: Retrieve candidates
             retrieval_start = datetime.utcnow()
-            
+
             bm25_docs = []
             vector_docs = []
-            
+
             if mode in [SearchMode.HYBRID, SearchMode.KEYWORD, SearchMode.FAST]:
                 bm25_docs = await self.bm25_retriever.retrieve(
-                    query=query,
-                    top_k=top_k * 2,  # Get more candidates for fusion
-                    filters=filters,
+                    query=query,  # BM25 always uses original query (keyword matching)
+                    top_k=top_k * 2,
+                    filters=enforced_filters,
                 )
                 result.bm25_candidates = len(bm25_docs)
-            
+
             if mode in [SearchMode.HYBRID, SearchMode.SEMANTIC, SearchMode.FAST]:
                 vector_docs = await self.vector_retriever.retrieve(
-                    query=query,
+                    query=retrieval_query,  # Vector uses processed query (may be HyDE doc)
                     top_k=top_k * 2,
-                    filters=filters,
+                    filters=enforced_filters,
                 )
                 result.vector_candidates = len(vector_docs)
             

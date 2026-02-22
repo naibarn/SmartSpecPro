@@ -758,3 +758,41 @@ After implementation, verify:
 7. Verify that `HybridRAGEngine.retrieve(tenant_id="x", effective_scopes=["u:1"])` injects scope filters even when caller omits `filters`
 8. Verify that `QueryProcessor.process(query, QueryStrategy.PASSTHROUGH)` returns immediately with no LLM call
 9. Run `cd /home/dev/projects/SmartSpecPro/python-backend && pytest --cov=app/orchestrator/rag --cov-fail-under=80` -- coverage meets 80% threshold
+
+---
+
+## Implementation Status
+
+**Status:** COMPLETE
+**Tests:** 134 passing (full RAG suite)
+**Commit:** (pending)
+
+### Actual Files Created/Modified
+
+| File | Action | Notes |
+|------|--------|-------|
+| `python-backend/app/orchestrator/rag/query_processor.py` | Created | QueryStrategy enum, ProcessedQuery dataclass, QueryProcessor with 5 strategies |
+| `python-backend/tests/orchestrator/rag/test_scope_filtering.py` | Created | 10 tests across 3 classes (BM25, Vector, HybridRAG scope injection) |
+| `python-backend/tests/orchestrator/rag/test_query_processor.py` | Created | 13 tests across 7 classes (all strategies + fallback) |
+| `python-backend/app/orchestrator/rag/bm25_retriever.py` | Modified | Added `_apply_filters()` with tenant_id, allowed_scopes, doc_type, source filters |
+| `python-backend/app/orchestrator/rag/vector_retriever.py` | Modified | Added `_apply_filters()` static method with same 4 filter types |
+| `python-backend/app/orchestrator/rag/hybrid_rag.py` | Modified | query_strategy in RAGConfig, scope enforcement, query processing step, cache key isolation |
+| `python-backend/tests/orchestrator/rag/test_hybrid_rag.py` | Modified | +9 tests: query processing (3), cache isolation (4), scope enforcement (2) |
+| `python-backend/app/orchestrator/rag/__init__.py` | Modified | Added QueryProcessor, QueryStrategy, ProcessedQuery exports |
+
+### Deviations from Plan
+
+1. **PgVectorStore delegation (F-04)**: Deferred — only in-memory path implemented. Production PgVectorStore integration is out of scope for this section; the filtering interface is correct and will be wired in production later.
+2. **date_range filter (F-03)**: Not implemented — can be added when needed. Both retrievers support the filter extension point.
+3. **MULTI_QUERY alternatives (F-01)**: Alternatives are generated but not yet used for multi-retrieval. The QueryProcessor framework is in place; section-07 (rag-executor) will wire the LLM client and enable multi-query retrieval.
+4. **LLM client injection (F-07)**: QueryProcessor is created without an LLM client — all non-PASSTHROUGH strategies gracefully fall back. Section-07 will provide the LLM client.
+
+### Code Review Fixes Applied
+
+| Fix | Finding | Description |
+|-----|---------|-------------|
+| FIX-1 | F-09 (HIGH) | **Security**: Changed `if effective_scopes:` → `if effective_scopes is not None:` to prevent empty scopes bypassing filtering |
+| FIX-2 | F-02 (MEDIUM) | Added `source` filter to VectorRetriever._apply_filters() for consistency with BM25 |
+| FIX-3 | F-05 (MEDIUM) | Fixed cache TTL check from `.seconds` to `.total_seconds()` (pre-existing bug) |
+| FIX-4 | F-06 (LOW) | Documented type: ignore pattern for query_strategy default |
+| FIX-5 | F-10 (LOW) | Strengthened test assertions with proper metadata and result validation |

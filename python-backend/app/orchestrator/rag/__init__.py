@@ -26,6 +26,11 @@ from app.orchestrator.rag.scope_engine import (
     invalidate_rag_cache_for_item,
     handle_permission_change,
 )
+from app.orchestrator.rag.query_processor import (
+    QueryProcessor,
+    QueryStrategy,
+    ProcessedQuery,
+)
 
 __all__ = [
     "HybridRAGEngine",
@@ -40,4 +45,7 @@ __all__ = [
     "propagate_scopes_to_vector_stores",
     "invalidate_rag_cache_for_item",
     "handle_permission_change",
+    "QueryProcessor",
+    "QueryStrategy",
+    "ProcessedQuery",
 ]

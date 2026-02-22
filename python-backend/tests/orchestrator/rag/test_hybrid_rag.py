@@ -309,18 +309,19 @@ class TestHybridRAGEngine:
     @pytest.mark.asyncio
     async def test_retrieve_keyword_mode(self, engine):
         """Test retrieval in keyword mode."""
-        # Add documents
-        await engine.add_document(content="Python programming language")
-        await engine.add_document(content="Java programming language")
-        await engine.add_document(content="Cooking and recipes")
-        
+        # Add documents with matching tenant metadata so scope enforcement passes
+        tenant_meta = {"tenant_id": "test-tenant"}
+        await engine.add_document(content="Python programming language", metadata=tenant_meta)
+        await engine.add_document(content="Java programming language", metadata=tenant_meta)
+        await engine.add_document(content="Cooking and recipes", metadata=tenant_meta)
+
         result = await engine.retrieve(
             query="Python programming",
             mode=SearchMode.KEYWORD,
             top_k=2,
             tenant_id="test-tenant",
         )
-        
+
         assert result.mode == SearchMode.KEYWORD
         assert result.bm25_candidates > 0
     
@@ -366,6 +367,86 @@ class TestHybridRAGEngine:
         assert len(engine._cache) == 0
 
 
+class TestHybridRAGQueryProcessing:
+    """Tests for query processing integration in HybridRAGEngine."""
+
+    @pytest.mark.asyncio
+    async def test_passthrough_mode_no_llm_call(self):
+        """PASSTHROUGH mode should not invoke any LLM."""
+        from app.orchestrator.rag.query_processor import QueryStrategy
+        config = RAGConfig(
+            mode=SearchMode.KEYWORD,
+            use_rerank=False,
+            use_cache=False,
+            query_strategy=QueryStrategy.PASSTHROUGH,
+        )
+        engine = HybridRAGEngine(config=config)
+        await engine.add_document(
+            content="Python programming language guide",
+            metadata={"tenant_id": "t1", "allowed_scopes": ["u:1"]},
+        )
+
+        result = await engine.retrieve(
+            query="Python",
+            tenant_id="t1",
+            effective_scopes=["u:1"],
+        )
+
+        assert result.mode == SearchMode.KEYWORD
+        assert result.bm25_candidates > 0
+
+    @pytest.mark.asyncio
+    async def test_fast_mode_skips_query_processing(self):
+        """FAST mode should skip query processing entirely."""
+        from app.orchestrator.rag.query_processor import QueryStrategy
+        config = RAGConfig(
+            mode=SearchMode.FAST,
+            use_rerank=False,
+            use_cache=False,
+            query_strategy=QueryStrategy.HYDE,
+        )
+        engine = HybridRAGEngine(config=config)
+        await engine.add_document(
+            content="Test document content",
+            metadata={"tenant_id": "t1", "allowed_scopes": ["u:1"]},
+        )
+
+        result = await engine.retrieve(
+            query="test",
+            mode=SearchMode.FAST,
+            tenant_id="t1",
+            effective_scopes=["u:1"],
+        )
+        assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_scope_enforcement_in_retrieve(self):
+        """retrieve() must enforce scope filters even when not passed by caller."""
+        config = RAGConfig(
+            mode=SearchMode.KEYWORD,
+            use_rerank=False,
+            use_cache=False,
+        )
+        engine = HybridRAGEngine(config=config)
+
+        await engine.add_document(
+            content="Secret document for user one",
+            metadata={"tenant_id": "t1", "allowed_scopes": ["u:1"]},
+        )
+        await engine.add_document(
+            content="Secret document for user two",
+            metadata={"tenant_id": "t1", "allowed_scopes": ["u:2"]},
+        )
+
+        result = await engine.retrieve(
+            query="Secret document",
+            tenant_id="t1",
+            effective_scopes=["u:1"],
+        )
+
+        assert all("user one" in d.content for d in result.documents)
+
+
 class TestCacheKeyIsolation:
     """Tests for tenant-aware cache key generation."""
 
@@ -389,8 +470,8 @@ class TestCacheKeyIsolation:
         import hashlib
 
         scope_hash = hashlib.sha256(str(sorted(["u:1", "p:global"])).encode()).hexdigest()[:16]
-        key_a = f"tenant-a:{scope_hash}:testing:10:hybrid"
-        key_b = f"tenant-b:{scope_hash}:testing:10:hybrid"
+        key_a = f"tenant-a:{scope_hash}:testing:10:hybrid:passthrough"
+        key_b = f"tenant-b:{scope_hash}:testing:10:hybrid:passthrough"
         assert key_a != key_b
         assert key_a in engine._cache
         assert key_b in engine._cache
@@ -413,8 +494,8 @@ class TestCacheKeyIsolation:
         # Different scopes produce different hashes
         assert hash_a != hash_b
 
-        key_a = f"tenant-1:{hash_a}:testing:10:hybrid"
-        key_b = f"tenant-1:{hash_b}:testing:10:hybrid"
+        key_a = f"tenant-1:{hash_a}:testing:10:hybrid:passthrough"
+        key_b = f"tenant-1:{hash_b}:testing:10:hybrid:passthrough"
         assert key_a != key_b
 
     @pytest.mark.asyncio
@@ -435,10 +516,28 @@ class TestCacheKeyIsolation:
         import hashlib
 
         scope_b = hashlib.sha256(str(sorted(["u:2", "p:global", "g:5"])).encode()).hexdigest()[:16]
-        key_b = f"t1:{scope_b}:test:10:hybrid"
+        key_b = f"t1:{scope_b}:test:10:hybrid:passthrough"
 
         # User B's cache key should not exist in engine's cache
         assert key_b not in engine._cache
+
+    @pytest.mark.asyncio
+    async def test_empty_scopes_returns_no_documents(self):
+        """User with effective_scopes=[] must see zero documents (fail-closed)."""
+        config = RAGConfig(use_cache=False, use_rerank=False, mode=SearchMode.KEYWORD)
+        engine = HybridRAGEngine(config=config)
+        await engine.add_document(
+            content="secret doc",
+            metadata={"tenant_id": "t1", "allowed_scopes": ["u:1"]},
+        )
+
+        result = await engine.retrieve(
+            query="secret",
+            tenant_id="t1",
+            effective_scopes=[],  # empty scopes — should match nothing
+        )
+
+        assert len(result.documents) == 0
 
     @pytest.mark.asyncio
     async def test_missing_tenant_id_returns_empty(self):

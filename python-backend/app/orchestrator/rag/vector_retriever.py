@@ -228,13 +228,17 @@ class VectorRetriever:
         
         # Calculate similarities
         similarities: List[Tuple[float, Any]] = []
-        
+
         for doc_id, vector_doc in self._documents.items():
+            # Apply filters before scoring
+            if filters and not self._apply_filters(vector_doc, filters):
+                continue
+
             similarity = self._cosine_similarity(
                 query_embedding,
                 vector_doc.embedding,
             )
-            
+
             if similarity >= self.threshold:
                 # Update score on original document
                 vector_doc.original_doc.vector_score = similarity
@@ -246,10 +250,40 @@ class VectorRetriever:
         # Return top_k
         return [doc for score, doc in similarities[:top_k]]
     
+    @staticmethod
+    def _apply_filters(vector_doc: VectorDocument, filters: Dict[str, Any]) -> bool:
+        """Check if a vector document passes filter criteria."""
+        metadata = getattr(vector_doc.original_doc, "metadata", {}) or {}
+
+        if "tenant_id" in filters:
+            if metadata.get("tenant_id") != filters["tenant_id"]:
+                return False
+
+        if "allowed_scopes" in filters:
+            doc_scopes = set(metadata.get("allowed_scopes") or [])
+            filter_scopes = set(filters["allowed_scopes"])
+            if not doc_scopes & filter_scopes:
+                return False
+
+        if "doc_type" in filters:
+            doc_type = metadata.get("doc_type")
+            filter_type = filters["doc_type"]
+            if isinstance(filter_type, list):
+                if doc_type not in filter_type:
+                    return False
+            elif doc_type != filter_type:
+                return False
+
+        if "source" in filters:
+            if metadata.get("source") != filters["source"]:
+                return False
+
+        return True
+
     async def cleanup(self):
         """Cleanup resources."""
         self._documents.clear()
         self._embedding_cache.clear()
         self._embedding_client = None
-        
+
         logger.info("vector_retriever_cleanup_complete")
