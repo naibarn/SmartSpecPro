@@ -48,6 +48,23 @@ export interface PresentationLaunchOwnershipResult {
   missing: Array<"conflict" | "conversion" | "export">;
 }
 
+export type PresentationCanaryStage = "selected_tenants" | "ramp_25" | "ramp_50";
+
+export interface PresentationCanaryAbortInput {
+  stage: PresentationCanaryStage;
+  conflictRatePercent: number;
+  exportFailureRatePercent: number;
+  degradationWarningRatePercent: number;
+  queueP95Seconds: number;
+  autosaveP95Ms: number;
+}
+
+export interface PresentationCanaryAbortResult {
+  shouldAbort: boolean;
+  reasons: string[];
+  rollbackScope: "global_editor_disable" | "export_write_disable" | null;
+}
+
 function isOrderContiguous(orderIndexes: number[]): boolean {
   if (orderIndexes.length === 0) {
     return true;
@@ -148,5 +165,45 @@ export function validatePresentationLaunchOwnership(
   return {
     ready: missing.length === 0,
     missing,
+  };
+}
+
+export function evaluatePresentationCanaryAbort(
+  input: PresentationCanaryAbortInput,
+): PresentationCanaryAbortResult {
+  const reasons: string[] = [];
+
+  if (input.conflictRatePercent > 5) {
+    reasons.push("conflict_rate_exceeded");
+  }
+  if (input.exportFailureRatePercent > 4) {
+    reasons.push("export_failure_rate_exceeded");
+  }
+  if (input.stage !== "selected_tenants" && input.degradationWarningRatePercent > 25) {
+    reasons.push("degradation_warning_rate_exceeded");
+  }
+  if (input.stage !== "selected_tenants" && input.queueP95Seconds > 120) {
+    reasons.push("export_queue_latency_exceeded");
+  }
+  if (input.stage === "ramp_50" && input.autosaveP95Ms > 1500) {
+    reasons.push("autosave_latency_exceeded");
+  }
+
+  const shouldAbort = reasons.length > 0;
+  if (!shouldAbort) {
+    return {
+      shouldAbort: false,
+      reasons,
+      rollbackScope: null,
+    };
+  }
+
+  const requiresGlobalDisable =
+    reasons.includes("conflict_rate_exceeded") || reasons.includes("autosave_latency_exceeded");
+
+  return {
+    shouldAbort: true,
+    reasons,
+    rollbackScope: requiresGlobalDisable ? "global_editor_disable" : "export_write_disable",
   };
 }

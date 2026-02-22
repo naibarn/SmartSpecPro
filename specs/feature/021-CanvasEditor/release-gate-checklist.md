@@ -49,9 +49,14 @@
 - Any quarantined test requires explicit owner + removal ETA in launch decision log.
 
 ## Completion Checklist
-- [ ] Regression suites completed and attached.
-- [ ] Dashboard readiness check passed with required signals.
-- [ ] Alert route test delivered to on-call and acknowledged.
-- [ ] Rollback drill evidence attached (`detect`/`decide`/`execute`/`verify`).
-- [ ] Backup and restore rehearsal artifacts attached.
-- [ ] Launch decision recorded in `launch-decision-log.md`.
+- [x] Regression suites completed and attached.
+- [x] Dashboard readiness check passed with required signals.
+- [x] Alert route test delivered to on-call and acknowledged.
+- [x] Rollback drill evidence attached (`detect`/`decide`/`execute`/`verify`).
+- [x] Backup and restore rehearsal artifacts attached.
+- [x] Launch decision recorded in `launch-decision-log.md`.
+
+## Section 10 Evidence Links
+- Regression command result: `75/75` passing (`2026-02-22`).
+- Backup and restore verification: `migration-verification-report.md`.
+- Launch decision + staged rollout record: `launch-decision-log.md`.

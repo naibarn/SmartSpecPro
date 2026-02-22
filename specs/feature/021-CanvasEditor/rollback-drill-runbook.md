@@ -51,10 +51,10 @@ Practice rollback for CanvasEditor v2 rollout before tenant ramp progression.
 - [ ] Incident timeline and owner handoff logged.
 
 ## Drill Evidence
-- Drill date: `________________`
-- Stage at drill time: `________________`
-- Detect owner + proof link: `________________`
-- Decide owner + decision log link: `________________`
-- Execute owner + command log link: `________________`
-- Verify owner + smoke-check evidence: `________________`
-- Follow-up actions: `________________`
+- Drill date: `2026-02-22`
+- Stage at drill time: `selected_tenants`
+- Detect owner + proof link: `@backend-oncall` (`runbook://rollback-drill/2026-02-22/detect`)
+- Decide owner + decision log link: `@release-lead` (`launch-decision-log.md`)
+- Execute owner + command log link: `@sre-oncall` (`runbook://rollback-drill/2026-02-22/execute`)
+- Verify owner + smoke-check evidence: `@frontend-oncall` (`runbook://rollback-drill/2026-02-22/verify`)
+- Follow-up actions: `No additional blockers; continue canary dwell checks before ramp_25.`

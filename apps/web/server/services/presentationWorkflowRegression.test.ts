@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import {
   convertOfficeSourceToPresentation,
@@ -11,6 +13,11 @@ import {
   resetPresentationExportStateForTests,
   triggerPresentationExport,
 } from "./presentationPlaybackExport";
+import {
+  evaluatePresentationCanaryAbort,
+  evaluatePresentationPostMigrationConsistency,
+  evaluatePresentationReleaseGate,
+} from "./presentationReleaseReadiness";
 import { applyTemplateAssetToDeck } from "./presentationTemplateService";
 
 const actor = {
@@ -288,5 +295,96 @@ describe("presentation workflow regression", () => {
     expect(first.idempotent).toBe(false);
     expect(second.idempotent).toBe(true);
     expect(attachAssetToDeck).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails release gate when mandatory evidence or readiness metrics are missing", () => {
+    const result = evaluatePresentationReleaseGate({
+      regressionSuitePassed: false,
+      consistencyChecksPassed: false,
+      monitoringReady: false,
+      rollbackReady: false,
+      canaryChecklistPassed: false,
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.failedChecks).toContain("regression_suite_failed");
+    expect(result.failedChecks).toContain("consistency_checks_failed");
+    expect(result.failedChecks).toContain("monitoring_not_ready");
+    expect(result.failedChecks).toContain("rollback_not_ready");
+    expect(result.failedChecks).toContain("canary_checklist_incomplete");
+  });
+
+  it("requires backup and restore artifacts before canary promotion", () => {
+    const verificationReportPath = resolve(
+      __dirname,
+      "../../../../specs/feature/021-CanvasEditor/migration-verification-report.md",
+    );
+
+    expect(existsSync(verificationReportPath)).toBe(true);
+
+    const report = readFileSync(verificationReportPath, "utf8");
+    expect(report).toContain("presentation_decks");
+    expect(report).toContain("presentation_slides");
+    expect(report).toContain("presentation_asset_links");
+    expect(report).toContain("restore rehearsal");
+  });
+
+  it("requires launch decision artifact with owner signoff before cutover", () => {
+    const launchDecisionLogPath = resolve(
+      __dirname,
+      "../../../../specs/feature/021-CanvasEditor/launch-decision-log.md",
+    );
+
+    expect(existsSync(launchDecisionLogPath)).toBe(true);
+
+    const decisionLog = readFileSync(launchDecisionLogPath, "utf8");
+    expect(decisionLog).toContain("Go/No-Go Decision");
+    expect(decisionLog).toContain("Release lead signoff");
+    expect(decisionLog).toContain("Timestamp");
+  });
+
+  it("passes simulated restore consistency checks for sample deck recovery", () => {
+    const result = evaluatePresentationPostMigrationConsistency({
+      slideCountRows: [{ deckId: 902, persistedSlideCount: 2, actualSlideCount: 2 }],
+      orderRows: [{ deckId: 902, orderIndexes: [0, 1] }],
+      byteTotalRows: [{ deckId: 902, persistedTotalBytes: 10240, summedAssetBytes: 10240 }],
+      orphanAssetLinkIds: [],
+      staleObjectKeys: [],
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.failures).toEqual([]);
+  });
+
+  it("triggers rollback recommendation when canary abort thresholds are breached", () => {
+    const abort = evaluatePresentationCanaryAbort({
+      stage: "ramp_50",
+      conflictRatePercent: 6.2,
+      exportFailureRatePercent: 4.7,
+      degradationWarningRatePercent: 18,
+      queueP95Seconds: 88,
+      autosaveP95Ms: 1760,
+    });
+
+    expect(abort.shouldAbort).toBe(true);
+    expect(abort.reasons).toContain("conflict_rate_exceeded");
+    expect(abort.reasons).toContain("export_failure_rate_exceeded");
+    expect(abort.reasons).toContain("autosave_latency_exceeded");
+    expect(abort.rollbackScope).toBe("global_editor_disable");
+  });
+
+  it("detects post-deploy anomalies in slide order and orphan asset links", () => {
+    const result = evaluatePresentationPostMigrationConsistency({
+      slideCountRows: [{ deckId: 903, persistedSlideCount: 3, actualSlideCount: 2 }],
+      orderRows: [{ deckId: 903, orderIndexes: [0, 2] }],
+      byteTotalRows: [{ deckId: 903, persistedTotalBytes: 1000, summedAssetBytes: 1000 }],
+      orphanAssetLinkIds: [7001],
+      staleObjectKeys: [],
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.failures).toContain("slide_count_mismatch:903");
+    expect(result.failures).toContain("order_invariant_failed:903");
+    expect(result.failures).toContain("orphan_asset_links_detected");
   });
 });
