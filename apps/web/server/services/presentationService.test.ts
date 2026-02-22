@@ -137,6 +137,7 @@ describe("presentationService", () => {
       addSlideToDeck(
         {
           deckId: 101,
+          expectedVersion: 1,
           title: "Slide 1",
         },
         actor,
@@ -168,6 +169,7 @@ describe("presentationService", () => {
       attachAssetToDeck(
         {
           deckId: 101,
+          expectedVersion: 1,
           libraryItemId: 9999,
           byteSize: 1024,
         },
@@ -176,6 +178,40 @@ describe("presentationService", () => {
     ).rejects.toSatisfy((error: unknown) => {
       if (!(error instanceof PresentationServiceError)) return false;
       return error.code === PRESENTATION_ERROR_CODE.NOT_FOUND;
+    });
+  });
+
+  it("returns deterministic version conflict payload for stale expected deck version", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 5,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+
+    await expect(
+      addSlideToDeck(
+        {
+          deckId: 101,
+          expectedVersion: 4,
+          title: "New slide",
+        },
+        actor,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof PresentationServiceError)) return false;
+      return (
+        error.code === PRESENTATION_ERROR_CODE.VERSION_CONFLICT
+        && (error.details as any)?.conflict?.conflictSchemaVersion === "presentation_conflict_v1"
+        && (error.details as any)?.conflict?.reasonCode === "DECK_VERSION_MISMATCH"
+      );
     });
   });
 });

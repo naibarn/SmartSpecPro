@@ -104,6 +104,14 @@ function resolvePresentationTenantId(
 }
 
 function mapPresentationServiceError(error: PresentationServiceError): TRPCError {
+  if (error.code === PRESENTATION_ERROR_CODE.VERSION_CONFLICT) {
+    return new TRPCError({
+      code: "CONFLICT",
+      message: error.message,
+      cause: error.details?.conflict,
+    });
+  }
+
   if (error.code === PRESENTATION_ERROR_CODE.NOT_FOUND) {
     return new TRPCError({ code: "NOT_FOUND", message: error.message });
   }
@@ -197,6 +205,7 @@ export const presentationRouter = router({
   updateDeck: protectedProcedure
     .input(z.object({
       deckId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
       title: z.string().min(1).max(255).optional(),
       description: z.string().max(2000).nullable().optional(),
     }))
@@ -213,11 +222,14 @@ export const presentationRouter = router({
     }),
 
   deleteDeck: protectedProcedure
-    .input(deckIdSchema)
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
+    }))
     .mutation(async ({ input, ctx }) => {
       try {
         ensureFeatureEnabled();
-        return await deletePresentationDeck(input.deckId, toPresentationActor(ctx));
+        return await deletePresentationDeck(input, toPresentationActor(ctx));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);
@@ -243,6 +255,7 @@ export const presentationRouter = router({
   addSlide: protectedProcedure
     .input(z.object({
       deckId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
       title: z.string().min(1).max(255).optional(),
       slideContent: z.record(z.any()).optional(),
       notes: z.string().max(5_000).nullable().optional(),
@@ -262,6 +275,7 @@ export const presentationRouter = router({
   duplicateSlide: protectedProcedure
     .input(z.object({
       deckId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
       slideId: z.number().int().positive(),
       targetIndex: z.number().int().min(0).optional(),
     }))
@@ -281,6 +295,8 @@ export const presentationRouter = router({
     .input(z.object({
       deckId: z.number().int().positive(),
       slideId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
+      saveMode: z.enum(["manual", "autosave"]).optional(),
       title: z.string().min(1).max(255).optional(),
       slideContent: z.record(z.any()).optional(),
       notes: z.string().max(5_000).nullable().optional(),
@@ -301,6 +317,7 @@ export const presentationRouter = router({
     .input(z.object({
       deckId: z.number().int().positive(),
       slideId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -319,6 +336,7 @@ export const presentationRouter = router({
       deckId: z.number().int().positive(),
       movedSlideId: z.number().int().positive(),
       targetIndex: z.number().int().min(0),
+      expectedVersion: z.number().int().nonnegative(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -352,6 +370,7 @@ export const presentationRouter = router({
   attachAsset: protectedProcedure
     .input(z.object({
       deckId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
       slideId: z.number().int().positive().nullable().optional(),
       libraryItemId: z.number().int().positive(),
       byteSize: z.number().int().min(0),
@@ -372,6 +391,7 @@ export const presentationRouter = router({
     .input(z.object({
       deckId: z.number().int().positive(),
       linkId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {

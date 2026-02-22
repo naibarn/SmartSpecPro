@@ -55,3 +55,19 @@
 - decision_taken: `stable_presentation_codes`
 - mode_used: `auto`
 - rationale: Frontend needs deterministic limit/lifecycle handling; stable presentation codes keep client branching robust while preserving existing tRPC semantics.
+
+## 2026-02-22 - Section 04 - Conflict Transport Shape
+- options_considered:
+  - `custom_success_union`: return conflict payload in normal success union to avoid thrown errors
+  - `trpc_conflict_error`: throw `CONFLICT` with structured payload attached for parser compatibility
+- decision_taken: `trpc_conflict_error`
+- mode_used: `auto`
+- rationale: Keeps HTTP semantics aligned (`409`) while preserving deterministic conflict payload metadata for client recovery.
+
+## 2026-02-22 - Section 04 - Version Precondition Granularity
+- options_considered:
+  - `deck_only`: use deck version for all write endpoints
+  - `deck_and_slide`: use deck version for deck/asset/reorder operations and slide version for slide content writes
+- decision_taken: `deck_and_slide`
+- mode_used: `auto`
+- rationale: Reduces unnecessary content-write conflicts and aligns save conflict checks with the resource being edited.

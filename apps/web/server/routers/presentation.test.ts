@@ -23,6 +23,7 @@ const serviceMocks = vi.hoisted(() => ({
   getPresentationDeckDetail: vi.fn(),
   createPresentationDeckForLibraryItem: vi.fn(),
   attachAssetToDeck: vi.fn(),
+  updateSlideInDeck: vi.fn(),
 }));
 
 vi.mock("../services/presentationService", async () => {
@@ -32,6 +33,7 @@ vi.mock("../services/presentationService", async () => {
     getPresentationDeckDetail: serviceMocks.getPresentationDeckDetail,
     createPresentationDeckForLibraryItem: serviceMocks.createPresentationDeckForLibraryItem,
     attachAssetToDeck: serviceMocks.attachAssetToDeck,
+    updateSlideInDeck: serviceMocks.updateSlideInDeck,
   };
 });
 
@@ -153,11 +155,82 @@ describe("presentationRouter", () => {
     await expect(
       fn({
         ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
-        input: { deckId: 4, libraryItemId: 77, byteSize: 1024 },
+        input: { deckId: 4, expectedVersion: 1, libraryItemId: 77, byteSize: 1024 },
       }),
     ).rejects.toSatisfy((error: unknown) => {
       if (!(error instanceof TRPCError)) return false;
       return error.code === "BAD_REQUEST" && error.message.includes(PRESENTATION_ERROR_CODE.DECK_SIZE_LIMIT_EXCEEDED);
+    });
+  });
+
+  it("returns conflict payload with stable schema version for stale expectedVersion", async () => {
+    const conflictPayload = {
+      conflictSchemaVersion: "presentation_conflict_v1",
+      reasonCode: "SLIDE_VERSION_MISMATCH",
+      expectedVersion: 2,
+      latestDeckVersion: 4,
+      latestSlideVersion: 7,
+      deckId: 9,
+      slideId: 12,
+      saveMode: "manual",
+      latestDeck: {
+        id: 9,
+        version: 4,
+        slideCount: 3,
+        totalAssetBytes: 2048,
+        updatedAt: new Date(),
+      },
+      latestSlide: {
+        id: 12,
+        deckId: 9,
+        orderIndex: 1,
+        version: 7,
+        title: "Updated",
+        slideContent: {},
+        notes: null,
+        updatedAt: new Date(),
+      },
+    } as const;
+
+    serviceMocks.updateSlideInDeck.mockRejectedValue(
+      new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.VERSION_CONFLICT,
+        `${PRESENTATION_ERROR_CODE.VERSION_CONFLICT}: expected slide version 2 but latest is 7`,
+        { conflict: conflictPayload },
+      ),
+    );
+
+    const fn = presentationRouter.updateSlide as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+        input: {
+          deckId: 9,
+          slideId: 12,
+          expectedVersion: 2,
+          saveMode: "manual",
+          title: "Draft",
+        },
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof TRPCError)) return false;
+      return error.code === "CONFLICT" && (error.cause as any)?.conflictSchemaVersion === "presentation_conflict_v1";
+    });
+
+    await expect(
+      fn({
+        ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+        input: {
+          deckId: 9,
+          slideId: 12,
+          expectedVersion: 2,
+          saveMode: "autosave",
+          title: "Draft",
+        },
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof TRPCError)) return false;
+      return error.code === "CONFLICT" && (error.cause as any)?.reasonCode === "SLIDE_VERSION_MISMATCH";
     });
   });
 });

@@ -31,13 +31,26 @@
 
 ## Section 03 - Backend API and Services
 - section: `section-03-backend-api-and-services`
-- commit: `pending`
+- commit: `f6eb828`
 - test_command: `cd apps/web && npm test -- server/routers/presentation.test.ts server/services/presentationService.test.ts`
 - pass_fail_summary:
   - `pass`: `server/routers/presentation.test.ts`
   - `pass`: `server/services/presentationService.test.ts`
 - notable_deviations:
   - Deferred optimistic conflict (`expected_version`/`409`) to section 04 while delivering deterministic limit/permission/lifecycle contracts in section 03.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining: none
+
+## Section 04 - Conflict and Concurrency Hardening
+- section: `section-04-conflict-and-concurrency-hardening`
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- server/routers/presentation.test.ts server/services/presentationService.test.ts`
+- pass_fail_summary:
+  - `pass`: `server/routers/presentation.test.ts`
+  - `pass`: `server/services/presentationService.test.ts`
+- notable_deviations:
+  - Implemented deterministic conflict schema and optimistic checks at service/router layers; deeper transaction-level CAS hardening remains for broader stress coverage in section 09.
 - blocked_tasks_resolved_remaining:
   - resolved: none
   - remaining: none

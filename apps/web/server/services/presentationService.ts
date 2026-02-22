@@ -24,7 +24,13 @@ import {
   type LibraryActor,
   type LibraryItemDto,
 } from "./libraryService";
-import { PRESENTATION_ERROR_CODE, PRESENTATION_ITEM_TYPE, PRESENTATION_LIMITS } from "@shared/presentation/constants";
+import {
+  PRESENTATION_CONFLICT_SCHEMA_VERSION,
+  PRESENTATION_ERROR_CODE,
+  PRESENTATION_ITEM_TYPE,
+  PRESENTATION_LIMITS,
+} from "@shared/presentation/constants";
+import { presentationVersionConflictSchema, type PresentationVersionConflict } from "@shared/presentation/contracts";
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -46,12 +52,14 @@ export interface CreatePresentationDeckForLibraryItemInput {
 
 export interface UpdatePresentationDeckMetadataInput {
   deckId: number;
+  expectedVersion: number;
   title?: string;
   description?: string | null;
 }
 
 export interface AddPresentationSlideInput {
   deckId: number;
+  expectedVersion: number;
   title?: string;
   slideContent?: Record<string, unknown>;
   notes?: string | null;
@@ -59,6 +67,7 @@ export interface AddPresentationSlideInput {
 
 export interface DuplicatePresentationSlideInput {
   deckId: number;
+  expectedVersion: number;
   slideId: number;
   targetIndex?: number;
 }
@@ -66,6 +75,8 @@ export interface DuplicatePresentationSlideInput {
 export interface UpdatePresentationSlideInput {
   deckId: number;
   slideId: number;
+  expectedVersion: number;
+  saveMode?: "manual" | "autosave";
   title?: string;
   slideContent?: Record<string, unknown>;
   notes?: string | null;
@@ -74,12 +85,14 @@ export interface UpdatePresentationSlideInput {
 export interface DeletePresentationSlideInput {
   deckId: number;
   slideId: number;
+  expectedVersion: number;
 }
 
 export interface ReorderPresentationSlidesInput {
   deckId: number;
   movedSlideId: number;
   targetIndex: number;
+  expectedVersion: number;
 }
 
 export interface ListPresentationAssetsInput {
@@ -89,6 +102,7 @@ export interface ListPresentationAssetsInput {
 
 export interface AttachPresentationAssetInput {
   deckId: number;
+  expectedVersion: number;
   slideId?: number | null;
   libraryItemId: number;
   byteSize: number;
@@ -97,6 +111,12 @@ export interface AttachPresentationAssetInput {
 export interface DetachPresentationAssetInput {
   deckId: number;
   linkId: number;
+  expectedVersion: number;
+}
+
+export interface DeletePresentationDeckInput {
+  deckId: number;
+  expectedVersion: number;
 }
 
 export class PresentationServiceError extends Error {
@@ -160,6 +180,86 @@ async function ensureWritePermission(itemId: number, actor: PresentationActor): 
     PRESENTATION_ERROR_CODE.PERMISSION_DENIED,
     `${PRESENTATION_ERROR_CODE.PERMISSION_DENIED}: write permission is required`,
   );
+}
+
+function toDeckConflictSnapshot(deck: PresentationDeck): PresentationVersionConflict["latestDeck"] {
+  return {
+    id: deck.id,
+    version: deck.version,
+    slideCount: deck.slideCount,
+    totalAssetBytes: deck.totalAssetBytes,
+    updatedAt: deck.updatedAt,
+  };
+}
+
+function toSlideConflictSnapshot(slide: PresentationSlide): NonNullable<PresentationVersionConflict["latestSlide"]> {
+  return {
+    id: slide.id,
+    deckId: slide.deckId,
+    orderIndex: slide.orderIndex,
+    version: slide.version,
+    title: slide.title,
+    slideContent: slide.slideContent as Record<string, unknown>,
+    notes: slide.notes,
+    updatedAt: slide.updatedAt,
+  };
+}
+
+function buildVersionConflict(
+  payload: Omit<PresentationVersionConflict, "conflictSchemaVersion">,
+): PresentationVersionConflict {
+  return presentationVersionConflictSchema.parse({
+    conflictSchemaVersion: PRESENTATION_CONFLICT_SCHEMA_VERSION,
+    ...payload,
+  });
+}
+
+function throwDeckVersionConflict(deck: PresentationDeck, expectedVersion: number): never {
+  const conflict = buildVersionConflict({
+    reasonCode: "DECK_VERSION_MISMATCH",
+    expectedVersion,
+    latestDeckVersion: deck.version,
+    deckId: deck.id,
+    latestDeck: toDeckConflictSnapshot(deck),
+  });
+
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.VERSION_CONFLICT,
+    `${PRESENTATION_ERROR_CODE.VERSION_CONFLICT}: expected deck version ${expectedVersion} but latest is ${deck.version}`,
+    { conflict },
+  );
+}
+
+function throwSlideVersionConflict(
+  deck: PresentationDeck,
+  slide: PresentationSlide,
+  expectedVersion: number,
+  saveMode?: "manual" | "autosave",
+): never {
+  const conflict = buildVersionConflict({
+    reasonCode: "SLIDE_VERSION_MISMATCH",
+    expectedVersion,
+    latestDeckVersion: deck.version,
+    latestSlideVersion: slide.version,
+    deckId: deck.id,
+    slideId: slide.id,
+    saveMode,
+    latestDeck: toDeckConflictSnapshot(deck),
+    latestSlide: toSlideConflictSnapshot(slide),
+  });
+
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.VERSION_CONFLICT,
+    `${PRESENTATION_ERROR_CODE.VERSION_CONFLICT}: expected slide version ${expectedVersion} but latest is ${slide.version}`,
+    { conflict },
+  );
+}
+
+function ensureExpectedDeckVersion(deck: PresentationDeck, expectedVersion: number): void {
+  if (deck.version === expectedVersion) {
+    return;
+  }
+  throwDeckVersionConflict(deck, expectedVersion);
 }
 
 async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
@@ -322,6 +422,7 @@ export async function updatePresentationDeckMetadata(
   dbClient?: DbClient,
 ): Promise<PresentationDeck> {
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
   const updates: Partial<typeof presentationDecks.$inferInsert> = {
     updatedAt: new Date(),
     version: deck.version + 1,
@@ -351,14 +452,16 @@ export async function updatePresentationDeckMetadata(
 }
 
 export async function deletePresentationDeck(
-  deckId: number,
+  input: DeletePresentationDeckInput,
   actor: PresentationActor,
   dbClient?: DbClient,
 ): Promise<{ success: boolean }> {
-  const { db } = await resolveDeckContext(deckId, actor, { write: true }, dbClient);
+  const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
+
   const rows = await db
     .delete(presentationDecks)
-    .where(and(eq(presentationDecks.id, deckId), eq(presentationDecks.tenantId, actor.tenantId)))
+    .where(and(eq(presentationDecks.id, input.deckId), eq(presentationDecks.tenantId, actor.tenantId)))
     .returning({ id: presentationDecks.id });
 
   return { success: Boolean(rows[0]?.id) };
@@ -379,6 +482,7 @@ export async function addSlideToDeck(
   dbClient?: DbClient,
 ): Promise<PresentationSlide> {
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
   if (deck.slideCount >= PRESENTATION_LIMITS.maxSlidesPerDeck) {
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.SLIDE_LIMIT_EXCEEDED,
@@ -403,6 +507,7 @@ export async function duplicateSlideInDeck(
   dbClient?: DbClient,
 ): Promise<PresentationSlide> {
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
   if (deck.slideCount >= PRESENTATION_LIMITS.maxSlidesPerDeck) {
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.SLIDE_LIMIT_EXCEEDED,
@@ -448,6 +553,17 @@ export async function updateSlideInDeck(
   dbClient?: DbClient,
 ): Promise<PresentationSlide> {
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  const currentSlide = await getSlideById(input.slideId, input.deckId, db);
+  if (!currentSlide) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found`,
+    );
+  }
+  if (currentSlide.version !== input.expectedVersion) {
+    throwSlideVersionConflict(deck, currentSlide, input.expectedVersion, input.saveMode);
+  }
+
   const updates: Record<string, unknown> = {
     updatedAt: new Date(),
     version: sql`${presentationSlides.version} + 1`,
@@ -466,10 +582,18 @@ export async function updateSlideInDeck(
   const rows = await db
     .update(presentationSlides)
     .set(updates)
-    .where(and(eq(presentationSlides.id, input.slideId), eq(presentationSlides.deckId, input.deckId)))
+    .where(and(
+      eq(presentationSlides.id, input.slideId),
+      eq(presentationSlides.deckId, input.deckId),
+      eq(presentationSlides.version, input.expectedVersion),
+    ))
     .returning();
 
   if (!rows[0]) {
+    const latestSlide = await getSlideById(input.slideId, input.deckId, db);
+    if (latestSlide) {
+      throwSlideVersionConflict(deck, latestSlide, input.expectedVersion, input.saveMode);
+    }
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.NOT_FOUND,
       `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found`,
@@ -493,6 +617,7 @@ export async function deleteSlideFromDeck(
   dbClient?: DbClient,
 ): Promise<{ deleted: boolean }> {
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
 
   const deleted = await db.transaction(async (tx) => {
     const existing = await tx
@@ -551,8 +676,16 @@ export async function reorderSlidesInDeck(
   actor: PresentationActor,
   dbClient?: DbClient,
 ): Promise<{ slideIds: number[] }> {
-  await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
-  const slideIds = await reorderPresentationSlides(input, dbClient);
+  const { deck } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
+  const slideIds = await reorderPresentationSlides(
+    {
+      deckId: input.deckId,
+      movedSlideId: input.movedSlideId,
+      targetIndex: input.targetIndex,
+    },
+    dbClient,
+  );
   return { slideIds };
 }
 
@@ -588,6 +721,7 @@ export async function attachAssetToDeck(
   }
 
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
   await resolveReadableLibraryItem(input.libraryItemId, actor);
 
   const existingRows = await db
@@ -648,6 +782,7 @@ export async function detachAssetFromDeck(
   dbClient?: DbClient,
 ): Promise<{ deleted: boolean; totals?: { totalAssetBytes: number; warningExceeded: boolean; hardLimitExceeded: boolean } }> {
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
   const rows = await db
     .select({ id: presentationAssetLinks.id })
     .from(presentationAssetLinks)
