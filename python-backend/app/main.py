@@ -62,6 +62,7 @@ from app.api import (
     onedrive,  # OneDrive file operations API
     internal_onedrive,  # Internal OneDrive sync API
     admin_alerts,  # Admin alert threshold checking
+    internal_library,  # Internal library scope propagation API
 )
 from app.api.v1 import (
     skills,
@@ -283,6 +284,7 @@ app.include_router(internal_gdrive.router, tags=["Internal GDrive"])
 app.include_router(onedrive.router, tags=["OneDrive"])
 app.include_router(internal_onedrive.router, tags=["Internal OneDrive"])
 app.include_router(admin_alerts.router, tags=["Admin Alerts"])
+app.include_router(internal_library.router, tags=["Internal Library"])
 
 @app.get("/")
 async def root():

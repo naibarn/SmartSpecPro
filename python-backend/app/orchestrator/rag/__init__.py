@@ -22,6 +22,9 @@ from app.orchestrator.rag.reranker import Reranker
 from app.orchestrator.rag.scope_engine import (
     compute_effective_scopes,
     recompute_allowed_scopes,
+    propagate_scopes_to_vector_stores,
+    invalidate_rag_cache_for_item,
+    handle_permission_change,
 )
 
 __all__ = [
@@ -34,4 +37,7 @@ __all__ = [
     "Reranker",
     "compute_effective_scopes",
     "recompute_allowed_scopes",
+    "propagate_scopes_to_vector_stores",
+    "invalidate_rag_cache_for_item",
+    "handle_permission_change",
 ]

@@ -16,7 +16,12 @@
     "section-07-rag-executor",
     "section-08-evaluation-and-observability"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-acl-schema-and-scopes": {
+      "status": "complete",
+      "commit_hash": "5ddcfbf"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

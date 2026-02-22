@@ -1,9 +1,12 @@
 """
 Scope computation engine for multi-tenant RAG access control.
 
-Provides two core functions:
+Provides core functions:
 - compute_effective_scopes: Determines what a user can access at query time
 - recompute_allowed_scopes: Rebuilds the allowed_scopes cache on a library item
+- propagate_scopes_to_vector_stores: Pushes scope changes to vector backends
+- invalidate_rag_cache_for_item: Clears cached RAG results for a tenant
+- handle_permission_change: Orchestrates recompute + propagate + invalidate
 
 Scope format:
   u:<user_id>   - specific user
@@ -14,9 +17,14 @@ Scope format:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, Optional
+
 import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from app.orchestrator.rag.hybrid_rag import HybridRAGEngine
 
 logger = structlog.get_logger()
 
@@ -149,6 +157,7 @@ async def recompute_allowed_scopes(
             "user": _USER,
             "group": _GROUP,
             "tenant": _TENANT,
+            "tenant_role": _TENANT,
         }.get(perm.subject_type)
 
         if prefix:
@@ -188,3 +197,217 @@ async def recompute_allowed_scopes(
     )
 
     return scope_list
+
+
+async def propagate_scopes_to_vector_stores(
+    item_id: int,
+    new_allowed_scopes: list[str],
+    tenant_id: str,
+    session: AsyncSession,
+    pgvector_store: Optional[Any] = None,
+    chromadb_collection: Optional[Any] = None,
+    cloudflare_store: Optional[Any] = None,
+) -> dict[str, int]:
+    """
+    Propagate updated allowed_scopes to all configured vector store providers.
+
+    For each chunk belonging to the item:
+    1. pgvector: update_document() with metadata containing allowed_scopes
+    2. ChromaDB: collection.update() with new metadata (if configured)
+    3. Cloudflare Vectorize: delete + re-insert (no in-place metadata update)
+
+    Each provider is best-effort: failures are logged but do not block others.
+
+    Args:
+        item_id: The library item whose chunks need updating.
+        new_allowed_scopes: The recomputed scope list.
+        tenant_id: The tenant context.
+        session: Async SQLAlchemy session to look up chunk vector_ref_ids.
+        pgvector_store: Optional PgVectorStore instance.
+        chromadb_collection: Optional ChromaDB collection object.
+        cloudflare_store: Optional CloudflareVectorizeStore instance.
+
+    Returns:
+        Dict of provider_name -> number of vectors updated.
+    """
+    result: dict[str, int] = {}
+
+    # Look up all chunk vector_ref_ids for this item (tenant-filtered for defense-in-depth)
+    chunk_query = text(
+        "SELECT id, vector_ref_id FROM library_chunks "
+        "WHERE library_item_id = :item_id AND tenant_id = :tenant_id"
+    )
+    chunk_result = await session.execute(chunk_query, {"item_id": item_id, "tenant_id": tenant_id})
+    chunks = chunk_result.fetchall()
+
+    if not chunks:
+        logger.debug("propagate_scopes_no_chunks", item_id=item_id)
+        return result
+
+    vector_ref_ids = [c.vector_ref_id for c in chunks if c.vector_ref_id]
+
+    if not vector_ref_ids:
+        return result
+
+    metadata_update = {"allowed_scopes": new_allowed_scopes}
+
+    # 1. pgvector — update metadata on each document
+    if pgvector_store is not None:
+        try:
+            for ref_id in vector_ref_ids:
+                await pgvector_store.update_document(
+                    doc_id=ref_id, metadata=metadata_update,
+                )
+            result["pgvector"] = len(vector_ref_ids)
+        except Exception as e:
+            logger.warning(
+                "propagate_scopes_pgvector_error",
+                item_id=item_id, error=str(e),
+            )
+
+    # 2. ChromaDB — batch update in one call
+    if chromadb_collection is not None:
+        try:
+            chromadb_collection.update(
+                ids=vector_ref_ids,
+                metadatas=[metadata_update] * len(vector_ref_ids),
+            )
+            result["chromadb"] = len(vector_ref_ids)
+        except Exception as e:
+            logger.warning(
+                "propagate_scopes_chromadb_error",
+                item_id=item_id, error=str(e),
+            )
+
+    # 3. Cloudflare Vectorize — delete + re-insert (no in-place metadata update)
+    if cloudflare_store is not None:
+        try:
+            existing = await cloudflare_store.get_by_ids(vector_ref_ids)
+            if existing:
+                await cloudflare_store.delete_by_ids(vector_ref_ids)
+                updated_vectors = []
+                for vec in existing:
+                    vec_metadata = vec.get("metadata", {})
+                    vec_metadata["allowed_scopes"] = new_allowed_scopes
+                    updated_vectors.append({
+                        "id": vec["id"],
+                        "values": vec["values"],
+                        "metadata": vec_metadata,
+                    })
+                await cloudflare_store.upsert(updated_vectors)
+                result["cloudflare_vectorize"] = len(updated_vectors)
+        except Exception as e:
+            logger.warning(
+                "propagate_scopes_cloudflare_error",
+                item_id=item_id, error=str(e),
+            )
+
+    logger.info(
+        "propagated_scopes_to_vector_stores",
+        item_id=item_id,
+        tenant_id=tenant_id,
+        providers=result,
+    )
+
+    return result
+
+
+async def invalidate_rag_cache_for_item(
+    item_id: int,
+    tenant_id: str,
+    engine: Optional["HybridRAGEngine"] = None,
+) -> int:
+    """
+    Invalidate cached RAG results that may contain documents from the given item.
+
+    Since cache keys are prefixed with "{tenant_id}:", we remove all entries
+    for the given tenant. This is safe because cache entries are short-lived
+    (TTL-based) and clearing them only causes a cache miss on next query.
+
+    Args:
+        item_id: The library item whose permissions changed.
+        tenant_id: The tenant whose cache entries should be cleared.
+        engine: Optional HybridRAGEngine instance. If None, no-op.
+
+    Returns:
+        Number of cache entries invalidated.
+    """
+    if engine is None:
+        return 0
+
+    prefix = f"{tenant_id}:"
+    keys_to_remove = [k for k in engine._cache if k.startswith(prefix)]
+
+    for key in keys_to_remove:
+        del engine._cache[key]
+
+    if keys_to_remove:
+        logger.info(
+            "rag_cache_invalidated",
+            item_id=item_id,
+            tenant_id=tenant_id,
+            entries_removed=len(keys_to_remove),
+        )
+
+    return len(keys_to_remove)
+
+
+async def handle_permission_change(
+    item_id: int,
+    tenant_id: str,
+    session: AsyncSession,
+    pgvector_store: Optional[Any] = None,
+    chromadb_collection: Optional[Any] = None,
+    cloudflare_store: Optional[Any] = None,
+    rag_engine: Optional["HybridRAGEngine"] = None,
+) -> None:
+    """
+    Orchestrate scope recomputation and propagation after a permission change.
+
+    Called after any library_permissions CREATE, UPDATE, or DELETE.
+
+    Steps:
+    1. Recompute allowed_scopes from permissions, visibility, and owner.
+    2. If scopes are non-empty, propagate to vector store metadata.
+    3. Invalidate cached RAG results for this tenant.
+
+    Args:
+        item_id: The library item whose permissions changed.
+        tenant_id: The tenant context.
+        session: Async SQLAlchemy session.
+        pgvector_store: Optional PgVectorStore instance.
+        chromadb_collection: Optional ChromaDB collection.
+        cloudflare_store: Optional CloudflareVectorizeStore instance.
+        rag_engine: Optional HybridRAGEngine for cache invalidation.
+    """
+    new_scopes = await recompute_allowed_scopes(item_id, session)
+
+    if not new_scopes:
+        logger.info(
+            "permission_change_item_not_found",
+            item_id=item_id, tenant_id=tenant_id,
+        )
+        return
+
+    await propagate_scopes_to_vector_stores(
+        item_id=item_id,
+        new_allowed_scopes=new_scopes,
+        tenant_id=tenant_id,
+        session=session,
+        pgvector_store=pgvector_store,
+        chromadb_collection=chromadb_collection,
+        cloudflare_store=cloudflare_store,
+    )
+
+    await invalidate_rag_cache_for_item(
+        item_id=item_id,
+        tenant_id=tenant_id,
+        engine=rag_engine,
+    )
+
+    logger.info(
+        "permission_change_handled",
+        item_id=item_id,
+        tenant_id=tenant_id,
+        new_scope_count=len(new_scopes),
+    )

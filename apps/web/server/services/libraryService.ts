@@ -1280,6 +1280,11 @@ export async function updateLibraryItem(
     db,
   );
 
+  // Recompute allowed_scopes if visibility changed
+  if (input.visibility !== undefined) {
+    await recomputeAndPropagateScopes(itemId, actorTenantId, db);
+  }
+
   return toLibraryItemDto(updated[0]);
 }
 
@@ -1330,6 +1335,124 @@ export async function softDeleteLibraryItem(
   );
 
   return true;
+}
+
+// ── Scope Propagation ──
+// Permission levels that grant read access (used for scope computation)
+const SCOPE_READ_LEVELS = new Set(["read", "write", "delete", "owner"]);
+
+/**
+ * Recompute allowed_scopes for a library item from its permissions,
+ * visibility, and owner. Then propagate to all chunks.
+ *
+ * Steps:
+ * 1. Fetch the item (owner_user_id, visibility, tenant_id)
+ * 2. Fetch all non-expired library_permissions for the item
+ * 3. Build the allowed_scopes array
+ * 4. UPDATE libraryItems SET allowedScopes = newScopes
+ * 5. UPDATE libraryChunks SET allowedScopes = newScopes
+ * 6. Fire-and-forget call to Python backend for vector store propagation
+ */
+async function recomputeAndPropagateScopes(
+  itemId: number,
+  tenantId: string,
+  dbClient?: DbClient,
+): Promise<void> {
+  const db = await resolveDb(dbClient);
+
+  // 1. Fetch the item
+  const items = await db
+    .select({
+      id: libraryItems.id,
+      ownerUserId: libraryItems.ownerUserId,
+      visibility: libraryItems.visibility,
+      tenantId: libraryItems.tenantId,
+    })
+    .from(libraryItems)
+    .where(and(eq(libraryItems.id, itemId), isNull(libraryItems.deletedAt)))
+    .limit(1);
+
+  const item = items[0];
+  if (!item) return;
+
+  // 2. Fetch all non-expired permissions
+  const perms = await db
+    .select({
+      subjectType: libraryPermissions.subjectType,
+      subjectId: libraryPermissions.subjectId,
+      permissionLevel: libraryPermissions.permissionLevel,
+    })
+    .from(libraryPermissions)
+    .where(
+      and(
+        eq(libraryPermissions.libraryItemId, itemId),
+        or(
+          isNull(libraryPermissions.expiresAt),
+          gt(libraryPermissions.expiresAt, new Date()),
+        ),
+      ),
+    );
+
+  // 3. Build allowed_scopes
+  const scopes = new Set<string>();
+  scopes.add(`u:${item.ownerUserId}`);
+
+  for (const perm of perms) {
+    if (!SCOPE_READ_LEVELS.has(perm.permissionLevel)) continue;
+
+    if (perm.subjectType === "user") {
+      scopes.add(`u:${perm.subjectId}`);
+    } else if (perm.subjectType === "group") {
+      scopes.add(`g:${perm.subjectId}`);
+    } else if (perm.subjectType === "tenant_role") {
+      scopes.add(`t:${perm.subjectId}`);
+    }
+  }
+
+  if (item.visibility === "public") {
+    scopes.add("p:global");
+  } else if (item.visibility === "team") {
+    scopes.add(`t:${item.tenantId}`);
+  }
+
+  const scopeList = Array.from(scopes).sort();
+
+  // 4. Update item's allowedScopes
+  await db
+    .update(libraryItems)
+    .set({ allowedScopes: scopeList })
+    .where(eq(libraryItems.id, itemId));
+
+  // 5. Update all chunks' allowedScopes (tenant-filtered for defense-in-depth)
+  await db
+    .update(libraryChunks)
+    .set({ allowedScopes: scopeList })
+    .where(
+      and(
+        eq(libraryChunks.libraryItemId, itemId),
+        eq(libraryChunks.tenantId, tenantId),
+      ),
+    );
+
+  // 6. Fire-and-forget: call Python backend for vector store propagation
+  const pyBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+  const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN;
+  if (proxyToken) {
+    fetch(`${pyBackendUrl}/api/internal/library/propagate-scopes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-proxy-token": proxyToken,
+      },
+      body: JSON.stringify({
+        item_id: itemId,
+        tenant_id: tenantId,
+        new_allowed_scopes: scopeList,
+      }),
+    }).catch((err: unknown) => {
+      console.warn("[recomputeAndPropagateScopes] Python propagation failed:", err);
+    });
+  }
 }
 
 export async function shareLibraryItem(
@@ -1414,6 +1537,9 @@ export async function shareLibraryItem(
         updatedAt: new Date(),
       },
     });
+
+  // Recompute allowed_scopes after sharing
+  await recomputeAndPropagateScopes(input.itemId, actorTenantId, db);
 
   return true;
 }
@@ -2356,6 +2482,9 @@ export async function removeLibraryShare(
     });
   }
 
+  // Recompute allowed_scopes after unsharing (immediate revocation)
+  await recomputeAndPropagateScopes(input.itemId, actorTenantId, db);
+
   return true;
 }
 
@@ -2398,6 +2527,9 @@ export async function updateLibrarySharePermission(
       message: "Share not found",
     });
   }
+
+  // Recompute allowed_scopes after permission level change
+  await recomputeAndPropagateScopes(input.itemId, actorTenantId, db);
 
   return true;
 }
