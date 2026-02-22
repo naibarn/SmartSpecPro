@@ -46,6 +46,7 @@ describe("presentation workflow regression", () => {
   });
 
   it("supports read-only open -> convert -> edit -> export -> reopen", async () => {
+    vi.useFakeTimers();
     const deps = {
       useInMemoryStateFallback: true,
       getLibraryItemById: vi.fn().mockResolvedValue(buildSourceItem()),
@@ -98,37 +99,110 @@ describe("presentation workflow regression", () => {
       },
     ];
 
-    const exportResult = await triggerPresentationExport(
-      { deckId, format: "mp4", idempotencyKey: "workflow-export-1" },
+    try {
+      const exportTs = Date.parse("2026-02-22T11:00:50.000Z");
+      vi.setSystemTime(exportTs);
+
+      const exportResult = await triggerPresentationExport(
+        { deckId, format: "mp4", idempotencyKey: "workflow-export-1" },
+        actor,
+        {
+          getDeckDetail: vi.fn().mockResolvedValue({
+            deck: {
+              id: deckId,
+              tenantId: actor.tenantId,
+              libraryItemId: conversion.deckLibraryItemId,
+              title: "QuarterlyReview",
+              description: null,
+              version: 2,
+              slideCount: 1,
+              totalAssetBytes: 0,
+              createdAt: new Date("2026-02-22T11:00:00.000Z"),
+              updatedAt: new Date("2026-02-22T11:00:00.000Z"),
+            },
+            slides: editedSlides,
+            assets: [],
+          }),
+          enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-workflow-1" }),
+          now: () => exportTs,
+        },
+      );
+
+      const exportStatus = getPresentationExportStatus(exportResult.exportId, actor);
+      const reopenedSlideshow = buildSlideshowPayload(editedSlides as any, { deckId });
+
+      expect(exportStatus.status).toBe("queued");
+      expect(exportResult.renderSpec.slides[0].title).toBe("Edited title");
+      expect(reopenedSlideshow.slides[0].title).toBe("Edited title");
+      expect(reopenedSlideshow.slides[0].transition).toBe("fade");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("emits rollout observability context for queued/degraded export paths", async () => {
+    const recordLog = vi.fn();
+    const deckId = 902;
+
+    await triggerPresentationExport(
+      { deckId, format: "png", idempotencyKey: "workflow-export-obs-1" },
       actor,
       {
         getDeckDetail: vi.fn().mockResolvedValue({
           deck: {
             id: deckId,
             tenantId: actor.tenantId,
-            libraryItemId: conversion.deckLibraryItemId,
-            title: "QuarterlyReview",
+            libraryItemId: 1001,
+            title: "Canary deck",
             description: null,
-            version: 2,
+            version: 1,
             slideCount: 1,
             totalAssetBytes: 0,
-            createdAt: new Date("2026-02-22T11:00:00.000Z"),
-            updatedAt: new Date("2026-02-22T11:00:00.000Z"),
+            createdAt: new Date("2026-02-22T12:00:00.000Z"),
+            updatedAt: new Date("2026-02-22T12:00:00.000Z"),
           },
-          slides: editedSlides,
+          slides: [
+            {
+              id: 11,
+              deckId,
+              orderIndex: 0,
+              version: 1,
+              title: "Warning slide",
+              slideContent: {
+                elements: [{ id: "txt-1", type: "text", text: "Canary" }],
+                transition: "wipe",
+                durationMs: 2800,
+              },
+              notes: null,
+              createdAt: new Date("2026-02-22T12:00:00.000Z"),
+              updatedAt: new Date("2026-02-22T12:00:00.000Z"),
+            },
+          ],
           assets: [],
         }),
-        enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-workflow-1" }),
-        now: () => Date.parse("2026-02-22T11:00:50.000Z"),
+        enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-workflow-obs-1" }),
+        now: () => Date.parse("2026-02-22T12:00:05.000Z"),
+        recordLog,
       },
     );
 
-    const exportStatus = getPresentationExportStatus(exportResult.exportId, actor);
-    const reopenedSlideshow = buildSlideshowPayload(editedSlides as any, { deckId });
-
-    expect(exportStatus.status).toBe("queued");
-    expect(exportResult.renderSpec.slides[0].title).toBe("Edited title");
-    expect(reopenedSlideshow.slides[0].title).toBe("Edited title");
-    expect(reopenedSlideshow.slides[0].transition).toBe("fade");
+    expect(recordLog).toHaveBeenCalledWith(
+      "presentation_export_queued",
+      expect.objectContaining({
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        deckId,
+        format: "png",
+      }),
+    );
+    expect(recordLog).toHaveBeenCalledWith(
+      "presentation_export_degradation",
+      expect.objectContaining({
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        deckId,
+        warningCount: 1,
+      }),
+    );
   });
 });

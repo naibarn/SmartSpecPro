@@ -18,7 +18,9 @@ export interface MobileAccidentalTransformPayload {
 
 export interface AutosaveResultPayload {
   result: "saved" | "conflict" | "error" | "cooldown" | "stale_blocked";
+  deckId: number;
   slideId: number;
+  mode: "manual" | "autosave";
 }
 
 type EventEmitter = (event: PresentationAnalyticsEvent, payload: Record<string, unknown>) => void;

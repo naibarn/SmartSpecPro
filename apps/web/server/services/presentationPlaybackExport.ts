@@ -435,6 +435,19 @@ export async function triggerPresentationExport(
       slides: detail.slides,
       format: input.format,
     });
+    if (renderSpec.warnings.length > 0) {
+      resolved.recordMetric("presentation.export.degradation_warning.total", {
+        format: input.format,
+      });
+      resolved.recordLog("presentation_export_degradation", {
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        deckId: input.deckId,
+        format: input.format,
+        warningCount: renderSpec.warnings.length,
+        warningCodes: renderSpec.warnings.map((warning) => warning.code),
+      });
+    }
     ensureRenderSchemaAccepted(renderSpec, resolved.acceptedRenderSchemaVersions);
 
     const queued = await resolved.enqueueExportJob(renderSpec, input.format);

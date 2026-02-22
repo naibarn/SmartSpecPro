@@ -474,7 +474,9 @@ export default function PresentationEditor() {
       if (saveMode === "autosave") {
         trackAutosaveResult({
           result: blockedReason,
+          deckId: deck.id,
           slideId: selectedSlide.id,
+          mode: "autosave",
         });
       }
       return "skipped";
@@ -505,7 +507,9 @@ export default function PresentationEditor() {
       if (saveMode === "autosave") {
         trackAutosaveResult({
           result: "saved",
+          deckId: deck.id,
           slideId: selectedSlide.id,
+          mode: "autosave",
         });
       }
 
@@ -518,7 +522,9 @@ export default function PresentationEditor() {
         if (saveMode === "autosave") {
           trackAutosaveResult({
             result: nextPolicy.phase === "stale_blocked" ? "stale_blocked" : "conflict",
+            deckId: deck.id,
             slideId: selectedSlide.id,
+            mode: "autosave",
           });
         }
         return "skipped";
@@ -528,7 +534,9 @@ export default function PresentationEditor() {
       if (saveMode === "autosave") {
         trackAutosaveResult({
           result: "error",
+          deckId: deck.id,
           slideId: selectedSlide.id,
+          mode: "autosave",
         });
       }
       return "skipped";

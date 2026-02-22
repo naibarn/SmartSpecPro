@@ -123,6 +123,53 @@ describe("presentationPlaybackExport", () => {
     });
   });
 
+  it("records degradation observability events with deck/tenant context", async () => {
+    const deckDetail = buildDeckDetail({
+      slides: [
+        {
+          id: 1,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Warned slide",
+          slideContent: { elements: [], transition: "wipe" },
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+    });
+
+    const recordMetric = vi.fn();
+    const recordLog = vi.fn();
+
+    await triggerPresentationExport(
+      { deckId: 101, format: "png", idempotencyKey: "obs-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-obs-1" }),
+        now: () => Date.parse("2026-02-22T10:00:03.000Z"),
+        recordMetric,
+        recordLog,
+      },
+    );
+
+    expect(recordMetric).toHaveBeenCalledWith(
+      "presentation.export.degradation_warning.total",
+      { format: "png" },
+    );
+    expect(recordLog).toHaveBeenCalledWith(
+      "presentation_export_degradation",
+      expect.objectContaining({
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        deckId: 101,
+        format: "png",
+      }),
+    );
+  });
+
   it("keeps fixture-backed degradation precedence and warning codes deterministic", () => {
     const input = loadDegradationFixture("unsupported-constructs.input.json");
     const expected = loadDegradationFixture("unsupported-constructs.expected.json");

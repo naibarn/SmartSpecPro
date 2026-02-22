@@ -7,6 +7,7 @@ import {
   resetPresentationConversionStateForTests,
 } from "./presentationCompatibilityService";
 import {
+  evaluatePresentationDashboardReadiness,
   evaluatePresentationAlertThresholds,
   getPresentationMetricValue,
   getPresentationObservabilityLogs,
@@ -172,6 +173,7 @@ describe("presentationObservability", () => {
       conversionFailureRate: 0.05,
       queueLatencyP95Ms: 150_000,
       exportFailureRate: 0.07,
+      degradationWarningRate: 0.31,
       throttleRejectionRate: 0.25,
       duplicateSuppressionRate: 0.0,
     });
@@ -179,17 +181,42 @@ describe("presentationObservability", () => {
     expect(failing.triggered).toBe(true);
     expect(failing.alerts).toContain("conflict_rate_exceeded");
     expect(failing.alerts).toContain("queue_latency_p95_exceeded");
+    expect(failing.alerts).toContain("degradation_warning_rate_exceeded");
 
     const passing = evaluatePresentationAlertThresholds({
       conflictRate: 0.01,
       conversionFailureRate: 0.01,
       queueLatencyP95Ms: 30_000,
       exportFailureRate: 0.01,
+      degradationWarningRate: 0.1,
       throttleRejectionRate: 0.01,
       duplicateSuppressionRate: 0.05,
     });
 
     expect(passing.triggered).toBe(false);
     expect(passing.alerts).toEqual([]);
+  });
+
+  it("fails dashboard readiness when required rollout signals are missing", () => {
+    const readiness = evaluatePresentationDashboardReadiness({
+      requiredSignals: [
+        "presentation.conflict.total",
+        "presentation.export.queued",
+        "presentation.export.degradation_warning.total",
+      ],
+      observedSignals: [
+        "presentation.export.queued",
+      ],
+      onCallRoutingVerified: false,
+      rollbackCommandVerified: true,
+    });
+
+    expect(readiness.ready).toBe(false);
+    expect(readiness.missingSignals).toEqual([
+      "presentation.conflict.total",
+      "presentation.export.degradation_warning.total",
+    ]);
+    expect(readiness.blockers).toContain("required_signals_missing");
+    expect(readiness.blockers).toContain("on_call_routing_unverified");
   });
 });

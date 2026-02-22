@@ -145,6 +145,26 @@ describe("presentationRouter", () => {
     expect(result.errorCode).toBe(PRESENTATION_ERROR_CODE.FEATURE_DISABLED);
   });
 
+  it("toggles editor guard decisions when feature flag is flipped", async () => {
+    process.env.PRESENTATION_EDITOR_ENABLED = "false";
+
+    const guardFn = presentationRouter.guardEditorOpen as Function;
+    const blocked = await guardFn({
+      ctx: { user: { id: 1 } },
+      input: { itemId: 42, itemType: "presentation" },
+    });
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.errorCode).toBe(PRESENTATION_ERROR_CODE.FEATURE_DISABLED);
+
+    process.env.PRESENTATION_EDITOR_ENABLED = "true";
+    const allowed = await guardFn({
+      ctx: { user: { id: 1 } },
+      input: { itemId: 42, itemType: "presentation" },
+    });
+    expect(allowed.allowed).toBe(true);
+    expect(allowed.editorRoute).toBe("/presentation-editor/42");
+  });
+
   it("allows presentation items and returns deterministic editor route", async () => {
     const fn = presentationRouter.guardEditorOpen as Function;
     const result = await fn({

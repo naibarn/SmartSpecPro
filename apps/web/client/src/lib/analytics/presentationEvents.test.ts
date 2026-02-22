@@ -22,7 +22,9 @@ describe("presentationEvents", () => {
     });
     trackAutosaveResult({
       result: "saved",
+      deckId: 7,
       slideId: 71,
+      mode: "autosave",
     });
 
     expect(emitter).toHaveBeenCalledWith(
@@ -35,7 +37,7 @@ describe("presentationEvents", () => {
     );
     expect(emitter).toHaveBeenCalledWith(
       "presentation_autosave_result",
-      { result: "saved", slideId: 71 },
+      { result: "saved", deckId: 7, slideId: 71, mode: "autosave" },
     );
 
     setPresentationEventEmitterForTests(null);

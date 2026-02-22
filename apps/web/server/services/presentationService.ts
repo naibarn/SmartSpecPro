@@ -36,6 +36,7 @@ import {
   type PresentationVersionConflict,
 } from "@shared/presentation/contracts";
 import {
+  incrementPresentationMetric,
   recordPresentationFailureMetric,
   recordPresentationLog,
 } from "./presentationObservability";
@@ -710,6 +711,15 @@ export async function updateSlideInDeck(
       updatedAt: new Date(),
     })
     .where(eq(presentationDecks.id, input.deckId));
+
+  incrementPresentationMetric("presentation.save.success");
+  recordPresentationLog("presentation_slide_saved", {
+    tenantId: actor.tenantId,
+    userId: actor.userId,
+    deckId: input.deckId,
+    slideId: input.slideId,
+    saveMode: input.saveMode ?? "manual",
+  });
 
   return rows[0];
 }

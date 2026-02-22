@@ -20,6 +20,7 @@ export interface PresentationAlertSnapshot {
   conversionFailureRate: number;
   queueLatencyP95Ms: number;
   exportFailureRate: number;
+  degradationWarningRate: number;
   throttleRejectionRate: number;
   duplicateSuppressionRate: number;
 }
@@ -29,8 +30,22 @@ export interface PresentationAlertThresholds {
   maxConversionFailureRate: number;
   maxQueueLatencyP95Ms: number;
   maxExportFailureRate: number;
+  maxDegradationWarningRate: number;
   maxThrottleRejectionRate: number;
   minDuplicateSuppressionRate: number;
+}
+
+export interface PresentationDashboardReadinessInput {
+  requiredSignals: string[];
+  observedSignals: string[];
+  onCallRoutingVerified: boolean;
+  rollbackCommandVerified: boolean;
+}
+
+export interface PresentationDashboardReadinessResult {
+  ready: boolean;
+  missingSignals: string[];
+  blockers: string[];
 }
 
 const DEFAULT_THRESHOLDS: PresentationAlertThresholds = {
@@ -38,6 +53,7 @@ const DEFAULT_THRESHOLDS: PresentationAlertThresholds = {
   maxConversionFailureRate: 0.03,
   maxQueueLatencyP95Ms: 120_000,
   maxExportFailureRate: 0.04,
+  maxDegradationWarningRate: 0.25,
   maxThrottleRejectionRate: 0.2,
   minDuplicateSuppressionRate: 0.01,
 };
@@ -131,6 +147,9 @@ export function evaluatePresentationAlertThresholds(
   if (snapshot.exportFailureRate > thresholds.maxExportFailureRate) {
     alerts.push("export_failure_rate_exceeded");
   }
+  if (snapshot.degradationWarningRate > thresholds.maxDegradationWarningRate) {
+    alerts.push("degradation_warning_rate_exceeded");
+  }
   if (snapshot.throttleRejectionRate > thresholds.maxThrottleRejectionRate) {
     alerts.push("throttle_rejection_rate_exceeded");
   }
@@ -142,6 +161,40 @@ export function evaluatePresentationAlertThresholds(
     triggered: alerts.length > 0,
     alerts,
     thresholds,
+  };
+}
+
+export function evaluatePresentationDashboardReadiness(
+  input: PresentationDashboardReadinessInput,
+): PresentationDashboardReadinessResult {
+  const required = new Set(
+    input.requiredSignals
+      .map((signal) => signal.trim())
+      .filter((signal) => signal.length > 0),
+  );
+  const observed = new Set(
+    input.observedSignals
+      .map((signal) => signal.trim())
+      .filter((signal) => signal.length > 0),
+  );
+
+  const missingSignals = [...required].filter((signal) => !observed.has(signal)).sort();
+  const blockers: string[] = [];
+
+  if (missingSignals.length > 0) {
+    blockers.push("required_signals_missing");
+  }
+  if (!input.onCallRoutingVerified) {
+    blockers.push("on_call_routing_unverified");
+  }
+  if (!input.rollbackCommandVerified) {
+    blockers.push("rollback_command_unverified");
+  }
+
+  return {
+    ready: blockers.length === 0,
+    missingSignals,
+    blockers,
   };
 }
 
