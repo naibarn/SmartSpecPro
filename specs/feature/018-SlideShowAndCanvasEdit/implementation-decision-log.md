@@ -151,3 +151,19 @@
 - decision_taken: `pure_helpers_plus_tests`
 - mode_used: `auto`
 - rationale: Keeps cleanup invariants testable and reusable by future scheduled consistency jobs without coupling section scope to infra wiring.
+
+## 2026-02-22 - Section 10 - Release Gate Implementation Form
+- options_considered:
+  - `pipeline_script_only`: implement readiness checks only as external release scripts
+  - `typed_policy_module`: codify readiness checks in typed service module with unit tests
+- decision_taken: `typed_policy_module`
+- mode_used: `auto`
+- rationale: Provides deterministic, testable contracts that can be reused by both CI and runbook tooling.
+
+## 2026-02-22 - Section 10 - Ownership Validation Scope
+- options_considered:
+  - `minimal_owner_check`: require only one global owner field
+  - `incident_class_owners`: require explicit owners for conflict, conversion, and export incident classes
+- decision_taken: `incident_class_owners`
+- mode_used: `auto`
+- rationale: Aligns with rollout objective to keep incident triage ownership explicit for the highest-risk operational classes.

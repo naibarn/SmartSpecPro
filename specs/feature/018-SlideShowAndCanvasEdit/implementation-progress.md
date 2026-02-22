@@ -119,7 +119,7 @@
 
 ## Section 09 - Validation and Regression Suite
 - section: `section-09-validation-and-regression-suite`
-- commit: `pending`
+- commit: `9693796`
 - test_command: `cd apps/web && npm test -- server/services/presentationPersistence.test.ts server/services/presentationService.test.ts server/services/presentationPlaybackExport.test.ts server/services/presentationWorkflowRegression.test.ts`
 - pass_fail_summary:
   - `pass`: `server/services/presentationPersistence.test.ts`
@@ -128,6 +128,18 @@
   - `pass`: `server/services/presentationWorkflowRegression.test.ts`
 - notable_deviations:
   - Coverage favors deterministic service-level workflow regression over full browser E2E in this section to minimize flake and keep fast iteration.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining: none
+
+## Section 10 - Release Readiness and Handoff
+- section: `section-10-release-readiness-and-handoff`
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- server/services/presentationReleaseReadiness.test.ts`
+- pass_fail_summary:
+  - `pass`: `server/services/presentationReleaseReadiness.test.ts`
+- notable_deviations:
+  - Readiness checks are implemented as typed policy evaluators; deployment-runbook wiring remains explicit follow-up.
 - blocked_tasks_resolved_remaining:
   - resolved: none
   - remaining: none
