@@ -36,7 +36,7 @@ from app.orchestrator.rag.guardrails import (
     RetrievalQuality,
     QualityAssessment,
 )
-from app.orchestrator.rag.query_router import QueryRouter, QueryIntent
+from app.orchestrator.rag.query_router import QueryRouter, QueryIntent, QueryRouteDecision
 
 __all__ = [
     "HybridRAGEngine",
@@ -60,4 +60,5 @@ __all__ = [
     "QualityAssessment",
     "QueryRouter",
     "QueryIntent",
+    "QueryRouteDecision",
 ]

@@ -497,6 +497,36 @@ Custom thresholds can also be stored in tenant settings and passed to the constr
 
 ---
 
+## Implementation Status
+
+**Status**: Complete
+**Tests**: 56 new tests (24 guardrails, 15 citations, 17 query router), 208 total RAG tests passing
+**Commit**: TBD
+
+### Files Created
+| File | Tests |
+|------|-------|
+| `python-backend/app/orchestrator/rag/guardrails.py` | 24 tests in `test_guardrails.py` |
+| `python-backend/app/orchestrator/rag/query_router.py` | 17 tests in `test_query_router.py` |
+| `python-backend/tests/orchestrator/rag/test_guardrails.py` | - |
+| `python-backend/tests/orchestrator/rag/test_citations.py` | 15 tests |
+| `python-backend/tests/orchestrator/rag/test_query_router.py` | - |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `python-backend/app/orchestrator/rag/hybrid_rag.py` | Added citation fields (chunk_id, parent_doc_id, parent_doc_title, section_heading), citation_ref(), get_context_with_citations(), citations field on RAGResult |
+| `python-backend/app/orchestrator/rag/__init__.py` | Added exports: RetrievalGuardrails, RetrievalQuality, QualityAssessment, QueryRouter, QueryIntent, QueryRouteDecision |
+
+### Deviations from Plan
+1. **failure_mode validation**: Added ValueError on invalid failure_mode values (code review H-01)
+2. **TYPE_CHECKING import**: Used TYPE_CHECKING guard for RAGResult forward reference instead of Any (code review H-02)
+3. **_classify_with_llm returns None**: LLM classification stub deferred to Section 07 as planned (code review H-03)
+4. **Word-count guard**: Added word_count < 8 check to prevent misclassifying mixed queries like "Hi, what is the refund policy?" as conversational (code review H-04)
+5. **Removed unused avg_score parameter**: _build_explanation simplified (code review M-01)
+6. **Added QueryRouteDecision export**: Added to __init__.py for consumer convenience (code review M-04)
+7. **Strengthened max_tokens test**: Tighter assertion bound (2500 chars vs 10200) (code review M-05)
+
 ## Actual Implementation Summary
 
 ### Files Created

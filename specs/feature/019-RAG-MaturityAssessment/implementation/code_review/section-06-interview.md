@@ -1,36 +1,43 @@
-# Section 06: Guardrails and Citations — Code Review Interview
+# Section 06: guardrails-and-citations — Code Review Interview
 
 ## Triage
 
 | ID | Severity | Action | Rationale |
 |----|----------|--------|-----------|
-| G01 | HIGH | **Auto-fix** | Remove raw scores from explanations shown to users. Use qualitative language instead. |
-| G02 | MEDIUM | **Auto-fix** | Remove dead if/else branch for MEDIUM, keep single implementation |
-| G03 | MEDIUM | **Let go** | chunk_id is a convenience field; consumer can look up all chunks by parent_doc_id+section if needed. Dedup is working as designed. |
-| G04 | MEDIUM | **Auto-fix** | Use doc_id as fallback dedup key when parent_doc_id is None |
-| G05 | MEDIUM | **Auto-fix** | Restrict conversational patterns to short queries (< 8 words) to avoid greeting+question misclassification |
-| G06 | MEDIUM | **Let go** | Creative regex patterns match the plan spec. Adjective insertion is an optimization for later. |
-| G07 | LOW | **Auto-fix** | Validate failure_mode in constructor, raise ValueError for invalid values |
-| G08 | LOW | **Let go** | Edge case unlikely in practice; confidence_score clamp handles >1.0 |
-| G09 | LOW | **Let go** | re.IGNORECASE handles this; adding tests is diminishing returns |
-| G10 | LOW | **Let go** | Dedup is tested indirectly by other tests |
-| G11 | LOW | **Let go** | Token estimation is approximate throughout; consistent with get_context() |
-| G12 | LOW | **Let go** | Stub is intentional per plan; test validates contract for Section 07 |
-| G13 | INFO | **Let go** | Section 07 executor will handle response filtering; not this module's concern |
+| H-01 | HIGH | **Auto-fix** | Add ValueError validation for failure_mode to prevent silent security degradation |
+| H-02 | HIGH | **Auto-fix** | Use TYPE_CHECKING import for proper type safety on assess() parameter |
+| H-03 | HIGH | **Auto-fix** | Revert _classify_with_llm to return None — LLM integration deferred to section-07 |
+| H-04 | HIGH | **Auto-fix** | Add word-count guard (<8 words) to prevent false positives on mixed queries |
+| M-01 | MEDIUM | **Auto-fix** | Remove unused avg_score parameter from _build_explanation |
+| M-02 | MEDIUM | **Auto-fix** | Remove unused List import (resolved by H-02 TYPE_CHECKING fix) |
+| M-03 | MEDIUM | **Let go** | Minor wording difference between strict/permissive MEDIUM prompts — intentional nuance |
+| M-04 | MEDIUM | **Auto-fix** | Add QueryRouteDecision to __init__.py exports |
+| M-05 | MEDIUM | **Auto-fix** | Strengthen max_tokens test assertion (2500 char bound vs 10200) |
+| L-01 | LOW | **Let go** | RAGResult.to_dict already tested in test_hybrid_rag.py |
+| L-02 | LOW | **Let go** | Hardcoded confidence values acceptable for this stage |
+| L-03 | LOW | **Let go** | Resolved by M-02/H-02 fix |
 
 ## Auto-fixes Applied
 
-### FIX-1: G01 — Remove raw scores from user-facing explanations
-Replace numeric scores with qualitative descriptions.
+### FIX-1: H-01 — Add failure_mode validation
+Added ValueError in __init__ if failure_mode not in ("strict", "permissive").
 
-### FIX-2: G02 — Remove dead MEDIUM branch duplication
-Simplify build_system_prompt_suffix MEDIUM case.
+### FIX-2: H-02/M-02 — TYPE_CHECKING import
+Replaced `from typing import Any, List` with `TYPE_CHECKING` guard importing `RAGResult`.
+assess() now properly typed as `rag_result: RAGResult`.
 
-### FIX-3: G04 — Fix (None, None) dedup key collapse
-Use doc_id as fallback when parent_doc_id is None.
+### FIX-3: H-03 — Revert LLM stub
+_classify_with_llm now returns None. Full LLM classification deferred to section-07.
 
-### FIX-4: G05 — Add word count guard for conversational patterns
-Only classify as CONVERSATIONAL if query has fewer than 8 words.
+### FIX-4: H-04 — Word-count guard
+Added `word_count < 8` check before conversational pattern matching.
+Prevents "Hi, what does the policy say about X" from skipping RAG.
 
-### FIX-5: G07 — Validate failure_mode in constructor
-Raise ValueError for invalid failure_mode values.
+### FIX-5: M-01 — Remove unused parameter
+Removed avg_score from _build_explanation signature and caller.
+
+### FIX-6: M-04 — Export QueryRouteDecision
+Added QueryRouteDecision to __init__.py imports and __all__.
+
+### FIX-7: M-05 — Stronger test assertion
+Changed max_tokens test from `< len(long_content) + 200` to `< 2500`.

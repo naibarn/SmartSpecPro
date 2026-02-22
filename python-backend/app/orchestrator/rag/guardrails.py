@@ -1,18 +1,9 @@
 """
-Retrieval quality guardrails for multi-tenant RAG.
+SmartSpec Pro - Retrieval Guardrails
+Phase 2: Quality & Intelligence
 
-Assesses retrieval quality and determines the appropriate response strategy
-based on document scores and tenant-configurable failure modes.
-
-Quality levels:
-  HIGH    - top_score >= 0.7, confident answer
-  MEDIUM  - top_score 0.4-0.7, partial confidence
-  LOW     - top_score 0.15-0.4, very limited info
-  FAILED  - no docs or all below 0.15
-
-Failure modes:
-  strict     - refuse answer on LOW/FAILED (enterprise default)
-  permissive - warn user on LOW, refuse only on FAILED (general default)
+Quality assessment for RAG retrieval results with tenant-configurable
+failure modes and metadata leakage prevention.
 """
 
 from __future__ import annotations
@@ -30,7 +21,7 @@ logger = structlog.get_logger()
 
 
 class RetrievalQuality(str, Enum):
-    """Quality level of retrieved documents."""
+    """Quality level of retrieval results."""
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
@@ -39,7 +30,7 @@ class RetrievalQuality(str, Enum):
 
 @dataclass
 class QualityAssessment:
-    """Result of quality assessment on a RAGResult."""
+    """Result of a retrieval quality assessment."""
     quality: RetrievalQuality
     confidence_score: float
     top_score: float
@@ -50,13 +41,14 @@ class QualityAssessment:
 
 
 class RetrievalGuardrails:
-    """Assess retrieval quality and determine response strategy.
+    """
+    Retrieval quality assessment with tenant-configurable failure modes.
 
-    Args:
-        failure_mode: "strict" (enterprise) or "permissive" (general).
-        high_threshold: Minimum score for HIGH quality.
-        medium_threshold: Minimum score for MEDIUM quality.
-        low_threshold: Minimum score for LOW quality (below is FAILED).
+    Failure modes:
+    - "strict": refuse answer on LOW quality (enterprise default)
+    - "permissive": warn user on LOW quality (general default)
+
+    Both modes refuse on FAILED quality.
     """
 
     def __init__(
@@ -65,7 +57,7 @@ class RetrievalGuardrails:
         high_threshold: float = 0.7,
         medium_threshold: float = 0.4,
         low_threshold: float = 0.15,
-    ) -> None:
+    ):
         if failure_mode not in ("strict", "permissive"):
             raise ValueError(
                 f"failure_mode must be 'strict' or 'permissive', got '{failure_mode}'"
@@ -75,15 +67,19 @@ class RetrievalGuardrails:
         self.medium_threshold = medium_threshold
         self.low_threshold = low_threshold
 
-    def assess(self, rag_result: "RAGResult") -> QualityAssessment:
-        """Assess retrieval quality from a RAGResult.
-
-        Returns a QualityAssessment with quality level, confidence, and
-        recommended action based on the configured failure mode.
+    def assess(self, rag_result: RAGResult) -> QualityAssessment:
         """
-        docs = rag_result.documents
+        Assess the quality of a RAG retrieval result.
 
-        if not docs:
+        Args:
+            rag_result: RAGResult with documents to assess.
+
+        Returns:
+            QualityAssessment with quality level and recommended action.
+        """
+        documents = rag_result.documents
+
+        if not documents:
             return QualityAssessment(
                 quality=RetrievalQuality.FAILED,
                 confidence_score=0.0,
@@ -94,9 +90,10 @@ class RetrievalGuardrails:
                 explanation="No relevant information was found in the knowledge base.",
             )
 
-        scores = [d.final_score for d in docs]
+        scores = [doc.final_score for doc in documents]
         top_score = max(scores)
         avg_score = sum(scores) / len(scores)
+        doc_count = len(documents)
 
         # Determine quality level
         if top_score >= self.high_threshold:
@@ -109,46 +106,48 @@ class RetrievalGuardrails:
             quality = RetrievalQuality.FAILED
 
         # Determine recommended action
-        action = self._determine_action(quality)
+        if quality == RetrievalQuality.HIGH:
+            action = "proceed"
+        elif quality == RetrievalQuality.MEDIUM:
+            action = "proceed"
+        elif quality == RetrievalQuality.LOW:
+            if self.failure_mode == "strict":
+                action = "refuse_answer"
+            else:
+                action = "warn_user"
+        else:  # FAILED
+            action = "refuse_answer"
 
-        # Build explanation — prevent metadata leakage for FAILED / strict LOW
-        explanation = self._build_explanation(quality, len(docs), top_score)
+        # Confidence score
+        confidence_score = min(top_score, 1.0)
 
-        confidence = min(top_score, 1.0)
+        # Generate explanation — prevent metadata leakage for FAILED/LOW strict
+        explanation = self._build_explanation(quality, doc_count, top_score)
 
         logger.debug(
-            "guardrails_assessed",
+            "guardrails_assessment",
             quality=quality.value,
             top_score=top_score,
             avg_score=avg_score,
-            doc_count=len(docs),
+            doc_count=doc_count,
             action=action,
         )
 
         return QualityAssessment(
             quality=quality,
-            confidence_score=confidence,
+            confidence_score=confidence_score,
             top_score=top_score,
             avg_score=avg_score,
-            doc_count=len(docs),
+            doc_count=doc_count,
             recommended_action=action,
             explanation=explanation,
         )
 
-    def _determine_action(self, quality: RetrievalQuality) -> str:
-        if quality == RetrievalQuality.HIGH:
-            return "proceed"
-        if quality == RetrievalQuality.MEDIUM:
-            return "proceed"
-        if quality == RetrievalQuality.LOW:
-            if self.failure_mode == "permissive":
-                return "warn_user"
-            return "refuse_answer"
-        # FAILED
-        return "refuse_answer"
-
     def _build_explanation(
-        self, quality: RetrievalQuality, doc_count: int, top_score: float,
+        self,
+        quality: RetrievalQuality,
+        doc_count: int,
+        top_score: float,
     ) -> str:
         """Build a human-readable explanation without leaking metadata."""
         if quality == RetrievalQuality.FAILED:
@@ -158,46 +157,66 @@ class RetrievalGuardrails:
             return "Very limited relevant information was found."
 
         if quality == RetrievalQuality.LOW:
-            return f"Found {doc_count} result(s) with low relevance."
+            return (
+                f"Limited relevant information found ({doc_count} results "
+                f"with low confidence)."
+            )
 
         if quality == RetrievalQuality.MEDIUM:
-            return f"Found {doc_count} result(s) with moderate relevance."
+            return (
+                f"Partial match found ({doc_count} results with moderate confidence)."
+            )
 
-        return f"Found {doc_count} highly relevant result(s)."
+        # HIGH
+        return (
+            f"Strong match found ({doc_count} results with high confidence)."
+        )
 
     def build_system_prompt_suffix(self, assessment: QualityAssessment) -> str:
-        """Return a system prompt suffix to guide LLM behavior based on quality."""
-        q = assessment.quality
+        """
+        Build a system prompt suffix to guide LLM behavior based on quality.
 
-        if q == RetrievalQuality.HIGH:
+        Returns:
+            String to append to the system prompt.
+        """
+        quality = assessment.quality
+
+        if quality == RetrievalQuality.HIGH:
             return (
                 "Answer based ONLY on the provided context. "
-                "Cite sources using the [Source N] markers."
+                "Cite sources using [Source N] markers where applicable."
             )
 
-        if q == RetrievalQuality.MEDIUM:
-            return (
-                "Context may be incomplete. Clearly state uncertainty "
-                "where information is missing or unclear."
-            )
-
-        if q == RetrievalQuality.LOW:
+        if quality == RetrievalQuality.MEDIUM:
             if self.failure_mode == "permissive":
                 return (
-                    "Very limited information found. Prefix uncertain parts "
-                    "with 'Based on limited information:' and clearly indicate "
-                    "what is not covered."
+                    "The retrieved context may be incomplete. "
+                    "Answer based on the provided context but clearly state "
+                    "any uncertainty. Do not fabricate information."
                 )
-            # strict + LOW -> refuse
+            return (
+                "The retrieved context may be incomplete. "
+                "Answer based on the provided context and clearly indicate "
+                "uncertain or inferred information."
+            )
+
+        if quality == RetrievalQuality.LOW:
+            if self.failure_mode == "permissive":
+                return (
+                    "Very limited information was found. "
+                    "Prefix uncertain parts with 'Based on limited information:'. "
+                    "Do not present uncertain information as fact."
+                )
+            # strict LOW — same as FAILED
             return (
                 "No relevant information was found in the knowledge base. "
                 "Do NOT answer from training data. Inform the user that "
-                "the requested information is not available."
+                "no relevant information is available."
             )
 
         # FAILED (both modes)
         return (
             "No relevant information was found in the knowledge base. "
             "Do NOT answer from training data. Inform the user that "
-            "the requested information is not available."
+            "no relevant information is available."
         )

@@ -1,13 +1,9 @@
 """
-Query intent router for RAG pipeline.
+SmartSpec Pro - Query Router
+Phase 2: Quality & Intelligence
 
-Classifies queries to decide whether RAG retrieval is needed:
-  KNOWLEDGE      - needs RAG retrieval
-  CONVERSATIONAL - greetings, meta-questions; skip RAG
-  CREATIVE       - writing/generation tasks; skip RAG
-
-Uses fast heuristics first (regex). Falls back to KNOWLEDGE
-as the safe default (extra RAG is cheaper than missing context).
+Intent classification to skip RAG for non-knowledge queries.
+Uses fast heuristics first, falls back to LLM for ambiguous queries.
 """
 
 from __future__ import annotations
@@ -22,7 +18,7 @@ logger = structlog.get_logger()
 
 
 class QueryIntent(str, Enum):
-    """Intent classification for a user query."""
+    """Query intent classification."""
     KNOWLEDGE = "knowledge"
     CONVERSATIONAL = "conversational"
     CREATIVE = "creative"
@@ -37,76 +33,83 @@ class QueryRouteDecision:
     reason: str
 
 
-# Compiled regex patterns for heuristic matching
-_CONVERSATIONAL_PATTERNS = re.compile(
-    r"^(hello|hi|hey|good morning|good afternoon|good evening|"
-    r"thanks|thank you|thx|cheers|"
-    r"who are you|what can you do|how do you work)\b",
-    re.IGNORECASE,
-)
+# Compiled regex patterns for heuristic routing
+_CONVERSATIONAL_PATTERNS = [
+    re.compile(r"^(hello|hi|hey|good morning|good afternoon|good evening)\b", re.IGNORECASE),
+    re.compile(r"^(thanks|thank you|thx|cheers)\b", re.IGNORECASE),
+    re.compile(r"^(who are you|what can you do|how do you work)\b", re.IGNORECASE),
+    re.compile(r"^(bye|goodbye|see you|good night)\b", re.IGNORECASE),
+]
 
-_CREATIVE_PATTERNS = re.compile(
-    r"^(write|compose|create|draft|generate)\s+(me\s+)?(a\s+)?"
-    r"(poem|story|essay|song|letter|email|joke|riddle)",
-    re.IGNORECASE,
-)
-
-_CREATIVE_ALT_PATTERNS = re.compile(
-    r"^(write|tell)\s+(me\s+)?a\s+(joke|riddle)",
-    re.IGNORECASE,
-)
+_CREATIVE_PATTERNS = [
+    re.compile(
+        r"^(write|compose|create|draft|generate)\s+(me\s+)?(a\s+)?(poem|story|essay|song|letter|email)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"^(write|tell)\s+(me\s+)?a\s+(joke|riddle)\b", re.IGNORECASE),
+]
 
 
 class QueryRouter:
-    """Lightweight router that classifies query intent to avoid unnecessary RAG retrieval."""
+    """
+    Lightweight router that classifies query intent to avoid unnecessary RAG retrieval.
+
+    Uses fast heuristics first (regex patterns for greetings, thanks, creative prompts).
+    Falls back to LLM classification for ambiguous queries.
+    Default assumption: KNOWLEDGE (safe fallback — extra RAG is cheaper than missing context).
+    """
+
+    def __init__(self, llm_model: str = "gpt-4.1-nano"):
+        self.llm_model = llm_model
 
     async def route(self, query: str) -> QueryRouteDecision:
-        """Classify the query intent.
+        """Classify the query intent."""
+        query_stripped = query.strip()
 
-        Uses fast heuristics first (regex patterns for greetings, thanks,
-        creative prompts). Falls back to KNOWLEDGE for anything ambiguous.
-        """
-        stripped = query.strip()
+        word_count = len(query_stripped.split())
 
-        # Check conversational patterns — only for short queries to avoid
-        # misclassifying "Hi, what is the refund policy?" as conversational
-        word_count = len(stripped.split())
-        if word_count < 8 and _CONVERSATIONAL_PATTERNS.search(stripped):
-            return QueryRouteDecision(
-                intent=QueryIntent.CONVERSATIONAL,
-                confidence=0.95,
-                skip_rag=True,
-                reason="Matched conversational pattern.",
-            )
+        # Fast heuristic: conversational patterns (only for short queries)
+        if word_count < 8:
+            for pattern in _CONVERSATIONAL_PATTERNS:
+                if pattern.search(query_stripped):
+                    return QueryRouteDecision(
+                        intent=QueryIntent.CONVERSATIONAL,
+                        confidence=0.95,
+                        skip_rag=True,
+                        reason="Matched conversational pattern.",
+                    )
 
-        # Check creative patterns
-        if _CREATIVE_PATTERNS.search(stripped) or _CREATIVE_ALT_PATTERNS.search(stripped):
-            return QueryRouteDecision(
-                intent=QueryIntent.CREATIVE,
-                confidence=0.90,
-                skip_rag=True,
-                reason="Matched creative/generation pattern.",
-            )
+        # Fast heuristic: creative patterns
+        for pattern in _CREATIVE_PATTERNS:
+            if pattern.search(query_stripped):
+                return QueryRouteDecision(
+                    intent=QueryIntent.CREATIVE,
+                    confidence=0.90,
+                    skip_rag=True,
+                    reason="Matched creative generation pattern.",
+                )
 
-        # Default: KNOWLEDGE (safe fallback)
+        # For non-matching queries, try LLM classification
         try:
-            decision = await self._classify_with_llm(stripped)
+            decision = await self._classify_with_llm(query_stripped)
             if decision is not None:
                 return decision
-        except Exception:
-            logger.debug("query_router_llm_fallback_failed", query=stripped[:50])
+        except Exception as e:
+            logger.warning("query_router_llm_fallback_failed", error=str(e))
 
+        # Default: KNOWLEDGE (safe fallback)
         return QueryRouteDecision(
             intent=QueryIntent.KNOWLEDGE,
             confidence=0.5,
             skip_rag=False,
-            reason="No heuristic match; defaulting to knowledge query.",
+            reason="Default to knowledge query (safe fallback).",
         )
 
     async def _classify_with_llm(self, query: str) -> QueryRouteDecision | None:
-        """Attempt LLM-based classification for ambiguous queries.
+        """
+        Classify query intent using a cheap LLM model.
 
-        Returns None if classification is inconclusive or unavailable.
-        Currently returns None (LLM integration deferred to Section 07).
+        Returns None — LLM integration deferred to Section 07 (rag-executor).
+        The caller falls back to KNOWLEDGE (safe default).
         """
         return None
