@@ -11,6 +11,7 @@ const mutationMocks = {
   reorderSlides: vi.fn(),
   updateSlide: vi.fn(),
   createDeck: vi.fn(),
+  triggerExport: vi.fn(),
 };
 
 const queryState = {
@@ -85,6 +86,28 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
     presentation: {
+      getSlideshow: {
+        useQuery: vi.fn(() => ({
+          data: {
+            schemaVersion: "presentation_slideshow_v1",
+            deckId: 7,
+            generatedAt: new Date(),
+            slides: [
+              { slideId: 71, orderIndex: 0, title: "Intro", durationMs: 3000, transition: "cut" },
+              { slideId: 72, orderIndex: 1, title: "Agenda", durationMs: 3000, transition: "fade" },
+            ],
+          },
+          isLoading: false,
+          error: null,
+        })),
+      },
+      getExportStatus: {
+        useQuery: vi.fn(() => ({
+          data: null,
+          isLoading: false,
+          error: null,
+        })),
+      },
       guardEditorOpen: {
         useQuery: vi.fn(() => ({
           data: queryState.guard,
@@ -136,6 +159,12 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         })),
       },
+      triggerExport: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.triggerExport,
+          isPending: false,
+        })),
+      },
     },
   },
 }));
@@ -151,6 +180,12 @@ describe("PresentationEditor", () => {
     mutationMocks.reorderSlides.mockResolvedValue({});
     mutationMocks.updateSlide.mockResolvedValue({});
     mutationMocks.createDeck.mockResolvedValue({});
+    mutationMocks.triggerExport.mockResolvedValue({
+      exportId: "exp-1",
+      status: "queued",
+      deduped: false,
+      message: "Queued",
+    });
     queryState.guard = {
       allowed: true,
       itemId: 42,
@@ -168,6 +203,9 @@ describe("PresentationEditor", () => {
     expect(screen.getByRole("button", { name: /move slide down/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add text element/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /export png/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /export mp4/i })).toBeInTheDocument();
   });
 
   it("wires slide CRUD and reorder controls to typed API bindings", async () => {
@@ -205,5 +243,16 @@ describe("PresentationEditor", () => {
     expect(
       screen.getByRole("button", { name: /open in document management/i }),
     ).toBeInTheDocument();
+  });
+
+  it("surfaces actionable export failure messaging", async () => {
+    mutationMocks.triggerExport.mockRejectedValueOnce(new Error("PRESENTATION_EXPORT_THROTTLED: retry later"));
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /export mp4/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/retry later/i)).toBeInTheDocument();
+    });
   });
 });

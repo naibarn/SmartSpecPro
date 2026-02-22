@@ -6,6 +6,7 @@ import {
   PRESENTATION_EDITOR_ROUTE_BASE,
   PRESENTATION_ERROR_CODE,
   isPresentationFeatureEnabled,
+  isPresentationExportWriteEnabled,
 } from "@shared/presentation/constants";
 import {
   isPresentationItemType,
@@ -38,6 +39,11 @@ import {
   convertOfficeSourceToPresentation,
   getPresentationCompatibilityOpen,
 } from "../services/presentationCompatibilityService";
+import {
+  buildSlideshowPayload,
+  getPresentationExportStatus,
+  triggerPresentationExport,
+} from "../services/presentationPlaybackExport";
 
 const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
@@ -93,6 +99,17 @@ function ensureFeatureEnabled(): void {
   );
 }
 
+function ensureExportWriteEnabled(): void {
+  if (isPresentationExportWriteEnabled()) {
+    return;
+  }
+
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.FEATURE_DISABLED,
+    `${PRESENTATION_ERROR_CODE.FEATURE_DISABLED}: presentation export writes are currently disabled`,
+  );
+}
+
 function resolvePresentationTenantId(
   ctx: { tenantId: unknown; user: { currentTenantId?: unknown } },
 ): string {
@@ -130,6 +147,10 @@ function mapPresentationServiceError(error: PresentationServiceError): TRPCError
 
   if (error.code === PRESENTATION_ERROR_CODE.CONVERSION_IN_PROGRESS) {
     return new TRPCError({ code: "TOO_MANY_REQUESTS", message: error.message });
+  }
+
+  if (error.code === PRESENTATION_ERROR_CODE.EXPORT_THROTTLED) {
+    return new TRPCError({ code: "TOO_MANY_REQUESTS", message: error.message, cause: error.details });
   }
 
   return new TRPCError({ code: "BAD_REQUEST", message: error.message });
@@ -217,6 +238,56 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         return await convertOfficeSourceToPresentation(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  getSlideshow: protectedProcedure
+    .input(deckIdSchema)
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        const detail = await getPresentationDeckDetail(input.deckId, toPresentationActor(ctx));
+        return buildSlideshowPayload(detail.slides, { deckId: detail.deck.id });
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  triggerExport: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      format: z.enum(["png", "mp4"]),
+      idempotencyKey: z.string().min(1).max(128).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        ensureExportWriteEnabled();
+        return await triggerPresentationExport(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  getExportStatus: protectedProcedure
+    .input(z.object({
+      exportId: z.string().min(1).max(128),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return getPresentationExportStatus(input.exportId, toPresentationActor(ctx));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

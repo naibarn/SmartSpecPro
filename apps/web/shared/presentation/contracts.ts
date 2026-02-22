@@ -5,7 +5,10 @@ import {
   PRESENTATION_COMPATIBILITY_SCHEMA_VERSION,
   PRESENTATION_CONVERSION_SCHEMA_VERSION,
   PRESENTATION_ERROR_CODE_VALUES,
+  PRESENTATION_EXPORT_SCHEMA_VERSION,
   PRESENTATION_ITEM_TYPE,
+  PRESENTATION_RENDER_SCHEMA_VERSION,
+  PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
 } from "./constants";
 
 export const presentationRouteGuardInputSchema = z.object({
@@ -137,6 +140,65 @@ export const presentationConversionResultSchema = z.object({
   guidance: z.string().min(1).max(400).optional(),
 });
 
+export const presentationTransitionSchema = z.enum([
+  "cut",
+  "fade",
+]);
+
+export const presentationSlideshowSlideSchema = z.object({
+  slideId: z.number().int().positive(),
+  orderIndex: z.number().int().nonnegative(),
+  title: z.string().min(1).max(255),
+  durationMs: z.number().int().min(250).max(120_000),
+  transition: presentationTransitionSchema,
+});
+
+export const presentationSlideshowPayloadSchema = z.object({
+  schemaVersion: z.literal(PRESENTATION_SLIDESHOW_SCHEMA_VERSION),
+  deckId: z.number().int().positive(),
+  generatedAt: z.coerce.date(),
+  slides: z.array(presentationSlideshowSlideSchema).max(500),
+});
+
+export const presentationRenderSpecSchema = z.object({
+  schemaVersion: z.literal(PRESENTATION_RENDER_SCHEMA_VERSION),
+  deckId: z.number().int().positive(),
+  format: z.enum(["png", "mp4"]),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  fps: z.number().int().positive(),
+  slides: z.array(presentationSlideshowSlideSchema).max(500),
+});
+
+export const presentationExportStatusSchema = z.enum([
+  "queued",
+  "processing",
+  "done",
+  "error",
+]);
+
+export const presentationExportResultSchema = z.object({
+  schemaVersion: z.literal(PRESENTATION_EXPORT_SCHEMA_VERSION),
+  exportId: z.string().min(1).max(128),
+  jobId: z.string().min(1).max(128),
+  deckId: z.number().int().positive(),
+  format: z.enum(["png", "mp4"]),
+  deduped: z.boolean(),
+  status: presentationExportStatusSchema,
+  message: z.string().min(1).max(400).optional(),
+  renderSpec: presentationRenderSpecSchema,
+});
+
+export const presentationExportStatusResultSchema = z.object({
+  schemaVersion: z.literal(PRESENTATION_EXPORT_SCHEMA_VERSION),
+  exportId: z.string().min(1).max(128),
+  jobId: z.string().min(1).max(128),
+  status: presentationExportStatusSchema,
+  format: z.enum(["png", "mp4"]),
+  updatedAt: z.coerce.date(),
+  message: z.string().min(1).max(400).optional(),
+});
+
 export type PresentationRouteGuardInput = z.infer<typeof presentationRouteGuardInputSchema>;
 export type PresentationRouteAllowedResult = z.infer<typeof presentationRouteAllowedResultSchema>;
 export type PresentationRouteBlockedResult = z.infer<typeof presentationRouteBlockedResultSchema>;
@@ -146,6 +208,11 @@ export type PresentationVersionConflict = z.infer<typeof presentationVersionConf
 export type PresentationSourceFormat = z.infer<typeof presentationSourceFormatSchema>;
 export type PresentationCompatibilityResult = z.infer<typeof presentationCompatibilityResultSchema>;
 export type PresentationConversionResult = z.infer<typeof presentationConversionResultSchema>;
+export type PresentationSlideshowPayload = z.infer<typeof presentationSlideshowPayloadSchema>;
+export type PresentationRenderSpec = z.infer<typeof presentationRenderSpecSchema>;
+export type PresentationTransition = z.infer<typeof presentationTransitionSchema>;
+export type PresentationExportResult = z.infer<typeof presentationExportResultSchema>;
+export type PresentationExportStatusResult = z.infer<typeof presentationExportStatusResultSchema>;
 
 export function isPresentationItemType(itemType: string): boolean {
   return itemType.trim().toLowerCase() === PRESENTATION_ITEM_TYPE;

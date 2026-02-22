@@ -103,3 +103,19 @@
 - decision_taken: `explicit_contract`
 - mode_used: `auto`
 - rationale: Improves frontend determinism and aligns with section requirement for clear read-only/unsupported guidance and parser-stable payloads.
+
+## 2026-02-22 - Section 07 - Export Queue Integration Boundary
+- options_considered:
+  - `full_worker_dispatch`: integrate direct external queue/worker dispatch in this section
+  - `contract_first_adapter`: implement render-spec adapter + enqueue abstraction with in-process state for MVP
+- decision_taken: `contract_first_adapter`
+- mode_used: `auto`
+- rationale: Keeps section focused on deterministic contract validation, dedupe, and throttling while avoiding unrelated operational coupling in the current scope.
+
+## 2026-02-22 - Section 07 - Dedupe Key Strategy
+- options_considered:
+  - `idempotency_required`: reject requests without explicit idempotency key
+  - `hybrid_fingerprint`: use explicit key when provided, fallback to stable tenant/user/deck/format fingerprint
+- decision_taken: `hybrid_fingerprint`
+- mode_used: `auto`
+- rationale: Preserves duplicate-click protection for current UI behavior while still honoring explicit idempotency keys when available.

@@ -73,7 +73,7 @@
 
 ## Section 06 - Import Conversion and Compatibility
 - section: `section-06-import-conversion-and-compatibility`
-- commit: `pending`
+- commit: `3327383`
 - test_command: `cd apps/web && npm test -- server/services/presentationCompatibilityService.test.ts server/routers/presentation.test.ts`
 - pass_fail_summary:
   - `pass`: `server/services/presentationCompatibilityService.test.ts`
@@ -82,6 +82,20 @@
   - `pass`: `server/services/presentationPersistence.test.ts`
 - notable_deviations:
   - Conversion lock/idempotency registry is process-memory scoped for MVP and will require durable orchestration for multi-instance deployments.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining: none
+
+## Section 07 - Playback and Export Pipeline
+- section: `section-07-playback-and-export-pipeline`
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- server/services/presentationPlaybackExport.test.ts client/src/pages/PresentationEditor.test.tsx server/routers/presentation.test.ts`
+- pass_fail_summary:
+  - `pass`: `server/services/presentationPlaybackExport.test.ts`
+  - `pass`: `client/src/pages/PresentationEditor.test.tsx`
+  - `pass`: `server/routers/presentation.test.ts`
+- notable_deviations:
+  - Export enqueue state is process-local for MVP contract hardening; durable queue/state integration is deferred to section 08/10 hardening follow-up.
 - blocked_tasks_resolved_remaining:
   - resolved: none
   - remaining: none

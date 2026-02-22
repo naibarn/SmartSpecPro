@@ -30,6 +30,7 @@ function parseDocId(value: string | undefined): number | null {
 }
 
 type SaveState = "idle" | "pending" | "saved" | "conflict" | "error";
+type PlaybackState = "idle" | "playing";
 
 function getItemType(item: unknown): string {
   if (!item || typeof item !== "object") {
@@ -105,6 +106,7 @@ export default function PresentationEditor() {
   const deleteSlideMutation = trpc.presentation.deleteSlide.useMutation();
   const reorderSlidesMutation = trpc.presentation.reorderSlides.useMutation();
   const updateSlideMutation = trpc.presentation.updateSlide.useMutation();
+  const triggerExportMutation = trpc.presentation.triggerExport.useMutation();
 
   const deckData = deckQuery.data as any;
   const deck = deckData?.deck;
@@ -117,6 +119,23 @@ export default function PresentationEditor() {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [draftContent, setDraftContent] = useState<PresentationSlideContent>({ elements: [] });
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
+  const [exportMessage, setExportMessage] = useState<string>("");
+  const [lastExportId, setLastExportId] = useState<string | null>(null);
+
+  const slideshowQuery = trpc.presentation.getSlideshow.useQuery(
+    { deckId: deck?.id || 0 },
+    {
+      enabled: Boolean(deck?.id),
+    },
+  );
+  const exportStatusQuery = trpc.presentation.getExportStatus.useQuery(
+    { exportId: lastExportId || "" },
+    {
+      enabled: Boolean(lastExportId),
+      refetchInterval: 5000,
+    },
+  );
 
   const selectedSlide = useMemo(
     () => slides.find((slide) => slide.id === selectedSlideId) || null,
@@ -252,6 +271,38 @@ export default function PresentationEditor() {
     }
   }
 
+  function handlePlaySlideshow() {
+    const slideCount = Array.isArray(slideshowQuery.data?.slides)
+      ? slideshowQuery.data.slides.length
+      : slides.length;
+    if (!slideCount) {
+      setPlaybackState("idle");
+      setExportMessage("No slides available for playback.");
+      return;
+    }
+    setPlaybackState("playing");
+    setExportMessage(`Playing slideshow preview with ${slideCount} slides.`);
+  }
+
+  async function handleExport(format: "png" | "mp4") {
+    if (!deck) return;
+    setExportMessage(`Submitting ${format.toUpperCase()} export...`);
+    try {
+      const result = await triggerExportMutation.mutateAsync({
+        deckId: deck.id,
+        format,
+        idempotencyKey: `${deck.id}-${format}-${Date.now()}`,
+      });
+      setLastExportId(result.exportId);
+      const queuedMessage = result.message || `${format.toUpperCase()} export queued`;
+      setExportMessage(queuedMessage);
+    } catch (error) {
+      const raw = String((error as any)?.message || "Export failed");
+      const trimmed = raw.includes(":") ? raw.split(":").slice(1).join(":").trim() : raw;
+      setExportMessage(trimmed || "Export failed");
+    }
+  }
+
   const deckNotFound = Boolean(deckQuery.error && isNotFoundError(deckQuery.error));
 
   if (!docId) {
@@ -332,6 +383,10 @@ export default function PresentationEditor() {
           : saveState === "error"
             ? "Save failed. Retry."
             : "Ready";
+  const playbackStatusLabel = playbackState === "playing" ? "Playing preview" : "Ready";
+  const exportStatusLabel =
+    exportStatusQuery.data?.status
+    || (triggerExportMutation.isPending ? "queued" : "idle");
 
   return (
     <div className="min-h-screen p-6 space-y-4">
@@ -341,6 +396,11 @@ export default function PresentationEditor() {
           Presentation #{docId} loaded. Item type: <code>{itemType || PRESENTATION_ITEM_TYPE}</code>
         </p>
         <p className="text-sm text-muted-foreground">Save status: {saveStatusLabel}</p>
+        <p className="text-sm text-muted-foreground">Playback status: {playbackStatusLabel}</p>
+        <p className="text-sm text-muted-foreground">Export status: {exportStatusLabel}</p>
+        {exportMessage ? (
+          <p className="text-sm text-muted-foreground" role="status">{exportMessage}</p>
+        ) : null}
       </header>
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr_320px]">
@@ -429,6 +489,17 @@ export default function PresentationEditor() {
           <Button onClick={() => void handleSaveSlide()} aria-label="Save Slide">
             Save Slide
           </Button>
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            <Button onClick={handlePlaySlideshow} aria-label="Play Slideshow" variant="outline">
+              Play Slideshow
+            </Button>
+            <Button onClick={() => void handleExport("png")} aria-label="Export PNG" variant="secondary">
+              Export PNG
+            </Button>
+            <Button onClick={() => void handleExport("mp4")} aria-label="Export MP4" variant="secondary">
+              Export MP4
+            </Button>
+          </div>
         </section>
 
         <aside className="rounded border bg-card p-3 space-y-3">

@@ -22,6 +22,8 @@ export const PRESENTATION_ERROR_CODE_VALUES = [
   "PRESENTATION_ASSET_LIMIT_EXCEEDED",
   "PRESENTATION_DECK_SIZE_LIMIT_EXCEEDED",
   "PRESENTATION_VALIDATION_FAILED",
+  "PRESENTATION_EXPORT_THROTTLED",
+  "PRESENTATION_RENDER_SCHEMA_MISMATCH",
 ] as const;
 
 export type PresentationErrorCode = typeof PRESENTATION_ERROR_CODE_VALUES[number];
@@ -39,17 +41,31 @@ export const PRESENTATION_ERROR_CODE: Record<string, PresentationErrorCode> = {
   ASSET_LIMIT_EXCEEDED: "PRESENTATION_ASSET_LIMIT_EXCEEDED",
   DECK_SIZE_LIMIT_EXCEEDED: "PRESENTATION_DECK_SIZE_LIMIT_EXCEEDED",
   VALIDATION_FAILED: "PRESENTATION_VALIDATION_FAILED",
+  EXPORT_THROTTLED: "PRESENTATION_EXPORT_THROTTLED",
+  RENDER_SCHEMA_MISMATCH: "PRESENTATION_RENDER_SCHEMA_MISMATCH",
 };
 
 export const PRESENTATION_CONFLICT_SCHEMA_VERSION = "presentation_conflict_v1";
 export const PRESENTATION_COMPATIBILITY_SCHEMA_VERSION = "presentation_compatibility_v1";
 export const PRESENTATION_CONVERSION_SCHEMA_VERSION = "presentation_conversion_v1";
 export const PRESENTATION_RENDER_SCHEMA_VERSION = "presentation_render_v1";
+export const PRESENTATION_SLIDESHOW_SCHEMA_VERSION = "presentation_slideshow_v1";
+export const PRESENTATION_EXPORT_SCHEMA_VERSION = "presentation_export_v1";
 
 export const PRESENTATION_FEATURE_FLAG_ENV = "PRESENTATION_EDITOR_ENABLED";
+export const PRESENTATION_EXPORT_WRITE_FLAG_ENV = "PRESENTATION_EXPORTS_ENABLED";
 
 export function isPresentationFeatureEnabled(): boolean {
   const raw = (process.env[PRESENTATION_FEATURE_FLAG_ENV] || "").trim().toLowerCase();
+  if (!raw) {
+    return true;
+  }
+
+  return !["0", "false", "off", "no", "disabled"].includes(raw);
+}
+
+export function isPresentationExportWriteEnabled(): boolean {
+  const raw = (process.env[PRESENTATION_EXPORT_WRITE_FLAG_ENV] || "").trim().toLowerCase();
   if (!raw) {
     return true;
   }
