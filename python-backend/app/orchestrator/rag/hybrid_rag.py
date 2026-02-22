@@ -229,8 +229,8 @@ class HybridRAGEngine:
     def reranker(self) -> "Reranker":
         """Get or create reranker."""
         if self._reranker is None:
-            from app.orchestrator.rag.reranker import Reranker
-            self._reranker = Reranker()
+            from app.orchestrator.rag.reranker import Reranker, RerankStrategy
+            self._reranker = Reranker(strategy=RerankStrategy.CROSS_ENCODER)
         return self._reranker
 
     @property
@@ -430,6 +430,7 @@ class HybridRAGEngine:
                     query=query,
                     documents=rerank_candidates,
                     top_k=self.config.rerank_top_k,
+                    effective_scopes=set(effective_scopes) if effective_scopes else None,
                 )
                 
                 rerank_end = datetime.utcnow()

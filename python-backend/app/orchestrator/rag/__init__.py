@@ -18,7 +18,7 @@ from app.orchestrator.rag.hybrid_rag import (
 )
 from app.orchestrator.rag.bm25_retriever import BM25Retriever
 from app.orchestrator.rag.vector_retriever import VectorRetriever
-from app.orchestrator.rag.reranker import Reranker
+from app.orchestrator.rag.reranker import Reranker, RerankStrategy
 from app.orchestrator.rag.scope_engine import (
     compute_effective_scopes,
     recompute_allowed_scopes,
@@ -40,6 +40,7 @@ __all__ = [
     "BM25Retriever",
     "VectorRetriever",
     "Reranker",
+    "RerankStrategy",
     "compute_effective_scopes",
     "recompute_allowed_scopes",
     "propagate_scopes_to_vector_stores",

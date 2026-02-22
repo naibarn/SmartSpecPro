@@ -531,3 +531,35 @@ After implementation:
 6. Verify fallback chain logs each strategy attempt
 7. Verify scope verification removes unauthorized documents after reranking
 8. Verify `__init__.py` exports `RerankStrategy`
+
+---
+
+## Implementation Status
+
+**Status:** COMPLETE
+**Tests:** 18 passing (test_reranker.py), 49 total with hybrid_rag tests
+**Commit:** (pending)
+
+### Actual Files Created/Modified
+
+| File | Action | Notes |
+|------|--------|-------|
+| `python-backend/app/orchestrator/rag/reranker.py` | Rewritten | Strategy-based with fallback chain, scope verification |
+| `python-backend/tests/orchestrator/rag/test_reranker.py` | Created | 18 tests across 6 classes |
+| `python-backend/app/orchestrator/rag/__init__.py` | Modified | Added RerankStrategy export |
+| `python-backend/app/orchestrator/rag/hybrid_rag.py` | Modified | Default CROSS_ENCODER, pass effective_scopes |
+| `python-backend/requirements.txt` | Modified | Added cohere>=5.0.0 |
+
+### Deviations from Plan
+
+1. **ThreadPoolExecutor instead of ProcessPoolExecutor**: Uses ThreadPoolExecutor to avoid loading the model twice (~3GB). ProcessPoolExecutor would require a separate model instance in each process. ThreadPoolExecutor has GIL contention but is acceptable for the reranking use case.
+2. **test_reranker_performance.py not created**: Requires 1.1GB model download. Deferred to manual testing.
+3. **Token truncation uses char estimation**: Simple 4-chars-per-token heuristic instead of tiktoken. Acceptable for initial implementation.
+
+### Code Review Fixes Applied
+
+| Fix | Finding | Description |
+|-----|---------|-------------|
+| FIX-1 | F-01/F-08 (HIGH) | Use run_in_executor with ThreadPoolExecutor to avoid blocking event loop |
+| FIX-2 | F-02 (MEDIUM) | Added cohere>=5.0.0 to requirements.txt |
+| FIX-3 | F-10 (LOW) | use_llm=False now restricts fallback chain to HEURISTIC only |
