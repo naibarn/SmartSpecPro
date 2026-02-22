@@ -2,8 +2,8 @@ import type { PresentationElement } from "@/lib/presentationEditorState";
 
 interface CanvasObjectsProps {
   elements: PresentationElement[];
-  selectedElementId: string | null;
-  onSelectElement: (elementId: string) => void;
+  selectedElementIds: string[];
+  onSelectElement: (elementId: string, options?: { additive?: boolean }) => void;
 }
 
 function getElementDisplayText(element: PresentationElement): string {
@@ -18,7 +18,7 @@ function getElementDisplayText(element: PresentationElement): string {
   return element.type;
 }
 
-export function CanvasObjects({ elements, selectedElementId, onSelectElement }: CanvasObjectsProps) {
+export function CanvasObjects({ elements, selectedElementIds, onSelectElement }: CanvasObjectsProps) {
   if (!elements.length) {
     return (
       <p className="text-sm text-muted-foreground">No elements on this slide yet.</p>
@@ -32,9 +32,9 @@ export function CanvasObjects({ elements, selectedElementId, onSelectElement }: 
           <button
             type="button"
             className={`w-full rounded border px-2 py-1 text-left text-sm ${
-              selectedElementId === element.id ? "border-primary bg-primary/10" : ""
+              selectedElementIds.includes(element.id) ? "border-primary bg-primary/10" : ""
             }`}
-            onClick={() => onSelectElement(element.id)}
+            onClick={(event) => onSelectElement(element.id, { additive: event.shiftKey })}
             aria-label={`Select canvas element ${index + 1}`}
           >
             {index + 1}. {getElementDisplayText(element)} ({element.type})

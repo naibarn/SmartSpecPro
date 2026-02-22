@@ -306,4 +306,26 @@ describe("PresentationEditor", () => {
     expect(addEventListenerSpy).toHaveBeenCalledWith("resize", expect.any(Function));
     expect(removeEventListenerSpy).toHaveBeenCalledWith("resize", expect.any(Function));
   });
+
+  it("supports keyboard movement plus undo/redo for selected elements", async () => {
+    render(<PresentationEditor />);
+
+    expect(screen.getByTestId("canvas-transform-handles")).toBeInTheDocument();
+    expect(screen.getByLabelText("Element X")).toHaveValue(10);
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element X")).toHaveValue(11);
+    });
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element X")).toHaveValue(10);
+    });
+
+    fireEvent.keyDown(window, { key: "y", ctrlKey: true });
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element X")).toHaveValue(11);
+    });
+  });
 });

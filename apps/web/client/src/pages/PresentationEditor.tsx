@@ -1,24 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { ChevronLeft } from "lucide-react";
 
-import { CanvasShell, CanvasStage } from "@/presentation-canvas";
+import { CanvasShell, CanvasStage, PropertyPanel } from "@/presentation-canvas";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { buildWrongEditorOpenGuard } from "@/lib/presentationRouting";
 import {
-  addElement,
   createElement,
   ensureSlideContent,
-  updateElementById,
-  type PresentationElement,
-  type PresentationElementPatch,
+  type ArrangeDirection,
   type PresentationElementType,
   type PresentationSlideContent,
 } from "@/lib/presentationEditorState";
+import { SelectionEngine } from "@/presentation-canvas/selection/SelectionEngine";
+import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
+import {
+  addElementCommand,
+  arrangeSelectionCommand,
+  createCanvasCommandState,
+  deleteSelectionCommand,
+  duplicateSelectionCommand,
+  moveSelectionCommand,
+  patchSelectedElementCommand,
+  resizeSelectionCommand,
+  rotateSelectionCommand,
+  selectElementsCommand,
+  type CanvasCommandState,
+} from "@/presentation-canvas/commands/commands";
 import {
   PRESENTATION_CONFLICT_SCHEMA_VERSION,
   PRESENTATION_EDITOR_ROUTE_BASE,
@@ -56,11 +66,6 @@ function isConflictError(error: unknown): boolean {
 
   const message = String((error as any)?.message || "");
   return message.includes(PRESENTATION_ERROR_CODE.VERSION_CONFLICT);
-}
-
-function parseNumberInput(value: string, fallback: number): number {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function nextElementId(type: PresentationElementType): string {
@@ -119,8 +124,12 @@ export default function PresentationEditor() {
   }, [deckData?.slides]);
 
   const [selectedSlideId, setSelectedSlideId] = useState<number | null>(null);
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-  const [draftContent, setDraftContent] = useState<PresentationSlideContent>({ elements: [] });
+  const [commandState, setCommandState] = useState<CanvasCommandState>(() =>
+    createCanvasCommandState({ elements: [] }),
+  );
+  const commandBusRef = useRef(
+    new CommandBus<CanvasCommandState>(createCanvasCommandState({ elements: [] })),
+  );
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
   const [exportMessage, setExportMessage] = useState<string>("");
@@ -147,10 +156,22 @@ export default function PresentationEditor() {
     () => slides.find((slide) => slide.id === selectedSlideId) || null,
     [slides, selectedSlideId],
   );
+  const draftContent = commandState.content;
+  const selectedElementIds = commandState.selectedElementIds;
+  const selectedElementId = selectedElementIds[0] ?? null;
   const selectedElement = useMemo(
     () => draftContent.elements.find((element) => element.id === selectedElementId) || null,
     [draftContent.elements, selectedElementId],
   );
+
+  function syncCommandState(next: CanvasCommandState) {
+    setCommandState(next);
+    setSaveState("idle");
+  }
+
+  function executeCommand(command: Parameters<CommandBus<CanvasCommandState>["execute"]>[0]) {
+    syncCommandState(commandBusRef.current.execute(command));
+  }
 
   useEffect(() => {
     if (!slides.length) {
@@ -167,15 +188,18 @@ export default function PresentationEditor() {
 
   useEffect(() => {
     if (!selectedSlide) {
-      setDraftContent({ elements: [] });
-      setSelectedElementId(null);
+      const empty = createCanvasCommandState({ elements: [] });
+      commandBusRef.current.reset(empty);
+      setCommandState(empty);
       setSaveState("idle");
       return;
     }
 
     const next = ensureSlideContent(selectedSlide.slideContent);
-    setDraftContent(next);
-    setSelectedElementId(next.elements[0]?.id ?? null);
+    const nextSelected = next.elements[0]?.id ? [next.elements[0].id] : [];
+    const nextState = createCanvasCommandState(next, nextSelected);
+    commandBusRef.current.reset(nextState);
+    setCommandState(nextState);
     setSaveState("idle");
   }, [selectedSlide?.id, selectedSlide?.version]);
 
@@ -247,15 +271,58 @@ export default function PresentationEditor() {
 
   function handleAddElement(type: PresentationElementType) {
     const element = createElement(type, nextElementId(type));
-    setDraftContent((current) => addElement(current, element));
-    setSelectedElementId(element.id);
-    setSaveState("idle");
+    executeCommand(addElementCommand(element));
   }
 
-  function handleUpdateSelectedElement(patch: PresentationElementPatch) {
-    if (!selectedElementId) return;
-    setDraftContent((current) => updateElementById(current, selectedElementId, patch));
-    setSaveState("idle");
+  function handleSelectElement(elementId: string, options?: { additive?: boolean }) {
+    if (options?.additive) {
+      const toggled = SelectionEngine.toggle(
+        { selectedIds: selectedElementIds, activeId: selectedElementId },
+        elementId,
+      );
+      executeCommand(selectElementsCommand(toggled.selectedIds));
+      return;
+    }
+
+    executeCommand(selectElementsCommand([elementId]));
+  }
+
+  function handlePatchSelectedElement(patch: Parameters<typeof patchSelectedElementCommand>[0]) {
+    executeCommand(patchSelectedElementCommand(patch));
+  }
+
+  function handleMoveSelection(deltaX: number, deltaY: number) {
+    executeCommand(moveSelectionCommand(deltaX, deltaY));
+  }
+
+  function handleResizeSelection(width: number, height: number) {
+    executeCommand(resizeSelectionCommand(width, height));
+  }
+
+  function handleRotateSelection(deltaDegrees: number) {
+    executeCommand(rotateSelectionCommand(deltaDegrees));
+  }
+
+  function handleArrangeSelection(direction: ArrangeDirection) {
+    executeCommand(arrangeSelectionCommand(direction));
+  }
+
+  function handleUndo() {
+    syncCommandState(commandBusRef.current.undo());
+  }
+
+  function handleRedo() {
+    syncCommandState(commandBusRef.current.redo());
+  }
+
+  function handleDuplicateSelection() {
+    executeCommand(
+      duplicateSelectionCommand((source) => nextElementId(source.type as PresentationElementType)),
+    );
+  }
+
+  function handleDeleteSelection() {
+    executeCommand(deleteSelectionCommand());
   }
 
   async function handleSaveSlide() {
@@ -308,6 +375,75 @@ export default function PresentationEditor() {
       setExportMessage(trimmed || "Export failed");
     }
   }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isElementTarget = target instanceof HTMLElement;
+      const isEditable =
+        isElementTarget
+        && (Boolean(target.closest("input, textarea, select")) || target.isContentEditable === true);
+      if (isEditable) {
+        return;
+      }
+
+      const hasSelection = selectedElementIds.length > 0;
+      const isPrimaryModifier = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+
+      if (isPrimaryModifier && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+        return;
+      }
+
+      if (isPrimaryModifier && key === "y") {
+        event.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      if (isPrimaryModifier && key === "d" && hasSelection) {
+        event.preventDefault();
+        handleDuplicateSelection();
+        return;
+      }
+
+      if ((event.key === "Backspace" || event.key === "Delete") && hasSelection) {
+        event.preventDefault();
+        handleDeleteSelection();
+        return;
+      }
+
+      if (!hasSelection) {
+        return;
+      }
+
+      const step = event.shiftKey ? 10 : 1;
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        handleMoveSelection(-step, 0);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        handleMoveSelection(step, 0);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        handleMoveSelection(0, -step);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        handleMoveSelection(0, step);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [selectedElementIds, handleDeleteSelection, handleDuplicateSelection, handleMoveSelection, handleRedo, handleUndo]);
 
   const deckNotFound = Boolean(deckQuery.error && isNotFoundError(deckQuery.error));
 
@@ -488,23 +624,39 @@ export default function PresentationEditor() {
     </>
   );
   const canvasToolbar = (
-    <div className="flex flex-wrap gap-2">
-      <Button
-        onClick={() => handleAddElement("text")}
-        aria-label="Add Text Element"
-        variant="secondary"
-      >
-        Add Text Element
-      </Button>
-      <Button onClick={() => handleAddElement("image")} aria-label="Add Image Element" variant="secondary">
-        Add Image Element
-      </Button>
-      <Button onClick={() => handleAddElement("rect")} aria-label="Add Rectangle Element" variant="secondary">
-        Add Rectangle
-      </Button>
-      <Button onClick={() => handleAddElement("line")} aria-label="Add Line Element" variant="secondary">
-        Add Line
-      </Button>
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={() => handleAddElement("text")}
+          aria-label="Add Text Element"
+          variant="secondary"
+        >
+          Add Text Element
+        </Button>
+        <Button onClick={() => handleAddElement("image")} aria-label="Add Image Element" variant="secondary">
+          Add Image Element
+        </Button>
+        <Button onClick={() => handleAddElement("rect")} aria-label="Add Rectangle Element" variant="secondary">
+          Add Rectangle
+        </Button>
+        <Button onClick={() => handleAddElement("line")} aria-label="Add Line Element" variant="secondary">
+          Add Line
+        </Button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={handleUndo} aria-label="Undo Edit" variant="outline">
+          Undo
+        </Button>
+        <Button onClick={handleRedo} aria-label="Redo Edit" variant="outline">
+          Redo
+        </Button>
+        <Button onClick={handleDuplicateSelection} aria-label="Duplicate Selection" variant="outline">
+          Duplicate Selection
+        </Button>
+        <Button onClick={handleDeleteSelection} aria-label="Delete Selection" variant="outline">
+          Delete Selection
+        </Button>
+      </div>
     </div>
   );
   const canvasFooter = (
@@ -525,138 +677,11 @@ export default function PresentationEditor() {
       </div>
     </>
   );
-  const propertiesPanel = !selectedElement ? (
-    <p className="text-sm text-muted-foreground">Select an element to edit properties.</p>
-  ) : (
-    <div className="space-y-2">
-      <label className="block text-sm">
-        <span className="text-muted-foreground">X</span>
-        <Input
-          aria-label="Element X"
-          type="number"
-          value={selectedElement.x}
-          onChange={(event) =>
-            handleUpdateSelectedElement({
-              x: parseNumberInput(event.target.value, selectedElement.x),
-            })
-          }
-        />
-      </label>
-      <label className="block text-sm">
-        <span className="text-muted-foreground">Y</span>
-        <Input
-          aria-label="Element Y"
-          type="number"
-          value={selectedElement.y}
-          onChange={(event) =>
-            handleUpdateSelectedElement({
-              y: parseNumberInput(event.target.value, selectedElement.y),
-            })
-          }
-        />
-      </label>
-      <label className="block text-sm">
-        <span className="text-muted-foreground">Width</span>
-        <Input
-          aria-label="Element Width"
-          type="number"
-          value={selectedElement.width}
-          onChange={(event) =>
-            handleUpdateSelectedElement({
-              width: parseNumberInput(event.target.value, selectedElement.width),
-            })
-          }
-        />
-      </label>
-      <label className="block text-sm">
-        <span className="text-muted-foreground">Height</span>
-        <Input
-          aria-label="Element Height"
-          type="number"
-          value={selectedElement.height}
-          onChange={(event) =>
-            handleUpdateSelectedElement({
-              height: parseNumberInput(event.target.value, selectedElement.height),
-            })
-          }
-        />
-      </label>
-      {selectedElement.type === "text" && (
-        <>
-          <label className="block text-sm">
-            <span className="text-muted-foreground">Text</span>
-            <Textarea
-              aria-label="Text Content"
-              value={selectedElement.text}
-              onChange={(event) => handleUpdateSelectedElement({ text: event.target.value } as any)}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="text-muted-foreground">Color</span>
-            <Input
-              aria-label="Text Color"
-              value={selectedElement.color}
-              onChange={(event) => handleUpdateSelectedElement({ color: event.target.value } as any)}
-            />
-          </label>
-        </>
-      )}
-      {selectedElement.type === "image" && (
-        <>
-          <label className="block text-sm">
-            <span className="text-muted-foreground">Image URL</span>
-            <Input
-              aria-label="Image URL"
-              value={selectedElement.src}
-              onChange={(event) => handleUpdateSelectedElement({ src: event.target.value } as any)}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="text-muted-foreground">Alt Text</span>
-            <Input
-              aria-label="Image Alt Text"
-              value={selectedElement.alt}
-              onChange={(event) => handleUpdateSelectedElement({ alt: event.target.value } as any)}
-            />
-          </label>
-        </>
-      )}
-      {selectedElement.type === "rect" && (
-        <label className="block text-sm">
-          <span className="text-muted-foreground">Fill Color</span>
-          <Input
-            aria-label="Rectangle Fill"
-            value={selectedElement.fill}
-            onChange={(event) => handleUpdateSelectedElement({ fill: event.target.value } as any)}
-          />
-        </label>
-      )}
-      {selectedElement.type === "line" && (
-        <>
-          <label className="block text-sm">
-            <span className="text-muted-foreground">Stroke</span>
-            <Input
-              aria-label="Line Stroke"
-              value={selectedElement.stroke}
-              onChange={(event) => handleUpdateSelectedElement({ stroke: event.target.value } as any)}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="text-muted-foreground">Stroke Width</span>
-            <Input
-              aria-label="Line Stroke Width"
-              type="number"
-              value={selectedElement.strokeWidth}
-              onChange={(event) =>
-                handleUpdateSelectedElement({
-                  strokeWidth: parseNumberInput(event.target.value, selectedElement.strokeWidth),
-                } as any)
-              }
-            />
-          </label>
-        </>
-      )}
-    </div>
+  const propertiesPanel = (
+    <PropertyPanel
+      selectedElement={selectedElement}
+      onPatchSelected={handlePatchSelectedElement}
+    />
   );
 
   return (
@@ -686,8 +711,13 @@ export default function PresentationEditor() {
         canvasStage={(
           <CanvasStage
             elements={draftContent.elements}
-            selectedElementId={selectedElementId}
-            onSelectElement={(elementId) => setSelectedElementId(elementId)}
+            selectedElementIds={selectedElementIds}
+            snapGuides={commandState.snapGuides}
+            onSelectElement={handleSelectElement}
+            onMoveSelection={handleMoveSelection}
+            onResizeSelection={handleResizeSelection}
+            onRotateSelection={handleRotateSelection}
+            onArrangeSelection={handleArrangeSelection}
           />
         )}
         canvasFooter={canvasFooter}
