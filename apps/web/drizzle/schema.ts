@@ -1705,6 +1705,84 @@ export type LibraryIndexJob = typeof libraryIndexJobs.$inferSelect;
 export type InsertLibraryIndexJob = typeof libraryIndexJobs.$inferInsert;
 
 // ============================================================
+// Presentation Editing Tables
+// ============================================================
+
+export const presentationDecks = pgTable("presentation_decks", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  version: integer("version").notNull().default(1),
+  slideCount: integer("slide_count").notNull().default(0),
+  totalAssetBytes: integer("total_asset_bytes").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("presentation_decks_library_item_unique").on(t.libraryItemId),
+  index("presentation_decks_tenant_idx").on(t.tenantId),
+  index("presentation_decks_tenant_updated_idx").on(t.tenantId, t.updatedAt),
+]);
+
+export type PresentationDeck = typeof presentationDecks.$inferSelect;
+export type InsertPresentationDeck = typeof presentationDecks.$inferInsert;
+
+export const presentationSlides = pgTable("presentation_slides", {
+  id: serial("id").primaryKey(),
+  deckId: integer("deck_id").notNull().references(() => presentationDecks.id, { onDelete: "cascade" }),
+  orderIndex: integer("order_index").notNull(),
+  version: integer("version").notNull().default(1),
+  title: varchar("title", { length: 255 }).notNull().default("Slide"),
+  slideContent: json("slide_content").$type<Record<string, any>>().notNull().default({}),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("presentation_slides_deck_order_unique").on(t.deckId, t.orderIndex),
+  index("presentation_slides_deck_idx").on(t.deckId),
+  index("presentation_slides_deck_updated_idx").on(t.deckId, t.updatedAt),
+]);
+
+export type PresentationSlide = typeof presentationSlides.$inferSelect;
+export type InsertPresentationSlide = typeof presentationSlides.$inferInsert;
+
+export const presentationAssetLinks = pgTable("presentation_asset_links", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  deckId: integer("deck_id").notNull().references(() => presentationDecks.id, { onDelete: "cascade" }),
+  slideId: integer("slide_id").references(() => presentationSlides.id, { onDelete: "set null" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  byteSize: integer("byte_size").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("presentation_asset_links_unique").on(t.deckId, t.slideId, t.libraryItemId),
+  index("presentation_asset_links_deck_idx").on(t.deckId),
+  index("presentation_asset_links_slide_idx").on(t.slideId),
+]);
+
+export type PresentationAssetLink = typeof presentationAssetLinks.$inferSelect;
+export type InsertPresentationAssetLink = typeof presentationAssetLinks.$inferInsert;
+
+export const presentationSourceAttachments = pgTable("presentation_source_attachments", {
+  id: serial("id").primaryKey(),
+  deckId: integer("deck_id").notNull().references(() => presentationDecks.id, { onDelete: "cascade" }),
+  sourceLibraryItemId: integer("source_library_item_id").references(() => libraryItems.id, { onDelete: "set null" }),
+  sourceFormat: varchar("source_format", { length: 16 }).notNull(),
+  conversionStatus: varchar("conversion_status", { length: 32 }).notNull().default("pending"),
+  partialFidelity: boolean("partial_fidelity").notNull().default(false),
+  fidelityWarnings: json("fidelity_warnings").$type<string[]>().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("presentation_source_attachments_deck_unique").on(t.deckId),
+  index("presentation_source_attachments_source_item_idx").on(t.sourceLibraryItemId),
+]);
+
+export type PresentationSourceAttachment = typeof presentationSourceAttachments.$inferSelect;
+export type InsertPresentationSourceAttachment = typeof presentationSourceAttachments.$inferInsert;
+
+// ============================================================
 // Google Drive Integration Tables
 // ============================================================
 

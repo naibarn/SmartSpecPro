@@ -23,3 +23,19 @@
 - decision_taken: `shared_module`
 - mode_used: `auto`
 - rationale: Section explicitly requires shared typed contracts and stable machine-readable codes used by backend/client.
+
+## 2026-02-22 - Section 02 - Presentation Table Shape
+- options_considered:
+  - `reuse_library_only`: store all slide/deck data directly in `library_items.metadata`
+  - `dedicated_tables`: add additive `presentation_*` tables with explicit constraints
+- decision_taken: `dedicated_tables`
+- mode_used: `auto`
+- rationale: Section objective explicitly requires ordering constraints, byte totals, and source metadata that are safer and queryable with dedicated schema.
+
+## 2026-02-22 - Section 02 - Reorder Write Strategy
+- options_considered:
+  - `range_only_updates`: update only impacted range indexes
+  - `bounded_full_rewrite`: rewrite deck order with temporary offset inside transaction
+- decision_taken: `bounded_full_rewrite`
+- mode_used: `auto`
+- rationale: Simpler correctness under uniqueness constraints; bounded cost is acceptable at MVP slide limit.
