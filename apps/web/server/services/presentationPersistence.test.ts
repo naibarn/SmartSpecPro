@@ -7,6 +7,8 @@ import {
   buildReorderedSlideIds,
   evaluateDeckByteTotals,
   findPresentationByteInconsistencies,
+  findOrphanedPresentationAssetLinks,
+  findStalePresentationObjectKeys,
 } from "./presentationPersistence";
 
 describe("presentation schema migration", () => {
@@ -67,6 +69,61 @@ describe("deck byte accounting", () => {
     expect(mismatches).toEqual([
       { deckId: 2, persistedTotalBytes: 150, summedAssetBytes: 180, deltaBytes: 30 },
       { deckId: 3, persistedTotalBytes: 20, summedAssetBytes: 0, deltaBytes: -20 },
+    ]);
+  });
+});
+
+describe("cleanup consistency helpers", () => {
+  it("detects orphaned asset links with explicit reason codes", () => {
+    const findings = findOrphanedPresentationAssetLinks([
+      {
+        linkId: 10,
+        deckExists: true,
+        slideId: 101,
+        slideExists: true,
+        libraryItemExists: true,
+      },
+      {
+        linkId: 11,
+        deckExists: false,
+        slideId: 102,
+        slideExists: true,
+        libraryItemExists: true,
+      },
+      {
+        linkId: 12,
+        deckExists: true,
+        slideId: 103,
+        slideExists: false,
+        libraryItemExists: true,
+      },
+      {
+        linkId: 13,
+        deckExists: true,
+        slideId: null,
+        slideExists: true,
+        libraryItemExists: false,
+      },
+    ]);
+
+    expect(findings).toEqual([
+      { linkId: 11, reasons: ["missing_deck"] },
+      { linkId: 12, reasons: ["missing_slide"] },
+      { linkId: 13, reasons: ["missing_library_item"] },
+    ]);
+  });
+
+  it("detects stale objects not referenced by any active asset link", () => {
+    const stale = findStalePresentationObjectKeys([
+      { objectKey: "presentation/tenant-1/deck-1/asset-a.png", referenced: true },
+      { objectKey: "presentation/tenant-1/deck-1/asset-b.png", referenced: false },
+      { objectKey: "presentation/tenant-1/deck-1/asset-c.png", referenced: false },
+      { objectKey: "presentation/tenant-1/deck-1/asset-c.png", referenced: false },
+    ]);
+
+    expect(stale).toEqual([
+      "presentation/tenant-1/deck-1/asset-b.png",
+      "presentation/tenant-1/deck-1/asset-c.png",
     ]);
   });
 });

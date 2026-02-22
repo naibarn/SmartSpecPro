@@ -214,4 +214,58 @@ describe("presentationService", () => {
       );
     });
   });
+
+  it("enforces lifecycle deny on soft-deleted items and allows after restore", async () => {
+    persistenceMocks.getPresentationDeckById.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 4,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    persistenceMocks.createPresentationSlide.mockResolvedValue({
+      id: 201,
+      deckId: 101,
+      orderIndex: 1,
+      version: 1,
+      title: "Restored slide",
+      slideContent: {},
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    libraryServiceMocks.getLibraryItemById
+      .mockResolvedValueOnce(buildPresentationLibraryItem({ deletedAt: new Date("2026-02-22T00:00:00.000Z") }))
+      .mockResolvedValueOnce(buildPresentationLibraryItem({ deletedAt: null }));
+
+    await expect(
+      addSlideToDeck(
+        {
+          deckId: 101,
+          expectedVersion: 4,
+          title: "Blocked while deleted",
+        },
+        actor,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof PresentationServiceError)) return false;
+      return error.code === PRESENTATION_ERROR_CODE.LIFECYCLE_RESTRICTED;
+    });
+
+    const restored = await addSlideToDeck(
+      {
+        deckId: 101,
+        expectedVersion: 4,
+        title: "Allowed after restore",
+      },
+      actor,
+    );
+
+    expect(restored.title).toBe("Restored slide");
+  });
 });

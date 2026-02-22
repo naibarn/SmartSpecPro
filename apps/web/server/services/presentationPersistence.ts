@@ -30,6 +30,24 @@ export interface DeckByteMismatch extends DeckByteReconciliationRow {
   deltaBytes: number;
 }
 
+export interface PresentationAssetLinkIntegrityRow {
+  linkId: number;
+  deckExists: boolean;
+  slideId: number | null;
+  slideExists: boolean;
+  libraryItemExists: boolean;
+}
+
+export interface OrphanedPresentationAssetLinkFinding {
+  linkId: number;
+  reasons: Array<"missing_deck" | "missing_slide" | "missing_library_item">;
+}
+
+export interface PresentationObjectReferenceRow {
+  objectKey: string;
+  referenced: boolean;
+}
+
 export interface CreatePresentationDeckInput {
   tenantId: string;
   libraryItemId: number;
@@ -125,6 +143,47 @@ export function findPresentationByteInconsistencies(
       deltaBytes: row.summedAssetBytes - row.persistedTotalBytes,
     }))
     .filter((row) => row.deltaBytes !== 0);
+}
+
+export function findOrphanedPresentationAssetLinks(
+  rows: PresentationAssetLinkIntegrityRow[],
+): OrphanedPresentationAssetLinkFinding[] {
+  const findings: OrphanedPresentationAssetLinkFinding[] = [];
+
+  for (const row of rows) {
+    const reasons: OrphanedPresentationAssetLinkFinding["reasons"] = [];
+    if (!row.deckExists) {
+      reasons.push("missing_deck");
+    }
+    if (row.slideId !== null && !row.slideExists) {
+      reasons.push("missing_slide");
+    }
+    if (!row.libraryItemExists) {
+      reasons.push("missing_library_item");
+    }
+
+    if (reasons.length > 0) {
+      findings.push({ linkId: row.linkId, reasons });
+    }
+  }
+
+  return findings.sort((a, b) => a.linkId - b.linkId);
+}
+
+export function findStalePresentationObjectKeys(
+  rows: PresentationObjectReferenceRow[],
+): string[] {
+  const stale = new Set<string>();
+
+  for (const row of rows) {
+    const key = row.objectKey.trim();
+    if (!key || row.referenced) {
+      continue;
+    }
+    stale.add(key);
+  }
+
+  return [...stale].sort((a, b) => a.localeCompare(b));
 }
 
 export async function createPresentationDeck(

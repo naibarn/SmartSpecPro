@@ -102,7 +102,7 @@
 
 ## Section 08 - Observability Rollout and Operations
 - section: `section-08-observability-rollout-and-operations`
-- commit: `pending`
+- commit: `eb78f89`
 - test_command: `cd apps/web && npm test -- server/services/presentationObservability.test.ts server/services/presentationCompatibilityService.test.ts server/services/presentationService.test.ts server/services/presentationPlaybackExport.test.ts server/routers/presentation.test.ts client/src/pages/PresentationEditor.test.tsx`
 - pass_fail_summary:
   - `pass`: `server/services/presentationObservability.test.ts`
@@ -113,6 +113,21 @@
   - `pass`: `client/src/pages/PresentationEditor.test.tsx`
 - notable_deviations:
   - Observability counters/logs are currently in-process; production sink integration is documented for follow-up hardening.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining: none
+
+## Section 09 - Validation and Regression Suite
+- section: `section-09-validation-and-regression-suite`
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- server/services/presentationPersistence.test.ts server/services/presentationService.test.ts server/services/presentationPlaybackExport.test.ts server/services/presentationWorkflowRegression.test.ts`
+- pass_fail_summary:
+  - `pass`: `server/services/presentationPersistence.test.ts`
+  - `pass`: `server/services/presentationService.test.ts`
+  - `pass`: `server/services/presentationPlaybackExport.test.ts`
+  - `pass`: `server/services/presentationWorkflowRegression.test.ts`
+- notable_deviations:
+  - Coverage favors deterministic service-level workflow regression over full browser E2E in this section to minimize flake and keep fast iteration.
 - blocked_tasks_resolved_remaining:
   - resolved: none
   - remaining: none

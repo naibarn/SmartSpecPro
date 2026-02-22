@@ -135,3 +135,19 @@
 - decision_taken: `write_only_export_disable`
 - mode_used: `auto`
 - rationale: Matches rollout objective to contain queue risk quickly while maintaining operator visibility and user read access.
+
+## 2026-02-22 - Section 09 - Regression Layer Strategy
+- options_considered:
+  - `full_browser_e2e`: add browser-level end-to-end suite for create/edit/export/reopen now
+  - `deterministic_service_regression`: add service-level workflow regression tests with deterministic dependencies
+- decision_taken: `deterministic_service_regression`
+- mode_used: `auto`
+- rationale: Lower flake risk and faster CI feedback while still validating contract-critical lifecycle, conversion, export, and reopen behavior.
+
+## 2026-02-22 - Section 09 - Cleanup Validation Placement
+- options_considered:
+  - `db_query_only`: rely only on ad hoc SQL checks for orphan/stale detection
+  - `pure_helpers_plus_tests`: add pure helper detectors with repeatable unit coverage first
+- decision_taken: `pure_helpers_plus_tests`
+- mode_used: `auto`
+- rationale: Keeps cleanup invariants testable and reusable by future scheduled consistency jobs without coupling section scope to infra wiring.

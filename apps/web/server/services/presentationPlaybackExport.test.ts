@@ -6,6 +6,7 @@ import { PresentationServiceError } from "./presentationService";
 import {
   buildPresentationRenderSpec,
   buildSlideshowPayload,
+  getPresentationExportStatus,
   resetPresentationExportStateForTests,
   triggerPresentationExport,
 } from "./presentationPlaybackExport";
@@ -204,5 +205,33 @@ describe("presentationPlaybackExport", () => {
         && typeof (error.details as any)?.retryAfterSeconds === "number"
       );
     });
+  });
+
+  it("denies cross-tenant export status lookups and allows same-actor lookups", async () => {
+    const deckDetail = buildDeckDetail();
+    const queued = await triggerPresentationExport(
+      { deckId: 101, format: "mp4", idempotencyKey: "status-scope-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-scope-1" }),
+        now: () => 40_000,
+      },
+    );
+
+    const sameActor = getPresentationExportStatus(queued.exportId, actor);
+    expect(sameActor.status).toBe("queued");
+
+    try {
+      getPresentationExportStatus(queued.exportId, {
+        userId: actor.userId,
+        tenantId: "tenant-2",
+        role: actor.role,
+      });
+      throw new Error("Expected cross-tenant status lookup to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(PresentationServiceError);
+      expect((error as PresentationServiceError).code).toBe(PRESENTATION_ERROR_CODE.PERMISSION_DENIED);
+    }
   });
 });
