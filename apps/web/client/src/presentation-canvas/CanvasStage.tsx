@@ -10,6 +10,12 @@ interface CanvasStageProps {
   elements: PresentationElement[];
   selectedElementIds: string[];
   snapGuides: SnapGuide[];
+  suppressTransformHandles?: boolean;
+  viewport?: {
+    scale: number;
+    offsetX: number;
+    offsetY: number;
+  };
   onSelectElement: (elementId: string, options?: { additive?: boolean }) => void;
   onMoveSelection: (deltaX: number, deltaY: number) => void;
   onResizeSelection: (width: number, height: number) => void;
@@ -21,6 +27,8 @@ export function CanvasStage({
   elements,
   selectedElementIds,
   snapGuides,
+  suppressTransformHandles,
+  viewport,
   onSelectElement,
   onMoveSelection,
   onResizeSelection,
@@ -50,6 +58,11 @@ export function CanvasStage({
           background
         </div>
         <div data-testid="canvas-stage-layer-content">
+          {viewport ? (
+            <p className="mb-2 text-xs text-muted-foreground" data-testid="canvas-stage-viewport">
+              viewport: {viewport.scale.toFixed(2)}x ({viewport.offsetX}, {viewport.offsetY})
+            </p>
+          ) : null}
           <CanvasObjects
             elements={elements}
             selectedElementIds={selectedElementIds}
@@ -70,15 +83,19 @@ export function CanvasStage({
         </div>
         <div data-testid="canvas-stage-layer-interaction-overlay" className="rounded border border-dashed px-2 py-1 text-xs text-muted-foreground">
           <p className="mb-2">interaction-overlay</p>
-          <TransformHandles
-            disabled={!primarySelected}
-            onMove={onMoveSelection}
-            onResize={onResizeSelection}
-            onRotate={onRotateSelection}
-            onArrange={onArrangeSelection}
-            currentWidth={primarySelected?.width ?? 0}
-            currentHeight={primarySelected?.height ?? 0}
-          />
+          {suppressTransformHandles ? (
+            <p data-testid="canvas-transform-suppressed">Transform handles disabled in pan mode.</p>
+          ) : (
+            <TransformHandles
+              disabled={!primarySelected}
+              onMove={onMoveSelection}
+              onResize={onResizeSelection}
+              onRotate={onRotateSelection}
+              onArrange={onArrangeSelection}
+              currentWidth={primarySelected?.width ?? 0}
+              currentHeight={primarySelected?.height ?? 0}
+            />
+          )}
         </div>
       </div>
     </div>

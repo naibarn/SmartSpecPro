@@ -179,6 +179,7 @@ import PresentationEditor from "./PresentationEditor";
 describe("PresentationEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1200 });
     mutationMocks.addSlide.mockResolvedValue({});
     mutationMocks.duplicateSlide.mockResolvedValue({});
     mutationMocks.deleteSlide.mockResolvedValue({});
@@ -326,6 +327,42 @@ describe("PresentationEditor", () => {
     fireEvent.keyDown(window, { key: "y", ctrlKey: true });
     await waitFor(() => {
       expect(screen.getByLabelText("Element X")).toHaveValue(11);
+    });
+  });
+
+  it("renders mobile pan-safe mode with explicit toggle and viewport gesture updates", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+
+    expect(screen.getByTestId("mobile-quick-actions")).toBeInTheDocument();
+    expect(screen.getByTestId("canvas-transform-suppressed")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /switch to edit mode/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-transform-handles")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /simulate pinch \+ pan/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.20x (12, 8)");
+    });
+  });
+
+  it("prevents accidental mobile advanced transforms below touch-target threshold", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /switch to edit mode/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-transform-handles")).toBeInTheDocument();
+      expect(screen.getByLabelText("Element Width")).toHaveValue(200);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /wider/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element Width")).toHaveValue(200);
     });
   });
 });

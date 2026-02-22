@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { ChevronLeft } from "lucide-react";
 
-import { CanvasShell, CanvasStage, PropertyPanel } from "@/presentation-canvas";
+import {
+  CanvasShell,
+  CanvasStage,
+  MobileBottomSheet,
+  MobileQuickActions,
+  PropertyPanel,
+  type MobileBottomSheetTab,
+} from "@/presentation-canvas";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
@@ -16,6 +23,7 @@ import {
 } from "@/lib/presentationEditorState";
 import { SelectionEngine } from "@/presentation-canvas/selection/SelectionEngine";
 import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
+import { useMobileGestures } from "@/presentation-canvas/mobile/useMobileGestures";
 import {
   addElementCommand,
   arrangeSelectionCommand,
@@ -137,6 +145,9 @@ export default function PresentationEditor() {
   const [autoDeckInitAttempted, setAutoDeckInitAttempted] = useState(false);
   const [autoDeckInitPending, setAutoDeckInitPending] = useState(false);
   const [autoDeckInitError, setAutoDeckInitError] = useState<string | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => window.innerWidth < 768);
+  const [mobileSheetTab, setMobileSheetTab] = useState<MobileBottomSheetTab>("Properties");
+  const mobileGestures = useMobileGestures();
 
   const slideshowQuery = trpc.presentation.getSlideshow.useQuery(
     { deckId: deck?.id || 0 },
@@ -159,6 +170,7 @@ export default function PresentationEditor() {
   const draftContent = commandState.content;
   const selectedElementIds = commandState.selectedElementIds;
   const selectedElementId = selectedElementIds[0] ?? null;
+  const isMobilePanMode = isMobileViewport && mobileGestures.state.mode === "pan_mode";
   const selectedElement = useMemo(
     () => draftContent.elements.find((element) => element.id === selectedElementId) || null,
     [draftContent.elements, selectedElementId],
@@ -172,6 +184,17 @@ export default function PresentationEditor() {
   function executeCommand(command: Parameters<CommandBus<CanvasCommandState>["execute"]>[0]) {
     syncCommandState(commandBusRef.current.execute(command));
   }
+
+  useEffect(() => {
+    const onResize = () => {
+      setIsMobileViewport(window.innerWidth < 768);
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
 
   useEffect(() => {
     if (!slides.length) {
@@ -269,7 +292,24 @@ export default function PresentationEditor() {
     await refreshDeck();
   }
 
+  function isTouchActionAllowed(minTouchTargetPx: number): boolean {
+    if (!isMobileViewport) {
+      return true;
+    }
+
+    if (isMobilePanMode) {
+      mobileGestures.canUseTouchTarget(0);
+      return false;
+    }
+
+    return mobileGestures.canUseTouchTarget(minTouchTargetPx);
+  }
+
   function handleAddElement(type: PresentationElementType) {
+    if (!isTouchActionAllowed(40)) {
+      return;
+    }
+
     const element = createElement(type, nextElementId(type));
     executeCommand(addElementCommand(element));
   }
@@ -288,22 +328,45 @@ export default function PresentationEditor() {
   }
 
   function handlePatchSelectedElement(patch: Parameters<typeof patchSelectedElementCommand>[0]) {
+    if (!isTouchActionAllowed(40)) {
+      return;
+    }
+
     executeCommand(patchSelectedElementCommand(patch));
   }
 
   function handleMoveSelection(deltaX: number, deltaY: number) {
+    if (!isTouchActionAllowed(40)) {
+      return;
+    }
+
     executeCommand(moveSelectionCommand(deltaX, deltaY));
   }
 
   function handleResizeSelection(width: number, height: number) {
+    if (isMobileViewport) {
+      mobileGestures.canUseTouchTarget(24);
+      return;
+    }
+
     executeCommand(resizeSelectionCommand(width, height));
   }
 
   function handleRotateSelection(deltaDegrees: number) {
+    if (isMobileViewport) {
+      mobileGestures.canUseTouchTarget(24);
+      return;
+    }
+
     executeCommand(rotateSelectionCommand(deltaDegrees));
   }
 
   function handleArrangeSelection(direction: ArrangeDirection) {
+    if (isMobileViewport) {
+      mobileGestures.canUseTouchTarget(24);
+      return;
+    }
+
     executeCommand(arrangeSelectionCommand(direction));
   }
 
@@ -322,7 +385,26 @@ export default function PresentationEditor() {
   }
 
   function handleDeleteSelection() {
+    if (!isTouchActionAllowed(40)) {
+      return;
+    }
+
     executeCommand(deleteSelectionCommand());
+  }
+
+  function handleToggleMobileMode() {
+    mobileGestures.setMode(
+      mobileGestures.state.mode === "pan_mode" ? "edit_mode" : "pan_mode",
+    );
+  }
+
+  function handleApplyMobilePanGesture() {
+    mobileGestures.applyGesture({
+      startDistance: 100,
+      currentDistance: 120,
+      deltaX: 12,
+      deltaY: 8,
+    });
   }
 
   async function handleSaveSlide() {
@@ -378,6 +460,10 @@ export default function PresentationEditor() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isMobileViewport) {
+        return;
+      }
+
       const target = event.target;
       const isElementTarget = target instanceof HTMLElement;
       const isEditable =
@@ -443,7 +529,7 @@ export default function PresentationEditor() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [selectedElementIds, handleDeleteSelection, handleDuplicateSelection, handleMoveSelection, handleRedo, handleUndo]);
+  }, [isMobileViewport, selectedElementIds, handleDeleteSelection, handleDuplicateSelection, handleMoveSelection, handleRedo, handleUndo]);
 
   const deckNotFound = Boolean(deckQuery.error && isNotFoundError(deckQuery.error));
 
@@ -623,7 +709,28 @@ export default function PresentationEditor() {
       </div>
     </>
   );
-  const canvasToolbar = (
+  const canvasToolbar = isMobileViewport ? (
+    <div className="space-y-2">
+      <MobileQuickActions
+        mode={mobileGestures.state.mode}
+        onToggleMode={handleToggleMobileMode}
+        onNudgeSelection={handleMoveSelection}
+        onDeleteSelection={handleDeleteSelection}
+        disabled={!selectedElementId}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <Button onClick={() => handleAddElement("text")} variant="secondary">
+          Add Text
+        </Button>
+        <Button onClick={() => handleAddElement("image")} variant="secondary">
+          Add Image
+        </Button>
+        <Button onClick={handleApplyMobilePanGesture} variant="outline" className="col-span-2">
+          Simulate Pinch + Pan
+        </Button>
+      </div>
+    </div>
+  ) : (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
         <Button
@@ -677,12 +784,44 @@ export default function PresentationEditor() {
       </div>
     </>
   );
-  const propertiesPanel = (
+  const basePropertiesPanel = (
     <PropertyPanel
       selectedElement={selectedElement}
       onPatchSelected={handlePatchSelectedElement}
     />
   );
+
+  const mobileBottomSheetBody =
+    mobileSheetTab === "Properties"
+      ? basePropertiesPanel
+      : mobileSheetTab === "Add"
+        ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={() => handleAddElement("text")} variant="secondary">Text</Button>
+            <Button onClick={() => handleAddElement("image")} variant="secondary">Image</Button>
+            <Button onClick={() => handleAddElement("rect")} variant="secondary">Shape</Button>
+            <Button onClick={() => handleAddElement("line")} variant="secondary">Line</Button>
+          </div>
+        )
+        : mobileSheetTab === "Layers"
+          ? (
+            <div className="text-sm text-muted-foreground space-y-1">
+              {draftContent.elements.map((element, index) => (
+                <p key={element.id}>
+                  {index + 1}. {element.type}
+                </p>
+              ))}
+            </div>
+          )
+          : slidesPanel;
+
+  const propertiesPanel = isMobileViewport ? (
+    <MobileBottomSheet
+      activeTab={mobileSheetTab}
+      onTabChange={setMobileSheetTab}
+      body={mobileBottomSheetBody}
+    />
+  ) : basePropertiesPanel;
 
   return (
     <div className="min-h-screen p-6 space-y-4">
@@ -713,6 +852,8 @@ export default function PresentationEditor() {
             elements={draftContent.elements}
             selectedElementIds={selectedElementIds}
             snapGuides={commandState.snapGuides}
+            suppressTransformHandles={isMobilePanMode}
+            viewport={isMobileViewport ? mobileGestures.state.viewport : undefined}
             onSelectElement={handleSelectElement}
             onMoveSelection={handleMoveSelection}
             onResizeSelection={handleResizeSelection}
