@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PRESENTATION_ERROR_CODE } from "@shared/presentation/constants";
@@ -60,6 +62,14 @@ function buildDeckDetail(overrides?: Partial<Record<string, unknown>>) {
   };
 }
 
+function loadDegradationFixture(name: string): any {
+  const fixturePath = path.resolve(
+    import.meta.dirname,
+    `./__fixtures__/export-degradation/${name}`,
+  );
+  return JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
+}
+
 describe("presentationPlaybackExport", () => {
   beforeEach(() => {
     resetPresentationExportStateForTests();
@@ -77,7 +87,7 @@ describe("presentationPlaybackExport", () => {
     expect(payload.slides.map((slide) => slide.transition)).toEqual(["cut", "fade"]);
   });
 
-  it("rejects unsupported transitions before enqueue", async () => {
+  it("degrades unsupported transition inputs and emits stable warning codes", async () => {
     const deckDetail = buildDeckDetail({
       slides: [
         {
@@ -100,17 +110,31 @@ describe("presentationPlaybackExport", () => {
         actor,
         {
           getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
-          enqueueExportJob: vi.fn(),
+          enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-degrade-1" }),
           now: () => Date.parse("2026-02-22T10:00:01.000Z"),
         },
       ),
-    ).rejects.toSatisfy((error: unknown) => {
+    ).resolves.toSatisfy((result: any) => {
       return (
-        error instanceof PresentationServiceError
-        && error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED
-        && error.message.includes("transition")
+        result.status === "queued"
+        && Array.isArray(result.warnings)
+        && result.warnings.some((warning: any) => warning.code === "SLIDE_TRANSITION_UNSUPPORTED")
       );
     });
+  });
+
+  it("keeps fixture-backed degradation precedence and warning codes deterministic", () => {
+    const input = loadDegradationFixture("unsupported-constructs.input.json");
+    const expected = loadDegradationFixture("unsupported-constructs.expected.json");
+
+    const renderSpec = buildPresentationRenderSpec({
+      deck: input.deck,
+      slides: input.slides,
+      format: "png",
+    });
+
+    expect(renderSpec.warnings).toEqual(expected.warnings);
+    expect(renderSpec.slides).toEqual(expected.slides);
   });
 
   it("includes schema_version in render spec and rejects unknown versions", async () => {
@@ -144,7 +168,21 @@ describe("presentationPlaybackExport", () => {
 
   it("dedupes duplicate export requests within the dedupe window", async () => {
     const enqueueExportJob = vi.fn().mockResolvedValue({ jobId: "job-1" });
-    const deckDetail = buildDeckDetail();
+    const deckDetail = buildDeckDetail({
+      slides: [
+        {
+          id: 2,
+          deckId: 101,
+          orderIndex: 1,
+          version: 1,
+          title: "Second",
+          slideContent: { elements: [], transition: "wipe" },
+          notes: null,
+          createdAt: new Date("2026-02-22T10:00:00.000Z"),
+          updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+        },
+      ],
+    });
     let now = Date.parse("2026-02-22T10:00:10.000Z");
 
     const first = await triggerPresentationExport(
@@ -173,6 +211,8 @@ describe("presentationPlaybackExport", () => {
     expect(first.exportId).toBe(second.exportId);
     expect(first.deduped).toBe(false);
     expect(second.deduped).toBe(true);
+    expect(second.warnings).toEqual(first.warnings);
+    expect(second.warnings[0]?.code).toBe("SLIDE_TRANSITION_UNSUPPORTED");
   });
 
   it("expires stale export status entries after ttl", async () => {
@@ -232,41 +272,49 @@ describe("presentationPlaybackExport", () => {
   });
 
   it("evicts oldest status entries when maxStatusEntries is exceeded", async () => {
+    vi.useFakeTimers();
     const deckDetail = buildDeckDetail();
     let now = Date.parse("2026-02-22T10:01:00.000Z");
+    vi.setSystemTime(now);
 
-    const dependencies = {
-      getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
-      enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-cap-status" }),
-      now: () => now,
-      maxDedupeEntries: 10,
-      maxStatusEntries: 2,
-      maxResultEntries: 2,
-    };
+    try {
+      const dependencies = {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-cap-status" }),
+        now: () => now,
+        maxDedupeEntries: 10,
+        maxStatusEntries: 2,
+        maxResultEntries: 2,
+      };
 
-    const first = await triggerPresentationExport(
-      { deckId: 101, format: "mp4", idempotencyKey: "status-cap-a" },
-      actor,
-      dependencies,
-    );
-    now += 100;
-    const second = await triggerPresentationExport(
-      { deckId: 101, format: "mp4", idempotencyKey: "status-cap-b" },
-      actor,
-      dependencies,
-    );
-    now += 100;
-    const third = await triggerPresentationExport(
-      { deckId: 101, format: "mp4", idempotencyKey: "status-cap-c" },
-      actor,
-      dependencies,
-    );
+      const first = await triggerPresentationExport(
+        { deckId: 101, format: "mp4", idempotencyKey: "status-cap-a" },
+        actor,
+        dependencies,
+      );
+      now += 100;
+      vi.setSystemTime(now);
+      const second = await triggerPresentationExport(
+        { deckId: 101, format: "mp4", idempotencyKey: "status-cap-b" },
+        actor,
+        dependencies,
+      );
+      now += 100;
+      vi.setSystemTime(now);
+      const third = await triggerPresentationExport(
+        { deckId: 101, format: "mp4", idempotencyKey: "status-cap-c" },
+        actor,
+        dependencies,
+      );
 
-    expect(() => getPresentationExportStatus(first.exportId, actor)).toThrow(
-      PRESENTATION_ERROR_CODE.NOT_FOUND,
-    );
-    expect(getPresentationExportStatus(second.exportId, actor).status).toBe("queued");
-    expect(getPresentationExportStatus(third.exportId, actor).status).toBe("queued");
+      expect(() => getPresentationExportStatus(first.exportId, actor)).toThrow(
+        PRESENTATION_ERROR_CODE.NOT_FOUND,
+      );
+      expect(getPresentationExportStatus(second.exportId, actor).status).toBe("queued");
+      expect(getPresentationExportStatus(third.exportId, actor).status).toBe("queued");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("enforces per-user and per-deck throttles with stable retry semantics", async () => {
@@ -302,30 +350,37 @@ describe("presentationPlaybackExport", () => {
   });
 
   it("denies cross-tenant export status lookups and allows same-actor lookups", async () => {
+    vi.useFakeTimers();
     const deckDetail = buildDeckDetail();
-    const queued = await triggerPresentationExport(
-      { deckId: 101, format: "mp4", idempotencyKey: "status-scope-1" },
-      actor,
-      {
-        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
-        enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-scope-1" }),
-        now: () => Date.parse("2026-02-22T10:00:40.000Z"),
-      },
-    );
-
-    const sameActor = getPresentationExportStatus(queued.exportId, actor);
-    expect(sameActor.status).toBe("queued");
-
     try {
-      getPresentationExportStatus(queued.exportId, {
-        userId: actor.userId,
-        tenantId: "tenant-2",
-        role: actor.role,
-      });
-      throw new Error("Expected cross-tenant status lookup to throw");
-    } catch (error) {
-      expect(error).toBeInstanceOf(PresentationServiceError);
-      expect((error as PresentationServiceError).code).toBe(PRESENTATION_ERROR_CODE.PERMISSION_DENIED);
+      const exportNow = Date.parse("2026-02-22T10:00:40.000Z");
+      vi.setSystemTime(exportNow);
+      const queued = await triggerPresentationExport(
+        { deckId: 101, format: "mp4", idempotencyKey: "status-scope-1" },
+        actor,
+        {
+          getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+          enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-scope-1" }),
+          now: () => exportNow,
+        },
+      );
+
+      const sameActor = getPresentationExportStatus(queued.exportId, actor);
+      expect(sameActor.status).toBe("queued");
+
+      try {
+        getPresentationExportStatus(queued.exportId, {
+          userId: actor.userId,
+          tenantId: "tenant-2",
+          role: actor.role,
+        });
+        throw new Error("Expected cross-tenant status lookup to throw");
+      } catch (error) {
+        expect(error).toBeInstanceOf(PresentationServiceError);
+        expect((error as PresentationServiceError).code).toBe(PRESENTATION_ERROR_CODE.PERMISSION_DENIED);
+      }
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

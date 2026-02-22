@@ -1,0 +1,38 @@
+{
+  "warnings": [
+    {
+      "code": "SLIDE_TRANSITION_UNSUPPORTED",
+      "slideId": 11,
+      "detail": "transition=wipe"
+    },
+    {
+      "code": "SLIDE_DURATION_INVALID",
+      "slideId": 11,
+      "detail": "durationMs=fast"
+    },
+    {
+      "code": "SLIDE_ELEMENT_UNSUPPORTED",
+      "slideId": 11
+    },
+    {
+      "code": "SLIDE_IMAGE_SOURCE_MISSING",
+      "slideId": 11
+    }
+  ],
+  "slides": [
+    {
+      "slideId": 11,
+      "orderIndex": 0,
+      "title": "Unsupported",
+      "durationMs": 3000,
+      "transition": "cut"
+    },
+    {
+      "slideId": 12,
+      "orderIndex": 1,
+      "title": "Supported",
+      "durationMs": 4000,
+      "transition": "fade"
+    }
+  ]
+}

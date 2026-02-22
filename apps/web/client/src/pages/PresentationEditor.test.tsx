@@ -265,6 +265,25 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("renders deterministic export warning codes from export responses", async () => {
+    mutationMocks.triggerExport.mockResolvedValueOnce({
+      exportId: "exp-warning-1",
+      status: "queued",
+      deduped: false,
+      message: "Queued with degradation warnings",
+      warnings: [{ code: "SLIDE_TRANSITION_UNSUPPORTED", slideId: 71 }],
+    });
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /export png/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("presentation-export-warnings")).toHaveTextContent(
+        /SLIDE_TRANSITION_UNSUPPORTED \(slide 71\)/i,
+      );
+    });
+  });
+
   it("navigates back to Document Management from editor header", () => {
     render(<PresentationEditor />);
 

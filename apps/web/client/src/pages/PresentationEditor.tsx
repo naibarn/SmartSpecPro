@@ -53,6 +53,7 @@ import {
   PRESENTATION_ERROR_CODE,
   PRESENTATION_ITEM_TYPE,
 } from "@shared/presentation/constants";
+import type { PresentationExportWarning } from "@shared/presentation/contracts";
 
 function parseDocId(value: string | undefined): number | null {
   if (!value) return null;
@@ -166,6 +167,7 @@ export default function PresentationEditor() {
   const conflictPolicyRef = useRef(conflictPolicy);
   const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
   const [exportMessage, setExportMessage] = useState<string>("");
+  const [exportWarnings, setExportWarnings] = useState<PresentationExportWarning[]>([]);
   const [lastExportId, setLastExportId] = useState<string | null>(null);
   const [autoDeckInitAttempted, setAutoDeckInitAttempted] = useState(false);
   const [autoDeckInitPending, setAutoDeckInitPending] = useState(false);
@@ -568,6 +570,7 @@ export default function PresentationEditor() {
 
   async function handleExport(format: "png" | "mp4") {
     if (!deck) return;
+    setExportWarnings([]);
     setExportMessage(`Submitting ${format.toUpperCase()} export...`);
     try {
       const result = await triggerExportMutation.mutateAsync({
@@ -576,14 +579,23 @@ export default function PresentationEditor() {
         idempotencyKey: `${deck.id}-${format}-${Date.now()}`,
       });
       setLastExportId(result.exportId);
+      setExportWarnings(Array.isArray((result as any).warnings) ? (result as any).warnings : []);
       const queuedMessage = result.message || `${format.toUpperCase()} export queued`;
       setExportMessage(queuedMessage);
     } catch (error) {
       const raw = String((error as any)?.message || "Export failed");
       const trimmed = raw.includes(":") ? raw.split(":").slice(1).join(":").trim() : raw;
+      setExportWarnings([]);
       setExportMessage(trimmed || "Export failed");
     }
   }
+
+  useEffect(() => {
+    const statusWarnings = exportStatusQuery.data?.warnings;
+    if (Array.isArray(statusWarnings)) {
+      setExportWarnings(statusWarnings);
+    }
+  }, [exportStatusQuery.data?.warnings]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -984,6 +996,11 @@ export default function PresentationEditor() {
         <p className="text-sm text-muted-foreground">Export status: {exportStatusLabel}</p>
         {exportMessage ? (
           <p className="text-sm text-muted-foreground" role="status">{exportMessage}</p>
+        ) : null}
+        {exportWarnings.length ? (
+          <p className="text-sm text-amber-700" data-testid="presentation-export-warnings">
+            Export warnings: {exportWarnings.map((warning) => `${warning.code} (slide ${warning.slideId})`).join(", ")}
+          </p>
         ) : null}
       </header>
 

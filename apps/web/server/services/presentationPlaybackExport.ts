@@ -15,7 +15,6 @@ import {
   type PresentationExportStatusResult,
   type PresentationRenderSpec,
   type PresentationSlideshowPayload,
-  type PresentationTransition,
 } from "@shared/presentation/contracts";
 import type { PresentationDeck, PresentationSlide } from "../../drizzle/schema";
 
@@ -25,6 +24,7 @@ import {
   type PresentationDeckDetail,
   PresentationServiceError,
 } from "./presentationService";
+import { degradeSlidesForExport } from "./presentationExportDegradation";
 import {
   incrementPresentationMetric,
   recordPresentationFailureMetric,
@@ -109,36 +109,6 @@ const deckWindowRegistry = new Map<string, number[]>();
 
 function nextId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
-}
-
-function normalizeTransition(raw: unknown): PresentationTransition {
-  if (raw === undefined || raw === null || raw === "") {
-    return "cut";
-  }
-  if (raw === "cut" || raw === "fade") {
-    return raw;
-  }
-
-  throw new PresentationServiceError(
-    PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
-    `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: transition "${String(raw)}" is unsupported`,
-  );
-}
-
-function normalizeDurationMs(raw: unknown, fallback: number): number {
-  if (typeof raw === "number" && Number.isFinite(raw) && raw >= 250 && raw <= 120_000) {
-    return Math.round(raw);
-  }
-  return fallback;
-}
-
-function sortedSlides(slides: PresentationSlide[]): PresentationSlide[] {
-  return [...slides].sort((a, b) => {
-    if (a.orderIndex === b.orderIndex) {
-      return a.id - b.id;
-    }
-    return a.orderIndex - b.orderIndex;
-  });
 }
 
 function pruneWindow(entries: number[], nowMs: number, windowMs: number): number[] {
@@ -366,33 +336,23 @@ export function buildSlideshowPayload(
 ): PresentationSlideshowPayload {
   const defaultDurationMs = options?.defaultDurationMs ?? DEFAULT_DURATION_MS;
   const deckId = options?.deckId ?? (slides[0]?.deckId ?? 1);
-  const normalizedSlides = sortedSlides(slides).map((slide) => {
-    const content =
-      slide.slideContent && typeof slide.slideContent === "object" && !Array.isArray(slide.slideContent)
-        ? (slide.slideContent as Record<string, unknown>)
-        : {};
-    const transition = normalizeTransition(content.transition);
-    const durationMs = normalizeDurationMs(content.durationMs, defaultDurationMs);
-    return {
-      slideId: slide.id,
-      orderIndex: slide.orderIndex,
-      title: slide.title || `Slide ${slide.orderIndex + 1}`,
-      durationMs,
-      transition,
-    };
-  });
+  const degraded = degradeSlidesForExport(slides, defaultDurationMs);
 
   return presentationSlideshowPayloadSchema.parse({
     schemaVersion: PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
     deckId,
     generatedAt: options?.generatedAt ?? new Date(),
-    slides: normalizedSlides,
+    slides: degraded.slides,
   });
 }
 
 export function buildPresentationRenderSpec(input: BuildRenderSpecInput): PresentationRenderSpec {
-  const slideshowPayload = buildSlideshowPayload(input.slides, {
+  const degraded = degradeSlidesForExport(input.slides, DEFAULT_DURATION_MS);
+  const slideshowPayload = presentationSlideshowPayloadSchema.parse({
+    schemaVersion: PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
     deckId: input.deck.id,
+    generatedAt: new Date(),
+    slides: degraded.slides,
   });
 
   return presentationRenderSpecSchema.parse({
@@ -403,6 +363,7 @@ export function buildPresentationRenderSpec(input: BuildRenderSpecInput): Presen
     height: input.height ?? 1080,
     fps: input.fps ?? 30,
     slides: slideshowPayload.slides,
+    warnings: degraded.warnings,
   });
 }
 
@@ -486,6 +447,7 @@ export async function triggerPresentationExport(
       format: input.format,
       updatedAt: new Date(nowMs),
       message: "Export queued",
+      warnings: renderSpec.warnings,
     });
     statusRegistry.set(exportId, {
       createdAtMs: nowMs,
@@ -521,6 +483,7 @@ export async function triggerPresentationExport(
       status: "queued",
       message: "Export queued",
       renderSpec,
+      warnings: renderSpec.warnings,
     });
     resultRegistry.set(exportId, {
       createdAtMs: nowMs,

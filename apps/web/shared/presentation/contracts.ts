@@ -11,6 +11,10 @@ import {
   PRESENTATION_RENDER_SCHEMA_VERSION,
   PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
 } from "./constants";
+import {
+  presentationExportWarningsSchema,
+  type PresentationExportWarning,
+} from "./exportWarnings";
 
 export const presentationRouteGuardInputSchema = z.object({
   itemId: z.number().int().positive(),
@@ -233,6 +237,7 @@ export const presentationRenderSpecSchema = z.object({
   height: z.number().int().positive(),
   fps: z.number().int().positive(),
   slides: z.array(presentationSlideshowSlideSchema).max(500),
+  warnings: presentationExportWarningsSchema.default([]),
 });
 
 export const presentationExportStatusSchema = z.enum([
@@ -252,6 +257,7 @@ export const presentationExportResultSchema = z.object({
   status: presentationExportStatusSchema,
   message: z.string().min(1).max(400).optional(),
   renderSpec: presentationRenderSpecSchema,
+  warnings: presentationExportWarningsSchema.default([]),
 });
 
 export const presentationExportStatusResultSchema = z.object({
@@ -262,6 +268,7 @@ export const presentationExportStatusResultSchema = z.object({
   format: z.enum(["png", "mp4"]),
   updatedAt: z.coerce.date(),
   message: z.string().min(1).max(400).optional(),
+  warnings: presentationExportWarningsSchema.default([]),
 });
 
 export type PresentationRouteGuardInput = z.infer<typeof presentationRouteGuardInputSchema>;
@@ -280,6 +287,7 @@ export type PresentationSlideElement = z.infer<typeof presentationSlideElementSc
 export type PresentationSlideContent = z.infer<typeof presentationSlideContentSchema>;
 export type PresentationExportResult = z.infer<typeof presentationExportResultSchema>;
 export type PresentationExportStatusResult = z.infer<typeof presentationExportStatusResultSchema>;
+export type { PresentationExportWarning };
 
 export function isPresentationItemType(itemType: string): boolean {
   return itemType.trim().toLowerCase() === PRESENTATION_ITEM_TYPE;
