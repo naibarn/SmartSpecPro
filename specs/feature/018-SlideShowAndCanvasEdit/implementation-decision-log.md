@@ -71,3 +71,19 @@
 - decision_taken: `deck_and_slide`
 - mode_used: `auto`
 - rationale: Reduces unnecessary content-write conflicts and aligns save conflict checks with the resource being edited.
+
+## 2026-02-22 - Section 05 - Editor Interaction Model
+- options_considered:
+  - `drag_drop_reorder`: introduce drag-and-drop for slide ordering in MVP
+  - `deterministic_buttons`: use explicit up/down controls for ordering
+- decision_taken: `deterministic_buttons`
+- mode_used: `auto`
+- rationale: Lower complexity and deterministic testability while still meeting section reorder requirements.
+
+## 2026-02-22 - Section 05 - Canvas State Boundary
+- options_considered:
+  - `inline_state_only`: keep all element mutation logic inline in page component
+  - `state_helper_module`: move element normalization/add/update logic into dedicated helper module with unit tests
+- decision_taken: `state_helper_module`
+- mode_used: `auto`
+- rationale: Keeps page logic manageable and directly validates targeted-element mutation behavior required by section tests.

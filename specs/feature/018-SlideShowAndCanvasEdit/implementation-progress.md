@@ -44,13 +44,29 @@
 
 ## Section 04 - Conflict and Concurrency Hardening
 - section: `section-04-conflict-and-concurrency-hardening`
-- commit: `pending`
+- commit: `531b4e1`
 - test_command: `cd apps/web && npm test -- server/routers/presentation.test.ts server/services/presentationService.test.ts`
 - pass_fail_summary:
   - `pass`: `server/routers/presentation.test.ts`
   - `pass`: `server/services/presentationService.test.ts`
 - notable_deviations:
   - Implemented deterministic conflict schema and optimistic checks at service/router layers; deeper transaction-level CAS hardening remains for broader stress coverage in section 09.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining: none
+
+## Section 05 - Frontend Editor and Document Integration
+- section: `section-05-frontend-editor-and-document-integration`
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- client/src/lib/presentationEditorState.test.ts client/src/pages/PresentationEditor.test.tsx`
+- pass_fail_summary:
+  - `pass`: `client/src/lib/presentationEditorState.test.ts`
+  - `pass`: `client/src/pages/PresentationEditor.test.tsx`
+  - `pass`: `client/src/lib/presentationRouting.test.ts`
+  - `pass`: `server/routers/presentation.test.ts`
+  - `pass`: `server/services/presentationService.test.ts`
+- notable_deviations:
+  - Implemented deterministic button-driven slide reorder (`Move Up`/`Move Down`) for MVP instead of drag-and-drop interaction.
 - blocked_tasks_resolved_remaining:
   - resolved: none
   - remaining: none
