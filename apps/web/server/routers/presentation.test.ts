@@ -31,6 +31,12 @@ const compatibilityMocks = vi.hoisted(() => ({
   convertOfficeSourceToPresentation: vi.fn(),
 }));
 
+const playbackMocks = vi.hoisted(() => ({
+  buildSlideshowPayload: vi.fn(),
+  triggerPresentationExport: vi.fn(),
+  getPresentationExportStatus: vi.fn(),
+}));
+
 vi.mock("../services/presentationService", async () => {
   const actual = await vi.importActual<any>("../services/presentationService");
   return {
@@ -47,6 +53,12 @@ vi.mock("../services/presentationCompatibilityService", () => ({
   convertOfficeSourceToPresentation: compatibilityMocks.convertOfficeSourceToPresentation,
 }));
 
+vi.mock("../services/presentationPlaybackExport", () => ({
+  buildSlideshowPayload: playbackMocks.buildSlideshowPayload,
+  triggerPresentationExport: playbackMocks.triggerPresentationExport,
+  getPresentationExportStatus: playbackMocks.getPresentationExportStatus,
+}));
+
 import { presentationRouter } from "./presentation";
 import { PresentationServiceError } from "../services/presentationService";
 import {
@@ -57,6 +69,7 @@ import {
 describe("presentationRouter", () => {
   beforeEach(() => {
     delete process.env.PRESENTATION_EDITOR_ENABLED;
+    delete process.env.PRESENTATION_EXPORTS_ENABLED;
     vi.clearAllMocks();
     compatibilityMocks.getPresentationCompatibilityOpen.mockResolvedValue({
       schemaVersion: "presentation_compatibility_v1",
@@ -77,6 +90,38 @@ describe("presentationRouter", () => {
       fidelityWarnings: [],
       deckLibraryItemId: 77,
       deckId: 88,
+    });
+    playbackMocks.buildSlideshowPayload.mockReturnValue({
+      schemaVersion: "presentation_slideshow_v1",
+      deckId: 88,
+      generatedAt: new Date(),
+      slides: [],
+    });
+    playbackMocks.triggerPresentationExport.mockResolvedValue({
+      schemaVersion: "presentation_export_v1",
+      exportId: "exp-1",
+      jobId: "job-1",
+      deckId: 88,
+      format: "mp4",
+      deduped: false,
+      status: "queued",
+      renderSpec: {
+        schemaVersion: "presentation_render_v1",
+        deckId: 88,
+        format: "mp4",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        slides: [],
+      },
+    });
+    playbackMocks.getPresentationExportStatus.mockResolvedValue({
+      schemaVersion: "presentation_export_v1",
+      exportId: "exp-1",
+      jobId: "job-1",
+      status: "queued",
+      format: "mp4",
+      updatedAt: new Date(),
     });
   });
 
@@ -293,6 +338,36 @@ describe("presentationRouter", () => {
       if (!(error instanceof TRPCError)) return false;
       return error.code === "CONFLICT" && (error.cause as any)?.reasonCode === "SLIDE_VERSION_MISMATCH";
     });
+  });
+
+  it("blocks export writes when export-write flag is disabled while keeping read routes available", async () => {
+    process.env.PRESENTATION_EXPORTS_ENABLED = "false";
+    serviceMocks.getPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 88, libraryItemId: 42 },
+      slides: [],
+      assets: [],
+    });
+
+    const triggerFn = presentationRouter.triggerExport as Function;
+    await expect(
+      triggerFn({
+        ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+        input: { deckId: 88, format: "mp4", idempotencyKey: "req-1" },
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof TRPCError)) return false;
+      return error.code === "FORBIDDEN" && error.message.includes(PRESENTATION_ERROR_CODE.FEATURE_DISABLED);
+    });
+
+    const slideshowFn = presentationRouter.getSlideshow as Function;
+    const slideshow = await slideshowFn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 88 },
+    });
+
+    expect(playbackMocks.triggerPresentationExport).not.toHaveBeenCalled();
+    expect(playbackMocks.buildSlideshowPayload).toHaveBeenCalledTimes(1);
+    expect(slideshow.schemaVersion).toBe("presentation_slideshow_v1");
   });
 });
 

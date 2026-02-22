@@ -25,6 +25,11 @@ import {
   type PresentationDeckDetail,
   PresentationServiceError,
 } from "./presentationService";
+import {
+  incrementPresentationMetric,
+  recordPresentationFailureMetric,
+  recordPresentationLog,
+} from "./presentationObservability";
 
 const DEFAULT_DURATION_MS = 3000;
 const DEDUPE_WINDOW_MS = 15_000;
@@ -156,8 +161,8 @@ function resolveDependencies(
     maxUserRequestsPerMinute: dependencies?.maxUserRequestsPerMinute ?? MAX_USER_REQUESTS_PER_WINDOW,
     maxDeckRequestsPerMinute: dependencies?.maxDeckRequestsPerMinute ?? MAX_DECK_REQUESTS_PER_WINDOW,
     acceptedRenderSchemaVersions: dependencies?.acceptedRenderSchemaVersions ?? [PRESENTATION_RENDER_SCHEMA_VERSION],
-    recordMetric: dependencies?.recordMetric ?? (() => {}),
-    recordLog: dependencies?.recordLog ?? (() => {}),
+    recordMetric: dependencies?.recordMetric ?? ((metric: string) => incrementPresentationMetric(metric)),
+    recordLog: dependencies?.recordLog ?? recordPresentationLog,
   };
 }
 
@@ -241,90 +246,111 @@ export async function triggerPresentationExport(
 ): Promise<PresentationExportResult> {
   const resolved = resolveDependencies(dependencies);
   const nowMs = resolved.now();
-  const dedupeKey = resolveDedupeKey(input, actor);
-  const dedupeHit = dedupeRegistry.get(dedupeKey);
-  if (dedupeHit && nowMs - dedupeHit.createdAtMs <= resolved.dedupeWindowMs) {
-    const existing = statusRegistry.get(dedupeHit.exportId);
-    const existingResult = resultRegistry.get(dedupeHit.exportId);
-    if (existing && existingResult) {
-      resolved.recordMetric("presentation.export.deduped", { format: input.format });
-      return presentationExportResultSchema.parse({
-        ...existingResult,
-        deduped: true,
-        status: existing.status,
-        message: "Duplicate export suppressed. Existing job is still active.",
+  try {
+    const dedupeKey = resolveDedupeKey(input, actor);
+    const dedupeHit = dedupeRegistry.get(dedupeKey);
+    if (dedupeHit && nowMs - dedupeHit.createdAtMs <= resolved.dedupeWindowMs) {
+      const existing = statusRegistry.get(dedupeHit.exportId);
+      const existingResult = resultRegistry.get(dedupeHit.exportId);
+      if (existing && existingResult) {
+        resolved.recordMetric("presentation.export.deduped", { format: input.format });
+        resolved.recordLog("presentation_export_deduped", {
+          tenantId: actor.tenantId,
+          userId: actor.userId,
+          deckId: input.deckId,
+          format: input.format,
+        });
+        return presentationExportResultSchema.parse({
+          ...existingResult,
+          deduped: true,
+          status: existing.status,
+          message: "Duplicate export suppressed. Existing job is still active.",
+        });
+      }
+    }
+
+    enforceThrottle(
+      `${actor.tenantId}:${actor.userId}`,
+      resolved.maxUserRequestsPerMinute,
+      nowMs,
+      resolved.throttleWindowMs,
+      userWindowRegistry,
+    );
+    enforceThrottle(
+      `${actor.tenantId}:${input.deckId}`,
+      resolved.maxDeckRequestsPerMinute,
+      nowMs,
+      resolved.throttleWindowMs,
+      deckWindowRegistry,
+    );
+
+    const detail = await resolved.getDeckDetail(input.deckId, actor);
+    const renderSpec = buildPresentationRenderSpec({
+      deck: detail.deck,
+      slides: detail.slides,
+      format: input.format,
+    });
+    ensureRenderSchemaAccepted(renderSpec, resolved.acceptedRenderSchemaVersions);
+
+    const queued = await resolved.enqueueExportJob(renderSpec, input.format);
+    const exportId = nextId("presentation-export");
+    const status = presentationExportStatusResultSchema.parse({
+      schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
+      exportId,
+      jobId: queued.jobId,
+      status: "queued",
+      format: input.format,
+      updatedAt: new Date(nowMs),
+      message: "Export queued",
+    });
+    statusRegistry.set(exportId, {
+      ...status,
+      tenantId: actor.tenantId,
+      userId: actor.userId,
+    });
+    dedupeRegistry.set(dedupeKey, {
+      exportId,
+      jobId: queued.jobId,
+      createdAtMs: nowMs,
+    });
+
+    resolved.recordMetric("presentation.export.queued", { format: input.format });
+    resolved.recordLog("presentation_export_queued", {
+      exportId,
+      jobId: queued.jobId,
+      deckId: input.deckId,
+      userId: actor.userId,
+      tenantId: actor.tenantId,
+      format: input.format,
+    });
+
+    const result = presentationExportResultSchema.parse({
+      schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
+      exportId,
+      jobId: queued.jobId,
+      deckId: input.deckId,
+      format: input.format,
+      deduped: false,
+      status: "queued",
+      message: "Export queued",
+      renderSpec,
+    });
+    resultRegistry.set(exportId, result);
+    return result;
+  } catch (error) {
+    if (error instanceof PresentationServiceError) {
+      recordPresentationFailureMetric(error.code);
+      resolved.recordLog("presentation_export_failed", {
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        deckId: input.deckId,
+        format: input.format,
+        errorCode: error.code,
+        retryAfterSeconds: error.details?.retryAfterSeconds as number | undefined,
       });
     }
+    throw error;
   }
-
-  enforceThrottle(
-    `${actor.tenantId}:${actor.userId}`,
-    resolved.maxUserRequestsPerMinute,
-    nowMs,
-    resolved.throttleWindowMs,
-    userWindowRegistry,
-  );
-  enforceThrottle(
-    `${actor.tenantId}:${input.deckId}`,
-    resolved.maxDeckRequestsPerMinute,
-    nowMs,
-    resolved.throttleWindowMs,
-    deckWindowRegistry,
-  );
-
-  const detail = await resolved.getDeckDetail(input.deckId, actor);
-  const renderSpec = buildPresentationRenderSpec({
-    deck: detail.deck,
-    slides: detail.slides,
-    format: input.format,
-  });
-  ensureRenderSchemaAccepted(renderSpec, resolved.acceptedRenderSchemaVersions);
-
-  const queued = await resolved.enqueueExportJob(renderSpec, input.format);
-  const exportId = nextId("presentation-export");
-  const status = presentationExportStatusResultSchema.parse({
-    schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
-    exportId,
-    jobId: queued.jobId,
-    status: "queued",
-    format: input.format,
-    updatedAt: new Date(nowMs),
-    message: "Export queued",
-  });
-  statusRegistry.set(exportId, {
-    ...status,
-    tenantId: actor.tenantId,
-    userId: actor.userId,
-  });
-  dedupeRegistry.set(dedupeKey, {
-    exportId,
-    jobId: queued.jobId,
-    createdAtMs: nowMs,
-  });
-
-  resolved.recordMetric("presentation.export.queued", { format: input.format });
-  resolved.recordLog("presentation_export_queued", {
-    exportId,
-    jobId: queued.jobId,
-    deckId: input.deckId,
-    userId: actor.userId,
-    tenantId: actor.tenantId,
-    format: input.format,
-  });
-
-  const result = presentationExportResultSchema.parse({
-    schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
-    exportId,
-    jobId: queued.jobId,
-    deckId: input.deckId,
-    format: input.format,
-    deduped: false,
-    status: "queued",
-    message: "Export queued",
-    renderSpec,
-  });
-  resultRegistry.set(exportId, result);
-  return result;
 }
 
 export function getPresentationExportStatus(

@@ -22,6 +22,11 @@ import {
   type PresentationConversionResult,
   type PresentationSourceFormat,
 } from "@shared/presentation/contracts";
+import {
+  incrementPresentationMetric,
+  recordPresentationFailureMetric,
+  recordPresentationLog,
+} from "./presentationObservability";
 
 interface ConversionRecord {
   sourceKey: string;
@@ -210,129 +215,159 @@ function toConversionResult(
   });
 }
 
+function recordConversionOutcome(
+  actor: PresentationActor,
+  sourceFormat: string,
+  conversionStatus: string,
+): void {
+  incrementPresentationMetric(`presentation.conversion.${conversionStatus}.total`);
+  recordPresentationLog("presentation_conversion_outcome", {
+    tenantId: actor.tenantId,
+    userId: actor.userId,
+    sourceFormat,
+    conversionStatus,
+  });
+}
+
 export async function convertOfficeSourceToPresentation(
   input: { sourceItemId: number; idempotencyKey: string },
   actor: PresentationActor,
   deps: PresentationConversionDependencies = defaultDependencies,
 ): Promise<PresentationConversionResult> {
-  const sourceItem = await deps.getLibraryItemById(input.sourceItemId, actor);
-  if (!sourceItem) {
-    throw new PresentationServiceError(
-      PRESENTATION_ERROR_CODE.NOT_FOUND,
-      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: source item ${input.sourceItemId} not found`,
-    );
-  }
-
-  const sourceFormat = inferPresentationSourceFormat(sourceItem);
-  if (sourceFormat === "presentation" || sourceFormat === "unknown") {
-    throw new PresentationServiceError(
-      PRESENTATION_ERROR_CODE.UNSUPPORTED_ITEM_TYPE,
-      `${PRESENTATION_ERROR_CODE.UNSUPPORTED_ITEM_TYPE}: source format must be pptx/ppt`,
-    );
-  }
-
-  const fidelityWarnings = collectFidelityWarnings(sourceItem.metadata);
-  if (sourceFormat === "ppt") {
-    return presentationConversionResultSchema.parse({
-      schemaVersion: PRESENTATION_CONVERSION_SCHEMA_VERSION,
-      sourceItemId: sourceItem.id,
-      sourceFormat,
-      conversionStatus: "unsupported",
-      partialFidelity: fidelityWarnings.length > 0,
-      fidelityWarnings,
-      guidance: "Legacy .ppt files are read-only. Export or re-save as .pptx to convert.",
-    });
-  }
-
-  const normalizedIdempotencyKey = input.idempotencyKey.trim().toLowerCase();
-  if (!normalizedIdempotencyKey) {
-    throw new PresentationServiceError(
-      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
-      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: idempotencyKey is required`,
-    );
-  }
-
-  const sourceKey = buildSourceKey(actor, sourceItem.id);
-  const existingBySource = conversionBySource.get(sourceKey);
-  if (existingBySource) {
-    return toConversionResult("existing", existingBySource);
-  }
-
-  const idempotencyCacheKey = `${sourceKey}:${normalizedIdempotencyKey}`;
-  const existingByIdempotency = conversionByIdempotencyKey.get(idempotencyCacheKey);
-  if (existingByIdempotency) {
-    return toConversionResult("existing", existingByIdempotency);
-  }
-
-  if (conversionLocks.has(sourceKey)) {
-    return presentationConversionResultSchema.parse({
-      schemaVersion: PRESENTATION_CONVERSION_SCHEMA_VERSION,
-      sourceItemId: sourceItem.id,
-      sourceFormat,
-      conversionStatus: "locked",
-      partialFidelity: fidelityWarnings.length > 0,
-      fidelityWarnings,
-      guidance: "Conversion already in progress for this source item.",
-    });
-  }
-
-  conversionLocks.add(sourceKey);
-
   try {
-    const convertedItem = await deps.createLibraryItem(
-      {
-        itemType: PRESENTATION_ITEM_TYPE,
-        source: "presentation_conversion",
-        title: toBasePresentationTitle(sourceItem.title),
-        description: sourceItem.description,
-        metadata: {
-          convertedFromItemId: sourceItem.id,
-          sourceFormat,
-          conversionSchemaVersion: PRESENTATION_CONVERSION_SCHEMA_VERSION,
-          sourceTitle: sourceItem.title,
-          fidelityWarnings,
-          partialFidelity: fidelityWarnings.length > 0,
+    const sourceItem = await deps.getLibraryItemById(input.sourceItemId, actor);
+    if (!sourceItem) {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.NOT_FOUND,
+        `${PRESENTATION_ERROR_CODE.NOT_FOUND}: source item ${input.sourceItemId} not found`,
+      );
+    }
+
+    const sourceFormat = inferPresentationSourceFormat(sourceItem);
+    if (sourceFormat === "presentation" || sourceFormat === "unknown") {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.UNSUPPORTED_ITEM_TYPE,
+        `${PRESENTATION_ERROR_CODE.UNSUPPORTED_ITEM_TYPE}: source format must be pptx/ppt`,
+      );
+    }
+
+    const fidelityWarnings = collectFidelityWarnings(sourceItem.metadata);
+    if (sourceFormat === "ppt") {
+      recordConversionOutcome(actor, sourceFormat, "unsupported");
+      return presentationConversionResultSchema.parse({
+        schemaVersion: PRESENTATION_CONVERSION_SCHEMA_VERSION,
+        sourceItemId: sourceItem.id,
+        sourceFormat,
+        conversionStatus: "unsupported",
+        partialFidelity: fidelityWarnings.length > 0,
+        fidelityWarnings,
+        guidance: "Legacy .ppt files are read-only. Export or re-save as .pptx to convert.",
+      });
+    }
+
+    const normalizedIdempotencyKey = input.idempotencyKey.trim().toLowerCase();
+    if (!normalizedIdempotencyKey) {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+        `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: idempotencyKey is required`,
+      );
+    }
+
+    const sourceKey = buildSourceKey(actor, sourceItem.id);
+    const existingBySource = conversionBySource.get(sourceKey);
+    if (existingBySource) {
+      recordConversionOutcome(actor, sourceFormat, "existing");
+      return toConversionResult("existing", existingBySource);
+    }
+
+    const idempotencyCacheKey = `${sourceKey}:${normalizedIdempotencyKey}`;
+    const existingByIdempotency = conversionByIdempotencyKey.get(idempotencyCacheKey);
+    if (existingByIdempotency) {
+      recordConversionOutcome(actor, sourceFormat, "existing");
+      return toConversionResult("existing", existingByIdempotency);
+    }
+
+    if (conversionLocks.has(sourceKey)) {
+      recordConversionOutcome(actor, sourceFormat, "locked");
+      return presentationConversionResultSchema.parse({
+        schemaVersion: PRESENTATION_CONVERSION_SCHEMA_VERSION,
+        sourceItemId: sourceItem.id,
+        sourceFormat,
+        conversionStatus: "locked",
+        partialFidelity: fidelityWarnings.length > 0,
+        fidelityWarnings,
+        guidance: "Conversion already in progress for this source item.",
+      });
+    }
+
+    conversionLocks.add(sourceKey);
+
+    try {
+      const convertedItem = await deps.createLibraryItem(
+        {
+          itemType: PRESENTATION_ITEM_TYPE,
+          source: "presentation_conversion",
+          title: toBasePresentationTitle(sourceItem.title),
+          description: sourceItem.description,
+          metadata: {
+            convertedFromItemId: sourceItem.id,
+            sourceFormat,
+            conversionSchemaVersion: PRESENTATION_CONVERSION_SCHEMA_VERSION,
+            sourceTitle: sourceItem.title,
+            fidelityWarnings,
+            partialFidelity: fidelityWarnings.length > 0,
+          },
+          sourceUrl: sourceItem.sourceUrl,
+          thumbnailUrl: sourceItem.thumbnailUrl,
         },
-        sourceUrl: sourceItem.sourceUrl,
-        thumbnailUrl: sourceItem.thumbnailUrl,
-      },
-      actor,
-    );
+        actor,
+      );
 
-    const createdDeck = await deps.createPresentationDeckForLibraryItem(
-      {
-        libraryItemId: convertedItem.item.id,
-        title: toBasePresentationTitle(sourceItem.title),
-        description: sourceItem.description,
-      },
-      actor,
-    );
+      const createdDeck = await deps.createPresentationDeckForLibraryItem(
+        {
+          libraryItemId: convertedItem.item.id,
+          title: toBasePresentationTitle(sourceItem.title),
+          description: sourceItem.description,
+        },
+        actor,
+      );
 
-    await deps.upsertSourceAttachment({
-      deckId: createdDeck.deck.id,
-      sourceLibraryItemId: sourceItem.id,
-      sourceFormat,
-      conversionStatus: "converted",
-      partialFidelity: fidelityWarnings.length > 0,
-      fidelityWarnings,
-    });
+      await deps.upsertSourceAttachment({
+        deckId: createdDeck.deck.id,
+        sourceLibraryItemId: sourceItem.id,
+        sourceFormat,
+        conversionStatus: "converted",
+        partialFidelity: fidelityWarnings.length > 0,
+        fidelityWarnings,
+      });
 
-    const record: ConversionRecord = {
-      sourceKey,
-      sourceItemId: sourceItem.id,
-      sourceFormat,
-      deckLibraryItemId: convertedItem.item.id,
-      deckId: createdDeck.deck.id,
-      partialFidelity: fidelityWarnings.length > 0,
-      fidelityWarnings,
-    };
+      const record: ConversionRecord = {
+        sourceKey,
+        sourceItemId: sourceItem.id,
+        sourceFormat,
+        deckLibraryItemId: convertedItem.item.id,
+        deckId: createdDeck.deck.id,
+        partialFidelity: fidelityWarnings.length > 0,
+        fidelityWarnings,
+      };
 
-    conversionBySource.set(sourceKey, record);
-    conversionByIdempotencyKey.set(idempotencyCacheKey, record);
-
-    return toConversionResult("created", record);
-  } finally {
-    conversionLocks.delete(sourceKey);
+      conversionBySource.set(sourceKey, record);
+      conversionByIdempotencyKey.set(idempotencyCacheKey, record);
+      recordConversionOutcome(actor, sourceFormat, "created");
+      return toConversionResult("created", record);
+    } finally {
+      conversionLocks.delete(sourceKey);
+    }
+  } catch (error) {
+    if (error instanceof PresentationServiceError) {
+      recordPresentationFailureMetric(error.code);
+      recordPresentationLog("presentation_conversion_failed", {
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        errorCode: error.code,
+      });
+    }
+    throw error;
   }
 }
 

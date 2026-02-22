@@ -88,7 +88,7 @@
 
 ## Section 07 - Playback and Export Pipeline
 - section: `section-07-playback-and-export-pipeline`
-- commit: `pending`
+- commit: `6bd87b4`
 - test_command: `cd apps/web && npm test -- server/services/presentationPlaybackExport.test.ts client/src/pages/PresentationEditor.test.tsx server/routers/presentation.test.ts`
 - pass_fail_summary:
   - `pass`: `server/services/presentationPlaybackExport.test.ts`
@@ -96,6 +96,23 @@
   - `pass`: `server/routers/presentation.test.ts`
 - notable_deviations:
   - Export enqueue state is process-local for MVP contract hardening; durable queue/state integration is deferred to section 08/10 hardening follow-up.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining: none
+
+## Section 08 - Observability Rollout and Operations
+- section: `section-08-observability-rollout-and-operations`
+- commit: `pending`
+- test_command: `cd apps/web && npm test -- server/services/presentationObservability.test.ts server/services/presentationCompatibilityService.test.ts server/services/presentationService.test.ts server/services/presentationPlaybackExport.test.ts server/routers/presentation.test.ts client/src/pages/PresentationEditor.test.tsx`
+- pass_fail_summary:
+  - `pass`: `server/services/presentationObservability.test.ts`
+  - `pass`: `server/services/presentationCompatibilityService.test.ts`
+  - `pass`: `server/services/presentationService.test.ts`
+  - `pass`: `server/services/presentationPlaybackExport.test.ts`
+  - `pass`: `server/routers/presentation.test.ts`
+  - `pass`: `client/src/pages/PresentationEditor.test.tsx`
+- notable_deviations:
+  - Observability counters/logs are currently in-process; production sink integration is documented for follow-up hardening.
 - blocked_tasks_resolved_remaining:
   - resolved: none
   - remaining: none

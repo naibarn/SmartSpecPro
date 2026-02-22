@@ -119,3 +119,19 @@
 - decision_taken: `hybrid_fingerprint`
 - mode_used: `auto`
 - rationale: Preserves duplicate-click protection for current UI behavior while still honoring explicit idempotency keys when available.
+
+## 2026-02-22 - Section 08 - Observability Storage Strategy
+- options_considered:
+  - `external_sink_now`: wire metrics/logging directly to external telemetry in this section
+  - `in_process_first`: implement deterministic in-process metrics/log contracts now and defer sink integration
+- decision_taken: `in_process_first`
+- mode_used: `auto`
+- rationale: Keeps section scope on contract/test coverage and rollout guard behavior without introducing infrastructure coupling.
+
+## 2026-02-22 - Section 08 - Export Emergency Guard Scope
+- options_considered:
+  - `full_feature_disable`: disable all presentation reads/writes for export incidents
+  - `write_only_export_disable`: block export writes while preserving read safety and diagnostics
+- decision_taken: `write_only_export_disable`
+- mode_used: `auto`
+- rationale: Matches rollout objective to contain queue risk quickly while maintaining operator visibility and user read access.

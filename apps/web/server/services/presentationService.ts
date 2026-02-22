@@ -31,6 +31,10 @@ import {
   PRESENTATION_LIMITS,
 } from "@shared/presentation/constants";
 import { presentationVersionConflictSchema, type PresentationVersionConflict } from "@shared/presentation/contracts";
+import {
+  recordPresentationFailureMetric,
+  recordPresentationLog,
+} from "./presentationObservability";
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -222,6 +226,13 @@ function throwDeckVersionConflict(deck: PresentationDeck, expectedVersion: numbe
     deckId: deck.id,
     latestDeck: toDeckConflictSnapshot(deck),
   });
+  recordPresentationFailureMetric(PRESENTATION_ERROR_CODE.VERSION_CONFLICT);
+  recordPresentationLog("presentation_conflict", {
+    tenantId: deck.tenantId,
+    deckId: deck.id,
+    errorCode: PRESENTATION_ERROR_CODE.VERSION_CONFLICT,
+    reasonCode: "DECK_VERSION_MISMATCH",
+  });
 
   throw new PresentationServiceError(
     PRESENTATION_ERROR_CODE.VERSION_CONFLICT,
@@ -246,6 +257,14 @@ function throwSlideVersionConflict(
     saveMode,
     latestDeck: toDeckConflictSnapshot(deck),
     latestSlide: toSlideConflictSnapshot(slide),
+  });
+  recordPresentationFailureMetric(PRESENTATION_ERROR_CODE.VERSION_CONFLICT);
+  recordPresentationLog("presentation_conflict", {
+    tenantId: deck.tenantId,
+    deckId: deck.id,
+    slideId: slide.id,
+    errorCode: PRESENTATION_ERROR_CODE.VERSION_CONFLICT,
+    reasonCode: "SLIDE_VERSION_MISMATCH",
   });
 
   throw new PresentationServiceError(
