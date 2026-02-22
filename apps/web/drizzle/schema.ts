@@ -1580,6 +1580,9 @@ export const libraryItems = pgTable("library_items", {
   metadata: json("metadata").$type<Record<string, any>>().notNull().default({}),
   sourceUrl: text("source_url"),
   thumbnailUrl: text("thumbnail_url"),
+  // Denormalized scope cache for vector DB filtering
+  allowedScopes: text("allowed_scopes").array().default(sql`'{}'`),
+
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 
   // Track who deleted the file (for trash UI)
@@ -1592,6 +1595,7 @@ export const libraryItems = pgTable("library_items", {
   index("library_items_tenant_owner_status_idx").on(t.tenantId, t.ownerUserId, t.status),
   index("library_items_source_item_type_idx").on(t.source, t.itemType),
   index("library_items_deleted_at_idx").on(t.deletedAt),
+  index("library_items_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
 ]);
 
 export type LibraryItem = typeof libraryItems.$inferSelect;
@@ -1624,11 +1628,14 @@ export const libraryChunks = pgTable("library_chunks", {
   tokenCount: integer("token_count"),
   vectorRefId: varchar("vector_ref_id", { length: 128 }),
   metadata: json("metadata").$type<Record<string, any>>().notNull().default({}),
+  // Denormalized scope cache — mirrors parent item's allowed_scopes
+  allowedScopes: text("allowed_scopes").array().default(sql`'{}'`),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("library_chunks_item_chunk_index_unique").on(t.libraryItemId, t.chunkIndex),
   index("library_chunks_tenant_content_type_idx").on(t.tenantId, t.contentType),
   index("library_chunks_vector_ref_idx").on(t.vectorRefId),
+  index("library_chunks_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
 ]);
 
 export type LibraryChunk = typeof libraryChunks.$inferSelect;

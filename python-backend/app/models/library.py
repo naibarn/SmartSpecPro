@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 
 from app.core.database import Base
 
@@ -41,6 +42,9 @@ class LibraryItem(Base):
     source_url = Column(Text, nullable=True)
     thumbnail_url = Column(Text, nullable=True)
 
+    # Denormalized scope cache for vector DB filtering
+    allowed_scopes = Column(ARRAY(Text), default=list, server_default="{}")
+
     deleted_at = Column(DateTime, nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -49,6 +53,7 @@ class LibraryItem(Base):
         Index("ix_library_items_tenant_visibility_status", "tenant_id", "visibility", "status"),
         Index("ix_library_items_tenant_owner_status", "tenant_id", "owner_user_id", "status"),
         Index("ix_library_items_source_type", "source", "item_type"),
+        Index("ix_library_items_allowed_scopes_gin", "allowed_scopes", postgresql_using="gin"),
     )
 
     def __init__(self, **kwargs):
@@ -105,11 +110,15 @@ class LibraryChunk(Base):
 
     metadata_json = Column("metadata", JSON, nullable=False, default=dict)
 
+    # Denormalized scope cache — mirrors parent item's allowed_scopes
+    allowed_scopes = Column(ARRAY(Text), default=list, server_default="{}")
+
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint("library_item_id", "chunk_index", name="uq_library_chunks_item_chunk"),
         Index("ix_library_chunks_tenant_content_type", "tenant_id", "content_type"),
+        Index("ix_library_chunks_allowed_scopes_gin", "allowed_scopes", postgresql_using="gin"),
     )
 
     def __init__(self, **kwargs):

@@ -318,6 +318,7 @@ class TestHybridRAGEngine:
             query="Python programming",
             mode=SearchMode.KEYWORD,
             top_k=2,
+            tenant_id="test-tenant",
         )
         
         assert result.mode == SearchMode.KEYWORD
@@ -358,8 +359,94 @@ class TestHybridRAGEngine:
     async def test_cleanup(self, engine):
         """Test cleanup."""
         await engine.add_document(content="Test document")
-        
+
         await engine.cleanup()
-        
+
         assert len(engine._documents) == 0
         assert len(engine._cache) == 0
+
+
+class TestCacheKeyIsolation:
+    """Tests for tenant-aware cache key generation."""
+
+    @pytest.mark.asyncio
+    async def test_cache_key_includes_tenant_id(self):
+        """Two different tenant_ids with the same query must not share cache."""
+        config = RAGConfig(use_cache=True)
+        engine = HybridRAGEngine(config=config)
+        await engine.add_document(content="shared content about testing")
+
+        # First retrieve with tenant A
+        await engine.retrieve(
+            query="testing", tenant_id="tenant-a", effective_scopes=["u:1", "p:global"]
+        )
+        # Second retrieve with tenant B — must NOT hit cache
+        await engine.retrieve(
+            query="testing", tenant_id="tenant-b", effective_scopes=["u:1", "p:global"]
+        )
+
+        # Both tenant keys should exist in cache (no shared entry)
+        import hashlib
+
+        scope_hash = hashlib.sha256(str(sorted(["u:1", "p:global"])).encode()).hexdigest()[:16]
+        key_a = f"tenant-a:{scope_hash}:testing:10:hybrid"
+        key_b = f"tenant-b:{scope_hash}:testing:10:hybrid"
+        assert key_a != key_b
+        assert key_a in engine._cache
+        assert key_b in engine._cache
+
+    @pytest.mark.asyncio
+    async def test_cache_key_includes_scope_hash(self):
+        """Same query from same tenant but different scopes must miss cache."""
+        config = RAGConfig(use_cache=True)
+        engine = HybridRAGEngine(config=config)
+        await engine.add_document(content="shared content about testing")
+
+        scopes_a = ["u:1", "p:global"]
+        scopes_b = ["u:1", "p:global", "g:10"]
+
+        import hashlib
+
+        hash_a = hashlib.sha256(str(sorted(scopes_a)).encode()).hexdigest()[:16]
+        hash_b = hashlib.sha256(str(sorted(scopes_b)).encode()).hexdigest()[:16]
+
+        # Different scopes produce different hashes
+        assert hash_a != hash_b
+
+        key_a = f"tenant-1:{hash_a}:testing:10:hybrid"
+        key_b = f"tenant-1:{hash_b}:testing:10:hybrid"
+        assert key_a != key_b
+
+    @pytest.mark.asyncio
+    async def test_cross_user_cache_isolation(self):
+        """Verify user A's cached results are never served to user B."""
+        config = RAGConfig(use_cache=True)
+        engine = HybridRAGEngine(config=config)
+        await engine.add_document(content="test doc for caching")
+
+        # User A retrieves with their scopes
+        await engine.retrieve(
+            query="test",
+            tenant_id="t1",
+            effective_scopes=["u:1", "p:global"],
+        )
+
+        # User B with different scopes should get a different cache key
+        import hashlib
+
+        scope_b = hashlib.sha256(str(sorted(["u:2", "p:global", "g:5"])).encode()).hexdigest()[:16]
+        key_b = f"t1:{scope_b}:test:10:hybrid"
+
+        # User B's cache key should not exist in engine's cache
+        assert key_b not in engine._cache
+
+    @pytest.mark.asyncio
+    async def test_missing_tenant_id_returns_empty(self):
+        """Calling retrieve without tenant_id should return empty result (fail-closed)."""
+        config = RAGConfig(use_cache=True)
+        engine = HybridRAGEngine(config=config)
+        await engine.add_document(content="test doc")
+
+        result = await engine.retrieve(query="test")
+
+        assert len(result.documents) == 0

@@ -134,7 +134,7 @@
 
 ## Section 10 - Release Readiness and Handoff
 - section: `section-10-release-readiness-and-handoff`
-- commit: `pending`
+- commit: `f256b56`
 - test_command: `cd apps/web && npm test -- server/services/presentationReleaseReadiness.test.ts`
 - pass_fail_summary:
   - `pass`: `server/services/presentationReleaseReadiness.test.ts`
@@ -143,3 +143,71 @@
 - blocked_tasks_resolved_remaining:
   - resolved: none
   - remaining: none
+
+## Finalization - Full Suite + Security Re-Review
+- phase: `post-sections-finalization`
+- test_command: `cd apps/web && npm test`
+- pass_fail_summary:
+  - `fail`: full suite exited non-zero (`73 failed`, `23 failed suites`, `10 errors`)
+  - `fail`: process terminated with Node.js heap OOM during suite execution
+  - `environment_related_failures`: sandbox `EPERM` listen errors in healthcheck tests, Redis connection failures in funnel rollback tests
+  - `known-unrelated-baseline`: multiple non-presentation suite failures in chat/workflow/library domains
+- notable_deviations:
+  - Continued to mandatory post-implementation security re-review despite full-suite instability; findings recorded in `implementation-security-review.md`.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining: none
+
+## Finalization - Hardening Decision
+- phase: `post-re-review-decision`
+- user_choice: `plan_now`
+- artifacts_created:
+  - `specs/feature/018-SlideShowAndCanvasEdit/implementation-hardening-plan.md`
+  - `specs/feature/018-SlideShowAndCanvasEdit/implementation-summary.md`
+- notes:
+  - Chose planning path for security findings rather than immediate fix implementation in this run.
+
+## Hardening Stream A - Export Registry Memory Bounding
+- phase: `post-finalization-hardening`
+- scope: `stream-a-export-registry-memory-hardening`
+- files_changed:
+  - `apps/web/server/services/presentationPlaybackExport.ts`
+  - `apps/web/server/services/presentationPlaybackExport.test.ts`
+- test_command:
+  - `cd apps/web && npm test -- server/services/presentationPlaybackExport.test.ts`
+  - `cd apps/web && npm test -- server/routers/presentation.test.ts server/services/presentationService.test.ts`
+  - `cd apps/web && npm test -- server/services/presentationWorkflowRegression.test.ts`
+- pass_fail_summary:
+  - `pass`: `server/services/presentationPlaybackExport.test.ts` (9 tests)
+  - `pass`: `server/routers/presentation.test.ts` (12 tests)
+  - `pass`: `server/services/presentationService.test.ts` (6 tests)
+  - `pass`: `server/services/presentationWorkflowRegression.test.ts` (1 test)
+- notable_deviations:
+  - Implemented bounded in-memory safeguards (TTL pruning + max-entry eviction + throttle-key compaction) as immediate mitigation; externalized shared state remains follow-up.
+- blocked_tasks_resolved_remaining:
+  - resolved: none
+  - remaining:
+    - Stream B and Stream C hardening items from `implementation-hardening-plan.md`
+
+## Hardening Stream B - Slide Content Validation and Payload Limits
+- phase: `post-finalization-hardening`
+- scope: `stream-b-slide-content-validation`
+- files_changed:
+  - `apps/web/shared/presentation/constants.ts`
+  - `apps/web/shared/presentation/contracts.ts`
+  - `apps/web/server/routers/presentation.ts`
+  - `apps/web/server/services/presentationService.ts`
+  - `apps/web/server/services/presentationService.test.ts`
+- test_command:
+  - `cd apps/web && npm test -- server/services/presentationService.test.ts`
+  - `cd apps/web && npm test -- server/routers/presentation.test.ts server/services/presentationPlaybackExport.test.ts server/services/presentationWorkflowRegression.test.ts server/services/presentationService.test.ts`
+- pass_fail_summary:
+  - `pass`: `server/services/presentationService.test.ts` (8 tests)
+  - `pass`: presentation regression set (`presentation.test.ts`, `presentationPlaybackExport.test.ts`, `presentationWorkflowRegression.test.ts`, `presentationService.test.ts`) (30 tests)
+- notable_deviations:
+  - Enforced strict shared `slideContent` schema and service-layer byte cap (`maxSlideContentBytes`) using `PRESENTATION_VALIDATION_FAILED` for deterministic validation failures.
+- blocked_tasks_resolved_remaining:
+  - resolved:
+    - Stream B hardening target from `implementation-hardening-plan.md`
+  - remaining:
+    - Stream C hardening items from `implementation-hardening-plan.md`

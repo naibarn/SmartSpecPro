@@ -167,3 +167,45 @@
 - decision_taken: `incident_class_owners`
 - mode_used: `auto`
 - rationale: Aligns with rollout objective to keep incident triage ownership explicit for the highest-risk operational classes.
+
+## 2026-02-22 - Finalization - Execution Context on Protected Branch
+- options_considered:
+  - `proceed_here`: continue finalization on `main` with current dirty tree
+  - `stop_for_branch`: stop and resume after branch/clean-state switch
+  - `proceed_selective`: continue but restrict touches to feature planning artifacts only
+- decision_taken: `proceed_here`
+- mode_used: `asked`
+- rationale: User explicitly selected option 1 during finalization preflight.
+
+## 2026-02-22 - Finalization - Full Suite Failure Handling
+- options_considered:
+  - `stop_on_full_suite_failure`: block security re-review until full suite is green
+  - `continue_with_documented_failures`: record suite failures and continue mandatory security re-review
+- decision_taken: `continue_with_documented_failures`
+- mode_used: `auto`
+- rationale: Full-suite failures are broad repository baseline/environment issues outside presentation scope; finalization still requires security re-review and explicit risk capture.
+
+## 2026-02-22 - Finalization - Post-Re-Review Hardening Path
+- options_considered:
+  - `plan_now`: produce focused hardening plan before closing
+  - `fix_now`: immediately implement critical/high findings
+  - `defer`: carry findings forward without new hardening artifact
+- decision_taken: `plan_now`
+- mode_used: `asked`
+- rationale: User selected option 1 after receiving the mandatory post-re-review prompt.
+
+## 2026-02-22 - Hardening Stream A - State Management Strategy
+- options_considered:
+  - `externalize_now`: move export state fully to shared external store in this pass
+  - `bounded_in_memory_now`: implement bounded in-memory TTL/cap safeguards immediately, defer externalization
+- decision_taken: `bounded_in_memory_now`
+- mode_used: `auto`
+- rationale: Provides immediate OOM-risk mitigation with low integration risk and preserves current contracts while leaving cross-instance state externalization as a planned follow-up.
+
+## 2026-02-22 - Hardening Stream B - Validation Enforcement Layer
+- options_considered:
+  - `router_only_validation`: rely on input schema validation at router boundary only
+  - `shared_schema_plus_service_guard`: validate shape via shared schema and enforce payload-byte limits in service layer
+- decision_taken: `shared_schema_plus_service_guard`
+- mode_used: `auto`
+- rationale: Preserves deterministic contracts at API boundary while adding defense-in-depth for non-router call paths and oversized payload protection.

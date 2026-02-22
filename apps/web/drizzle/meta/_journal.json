@@ -225,6 +225,13 @@
       "when": 1771648575243,
       "tag": "0031_polite_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1771733214491,
+      "tag": "0032_cynical_moondragon",
+      "breakpoints": true
     }
   ]
 }

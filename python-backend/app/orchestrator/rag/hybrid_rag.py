@@ -292,6 +292,8 @@ class HybridRAGEngine:
         mode: Optional[SearchMode] = None,
         filters: Optional[Dict[str, Any]] = None,
         user_id: Optional[int] = None,
+        tenant_id: Optional[str] = None,
+        effective_scopes: Optional[List[str]] = None,
     ) -> RAGResult:
         """
         Retrieve relevant documents for a query.
@@ -302,15 +304,27 @@ class HybridRAGEngine:
             mode: Search mode override
             filters: Metadata filters
             user_id: Optional user ID for credit billing (None = no billing)
+            tenant_id: Tenant ID for cache isolation
+            effective_scopes: User's effective scope list for cache isolation
 
         Returns:
             RAGResult with ranked documents
         """
         top_k = top_k or self.config.top_k
         mode = mode or self.config.mode
-        
-        # Check cache
-        cache_key = f"{query}:{top_k}:{mode.value}"
+
+        # Fail-closed: warn and return empty result if tenant_id is missing
+        if tenant_id is None:
+            logger.warning(
+                "retrieve_missing_tenant_id",
+                query=query[:50],
+                msg="tenant_id is required for tenant-isolated retrieval",
+            )
+            return RAGResult(query=query, mode=mode)
+
+        # Check cache — include tenant_id and scope hash for isolation
+        scope_hash = hashlib.sha256(str(sorted(effective_scopes or [])).encode()).hexdigest()[:16]
+        cache_key = f"{tenant_id}:{scope_hash}:{query}:{top_k}:{mode.value}"
         if self.config.use_cache and cache_key in self._cache:
             cached_result, cached_time = self._cache[cache_key]
             if (datetime.utcnow() - cached_time).seconds < self.config.cache_ttl_seconds:

@@ -22,7 +22,7 @@ class TestRagBilling:
 
         with patch("app.services.credit_billing_client.charge_credits_post_deduct") as mock_charge:
             mock_charge.return_value = {"creditsUsed": 1}
-            await engine.retrieve("test query", user_id=42)
+            await engine.retrieve("test query", user_id=42, tenant_id="test-tenant")
             mock_charge.assert_called_once()
             call_kwargs = mock_charge.call_args[1]
             assert call_kwargs["user_id"] == 42
@@ -41,7 +41,7 @@ class TestRagBilling:
         )
 
         with patch("app.services.credit_billing_client.charge_credits_post_deduct") as mock_charge:
-            await engine.retrieve("keyword query", user_id=42)
+            await engine.retrieve("keyword query", user_id=42, tenant_id="test-tenant")
             mock_charge.assert_not_called()
 
     async def test_no_user_id_no_billing(self):
@@ -56,5 +56,5 @@ class TestRagBilling:
         )
 
         with patch("app.services.credit_billing_client.charge_credits_post_deduct") as mock_charge:
-            await engine.retrieve("test query", user_id=None)
+            await engine.retrieve("test query", user_id=None, tenant_id="test-tenant")
             mock_charge.assert_not_called()
