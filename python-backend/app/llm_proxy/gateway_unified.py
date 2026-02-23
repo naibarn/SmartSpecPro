@@ -193,6 +193,50 @@ class LLMGateway:
         estimated_cost = await self._estimate_cost(request, False)
         await self._check_credits(user, estimated_cost)
 
+        # --- BytePlus ModelArk routing ---
+        from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
+        if request.model in BytePlusModelArkProvider.IMAGE_MODELS:
+            from app.services.media_provider_service import get_media_provider_key
+            provider_config = await get_media_provider_key("byteplus_modelark")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="BytePlus ModelArk not configured. Please add API key in Admin > Media Providers.",
+                )
+            client = None
+            try:
+                client = BytePlusModelArkProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                )
+                size = request.size or "2K"
+                result = await client.generate_image(
+                    model=request.model,
+                    prompt=request.prompt,
+                    size=size,
+                )
+                actual_cost = Decimal(str(client.calculate_cost_usd(result["usage_tokens"])))
+                response = ImageGenerationResponse(
+                    id=result.get("provider_task_id", ""),
+                    model=request.model,
+                    provider="byteplus_modelark",
+                    created=0,
+                    data=[{"url": result["result_url"]}],
+                )
+                transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error("byteplus_image_generation_failed", user_id=user.id, model=request.model, error=str(e))
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="BytePlus image generation failed. See server logs for details.")
+            finally:
+                if client is not None:
+                    await client.aclose()
+        # --- End BytePlus routing ---
+
         if not self.unified_client.kie_ai_client:
             # Try to initialize from SmartSpecWeb media_providers
             from app.services.media_provider_service import initialize_kie_ai_client
@@ -353,6 +397,58 @@ class LLMGateway:
         # Estimate cost via Web Gateway or use local estimate
         estimated_cost = await self._estimate_cost(request, False)
         await self._check_credits(user, estimated_cost)
+
+        # --- BytePlus ModelArk routing ---
+        from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
+        if request.model in BytePlusModelArkProvider.VIDEO_MODELS:
+            from app.services.media_provider_service import get_media_provider_key
+            provider_config = await get_media_provider_key("byteplus_modelark")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="BytePlus ModelArk not configured. Please add API key in Admin > Media Providers.",
+                )
+            client = None
+            try:
+                client = BytePlusModelArkProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                )
+                extra = request.extra_params or {}
+                resolution = request.resolution or extra.get("resolution", "1080p")
+                duration = request.duration or int(extra.get("duration", 5))
+                camerafixed = bool(extra.get("camerafixed", False))
+                reference_image_url = None
+                if request.reference_image_urls:
+                    reference_image_url = request.reference_image_urls[0]
+                result = await client.create_video_task(
+                    model=request.model,
+                    prompt=request.prompt,
+                    resolution=resolution,
+                    duration=duration,
+                    camerafixed=camerafixed,
+                    reference_image_url=reference_image_url,
+                )
+                response = VideoGenerationResponse(
+                    id=result["provider_task_id"],
+                    model=request.model,
+                    provider="byteplus_modelark",
+                    created=0,
+                    data=[],
+                )
+                transaction = await self._deduct_credits(user, estimated_cost, request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error("byteplus_video_task_creation_failed", user_id=user.id, model=request.model, error=str(e))
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="BytePlus video task creation failed. See server logs for details.")
+            finally:
+                if client is not None:
+                    await client.aclose()
+        # --- End BytePlus routing ---
 
         if not self.unified_client.kie_ai_client:
             # Try to initialize from SmartSpecWeb media_providers
