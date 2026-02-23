@@ -288,7 +288,7 @@ export const presentationRouter = router({
 
   getExportStatus: protectedProcedure
     .input(z.object({
-      exportId: z.string().min(1).max(128),
+      exportId: z.number().int().positive(),
     }))
     .query(async ({ input, ctx }) => {
       try {

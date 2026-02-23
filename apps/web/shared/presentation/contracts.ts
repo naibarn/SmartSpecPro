@@ -250,6 +250,40 @@ export const presentationLineElementSchema = z.object({
   strokeWidth: z.number().finite().min(0).max(1_000),
 }).strict();
 
+// === Audio Track Schemas ===
+
+/** Validates tRPC input when a user attaches audio to a slide (references library item, URL resolved server-side) */
+export const audioTrackInputSchema = z.object({
+  libraryItemId: z.number().int().positive(),
+  volume: z.number().finite().min(0).max(1),
+  startAtMs: z.number().int().min(0),
+  endAtMs: z.number().int().min(0).nullable().optional(),
+}).strict();
+
+/** Resolved per-slide audio track sent to Python in the render spec (libraryItemId replaced by presigned URL) */
+export const resolvedAudioTrackSchema = z.object({
+  url: z.string().url(),
+  volume: z.number().finite().min(0).max(1),
+  startAtMs: z.number().int().min(0),
+  endAtMs: z.number().int().min(0).nullable().optional(),
+}).strict();
+
+/** Validates tRPC input for deck-level background audio */
+export const projectAudioTrackInputSchema = z.object({
+  libraryItemId: z.number().int().positive(),
+  volume: z.number().finite().min(0).max(1),
+  loop: z.boolean(),
+  fadeOutMs: z.number().int().min(0).nullable().optional(),
+}).strict();
+
+/** Resolved deck-level audio track sent to Python in the render spec */
+export const resolvedProjectAudioTrackSchema = z.object({
+  url: z.string().url(),
+  volume: z.number().finite().min(0).max(1),
+  loop: z.boolean(),
+  fadeOutMs: z.number().int().min(0).nullable().optional(),
+}).strict();
+
 export const presentationSlideElementSchema = z.discriminatedUnion("type", [
   presentationTextElementSchema,
   presentationImageElementSchema,
@@ -271,6 +305,8 @@ export const presentationSlideshowSlideSchema = z.object({
   title: z.string().min(1).max(255),
   durationMs: z.number().int().min(250).max(120_000),
   transition: presentationTransitionSchema,
+  /** Resolved audio track for this slide. Only present in getPlayDeck response, not in export flows. */
+  audioTrack: resolvedAudioTrackSchema.nullable().optional(),
 });
 
 export const presentationSlideshowPayloadSchema = z.object({
@@ -278,16 +314,23 @@ export const presentationSlideshowPayloadSchema = z.object({
   deckId: z.number().int().positive(),
   generatedAt: z.coerce.date(),
   slides: z.array(presentationSlideshowSlideSchema).max(500),
+  /** Resolved deck-level audio. Only present in getPlayDeck response. */
+  projectAudioTrack: resolvedProjectAudioTrackSchema.nullable().optional(),
 });
 
 export const presentationRenderSpecSchema = z.object({
   schemaVersion: z.literal(PRESENTATION_RENDER_SCHEMA_VERSION),
   deckId: z.number().int().positive(),
-  format: z.enum(["png", "mp4"]),
+  /** Export format — png and jpg produce zip archives of per-slide images */
+  format: z.enum(["png", "jpg", "pdf", "mp4"]),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
-  fps: z.number().int().positive(),
+  fps: z.number().int().positive().max(120),
+  /** Quality preset — only meaningful for mp4 and jpg formats */
+  quality: z.enum(["draft", "standard", "high"]).optional(),
   slides: z.array(presentationSlideshowSlideSchema).max(500),
+  /** Resolved deck-level audio for mixing into the exported video */
+  projectAudioTrack: resolvedProjectAudioTrackSchema.nullable().optional(),
   warnings: presentationExportWarningsSchema.default([]),
 });
 
@@ -296,14 +339,15 @@ export const presentationExportStatusSchema = z.enum([
   "processing",
   "done",
   "error",
+  "cancelled",
 ]);
 
 export const presentationExportResultSchema = z.object({
   schemaVersion: z.literal(PRESENTATION_EXPORT_SCHEMA_VERSION),
-  exportId: z.string().min(1).max(128),
-  jobId: z.string().min(1).max(128),
+  /** DB primary key of the presentation_exports row */
+  exportId: z.number().int().positive(),
   deckId: z.number().int().positive(),
-  format: z.enum(["png", "mp4"]),
+  format: z.enum(["png", "jpg", "pdf", "mp4"]),
   deduped: z.boolean(),
   status: presentationExportStatusSchema,
   message: z.string().min(1).max(400).optional(),
@@ -313,12 +357,18 @@ export const presentationExportResultSchema = z.object({
 
 export const presentationExportStatusResultSchema = z.object({
   schemaVersion: z.literal(PRESENTATION_EXPORT_SCHEMA_VERSION),
-  exportId: z.string().min(1).max(128),
-  jobId: z.string().min(1).max(128),
+  exportId: z.number().int().positive(),
   status: presentationExportStatusSchema,
-  format: z.enum(["png", "mp4"]),
+  format: z.enum(["png", "jpg", "pdf", "mp4"]),
+  /** Progress percentage 0–100 */
+  progressPct: z.number().int().min(0).max(100).default(0),
+  /** Human-readable current stage, e.g. "Rendering slide 3 of 10" */
+  stage: z.string().max(120).nullable().optional(),
+  /** Presigned HTTPS download URL. Only present when status is "done". */
+  downloadUrl: z.string().url().startsWith("https://").nullable().optional(),
+  /** Error description. Only present when status is "error". */
+  errorMessage: z.string().max(1000).nullable().optional(),
   updatedAt: z.coerce.date(),
-  message: z.string().min(1).max(400).optional(),
   warnings: presentationExportWarningsSchema.default([]),
 });
 
@@ -339,6 +389,13 @@ export type PresentationSlideContent = z.infer<typeof presentationSlideContentSc
 export type PresentationExportResult = z.infer<typeof presentationExportResultSchema>;
 export type PresentationExportStatusResult = z.infer<typeof presentationExportStatusResultSchema>;
 export type { PresentationExportWarning };
+
+export const presentationPlayDeckPayloadSchema = presentationSlideshowPayloadSchema;
+export type AudioTrackInput = z.infer<typeof audioTrackInputSchema>;
+export type ResolvedAudioTrack = z.infer<typeof resolvedAudioTrackSchema>;
+export type ProjectAudioTrackInput = z.infer<typeof projectAudioTrackInputSchema>;
+export type ResolvedProjectAudioTrack = z.infer<typeof resolvedProjectAudioTrackSchema>;
+export type PresentationPlayDeckPayload = z.infer<typeof presentationPlayDeckPayloadSchema>;
 
 export function isPresentationItemType(itemType: string): boolean {
   return itemType.trim().toLowerCase() === PRESENTATION_ITEM_TYPE;

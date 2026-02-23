@@ -691,7 +691,7 @@ export default function PresentationEditor() {
   const [playbackPaused, setPlaybackPaused] = useState(false);
   const [exportMessage, setExportMessage] = useState<string>("");
   const [exportWarnings, setExportWarnings] = useState<PresentationExportWarning[]>([]);
-  const [lastExportId, setLastExportId] = useState<string | null>(null);
+  const [lastExportId, setLastExportId] = useState<number | null>(null);
   const playbackOverlayRef = useRef<HTMLDivElement | null>(null);
   const playbackStageHostRef = useRef<HTMLDivElement | null>(null);
   const [playbackStageHostSize, setPlaybackStageHostSize] = useState({ width: 0, height: 0 });
@@ -746,7 +746,7 @@ export default function PresentationEditor() {
       : [];
   }, [versionHistoryQuery.data]);
   const exportStatusQuery = trpc.presentation.getExportStatus.useQuery(
-    { exportId: lastExportId || "" },
+    { exportId: lastExportId ?? 0 },
     {
       enabled: Boolean(lastExportId),
       refetchInterval: 5000,

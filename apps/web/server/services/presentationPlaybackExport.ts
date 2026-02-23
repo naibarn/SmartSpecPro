@@ -45,8 +45,7 @@ const MAX_THROTTLE_KEYS = 5_000;
 const MAX_THROTTLE_WINDOW_ENTRIES_PER_KEY = 120;
 
 interface PresentationExportStateRecord {
-  exportId: string;
-  jobId: string;
+  exportId: number;
   createdAtMs: number;
 }
 
@@ -102,13 +101,21 @@ export interface TriggerPresentationExportInput {
 }
 
 const dedupeRegistry = new Map<string, PresentationExportStateRecord>();
-const statusRegistry = new Map<string, PresentationExportStatusStateRecord>();
-const resultRegistry = new Map<string, PresentationExportResultStateRecord>();
+const statusRegistry = new Map<number, PresentationExportStatusStateRecord>();
+const resultRegistry = new Map<number, PresentationExportResultStateRecord>();
 const userWindowRegistry = new Map<string, number[]>();
 const deckWindowRegistry = new Map<string, number[]>();
 
 function nextId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
+}
+
+// TODO(section-03): Replace with DB primary key from presentation_exports table.
+// This counter is a stub — IDs reset on server restart and are not persisted.
+let exportIdSequence = 0;
+function nextExportId(): number {
+  exportIdSequence += 1;
+  return exportIdSequence;
 }
 
 function pruneWindow(entries: number[], nowMs: number, windowMs: number): number[] {
@@ -451,15 +458,13 @@ export async function triggerPresentationExport(
     ensureRenderSchemaAccepted(renderSpec, resolved.acceptedRenderSchemaVersions);
 
     const queued = await resolved.enqueueExportJob(renderSpec, input.format);
-    const exportId = nextId("presentation-export");
+    const exportId = nextExportId();
     const status = presentationExportStatusResultSchema.parse({
       schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
       exportId,
-      jobId: queued.jobId,
       status: "queued",
       format: input.format,
       updatedAt: new Date(nowMs),
-      message: "Export queued",
       warnings: renderSpec.warnings,
     });
     statusRegistry.set(exportId, {
@@ -472,7 +477,6 @@ export async function triggerPresentationExport(
     });
     dedupeRegistry.set(dedupeKey, {
       exportId,
-      jobId: queued.jobId,
       createdAtMs: nowMs,
     });
 
@@ -489,7 +493,6 @@ export async function triggerPresentationExport(
     const result = presentationExportResultSchema.parse({
       schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
       exportId,
-      jobId: queued.jobId,
       deckId: input.deckId,
       format: input.format,
       deduped: false,
@@ -531,7 +534,7 @@ export async function triggerPresentationExport(
 }
 
 export function getPresentationExportStatus(
-  exportId: string,
+  exportId: number,
   actor?: PresentationActor,
 ): PresentationExportStatusResult {
   const defaults = getDefaultStateOptions(Date.now());
@@ -560,4 +563,5 @@ export function resetPresentationExportStateForTests(): void {
   resultRegistry.clear();
   userWindowRegistry.clear();
   deckWindowRegistry.clear();
+  exportIdSequence = 0;
 }

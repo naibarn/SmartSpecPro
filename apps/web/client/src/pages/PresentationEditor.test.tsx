@@ -342,7 +342,7 @@ describe("PresentationEditor", () => {
     mutationMocks.updateSlide.mockResolvedValue({});
     mutationMocks.createDeck.mockResolvedValue({});
     mutationMocks.triggerExport.mockResolvedValue({
-      exportId: "exp-1",
+      exportId: 1,
       status: "queued",
       deduped: false,
       message: "Queued",
@@ -729,7 +729,7 @@ describe("PresentationEditor", () => {
 
   it("renders deterministic export warning codes from export responses", async () => {
     mutationMocks.triggerExport.mockResolvedValueOnce({
-      exportId: "exp-warning-1",
+      exportId: 2,
       status: "queued",
       deduped: false,
       message: "Queued with degradation warnings",
