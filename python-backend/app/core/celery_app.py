@@ -10,7 +10,7 @@ from app.core.config import settings
 import os
 
 # Required queues — worker MUST consume from all of these
-REQUIRED_QUEUES = ["celery", "video", "media"]
+REQUIRED_QUEUES = ["celery", "video", "media", "presentation_export"]
 
 # Create Celery app
 celery_app = Celery(
@@ -39,6 +39,7 @@ celery_app.conf.update(
         Queue("celery"),
         Queue("video"),
         Queue("media"),
+        Queue("presentation_export"),
     ],
     task_create_missing_queues=True,
     # Queue routing: isolate FFmpeg video tasks from API-based media tasks
@@ -80,6 +81,8 @@ celery_app.conf.update(
         "onedrive.disconnect_cleanup": {"queue": "media"},
         # Approval timeout checker -> celery queue (lightweight, periodic)
         "app.tasks.approval_timeout_tasks.check_expired_approvals": {"queue": "celery"},
+        # Presentation headless rendering (CPU + Playwright + FFmpeg)
+        "app.tasks.presentation_render.render_presentation": {"queue": "presentation_export"},
     },
 )
 

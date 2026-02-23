@@ -155,3 +155,16 @@ google-auth-httplib2>=0.2.0
 google-cloud-tasks>=2.14.0
 sentry-sdk[fastapi]
 posthog>=3.0.0
+
+# ==========================================
+# Section 07: Presentation Export Rendering
+# ==========================================
+
+# Headless browser for slide screenshots
+playwright>=1.40.0
+
+# PDF merging
+pypdf>=4.0.0
+
+# JPEG conversion for JPG export format
+Pillow>=10.0.0
