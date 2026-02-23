@@ -1,0 +1,52 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/022-byteplus-modelark-api/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/022-byteplus-modelark-api/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-nodejs-template",
+    "section-02-nodejs-media-models",
+    "section-03-python-adapter",
+    "section-04-python-adapter-tests",
+    "section-05-gateway-routing",
+    "section-06-polling-integration"
+  ],
+  "sections_state": {
+    "section-01-nodejs-template": {
+      "status": "complete",
+      "commit_hash": "89eb883"
+    },
+    "section-02-nodejs-media-models": {
+      "status": "complete",
+      "commit_hash": "97ad19e"
+    },
+    "section-03-python-adapter": {
+      "status": "complete",
+      "commit_hash": "ab748d3"
+    },
+    "section-04-python-adapter-tests": {
+      "status": "complete",
+      "commit_hash": "985ae9d"
+    },
+    "section-05-gateway-routing": {
+      "status": "complete",
+      "commit_hash": "51b8e915a761c1fcbd34c20c2f0a5a4b2539fced"
+    },
+    "section-06-polling-integration": {
+      "status": "complete",
+      "commit_hash": "6f6ad75"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-23T07:42:20.363666+00:00"
+}
