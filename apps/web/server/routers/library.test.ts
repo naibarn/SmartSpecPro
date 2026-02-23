@@ -592,6 +592,56 @@ describe("libraryRouter.updateItem", () => {
   });
 });
 
+describe("libraryRouter.deleteItem", () => {
+  it("blocks non-admin users from deleting presentation templates", async () => {
+    mockGetLibraryItemById.mockResolvedValue({
+      id: 900,
+      ownerUserId: 11,
+      itemType: "presentation",
+      source: "presentation_template",
+      metadata: { is_template: true },
+    });
+
+    const fn = libraryRouter.deleteItem as Function;
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 4, role: "user", currentTenantId: 2 },
+          tenantId: 2,
+        },
+        input: { id: 900 },
+      }),
+    ).rejects.toThrow("Only admin can delete presentation templates");
+    expect(mockSoftDeleteLibraryItem).not.toHaveBeenCalled();
+  });
+
+  it("allows admin users to delete presentation templates", async () => {
+    mockGetLibraryItemById.mockResolvedValue({
+      id: 901,
+      ownerUserId: 11,
+      itemType: "presentation",
+      source: "presentation_template",
+      metadata: { is_template: true },
+    });
+    mockSoftDeleteLibraryItem.mockResolvedValue(true);
+
+    const fn = libraryRouter.deleteItem as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 1, role: "admin", currentTenantId: 2 },
+        tenantId: 2,
+      },
+      input: { id: 901 },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(mockSoftDeleteLibraryItem).toHaveBeenCalledWith(
+      901,
+      expect.objectContaining({ userId: 1, tenantId: "2", role: "admin" }),
+    );
+  });
+});
+
 describe("libraryRouter.shareItem", () => {
   it("returns success when permission share is applied", async () => {
     mockShareLibraryItem.mockResolvedValue(true);

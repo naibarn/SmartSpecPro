@@ -105,6 +105,7 @@ function computeSnapCandidates(state: CanvasCommandState): SnapCandidate[] {
 export function moveSelectionCommand(
   deltaX: number,
   deltaY: number,
+  snapToGuides: boolean = true,
 ): CanvasCommand<CanvasCommandState> {
   return {
     id: "move-selection",
@@ -124,6 +125,19 @@ export function moveSelectionCommand(
         width: primary.width,
         height: primary.height,
       };
+
+      if (!snapToGuides) {
+        return {
+          ...state,
+          content: translateElements(
+            state.content,
+            state.selectedElementIds,
+            deltaX,
+            deltaY,
+          ),
+          snapGuides: [],
+        };
+      }
 
       const snap = computeSnapPosition(movedPrimary, computeSnapCandidates(state));
       const adjustedDeltaX = snap.x - primary.x;

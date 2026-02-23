@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { PRESENTATION_ITEM_TYPE } from "@shared/presentation/constants";
+import { isPresentationTemplateItem } from "@shared/presentation/template";
 
 import { protectedProcedure, router } from "../_core/trpc";
 import { auditLogger } from "../services/auditLogger";
@@ -463,6 +465,31 @@ export const libraryRouter = router({
         tenantId: tenantIdResolved,
         role: ctx.user.role,
       };
+
+      const item = await getLibraryItemById(input.id, actor);
+      if (!item) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Library item not found",
+        });
+      }
+      if (item.itemType === PRESENTATION_ITEM_TYPE) {
+        const isTemplate = isPresentationTemplateItem(item);
+        const isAdmin = actor.role === "admin";
+        const isOwner = item.ownerUserId === actor.userId;
+        if (isTemplate && !isAdmin) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only admin can delete presentation templates",
+          });
+        }
+        if (!isTemplate && !isOwner && !isAdmin) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You can only delete your own presentation projects",
+          });
+        }
+      }
 
       const success = await softDeleteLibraryItem(input.id, actor);
       if (!success) {

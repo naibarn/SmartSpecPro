@@ -361,7 +361,8 @@ export function PropertyPanel({ selectedElement, onPatchSelected }: PropertyPane
             <Input
               aria-label="Image URL"
               value={selectedElement.src}
-              onChange={(event) => onPatchSelected({ src: event.target.value } as PresentationElementPatch)}
+              readOnly
+              className="cursor-default bg-slate-100 text-slate-700"
             />
           </label>
           <label className="block text-sm">
@@ -369,7 +370,8 @@ export function PropertyPanel({ selectedElement, onPatchSelected }: PropertyPane
             <Input
               aria-label="Image Alt Text"
               value={selectedElement.alt}
-              onChange={(event) => onPatchSelected({ alt: event.target.value } as PresentationElementPatch)}
+              readOnly
+              className="cursor-default bg-slate-100 text-slate-700"
             />
           </label>
         </>

@@ -5,6 +5,10 @@ const setLocationMock = vi.fn();
 const routeParamsMock = { docId: "42" };
 
 const mutationMocks = {
+  updateItem: vi.fn(),
+  updateDeck: vi.fn(),
+  saveAsTemplate: vi.fn(),
+  restoreVersion: vi.fn(),
   addSlide: vi.fn(),
   duplicateSlide: vi.fn(),
   deleteSlide: vi.fn(),
@@ -97,6 +101,34 @@ function buildLibraryMediaList() {
   };
 }
 
+function buildPresentationVersions() {
+  return [
+    {
+      id: 501,
+      versionNumber: 12,
+      contentType: "presentation_slide_snapshot_v1",
+      changeDescription: "Manual save: Intro",
+      createdAt: new Date().toISOString(),
+      createdByUserId: 1,
+      snapshot: {
+        schemaVersion: "presentation_slide_snapshot_v1",
+        deckId: 7,
+        libraryItemId: 42,
+        slideId: 71,
+        slideVersion: 3,
+        slideTitle: "Intro",
+        slideContent: {
+          elements: [{ id: "t-1", type: "text", x: 10, y: 10, width: 200, height: 60, text: "Hello", color: "#111827" }],
+        },
+        notes: null,
+        saveMode: "manual",
+        savedAt: new Date().toISOString(),
+        savedByUserId: 1,
+      },
+    },
+  ] as any[];
+}
+
 const queryState = {
   libraryItem: {
     id: 42,
@@ -114,6 +146,7 @@ const queryState = {
   },
   deckByItem: buildDeckByItem(),
   deckError: null as Error | null,
+  presentationVersions: buildPresentationVersions(),
 };
 
 vi.mock("wouter", () => ({
@@ -128,8 +161,24 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      library: {
+        getItem: { invalidate: vi.fn().mockResolvedValue(undefined) },
+        listDocuments: { invalidate: vi.fn().mockResolvedValue(undefined) },
+      },
+      presentation: {
+        listVersions: { invalidate: vi.fn().mockResolvedValue(undefined) },
+      },
+    }),
     library: {
       getItem: {
         useQuery: vi.fn(() => ({
@@ -155,6 +204,12 @@ vi.mock("@/lib/trpc", () => ({
           };
         }),
       },
+      updateItem: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.updateItem,
+          isPending: false,
+        })),
+      },
     },
     presentation: {
       getSlideshow: {
@@ -175,6 +230,13 @@ vi.mock("@/lib/trpc", () => ({
       getExportStatus: {
         useQuery: vi.fn(() => ({
           data: null,
+          isLoading: false,
+          error: null,
+        })),
+      },
+      listVersions: {
+        useQuery: vi.fn(() => ({
+          data: queryState.presentationVersions,
           isLoading: false,
           error: null,
         })),
@@ -230,6 +292,24 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         })),
       },
+      updateDeck: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.updateDeck,
+          isPending: false,
+        })),
+      },
+      saveAsTemplate: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.saveAsTemplate,
+          isPending: false,
+        })),
+      },
+      restoreVersion: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.restoreVersion,
+          isPending: false,
+        })),
+      },
       triggerExport: {
         useMutation: vi.fn(() => ({
           mutateAsync: mutationMocks.triggerExport,
@@ -248,6 +328,14 @@ describe("PresentationEditor", () => {
     vi.useRealTimers();
     Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1200 });
     mutationMocks.addSlide.mockResolvedValue({});
+    mutationMocks.updateItem.mockResolvedValue({});
+    mutationMocks.updateDeck.mockResolvedValue({});
+    mutationMocks.saveAsTemplate.mockResolvedValue({ item: { id: 500, title: "Product Pitch Template" } });
+    mutationMocks.restoreVersion.mockResolvedValue({
+      restoredSlideId: 71,
+      restoredSlideVersion: 4,
+      deckVersion: 9,
+    });
     mutationMocks.duplicateSlide.mockResolvedValue({});
     mutationMocks.deleteSlide.mockResolvedValue({});
     mutationMocks.reorderSlides.mockResolvedValue({});
@@ -269,6 +357,7 @@ describe("PresentationEditor", () => {
     queryState.libraryMediaList = buildLibraryMediaList();
     queryState.deckByItem = buildDeckByItem();
     queryState.deckError = null;
+    queryState.presentationVersions = buildPresentationVersions();
   });
 
   it("renders labeled controls for slide and canvas editing", () => {
@@ -284,9 +373,11 @@ describe("PresentationEditor", () => {
     expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export png/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export mp4/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /disable snap lock/i })).toBeInTheDocument();
     expect(screen.getByTestId("slide-preview-1")).toBeInTheDocument();
     expect(screen.getByTestId("slide-preview-2")).toBeInTheDocument();
     expect(screen.getByText(/save: ready/i)).toBeInTheDocument();
+    expect(screen.getByText(/snap: locked/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Canvas Aspect Ratio (Properties)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /fit canvas to view/i })).toBeInTheDocument();
   });
@@ -314,6 +405,8 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Image URL")).toHaveValue("https://cdn.example.com/hero.png");
       expect(screen.getByLabelText("Image Alt Text")).toHaveValue("Hero Image");
+      expect(screen.getByLabelText("Image URL")).toHaveAttribute("readonly");
+      expect(screen.getByLabelText("Image Alt Text")).toHaveAttribute("readonly");
     });
   });
 
@@ -390,6 +483,104 @@ describe("PresentationEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: /close slideshow preview/i }));
     await waitFor(() => {
       expect(screen.queryByTestId("slideshow-preview-overlay")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows fullscreen toggle control in slideshow overlay", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: /enter fullscreen/i })).toBeInTheDocument();
+  });
+
+  it("renders presentation saved version history list", () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /inspector tab version history/i }));
+    expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+    expect(screen.getByTestId("presentation-version-group-slide-71")).toBeInTheDocument();
+    expect(screen.getByTestId("presentation-version-item-501")).toBeInTheDocument();
+    expect(screen.getByTestId("presentation-version-preview")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /restore selected version 12/i })).toBeInTheDocument();
+  });
+
+  it("groups versions by slide and shows preview diff for selected version", async () => {
+    queryState.presentationVersions = [
+      {
+        id: 501,
+        versionNumber: 12,
+        contentType: "presentation_slide_snapshot_v1",
+        changeDescription: "Manual save: Intro",
+        createdAt: new Date().toISOString(),
+        createdByUserId: 1,
+        snapshot: {
+          schemaVersion: "presentation_slide_snapshot_v1",
+          deckId: 7,
+          libraryItemId: 42,
+          slideId: 71,
+          slideVersion: 3,
+          slideTitle: "Intro",
+          slideContent: {
+            elements: [{ id: "t-1", type: "text", x: 10, y: 10, width: 200, height: 60, text: "Hello", color: "#111827" }],
+          },
+          notes: null,
+          saveMode: "manual",
+          savedAt: new Date().toISOString(),
+          savedByUserId: 1,
+        },
+      },
+      {
+        id: 502,
+        versionNumber: 11,
+        contentType: "presentation_slide_snapshot_v1",
+        changeDescription: "Manual save: Agenda",
+        createdAt: new Date(Date.now() - 60000).toISOString(),
+        createdByUserId: 1,
+        snapshot: {
+          schemaVersion: "presentation_slide_snapshot_v1",
+          deckId: 7,
+          libraryItemId: 42,
+          slideId: 72,
+          slideVersion: 1,
+          slideTitle: "Agenda",
+          slideContent: {
+            elements: [{ id: "t-2", type: "text", x: 20, y: 20, width: 240, height: 70, text: "Agenda v1", color: "#111827" }],
+          },
+          notes: null,
+          saveMode: "manual",
+          savedAt: new Date(Date.now() - 60000).toISOString(),
+          savedByUserId: 1,
+        },
+      },
+    ] as any[];
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /inspector tab version history/i }));
+
+    expect(screen.getByTestId("presentation-version-group-slide-71")).toBeInTheDocument();
+    expect(screen.getByTestId("presentation-version-group-slide-72")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("presentation-version-item-502"));
+    await waitFor(() => {
+      expect(screen.getByTestId("presentation-version-preview")).toBeInTheDocument();
+      expect(screen.getByTestId("presentation-version-diff-summary")).toBeInTheDocument();
+    });
+  });
+
+  it("restores a selected presentation version from history after confirmation", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /inspector tab version history/i }));
+    fireEvent.click(screen.getByRole("button", { name: /restore selected version 12/i }));
+    expect(mutationMocks.restoreVersion).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm restore/i }));
+    await waitFor(() => {
+      expect(mutationMocks.restoreVersion).toHaveBeenCalledWith({ deckId: 7, versionId: 501 });
     });
   });
 
@@ -557,11 +748,38 @@ describe("PresentationEditor", () => {
     });
   });
 
-  it("navigates back to Document Management from editor header", () => {
+  it("navigates back to Presentation Library from editor header", () => {
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: /back to document management/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=42");
+    fireEvent.click(screen.getByRole("button", { name: /back to presentation library/i }));
+    expect(setLocationMock).toHaveBeenCalledWith("/presentations");
+  });
+
+  it("shows project title and supports renaming from header", async () => {
+    render(<PresentationEditor />);
+
+    expect(screen.getByRole("heading", { name: /product pitch/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /edit project name/i }));
+    fireEvent.change(screen.getByLabelText("Project Name"), { target: { value: "Pitch V2" } });
+    fireEvent.click(screen.getByRole("button", { name: /save project name/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateItem).toHaveBeenCalledWith({ id: 42, title: "Pitch V2" });
+      expect(mutationMocks.updateDeck).toHaveBeenCalled();
+    });
+  });
+
+  it("supports saving current presentation as template", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /save to template/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.saveAsTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({ sourceLibraryItemId: 42 }),
+      );
+      expect(setLocationMock).toHaveBeenCalledWith("/presentations");
+    });
   });
 
   it("auto-initializes deck when deck is missing", async () => {
@@ -741,6 +959,33 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("allows middle-mouse panning even when pointer starts on a canvas element", async () => {
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /zoom in/i }));
+
+    const canvasElement = screen.getByRole("button", { name: /select canvas element 1/i });
+    fireEvent.pointerDown(canvasElement, {
+      pointerId: 57,
+      button: 1,
+      clientX: 320,
+      clientY: 260,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 57,
+      clientX: 210,
+      clientY: 180,
+    });
+    fireEvent.pointerUp(window, {
+      pointerId: 57,
+      clientX: 210,
+      clientY: 180,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).not.toHaveTextContent("(0, 0)");
+    });
+  });
+
   it("fits viewport back to defaults after zoom/pan", async () => {
     render(<PresentationEditor />);
     fireEvent.click(screen.getByRole("button", { name: /zoom in/i }));
@@ -858,6 +1103,19 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("shows version history in mobile bottom sheet versions tab", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("tab", { name: "Versions" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+      expect(screen.getByTestId("presentation-version-group-slide-71")).toBeInTheDocument();
+      expect(screen.getByTestId("presentation-version-preview")).toBeInTheDocument();
+    });
+  });
+
   it("prevents accidental mobile advanced transforms below touch-target threshold", async () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
 
@@ -937,6 +1195,50 @@ describe("PresentationEditor", () => {
       await Promise.resolve();
     });
     expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats manual conflict as saved when latest slide already matches draft content", async () => {
+    const conflict = new Error("PRESENTATION_VERSION_CONFLICT: stale-manual");
+    (conflict as any).cause = {
+      conflictSchemaVersion: "presentation_conflict_v1",
+      reasonCode: "SLIDE_VERSION_MISMATCH",
+      expectedVersion: 3,
+      latestDeckVersion: 6,
+      latestSlideVersion: 4,
+      deckId: 7,
+      slideId: 71,
+      saveMode: "manual",
+      latestDeck: {
+        id: 7,
+        version: 6,
+        slideCount: 2,
+        totalAssetBytes: 0,
+        updatedAt: new Date(),
+      },
+      latestSlide: {
+        id: 71,
+        deckId: 7,
+        orderIndex: 0,
+        version: 4,
+        title: "Intro",
+        slideContent: {
+          elements: [{ id: "t-1", type: "text", x: 10, y: 10, width: 200, height: 60, text: "Hello", color: "#111827" }],
+        },
+        notes: null,
+        updatedAt: new Date(),
+      },
+    };
+    mutationMocks.updateSlide.mockRejectedValueOnce(conflict);
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/save: saved/i)).toBeInTheDocument();
+    });
+
+    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /reload latest slide/i })).not.toBeInTheDocument();
   });
 
   it("blocks autosave and manual save when stale guard is active until reload", async () => {

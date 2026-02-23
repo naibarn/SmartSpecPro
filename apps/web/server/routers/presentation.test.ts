@@ -22,8 +22,12 @@ vi.mock("../_core/trpc", () => {
 const serviceMocks = vi.hoisted(() => ({
   getPresentationDeckDetail: vi.fn(),
   createPresentationDeckForLibraryItem: vi.fn(),
+  createTemplateFromPresentation: vi.fn(),
+  createPresentationFromTemplate: vi.fn(),
   attachAssetToDeck: vi.fn(),
   updateSlideInDeck: vi.fn(),
+  listPresentationVersionHistory: vi.fn(),
+  restorePresentationVersion: vi.fn(),
 }));
 
 const templateServiceMocks = vi.hoisted(() => ({
@@ -47,8 +51,12 @@ vi.mock("../services/presentationService", async () => {
     ...actual,
     getPresentationDeckDetail: serviceMocks.getPresentationDeckDetail,
     createPresentationDeckForLibraryItem: serviceMocks.createPresentationDeckForLibraryItem,
+    createTemplateFromPresentation: serviceMocks.createTemplateFromPresentation,
+    createPresentationFromTemplate: serviceMocks.createPresentationFromTemplate,
     attachAssetToDeck: serviceMocks.attachAssetToDeck,
     updateSlideInDeck: serviceMocks.updateSlideInDeck,
+    listPresentationVersionHistory: serviceMocks.listPresentationVersionHistory,
+    restorePresentationVersion: serviceMocks.restorePresentationVersion,
   };
 });
 
@@ -131,6 +139,12 @@ describe("presentationRouter", () => {
       format: "mp4",
       updatedAt: new Date(),
     });
+    serviceMocks.listPresentationVersionHistory.mockResolvedValue([]);
+    serviceMocks.restorePresentationVersion.mockResolvedValue({
+      restoredSlideId: 71,
+      restoredSlideVersion: 4,
+      deckVersion: 9,
+    });
   });
 
   it("returns disabled availability when feature flag is off", async () => {
@@ -211,6 +225,56 @@ describe("presentationRouter", () => {
       { userId: 77, tenantId: "tenant-1", role: "user" },
     );
     expect(result.created).toBe(true);
+  });
+
+  it("creates template copy from presentation with tenant-scoped actor", async () => {
+    serviceMocks.createTemplateFromPresentation.mockResolvedValue({
+      item: { id: 99, title: "Pitch Template" },
+      deck: { id: 100, libraryItemId: 99 },
+      slidesCopied: 4,
+      assetsCopied: 2,
+    });
+
+    const fn = presentationRouter.saveAsTemplate as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 77, role: "user" } },
+      input: { sourceLibraryItemId: 42, templateTitle: "Pitch Template" },
+    });
+
+    expect(serviceMocks.createTemplateFromPresentation).toHaveBeenCalledWith(
+      {
+        sourceLibraryItemId: 42,
+        templateTitle: "Pitch Template",
+        templateDescription: undefined,
+      },
+      { userId: 77, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.item.id).toBe(99);
+  });
+
+  it("creates presentation copy from template with tenant-scoped actor", async () => {
+    serviceMocks.createPresentationFromTemplate.mockResolvedValue({
+      item: { id: 105, title: "Pitch Copy" },
+      deck: { id: 106, libraryItemId: 105 },
+      slidesCopied: 4,
+      assetsCopied: 2,
+    });
+
+    const fn = presentationRouter.useTemplate as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 77, role: "user" } },
+      input: { templateLibraryItemId: 99, title: "Pitch Copy" },
+    });
+
+    expect(serviceMocks.createPresentationFromTemplate).toHaveBeenCalledWith(
+      {
+        templateLibraryItemId: 99,
+        title: "Pitch Copy",
+        description: undefined,
+      },
+      { userId: 77, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.item.id).toBe(105);
   });
 
   it("requires tenant context for deck endpoints", async () => {
@@ -295,6 +359,59 @@ describe("presentationRouter", () => {
     );
     expect(result.conversionStatus).toBe("created");
     expect(result.deckId).toBe(88);
+  });
+
+  it("lists presentation versions via service with tenant-scoped actor", async () => {
+    serviceMocks.listPresentationVersionHistory.mockResolvedValue([
+      {
+        id: 501,
+        versionNumber: 12,
+        contentType: "presentation_slide_snapshot_v1",
+        changeDescription: "Manual save: Intro",
+        createdAt: new Date(),
+        createdByUserId: 10,
+        snapshot: {
+          schemaVersion: "presentation_slide_snapshot_v1",
+          deckId: 9,
+          libraryItemId: 42,
+          slideId: 71,
+          slideVersion: 3,
+          slideTitle: "Intro",
+          slideContent: { elements: [] },
+          notes: null,
+          saveMode: "manual",
+          savedAt: new Date().toISOString(),
+          savedByUserId: 10,
+        },
+      },
+    ]);
+
+    const fn = presentationRouter.listVersions as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 9, limit: 20, offset: 0 },
+    });
+
+    expect(serviceMocks.listPresentationVersionHistory).toHaveBeenCalledWith(
+      { deckId: 9, limit: 20, offset: 0 },
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(Array.isArray(result)).toBe(true);
+    expect(result[0].id).toBe(501);
+  });
+
+  it("restores presentation version via service with tenant-scoped actor", async () => {
+    const fn = presentationRouter.restoreVersion as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 9, versionId: 501 },
+    });
+
+    expect(serviceMocks.restorePresentationVersion).toHaveBeenCalledWith(
+      { deckId: 9, versionId: 501 },
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.restoredSlideId).toBe(71);
   });
 
   it("returns conflict payload with stable schema version for stale expectedVersion", async () => {

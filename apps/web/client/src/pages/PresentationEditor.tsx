@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
+  Check,
   Copy,
   Crop,
   ChevronLeft,
   Clapperboard,
   ImageIcon,
+  Loader2,
   Minus,
+  Maximize2,
+  Minimize2,
   Pause,
   MousePointer2,
   SkipBack,
@@ -14,6 +18,7 @@ import {
   RectangleHorizontal,
   Redo2,
   RotateCw,
+  Pencil,
   Play,
   Trash2,
   Type,
@@ -37,10 +42,22 @@ import {
   type CanvasStageDropAssetPayload,
   type MobileBottomSheetTab,
 } from "@/presentation-canvas";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { buildWrongEditorOpenGuard } from "@/lib/presentationRouting";
+import { toast } from "sonner";
 import {
   createElement,
   ensureSlideContent,
@@ -111,6 +128,46 @@ interface LibraryResultItemLike {
   poster_url?: string | null;
 }
 
+interface PresentationSavedVersionLike {
+  id: number;
+  versionNumber?: number;
+  createdAt?: string | Date;
+  changeDescription?: string | null;
+  snapshot?: {
+    slideId?: number;
+    slideTitle?: string;
+    savedAt?: string;
+    slideContent?: unknown;
+    notes?: string | null;
+  } | null;
+}
+
+interface PresentationVersionGroup {
+  key: string;
+  slideId: number | null;
+  label: string;
+  sortOrder: number;
+  items: PresentationSavedVersionLike[];
+}
+
+interface SlideComparisonState {
+  title: string;
+  notes: string | null;
+  content: PresentationSlideContent;
+}
+
+interface SlideDiffSummary {
+  isIdentical: boolean;
+  titleChanged: boolean;
+  notesChanged: boolean;
+  canvasChanged: boolean;
+  currentElementCount: number;
+  versionElementCount: number;
+  changedElementCount: number;
+  addedElementCount: number;
+  removedElementCount: number;
+}
+
 function getItemType(item: unknown): string {
   if (!item || typeof item !== "object") {
     return "";
@@ -119,19 +176,191 @@ function getItemType(item: unknown): string {
   return String(value);
 }
 
+function formatVersionDate(value: string | Date | undefined): string {
+  if (!value) {
+    return "-";
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return date.toLocaleString();
+}
+
+function normalizeSlideId(value: unknown): number | null {
+  const slideId = Number(value);
+  if (Number.isFinite(slideId) && slideId > 0) {
+    return slideId;
+  }
+  return null;
+}
+
+function normalizeVersionSlideContent(version: PresentationSavedVersionLike): PresentationSlideContent | null {
+  const snapshot = version.snapshot;
+  if (!snapshot || snapshot.slideContent == null) {
+    return null;
+  }
+  try {
+    return ensureSlideContent(snapshot.slideContent as PresentationSlideContent);
+  } catch {
+    return null;
+  }
+}
+
+function countSlideElementDiff(
+  currentElements: PresentationSlideContent["elements"],
+  versionElements: PresentationSlideContent["elements"],
+): { changed: number; added: number; removed: number } {
+  const serializeElement = (element: PresentationSlideContent["elements"][number]): string => {
+    try {
+      return JSON.stringify(element);
+    } catch {
+      return "";
+    }
+  };
+
+  const currentMap = new Map(
+    currentElements.map((element) => [element.id, serializeElement(element)]),
+  );
+  const versionMap = new Map(
+    versionElements.map((element) => [element.id, serializeElement(element)]),
+  );
+  const allIds = new Set<string>([
+    ...currentMap.keys(),
+    ...versionMap.keys(),
+  ]);
+
+  let changed = 0;
+  let added = 0;
+  let removed = 0;
+
+  for (const elementId of allIds) {
+    const currentSerialized = currentMap.get(elementId);
+    const versionSerialized = versionMap.get(elementId);
+    if (currentSerialized == null && versionSerialized != null) {
+      changed += 1;
+      added += 1;
+      continue;
+    }
+    if (currentSerialized != null && versionSerialized == null) {
+      changed += 1;
+      removed += 1;
+      continue;
+    }
+    if (currentSerialized !== versionSerialized) {
+      changed += 1;
+    }
+  }
+
+  return { changed, added, removed };
+}
+
+function buildSlideDiffSummary(
+  current: SlideComparisonState | null,
+  version: SlideComparisonState,
+): SlideDiffSummary {
+  if (!current) {
+    return {
+      isIdentical: false,
+      titleChanged: true,
+      notesChanged: true,
+      canvasChanged: true,
+      currentElementCount: 0,
+      versionElementCount: version.content.elements.length,
+      changedElementCount: version.content.elements.length,
+      addedElementCount: version.content.elements.length,
+      removedElementCount: 0,
+    };
+  }
+
+  const elementDiff = countSlideElementDiff(
+    current.content.elements,
+    version.content.elements,
+  );
+  const titleChanged = current.title.trim() !== version.title.trim();
+  const notesChanged = (current.notes || "") !== (version.notes || "");
+  const canvasChanged = JSON.stringify(normalizeCanvasSize(current.content.canvas))
+    !== JSON.stringify(normalizeCanvasSize(version.content.canvas));
+  const currentElementCount = current.content.elements.length;
+  const versionElementCount = version.content.elements.length;
+  const isIdentical = !titleChanged
+    && !notesChanged
+    && !canvasChanged
+    && elementDiff.changed === 0;
+
+  return {
+    isIdentical,
+    titleChanged,
+    notesChanged,
+    canvasChanged,
+    currentElementCount,
+    versionElementCount,
+    changedElementCount: elementDiff.changed,
+    addedElementCount: elementDiff.added,
+    removedElementCount: elementDiff.removed,
+  };
+}
+
 function isNotFoundError(error: unknown): boolean {
   const message = String((error as any)?.message || "");
   return message.includes(PRESENTATION_ERROR_CODE.NOT_FOUND);
 }
 
-function isConflictError(error: unknown): boolean {
+interface PresentationConflictLike {
+  conflictSchemaVersion?: string;
+  latestSlideVersion?: number;
+  latestSlide?: {
+    version?: number;
+    slideContent?: unknown;
+  };
+}
+
+function extractPresentationConflict(error: unknown): PresentationConflictLike | null {
   const cause = (error as any)?.cause || (error as any)?.data?.cause;
   if (cause?.conflictSchemaVersion === PRESENTATION_CONFLICT_SCHEMA_VERSION) {
+    return cause as PresentationConflictLike;
+  }
+  return null;
+}
+
+function isConflictError(error: unknown): boolean {
+  if (extractPresentationConflict(error)) {
     return true;
   }
 
   const message = String((error as any)?.message || "");
   return message.includes(PRESENTATION_ERROR_CODE.VERSION_CONFLICT);
+}
+
+function resolveLatestConflictSlideVersion(conflict: PresentationConflictLike): number | null {
+  const direct = Number(conflict.latestSlideVersion);
+  if (Number.isFinite(direct) && direct >= 0) {
+    return direct;
+  }
+
+  const nested = Number(conflict.latestSlide?.version);
+  if (Number.isFinite(nested) && nested >= 0) {
+    return nested;
+  }
+
+  return null;
+}
+
+function isConflictSlideContentEqualDraft(
+  conflict: PresentationConflictLike,
+  draftContent: PresentationSlideContent,
+): boolean {
+  if (!conflict.latestSlide || conflict.latestSlide.slideContent == null) {
+    return false;
+  }
+
+  try {
+    const latestNormalized = ensureSlideContent(conflict.latestSlide.slideContent as PresentationSlideContent);
+    const draftNormalized = ensureSlideContent(draftContent);
+    return JSON.stringify(latestNormalized) === JSON.stringify(draftNormalized);
+  } catch {
+    return false;
+  }
 }
 
 function getDeckLoadErrorMessage(error: unknown): string {
@@ -144,6 +373,52 @@ function getDeckLoadErrorMessage(error: unknown): string {
 
 function nextElementId(type: PresentationElementType): string {
   return `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+type FullscreenCapableDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  msFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+  msExitFullscreen?: () => Promise<void> | void;
+};
+
+type FullscreenCapableElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+  msRequestFullscreen?: () => Promise<void> | void;
+};
+
+function getCurrentFullscreenElement(doc: FullscreenCapableDocument): Element | null {
+  return doc.fullscreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement || null;
+}
+
+async function requestFullscreenForElement(element: FullscreenCapableElement): Promise<void> {
+  if (typeof element.requestFullscreen === "function") {
+    await element.requestFullscreen();
+    return;
+  }
+  if (typeof element.webkitRequestFullscreen === "function") {
+    await Promise.resolve(element.webkitRequestFullscreen());
+    return;
+  }
+  if (typeof element.msRequestFullscreen === "function") {
+    await Promise.resolve(element.msRequestFullscreen());
+    return;
+  }
+  throw new Error("Fullscreen API unavailable");
+}
+
+async function exitAnyFullscreen(doc: FullscreenCapableDocument): Promise<void> {
+  if (typeof doc.exitFullscreen === "function") {
+    await doc.exitFullscreen();
+    return;
+  }
+  if (typeof doc.webkitExitFullscreen === "function") {
+    await Promise.resolve(doc.webkitExitFullscreen());
+    return;
+  }
+  if (typeof doc.msExitFullscreen === "function") {
+    await Promise.resolve(doc.msExitFullscreen());
+  }
 }
 
 function buildDraftSignature(
@@ -345,6 +620,7 @@ function resolveSlideDurationMs(content: PresentationSlideContent): number {
 
 export default function PresentationEditor() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const trpcUtils = trpc.useUtils();
   const [, setLocation] = useLocation();
   const [, routeParams] = useRoute(`${PRESENTATION_EDITOR_ROUTE_BASE}/:docId`);
   const docId = parseDocId(routeParams?.docId);
@@ -380,12 +656,16 @@ export default function PresentationEditor() {
   );
 
   const createDeckMutation = trpc.presentation.createDeck.useMutation();
+  const updateDeckMutation = trpc.presentation.updateDeck.useMutation();
+  const saveAsTemplateMutation = trpc.presentation.saveAsTemplate.useMutation();
   const addSlideMutation = trpc.presentation.addSlide.useMutation();
   const duplicateSlideMutation = trpc.presentation.duplicateSlide.useMutation();
   const deleteSlideMutation = trpc.presentation.deleteSlide.useMutation();
   const reorderSlidesMutation = trpc.presentation.reorderSlides.useMutation();
   const updateSlideMutation = trpc.presentation.updateSlide.useMutation();
+  const restoreVersionMutation = trpc.presentation.restoreVersion.useMutation();
   const triggerExportMutation = trpc.presentation.triggerExport.useMutation();
+  const updateItemMutation = trpc.library.updateItem.useMutation();
 
   const deckData = deckQuery.data as any;
   const deck = deckData?.deck;
@@ -393,6 +673,7 @@ export default function PresentationEditor() {
     const raw = Array.isArray(deckData?.slides) ? deckData.slides : [];
     return [...raw].sort((a, b) => a.orderIndex - b.orderIndex);
   }, [deckData?.slides]);
+  const projectTitle = String(itemQuery.data?.title || deck?.title || (docId ? `Presentation ${docId}` : "Presentation"));
 
   const [selectedSlideId, setSelectedSlideId] = useState<number | null>(null);
   const [commandState, setCommandState] = useState<CanvasCommandState>(() =>
@@ -411,19 +692,37 @@ export default function PresentationEditor() {
   const [exportMessage, setExportMessage] = useState<string>("");
   const [exportWarnings, setExportWarnings] = useState<PresentationExportWarning[]>([]);
   const [lastExportId, setLastExportId] = useState<string | null>(null);
+  const playbackOverlayRef = useRef<HTMLDivElement | null>(null);
+  const playbackStageHostRef = useRef<HTMLDivElement | null>(null);
+  const [playbackStageHostSize, setPlaybackStageHostSize] = useState({ width: 0, height: 0 });
+  const [isPlaybackFullscreen, setIsPlaybackFullscreen] = useState(false);
+  const [projectTitleDraft, setProjectTitleDraft] = useState("");
+  const [isProjectTitleEditing, setIsProjectTitleEditing] = useState(false);
+  const [isProjectTitleSaving, setIsProjectTitleSaving] = useState(false);
   const [autoDeckInitAttempted, setAutoDeckInitAttempted] = useState(false);
   const [autoDeckInitPending, setAutoDeckInitPending] = useState(false);
   const [autoDeckInitError, setAutoDeckInitError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => window.innerWidth < 768);
   const [mobileSheetTab, setMobileSheetTab] = useState<MobileBottomSheetTab>("Properties");
+  const [desktopInspectorTab, setDesktopInspectorTab] = useState<"properties" | "versions">("properties");
   const [libraryTab, setLibraryTab] = useState<AssetLibraryTab>("slides");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
+  const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
+  const [restoreDialogVersionId, setRestoreDialogVersionId] = useState<number | null>(null);
   const [desktopViewport, setDesktopViewport] = useState({
     scale: 1,
     offsetX: 0,
     offsetY: 0,
   });
+  const [snapLockEnabled, setSnapLockEnabled] = useState(true);
   const mobileGestures = useMobileGestures();
+
+  useEffect(() => {
+    if (isProjectTitleEditing) {
+      return;
+    }
+    setProjectTitleDraft(projectTitle);
+  }, [projectTitle, isProjectTitleEditing]);
 
   const slideshowQuery = trpc.presentation.getSlideshow.useQuery(
     { deckId: deck?.id || 0 },
@@ -431,6 +730,21 @@ export default function PresentationEditor() {
       enabled: Boolean(deck?.id),
     },
   );
+  const versionHistoryQuery = trpc.presentation.listVersions.useQuery(
+    {
+      deckId: deck?.id || 0,
+      limit: 20,
+      offset: 0,
+    },
+    {
+      enabled: Boolean(deck?.id),
+    },
+  );
+  const savedVersions = useMemo(() => {
+    return Array.isArray(versionHistoryQuery.data)
+      ? (versionHistoryQuery.data as PresentationSavedVersionLike[])
+      : [];
+  }, [versionHistoryQuery.data]);
   const exportStatusQuery = trpc.presentation.getExportStatus.useQuery(
     { exportId: lastExportId || "" },
     {
@@ -511,6 +825,118 @@ export default function PresentationEditor() {
     () => normalizeCanvasSize(draftContent.canvas),
     [draftContent.canvas],
   );
+  const slidesById = useMemo(() => {
+    const map = new Map<number, (typeof slides)[number]>();
+    for (const slide of slides) {
+      map.set(slide.id, slide);
+    }
+    return map;
+  }, [slides]);
+  const groupedSavedVersions = useMemo<PresentationVersionGroup[]>(() => {
+    const grouped = new Map<string, PresentationVersionGroup>();
+
+    for (const version of savedVersions) {
+      const slideId = normalizeSlideId(version.snapshot?.slideId);
+      const key = slideId ? `slide-${slideId}` : "slide-unknown";
+      const linkedSlide = slideId ? slidesById.get(slideId) : null;
+      const groupLabel = linkedSlide
+        ? `Slide ${linkedSlide.orderIndex + 1}: ${linkedSlide.title}`
+        : version.snapshot?.slideTitle
+          ? `Slide: ${version.snapshot.slideTitle}`
+          : slideId
+            ? `Slide #${slideId}`
+            : "Unknown slide";
+      const sortOrder = linkedSlide ? linkedSlide.orderIndex : Number.MAX_SAFE_INTEGER;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.items.push(version);
+        continue;
+      }
+      grouped.set(key, {
+        key,
+        slideId,
+        label: groupLabel,
+        sortOrder,
+        items: [version],
+      });
+    }
+
+    return [...grouped.values()]
+      .map((group) => ({
+        ...group,
+        items: group.items.sort((a, b) => {
+          const aTs = new Date(a.snapshot?.savedAt || a.createdAt || 0).getTime();
+          const bTs = new Date(b.snapshot?.savedAt || b.createdAt || 0).getTime();
+          return bTs - aTs;
+        }),
+      }))
+      .sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) {
+          return a.sortOrder - b.sortOrder;
+        }
+        return a.label.localeCompare(b.label);
+      });
+  }, [savedVersions, slidesById]);
+  const selectedSavedVersion = useMemo(
+    () => savedVersions.find((version) => version.id === selectedSavedVersionId) || null,
+    [savedVersions, selectedSavedVersionId],
+  );
+  const selectedSavedVersionSlideId = normalizeSlideId(selectedSavedVersion?.snapshot?.slideId);
+  const selectedSavedVersionSlide = selectedSavedVersionSlideId
+    ? slidesById.get(selectedSavedVersionSlideId) || null
+    : null;
+  const selectedSavedVersionContent = useMemo(
+    () => (selectedSavedVersion ? normalizeVersionSlideContent(selectedSavedVersion) : null),
+    [selectedSavedVersion],
+  );
+  const selectedSavedVersionCurrentState = useMemo<SlideComparisonState | null>(() => {
+    if (!selectedSavedVersionSlide) {
+      return null;
+    }
+    const activeContent = selectedSlideId === selectedSavedVersionSlide.id
+      ? draftContent
+      : ensureSlideContent(selectedSavedVersionSlide.slideContent);
+    return {
+      title: selectedSavedVersionSlide.title,
+      notes: selectedSavedVersionSlide.notes,
+      content: activeContent,
+    };
+  }, [draftContent, selectedSavedVersionSlide, selectedSlideId]);
+  const selectedSavedVersionSnapshotState = useMemo<SlideComparisonState | null>(() => {
+    if (!selectedSavedVersion || !selectedSavedVersionContent) {
+      return null;
+    }
+    return {
+      title: selectedSavedVersion.snapshot?.slideTitle || "Slide",
+      notes: selectedSavedVersion.snapshot?.notes ?? null,
+      content: selectedSavedVersionContent,
+    };
+  }, [selectedSavedVersion, selectedSavedVersionContent]);
+  const selectedSavedVersionDiffSummary = useMemo(() => {
+    if (!selectedSavedVersionSnapshotState) {
+      return null;
+    }
+    return buildSlideDiffSummary(
+      selectedSavedVersionCurrentState,
+      selectedSavedVersionSnapshotState,
+    );
+  }, [selectedSavedVersionCurrentState, selectedSavedVersionSnapshotState]);
+  const currentVersionPreview = useMemo(() => {
+    if (!selectedSavedVersionCurrentState) {
+      return null;
+    }
+    return summarizeSlidePreview(selectedSavedVersionCurrentState.content);
+  }, [selectedSavedVersionCurrentState]);
+  const selectedVersionPreview = useMemo(() => {
+    if (!selectedSavedVersionSnapshotState) {
+      return null;
+    }
+    return summarizeSlidePreview(selectedSavedVersionSnapshotState.content);
+  }, [selectedSavedVersionSnapshotState]);
+  const restoreDialogVersion = useMemo(
+    () => savedVersions.find((version) => version.id === restoreDialogVersionId) || null,
+    [restoreDialogVersionId, savedVersions],
+  );
   const playbackSlides = useMemo(() => {
     return slides.map((slide) => {
       const content = selectedSlideId === slide.id
@@ -574,6 +1000,19 @@ export default function PresentationEditor() {
 
     setSelectedSlideId(slides[0].id);
   }, [selectedSlideId, slides]);
+
+  useEffect(() => {
+    if (!savedVersions.length) {
+      setSelectedSavedVersionId(null);
+      return;
+    }
+
+    if (selectedSavedVersionId && savedVersions.some((version) => version.id === selectedSavedVersionId)) {
+      return;
+    }
+
+    setSelectedSavedVersionId(savedVersions[0].id);
+  }, [savedVersions, selectedSavedVersionId]);
 
   useEffect(() => {
     if (!selectedSlide) {
@@ -869,7 +1308,7 @@ export default function PresentationEditor() {
       return;
     }
 
-    executeCommand(moveSelectionCommand(deltaX, deltaY));
+    executeCommand(moveSelectionCommand(deltaX, deltaY, snapLockEnabled));
   }
 
   function handleResizeSelection(width: number, height: number) {
@@ -967,24 +1406,31 @@ export default function PresentationEditor() {
     const version = expectedSlideVersion ?? selectedSlide.version;
     setSaveState("pending");
 
-    try {
-      const nextSlide = await updateSlideMutation.mutateAsync({
-        deckId: deck.id,
-        slideId: selectedSlide.id,
-        expectedVersion: version,
-        saveMode,
-        title: selectedSlide.title,
-        slideContent: draftContent,
-      });
-
+    const finalizeSaveSuccess = (nextSlide: unknown, fallbackVersion: number) => {
       const returnedVersion = Number((nextSlide as any)?.version);
       setExpectedSlideVersion(
         Number.isFinite(returnedVersion)
           ? returnedVersion
-          : version + 1,
+          : fallbackVersion + 1,
       );
       setConflictPolicy(registerSaveSuccess());
       setSaveState("saved");
+    };
+
+    const saveWithVersion = async (saveVersion: number) => {
+      return updateSlideMutation.mutateAsync({
+        deckId: deck.id,
+        slideId: selectedSlide.id,
+        expectedVersion: saveVersion,
+        saveMode,
+        title: selectedSlide.title,
+        slideContent: draftContent,
+      });
+    };
+
+    try {
+      const nextSlide = await saveWithVersion(version);
+      finalizeSaveSuccess(nextSlide, version);
 
       if (saveMode === "autosave") {
         trackAutosaveResult({
@@ -997,7 +1443,35 @@ export default function PresentationEditor() {
 
       return "saved";
     } catch (error) {
-      if (isConflictError(error)) {
+      let finalError = error;
+
+      if (saveMode === "manual") {
+        const conflict = extractPresentationConflict(error);
+        if (conflict) {
+          const latestConflictVersion = resolveLatestConflictSlideVersion(conflict);
+          if (
+            latestConflictVersion !== null
+            && isConflictSlideContentEqualDraft(conflict, draftContent)
+          ) {
+            setExpectedSlideVersion(latestConflictVersion);
+            setConflictPolicy(registerSaveSuccess());
+            setSaveState("saved");
+            return "saved";
+          }
+
+          if (latestConflictVersion !== null && latestConflictVersion > version) {
+            try {
+              const recoveredSlide = await saveWithVersion(latestConflictVersion);
+              finalizeSaveSuccess(recoveredSlide, latestConflictVersion);
+              return "saved";
+            } catch (retryError) {
+              finalError = retryError;
+            }
+          }
+        }
+      }
+
+      if (isConflictError(finalError)) {
         const nextPolicy = registerConflict(conflictPolicyRef.current, Date.now());
         setConflictPolicy(nextPolicy);
         setSaveState("conflict");
@@ -1045,11 +1519,140 @@ export default function PresentationEditor() {
     );
   }, [autosaveController, selectedSlide?.id, selectedSlide?.version]);
 
-  async function handleSaveSlide() {
+  async function handleSaveSlide(options?: { silent?: boolean }): Promise<boolean> {
+    if (!deck || !selectedSlide) {
+      if (!options?.silent) {
+        toast.error("No active slide to save.");
+      }
+      return false;
+    }
+
     const result = await performSave("manual");
     if (result === "saved") {
       autosaveController.markPersisted(draftSignature);
-      await refreshDeck();
+      await Promise.all([
+        refreshDeck(),
+        trpcUtils.presentation.listVersions.invalidate(),
+      ]);
+      if (!options?.silent) {
+        toast.success("Presentation saved.");
+      }
+      return true;
+    }
+
+    if (!options?.silent) {
+      const blockedReason = shouldBlockSaveAttempt(
+        normalizeConflictPolicy(conflictPolicyRef.current, Date.now()),
+        "manual",
+        Date.now(),
+      );
+      if (blockedReason === "stale_blocked") {
+        toast.error("Save blocked by version conflict. Reload latest and retry.");
+      } else {
+        toast.error("Save failed. Please retry.");
+      }
+    }
+    return false;
+  }
+
+  async function handleSaveProjectTitle() {
+    if (!docId) {
+      return;
+    }
+
+    const title = projectTitleDraft.trim();
+    if (!title) {
+      toast.error("Project name cannot be empty.");
+      return;
+    }
+    if (title === projectTitle) {
+      setIsProjectTitleEditing(false);
+      return;
+    }
+
+    setIsProjectTitleSaving(true);
+    try {
+      await updateItemMutation.mutateAsync({ id: docId, title });
+      if (deck?.id) {
+        await runDeckMutation(async (expectedVersion) => (
+          updateDeckMutation.mutateAsync({
+            deckId: deck.id,
+            expectedVersion,
+            title,
+          })
+        ));
+      }
+      await Promise.all([
+        trpcUtils.library.getItem.invalidate({ id: docId }),
+        trpcUtils.library.listDocuments.invalidate(),
+      ]);
+      setIsProjectTitleEditing(false);
+      toast.success("Project name updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update project name.");
+    } finally {
+      setIsProjectTitleSaving(false);
+    }
+  }
+
+  async function handleSaveToTemplate() {
+    if (!docId) {
+      return;
+    }
+
+    const blockedReason = shouldBlockSaveAttempt(
+      normalizeConflictPolicy(conflictPolicyRef.current, Date.now()),
+      "manual",
+      Date.now(),
+    );
+    if (blockedReason === "stale_blocked") {
+      toast.error("Save blocked by version conflict. Reload latest and retry before saving to template.");
+      return;
+    }
+
+    await handleSaveSlide({ silent: true });
+    const baseTitle = (projectTitle || `Presentation ${docId}`).trim();
+    const templateTitle = /template$/i.test(baseTitle) ? baseTitle : `${baseTitle} Template`;
+
+    try {
+      const result = await saveAsTemplateMutation.mutateAsync({
+        sourceLibraryItemId: docId,
+        templateTitle,
+      });
+      await trpcUtils.library.listDocuments.invalidate();
+      toast.success(`Template saved: ${String((result as any)?.item?.title || templateTitle)}`);
+      setLocation("/presentations");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save template.");
+    }
+  }
+
+  async function handleRestoreSavedVersion(versionId: number) {
+    if (!deck) {
+      return;
+    }
+
+    setSaveState("pending");
+    try {
+      const restored = await restoreVersionMutation.mutateAsync({
+        deckId: deck.id,
+        versionId,
+      });
+      await Promise.all([
+        refreshDeck(),
+        trpcUtils.presentation.listVersions.invalidate(),
+      ]);
+      setRestoreDialogVersionId(null);
+      const restoredSlideId = Number((restored as any)?.restoredSlideId);
+      if (Number.isFinite(restoredSlideId) && restoredSlideId > 0) {
+        setSelectedSlideId(restoredSlideId);
+      }
+      setConflictPolicy(releaseStaleBlock());
+      setSaveState("saved");
+      toast.success("Version restored.");
+    } catch (error) {
+      setSaveState("error");
+      toast.error(error instanceof Error ? error.message : "Failed to restore version.");
     }
   }
 
@@ -1057,6 +1660,33 @@ export default function PresentationEditor() {
     setPlaybackState("idle");
     setPlaybackPaused(false);
     setPlaybackSlideIndex(0);
+    if (typeof document !== "undefined") {
+      const fullscreenDoc = document as FullscreenCapableDocument;
+      if (getCurrentFullscreenElement(fullscreenDoc)) {
+        void exitAnyFullscreen(fullscreenDoc).catch(() => undefined);
+      }
+    }
+  }
+
+  async function handleTogglePlaybackFullscreen() {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const fullscreenDoc = document as FullscreenCapableDocument;
+    const overlay = playbackOverlayRef.current;
+    if (!overlay) {
+      return;
+    }
+
+    try {
+      if (getCurrentFullscreenElement(fullscreenDoc)) {
+        await exitAnyFullscreen(fullscreenDoc);
+        return;
+      }
+      await requestFullscreenForElement(overlay as FullscreenCapableElement);
+    } catch {
+      setExportMessage("Fullscreen is not available in this browser context.");
+    }
   }
 
   function goToNextPlaybackSlide() {
@@ -1300,12 +1930,62 @@ export default function PresentationEditor() {
       });
   }, [deckNotFound, autoDeckInitAttempted, autoDeckInitPending]);
 
-  const documentManagementHref = docId
-    ? `/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=${docId}`
-    : "/document-management";
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      const currentFullscreenElement = typeof document !== "undefined"
+        ? getCurrentFullscreenElement(document as FullscreenCapableDocument)
+        : null;
+      setIsPlaybackFullscreen(Boolean(currentFullscreenElement && playbackOverlayRef.current
+        && (currentFullscreenElement === playbackOverlayRef.current
+          || playbackOverlayRef.current.contains(currentFullscreenElement))));
+    };
 
-  function handleBackToDocumentManagement() {
-    setLocation(documentManagementHref);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
+    document.addEventListener("MSFullscreenChange", onFullscreenChange as EventListener);
+    onFullscreenChange();
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
+      document.removeEventListener("MSFullscreenChange", onFullscreenChange as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (playbackState !== "playing") {
+      setPlaybackStageHostSize({ width: 0, height: 0 });
+      return;
+    }
+
+    const updateHostSize = () => {
+      const host = playbackStageHostRef.current;
+      if (!host) {
+        return;
+      }
+      const nextWidth = host.clientWidth;
+      const nextHeight = host.clientHeight;
+      if (nextWidth > 0 && nextHeight > 0) {
+        setPlaybackStageHostSize({ width: nextWidth, height: nextHeight });
+      }
+    };
+
+    updateHostSize();
+    const host = playbackStageHostRef.current;
+    const observer = typeof ResizeObserver !== "undefined" && host
+      ? new ResizeObserver(() => updateHostSize())
+      : null;
+    if (observer && host) {
+      observer.observe(host);
+    }
+    window.addEventListener("resize", updateHostSize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateHostSize);
+    };
+  }, [playbackState, isPlaybackFullscreen]);
+
+  function handleBackToPresentationLibrary() {
+    setLocation("/presentations");
   }
 
   async function handleReloadLatestSlide() {
@@ -1368,9 +2048,9 @@ export default function PresentationEditor() {
   if (deckNotFound) {
     return (
       <div className="min-h-screen p-8 space-y-4">
-        <Button variant="outline" size="sm" onClick={handleBackToDocumentManagement}>
+        <Button variant="outline" size="sm" onClick={handleBackToPresentationLibrary}>
           <ChevronLeft className="mr-1 h-4 w-4" />
-          Back to Document Management
+          Back to Presentation Library
         </Button>
         <h1 className="text-2xl font-semibold">Presentation Editor</h1>
         <p className="text-sm text-muted-foreground">
@@ -1524,6 +2204,172 @@ export default function PresentationEditor() {
       </div>
     </>
   );
+  const versionHistoryPanel = (
+    <div className="rounded-lg border border-slate-300 bg-white p-2">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Saved Versions</p>
+        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
+          {savedVersions.length}
+        </span>
+      </div>
+      {versionHistoryQuery.isLoading ? (
+        <p className="text-xs text-slate-500">Loading version history...</p>
+      ) : savedVersions.length ? (
+        <div className="max-h-[58vh] space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-44 space-y-2 overflow-auto sm:max-h-52">
+            {groupedSavedVersions.map((group) => (
+              <div
+                key={group.key}
+                className="rounded border border-slate-200 bg-slate-50 p-1.5"
+                data-testid={`presentation-version-group-${group.key}`}
+              >
+                <div className="mb-1 flex items-center justify-between rounded bg-slate-100 px-2 py-1">
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                    {group.label}
+                  </p>
+                  <span className="rounded bg-white px-1.5 py-0.5 text-[10px] text-slate-600">
+                    {group.items.length}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {group.items.map((version) => {
+                    const isSelected = selectedSavedVersionId === version.id;
+                    return (
+                      <button
+                        key={version.id}
+                        type="button"
+                        className={`w-full rounded border px-2 py-1.5 text-left ${
+                          isSelected
+                            ? "border-sky-300 bg-sky-50"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
+                        onClick={() => setSelectedSavedVersionId(version.id)}
+                        aria-label={`Select Version ${version.versionNumber ?? version.id}`}
+                        data-testid={`presentation-version-item-${version.id}`}
+                      >
+                        <p className="truncate text-[11px] font-medium text-slate-700">
+                          V{version.versionNumber ?? version.id} - {version.snapshot?.slideTitle || "Slide"}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {formatVersionDate(version.snapshot?.savedAt || version.createdAt)}
+                        </p>
+                        {version.changeDescription ? (
+                          <p className="truncate text-[10px] text-slate-500">{version.changeDescription}</p>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          {selectedSavedVersion ? (
+            <div className="rounded border border-slate-200 bg-slate-50 p-2" data-testid="presentation-version-preview">
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-slate-700">
+                    Preview: Version {selectedSavedVersion.versionNumber ?? selectedSavedVersion.id}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    {formatVersionDate(selectedSavedVersion.snapshot?.savedAt || selectedSavedVersion.createdAt)}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-[10px]"
+                  onClick={() => setRestoreDialogVersionId(selectedSavedVersion.id)}
+                  disabled={restoreVersionMutation.isPending}
+                  aria-label={`Restore Selected Version ${selectedSavedVersion.versionNumber ?? selectedSavedVersion.id}`}
+                >
+                  {restoreVersionMutation.isPending && restoreDialogVersionId === selectedSavedVersion.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : null}
+                  Restore Selected
+                </Button>
+              </div>
+              {selectedSavedVersionDiffSummary ? (
+                <>
+                  <div
+                    className="mb-2 flex flex-wrap gap-1 text-[10px] text-slate-600"
+                    data-testid="presentation-version-diff-summary"
+                  >
+                    <span className="rounded bg-white px-1.5 py-0.5">
+                      Elements: {selectedSavedVersionDiffSummary.currentElementCount} {"->"} {selectedSavedVersionDiffSummary.versionElementCount}
+                    </span>
+                    <span className="rounded bg-white px-1.5 py-0.5">
+                      Changed: {selectedSavedVersionDiffSummary.changedElementCount}
+                    </span>
+                    <span className="rounded bg-white px-1.5 py-0.5">
+                      Added: {selectedSavedVersionDiffSummary.addedElementCount}
+                    </span>
+                    <span className="rounded bg-white px-1.5 py-0.5">
+                      Removed: {selectedSavedVersionDiffSummary.removedElementCount}
+                    </span>
+                    <span className="rounded bg-white px-1.5 py-0.5">
+                      Canvas: {selectedSavedVersionDiffSummary.canvasChanged ? "changed" : "same"}
+                    </span>
+                    <span className="rounded bg-white px-1.5 py-0.5">
+                      Title: {selectedSavedVersionDiffSummary.titleChanged ? "changed" : "same"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="rounded border border-slate-200 bg-white p-1.5" data-testid="presentation-version-preview-current">
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Current Slide</p>
+                      <div className="relative aspect-[4/3] overflow-hidden rounded border border-slate-200 bg-slate-100">
+                        {currentVersionPreview?.mediaSrc ? (
+                          <img
+                            src={currentVersionPreview.mediaPosterSrc || currentVersionPreview.mediaSrc}
+                            alt={selectedSavedVersionSlide?.title || "Current slide"}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            draggable={false}
+                          />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center px-1 text-center text-[10px] text-slate-500">
+                            {selectedSavedVersionCurrentState?.title || "Current slide not found"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded border border-slate-200 bg-white p-1.5" data-testid="presentation-version-preview-selected">
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Saved Version</p>
+                      <div className="relative aspect-[4/3] overflow-hidden rounded border border-slate-200 bg-slate-100">
+                        {selectedVersionPreview?.mediaSrc ? (
+                          <img
+                            src={selectedVersionPreview.mediaPosterSrc || selectedVersionPreview.mediaSrc}
+                            alt={selectedSavedVersion.snapshot?.slideTitle || "Version slide"}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            draggable={false}
+                          />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center px-1 text-center text-[10px] text-slate-500">
+                            {selectedSavedVersion.snapshot?.slideTitle || "Version slide"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[10px] text-slate-600">
+                    {selectedSavedVersionDiffSummary.isIdentical
+                      ? "No content differences detected."
+                      : "Review the diff summary and previews before restoring this version."}
+                  </p>
+                </>
+              ) : (
+                <p className="text-[10px] text-slate-500">
+                  This version payload cannot be previewed, but you can still restore it.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-500">No saved versions yet. Use Save to create history.</p>
+      )}
+    </div>
+  );
   const editorToolRail = (
     <div className="flex h-full flex-col items-center gap-2 pt-2">
       <Button
@@ -1633,6 +2479,14 @@ export default function PresentationEditor() {
         <Button onClick={() => handleAddElement("video")} variant="secondary">
           Add Video
         </Button>
+        <Button
+          onClick={() => setSnapLockEnabled((previous) => !previous)}
+          variant={snapLockEnabled ? "default" : "outline"}
+          className="col-span-2"
+          aria-label={snapLockEnabled ? "Disable Snap Lock" : "Enable Snap Lock"}
+        >
+          Snap Lock: {snapLockEnabled ? "On" : "Off"}
+        </Button>
         <Button onClick={handleApplyMobilePanGesture} variant="outline" className="col-span-2">
           Simulate Pinch + Pan
         </Button>
@@ -1685,6 +2539,14 @@ export default function PresentationEditor() {
         >
           <Minus className="h-4 w-4" />
           Add Line
+        </Button>
+        <Button
+          onClick={() => setSnapLockEnabled((previous) => !previous)}
+          aria-label={snapLockEnabled ? "Disable Snap Lock" : "Enable Snap Lock"}
+          variant={snapLockEnabled ? "secondary" : "outline"}
+          className="gap-1"
+        >
+          Snap Lock: {snapLockEnabled ? "On" : "Off"}
         </Button>
         <label className="ml-auto flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300">
           <Crop className="h-3.5 w-3.5" />
@@ -1760,6 +2622,9 @@ export default function PresentationEditor() {
       <span className="rounded bg-slate-100 px-2 py-0.5">Save: {saveStatusLabel}</span>
       <span className="rounded bg-slate-100 px-2 py-0.5">Playback: {playbackStatusLabel}</span>
       <span className="rounded bg-slate-100 px-2 py-0.5">Export: {exportStatusLabel}</span>
+      <span className="rounded bg-slate-100 px-2 py-0.5">
+        Snap: {snapLockEnabled ? "Locked" : "Free"}
+      </span>
       {saveState === "conflict" ? (
         <Button
           variant="outline"
@@ -1786,7 +2651,7 @@ export default function PresentationEditor() {
       ) : null}
     </div>
   );
-  const basePropertiesPanel = (
+  const propertyEditorPanel = (
     <div className="space-y-3">
       {!isMobileViewport ? (
         <label className="flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700">
@@ -1828,10 +2693,35 @@ export default function PresentationEditor() {
       />
     </div>
   );
+  const desktopInspectorPanel = (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2 rounded-md border border-slate-300 bg-white p-1">
+        <Button
+          variant={desktopInspectorTab === "properties" ? "default" : "ghost"}
+          size="sm"
+          className="h-8"
+          onClick={() => setDesktopInspectorTab("properties")}
+          aria-label="Inspector Tab Properties"
+        >
+          Properties
+        </Button>
+        <Button
+          variant={desktopInspectorTab === "versions" ? "default" : "ghost"}
+          size="sm"
+          className="h-8"
+          onClick={() => setDesktopInspectorTab("versions")}
+          aria-label={`Inspector Tab Version History (${savedVersions.length})`}
+        >
+          Versions ({savedVersions.length})
+        </Button>
+      </div>
+      {desktopInspectorTab === "properties" ? propertyEditorPanel : versionHistoryPanel}
+    </div>
+  );
 
   const mobileBottomSheetBody =
     mobileSheetTab === "Properties"
-      ? basePropertiesPanel
+      ? propertyEditorPanel
       : mobileSheetTab === "Add"
         ? (
           <div className="grid grid-cols-2 gap-2">
@@ -1852,7 +2742,9 @@ export default function PresentationEditor() {
               ))}
             </div>
           )
-          : slidesPanel;
+          : mobileSheetTab === "Pages"
+            ? slidesPanel
+            : versionHistoryPanel;
 
   const propertiesPanel = isMobileViewport ? (
     <MobileBottomSheet
@@ -1860,14 +2752,21 @@ export default function PresentationEditor() {
       onTabChange={setMobileSheetTab}
       body={mobileBottomSheetBody}
     />
-  ) : basePropertiesPanel;
+  ) : desktopInspectorPanel;
   const activePlaybackSlide = playbackState === "playing"
     ? (playbackSlides[playbackSlideIndex] || null)
     : null;
+
   const playbackCanvasSize = normalizeCanvasSize(activePlaybackSlide?.content.canvas);
   const playbackViewport = (() => {
-    const maxWidth = Math.max(320, window.innerWidth * 0.92);
-    const maxHeight = Math.max(240, window.innerHeight * 0.8);
+    const availableWidth = playbackStageHostSize.width > 0
+      ? playbackStageHostSize.width
+      : window.innerWidth * 0.92;
+    const availableHeight = playbackStageHostSize.height > 0
+      ? playbackStageHostSize.height
+      : window.innerHeight * 0.8;
+    const maxWidth = Math.max(320, availableWidth - 16);
+    const maxHeight = Math.max(240, availableHeight - 16);
     const scale = Math.max(
       0.05,
       Math.min(
@@ -1884,17 +2783,86 @@ export default function PresentationEditor() {
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-6 space-y-3">
       <header className="rounded-xl border border-slate-300 bg-slate-950 px-4 py-2 text-slate-100 shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={handleBackToDocumentManagement}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Button variant="outline" size="sm" onClick={handleBackToPresentationLibrary}>
               <ChevronLeft className="mr-1 h-4 w-4" />
-              Back to Document Management
+              Back to Presentation Library
             </Button>
-            <h1 className="text-lg font-semibold tracking-tight md:text-xl">Presentation Editor</h1>
+            {isProjectTitleEditing ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={projectTitleDraft}
+                  onChange={(event) => setProjectTitleDraft(event.target.value)}
+                  aria-label="Project Name"
+                  className="h-8 w-72 border-slate-700 bg-slate-900 text-slate-100"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleSaveProjectTitle();
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setProjectTitleDraft(projectTitle);
+                      setIsProjectTitleEditing(false);
+                    }
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void handleSaveProjectTitle()}
+                  disabled={isProjectTitleSaving}
+                  aria-label="Save Project Name"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setProjectTitleDraft(projectTitle);
+                    setIsProjectTitleEditing(false);
+                  }}
+                  disabled={isProjectTitleSaving}
+                  aria-label="Cancel Project Name Edit"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-semibold tracking-tight md:text-xl">{projectTitle}</h1>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-slate-200 hover:bg-slate-800"
+                  onClick={() => setIsProjectTitleEditing(true)}
+                  aria-label="Edit Project Name"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-slate-300">Presentation Editor</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => void handleSaveSlide()} aria-label="Save Slide" className="gap-1">
+            <Button
+              onClick={() => void handleSaveSlide()}
+              aria-label="Save Slide"
+              className="gap-1"
+              disabled={!deck || !selectedSlide || saveState === "pending"}
+            >
               Save
+            </Button>
+            <Button
+              onClick={() => void handleSaveToTemplate()}
+              aria-label="Save to Template"
+              variant="outline"
+              className="gap-1"
+              disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
+            >
+              Save to Template
             </Button>
             <Button onClick={handlePlaySlideshow} aria-label="Play Slideshow" variant="secondary" className="gap-1">
               <Play className="h-4 w-4" />
@@ -1941,6 +2909,7 @@ export default function PresentationEditor() {
       />
       {activePlaybackSlide ? (
         <div
+          ref={playbackOverlayRef}
           className="fixed inset-0 z-[80] flex flex-col bg-black/90 p-3 md:p-6"
           role="dialog"
           aria-label="Slideshow Preview Player"
@@ -1979,6 +2948,16 @@ export default function PresentationEditor() {
                 variant="outline"
                 size="sm"
                 className="gap-1 border-slate-700 bg-slate-900/80 text-slate-100 hover:bg-slate-800"
+                onClick={() => void handleTogglePlaybackFullscreen()}
+                aria-label={isPlaybackFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              >
+                {isPlaybackFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                {isPlaybackFullscreen ? "Windowed" : "Fullscreen"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 border-slate-700 bg-slate-900/80 text-slate-100 hover:bg-slate-800"
                 onClick={goToNextPlaybackSlide}
                 disabled={playbackSlideIndex >= playbackSlides.length - 1}
                 aria-label="Next Slide"
@@ -1998,7 +2977,7 @@ export default function PresentationEditor() {
               </Button>
             </div>
           </div>
-          <div className="grid flex-1 place-items-center">
+          <div ref={playbackStageHostRef} className="grid flex-1 place-items-center min-h-0">
             <div
               className="relative overflow-hidden rounded-xl border border-slate-700 bg-white shadow-2xl"
               style={{
@@ -2017,6 +2996,43 @@ export default function PresentationEditor() {
           </div>
         </div>
       ) : null}
+      <AlertDialog
+        open={Boolean(restoreDialogVersion)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRestoreDialogVersionId(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Restore version {restoreDialogVersion?.versionNumber ?? restoreDialogVersion?.id}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will overwrite the target slide with the selected snapshot. The restore action
+              will also create a new history version so you can undo by restoring again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!restoreDialogVersion) {
+                  return;
+                }
+                void handleRestoreSavedVersion(restoreDialogVersion.id);
+              }}
+              disabled={restoreVersionMutation.isPending}
+            >
+              {restoreVersionMutation.isPending ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              Confirm Restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

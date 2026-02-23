@@ -28,11 +28,15 @@ import {
   deleteSlideFromDeck,
   detachAssetFromDeck,
   duplicateSlideInDeck,
+  createPresentationFromTemplate,
+  createTemplateFromPresentation,
   getPresentationDeckByLibraryItem,
   getPresentationDeckDetail,
+  listPresentationVersionHistory,
   listAssetsForDeck,
   listSlidesForDeck,
   reorderSlidesInDeck,
+  restorePresentationVersion,
   updatePresentationDeckMetadata,
   updateSlideInDeck,
 } from "../services/presentationService";
@@ -316,6 +320,56 @@ export const presentationRouter = router({
       }
     }),
 
+  saveAsTemplate: protectedProcedure
+    .input(z.object({
+      sourceLibraryItemId: z.number().int().positive(),
+      templateTitle: z.string().min(1).max(255).optional(),
+      templateDescription: z.string().max(2000).nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await createTemplateFromPresentation(
+          {
+            sourceLibraryItemId: input.sourceLibraryItemId,
+            templateTitle: input.templateTitle,
+            templateDescription: input.templateDescription,
+          },
+          toPresentationActor(ctx),
+        );
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  useTemplate: protectedProcedure
+    .input(z.object({
+      templateLibraryItemId: z.number().int().positive(),
+      title: z.string().min(1).max(255).optional(),
+      description: z.string().max(2000).nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await createPresentationFromTemplate(
+          {
+            templateLibraryItemId: input.templateLibraryItemId,
+            title: input.title,
+            description: input.description,
+          },
+          toPresentationActor(ctx),
+        );
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
   updateDeck: protectedProcedure
     .input(z.object({
       deckId: z.number().int().positive(),
@@ -419,6 +473,41 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         return await updateSlideInDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  listVersions: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      limit: z.number().int().min(1).max(100).optional(),
+      offset: z.number().int().min(0).optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await listPresentationVersionHistory(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  restoreVersion: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      versionId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await restorePresentationVersion(input, toPresentationActor(ctx));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

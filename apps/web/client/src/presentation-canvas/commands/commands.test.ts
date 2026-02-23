@@ -38,6 +38,27 @@ describe("commands", () => {
     });
   });
 
+  it("can move selection without snap lock", () => {
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        elements: [
+          { id: "a", type: "text", x: 95, y: 94, width: 100, height: 50, text: "A", color: "#111827" },
+          { id: "b", type: "rect", x: 200, y: 120, width: 100, height: 50, fill: "#93c5fd" },
+        ],
+      }, ["a"]),
+    );
+
+    bus.execute(moveSelectionCommand(1, 1, false));
+    const moved = bus.getState().content.elements.find((element) => element.id === "a");
+
+    expect(moved).toMatchObject({
+      id: "a",
+      x: 96,
+      y: 95,
+    });
+    expect(bus.getState().snapGuides).toEqual([]);
+  });
+
   it("keeps arrange ordering deterministic and supports property patching", () => {
     const bus = new CommandBus(
       createCanvasCommandState({

@@ -8,6 +8,7 @@ import CLIPage from "@/pages/CLIPage";
 import Factory from "@/pages/Factory";
 import VideoEditorPage from "@/pages/VideoEditorPage";
 import PresentationEditor from "@/pages/PresentationEditor";
+import PresentationLibrary from "@/pages/PresentationLibrary";
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import { HelmetProvider } from "react-helmet-async";
 import { useEffect, useRef } from "react";
@@ -182,6 +183,7 @@ function Router() {
       <Route path="/kilo" component={CLIPage} />
       <Route path="/docker" component={DockerPage} />
       <Route path="/video-editor" component={VideoEditorPage} />
+      <Route path="/presentations" component={PresentationLibrary} />
       <Route path="/presentation-editor/:docId" component={PresentationEditor} />
       <Route path="/docker-redirect" component={DockerRedirect} />
       <Route path="/404" component={NotFound} />

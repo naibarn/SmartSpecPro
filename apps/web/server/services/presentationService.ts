@@ -1,10 +1,13 @@
-import { and, count, eq, sql } from "drizzle-orm";
+import crypto from "node:crypto";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
+  libraryContentVersions,
   presentationAssetLinks,
   presentationDecks,
   presentationSlides,
+  type LibraryContentVersion,
   type PresentationAssetLink,
   type PresentationDeck,
   type PresentationSlide,
@@ -19,6 +22,7 @@ import {
   reorderPresentationSlides,
 } from "./presentationPersistence";
 import {
+  createLibraryItem,
   getLibraryItemById,
   getUserEffectivePermission,
   type LibraryActor,
@@ -30,6 +34,11 @@ import {
   PRESENTATION_ITEM_TYPE,
   PRESENTATION_LIMITS,
 } from "@shared/presentation/constants";
+import {
+  PRESENTATION_PROJECT_SOURCE,
+  PRESENTATION_TEMPLATE_SOURCE,
+  isPresentationTemplateItem,
+} from "@shared/presentation/template";
 import {
   presentationSlideContentSchema,
   presentationVersionConflictSchema,
@@ -126,6 +135,69 @@ export interface DetachPresentationAssetInput {
 export interface DeletePresentationDeckInput {
   deckId: number;
   expectedVersion: number;
+}
+
+export interface ListPresentationVersionHistoryInput {
+  deckId: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface RestorePresentationVersionInput {
+  deckId: number;
+  versionId: number;
+}
+
+export interface PresentationSlideSnapshotPayload {
+  schemaVersion: "presentation_slide_snapshot_v1";
+  deckId: number;
+  libraryItemId: number;
+  slideId: number;
+  slideVersion: number;
+  slideTitle: string;
+  slideContent: Record<string, unknown>;
+  notes: string | null;
+  saveMode: "manual";
+  savedAt: string;
+  savedByUserId: number;
+}
+
+export interface PresentationVersionHistoryItem {
+  id: number;
+  versionNumber: number;
+  contentType: string;
+  changeDescription: string | null;
+  createdAt: Date;
+  createdByUserId: number;
+  snapshot: PresentationSlideSnapshotPayload | null;
+}
+
+export interface RestorePresentationVersionResult {
+  restoredSlideId: number;
+  restoredSlideVersion: number;
+  deckVersion: number;
+}
+
+const PRESENTATION_SLIDE_SNAPSHOT_SCHEMA_VERSION = "presentation_slide_snapshot_v1";
+const PRESENTATION_SLIDE_SNAPSHOT_CONTENT_TYPE = "presentation_slide_snapshot_v1";
+
+export interface CreateTemplateFromPresentationInput {
+  sourceLibraryItemId: number;
+  templateTitle?: string;
+  templateDescription?: string | null;
+}
+
+export interface CreatePresentationFromTemplateInput {
+  templateLibraryItemId: number;
+  title?: string;
+  description?: string | null;
+}
+
+export interface ClonePresentationLibraryItemResult {
+  item: LibraryItemDto;
+  deck: PresentationDeck;
+  slidesCopied: number;
+  assetsCopied: number;
 }
 
 export class PresentationServiceError extends Error {
@@ -357,6 +429,110 @@ function validateSlideContentPayload(slideContent: Record<string, unknown>): Rec
   return parsed.data;
 }
 
+function parsePresentationSlideSnapshotContent(content: string): PresentationSlideSnapshotPayload | null {
+  try {
+    const parsed = JSON.parse(content) as Partial<PresentationSlideSnapshotPayload>;
+    if (parsed?.schemaVersion !== PRESENTATION_SLIDE_SNAPSHOT_SCHEMA_VERSION) {
+      return null;
+    }
+    if (!Number.isFinite(parsed.deckId) || !Number.isFinite(parsed.slideId) || !parsed.slideContent) {
+      return null;
+    }
+    return {
+      schemaVersion: PRESENTATION_SLIDE_SNAPSHOT_SCHEMA_VERSION,
+      deckId: Number(parsed.deckId),
+      libraryItemId: Number(parsed.libraryItemId),
+      slideId: Number(parsed.slideId),
+      slideVersion: Number(parsed.slideVersion),
+      slideTitle: String(parsed.slideTitle || "Slide"),
+      slideContent: parsed.slideContent as Record<string, unknown>,
+      notes: parsed.notes == null ? null : String(parsed.notes),
+      saveMode: "manual",
+      savedAt: String(parsed.savedAt || new Date().toISOString()),
+      savedByUserId: Number(parsed.savedByUserId),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function createPresentationSlideSnapshotVersion(
+  db: DbClient,
+  input: {
+    deck: PresentationDeck;
+    slide: PresentationSlide;
+    actor: PresentationActor;
+    changeDescription?: string;
+  },
+): Promise<LibraryContentVersion | null> {
+  const snapshotPayload: PresentationSlideSnapshotPayload = {
+    schemaVersion: PRESENTATION_SLIDE_SNAPSHOT_SCHEMA_VERSION,
+    deckId: input.deck.id,
+    libraryItemId: input.deck.libraryItemId,
+    slideId: input.slide.id,
+    slideVersion: input.slide.version,
+    slideTitle: input.slide.title,
+    slideContent: input.slide.slideContent as Record<string, unknown>,
+    notes: input.slide.notes,
+    saveMode: "manual",
+    savedAt: new Date().toISOString(),
+    savedByUserId: input.actor.userId,
+  };
+
+  const content = JSON.stringify(snapshotPayload);
+  const contentHash = crypto
+    .createHash("sha256")
+    .update(content, "utf8")
+    .digest("hex");
+  const contentSizeBytes = Buffer.byteLength(content, "utf8");
+
+  const existingWithHash = await db
+    .select({ id: libraryContentVersions.id })
+    .from(libraryContentVersions)
+    .where(and(
+      eq(libraryContentVersions.libraryItemId, input.deck.libraryItemId),
+      eq(libraryContentVersions.contentHash, contentHash),
+      eq(libraryContentVersions.contentType, PRESENTATION_SLIDE_SNAPSHOT_CONTENT_TYPE),
+      eq(libraryContentVersions.tenantId, input.actor.tenantId),
+    ))
+    .limit(1);
+
+  if (existingWithHash[0]) {
+    return null;
+  }
+
+  const latestVersion = await db
+    .select({ versionNumber: libraryContentVersions.versionNumber })
+    .from(libraryContentVersions)
+    .where(and(
+      eq(libraryContentVersions.libraryItemId, input.deck.libraryItemId),
+      eq(libraryContentVersions.tenantId, input.actor.tenantId),
+    ))
+    .orderBy(desc(libraryContentVersions.versionNumber))
+    .limit(1);
+
+  const nextVersionNumber = latestVersion[0]
+    ? latestVersion[0].versionNumber + 1
+    : 1;
+
+  const [created] = await db
+    .insert(libraryContentVersions)
+    .values({
+      tenantId: input.actor.tenantId,
+      libraryItemId: input.deck.libraryItemId,
+      versionNumber: nextVersionNumber,
+      contentHash,
+      content,
+      contentType: PRESENTATION_SLIDE_SNAPSHOT_CONTENT_TYPE,
+      contentSizeBytes,
+      changeDescription: input.changeDescription ?? `Manual save: ${input.slide.title}`,
+      createdByUserId: input.actor.userId,
+    })
+    .returning();
+
+  return created ?? null;
+}
+
 async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
   if (dbClient) {
     return dbClient;
@@ -480,6 +656,142 @@ export async function getPresentationDeckByLibraryItem(
     .where(eq(presentationAssetLinks.deckId, deck.id));
 
   return { deck, slides, assets };
+}
+
+export async function listPresentationVersionHistory(
+  input: ListPresentationVersionHistoryInput,
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<PresentationVersionHistoryItem[]> {
+  const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: false }, dbClient);
+  const limit = Math.min(Math.max(input.limit ?? 30, 1), 100);
+  const offset = Math.max(input.offset ?? 0, 0);
+
+  const rows = await db
+    .select()
+    .from(libraryContentVersions)
+    .where(and(
+      eq(libraryContentVersions.tenantId, actor.tenantId),
+      eq(libraryContentVersions.libraryItemId, deck.libraryItemId),
+      eq(libraryContentVersions.contentType, PRESENTATION_SLIDE_SNAPSHOT_CONTENT_TYPE),
+    ))
+    .orderBy(desc(libraryContentVersions.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return rows.map((row) => ({
+    id: row.id,
+    versionNumber: row.versionNumber,
+    contentType: row.contentType,
+    changeDescription: row.changeDescription ?? null,
+    createdAt: row.createdAt,
+    createdByUserId: row.createdByUserId,
+    snapshot: parsePresentationSlideSnapshotContent(row.content),
+  }));
+}
+
+export async function restorePresentationVersion(
+  input: RestorePresentationVersionInput,
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<RestorePresentationVersionResult> {
+  const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  const [versionRow] = await db
+    .select()
+    .from(libraryContentVersions)
+    .where(and(
+      eq(libraryContentVersions.id, input.versionId),
+      eq(libraryContentVersions.tenantId, actor.tenantId),
+      eq(libraryContentVersions.libraryItemId, deck.libraryItemId),
+      eq(libraryContentVersions.contentType, PRESENTATION_SLIDE_SNAPSHOT_CONTENT_TYPE),
+    ))
+    .limit(1);
+
+  if (!versionRow) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: version ${input.versionId} not found`,
+    );
+  }
+
+  const snapshot = parsePresentationSlideSnapshotContent(versionRow.content);
+  if (!snapshot || snapshot.deckId !== deck.id) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: invalid presentation version payload`,
+    );
+  }
+
+  const targetSlide = await getSlideById(snapshot.slideId, deck.id, db);
+  if (!targetSlide) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${snapshot.slideId} not found for restore`,
+    );
+  }
+
+  const restoredContent = validateSlideContentPayload(snapshot.slideContent);
+  const now = new Date();
+  const restoredRows = await db
+    .update(presentationSlides)
+    .set({
+      title: snapshot.slideTitle,
+      slideContent: restoredContent,
+      notes: snapshot.notes,
+      updatedAt: now,
+      version: sql`${presentationSlides.version} + 1`,
+    })
+    .where(and(
+      eq(presentationSlides.id, targetSlide.id),
+      eq(presentationSlides.deckId, deck.id),
+    ))
+    .returning();
+
+  const restoredSlide = restoredRows[0];
+  if (!restoredSlide) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: failed to restore slide`,
+    );
+  }
+
+  const deckRows = await db
+    .update(presentationDecks)
+    .set({
+      version: deck.version + 1,
+      updatedAt: now,
+    })
+    .where(eq(presentationDecks.id, deck.id))
+    .returning();
+  const restoredDeck = deckRows[0];
+
+  try {
+    await createPresentationSlideSnapshotVersion(db, {
+      deck: {
+        ...deck,
+        version: restoredDeck?.version ?? deck.version + 1,
+        updatedAt: now,
+      },
+      slide: restoredSlide,
+      actor,
+      changeDescription: `Restored from version ${versionRow.versionNumber}`,
+    });
+  } catch (snapshotError) {
+    recordPresentationLog("presentation_version_snapshot_failed", {
+      tenantId: actor.tenantId,
+      userId: actor.userId,
+      deckId: deck.id,
+      slideId: restoredSlide.id,
+      versionId: input.versionId,
+      error: String((snapshotError as Error)?.message || "unknown"),
+    });
+  }
+
+  return {
+    restoredSlideId: restoredSlide.id,
+    restoredSlideVersion: restoredSlide.version,
+    deckVersion: restoredDeck?.version ?? (deck.version + 1),
+  };
 }
 
 export async function createPresentationDeckForLibraryItem(
@@ -721,6 +1033,28 @@ export async function updateSlideInDeck(
     saveMode: input.saveMode ?? "manual",
   });
 
+  if ((input.saveMode ?? "manual") === "manual") {
+    try {
+      await createPresentationSlideSnapshotVersion(db, {
+        deck: {
+          ...deck,
+          version: deck.version + 1,
+          updatedAt: new Date(),
+        },
+        slide: rows[0],
+        actor,
+      });
+    } catch (snapshotError) {
+      recordPresentationLog("presentation_version_snapshot_failed", {
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        deckId: input.deckId,
+        slideId: input.slideId,
+        error: String((snapshotError as Error)?.message || "unknown"),
+      });
+    }
+  }
+
   return rows[0];
 }
 
@@ -907,4 +1241,204 @@ export async function detachAssetFromDeck(
   }
 
   return detachPresentationAsset(input.linkId, db);
+}
+
+function sanitizeTitleInput(value: string | undefined, fallback: string): string {
+  const normalized = String(value || "").trim();
+  return normalized || fallback;
+}
+
+async function clonePresentationDeckIntoNewLibraryItem(
+  input: {
+    sourceLibraryItemId: number;
+    targetTitle: string;
+    targetDescription?: string | null;
+    targetSource: string;
+    targetMetadata: Record<string, unknown>;
+    requireSourceWrite: boolean;
+    requireTemplateSource: boolean;
+  },
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<ClonePresentationLibraryItemResult> {
+  const db = await resolveDb(dbClient);
+  const sourceItem = await resolveReadableLibraryItem(input.sourceLibraryItemId, actor);
+  ensurePresentationItemType(sourceItem);
+  ensureActiveLifecycle(sourceItem);
+  if (input.requireSourceWrite) {
+    await ensureWritePermission(sourceItem.id, actor);
+  }
+  if (input.requireTemplateSource && !isPresentationTemplateItem(sourceItem)) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: source item is not a presentation template`,
+    );
+  }
+
+  const sourceDeck = await getDeckByLibraryItemId(sourceItem.id, actor.tenantId, db);
+  if (!sourceDeck) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: no presentation deck exists for library item ${sourceItem.id}`,
+    );
+  }
+
+  const sourceSlides = await listPresentationSlides(sourceDeck.id, db);
+  if (sourceSlides.length > PRESENTATION_LIMITS.maxSlidesPerDeck) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.SLIDE_LIMIT_EXCEEDED,
+      `${PRESENTATION_ERROR_CODE.SLIDE_LIMIT_EXCEEDED}: max ${PRESENTATION_LIMITS.maxSlidesPerDeck} slides per deck`,
+    );
+  }
+
+  const sourceAssets = await db
+    .select()
+    .from(presentationAssetLinks)
+    .where(eq(presentationAssetLinks.deckId, sourceDeck.id));
+  if (sourceAssets.length > PRESENTATION_LIMITS.maxAssetsPerDeck) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.ASSET_LIMIT_EXCEEDED,
+      `${PRESENTATION_ERROR_CODE.ASSET_LIMIT_EXCEEDED}: max ${PRESENTATION_LIMITS.maxAssetsPerDeck} assets per deck`,
+    );
+  }
+
+  const sourceTotalAssetBytes = sourceAssets.reduce((sum, asset) => sum + Math.max(0, Number(asset.byteSize || 0)), 0);
+  if (sourceTotalAssetBytes >= PRESENTATION_LIMITS.hardDeckSizeBytes) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.DECK_SIZE_LIMIT_EXCEEDED,
+      `${PRESENTATION_ERROR_CODE.DECK_SIZE_LIMIT_EXCEEDED}: max deck size is ${PRESENTATION_LIMITS.hardDeckSizeBytes} bytes`,
+    );
+  }
+
+  const created = await createLibraryItem(
+    {
+      itemType: PRESENTATION_ITEM_TYPE,
+      source: input.targetSource,
+      title: input.targetTitle,
+      description: input.targetDescription ?? sourceItem.description,
+      status: "ready",
+      visibility: "private",
+      metadata: input.targetMetadata,
+    },
+    actor,
+    db,
+  );
+  const createdItem = created.item;
+  const createdDeck = await createPresentationDeck(
+    {
+      tenantId: actor.tenantId,
+      libraryItemId: createdItem.id,
+      title: input.targetTitle,
+      description: input.targetDescription ?? sourceItem.description,
+    },
+    db,
+  );
+
+  const slideIdMap = new Map<number, number>();
+  for (const sourceSlide of sourceSlides) {
+    const createdSlide = await createPresentationSlide(
+      {
+        deckId: createdDeck.id,
+        title: sourceSlide.title,
+        slideContent: sourceSlide.slideContent as Record<string, unknown>,
+        notes: sourceSlide.notes,
+      },
+      db,
+    );
+    slideIdMap.set(sourceSlide.id, createdSlide.id);
+  }
+
+  if (sourceAssets.length > 0) {
+    await db.insert(presentationAssetLinks).values(
+      sourceAssets.map((asset) => ({
+        tenantId: actor.tenantId,
+        deckId: createdDeck.id,
+        slideId: asset.slideId ? (slideIdMap.get(asset.slideId) ?? null) : null,
+        libraryItemId: asset.libraryItemId,
+        byteSize: asset.byteSize,
+        createdAt: new Date(),
+      })),
+    );
+    await db
+      .update(presentationDecks)
+      .set({
+        totalAssetBytes: sourceTotalAssetBytes,
+        version: sql`${presentationDecks.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(presentationDecks.id, createdDeck.id));
+  }
+
+  const finalDeck = await getPresentationDeckById(createdDeck.id, actor.tenantId, db);
+  if (!finalDeck) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: deck ${createdDeck.id} not found`,
+    );
+  }
+
+  return {
+    item: createdItem,
+    deck: finalDeck,
+    slidesCopied: sourceSlides.length,
+    assetsCopied: sourceAssets.length,
+  };
+}
+
+export async function createTemplateFromPresentation(
+  input: CreateTemplateFromPresentationInput,
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<ClonePresentationLibraryItemResult> {
+  const sourceItem = await resolveReadableLibraryItem(input.sourceLibraryItemId, actor);
+  const templateTitle = sanitizeTitleInput(input.templateTitle, `${sourceItem.title} Template`);
+
+  return clonePresentationDeckIntoNewLibraryItem(
+    {
+      sourceLibraryItemId: sourceItem.id,
+      targetTitle: templateTitle,
+      targetDescription: input.templateDescription ?? sourceItem.description,
+      targetSource: PRESENTATION_TEMPLATE_SOURCE,
+      targetMetadata: {
+        source_type: PRESENTATION_TEMPLATE_SOURCE,
+        presentation_type: "template",
+        is_template: true,
+        template_source_item_id: sourceItem.id,
+        template_saved_at: new Date().toISOString(),
+      },
+      requireSourceWrite: true,
+      requireTemplateSource: false,
+    },
+    actor,
+    dbClient,
+  );
+}
+
+export async function createPresentationFromTemplate(
+  input: CreatePresentationFromTemplateInput,
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<ClonePresentationLibraryItemResult> {
+  const templateItem = await resolveReadableLibraryItem(input.templateLibraryItemId, actor);
+  const projectTitle = sanitizeTitleInput(input.title, `${templateItem.title} Copy`);
+
+  return clonePresentationDeckIntoNewLibraryItem(
+    {
+      sourceLibraryItemId: templateItem.id,
+      targetTitle: projectTitle,
+      targetDescription: input.description ?? templateItem.description,
+      targetSource: PRESENTATION_PROJECT_SOURCE,
+      targetMetadata: {
+        source_type: "presentation_document",
+        presentation_type: "project",
+        from_template: true,
+        template_source_item_id: templateItem.id,
+        template_used_at: new Date().toISOString(),
+      },
+      requireSourceWrite: false,
+      requireTemplateSource: true,
+    },
+    actor,
+    dbClient,
+  );
 }

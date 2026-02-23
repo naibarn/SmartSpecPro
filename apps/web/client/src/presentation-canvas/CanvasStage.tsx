@@ -82,6 +82,7 @@ export function CanvasStage({
     startOffsetX: number;
     startOffsetY: number;
   } | null>(null);
+  const panCaptureTargetRef = useRef<HTMLDivElement | null>(null);
 
   const effectiveScale = viewport?.scale ?? 1;
   const offsetX = viewport?.offsetX ?? 0;
@@ -167,6 +168,18 @@ export function CanvasStage({
   }, [effectiveScale, offsetX, offsetY, fittedStageSize.width, fittedStageSize.height, onViewportChange, viewport]);
 
   useEffect(() => {
+    function clearPanState(pointerId?: number) {
+      const panState = panStateRef.current;
+      if (panState && (pointerId == null || panState.pointerId === pointerId)) {
+        const captureTarget = panCaptureTargetRef.current;
+        if (captureTarget && captureTarget.hasPointerCapture?.(panState.pointerId)) {
+          captureTarget.releasePointerCapture?.(panState.pointerId);
+        }
+        panStateRef.current = null;
+        panCaptureTargetRef.current = null;
+      }
+    }
+
     function handlePointerMove(event: PointerEvent) {
       const panState = panStateRef.current;
       if (!panState || panState.pointerId !== event.pointerId || !viewport || !onViewportChange) {
@@ -188,11 +201,7 @@ export function CanvasStage({
     }
 
     function handlePointerUp(event: PointerEvent) {
-      const panState = panStateRef.current;
-      if (!panState || panState.pointerId !== event.pointerId) {
-        return;
-      }
-      panStateRef.current = null;
+      clearPanState(event.pointerId);
     }
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -200,6 +209,7 @@ export function CanvasStage({
     window.addEventListener("pointercancel", handlePointerUp);
 
     return () => {
+      clearPanState();
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
@@ -299,12 +309,15 @@ export function CanvasStage({
   }
 
   function handlePanPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!viewport || !onViewportChange || viewport.scale <= 1 || event.button !== 0) {
+    const isLeftButton = event.button === 0;
+    const isMiddleButton = event.button === 1;
+    if (!viewport || !onViewportChange || viewport.scale <= 1 || (!isLeftButton && !isMiddleButton)) {
       return;
     }
 
     const target = event.target as HTMLElement | null;
-    if (target?.closest("[data-canvas-object='true']")) {
+    const clickedCanvasObject = Boolean(target?.closest("[data-canvas-object='true']"));
+    if (isLeftButton && clickedCanvasObject) {
       return;
     }
 
@@ -315,6 +328,7 @@ export function CanvasStage({
       startOffsetX: viewport.offsetX,
       startOffsetY: viewport.offsetY,
     };
+    panCaptureTargetRef.current = event.currentTarget;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     event.preventDefault();
   }
@@ -530,7 +544,7 @@ export function CanvasStage({
 
         {effectiveScale > 1 ? (
           <p className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-[11px] text-white">
-            Scroll to zoom. Drag empty area to pan.
+            Scroll to zoom. Drag empty area or middle-mouse drag to pan.
           </p>
         ) : null}
       </div>

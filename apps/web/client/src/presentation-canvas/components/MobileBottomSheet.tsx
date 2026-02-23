@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-const TABS = ["Add", "Layers", "Properties", "Pages"] as const;
+const TABS = ["Add", "Layers", "Properties", "Pages", "Versions"] as const;
 
 export type MobileBottomSheetTab = typeof TABS[number];
 
@@ -13,7 +13,12 @@ interface MobileBottomSheetProps {
 export function MobileBottomSheet({ activeTab, onTabChange, body }: MobileBottomSheetProps) {
   return (
     <section className="rounded border bg-card p-2 space-y-2" data-testid="mobile-bottom-sheet">
-      <div className="grid grid-cols-4 gap-1" role="tablist" aria-label="Mobile editor tabs">
+      <div
+        className="grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))` }}
+        role="tablist"
+        aria-label="Mobile editor tabs"
+      >
         {TABS.map((tab) => (
           <button
             key={tab}
