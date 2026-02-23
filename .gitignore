@@ -184,3 +184,8 @@ apps/tauri-shell/binaries/ffprobe-*
 load-tests/test-users.json
 load-tests/test-users.jsonl
 load-tests/metrics-*.json
+
+# ============================================================================
+# Orchestra runtime artifacts (session/archive data, not source code)
+# ============================================================================
+orchestra/archive/
