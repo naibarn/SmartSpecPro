@@ -138,6 +138,17 @@ export const MEDIA_PROVIDER_LIMITS: Record<string, MediaProviderLimitConfig> = {
     videoMultiplier: 1,
     audioMultiplier: 1.5,
   },
+  'byteplus_modelark': {
+    // BytePlus ModelArk: Seedream (sync image) + Seedance (async video task creation)
+    // Conservative defaults; Seedance task creation is lightweight but polling is separate
+    maxConcurrent: 5,
+    minTime: 1000,            // 1s between requests
+    reservoir: 30,
+    reservoirRefreshInterval: 60000, // 30 per minute
+    timeout: 300000,          // 5 min max wait (video task polling can be long)
+    videoMultiplier: 2,       // Extra spacing for async Seedance task creation
+    audioMultiplier: 1,       // BytePlus ModelArk has no audio support
+  },
   'default-media': {
     maxConcurrent: 3,
     minTime: 2000,

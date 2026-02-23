@@ -18,12 +18,20 @@ export type ImageModel =
   | "google-nano-banana-pro"
   | "flux-2.0"
   | "z-image"
-  | "grok-imagine";
+  | "grok-imagine"
+  // BytePlus ModelArk — Seedream image models
+  | "seedream-4-5-251128"
+  | "seedream-4-0-250828";
 
 export type VideoModel =
   | "veo-3-1"
   | "sora-2"
-  | "kling-2.6";
+  | "kling-2.6"
+  // BytePlus ModelArk — Seedance video models
+  | "seedance-1-0-pro-fast-251015"
+  | "seedance-1-0-pro-250528"
+  | "seedance-1-0-lite-t2v-250428"
+  | "seedance-1-0-lite-i2v-250428";
 
 export type AudioModel =
   | "elevenlabs-tts"
@@ -122,6 +130,66 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     supportsDurations: [5, 10],
     supportsAspectRatios: ["16:9", "9:16"],
     creditCost: 40,
+  },
+  // ========== BytePlus ModelArk — Seedream Image Models ==========
+  "seedream-4-5-251128": {
+    id: "seedream-4-5-251128",
+    type: "image",
+    name: "Seedream 4.5",
+    provider: "byteplus_modelark",
+    description: "BytePlus Seedream 4.5 — high-quality image generation (synchronous)",
+    supportsSizes: ["1024x1024", "2048x2048", "4096x4096"],
+    creditCost: 15,
+  },
+  "seedream-4-0-250828": {
+    id: "seedream-4-0-250828",
+    type: "image",
+    name: "Seedream 4.0",
+    provider: "byteplus_modelark",
+    description: "BytePlus Seedream 4.0 — cost-efficient image generation (synchronous)",
+    supportsSizes: ["1024x1024", "2048x2048", "4096x4096"],
+    creditCost: 10,
+  },
+  // ========== BytePlus ModelArk — Seedance Video Models ==========
+  "seedance-1-0-pro-fast-251015": {
+    id: "seedance-1-0-pro-fast-251015",
+    type: "video",
+    name: "Seedance Pro Fast",
+    provider: "byteplus_modelark",
+    description: "BytePlus Seedance Pro Fast — fast text-to-video generation (async)",
+    supportsDurations: [5, 10],
+    supportsAspectRatios: ["16:9", "9:16"],
+    creditCost: 20,
+  },
+  "seedance-1-0-pro-250528": {
+    id: "seedance-1-0-pro-250528",
+    type: "video",
+    name: "Seedance Pro",
+    provider: "byteplus_modelark",
+    description: "BytePlus Seedance Pro — high-quality text-to-video and image-to-video (async)",
+    supportsDurations: [5, 10],
+    supportsAspectRatios: ["16:9", "9:16"],
+    creditCost: 30,
+  },
+  "seedance-1-0-lite-t2v-250428": {
+    id: "seedance-1-0-lite-t2v-250428",
+    type: "video",
+    name: "Seedance Lite T2V",
+    provider: "byteplus_modelark",
+    description: "BytePlus Seedance Lite — text-to-video generation (async)",
+    supportsDurations: [5, 10],
+    supportsAspectRatios: ["16:9", "9:16"],
+    creditCost: 20,
+  },
+  "seedance-1-0-lite-i2v-250428": {
+    id: "seedance-1-0-lite-i2v-250428",
+    type: "video",
+    name: "Seedance Lite I2V",
+    provider: "byteplus_modelark",
+    description: "BytePlus Seedance Lite — image-to-video generation (async)",
+    supportsDurations: [5, 10],
+    supportsAspectRatios: ["16:9", "9:16"],
+    creditCost: 20,
   },
   // Audio models
   "elevenlabs-tts": {
