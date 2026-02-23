@@ -19,6 +19,58 @@ from app.core.media_job_validators import validate_uri_no_ssrf
 logger = structlog.get_logger()
 
 
+def _normalize_byteplus_task_state(status_response: dict) -> tuple[str, str]:
+    """
+    Map a BytePlus task status response to an internal state tuple.
+
+    Returns:
+        (normalized_state, raw_status) where normalized_state is one of:
+        "success", "fail", "processing", "unknown"
+
+    BytePlus status strings:
+        succeeded -> success
+        failed    -> fail
+        cancelled -> fail
+        queued    -> processing
+        processing -> processing
+        <other>   -> unknown
+    """
+    raw_status: str = status_response.get("status", "")
+    status = raw_status.lower()
+    if status == "succeeded":
+        return "success", raw_status
+    if status in ("failed", "cancelled"):
+        return "fail", raw_status
+    if status in ("queued", "processing"):
+        return "processing", raw_status
+    return "unknown", raw_status
+
+
+def _extract_byteplus_result_url(status_response: dict) -> str | None:
+    """
+    Extract the first valid media URL from a BytePlus task status response.
+
+    Iterates the `content` array and returns the URL from the first item
+    with type=video_url or type=image_url whose URL starts with "http".
+
+    Returns None if no suitable URL is found.
+    """
+    content = status_response.get("content")
+    if not content:
+        return None
+    for item in content:
+        item_type = item.get("type", "")
+        if item_type == "video_url":
+            url = (item.get("video_url") or {}).get("url", "")
+        elif item_type == "image_url":
+            url = (item.get("image_url") or {}).get("url", "")
+        else:
+            continue
+        if url and url.startswith("http"):
+            return url
+    return None
+
+
 class BytePlusModelArkProvider:
     """
     BytePlus ModelArk API provider.

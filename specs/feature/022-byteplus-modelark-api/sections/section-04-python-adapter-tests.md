@@ -1,18 +1,76 @@
+Now I have all the context I need. Here is the complete section content:
+
+# Section 04: Python Adapter Tests
+
+**File to create:** `python-backend/tests/providers/test_byteplus_modelark_provider.py`
+
+**Depends on:** Section 03 (Python Adapter — `BytePlusModelArkProvider` class must exist before these tests can pass)
+
+**Test command:** `cd python-backend && uv run pytest tests/providers/test_byteplus_modelark_provider.py -v`
+
+---
+
+## Background
+
+This section covers the comprehensive pytest test suite for the `BytePlusModelArkProvider` class introduced in Section 03. The tests must be written first (TDD) and initially fail — they become the acceptance criteria for the implementation.
+
+The provider under test lives at:
+```
+python-backend/app/llm_proxy/providers/byteplus_modelark_provider.py
+```
+
+It is a media generation adapter class that:
+- Performs **synchronous image generation** via POST `/images/generations` (Seedream models)
+- Performs **asynchronous video task creation** via POST `/contents/generations/tasks` (Seedance models)
+- Polls task status via GET `/contents/generations/tasks/{task_id}`
+- Validates inline video parameters and reference image URLs against SSRF/injection attacks
+- Tracks API cost at `$2.50 / 1M tokens`
+
+The SSRF guard used in `create_video_task` is:
+```python
+from app.core.media_job_validators import validate_uri_no_ssrf
+```
+
+---
+
+## Prerequisites
+
+### Create the `tests/providers/` directory
+
+The `tests/providers/` directory does not currently exist. Create it with an `__init__.py`:
+
+```
+python-backend/tests/providers/__init__.py   # empty
+python-backend/tests/providers/test_byteplus_modelark_provider.py
+```
+
+### Testing frameworks
+
+- **`pytest`** with `asyncio_mode = "auto"` (configured in `pyproject.toml` — no `@pytest.mark.asyncio` needed)
+- **`unittest.mock`** — use `AsyncMock` and `MagicMock` for mocking httpx calls (no `respx` dependency; the project does not currently use `respx`)
+- **`structlog`** — capture log output via `structlog.testing.capture_logs()` context manager for the API-key-not-logged assertion
+
+> Note: `respx` is not present in the project's requirements. Use `unittest.mock.patch` on `httpx.AsyncClient` methods directly, following the pattern in `tests/unit/api/test_kie_poll_handler.py`.
+
+---
+
+## Test File Structure
+
+`python-backend/tests/providers/test_byteplus_modelark_provider.py`:
+
+```python
 """
 Unit tests for BytePlusModelArkProvider.
 
 Tests cover:
-- Class constants (IMAGE_MODELS, VIDEO_MODELS, SIZE_MAP, BYTEPLUS_USD_PER_1M_TOKENS)
-- __init__ behavior (trailing slash strip, default URL, no key logging)
-- Image generation (happy path, size mapping, error propagation, usage_tokens, key not logged)
-- Video task creation (T2V and I2V content array structure, return values)
-- Task status polling (URL shape, 30s timeout, raw response returned)
+- Image generation (happy path, size mapping, error propagation, usage_tokens)
+- Video task creation (T2V and I2V content array structure)
+- Task status polling (URL shape, timeout, raw response returned)
 - Inline parameter building (valid inputs, bool formatting, ValueError on invalid)
 - Cost calculation (token-to-USD conversion)
 - Status normalization (_normalize_byteplus_task_state)
 - URL extraction (_extract_byteplus_result_url)
 - Security: SSRF block on reference_image_url, API key not in logs
-- aclose: httpx client is closed
 """
 
 import pytest
@@ -24,12 +82,17 @@ from app.llm_proxy.providers.byteplus_modelark_provider import (
     _normalize_byteplus_task_state,
     _extract_byteplus_result_url,
 )
+```
 
+> The two helper functions `_normalize_byteplus_task_state` and `_extract_byteplus_result_url` are module-level functions in the provider file (not class methods). Import them directly. If the implementation places them elsewhere (e.g., in `media_tasks.py` per Section 06), adjust the import path.
 
-# ---------------------------------------------------------------------------
-# Class Constants
-# ---------------------------------------------------------------------------
+---
 
+## Class Constants Tests
+
+These tests verify the class-level constants defined on `BytePlusModelArkProvider`. They are pure attribute checks — no HTTP calls.
+
+```python
 class TestBytePlusModelArkProviderConstants:
     """Verify class-level constants are correct."""
 
@@ -62,12 +125,13 @@ class TestBytePlusModelArkProviderConstants:
     def test_usd_per_1m_tokens_constant(self):
         """Pricing constant must be $2.50 per 1M tokens."""
         assert BytePlusModelArkProvider.BYTEPLUS_USD_PER_1M_TOKENS == 2.5
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# __init__
-# ---------------------------------------------------------------------------
+## `__init__` Tests
 
+```python
 class TestBytePlusModelArkProviderInit:
     """Verify __init__ behavior."""
 
@@ -78,6 +142,7 @@ class TestBytePlusModelArkProviderInit:
             base_url="https://ark.ap-southeast.bytepluses.com/api/v3/",
         )
         assert not provider.base_url.endswith("/")
+        provider.client.aclose  # ensure client created (attribute access)
 
     def test_init_uses_default_base_url_when_none(self):
         """When base_url is None, must use the Southeast Asia default."""
@@ -91,12 +156,15 @@ class TestBytePlusModelArkProviderInit:
             BytePlusModelArkProvider(api_key=secret_key)
         all_log_text = str(cap)
         assert secret_key not in all_log_text
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# Image Generation
-# ---------------------------------------------------------------------------
+## Image Generation Tests
 
+Mock the `httpx.AsyncClient.post` method to return controlled responses without making real HTTP calls.
+
+```python
 class TestGenerateImage:
     """Tests for BytePlusModelArkProvider.generate_image()."""
 
@@ -152,6 +220,7 @@ class TestGenerateImage:
             watermark=True,
         )
         call_kwargs = provider.client.post.call_args
+        # The json body is passed as `json=...` kwarg
         body = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
         assert body["model"] == "seedream-4-5-251128"
         assert body["size"] == "1K"
@@ -181,20 +250,6 @@ class TestGenerateImage:
         with pytest.raises(httpx.HTTPStatusError):
             await provider.generate_image(model="seedream-4-5-251128", prompt="test")
 
-    async def test_generate_image_raises_on_500_server_error(self, provider):
-        """500 server errors must propagate as httpx.HTTPStatusError."""
-        import httpx
-
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "500 Internal Server Error",
-            request=MagicMock(),
-            response=MagicMock(status_code=500),
-        )
-        provider.client.post = AsyncMock(return_value=mock_resp)
-        with pytest.raises(httpx.HTTPStatusError):
-            await provider.generate_image(model="seedream-4-5-251128", prompt="test")
-
     async def test_generate_image_api_key_not_in_logs(self, provider, success_response):
         """API key must not appear in any structlog output during image generation."""
         secret = "test-api-key"
@@ -202,12 +257,11 @@ class TestGenerateImage:
         with structlog.testing.capture_logs() as cap:
             await provider.generate_image(model="seedream-4-5-251128", prompt="test")
         assert secret not in str(cap)
+```
 
+### Size Mapping Tests
 
-# ---------------------------------------------------------------------------
-# Image Size Mapping
-# ---------------------------------------------------------------------------
-
+```python
 class TestGenerateImageSizeMapping:
     """Verify SIZE_MAP is applied correctly in generate_image."""
 
@@ -230,7 +284,7 @@ class TestGenerateImageSizeMapping:
             ("1024x1024", "1K"),
             ("2048x2048", "2K"),
             ("4096x4096", "4K"),
-            ("1K", "1K"),
+            ("1K", "1K"),   # identity mapping — already in shorthand format
             ("2K", "2K"),
             ("4K", "4K"),
         ],
@@ -240,17 +294,16 @@ class TestGenerateImageSizeMapping:
         await provider_with_mock.generate_image(
             model="seedream-4-5-251128", prompt="test", size=input_size
         )
-        body = (
-            provider_with_mock.client.post.call_args.kwargs.get("json")
-            or provider_with_mock.client.post.call_args[1].get("json")
-        )
+        body = provider_with_mock.client.post.call_args.kwargs.get("json") or \
+               provider_with_mock.client.post.call_args[1].get("json")
         assert body["size"] == expected_byteplus_size
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# Video Task Creation
-# ---------------------------------------------------------------------------
+## Video Task Creation Tests
 
+```python
 class TestCreateVideoTask:
     """Tests for BytePlusModelArkProvider.create_video_task()."""
 
@@ -279,10 +332,8 @@ class TestCreateVideoTask:
             resolution="720p",
             duration=5,
         )
-        body = (
-            provider.client.post.call_args.kwargs.get("json")
-            or provider.client.post.call_args[1].get("json")
-        )
+        body = provider.client.post.call_args.kwargs.get("json") or \
+               provider.client.post.call_args[1].get("json")
         content = body["content"]
         assert len(content) == 1
         assert content[0]["type"] == "text"
@@ -300,10 +351,8 @@ class TestCreateVideoTask:
             camerafixed=False,
             watermark=True,
         )
-        body = (
-            provider.client.post.call_args.kwargs.get("json")
-            or provider.client.post.call_args[1].get("json")
-        )
+        body = provider.client.post.call_args.kwargs.get("json") or \
+               provider.client.post.call_args[1].get("json")
         text = body["content"][0]["text"]
         assert "--resolution 1080p" in text
         assert "--duration 10" in text
@@ -315,8 +364,7 @@ class TestCreateVideoTask:
     ):
         """I2V: content array must have 2 items — text followed by image_url."""
         provider.client.post = AsyncMock(return_value=task_response)
-        # 1.1.1.1 is a public Cloudflare IP — passes SSRF validator without DNS resolution
-        ref_url = "https://1.1.1.1/reference.jpg"
+        ref_url = "https://cdn.example.com/reference.jpg"
         await provider.create_video_task(
             model="seedance-1-0-lite-i2v-250428",
             prompt="Animate this photo",
@@ -324,10 +372,8 @@ class TestCreateVideoTask:
             duration=5,
             reference_image_url=ref_url,
         )
-        body = (
-            provider.client.post.call_args.kwargs.get("json")
-            or provider.client.post.call_args[1].get("json")
-        )
+        body = provider.client.post.call_args.kwargs.get("json") or \
+               provider.client.post.call_args[1].get("json")
         content = body["content"]
         assert len(content) == 2
         assert content[0]["type"] == "text"
@@ -338,8 +384,7 @@ class TestCreateVideoTask:
     ):
         """I2V image_url.url must match the reference_image_url argument."""
         provider.client.post = AsyncMock(return_value=task_response)
-        # 1.1.1.1 is a public Cloudflare IP — passes SSRF validator without DNS resolution
-        ref_url = "https://1.1.1.1/uploads/ref-img-abc.png"
+        ref_url = "https://r2.smartaihub.app/uploads/ref-img-abc.png"
         await provider.create_video_task(
             model="seedance-1-0-lite-i2v-250428",
             prompt="Animate this",
@@ -347,10 +392,8 @@ class TestCreateVideoTask:
             duration=5,
             reference_image_url=ref_url,
         )
-        body = (
-            provider.client.post.call_args.kwargs.get("json")
-            or provider.client.post.call_args[1].get("json")
-        )
+        body = provider.client.post.call_args.kwargs.get("json") or \
+               provider.client.post.call_args[1].get("json")
         assert body["content"][1]["image_url"]["url"] == ref_url
 
     async def test_create_video_task_returns_provider_task_id(
@@ -385,11 +428,10 @@ class TestCreateVideoTask:
         assert called_url.endswith("/contents/generations/tasks")
 
     async def test_create_video_task_api_key_not_in_logs(
-        self, task_response
+        self, provider, task_response
     ):
         """API key must not appear in any structlog output during video task creation."""
-        secret = "bp-sk-sentinel-7f3a9d2c1e4b8f6a"
-        provider = BytePlusModelArkProvider(api_key=secret)
+        secret = "test-key"
         provider.client.post = AsyncMock(return_value=task_response)
         with structlog.testing.capture_logs() as cap:
             await provider.create_video_task(
@@ -399,12 +441,13 @@ class TestCreateVideoTask:
                 duration=5,
             )
         assert secret not in str(cap)
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# Task Status
-# ---------------------------------------------------------------------------
+## Task Status Tests
 
+```python
 class TestGetTaskStatus:
     """Tests for BytePlusModelArkProvider.get_task_status()."""
 
@@ -431,12 +474,7 @@ class TestGetTaskStatus:
         raw_response = {
             "id": "task-xyz",
             "status": "succeeded",
-            "content": [
-                {
-                    "type": "video_url",
-                    "video_url": {"url": "https://cdn.byteplus.com/v.mp4"},
-                }
-            ],
+            "content": [{"type": "video_url", "video_url": {"url": "https://cdn.byteplus.com/v.mp4"}}],
         }
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
@@ -456,18 +494,22 @@ class TestGetTaskStatus:
         await provider.get_task_status("t1")
 
         call_kwargs = provider.client.get.call_args.kwargs
+        # Timeout may be passed as `timeout=` kwarg or inside a httpx.Timeout object
         timeout_arg = call_kwargs.get("timeout")
         assert timeout_arg is not None
+        # Accept either a numeric 30 or an httpx.Timeout with read=30
         if isinstance(timeout_arg, (int, float)):
             assert timeout_arg == 30
         else:
+            # httpx.Timeout object — check its read or connect attributes
             assert hasattr(timeout_arg, "read") or hasattr(timeout_arg, "connect")
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# Inline Parameter Builder
-# ---------------------------------------------------------------------------
+## Inline Parameters Builder Tests
 
+```python
 class TestBuildInlineParams:
     """Tests for BytePlusModelArkProvider._build_inline_params()."""
 
@@ -520,12 +562,13 @@ class TestBuildInlineParams:
             provider._build_inline_params(
                 resolution="720p", duration=0, camerafixed=False, watermark=True
             )
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# Cost Calculation
-# ---------------------------------------------------------------------------
+## Cost Calculation Tests
 
+```python
 class TestCalculateCostUsd:
     """Tests for BytePlusModelArkProvider.calculate_cost_usd()."""
 
@@ -542,15 +585,20 @@ class TestCalculateCostUsd:
         assert provider.calculate_cost_usd(0) == 0.0
 
     def test_fractional_tokens_are_calculated_correctly(self, provider):
-        """45 tokens: (45 / 1_000_000) * 2.5 ~= 0.0001125."""
+        """45 tokens: (45 / 1_000_000) * 2.5 ≈ 0.0001125."""
         result = provider.calculate_cost_usd(45)
         assert abs(result - 0.0001125) < 1e-10
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# Status Normalization
-# ---------------------------------------------------------------------------
+## Status Normalization Tests
 
+These tests target the module-level helper `_normalize_byteplus_task_state`. In the implementation plan the function lives in `media_tasks.py` (Section 06) but the TDD plan also groups them here for convenience if the implementer places them in the provider module. Adjust the import path to match where the implementation is placed.
+
+> If `_normalize_byteplus_task_state` is placed in `app/tasks/media_tasks.py` (per the implementation plan), import from there instead.
+
+```python
 class TestNormalizeBytePlusTaskState:
     """Tests for _normalize_byteplus_task_state()."""
 
@@ -558,7 +606,6 @@ class TestNormalizeBytePlusTaskState:
         "byteplus_status,expected_normalized,expected_raw",
         [
             ("succeeded", "success", "succeeded"),
-            ("Succeeded", "success", "Succeeded"),  # .lower() before comparison
             ("failed", "fail", "failed"),
             ("cancelled", "fail", "cancelled"),
             ("queued", "processing", "queued"),
@@ -574,12 +621,13 @@ class TestNormalizeBytePlusTaskState:
         normalized, raw = _normalize_byteplus_task_state(status_response)
         assert normalized == expected_normalized
         assert raw == expected_raw
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# URL Extraction
-# ---------------------------------------------------------------------------
+## URL Extraction Tests
 
+```python
 class TestExtractBytePlusResultUrl:
     """Tests for _extract_byteplus_result_url()."""
 
@@ -587,10 +635,7 @@ class TestExtractBytePlusResultUrl:
         """content item with type=video_url must return the URL."""
         response = {
             "content": [
-                {
-                    "type": "video_url",
-                    "video_url": {"url": "https://cdn.byteplus.com/video.mp4"},
-                }
+                {"type": "video_url", "video_url": {"url": "https://cdn.byteplus.com/video.mp4"}}
             ]
         }
         url = _extract_byteplus_result_url(response)
@@ -600,10 +645,7 @@ class TestExtractBytePlusResultUrl:
         """content item with type=image_url must return the URL."""
         response = {
             "content": [
-                {
-                    "type": "image_url",
-                    "image_url": {"url": "https://cdn.byteplus.com/img.png"},
-                }
+                {"type": "image_url", "image_url": {"url": "https://cdn.byteplus.com/img.png"}}
             ]
         }
         url = _extract_byteplus_result_url(response)
@@ -611,22 +653,19 @@ class TestExtractBytePlusResultUrl:
 
     def test_returns_none_for_empty_content_array(self):
         """Empty content list must return None."""
-        response: dict = {"content": []}
+        response = {"content": []}
         assert _extract_byteplus_result_url(response) is None
 
     def test_returns_none_when_content_key_missing(self):
         """Response with no 'content' key must return None."""
-        response: dict = {"status": "succeeded"}
+        response = {"status": "succeeded"}
         assert _extract_byteplus_result_url(response) is None
 
     def test_returns_none_for_non_http_url(self):
         """URLs that do not start with 'http' must be skipped."""
         response = {
             "content": [
-                {
-                    "type": "video_url",
-                    "video_url": {"url": "ftp://invalid.example.com/v.mp4"},
-                }
+                {"type": "video_url", "video_url": {"url": "ftp://invalid.example.com/v.mp4"}}
             ]
         }
         assert _extract_byteplus_result_url(response) is None
@@ -639,26 +678,17 @@ class TestExtractBytePlusResultUrl:
             ]
         }
         assert _extract_byteplus_result_url(response) is None
+```
 
-    def test_skips_non_matching_first_item_and_returns_second(self):
-        """Iterator must skip non-matching items and return the first valid URL found."""
-        response = {
-            "content": [
-                {"type": "text", "text": "a caption"},
-                {
-                    "type": "video_url",
-                    "video_url": {"url": "https://cdn.byteplus.com/video2.mp4"},
-                },
-            ]
-        }
-        url = _extract_byteplus_result_url(response)
-        assert url == "https://cdn.byteplus.com/video2.mp4"
+---
 
+## Security Tests
 
-# ---------------------------------------------------------------------------
-# SSRF Prevention
-# ---------------------------------------------------------------------------
+These are the most critical tests and must pass before the implementation is considered complete.
 
+### SSRF Prevention
+
+```python
 class TestSSRFPrevention:
     """Verify SSRF guards block private/localhost reference image URLs."""
 
@@ -677,6 +707,7 @@ class TestSSRFPrevention:
                 duration=5,
                 reference_image_url="http://localhost/img.jpg",
             )
+        # Critically: no HTTP call should have been made
         provider.client.post.assert_not_called()
 
     async def test_loopback_ip_reference_image_url_is_blocked(self, provider):
@@ -693,31 +724,28 @@ class TestSSRFPrevention:
         provider.client.post.assert_not_called()
 
     async def test_public_reference_image_url_is_allowed(self, provider):
-        """A legitimate public URL must not be blocked by the SSRF guard.
-
-        Uses 1.1.1.1 (Cloudflare public IP) which passes validate_uri_no_ssrf
-        without DNS resolution, confirming the real validator allows public IPs.
-        """
+        """A legitimate public URL must not be blocked."""
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json.return_value = {"id": "task-1", "status": "queued"}
         provider.client.post = AsyncMock(return_value=mock_resp)
-        ref_url = "https://1.1.1.1/uploads/ref.jpg"
 
+        # Should not raise
         await provider.create_video_task(
             model="seedance-1-0-lite-i2v-250428",
             prompt="Animate this",
             resolution="720p",
             duration=5,
-            reference_image_url=ref_url,
+            reference_image_url="https://r2.smartaihub.app/uploads/ref.jpg",
         )
         provider.client.post.assert_called_once()
+```
 
+---
 
-# ---------------------------------------------------------------------------
-# aclose
-# ---------------------------------------------------------------------------
+## `aclose` Cleanup Test
 
+```python
 class TestAclose:
     """Verify the httpx client is properly closed."""
 
@@ -727,3 +755,98 @@ class TestAclose:
         provider.client.aclose = AsyncMock()
         await provider.aclose()
         provider.client.aclose.assert_called_once()
+```
+
+---
+
+## Implementation Notes for the Implementer
+
+### Key import paths
+
+| Symbol | Location |
+|---|---|
+| `BytePlusModelArkProvider` | `app/llm_proxy/providers/byteplus_modelark_provider.py` |
+| `_normalize_byteplus_task_state` | Same file, or `app/tasks/media_tasks.py` (per Section 06 plan) |
+| `_extract_byteplus_result_url` | Same file, or `app/tasks/media_tasks.py` (per Section 06 plan) |
+| `validate_uri_no_ssrf` | `app/core/media_job_validators` |
+
+If `_normalize_byteplus_task_state` and `_extract_byteplus_result_url` are implemented in `media_tasks.py` (as described in the Section 06 plan), update the test file imports accordingly:
+
+```python
+from app.tasks.media_tasks import (
+    _normalize_byteplus_task_state,
+    _extract_byteplus_result_url,
+)
+```
+
+### Mocking httpx
+
+The project does not use `respx`. Mock `provider.client.post` and `provider.client.get` directly using `AsyncMock` after the provider is instantiated. The fixture pattern is:
+
+```python
+provider.client.post = AsyncMock(return_value=mock_resp)
+```
+
+### Accessing the JSON request body in assertions
+
+`httpx.AsyncClient.post` is called with `json=...` as a keyword argument. Retrieve it from the mock call args:
+
+```python
+body = provider.client.post.call_args.kwargs.get("json") or \
+       provider.client.post.call_args[1].get("json")
+```
+
+### Structlog log capture
+
+Use the `structlog.testing.capture_logs()` context manager, which is part of the standard `structlog` library. It does not require additional packages. The captured output is a list of dicts; convert to string for the "not in" assertion:
+
+```python
+with structlog.testing.capture_logs() as cap:
+    # ... call the method
+assert "my-secret-key" not in str(cap)
+```
+
+### TDD workflow for this section
+
+1. Create `python-backend/tests/providers/__init__.py` (empty)
+2. Create the test file with all test stubs (functions that raise `pytest.fail("not implemented")` initially)
+3. Run: `cd python-backend && uv run pytest tests/providers/test_byteplus_modelark_provider.py -v` — all tests should fail (import errors expected until Section 03 is done)
+4. Once Section 03 is complete, run tests again — work through failures one class at a time
+5. All tests must pass before marking this section complete
+6. Run `ruff check app/` and `mypy app/` before closing out
+
+---
+
+## Implementation Notes (Actual vs. Planned)
+
+### File location — `tests/unit/llm_proxy/` not `tests/providers/`
+
+The `tests/providers/` directory does not exist. Existing convention places provider tests in
+`tests/unit/llm_proxy/` (matching `test_ollama_provider.py`, `test_openrouter_provider.py`).
+**Actual file:** `python-backend/tests/unit/llm_proxy/test_byteplus_modelark_provider.py`
+
+### Helper functions placed in provider module
+
+`_normalize_byteplus_task_state` and `_extract_byteplus_result_url` were implemented as
+module-level functions in `byteplus_modelark_provider.py` (Section 03), not deferred to
+`media_tasks.py`. Imports come from `app.llm_proxy.providers.byteplus_modelark_provider`.
+
+### I2V tests and SSRF "public allowed" test use `1.1.1.1`
+
+The test environment restricts DNS resolution for external hostnames. All three tests that
+exercise a public reference image URL use `https://1.1.1.1/img.jpg` (Cloudflare public IP)
+instead of domain-based URLs. This passes the real `validate_uri_no_ssrf` validator without
+DNS lookup. No patching of the SSRF validator is used in the final implementation.
+
+### API key sentinel strengthened in video log test
+
+`test_create_video_task_api_key_not_in_logs` uses `bp-sk-sentinel-7f3a9d2c1e4b8f6a` as the
+API key (not `"test-key"`) and instantiates the provider inline so the sentinel is the actual
+`_api_key` attribute being checked.
+
+### Final test count: 60 (3 added by code review)
+
+Code review added:
+- `test_generate_image_raises_on_500_server_error` (500 error coverage)
+- `test_status_mapping["Succeeded"]` parametrize case (mixed-case `.lower()` coverage)
+- `test_skips_non_matching_first_item_and_returns_second` (iterator skip behavior)
