@@ -14,6 +14,8 @@ import {
   presentationSlideContentSchema,
   presentationRouteGuardInputSchema,
   presentationRouteGuardResultSchema,
+  audioTrackInputSchema,
+  projectAudioTrackInputSchema,
   type PresentationAvailability,
   type PresentationRouteBlockedResult,
   type PresentationRouteGuardResult,
@@ -39,12 +41,15 @@ import {
   restorePresentationVersion,
   updatePresentationDeckMetadata,
   updateSlideInDeck,
+  updateSlideAudioTrack,
+  updateDeckProjectAudioTrack,
 } from "../services/presentationService";
 import {
   convertOfficeSourceToPresentation,
   getPresentationCompatibilityOpen,
 } from "../services/presentationCompatibilityService";
 import {
+  buildPlayDeckPayload,
   buildSlideshowPayload,
   getPresentationExportStatus,
   triggerPresentationExport,
@@ -271,7 +276,7 @@ export const presentationRouter = router({
     .input(z.object({
       deckId: z.number().int().positive(),
       format: z.enum(["png", "jpg", "pdf", "mp4"]),
-      quality: z.enum(["draft", "standard", "high"]).optional(),
+      quality: z.enum(["draft", "standard", "high"]).optional().default("standard"),
       idempotencyKey: z.string().min(1).max(128),
       width: z.number().int().positive().optional(),
       height: z.number().int().positive().optional(),
@@ -622,6 +627,67 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         return await applyTemplateAssetToDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  setSlideAudio: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      slideId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
+      audioTrack: audioTrackInputSchema.nullable(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await updateSlideAudioTrack(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  setDeckAudio: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
+      projectAudioTrack: projectAudioTrackInputSchema.nullable(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await updateDeckProjectAudioTrack(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  getPlayDeck: protectedProcedure
+    .input(z.object({ itemId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        const actor = toPresentationActor(ctx);
+        const deck = await getPresentationDeckByLibraryItem(input.itemId, actor);
+        if (!deck) {
+          throw new PresentationServiceError(
+            PRESENTATION_ERROR_CODE.NOT_FOUND,
+            `${PRESENTATION_ERROR_CODE.NOT_FOUND}: no presentation deck for library item ${input.itemId}`,
+          );
+        }
+        const detail = await getPresentationDeckDetail(deck.id, actor);
+        const slideshowPayload = buildSlideshowPayload(detail.slides, { deckId: detail.deck.id });
+        return await buildPlayDeckPayload(detail, slideshowPayload);
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

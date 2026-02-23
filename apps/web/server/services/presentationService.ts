@@ -42,6 +42,8 @@ import {
 import {
   presentationSlideContentSchema,
   presentationVersionConflictSchema,
+  type AudioTrackInput,
+  type ProjectAudioTrackInput,
   type PresentationVersionConflict,
 } from "@shared/presentation/contracts";
 import {
@@ -1441,4 +1443,122 @@ export async function createPresentationFromTemplate(
     actor,
     dbClient,
   );
+}
+
+export interface UpdateSlideAudioTrackInput {
+  deckId: number;
+  slideId: number;
+  /** Deck version for optimistic locking — ensures no concurrent modification. */
+  expectedVersion: number;
+  audioTrack: AudioTrackInput | null;
+}
+
+/**
+ * Updates or clears the per-slide audio track configuration.
+ * Uses optimistic locking on the deck version: throws VERSION_CONFLICT if expectedVersion mismatches.
+ * Returns the updated deck and slide version numbers.
+ */
+export async function updateSlideAudioTrack(
+  input: UpdateSlideAudioTrackInput,
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<{ deckVersion: number; slideVersion: number }> {
+  const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
+
+  const currentSlide = await getSlideById(input.slideId, input.deckId, db);
+  if (!currentSlide) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found in deck ${input.deckId}`,
+    );
+  }
+
+  const newSlideVersion = currentSlide.version + 1;
+  const newDeckVersion = deck.version + 1;
+
+  // Wrap both UPDATE statements in a transaction to keep slide + deck versions consistent.
+  // CAS guard on slide version (`eq(presentationSlides.version, currentSlide.version)`) prevents
+  // lost updates from concurrent writes — matches the pattern used by updateSlideInDeck.
+  const [slideVersion] = await db.transaction(async (tx) => {
+    const slideRows = await tx
+      .update(presentationSlides)
+      .set({
+        // AudioTrackInput.endAtMs is `number | undefined` while SlideAudioTrackJson.endAtMs is
+        // `number | null`. The schemas are structurally equivalent at runtime; cast is safe.
+        audioTrack: input.audioTrack as any,
+        version: newSlideVersion,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(presentationSlides.id, input.slideId),
+        eq(presentationSlides.deckId, input.deckId),
+        // CAS: only update if slide version is still what we read
+        eq(presentationSlides.version, currentSlide.version),
+      ))
+      .returning({ version: presentationSlides.version });
+
+    if (!slideRows[0]) {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.NOT_FOUND,
+        `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found`,
+      );
+    }
+
+    await tx
+      .update(presentationDecks)
+      .set({ version: newDeckVersion, updatedAt: new Date() })
+      .where(eq(presentationDecks.id, input.deckId));
+
+    return [slideRows[0].version];
+  });
+
+  return { deckVersion: newDeckVersion, slideVersion };
+}
+
+export interface UpdateDeckProjectAudioTrackInput {
+  deckId: number;
+  /** Deck version for optimistic locking. */
+  expectedVersion: number;
+  projectAudioTrack: ProjectAudioTrackInput | null;
+}
+
+/**
+ * Updates or clears the deck-level project audio track.
+ * Uses optimistic locking: throws VERSION_CONFLICT if expectedVersion mismatches.
+ * Returns the updated deck version number.
+ */
+export async function updateDeckProjectAudioTrack(
+  input: UpdateDeckProjectAudioTrackInput,
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<{ deckVersion: number }> {
+  const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
+
+  const newDeckVersion = deck.version + 1;
+
+  const rows = await db
+    .update(presentationDecks)
+    .set({
+      // ProjectAudioTrackInput.fadeOutMs is `number | undefined` while DeckAudioTrackJson.fadeOutMs
+      // is `number | null`. The schemas are structurally equivalent at runtime; cast is safe.
+      projectAudioTrack: input.projectAudioTrack as any,
+      version: newDeckVersion,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(presentationDecks.id, input.deckId),
+      eq(presentationDecks.tenantId, actor.tenantId),
+    ))
+    .returning({ version: presentationDecks.version });
+
+  if (!rows[0]) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: deck ${input.deckId} not found`,
+    );
+  }
+
+  return { deckVersion: rows[0].version };
 }

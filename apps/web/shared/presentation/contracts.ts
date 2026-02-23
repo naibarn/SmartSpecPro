@@ -390,6 +390,8 @@ export type PresentationExportResult = z.infer<typeof presentationExportResultSc
 export type PresentationExportStatusResult = z.infer<typeof presentationExportStatusResultSchema>;
 export type { PresentationExportWarning };
 
+// TODO: When play-mode-only fields are added (e.g., chapter markers, loop ranges), replace this
+// alias with `presentationSlideshowPayloadSchema.extend({...})` to avoid a breaking schema change.
 export const presentationPlayDeckPayloadSchema = presentationSlideshowPayloadSchema;
 export type AudioTrackInput = z.infer<typeof audioTrackInputSchema>;
 export type ResolvedAudioTrack = z.infer<typeof resolvedAudioTrackSchema>;

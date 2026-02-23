@@ -9,16 +9,18 @@ import {
 import {
   presentationExportResultSchema,
   presentationExportStatusResultSchema,
+  presentationPlayDeckPayloadSchema,
   presentationRenderSpecSchema,
   presentationSlideshowPayloadSchema,
   type PresentationExportResult,
   type PresentationExportStatusResult,
+  type PresentationPlayDeckPayload,
   type PresentationRenderSpec,
   type PresentationSlideshowPayload,
   type ResolvedAudioTrack,
   type ResolvedProjectAudioTrack,
 } from "@shared/presentation/contracts";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { PresentationDeck, PresentationSlide } from "../../drizzle/schema";
 import { libraryItems } from "../../drizzle/schema";
 
@@ -482,6 +484,92 @@ export function buildSlideshowPayload(
     deckId,
     generatedAt: options?.generatedAt ?? new Date(),
     slides: degraded.slides,
+  });
+}
+
+/**
+ * Builds a PresentationPlayDeckPayload from a deck detail + slideshow payload.
+ * Resolves libraryItemId references in audio tracks to presigned S3/R2 URLs.
+ * Called by the getPlayDeck tRPC procedure for play mode.
+ * Falls back to returning the unmodified slideshow payload when no DB is available.
+ */
+export async function buildPlayDeckPayload(
+  detail: PresentationDeckDetail,
+  slideshowPayload: PresentationSlideshowPayload,
+): Promise<PresentationPlayDeckPayload> {
+  const db = await getDb();
+  if (!db) {
+    // DB unavailable — degrade gracefully: return payload without audio URL resolution.
+    // Play mode will function but audio tracks will be absent. Warning logged for observability.
+    console.warn("[buildPlayDeckPayload] DB unavailable — returning payload without audio resolution");
+    return presentationPlayDeckPayloadSchema.parse(slideshowPayload);
+  }
+
+  async function resolveUrl(sourceUrl: string | null): Promise<string | null> {
+    if (!sourceUrl) return null;
+    const presigned = await storagePresignGet(sourceUrl, 3600);
+    return presigned?.url ?? sourceUrl;
+  }
+
+  // Collect all distinct libraryItemIds needed (slides + deck project audio) in one batch query.
+  const dbSlideMap = new Map(detail.slides.map((s) => [s.id, s]));
+  const slideItemIds = detail.slides
+    .map((s) => s.audioTrack?.libraryItemId)
+    .filter((id): id is number => id !== undefined && id !== null);
+  const projectItemId = detail.deck.projectAudioTrack?.libraryItemId;
+  const allItemIds = Array.from(new Set([...slideItemIds, ...(projectItemId ? [projectItemId] : [])]));
+
+  // Single batch query instead of N per-slide queries
+  const itemRows =
+    allItemIds.length > 0
+      ? await db.select().from(libraryItems).where(inArray(libraryItems.id, allItemIds))
+      : [];
+  const itemMap = new Map(itemRows.map((r) => [r.id, r]));
+
+  // Resolve presigned URLs in parallel (one per distinct item)
+  const urlCache = new Map<number, string | null>();
+  await Promise.all(
+    allItemIds.map(async (id) => {
+      const item = itemMap.get(id);
+      urlCache.set(id, await resolveUrl(item?.sourceUrl ?? null));
+    }),
+  );
+
+  // Enrich each slideshow slide with resolved audio track from DB slide
+  const enrichedSlides = slideshowPayload.slides.map((slide) => {
+    const dbSlide = dbSlideMap.get(slide.slideId);
+    if (!dbSlide?.audioTrack) return slide;
+    const audioJson = dbSlide.audioTrack;
+    const url = urlCache.get(audioJson.libraryItemId);
+    if (!url) return slide;
+    const resolved: ResolvedAudioTrack = {
+      url,
+      volume: audioJson.volume,
+      startAtMs: audioJson.startAtMs,
+      endAtMs: audioJson.endAtMs ?? undefined,
+    };
+    return { ...slide, audioTrack: resolved };
+  });
+
+  // Resolve deck-level project audio track
+  let resolvedProjectAudioTrack: ResolvedProjectAudioTrack | null | undefined;
+  const dbProjectAudio = detail.deck.projectAudioTrack;
+  if (dbProjectAudio) {
+    const url = urlCache.get(dbProjectAudio.libraryItemId);
+    if (url) {
+      resolvedProjectAudioTrack = {
+        url,
+        volume: dbProjectAudio.volume,
+        loop: dbProjectAudio.loop,
+        fadeOutMs: dbProjectAudio.fadeOutMs ?? undefined,
+      };
+    }
+  }
+
+  return presentationPlayDeckPayloadSchema.parse({
+    ...slideshowPayload,
+    slides: enrichedSlides,
+    ...(resolvedProjectAudioTrack !== undefined && { projectAudioTrack: resolvedProjectAudioTrack }),
   });
 }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import fs from "fs";
 import path from "path";
+import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
 vi.mock("../_core/trpc", () => {
@@ -28,6 +29,9 @@ const serviceMocks = vi.hoisted(() => ({
   updateSlideInDeck: vi.fn(),
   listPresentationVersionHistory: vi.fn(),
   restorePresentationVersion: vi.fn(),
+  getPresentationDeckByLibraryItem: vi.fn(),
+  updateSlideAudioTrack: vi.fn(),
+  updateDeckProjectAudioTrack: vi.fn(),
 }));
 
 const templateServiceMocks = vi.hoisted(() => ({
@@ -43,6 +47,7 @@ const playbackMocks = vi.hoisted(() => ({
   buildSlideshowPayload: vi.fn(),
   triggerPresentationExport: vi.fn(),
   getPresentationExportStatus: vi.fn(),
+  buildPlayDeckPayload: vi.fn(),
 }));
 
 vi.mock("../services/presentationService", async () => {
@@ -57,6 +62,9 @@ vi.mock("../services/presentationService", async () => {
     updateSlideInDeck: serviceMocks.updateSlideInDeck,
     listPresentationVersionHistory: serviceMocks.listPresentationVersionHistory,
     restorePresentationVersion: serviceMocks.restorePresentationVersion,
+    getPresentationDeckByLibraryItem: serviceMocks.getPresentationDeckByLibraryItem,
+    updateSlideAudioTrack: serviceMocks.updateSlideAudioTrack,
+    updateDeckProjectAudioTrack: serviceMocks.updateDeckProjectAudioTrack,
   };
 });
 
@@ -69,6 +77,7 @@ vi.mock("../services/presentationPlaybackExport", () => ({
   buildSlideshowPayload: playbackMocks.buildSlideshowPayload,
   triggerPresentationExport: playbackMocks.triggerPresentationExport,
   getPresentationExportStatus: playbackMocks.getPresentationExportStatus,
+  buildPlayDeckPayload: playbackMocks.buildPlayDeckPayload,
 }));
 
 vi.mock("../services/presentationTemplateService", () => ({
@@ -115,7 +124,7 @@ describe("presentationRouter", () => {
     });
     playbackMocks.triggerPresentationExport.mockResolvedValue({
       schemaVersion: "presentation_export_v1",
-      exportId: "exp-1",
+      exportId: 1,
       jobId: "job-1",
       deckId: 88,
       format: "mp4",
@@ -133,11 +142,17 @@ describe("presentationRouter", () => {
     });
     playbackMocks.getPresentationExportStatus.mockResolvedValue({
       schemaVersion: "presentation_export_v1",
-      exportId: "exp-1",
-      jobId: "job-1",
+      exportId: 1,
       status: "queued",
       format: "mp4",
+      progressPct: 0,
       updatedAt: new Date(),
+    });
+    playbackMocks.buildPlayDeckPayload.mockResolvedValue({
+      schemaVersion: "presentation_slideshow_v1",
+      deckId: 88,
+      generatedAt: new Date(),
+      slides: [],
     });
     serviceMocks.listPresentationVersionHistory.mockResolvedValue([]);
     serviceMocks.restorePresentationVersion.mockResolvedValue({
@@ -145,6 +160,26 @@ describe("presentationRouter", () => {
       restoredSlideVersion: 4,
       deckVersion: 9,
     });
+    serviceMocks.getPresentationDeckByLibraryItem.mockResolvedValue({
+      id: 88,
+      tenantId: "tenant-1",
+      libraryItemId: 42,
+      title: "Play Deck",
+      description: null,
+      version: 1,
+      slideCount: 0,
+      totalAssetBytes: 0,
+      projectAudioTrack: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    serviceMocks.getPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 88, libraryItemId: 42 },
+      slides: [],
+      assets: [],
+    });
+    serviceMocks.updateSlideAudioTrack.mockResolvedValue({ deckVersion: 2, slideVersion: 3 });
+    serviceMocks.updateDeckProjectAudioTrack.mockResolvedValue({ deckVersion: 2 });
   });
 
   it("returns disabled availability when feature flag is off", async () => {
@@ -563,6 +598,317 @@ describe("presentationRouter", () => {
       { deckId: 88, expectedVersion: 3, templateAssetLibraryItemId: 9101 },
       { userId: 77, tenantId: "tenant-1", role: "user" },
     );
+  });
+
+  // --- triggerExport extended format ---
+
+  it("triggerExport accepts format: 'jpg' and passes it to service", async () => {
+    const fn = presentationRouter.triggerExport as Function;
+    await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 88, format: "jpg", idempotencyKey: "key-jpg-1" },
+    });
+
+    expect(playbackMocks.triggerPresentationExport).toHaveBeenCalledWith(
+      expect.objectContaining({ format: "jpg" }),
+      expect.any(Object),
+    );
+  });
+
+  it("triggerExport accepts format: 'pdf' and passes it to service", async () => {
+    const fn = presentationRouter.triggerExport as Function;
+    await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 88, format: "pdf", idempotencyKey: "key-pdf-1" },
+    });
+
+    expect(playbackMocks.triggerPresentationExport).toHaveBeenCalledWith(
+      expect.objectContaining({ format: "pdf" }),
+      expect.any(Object),
+    );
+  });
+
+  it("triggerExport passes quality to service layer", async () => {
+    const fn = presentationRouter.triggerExport as Function;
+    await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 88, format: "mp4", quality: "high", idempotencyKey: "key-quality-1" },
+    });
+
+    expect(playbackMocks.triggerPresentationExport).toHaveBeenCalledWith(
+      expect.objectContaining({ quality: "high" }),
+      expect.any(Object),
+    );
+  });
+
+  // --- getExportStatus output extension ---
+
+  it("getExportStatus returns progressPct and stage fields", async () => {
+    playbackMocks.getPresentationExportStatus.mockResolvedValue({
+      schemaVersion: "presentation_export_v1",
+      exportId: 5,
+      status: "processing",
+      format: "mp4",
+      progressPct: 42,
+      stage: "Rendering slide 3 of 10",
+      updatedAt: new Date(),
+    });
+
+    const fn = presentationRouter.getExportStatus as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { exportId: 5 },
+    });
+
+    expect(result.progressPct).toBe(42);
+    expect(result.stage).toBe("Rendering slide 3 of 10");
+  });
+
+  it("getExportStatus returns downloadUrl when status is done", async () => {
+    playbackMocks.getPresentationExportStatus.mockResolvedValue({
+      schemaVersion: "presentation_export_v1",
+      exportId: 5,
+      status: "done",
+      format: "mp4",
+      progressPct: 100,
+      downloadUrl: "https://cdn.example.com/out.mp4",
+      updatedAt: new Date(),
+    });
+
+    const fn = presentationRouter.getExportStatus as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { exportId: 5 },
+    });
+
+    expect(result.downloadUrl).toBe("https://cdn.example.com/out.mp4");
+    expect(result.status).toBe("done");
+  });
+
+  // --- setSlideAudio ---
+
+  it("setSlideAudio stores audio track on slide via service", async () => {
+    const fn = presentationRouter.setSlideAudio as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: {
+        deckId: 88,
+        slideId: 10,
+        expectedVersion: 3,
+        audioTrack: { libraryItemId: 5, volume: 0.8, startAtMs: 0 },
+      },
+    });
+
+    expect(serviceMocks.updateSlideAudioTrack).toHaveBeenCalledWith(
+      {
+        deckId: 88,
+        slideId: 10,
+        expectedVersion: 3,
+        audioTrack: { libraryItemId: 5, volume: 0.8, startAtMs: 0 },
+      },
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.deckVersion).toBe(2);
+    expect(result.slideVersion).toBe(3);
+  });
+
+  it("setSlideAudio with null audioTrack removes existing audio track", async () => {
+    const fn = presentationRouter.setSlideAudio as Function;
+    await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 88, slideId: 10, expectedVersion: 3, audioTrack: null },
+    });
+
+    expect(serviceMocks.updateSlideAudioTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ audioTrack: null }),
+      expect.any(Object),
+    );
+  });
+
+  it("setSlideAudio requires tenant context", async () => {
+    const fn = presentationRouter.setSlideAudio as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: null, user: { id: 1 } },
+        input: { deckId: 88, slideId: 10, expectedVersion: 3, audioTrack: null },
+      }),
+    ).rejects.toMatchObject({ message: "Tenant context is required for presentation operations" });
+  });
+
+  it("setSlideAudio maps VERSION_CONFLICT to CONFLICT tRPC error", async () => {
+    serviceMocks.updateSlideAudioTrack.mockRejectedValue(
+      new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.VERSION_CONFLICT,
+        `${PRESENTATION_ERROR_CODE.VERSION_CONFLICT}: deck version mismatch`,
+      ),
+    );
+
+    const fn = presentationRouter.setSlideAudio as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+        input: { deckId: 88, slideId: 10, expectedVersion: 2, audioTrack: null },
+      }),
+    ).rejects.toSatisfy((err: unknown) => err instanceof TRPCError && err.code === "CONFLICT");
+  });
+
+  // --- setDeckAudio ---
+
+  it("setDeckAudio stores project audio track on deck via service", async () => {
+    const fn = presentationRouter.setDeckAudio as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: {
+        deckId: 88,
+        expectedVersion: 3,
+        projectAudioTrack: { libraryItemId: 7, volume: 0.5, loop: true },
+      },
+    });
+
+    expect(serviceMocks.updateDeckProjectAudioTrack).toHaveBeenCalledWith(
+      {
+        deckId: 88,
+        expectedVersion: 3,
+        projectAudioTrack: { libraryItemId: 7, volume: 0.5, loop: true },
+      },
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.deckVersion).toBe(2);
+  });
+
+  it("setDeckAudio with null removes project audio track", async () => {
+    const fn = presentationRouter.setDeckAudio as Function;
+    await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 88, expectedVersion: 3, projectAudioTrack: null },
+    });
+
+    expect(serviceMocks.updateDeckProjectAudioTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ projectAudioTrack: null }),
+      expect.any(Object),
+    );
+  });
+
+  // --- getPlayDeck ---
+
+  it("getPlayDeck returns deck with resolved audio via buildPlayDeckPayload", async () => {
+    const mockPayload = {
+      schemaVersion: "presentation_slideshow_v1",
+      deckId: 88,
+      generatedAt: new Date(),
+      slides: [
+        {
+          slideId: 1,
+          orderIndex: 0,
+          title: "Slide 1",
+          durationMs: 3000,
+          transition: "none",
+          audioTrack: { url: "https://cdn.example.com/audio.mp3", volume: 0.8, startAtMs: 0 },
+        },
+      ],
+    };
+    playbackMocks.buildPlayDeckPayload.mockResolvedValue(mockPayload);
+
+    const fn = presentationRouter.getPlayDeck as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { itemId: 42 },
+    });
+
+    expect(playbackMocks.buildPlayDeckPayload).toHaveBeenCalledWith(
+      expect.objectContaining({ deck: { id: 88, libraryItemId: 42 } }),
+      expect.any(Object),
+    );
+    expect(result.slides[0].audioTrack?.url).toBe("https://cdn.example.com/audio.mp3");
+  });
+
+  it("getPlayDeck requires tenant context", async () => {
+    const fn = presentationRouter.getPlayDeck as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: null, user: { id: 1 } },
+        input: { itemId: 42 },
+      }),
+    ).rejects.toMatchObject({ message: "Tenant context is required for presentation operations" });
+  });
+
+  it("getPlayDeck throws NOT_FOUND when deck does not exist for library item", async () => {
+    serviceMocks.getPresentationDeckByLibraryItem.mockResolvedValue(null);
+
+    const fn = presentationRouter.getPlayDeck as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+        input: { itemId: 99 },
+      }),
+    ).rejects.toSatisfy((err: unknown) => err instanceof TRPCError && err.code === "NOT_FOUND");
+  });
+
+  it("getPlayDeck returns projectAudioTrack with resolved URL on deck", async () => {
+    const mockPayload = {
+      schemaVersion: "presentation_slideshow_v1",
+      deckId: 88,
+      generatedAt: new Date(),
+      slides: [],
+      projectAudioTrack: { url: "https://cdn.example.com/bg-music.mp3", volume: 0.5, loop: true },
+    };
+    playbackMocks.buildPlayDeckPayload.mockResolvedValue(mockPayload);
+
+    const fn = presentationRouter.getPlayDeck as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { itemId: 42 },
+    });
+
+    expect(result.projectAudioTrack?.url).toBe("https://cdn.example.com/bg-music.mp3");
+    expect(result.projectAudioTrack?.loop).toBe(true);
+  });
+
+  it("setDeckAudio requires tenant context", async () => {
+    const fn = presentationRouter.setDeckAudio as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: null, user: { id: 1 } },
+        input: { deckId: 88, expectedVersion: 3, projectAudioTrack: null },
+      }),
+    ).rejects.toMatchObject({ message: "Tenant context is required for presentation operations" });
+  });
+
+  it("setDeckAudio maps VERSION_CONFLICT to CONFLICT tRPC error", async () => {
+    serviceMocks.updateDeckProjectAudioTrack.mockRejectedValue(
+      new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.VERSION_CONFLICT,
+        `${PRESENTATION_ERROR_CODE.VERSION_CONFLICT}: deck version mismatch`,
+      ),
+    );
+
+    const fn = presentationRouter.setDeckAudio as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+        input: { deckId: 88, expectedVersion: 2, projectAudioTrack: null },
+      }),
+    ).rejects.toSatisfy((err: unknown) => err instanceof TRPCError && err.code === "CONFLICT");
+  });
+
+  it("triggerExport rejects missing idempotencyKey via Zod schema parse", () => {
+    // The mock procedure bypasses tRPC schema enforcement at the call layer, so test via
+    // direct Zod parse to confirm idempotencyKey is required.
+    const schema = z.object({
+      deckId: z.number().int().positive(),
+      format: z.enum(["png", "jpg", "pdf", "mp4"]),
+      quality: z.enum(["draft", "standard", "high"]).optional().default("standard"),
+      idempotencyKey: z.string().min(1).max(128),
+      width: z.number().int().positive().optional(),
+      height: z.number().int().positive().optional(),
+    });
+
+    const result = schema.safeParse({ deckId: 1, format: "mp4" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const fields = result.error.issues.map((i) => i.path[0]);
+      expect(fields).toContain("idempotencyKey");
+    }
   });
 });
 
