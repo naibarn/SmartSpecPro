@@ -140,6 +140,44 @@ def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
     return "unknown", ""
 
 
+def _normalize_byteplus_task_state(status_response: dict) -> tuple[str, str]:
+    """Normalize BytePlus task status to internal state.
+
+    Returns a (normalized_state, raw_status) tuple where normalized_state is
+    one of: 'success', 'fail', 'processing', 'unknown'.
+
+    BytePlus status values: succeeded, failed, cancelled, queued, processing.
+    """
+    raw_status = status_response.get("status", "")
+    if raw_status == "succeeded":
+        return "success", "succeeded"
+    if raw_status in ("failed", "cancelled"):
+        return "fail", raw_status
+    if raw_status in ("queued", "processing"):
+        return "processing", raw_status
+    return "unknown", raw_status
+
+
+def _extract_byteplus_result_url(status_response: dict) -> Optional[str]:
+    """Extract result URL from BytePlus task status response.
+
+    Iterates over status_response['content'] items. Returns the first URL found
+    in a 'video_url' or 'image_url' item that starts with 'http'. Returns None
+    if no valid URL is found.
+    """
+    for item in status_response.get("content", []):
+        item_type = item.get("type")
+        if item_type == "video_url":
+            url = item.get("video_url", {}).get("url", "")
+            if url.startswith("http"):
+                return url
+        elif item_type == "image_url":
+            url = item.get("image_url", {}).get("url", "")
+            if url.startswith("http"):
+                return url
+    return None
+
+
 def _extract_url_from_value(value: Any) -> Optional[str]:
     """Extract a media URL from common provider response value shapes."""
     if isinstance(value, str) and value.startswith("http"):
@@ -841,120 +879,205 @@ async def _recover_stuck_tasks_async():
 
             for task in stuck_tasks:
                 try:
-                    # Poll Kie.ai for actual status
                     logger.info(
                         "recover_stuck_task_polling",
                         task_id=task.id,
                         external_task_id=task.task_id,
-                        stuck_since=task.started_at.isoformat() if task.started_at else None
+                        model=task.model,
+                        stuck_since=task.started_at.isoformat() if task.started_at else None,
                     )
 
-                    # Get Kie.ai provider config from shared media_providers table
-                    from app.services.media_provider_service import get_media_provider_key
-                    provider_config = await get_media_provider_key("kie_ai")
-                    if not provider_config or not provider_config.get("apiKey"):
-                        logger.warning("recover_stuck_task_provider_not_configured", task_id=task.id)
-                        continue
+                    from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
 
-                    from app.llm_proxy.providers.kie_ai_provider import KieAIProvider
-                    provider = KieAIProvider(
-                        api_key=provider_config["apiKey"],
-                        base_url=provider_config.get("baseUrl") or "https://api.kie.ai/api/v1",
-                        callback_url=provider_config.get("callbackUrl"),
-                    )
-
-                    preferred_query_endpoint = None
-
-                    task_parameters = task.parameters
-                    if isinstance(task_parameters, str):
-                        try:
-                            task_parameters = json.loads(task_parameters)
-                        except json.JSONDecodeError:
-                            task_parameters = {}
-
-                    if isinstance(task_parameters, dict):
-                        api_cfg = task_parameters.get("api_config")
-                        if isinstance(api_cfg, dict):
-                            preferred_query_endpoint = (
-                                api_cfg.get("query_endpoint")
-                                or api_cfg.get("status_endpoint")
-                                or api_cfg.get("api_query_endpoint")
-                                or api_cfg.get("api_status_endpoint")
-                            )
-
-                    if not preferred_query_endpoint and task.model:
-                        try:
-                            model_result = await db.execute(
-                                text('SELECT "configJson" FROM media_models WHERE "modelId" = :model_id LIMIT 1'),
-                                {"model_id": task.model}
-                            )
-                            model_row = model_result.fetchone()
-                            if model_row:
-                                preferred_query_endpoint = _extract_model_query_endpoint(model_row[0])
-                        except Exception as lookup_error:
+                    if task.model in BytePlusModelArkProvider.VIDEO_MODELS:
+                        # --- BytePlus polling branch ---
+                        from app.services.media_provider_service import get_media_provider_key
+                        provider_config = await get_media_provider_key("byteplus_modelark")
+                        if not provider_config or not provider_config.get("apiKey"):
                             logger.warning(
-                                "recover_stuck_task_query_endpoint_lookup_failed",
+                                "recover_stuck_task_byteplus_not_configured",
                                 task_id=task.id,
-                                model=task.model,
-                                error=str(lookup_error),
+                            )
+                            continue
+
+                        byteplus_client = None
+                        try:
+                            byteplus_client = BytePlusModelArkProvider(
+                                api_key=provider_config["apiKey"],
+                                base_url=provider_config.get("baseUrl"),
+                            )
+                            import httpx
+                            try:
+                                status_response = await byteplus_client.get_task_status(task.task_id)
+                            except httpx.HTTPStatusError as http_err:
+                                if http_err.response.status_code == 429:
+                                    logger.warning(
+                                        "recover_stuck_task_byteplus_rate_limited",
+                                        task_id=task.id,
+                                        external_task_id=task.task_id,
+                                    )
+                                    # `continue` propagates through the outer try/finally,
+                                    # so byteplus_client.aclose() is called before the loop advances.
+                                    continue
+                                raise
+
+                            task_state, raw_state = _normalize_byteplus_task_state(status_response)
+                            logger.info(
+                                "recover_stuck_task_byteplus_status",
+                                task_id=task.id,
+                                task_state=task_state,
+                                raw_state=raw_state,
                             )
 
-                    # Poll for current status (single check, no wait)
-                    status_response = await provider.get_task_status(
-                        task.task_id,
-                        preferred_status_endpoint=preferred_query_endpoint,
-                    )
-                    task_state, raw_state = _normalize_kie_task_state(status_response)
+                            if task_state == "success":
+                                result_url = _extract_byteplus_result_url(status_response)
+                                if result_url:
+                                    task.status = TaskStatus.COMPLETED
+                                    task.result_url = result_url
+                                    task.result_data = status_response
+                                    task.completed_at = datetime.now(timezone.utc)
+                                    recovered_count += 1
+                                    logger.info(
+                                        "recover_stuck_task_byteplus_completed",
+                                        task_id=task.id,
+                                        result_url=result_url,
+                                    )
+                                else:
+                                    logger.warning(
+                                        "recover_stuck_task_byteplus_success_no_url",
+                                        task_id=task.id,
+                                    )
 
-                    logger.info(
-                        "recover_stuck_task_status",
-                        task_id=task.id,
-                        task_state=task_state,
-                        raw_state=raw_state,
-                        preferred_query_endpoint=preferred_query_endpoint,
-                    )
+                            elif task_state == "fail":
+                                error_msg = (
+                                    (status_response.get("error") or {}).get("message")
+                                    or "Task failed"
+                                )
+                                task.status = TaskStatus.FAILED
+                                task.error_message = f"BytePlus failed: {error_msg[:200]}"
+                                task.result_data = status_response
+                                task.completed_at = datetime.now(timezone.utc)
+                                failed_count += 1
+                                logger.warning(
+                                    "recover_stuck_task_byteplus_failed",
+                                    task_id=task.id,
+                                    error=error_msg,
+                                )
 
-                    if task_state == "success":
-                        result_url = _extract_first_kie_result_url(status_response)
-                        if result_url:
-                            task.status = TaskStatus.COMPLETED
-                            task.result_url = result_url
-                            task.result_data = status_response
-                            task.completed_at = datetime.now(timezone.utc)
-                            recovered_count += 1
-                            logger.info("recover_stuck_task_completed", task_id=task.id, result_url=result_url)
-                        else:
-                            logger.warning(
-                                "recover_stuck_task_success_without_result_url",
-                                task_id=task.id,
-                                external_task_id=task.task_id,
-                            )
+                            # "processing"/"unknown": do nothing, re-check next cycle
 
-                    elif task_state == "fail":
-                        # Task failed on provider side
-                        data = status_response.get("data", {}) if isinstance(status_response, dict) else {}
-                        error_msg = (
-                            status_response.get("msg")
-                            or status_response.get("message")
-                            or data.get("error")
-                            or data.get("errorMessage")
-                            or "Unknown error from provider"
-                        )
-                        task.status = TaskStatus.FAILED
-                        task.error_message = f"Provider failed: {error_msg}"
-                        task.result_data = status_response
-                        task.completed_at = datetime.now(timezone.utc)
-                        failed_count += 1
-                        logger.warning("recover_stuck_task_failed", task_id=task.id, error=error_msg)
+                        finally:
+                            if byteplus_client is not None:
+                                await byteplus_client.aclose()
 
                     else:
-                        # Still processing or unknown: keep task as-is and retry on next cycle.
+                        # --- Kie.ai polling branch ---
+                        # Get Kie.ai provider config from shared media_providers table
+                        from app.services.media_provider_service import get_media_provider_key
+                        provider_config = await get_media_provider_key("kie_ai")
+                        if not provider_config or not provider_config.get("apiKey"):
+                            logger.warning("recover_stuck_task_provider_not_configured", task_id=task.id)
+                            continue
+
+                        from app.llm_proxy.providers.kie_ai_provider import KieAIProvider
+                        provider = KieAIProvider(
+                            api_key=provider_config["apiKey"],
+                            base_url=provider_config.get("baseUrl") or "https://api.kie.ai/api/v1",
+                            callback_url=provider_config.get("callbackUrl"),
+                        )
+
+                        preferred_query_endpoint = None
+
+                        task_parameters = task.parameters
+                        if isinstance(task_parameters, str):
+                            try:
+                                task_parameters = json.loads(task_parameters)
+                            except json.JSONDecodeError:
+                                task_parameters = {}
+
+                        if isinstance(task_parameters, dict):
+                            api_cfg = task_parameters.get("api_config")
+                            if isinstance(api_cfg, dict):
+                                preferred_query_endpoint = (
+                                    api_cfg.get("query_endpoint")
+                                    or api_cfg.get("status_endpoint")
+                                    or api_cfg.get("api_query_endpoint")
+                                    or api_cfg.get("api_status_endpoint")
+                                )
+
+                        if not preferred_query_endpoint and task.model:
+                            try:
+                                model_result = await db.execute(
+                                    text('SELECT "configJson" FROM media_models WHERE "modelId" = :model_id LIMIT 1'),
+                                    {"model_id": task.model}
+                                )
+                                model_row = model_result.fetchone()
+                                if model_row:
+                                    preferred_query_endpoint = _extract_model_query_endpoint(model_row[0])
+                            except Exception as lookup_error:
+                                logger.warning(
+                                    "recover_stuck_task_query_endpoint_lookup_failed",
+                                    task_id=task.id,
+                                    model=task.model,
+                                    error=str(lookup_error),
+                                )
+
+                        # Poll for current status (single check, no wait)
+                        status_response = await provider.get_task_status(
+                            task.task_id,
+                            preferred_status_endpoint=preferred_query_endpoint,
+                        )
+                        task_state, raw_state = _normalize_kie_task_state(status_response)
+
                         logger.info(
-                            "recover_stuck_task_still_processing",
+                            "recover_stuck_task_status",
                             task_id=task.id,
                             task_state=task_state,
                             raw_state=raw_state,
+                            preferred_query_endpoint=preferred_query_endpoint,
                         )
+
+                        if task_state == "success":
+                            result_url = _extract_first_kie_result_url(status_response)
+                            if result_url:
+                                task.status = TaskStatus.COMPLETED
+                                task.result_url = result_url
+                                task.result_data = status_response
+                                task.completed_at = datetime.now(timezone.utc)
+                                recovered_count += 1
+                                logger.info("recover_stuck_task_completed", task_id=task.id, result_url=result_url)
+                            else:
+                                logger.warning(
+                                    "recover_stuck_task_success_without_result_url",
+                                    task_id=task.id,
+                                    external_task_id=task.task_id,
+                                )
+
+                        elif task_state == "fail":
+                            # Task failed on provider side
+                            data = status_response.get("data", {}) if isinstance(status_response, dict) else {}
+                            error_msg = (
+                                status_response.get("msg")
+                                or status_response.get("message")
+                                or data.get("error")
+                                or data.get("errorMessage")
+                                or "Unknown error from provider"
+                            )
+                            task.status = TaskStatus.FAILED
+                            task.error_message = f"Provider failed: {error_msg}"
+                            task.result_data = status_response
+                            task.completed_at = datetime.now(timezone.utc)
+                            failed_count += 1
+                            logger.warning("recover_stuck_task_failed", task_id=task.id, error=error_msg)
+
+                        else:
+                            # Still processing or unknown: keep task as-is and retry on next cycle.
+                            logger.info(
+                                "recover_stuck_task_still_processing",
+                                task_id=task.id,
+                                task_state=task_state,
+                                raw_state=raw_state,
+                            )
 
                 except Exception as task_error:
                     logger.error(
