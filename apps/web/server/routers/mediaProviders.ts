@@ -6,7 +6,7 @@ import { eq, asc, desc, sql } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 
 // Provider templates for adding new providers
-const PROVIDER_TEMPLATES = [
+export const PROVIDER_TEMPLATES = [
   {
     providerName: "kie_ai",
     displayName: "Kie AI",
@@ -70,6 +70,24 @@ const PROVIDER_TEMPLATES = [
     defaultModel: "sdxl",
     availableModels: [
       { id: "sdxl", name: "Stable Diffusion XL", type: "image" as const, description: "Image generation" },
+    ],
+  },
+  {
+    providerName: "byteplus_modelark",
+    displayName: "BytePlus ModelArk",
+    description: "ByteDance's enterprise AI platform — Seedream models for synchronous image generation and Seedance models for asynchronous video generation via task polling",
+    providerType: "multimodal" as const,
+    baseUrl: "https://ark.ap-southeast.bytepluses.com/api/v3",
+    defaultModel: "seedream-4-5-251128",
+    availableModels: [
+      // Image models (Seedream — synchronous)
+      { id: "seedream-4-5-251128", name: "Seedream 4.5", type: "image" as const, description: "High-quality synchronous image generation (Seedream 4.5)" },
+      { id: "seedream-4-0-250828", name: "Seedream 4.0", type: "image" as const, description: "Image generation with Seedream 4.0" },
+      // Video models (Seedance — async task/polling)
+      { id: "seedance-1-0-pro-fast-251015", name: "Seedance 1.0 Pro Fast", type: "video" as const, description: "Fast professional video generation (T2V + I2V)" },
+      { id: "seedance-1-0-pro-250528",      name: "Seedance 1.0 Pro",      type: "video" as const, description: "Professional video generation (T2V + I2V)" },
+      { id: "seedance-1-0-lite-t2v-250428", name: "Seedance 1.0 Lite T2V", type: "video" as const, description: "Lightweight text-to-video generation" },
+      { id: "seedance-1-0-lite-i2v-250428", name: "Seedance 1.0 Lite I2V", type: "video" as const, description: "Lightweight image-to-video generation" },
     ],
   },
 ];
@@ -294,6 +312,12 @@ export const mediaProvidersRouter = router({
           case "replicate":
             result = await testReplicate(apiKey);
             break;
+          case "byteplus_modelark":
+            result = await testBytePlusModelArk(
+              apiKey,
+              provider.baseUrl || "https://ark.ap-southeast.bytepluses.com/api/v3"
+            );
+            break;
           default:
             // Generic test - just check if the base URL is reachable
             result = await testGenericProvider(apiKey, provider.baseUrl || "");
@@ -461,6 +485,38 @@ async function testReplicate(apiKey: string): Promise<{ success: boolean; messag
   }
 
   return { success: true, message: "Connection successful" };
+}
+
+export async function testBytePlusModelArk(
+  apiKey: string,
+  baseUrl: string
+): Promise<{ success: boolean; message: string; latencyMs?: number }> {
+  /**
+   * Validates connectivity and API key for BytePlus ModelArk.
+   * GETs the task list endpoint with a small page_size to confirm auth works.
+   *
+   * SSRF note: validateExternalUrl() is called BEFORE any fetch.
+   */
+  validateExternalUrl(baseUrl);
+  const startTime = Date.now();
+  const url = `${baseUrl.replace(/\/$/, "")}/contents/generations/tasks?page_size=3&filter.status=succeeded`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+  });
+  const latencyMs = Date.now() - startTime;
+
+  if (response.status === 401) {
+    return { success: false, message: "Invalid API key (401 Unauthorized)", latencyMs };
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    return { success: false, message: `API error: ${response.status} - ${text}`, latencyMs };
+  }
+  return { success: true, message: "Connection successful", latencyMs };
 }
 
 async function testGenericProvider(apiKey: string, baseUrl: string): Promise<{ success: boolean; message: string }> {
