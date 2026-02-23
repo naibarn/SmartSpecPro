@@ -1387,10 +1387,22 @@ export default function MediaStudio() {
       ? "video-generation"
       : "audio-generation";
 
-    // Use selectedSkillId if available, otherwise fall back to media type
-    // The backend will check the skill's category to determine if it can generate media
-    const skillId = selectedSkillId || mediaTypeFallback;
+    const mediaCompatibleSkillTypesByTab: Record<"image" | "video" | "audio", string[]> = {
+      image: ["image-generation", "image-video-generation"],
+      video: ["video-generation", "image-video-generation"],
+      audio: ["audio-generation"],
+    };
+    const selectedSkillForExecution = skillsList?.find((s) => s.id === selectedSkillId);
+    const isSelectedSkillMediaCompatible = !!selectedSkillForExecution
+      && mediaCompatibleSkillTypesByTab[activeTab].includes(selectedSkillForExecution.type);
+
+    // Always force a media-compatible skill. Some selected skills (e.g. prompt-enhancement)
+    // return text output and would make generation appear "silent" with no history task.
+    const skillId = isSelectedSkillMediaCompatible ? selectedSkillId : mediaTypeFallback;
     console.log('[Generate] Using skillId:', skillId, '(selectedSkillId:', selectedSkillId, ', fallback:', mediaTypeFallback, ')');
+    if (selectedSkillForExecution && !isSelectedSkillMediaCompatible) {
+      toast.warning(`Selected skill "${selectedSkillForExecution.name}" cannot generate ${activeTab}. Using default ${activeTab} generation skill.`);
+    }
 
     // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
     const currentAspectRatio = aspectRatio;
@@ -1515,21 +1527,41 @@ export default function MediaStudio() {
                 // Silently ignore detection errors
               });
             }
+            void refetchMediaHistory();
+          } else if (result.isAsync || result.taskId) {
+            // Async tasks may not have an immediate result URL. Ensure UI does not look stuck.
+            setGenerationTasks(prev =>
+              prev.map((t, idx) => idx === i ? { ...t, status: 'queued' as const } : t)
+            );
+            toast.info(result.message || "Generation task started. Check Media History for progress.");
+            void refetchMediaHistory();
+          } else {
+            const errorMessage = result.message || "Generation completed but no media output URL was returned.";
+            console.error(`[Generate] Missing output URL for iteration ${i + 1}:`, errorMessage, result);
+            setGenerationTasks(prev =>
+              prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: errorMessage } : t)
+            );
+            toast.error("Generation failed", { description: errorMessage });
           }
         } else {
           console.error(`Generation ${i + 1} failed:`, result.error);
+          const errorMessage = result.error || "Unknown generation error";
           setGenerationTasks(prev =>
-            prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: result.error } : t)
+            prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: errorMessage } : t)
           );
+          toast.error("Generation failed", { description: errorMessage });
+          void refetchMediaHistory();
         }
       } catch (error: any) {
         console.error(`[Generate] Exception in iteration ${i + 1}:`, error);
         console.error(`[Generate] Error message:`, error?.message);
         console.error(`[Generate] Error stack:`, error?.stack);
         console.error(`[Generate] Full error object:`, JSON.stringify(error, null, 2));
+        const errorMessage = error?.message || 'Unknown error';
         setGenerationTasks(prev =>
-          prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: error?.message || 'Unknown error' } : t)
+          prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: errorMessage } : t)
         );
+        toast.error("Generation failed", { description: errorMessage });
       }
 
       // Add delay between generations (except for last one)

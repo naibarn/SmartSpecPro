@@ -288,18 +288,6 @@ export default function MediaHistory() {
     }
   }, [authLoading, isAuthenticated, setLocation]);
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
   const tasks: MediaTask[] = tasksData?.tasks || [];
   const totalTasks = tasksData?.total || 0;
 
@@ -539,6 +527,18 @@ export default function MediaHistory() {
 
     return () => window.clearInterval(timer);
   }, [taskLibraryState, refreshLibraryStatus]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">

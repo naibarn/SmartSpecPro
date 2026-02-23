@@ -60,6 +60,34 @@ export const approvalsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
+      const emptyResult = {
+        requests: [] as unknown[],
+        total: 0,
+        page: 1,
+        page_size: input.limit,
+      };
+
+      const normalizePendingResult = (raw: any) => {
+        if (Array.isArray(raw)) {
+          return {
+            requests: raw,
+            total: raw.length,
+            page: 1,
+            page_size: input.limit,
+          };
+        }
+        const requestList = raw?.requests ?? raw?.items;
+        if (Array.isArray(requestList)) {
+          return {
+            requests: requestList,
+            total: typeof raw?.total === "number" ? raw.total : requestList.length,
+            page: typeof raw.page === "number" ? raw.page : 1,
+            page_size: typeof raw.page_size === "number" ? raw.page_size : input.limit,
+          };
+        }
+        return emptyResult;
+      };
+
       try {
         const params = new URLSearchParams({
           limit: input.limit.toString(),
@@ -75,31 +103,52 @@ export const approvalsRouter = router({
           }
         );
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          debugError("Approvals", "Failed to fetch pending approvals", {
-            status: response.status,
-            error: errorData,
+        if (response.ok) {
+          const data = await response.json();
+          const normalized = normalizePendingResult(data);
+          debugLog("Approvals", "Fetched pending approvals", {
+            userId: ctx.user.id,
+            count: normalized.requests.length,
           });
-          throw new TRPCError({
-            code: response.status === 404 ? "NOT_FOUND" : "BAD_REQUEST",
-            message: errorData.detail || "Failed to fetch pending approvals",
-          });
+          return normalized;
         }
 
-        const data = await response.json();
-        debugLog("Approvals", "Fetched pending approvals", {
-          userId: ctx.user.id,
-          count: data.items?.length || 0,
+        const errorData = await response.json().catch(() => ({}));
+        debugError("Approvals", "Failed to fetch pending approvals from /pending, falling back to /requests", {
+          status: response.status,
+          error: errorData,
         });
-        return data;
+
+        // Fallback for deployments where /pending may fail due DB/dialect differences.
+        const fallbackParams = new URLSearchParams({
+          status_filter: "pending",
+          page: "1",
+          page_size: input.limit.toString(),
+        });
+        const fallbackResponse = await fetch(
+          `${PYTHON_BACKEND_URL}/api/v1/approvals/requests?${fallbackParams}`,
+          {
+            headers: {
+              Authorization: `Bearer ${getAuthToken(ctx)}`,
+            },
+          }
+        );
+
+        if (!fallbackResponse.ok) {
+          const fallbackError = await fallbackResponse.json().catch(() => ({}));
+          debugError("Approvals", "Fallback /requests also failed, returning empty result", {
+            status: fallbackResponse.status,
+            error: fallbackError,
+            userId: ctx.user.id,
+          });
+          return emptyResult;
+        }
+
+        const fallbackData = await fallbackResponse.json();
+        return normalizePendingResult(fallbackData);
       } catch (error: any) {
-        if (error instanceof TRPCError) throw error;
         debugError("Approvals", "Error fetching pending approvals", { error: error.message });
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to fetch pending approvals",
-        });
+        return emptyResult;
       }
     }),
 

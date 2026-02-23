@@ -6,14 +6,12 @@ This service provides persistent storage for approval requests using SQLAlchemy 
 It complements the in-memory ApprovalService for production use cases.
 """
 
-import json
 import structlog
 from datetime import datetime, timedelta
 from typing import Optional, List
 from uuid import uuid4
-from sqlalchemy import select, and_, or_, text, type_coerce
+from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.types import Boolean as SABoolean
 
 from app.models.approval import (
     ApprovalRequest,
@@ -452,68 +450,48 @@ class ApprovalDBService:
         Returns:
             List of pending ApprovalRequest instances the user can approve
         """
-        # Build the approver JSON array for PostgreSQL @> containment check.
-        # The approvers list stores user IDs as strings, e.g. ["1", "5", "12"].
-        approver_json = json.dumps([str(user_id)])
+        user_id_str = str(user_id)
+        is_admin = await self._is_user_admin(user_id)
 
-        # Use raw SQL for reliable JSON containment checking.
-        # Cast to ::jsonb ensures @> works even if the column is json type.
-        #
-        # Logic:
-        # - status = 'pending'
-        # - AND (
-        #     the user is in the approvers list (using jsonb @> containment)
-        #     OR extra_data has no 'approvers' key (legacy fallback — visible to all)
-        #   )
-        # - AND tenant_id matches (if provided)
-        sql = text(
-            "SELECT id FROM approval_requests "
-            "WHERE status = 'pending' "
-            "AND ("
-            "  (extra_data::jsonb ? 'approvers' "
-            "   AND (extra_data->'approvers')::jsonb @> :approver_json::jsonb) "
-            "  OR NOT (extra_data::jsonb ? 'approvers') "
-            ") "
-            "AND (:tenant_id IS NULL OR tenant_id = :tenant_id) "
-            "ORDER BY created_at DESC "
-            "LIMIT :lim OFFSET :off"
-        )
-
-        result = await self.db.execute(
-            sql,
-            {
-                "approver_json": approver_json,
-                "tenant_id": tenant_id,
-                "lim": limit,
-                "off": offset,
-            },
-        )
-        rows = result.fetchall()
-
-        if not rows:
-            self._logger.debug(
-                "list_pending_for_user",
-                user_id=user_id,
-                tenant_id=tenant_id,
-                count=0,
-            )
-            return []
-
-        # Fetch full ORM objects by the IDs returned from the raw query
-        request_ids = [row[0] for row in rows]
+        # Portable query path (works across SQLite/Postgres/MySQL):
+        # fetch pending requests by tenant, then apply approver filtering in Python.
         stmt = (
             select(ApprovalRequest)
-            .where(ApprovalRequest.id.in_(request_ids))
+            .where(ApprovalRequest.status == ApprovalStatus.PENDING)
             .order_by(ApprovalRequest.created_at.desc())
         )
-        orm_result = await self.db.execute(stmt)
-        requests = list(orm_result.scalars().all())
+        if tenant_id:
+            stmt = stmt.where(ApprovalRequest.tenant_id == tenant_id)
+
+        result = await self.db.execute(stmt)
+        pending_requests = list(result.scalars().all())
+
+        filtered: List[ApprovalRequest] = []
+        for request in pending_requests:
+            if is_admin:
+                filtered.append(request)
+                continue
+
+            extra_data_raw = request.extra_data
+            extra_data = extra_data_raw if isinstance(extra_data_raw, dict) else {}
+            approvers = extra_data.get("approvers")
+
+            # Legacy fallback: if approvers list is missing/malformed, keep request visible.
+            if approvers is None or not isinstance(approvers, list):
+                filtered.append(request)
+                continue
+
+            if user_id_str in {str(value) for value in approvers}:
+                filtered.append(request)
+
+        requests = filtered[offset : offset + limit]
 
         self._logger.debug(
             "list_pending_for_user",
             user_id=user_id,
             tenant_id=tenant_id,
             count=len(requests),
+            total_filtered=len(filtered),
         )
 
         return list(requests)

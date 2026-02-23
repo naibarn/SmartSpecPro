@@ -411,6 +411,8 @@ async def list_approval_requests(
 
 @router.get("/requests/pending", response_model=List[ApprovalRequestResponse])
 async def list_pending_approvals(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     tenant_id: Optional[str] = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
@@ -423,6 +425,8 @@ async def list_pending_approvals(
     requests = await approval_service.list_pending_for_user(
         user_id=current_user.id,
         tenant_id=tenant_id,
+        limit=limit,
+        offset=offset,
     )
     return requests
 

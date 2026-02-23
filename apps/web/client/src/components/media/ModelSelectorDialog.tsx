@@ -26,6 +26,7 @@ export interface MediaModel {
   modelId: string;
   name: string;
   description?: string;
+  provider?: string;
   providerId?: string;
   providerName?: string;
   creditCost?: number;
@@ -51,6 +52,10 @@ interface ModelSelectorDialogProps {
   mediaType: "image" | "video" | "audio";
   isLoading?: boolean;
 }
+
+const getProviderId = (model: MediaModel) => model.providerId ?? model.provider;
+const getProviderName = (model: MediaModel) =>
+  model.providerName ?? model.provider ?? "Other";
 
 export default function ModelSelectorDialog({
   open,
@@ -91,13 +96,13 @@ export default function ModelSelectorDialog({
           model.name.toLowerCase().includes(query) ||
           model.modelId.toLowerCase().includes(query) ||
           model.description?.toLowerCase().includes(query) ||
-          model.providerName?.toLowerCase().includes(query)
+          getProviderName(model).toLowerCase().includes(query)
       );
     }
 
     // Filter by provider
     if (selectedProvider) {
-      result = result.filter((model) => model.providerId === selectedProvider);
+      result = result.filter((model) => getProviderId(model) === selectedProvider);
     }
 
     // Sort: default first, then by name
@@ -112,7 +117,7 @@ export default function ModelSelectorDialog({
   const groupedModels = useMemo(() => {
     const groups: Record<string, MediaModel[]> = {};
     filteredModels.forEach((model) => {
-      const providerName = model.providerName || "Other";
+      const providerName = getProviderName(model);
       if (!groups[providerName]) {
         groups[providerName] = [];
       }
