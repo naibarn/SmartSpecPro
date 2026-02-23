@@ -41,9 +41,49 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     sourcemap: "hidden",
-    // Large code-highlighting/diagram bundles are expected in this app.
-    // Raise warning threshold to reduce non-actionable build noise.
-    chunkSizeWarningLimit: 8000,
+    // Route-based code splitting is in place. 2000 kB gives headroom for large
+    // vendor chunks (Radix, Konva) while still catching regressions early.
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // React core — must be a single chunk shared across all lazy routes
+          if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/")) {
+            return "vendor-react";
+          }
+          // Routing
+          if (id.includes("node_modules/wouter/")) {
+            return "vendor-router";
+          }
+          // Data fetching / tRPC
+          if (
+            id.includes("node_modules/@tanstack/") ||
+            id.includes("node_modules/@trpc/")
+          ) {
+            return "vendor-query";
+          }
+          // Radix UI component primitives
+          if (id.includes("node_modules/@radix-ui/")) {
+            return "vendor-radix";
+          }
+          // Animation
+          if (id.includes("node_modules/framer-motion/")) {
+            return "vendor-framer";
+          }
+          // Icons
+          if (id.includes("node_modules/lucide-react/")) {
+            return "vendor-icons";
+          }
+          // Canvas / presentation editor (heavy)
+          if (
+            id.includes("node_modules/konva/") ||
+            id.includes("node_modules/react-konva/")
+          ) {
+            return "vendor-canvas";
+          }
+        },
+      },
+    },
   },
   server: {
     host: true,
