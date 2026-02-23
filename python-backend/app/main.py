@@ -74,6 +74,7 @@ from app.api.v1 import (
     skill_customization,
     media_advanced,
     webhooks,
+    presentations_export,  # Presentation export endpoints
 )
 
 # Initialize Sentry before anything else (captures startup errors)
@@ -248,6 +249,11 @@ app.include_router(telegram_webhook.router, prefix="/webhook", tags=["Telegram W
 app.include_router(prompt_enhancement.router, prefix="/api/v1/prompt", tags=["Prompt Enhancement"])
 app.include_router(skill_customization.router, prefix="/api/v1", tags=["Skill Customization"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])
+app.include_router(
+    presentations_export.router,
+    prefix="/api/v1/presentations",
+    tags=["Presentation Export"],
+)
 
 # Media Job processing (FFmpeg worker bridge)
 from app.api.v1 import media_jobs as media_jobs_api
