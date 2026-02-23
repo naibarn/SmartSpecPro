@@ -19,6 +19,7 @@ import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 
 import { createWebhookRouter } from "../routes/webhooks";
+import { createSlideRenderRouter } from "../routes/slideRender";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
@@ -320,6 +321,9 @@ app.get("/api/storage/files/*", async (req, res) => {
     }
   }
 });
+
+// Internal slide render route — localhost-only, JWT-gated, for Playwright screenshots
+app.use("/internal", createSlideRenderRouter());
 
 // Webhook routes (before CSRF-protected routes, Google Drive sends raw POSTs)
 app.use("/api/webhooks", createWebhookRouter());
