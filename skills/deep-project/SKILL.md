@@ -1,6 +1,6 @@
 ---
 name: deep-project
-description: Decomposes vague, high-level project requirements into well-scoped planning units for /deep-plan-codex. Use when starting a new project that needs to be broken into manageable pieces.
+description: Decomposes vague, high-level project requirements into well-scoped planning units for /deep-plan. Use when starting a new project that needs to be broken into manageable pieces.
 license: MIT
 compatibility: Requires uv (Python 3.11+), git repository recommended
 ---
@@ -272,9 +272,9 @@ Project manifest: project-manifest.md
 
 Next steps:
   1. Review project-manifest.md for execution order
-  2. Run /deep-plan-codex for each split:
-     /deep-plan-codex @01-name/spec.md
-     /deep-plan-codex @02-name/spec.md
+  2. Run /deep-plan for each split:
+     /deep-plan @01-name/spec.md
+     /deep-plan @02-name/spec.md
      ...
 ════════════════════════════════════════════════════════════════════════════════
 ```

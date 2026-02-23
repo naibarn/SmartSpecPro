@@ -8,7 +8,7 @@ Before analyzing splits:
 
 ## Overview
 
-/deep-plan-codex transforms requirements into detailed implementation plans via research, interviews, and review.
+/deep-plan transforms requirements into detailed implementation plans via research, interviews, and review.
 
 The goal of a split is to create a unit of work that is ideal for deeper planning via the /deep-plan plugin. We do not want to pass vague ideas that are too broad to /deep-plan (the plan will become too much context) and we do not want to pass small/targeted units of work to /deep-plan (it will be overkill for them). Your goal is to find the ideal split that has natural boundaries and will benefit from much deeper/thorough planning without being too broad.
 
@@ -76,7 +76,7 @@ Some projects don't benefit from multiple splits:
    - Can't determine boundaries without implementation
    - Need /deep-plan to explore and discover structure
 
-**Workflow:** Create `01-{project-name}/spec.md` with interview context. Next step: `/deep-plan-codex @01-name/spec.md`
+**Workflow:** Create `01-{project-name}/spec.md` with interview context. Next step: `/deep-plan @01-name/spec.md`
 
 Single-unit output is not a failure - it's a valid outcome that preserves interview insights in a consistent structure.
 

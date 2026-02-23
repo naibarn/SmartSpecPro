@@ -233,7 +233,12 @@
       "Bash(__NEW_LINE_866cc31b78df34b6__ echo \"\")",
       "Bash(__NEW_LINE_7a605f928e79713b__ echo \"\")",
       "Bash(# deep-implement: clean \\(git status was empty, HEAD matches gitCommitSha\\) # deep-plan: not a git repo - check file modification times vs install date \\(2026-02-03T01:45:02\\) find /home/dev/.claude/plugins/cache/piercelamb-plugins/deep-plan/0.3.0 -newer /home/dev/.claude/plugins/cache/piercelamb-plugins/deep-plan/0.3.0/pyproject.toml -type f)",
-      "Bash(bash /home/dev/projects/SmartSpecPro/scripts/validate-agents-registry.sh)"
+      "Bash(bash /home/dev/projects/SmartSpecPro/scripts/validate-agents-registry.sh)",
+      "WebFetch(domain:docs.byteplus.com)",
+      "Bash(head -10 ls /home/dev/projects/SmartSpecPro/python-backend/requirements*.txt)",
+      "Bash(mypy:*)",
+      "Bash(/dev/null --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(test:*)"
     ],
     "deny": [
       "Bash(rm *)",

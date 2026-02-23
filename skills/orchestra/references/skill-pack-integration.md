@@ -2,7 +2,7 @@
 
 ## Overview
 
-The orchestra conductor handles tasks up to a certain complexity threshold using its parallel-wave model. When a task is classified as `large` or `project` scope, the wave model is insufficient — the task requires structured specification decomposition, section-level planning, and implementation tracking that are provided by the `deep-plan-codex` and `deep-project` skills.
+The orchestra conductor handles tasks up to a certain complexity threshold using its parallel-wave model. When a task is classified as `large` or `project` scope, the wave model is insufficient — the task requires structured specification decomposition, section-level planning, and implementation tracking that are provided by the `deep-plan` and `deep-project` skills.
 
 Orchestra does **not** replicate these skills' functionality. Instead, it creates the input artifact (a requirements spec or requirements document), hands off to the appropriate skill via a user instruction, and waits. The handoff is a clean boundary: orchestra owns the session lifecycle and progress tracking; the deep-* skill owns the actual planning and implementation work.
 
@@ -23,14 +23,14 @@ Used when Step 1 (task analysis) classifies scope as `large`.
      - specs/feature/NNN-name/claude-plan.md
      - specs/feature/NNN-name/sections/index.md
      - specs/feature/NNN-name/claude-plan-tdd.md
-   Handoff invocation: /deep-plan-codex @specs/feature/NNN-name/spec.md
+   Handoff invocation: /deep-plan @specs/feature/NNN-name/spec.md
    ```
 4. Orchestra prints the handoff instruction to the user:
    ```
    Requirements spec created at: specs/feature/NNN-name/spec.md
 
    Run this command to begin planning:
-     /deep-plan-codex @specs/feature/NNN-name/spec.md
+     /deep-plan @specs/feature/NNN-name/spec.md
 
    When the deep-plan session is complete, return with:
      /orchestra resume
@@ -58,7 +58,7 @@ Used when Step 1 classifies scope as `project` (multiple independent features or
 
    deep-project will split this into individual feature specs.
    After splitting, follow the large-scope handoff pattern for each split:
-     /deep-plan-codex @specs/feature/NNN-split-name/spec.md
+     /deep-plan @specs/feature/NNN-split-name/spec.md
 
    When all deep-plan sessions are complete, return with:
      /orchestra resume
@@ -111,7 +111,7 @@ When the user returns with `/orchestra resume` after a deep-* handoff:
 
    Options:
      1. The deep-plan session is still running — return when complete.
-     2. The session failed — re-run: /deep-plan-codex @specs/feature/NNN-name/spec.md
+     2. The session failed — re-run: /deep-plan @specs/feature/NNN-name/spec.md
      3. The files are at a different path — confirm the actual paths.
 
    Orchestra will not proceed until you confirm or the files exist.

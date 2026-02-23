@@ -13,7 +13,7 @@ This document is read by SKILL.md at **Step 2**. After task classification (Step
 | `trivial` | `direct-edit` | Conductor edits the file directly — no sub-agent dispatched |
 | `small` | `single-agent` | One Task tool call with a complete Task Packet |
 | `medium` | `multi-agent-waves` | Contract + wave plan (Step 3), then parallel agent dispatch (Step 4) |
-| `large` | `deep-plan-codex-chain` | Spec file creation + handoff to `/deep-plan-codex` |
+| `large` | `deep-plan-chain` | Spec file creation + handoff to `/deep-plan` |
 | `project` | `full-pipeline` | Requirements doc + handoff to `/deep-project`, then codex chain per split |
 
 ---
@@ -110,35 +110,110 @@ New presentation export feature: Wave 1 dispatches `ssp-backend` (adds `presenta
 
 ---
 
-## Route: `deep-plan-codex-chain`
+## Route: `deep-plan-chain`
 
 **Trigger:** Scope = `large`
 
 **Execution steps:**
 1. Create a requirements spec file: `specs/feature/NNN-FeatureName/spec.md`. Populate it with the user's request, context, affected domains, and initial constraints.
-2. Tell the user:
+
+2. **Spec review gate** — Present this question immediately after creating the spec:
+
+   ```
+   AskUserQuestion:
+     question: "Spec created at specs/feature/NNN-FeatureName/spec.md. How would you like to review it before planning begins?"
+     options:
+       - label: "Auto-review (Recommended)"
+         description: "Conductor re-reads and evaluates the spec for completeness, clarity, and scope gaps, then reports findings"
+       - label: "Review myself"
+         description: "Show me the spec — I'll read it and tell you if changes are needed"
+       - label: "Proceed to /deep-plan"
+         description: "Skip review — hand off to /deep-plan immediately"
+   ```
+
+   **Auto-review path:**
+
+   Re-read the spec file. Evaluate against all five criteria:
+   - **Coverage** — Are all user requirements from the original request captured in the spec?
+   - **Clarity** — Are requirements specific and unambiguous? (flag vague language like "should work well" or "be fast")
+   - **Scope boundary** — Is the feature boundary explicit? What is in-scope vs out-of-scope?
+   - **Technical risks** — Are integration points, unknowns, or external dependencies identified?
+   - **Missing context** — What critical info will `/deep-plan` need that isn't present?
+
+   Print the review report in this format:
+   ```
+   📋 Spec Auto-Review: specs/feature/NNN-name/spec.md
+
+   Coverage:  [COMPLETE | GAPS FOUND]
+   Clarity:   [CLEAR | AMBIGUOUS]
+   Scope:     [WELL-DEFINED | UNCLEAR]
+   Risks:     [N identified | none identified]
+
+   Findings:
+     ✅ [what is well-captured]
+     ⚠️  [gap or ambiguity] — suggested addition: [...]
+     ⚠️  [risk or unknown] — suggested note: [...]
+
+   Verdict: [READY FOR DEEP-PLAN | IMPROVEMENTS RECOMMENDED]
+   ```
+
+   Then ask:
+   ```
+   AskUserQuestion:
+     question: "Auto-review complete. How would you like to proceed?"
+     options:
+       - label: "Apply improvements and proceed"
+         description: "Conductor updates the spec based on findings, then hands off to /deep-plan"
+       - label: "Proceed as-is"
+         description: "Accept the spec as written — proceed to /deep-plan without changes"
+       - label: "Show me the full spec first"
+         description: "Display the full spec content before deciding"
+   ```
+
+   - **"Apply improvements"** → Apply the recommended changes to the spec file. Print a brief changelog. Then proceed to step 3.
+   - **"Proceed as-is"** → Proceed to step 3.
+   - **"Show me the full spec first"** → Display full spec content, then re-present this same question.
+
+   **Review myself path:**
+
+   Display the full spec content. Then ask:
+   ```
+   AskUserQuestion:
+     question: "You're reviewing the spec. What would you like to do?"
+     options:
+       - label: "Proceed to /deep-plan"
+         description: "Spec looks good — hand off to /deep-plan"
+       - label: "Update the spec"
+         description: "Tell me what to change and I'll update the spec, then show it to you again"
+   ```
+   - **"Proceed"** → Go to step 3.
+   - **"Update"** → Ask the user what to change. Apply changes to the spec file. Confirm the update. Re-present the "Review myself" question (loop until user is satisfied).
+
+   **Proceed directly path:** Skip the review gate entirely. Go to step 3.
+
+3. Tell the user:
    > "This request requires detailed planning. Please run:
-   > `/deep-plan-codex @specs/feature/NNN-FeatureName/spec.md`
+   > `/deep-plan @specs/feature/NNN-FeatureName/spec.md`
    > When the plan is ready, run `/orchestra resume` to continue implementation."
-3. Log expected artifacts to `orchestra/backlog.md`:
+4. Log expected artifacts to `orchestra/backlog.md`:
    - `specs/feature/NNN-FeatureName/sections/index.md`
    - `specs/feature/NNN-FeatureName/claude-plan.md`
    - `specs/feature/NNN-FeatureName/claude-plan-tdd.md`
-4. **STOP** — do not invoke `/deep-plan-codex` yourself. Orchestra creates the spec; the human runs the skill.
-5. On `/orchestra resume`: read `orchestra/backlog.md`, verify the expected artifacts exist at their declared paths. If missing, report the gap. If present, proceed to wave-based implementation using the section files.
+5. **STOP** — do not invoke `/deep-plan` yourself. Orchestra creates and reviews the spec; the human runs the skill.
+6. On `/orchestra resume`: read `orchestra/backlog.md`, verify the expected artifacts exist at their declared paths. If missing, report the gap. If present, proceed to wave-based implementation using the section files.
 
-**Hard boundary:** Orchestra does NOT replicate deep-plan-codex functionality. Its role is spec creation + handoff + resume verification. Any attempt to inline deep-plan behavior into orchestra violates skill separation.
+**Hard boundary:** Orchestra does NOT replicate deep-plan functionality. Its role is spec creation + optional review + handoff + resume verification. Any attempt to inline deep-plan behavior into orchestra violates skill separation.
 
 **What to write in `orchestra/plan.md`:**
 ```
-route: deep-plan-codex-chain
+route: deep-plan-chain
 spec_file: specs/feature/NNN-FeatureName/spec.md
 status: awaiting_deep_plan
 backlog: orchestra/backlog.md
 ```
 
 **SmartSpecPro example:**
-"Add a full RAG pipeline to SmartSpecPro" — requires new DB tables, Python vector store integration, tRPC API, and React UI. Too large for direct waves. Orchestra creates `specs/feature/019-RAG-Pipeline/spec.md` and hands off to `/deep-plan-codex`.
+"Add a full RAG pipeline to SmartSpecPro" — requires new DB tables, Python vector store integration, tRPC API, and React UI. Too large for direct waves. Orchestra creates `specs/feature/019-RAG-Pipeline/spec.md` and hands off to `/deep-plan`.
 
 **Decision-mode effect:** In all modes, the handoff message is always shown to the user — this is a hard stop requiring human action.
 
@@ -150,13 +225,16 @@ backlog: orchestra/backlog.md
 
 **Execution steps:**
 1. Create a top-level requirements document: `specs/feature/NNN-FeatureName/requirements.md`. Cover all sub-features, integration points, and constraints.
-2. Tell the user:
+
+2. **Requirements review gate** — Same 3-option gate as `deep-plan-chain` (see above), applied to `requirements.md` instead of `spec.md`. Auto-review evaluates: feature decomposability (can this be split into independent units?), inter-feature dependencies (which splits must come first?), shared schema/API surfaces (what contracts span multiple splits?), and scope completeness.
+
+3. Tell the user:
    > "This is a new project module. Please run:
    > `/deep-project @specs/feature/NNN-FeatureName/requirements.md`
-   > This will produce a split plan. Once complete, run `/orchestra resume` to apply the deep-plan-codex-chain for each split."
-3. Log expected outputs to `orchestra/backlog.md`.
-4. **STOP** — do not invoke `/deep-project` yourself.
-5. On `/orchestra resume`: verify that `/deep-project` produced the expected split files. Apply `deep-plan-codex-chain` sequentially for each split.
+   > This will produce a split plan. Once complete, run `/orchestra resume` to apply the deep-plan-chain for each split."
+4. Log expected outputs to `orchestra/backlog.md`.
+5. **STOP** — do not invoke `/deep-project` yourself.
+6. On `/orchestra resume`: verify that `/deep-project` produced the expected split files. Apply `deep-plan-chain` sequentially for each split.
 
 **What to write in `orchestra/plan.md`:**
 ```
@@ -245,10 +323,10 @@ Violating this boundary would duplicate functionality, cause context exhaustion,
 | Fix typo in `apps/web/client/src/pages/Login.tsx` | trivial | direct-edit |
 | Add Zod field to `apps/web/server/routers/skills.ts` | small | single-agent (ssp-backend) |
 | New tRPC router + React page + shared schema (2 domains, inter-dependent) | medium | multi-agent-waves (two-domain inter-dependency triggers medium even at 3-5 files) |
-| New RAG pipeline (DB + Python + tRPC + UI, 4 domains) | large | deep-plan-codex-chain |
+| New RAG pipeline (DB + Python + tRPC + UI, 4 domains) | large | deep-plan-chain |
 | New Skills Marketplace module (no spec) | project | full-pipeline |
 | Bug: 500 in `python-backend/app/api/v1/rag_scopes.py` | bug → file known | ssp-debugger → post-fix waves |
 | Bug: unknown error, audit log investigation needed | bug → file unknown | ssp-research → ssp-debugger |
 | Security: suspected auth bypass in `middleware/auth.ts` | bug → security | ssp-security-trpc + ssp-security-review |
 | Add Celery task (Python only, no DB or UI) | small | single-agent (ssp-python) |
-| New multi-tenant feature: DB + tRPC + React + Celery | large | deep-plan-codex-chain |
+| New multi-tenant feature: DB + tRPC + React + Celery | large | deep-plan-chain |

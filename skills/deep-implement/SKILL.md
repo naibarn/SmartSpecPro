@@ -1,6 +1,6 @@
 ---
 name: deep-implement
-description: Implements code from deep-plan/deep-plan-codex section files in Codex with TDD workflow, code review, and section-by-section git commits.
+description: Implements code from deep-plan section files in Codex with TDD workflow, code review, and section-by-section git commits.
 license: MIT
 compatibility: Requires git repository; recommended test toolchain for target project
 ---

@@ -50,13 +50,37 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 
 ---
 
+## Language Detection — MANDATORY
+
+Detect the language of the user's task description at invocation time:
+- If the user typed in **Thai** → use Thai for all AskUserQuestion prompts, option labels, descriptions, banners, and status messages throughout this session.
+- If the user typed in **English** → use English for all prompts and messages.
+- If mixed → default to **Thai** (respect the dominant language).
+
+This applies to ALL user-facing output from Orchestra: questions, confirmations, progress messages, and final summaries. Internal artifact files (`orchestra/plan.md`, `orchestra/decisions.md`, etc.) are always written in English for consistency.
+
+---
+
+## When to Re-invoke `/orchestra`
+
+| Situation | What to do |
+|-----------|-----------|
+| **Continuing the same task** in the same session | No re-invocation needed — just type your response or next instruction. Orchestra instructions remain active in context. |
+| **New, unrelated task** in the same session | Run `/orchestra <new task description>` to start a fresh classification cycle for the new task. |
+| **After `/clear` or context compaction** with a snapshot | Run `/orchestra resume` to restore state from `orchestra/snapshot.json`. |
+| **New Claude Code session** (browser/terminal restarted) | If `orchestra/snapshot.json` exists: `/orchestra resume`. If not: `/orchestra <task description>`. |
+
+**Rule of thumb:** Within the same session working on the same task, Orchestra stays active — no re-invocation needed. Re-invoke only when starting a different task or after clearing context.
+
+---
+
 ## STOP Conditions
 
 Orchestra halts and waits for user input when any of these conditions occur. Do not auto-proceed.
 
 | Condition | Action |
 |-----------|--------|
-| scope = `large` | Create spec, write `orchestra/backlog.md`, instruct `/deep-plan-codex`, STOP |
+| scope = `large` | Create spec, write `orchestra/backlog.md`, instruct `/deep-plan`, STOP |
 | scope = `project` | Create requirements doc, write `orchestra/backlog.md`, instruct `/deep-project`, STOP |
 | Decision mode = `ask_every_choice` AND HIGH/CRITICAL architectural choice encountered | Present choice with AskUserQuestion, STOP until answered |
 | `/orchestra resume` after deep-* handoff AND expected artifact paths missing from `backlog.md` | Report missing artifacts with exact paths, STOP |
@@ -69,7 +93,13 @@ Orchestra halts and waits for user input when any of these conditions occur. Do 
 
 ## Step 0: Banner + State Loading
 
-Print the orchestra banner (above). Then check whether `orchestra/snapshot.json` exists at the project root.
+**Platform pre-check (for banner accuracy):** Before printing the banner, check if `orchestra/platform.md` exists at the project root. If it does, read its contents (`claude-code`, `codex`, or `open-code`) and substitute it into the banner line:
+- Replace: `Platform: [detected / unknown — will prompt in Step 4]`
+- With: `Platform: detected ✓ — {value from platform.md}`
+
+If `orchestra/platform.md` does NOT exist, leave the banner line as written — the platform will be set in Step 4.
+
+Print the orchestra banner. Then check whether `orchestra/snapshot.json` exists at the project root.
 
 **If `orchestra/snapshot.json` exists:**
 
@@ -84,13 +114,42 @@ AskUserQuestion:
 ```
 
 - **Resume path:** Read `skills/orchestra/references/session-resume.md`. Execute the R4 algorithm (Read, Restore, Reconcile, Resume). Jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
-- **Fresh start path:** Read `skills/orchestra/references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
+- **Fresh start path:** Run the **uncommitted work check** (see below). Then read `skills/orchestra/references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
 
 **If no `orchestra/snapshot.json` exists:**
 - Read `skills/orchestra/references/artifact-management.md`.
 - If `orchestra/` already exists: check for stale session (old files from a previous run without a snapshot). Archive the existing directory to `orchestra/archive/<ISO-8601-timestamp>/` before starting fresh.
 - Create `orchestra/` at the project root if it does not exist.
+- Run the **uncommitted work check** (see below).
 - Begin fresh session.
+
+**Uncommitted/unpushed work check (fresh start only — skip on resume path):**
+
+Run the following two commands:
+```bash
+git status --short
+git log --oneline "@{u}..HEAD" 2>/dev/null | head -5
+```
+
+If either command returns non-empty output (uncommitted files OR unpushed commits exist):
+
+```
+AskUserQuestion:
+  question: "Git has uncommitted or unpushed work. How would you like to handle this before starting a new Orchestra session?"
+  options:
+    - label: "Commit and push first (Recommended)"
+      description: "STOP Orchestra — commit your changes and push to remote first, then re-run /orchestra when done"
+    - label: "Proceed without committing"
+      description: "Start the new Orchestra session now; uncommitted changes remain as-is"
+    - label: "Stash changes"
+      description: "Stash current changes via git stash, run Orchestra, then apply stash manually when done"
+```
+
+- **"Commit and push first"** → STOP. Do not archive or write to `orchestra/`. Print: `"Please commit and push your current work, then re-run /orchestra."` Do not proceed further.
+- **"Stash changes"** → Run `git stash push -m "orchestra-pre-session-$(date +%Y%m%d_%H%M%S)"`. Note the stash ref (from `git stash list | head -1`) — log it to `orchestra/progress.md` after the directory is created. Then continue with fresh-start setup.
+- **"Proceed without committing"** → Continue normally.
+
+If both commands return empty output, skip this check silently and proceed.
 
 ---
 
@@ -105,7 +164,7 @@ Apply classification in this order:
    - `trivial` — single file edit, no API changes, no new dependencies
    - `small` — 2–5 files, single domain, clear implementation
    - `medium` — 6+ files, multiple domains, or requires parallel agents
-   - `large` — new feature requiring structured planning (deep-plan-codex chain)
+   - `large` — new feature requiring structured planning (deep-plan chain)
    - `project` — multiple independent features or system decomposition
 3. **Risk classification** — apply the 4-level risk table independently:
    - `low` — read-only changes, docs, tests, UI copy
@@ -162,15 +221,17 @@ Write the chosen value to `orchestra/decision-mode.md`. Never ask again.
 | `trivial` | Direct edit | Conductor edits file directly. No sub-agents. Skip to Step 7. |
 | `small` | Single agent | Build one Task Packet. Skip Step 3. Proceed to Step 4. |
 | `medium` | Multi-agent waves | Full pipeline. Proceed to Step 3. |
-| `large` | deep-plan-codex chain | Read `skills/orchestra/references/skill-pack-integration.md`. Create requirements spec. Write expected artifact paths to `orchestra/backlog.md`. Print handoff instruction. STOP. |
+| `large` | deep-plan chain | Read `skills/orchestra/references/skill-pack-integration.md`. Create requirements spec. Write expected artifact paths to `orchestra/backlog.md`. Print handoff instruction. STOP. |
 | `project` | deep-project decomposition | Read `skills/orchestra/references/skill-pack-integration.md`. Create requirements document. Write `orchestra/backlog.md`. Print handoff instruction. STOP. |
+
+> **Note for `large` scope:** Orchestra **automatically creates** the spec file at `specs/feature/NNN-name/spec.md` from the user's task description — the user does NOT need to write or create it manually. After creating the spec, Orchestra presents a **3-option review gate**: (1) Auto-review — evaluates spec for completeness, clarity, scope, and risks then reports findings; (2) Review myself — displays the spec for the user to read and request changes; (3) Proceed directly to `/deep-plan`. See `skills/orchestra/references/routing-decision.md` for full review logic. For `project` scope, Orchestra auto-creates `requirements.md` and applies the same review gate before routing to `/deep-project`.
 
 **Large scope handoff instruction (print to user):**
 ```
 Requirements spec created at: specs/feature/NNN-name/spec.md
 
 Run this command to begin planning:
-  /deep-plan-codex @specs/feature/NNN-name/spec.md
+  /deep-plan @specs/feature/NNN-name/spec.md
 
 When the deep-plan session is complete, return with:
   /orchestra resume
@@ -412,9 +473,14 @@ Read `skills/orchestra/references/compaction-safety.md` **only** when context st
      snapshot.json: {absolute_path}/orchestra/snapshot.json
      snapshot.md:   {absolute_path}/orchestra/snapshot.md
 
-   To resume after /clear: /orchestra resume
-   To continue in this session: type "continue"
+   ⚠️  IMPORTANT — manual steps required (Orchestra cannot do these automatically):
+     1. Type /clear   ← clears context, must be done by you
+     2. Type /orchestra resume   ← restores state from snapshot
+
+   To continue WITHOUT clearing (same session): type "continue"
    ```
+
+   > **Note:** Orchestra cannot automatically run `/clear` or `/orchestra resume`. These are always manual user actions. Orchestra's role is to take the snapshot and notify — you must perform the `/clear` + `/orchestra resume` steps yourself. Claude Code's auto-compact (context compression) is separate and happens automatically, but may or may not preserve Orchestra's skill instructions — if Orchestra seems unresponsive after auto-compact, run `/orchestra resume` to restore state.
 
 **Canonical `snapshot.json` schema:**
 
@@ -439,12 +505,100 @@ All paths in `key_files` must be **absolute paths**. See `skills/orchestra/refer
 **Repeat or finalize:**
 
 - If more waves remain → return to Step 4 for the next wave.
-- If all waves complete → print final summary:
-  - Files created and modified (with absolute paths)
-  - Quality gate results
-  - Security gate verdict (if triggered)
-  - Auto-approved decisions (with "⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS" header if any HIGH findings were auto-approved)
-  - Remaining items in `orchestra/backlog.md` (if any)
+- If all waves complete → run the **Post-Completion Review** (see below), then print final summary.
+
+---
+
+## Post-Completion Review
+
+**Trigger:** Run when ALL waves complete AND scope is `medium` (risk ≥ medium), `large`, or `project`. Skip for `trivial`, `small`, and `medium` with `low` risk.
+
+**Purpose:** Catch gaps, security issues, missing features, and quality concerns before the session closes — then let the user decide what to address next.
+
+### Review Process
+
+Read the following files to gather signals (do NOT re-scan all source files):
+- `orchestra/plan.md` — original task, scope, affected domains
+- `orchestra/progress.md` — what was completed per wave
+- `orchestra/backlog.md` — known remaining/deferred items
+- `orchestra/decisions.md` — decisions made, especially any deferred ones
+- `orchestra/contracts.md` — interfaces and boundaries defined
+
+Evaluate across **5 dimensions**:
+
+| Dimension | What to check |
+|-----------|--------------|
+| **Completeness** | Did all waves deliver what the original task required? Any items from `backlog.md` not addressed? Any deferred decisions left unresolved? |
+| **Security** | New endpoints/routes without auth checks? Secrets in logs or responses? Missing input validation? Unencrypted sensitive fields? RBAC gaps? |
+| **Quality** | Tests written for new code? Edge cases handled (empty inputs, null, concurrent access)? Error messages exposed to clients? |
+| **Standards** | For this type of feature, what do similar systems typically include that we haven't built? (e.g., audit logging for auth changes, rate limiting for new APIs, pagination for list endpoints) |
+| **Technical debt** | TODOs left in code? Hardcoded values? Commented-out code? Migration left pending? |
+
+### Report Format
+
+Print the review report using this exact format:
+
+```
+═══════════════════════════════════════════════════════════════
+POST-COMPLETION REVIEW
+═══════════════════════════════════════════════════════════════
+Completeness: [COMPLETE | GAPS FOUND]
+Security:     [CLEAN | ISSUES FOUND]
+Quality:      [GOOD | IMPROVEMENTS AVAILABLE]
+Standards:    [COMPLIANT | GAPS FOUND]
+Tech Debt:    [NONE | ITEMS FOUND]
+
+FINDINGS:
+
+🔴 Critical — address before shipping:
+  1. [finding] — [why it matters] — Suggested: [action]
+
+🟡 Recommended — high value, low risk to add:
+  1. [finding] — [why it matters] — Suggested: [action]
+
+🟢 Optional — nice to have:
+  1. [finding] — [benefit] — Suggested: [action]
+
+(If a dimension has no findings, write: ✅ No issues found)
+
+RECOMMENDED NEXT STEPS:
+  1. [highest priority action]
+  2. [second priority action]
+  ...
+═══════════════════════════════════════════════════════════════
+```
+
+### Follow-up Question
+
+After the report, present:
+
+```
+AskUserQuestion:
+  question: "Post-completion review is done. What would you like to do next?"
+  options:
+    - label: "Address critical gaps now"
+      description: "Re-run /orchestra for the 🔴 critical items above"
+    - label: "Choose items to address"
+      description: "I'll tell you which findings to tackle — run /orchestra for those"
+    - label: "Finalize as-is"
+      description: "Implementation is complete — close this session without further changes"
+```
+
+- **"Address critical gaps now"** → Write the critical items to `orchestra/backlog.md` as a new task batch. Print: `"Run /orchestra to address these items."` STOP.
+- **"Choose items to address"** → Ask which numbered findings to tackle. Write selected items to `orchestra/backlog.md`. Print: `"Run /orchestra to address these items."` STOP.
+- **"Finalize as-is"** → Proceed to print the final summary below.
+
+**Note:** If ALL 5 dimensions return clean (no findings), skip the AskUserQuestion and go directly to the final summary. Print: `"✅ Post-completion review: no gaps, security issues, or missing features found."`
+
+### Final Summary (after review)
+
+Print the final summary:
+- Files created and modified (with absolute paths)
+- Quality gate results
+- Security gate verdict (if triggered)
+- Auto-approved decisions (with "⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS" header if any HIGH findings were auto-approved)
+- Post-completion review verdict (CLEAN or summary of findings addressed/deferred)
+- Remaining items in `orchestra/backlog.md` (if any)
 
 ---
 

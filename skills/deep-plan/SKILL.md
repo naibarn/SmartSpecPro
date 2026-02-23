@@ -1,472 +1,543 @@
 ---
 name: deep-plan
-description: Creates detailed, sectionized, TDD-oriented implementation plans through research, stakeholder interviews, and multi-LLM review. Use when planning features that need thorough pre-implementation analysis.
+description: Creates detailed, sectionized, TDD-oriented implementation plans in Codex using a file-based workflow (no Claude TaskList dependency). Use when planning complex features that need thorough pre-implementation analysis.
 license: MIT
-compatibility: Requires uv (Python 3.11+), Gemini or OpenAI API key for external review
+compatibility: "Requires uv (Python 3.11+). Review runs automatically: external LLM when credentials are available, otherwise self-review fallback."
 ---
 
-# Deep Planning Skill
+# Deep Planning Skill (Codex)
 
-Orchestrates a multi-step planning process: Research → Interview → External LLM Review → TDD Plan
+Codex-adapted workflow: Research -> Interview -> Automated Review -> TDD Plan -> Section Split.
+
+This skill is a conversion of `deep-plan` to run without Claude-only task features.
 
 ## CRITICAL: First Actions
 
-**BEFORE using any other tools**, do these in order:
+### 1) Print Intro and Validate Environment
 
-### 1. Print Intro and Validate Environment
+Print this banner first:
 
-Print intro banner immediately:
-```
+```text
 ⚠️  CONTEXT WARNING: This workflow is token-intensive. Consider compacting first.
 
 ═══════════════════════════════════════════════════════════════
-DEEP-PLAN: AI-Assisted Implementation Planning
+DEEP-PLAN (CODEX): AI-Assisted Implementation Planning
 ═══════════════════════════════════════════════════════════════
-Research → Interview → External LLM Review → TDD Plan
-
-DEEP-PLAN starts by running `validate-env.sh`. This script:
-  - Checks env for external LLM auth values
-  - Validates external LLM access by running tiny prompt(s) programmatically
-
-SECURITY:
-  - `validate-env.sh` reads secret auth values in order to validate LLM access
-  - It never publishes these values or exposes them to claude
-  
- Note: DEEP-PLAN will write many .md files to the planning directory you pass it
+Research -> Interview -> Automated Review -> TDD Plan
 ```
 
-**Find and run validate-env.sh:**
+Then find and run validator:
+
 ```bash
 find "$(pwd)" -path "*/deep_plan/scripts/checks/validate-env.sh" -type f 2>/dev/null | head -1
-```
-
-```bash
 bash <script_path>
 ```
 
-**Parse the JSON output:**
-```json
-{
-  "valid": true,
-  "errors": [],
-  "warnings": [],
-  "gemini_auth": "api_key",
-  "openai_auth": true,
-  "plugin_root": "/path/to/plugin"
-}
-```
+Parse JSON output and store:
+- `plugin_root`
+- `gemini_auth`
+- `openai_auth`
+- `valid`, `errors`, `warnings`
 
-**Store `plugin_root`** - it's used throughout the workflow.
-
-### 2. Handle Environment Errors
+### 2) Handle Environment Errors and Resolve Review Mode
 
 If `valid == false`:
-- Show the errors to the user
+- show errors to user
+- stop only on critical errors:
+  - `uv not installed`
+  - plugin root cannot be resolved
 
-**If errors are critical** (uv not installed, plugin root not found):
-- Stop the workflow. User must fix these before proceeding.
+Review is mandatory and automatic:
+- If any external review credential is available (`gemini_auth` or `openai_auth`), set `review_mode=external_llm`.
+- If external credentials are missing/invalid, set `review_mode=self_review` automatically.
+- Do not ask user to choose between external vs self review.
 
-**If errors are ONLY about missing LLM credentials** (gemini_auth is null AND openai_auth is false):
-```
-AskUserQuestion:
-  question: "No external LLMs configured. How should plan review be handled?"
-  options:
-    - label: "Use Claude Opus for review (Recommended)"
-      description: "Launch an Opus subagent to review the plan"
-    - label: "Exit to configure LLMs"
-      description: "Stop to set up Gemini/OpenAI credentials"
-    - label: "Skip external review"
-      description: "Proceed without any external plan review"
-```
+### 3) Validate Spec File Input
 
-**Store the choice as `review_mode`:**
-- "Use Claude Opus" → `review_mode = "opus_subagent"`
-- "Skip external review" → `review_mode = "skip"`
-- Default (LLMs available) → `review_mode = "external_llm"`
+This skill requires a markdown spec file path ending with `.md`.
 
-```
-Environment validated:
-  Gemini: {gemini_auth or "not configured"}
-  OpenAI: {openai_auth ? "configured" : "not configured"}
-  Review mode: {review_mode}
-```
+If missing or invalid, output:
 
-### 3. Validate Spec File Input
-
-**Check if user provided @file at invocation AND it's a spec file (ends with `.md`).**
-
-If NO @file was provided OR the path doesn't end with `.md`, output this and STOP:
-```
+```text
 ═══════════════════════════════════════════════════════════════
 DEEP-PLAN: Spec File Required
 ═══════════════════════════════════════════════════════════════
 
-This skill requires a markdown spec file path (must end with .md).
-The planning directory is inferred from the spec file's parent directory.
-
-To start a NEW plan:
-  1. Create a markdown spec file describing what you want to build
-  2. It can be as detailed or as vague as you like
-  3. Place it in a directory where deep-plan can save planning files
-  4. Run: /deep-plan @path/to/your-spec.md
-
-To RESUME an existing plan:
-  1. Run: /deep-plan @path/to/your-spec.md
-
-Example: /deep-plan @planning/my-feature-spec.md
+Run with a markdown spec file:
+  /deep-plan @path/to/your-spec.md
 ═══════════════════════════════════════════════════════════════
 ```
-**Do not continue. Wait for user to re-invoke with a .md file path.**
 
-### 4. Setup Planning Session
+Stop and wait for re-invocation.
 
-**First, check for session_id in your context.** Look for `DEEP_SESSION_ID=xxx`
-which was set by the SessionStart hook. This appears in your context from when
-the session started.
+### 4) Setup Planning Session (Codex Mode)
 
-Run setup-planning-session.py with the spec file, plugin root, review mode, and session ID:
+Run:
+
 ```bash
-uv run {plugin_root}/scripts/checks/setup-planning-session.py \
+python3 {plugin_root}/scripts/checks/setup-codex-session.py \
   --file "<file_path>" \
   --plugin-root "{plugin_root}" \
-  --review-mode "{review_mode}" \
-  --session-id "{DEEP_SESSION_ID}"
+  --review-mode "{review_mode}"
 ```
 
-**IMPORTANT:** If `DEEP_SESSION_ID` is in your context, you MUST pass it via
-`--session-id`. This ensures tasks work correctly after `/clear` commands.
-If it's not in your context, omit `--session-id` (fallback to env var).
+Parse JSON output:
+- `planning_dir`
+- `mode` (`new` or `resume`)
+- `resume_from_step`
+- `message`
+- `files_found`
 
-Note: `review_mode` is from Step 2. If LLMs are available, use `external_llm` (or omit the flag).
+If `success == false`, show error and stop.
 
-**Parse the JSON output:**
+Status message format:
 
-This script:
-1. Validates the spec file exists and has content
-2. Creates `deep_plan_config.json` in the planning directory with `plugin_root`, `planning_dir`, and `initial_file`
-3. Detects whether this is a new or resume session
-4. Writes task files directly to `~/.claude/tasks/<task_list_id>/`
-5. If `sections/index.md` exists, also writes section tasks (positions 22+)
-
-**If `success == false`:** The script failed validation. Display the error and stop:
-```
-═══════════════════════════════════════════════════════════════
-DEEP-PLAN: Setup Failed
-═══════════════════════════════════════════════════════════════
-Error: {error}
-
-Please fix the issue and re-run: /deep-plan @path/to/your-spec.md
-═══════════════════════════════════════════════════════════════
-```
-**Do not continue. Wait for user to fix the issue and re-invoke.**
-
-Common errors:
-- "Spec file not found" → User provided a path to a file that doesn't exist
-- "Spec file is empty" → User provided an empty file with no content
-- "Expected a spec file, got a directory" → User provided a directory path instead of a file
-
-**Handle conflict (if present):**
-
-If `conflict` is present in output, this means `CLAUDE_CODE_TASK_LIST_ID` was set and the task list already has tasks. Use `AskUserQuestion`:
-- Question: "CLAUDE_CODE_TASK_LIST_ID is set to '{task_list_id}' which already contains {existing_task_count} tasks. Proceeding will overwrite these tasks with the deep-plan workflow. Continue?"
-- Options:
-  - "Proceed and overwrite existing tasks" - Re-run with `--force` flag
-  - "Exit" - Stop here, user can unset CLAUDE_CODE_TASK_LIST_ID and retry
-
-If user chooses "Exit": Stop and tell user to `unset CLAUDE_CODE_TASK_LIST_ID`
-If user chooses "Proceed": Re-run setup-planning-session.py with `--force` flag added.
-
-**Handle no task list ID (mode == "no_task_list"):**
-
-If `mode == "no_task_list"`, this is a **fatal error**. The workflow cannot proceed without a task list ID. Use `AskUserQuestion`:
-
-```
-Question: "Cannot proceed: No task list ID available. The SessionStart hook may not have run. How would you like to proceed?"
-Options:
-  - "Start a fresh session" (Recommended) - Exit Claude and start a new session
-  - "Show troubleshooting steps" - Display the error_details.troubleshooting steps
-```
-
-If user chooses "Start a fresh session":
-```
-Please exit this Claude session and start a new one. The SessionStart hook
-will capture the session ID on startup.
-
-Command: claude --plugin-dir <plugin_path>
-```
-
-If user chooses "Show troubleshooting steps": Display each item from `error_details.troubleshooting` and STOP.
-
-**DO NOT PROCEED** past step 4 if this error occurs.
-
-**Verify tasks are visible:**
-
-After the script completes successfully, run `TaskList` to verify the workflow tasks are visible. The output `tasks_written` shows how many task files were written.
-
-**Reading session context:** After task writing, the task list includes context tasks with values in their subjects:
-- `plugin_root=...` - extract path after `=`
-- `planning_dir=...` - extract path after `=`
-- `initial_file=...` - extract path after `=`
-- `review_mode=...` - extract value after `=`
-
-Print status:
-```
+```text
 Planning directory: {planning_dir}
 Mode: {mode}
 ```
 
-If `mode == "resume"`:
-```
-Resuming from step {resume_from_step}
-To start fresh, delete the planning directory files.
-```
+If `mode == "resume"`, continue from `resume_from_step`.
 
-If resuming, **skip to step {resume_from_step}** in the workflow below.
+Persist selected review mode:
+- Write `<planning_dir>/review-mode.md` with chosen mode and reason.
 
----
+Artifact naming compatibility:
+- Canonical artifacts use neutral names (`research-notes.md`, `interview-notes.md`, `implementation-spec.md`, `implementation-plan.md`, etc.).
+- If session output reports pre-existing legacy-named artifacts in `files_found`, treat them as valid equivalents.
+- On resume with legacy-only artifacts, canonicalize to neutral names first:
+  - `claude-research.md` -> `research-notes.md`
+  - `claude-interview.md` -> `interview-notes.md`
+  - `claude-spec.md` -> `implementation-spec.md`
+  - `claude-plan.md` -> `implementation-plan.md`
+  - `claude-plan-tdd.md` -> `implementation-plan-tdd.md`
+  - `claude-integration-notes.md` -> `integration-notes.md`
+- Update intra-plan references after canonicalization so generated outputs keep using neutral names.
+- Keep backward compatibility in tooling by accepting both name sets for discovery/resume.
 
-### Workflow
+### 4.1) Existing Plan Detection and Planning Intent (Required on Resume/Existing Plan)
 
-**Note:** All scripts use `{plugin_root}` from step 1's validate-env.sh output.
+Detect existing planning artifacts in `<planning_dir>`:
+- `implementation-plan.md`
+- `implementation-plan-tdd.md`
+- `sections/index.md`
 
-### 6. Research Decision
+If any exist (or `mode == "resume"`), resolve planning intent:
+- If `<planning_dir>/planning-intent.md` already exists and user did not request changing it this turn, reuse it and do not ask again.
+- Otherwise ask user with a single-choice prompt:
+  - `resume_progress` = Resume from current progress
+  - `improve_existing_plan` = Improve existing plan (Recommended when requirements changed)
+  - `rebuild_from_spec` = Rebuild plan from spec (archive old plan files first)
 
-Read `{plugin_root}/skills/deep-plan/references/research-protocol.md` for details.
+Write selection to:
+- `<planning_dir>/planning-intent.md`
 
-1. Read the spec file (find task with subject starting with `initial_file=` and extract path)
-2. Extract potential research topics from the spec content (technologies, patterns, integrations)
-3. Ask user about codebase research needs (existing code to analyze?)
-4. Ask user about web research needs (present derived topics as multi-select options)
-5. Record which research types to perform in step 7
+Use values:
+- `resume_progress`
+- `improve_existing_plan`
+- `rebuild_from_spec`
 
-**Always include testing** - either research existing test setup (codebase) or ask about preferences (new project).
+If `planning_intent == improve_existing_plan`:
+- run a fresh interview round focused on deltas and unresolved decisions
+- allow user to answer previous questions again (full or delta scope)
+- write transcript to `<planning_dir>/interview-refresh.md`
+- merge/append into `<planning_dir>/interview-notes.md` with clear timestamps
+- regenerate downstream artifacts from step 10 onward (`implementation-spec.md`, `implementation-plan.md`, reviews, TDD plan, sections)
 
-### 7. Execute Research
+If `planning_intent == rebuild_from_spec`:
+- archive existing plan artifacts into `<planning_dir>/archive/<timestamp>/`
+- restart generation from step 6 with current spec and latest interview answers
 
-Read `{plugin_root}/skills/deep-plan/references/research-protocol.md` for details.
+### 5) Decision Style Handshake (Required)
 
-Based on decisions from step 6, launch research subagents:
-- **Codebase research:** `Task(subagent_type=Explore)`
-- **Web research:** `Task(subagent_type=web-search-researcher)`
+Before running step 6+, resolve decision style:
+- If `<planning_dir>/decision-mode.md` exists and user did not request changing mode this turn, reuse it and do not ask again.
+- Otherwise ask user with a single-choice prompt:
+  - `ask_every_choice` = Ask on every multi-option decision
+  - `smart_auto` = Smart auto-decide (Recommended)
+  - `auto_by_default` = Auto-decide by default, ask only for critical risk
 
-If both are needed, launch both Task tools in parallel (single message with multiple tool calls).
+Store as `decision_mode` for this run and write:
+- `<planning_dir>/decision-mode.md`
 
-**Important:** Subagents return their findings - they do NOT write files directly. After collecting results from all subagents, combine them and write to `<planning_dir>/claude-research.md`.
+Use values:
+- `ask_every_choice`
+- `smart_auto`
+- `auto_by_default`
 
-Skip this step entirely if user chose no research in step 6.
+## Workflow
 
-### 8. Detailed Interview
+All generated files are saved in `planning_dir`.
 
-Read `{plugin_root}/skills/deep-plan/references/interview-protocol.md` for details.
+## Decision Policy (Applies to All Steps)
 
-Run in main context (AskUserQuestion requires it). The interview should be informed by:
-- The initial spec (from `initial_file`)
-- Research findings (from step 7, if any research was done)
+Whenever a step has multiple valid implementation options:
 
-### 9. Save Interview Transcript
+1) Evaluate option impact first:
+- `high-impact`: architecture, data model, migration/destructive behavior, security posture changes, major UX behavior changes, large scope/cost changes.
+- `low-impact`: formatting, ordering, naming, minor reversible process choices.
 
-Write Q&A to `<planning_dir>/claude-interview.md`
+2) Apply `decision_mode`:
+- `ask_every_choice`:
+  - always ask user with numbered options.
+- `smart_auto`:
+  - ask user for `high-impact` options.
+  - auto-decide `low-impact` options with concise rationale.
+- `auto_by_default`:
+  - auto-decide both low/high impact.
+  - ask user only if destructive/irreversible risk is present or confidence is low.
 
-### 10. Write Initial Spec
+3) Always log decisions:
+- Write/update `<planning_dir>/decision-log.md` with:
+  - step
+  - options considered
+  - decision taken
+  - mode used (`asked` or `auto`)
+  - rationale
 
-Combine into `<planning_dir>/claude-spec.md`:
-- **Initial input** (read the file from task with subject `initial_file=...`)
-- **Research findings** (if step 7 was done)
-- **Interview answers** (from step 8)
+4) Adaptive preference:
+- If user repeatedly responds with quick numeric confirmations, bias toward more automation within current mode.
+- If user requests more control/detail, bias toward more prompts.
+- User can override anytime with:
+  - `ask mode`
+  - `smart auto`
+  - `auto mode`
 
-This synthesizes the user's raw requirements into a complete specification.
+## Question UX Rules (Required)
 
-### 11. Generate Implementation Plan
+When asking users for decisions or interview refresh input:
+- Ask one compact prompt at a time for related fields (avoid multi-message repetition).
+- Never use nested numbered option lists (this causes confusing duplicate numbering).
+- Prefer option codes/keywords (`full`, `delta`, `keep`, `all`) over sub-numbering.
+- Reuse previously answered values from planning files; do not ask the same field twice unless user asked to revise it.
+- If some fields are already known, ask only unresolved fields.
+- For improvement mode, use a single response template in one message.
 
-Read `{plugin_root}/skills/deep-plan/references/plan-writing.md` before writing anything.
+## Two-Stage Question Flow (Required)
 
-Create detailed plan → `<planning_dir>/claude-plan.md`
+Use strictly separated questioning phases:
 
-**CRITICAL CONSTRAINTS** (from plan-writing.md):
-- Plans are **prose documents**, not code
-- **ZERO full function implementations** - that's deep-implement's job
+### Stage A: Early Intake (Before rewriting plan artifacts)
+- Goal: collect only inputs needed to update scope/direction.
+- Ask in step-by-step order:
+  1. `answer_mode` (`full` | `delta` | `keep`)
+  2. `changes` (what changed from current plan)
+  3. `gaps` (what is missing/weak)
+  4. `focus` (`security` | `migration` | `tests` | `all`)
+- Do not ask recommendation/application decisions in Stage A.
 
-Write for an unfamiliar reader. The plan must be fully self-contained - an engineer or LLM with no prior context should understand *what* we're building, *why*, and *how* just from reading this document. But it does not need to see full code implementations
+### Stage B: Late Uplift Decisions (After writing `implementation-plan.md`)
+- Goal: present recommended improvements and let user decide adoption.
+- Ask only after `plan-uplift.md` exists.
+- Present a concise recommended list first, then ask decision:
+  - apply all
+  - select items
+  - keep current plan
+- If `decision_mode` is auto-capable, auto-apply low-impact items and ask only high-impact items.
 
-### 12. Context Check (Pre-External Review)
+Transition rule:
+- Complete Stage A intake before plan rewrite.
+- Complete Stage B decisions before proceeding to review integration.
+
+## Parallel Execution Policy (Codex)
+
+Use `multi_tool_use.parallel` automatically when operations are independent and low-risk.
+
+### A) Auto-Parallel (use `multi_tool_use.parallel`)
+- Read-only repository discovery:
+  - file listing, text search, reading docs/code, git read-only inspection.
+- Independent analysis checks that do not mutate shared state.
+- Running multiple web searches in parallel when web research is selected.
+
+### B) Do NOT Parallelize (run sequentially)
+- Any file writes/edits.
+- Planning artifacts generation and updates (`*.md` planning artifacts, `sections/*.md`).
+- Git write operations (`add`, `commit`, `merge`, branch changes).
+- DB/schema operations or migration commands.
+- Any operation where ordering affects correctness.
+
+### C) Risk Rule
+- If uncertain whether tasks are independent, treat as risky and run sequentially.
+- If parallel execution causes contention or inconsistent findings, rerun sequentially and log rationale in `<planning_dir>/decision-log.md`.
+
+### 6) Mandatory Codebase Recon (Before Plan Writing)
+
+Read `references/research-protocol.md`.
+
+Before any planning artifacts are written, always run repository research for impacted areas:
+- existing architecture and module boundaries
+- touched routers/services/components and integration touchpoints
+- existing tests and coverage gaps in impacted paths
+- database schema/table dependencies and migration risk
+- tenant attribution, permission checks, and security controls in current code
+
+Execution rules:
+- Use `multi_tool_use.parallel` for independent read-only discovery tasks.
+- Keep all file writes sequential.
+- If destructive or data-loss risk is detected, mark it explicitly.
+
+Write findings to:
+- `<planning_dir>/research-notes.md` (section: `Codebase Recon`)
+
+### 7) Mandatory Web Research Topic Selection + Execution
+
+After step 6, derive a focused list of web research topics from:
+- spec scope
+- codebase recon findings
+- known uncertainty/risk areas (security, migration, compatibility, performance, UX)
+
+Then present a concise multi-select prompt to user with numbered options (single-level list only):
+- allow selecting multiple topics
+- allow `apply_all`
+- allow `skip` when user wants no additional web research
+
+Required behavior:
+- Do not skip topic proposal; always show candidate topics first.
+- If user selects any topic, run web research and capture sources with short rationale per topic.
+- If user selects `skip`, continue with codebase findings only and record that decision.
+
+Write/append output to:
+- `<planning_dir>/research-notes.md` (section: `Web Research`)
+
+### 8) Detailed Interview
+
+Read `references/interview-protocol.md`.
+
+Run Q&A in main thread. Keep questions concrete and implementation-oriented.
+
+If `planning_intent == improve_existing_plan`:
+- include change-focused questions first (what changed, what failed, what is missing)
+- run Stage A intake prompt (single message) using this template:
+  - `answer_mode`: `full` | `delta` | `keep`
+  - `changes`: `<what changed>`
+  - `gaps`: `<what is missing/weak>`
+  - `focus`: `security` | `migration` | `tests` | `all`
+- reflect this choice in interview transcript and decision log
+
+### 9) Save Interview Transcript
+
+Write:
+- `<planning_dir>/interview-notes.md`
+
+### 10) Write Initial Spec
+
+Synthesize into:
+- `<planning_dir>/implementation-spec.md`
+
+Use:
+- original input spec file
+- `research-notes.md` (if created)
+- interview answers
+
+### 11) Generate Implementation Plan
+
+Read `references/plan-writing.md`.
+
+Write:
+- `<planning_dir>/implementation-plan.md`
+
+Hard constraints:
+- prose only
+- no full function/class implementations
+
+Required risk and safety content in `implementation-plan.md`:
+- Impact map for existing features likely to regress.
+- Regression prevention strategy (tests, canary/rollout, monitoring, ownership).
+- Data safety strategy for any DB-impacting change:
+  - explicit risk classification (`none` / `low` / `high`).
+  - pre-migration backup plan when risk is not `none`.
+  - restore/rollback runbook with trigger conditions and verification.
+  - non-destructive migration-first approach (`expand -> migrate/backfill -> contract`).
+  - automated migration/backfill steps and post-migration consistency checks.
+- Compatibility notes so existing functionality continues working unless explicitly changed.
+- If no DB risk exists, plan must state why backup/restore is not required for this scope.
+
+### 11.1) Plan Quality Uplift Checkpoint (Required)
+
+Immediately after creating `implementation-plan.md`, run a quality-uplift pass.
+
+Create:
+- `<planning_dir>/plan-uplift.md`
+
+Uplift checklist:
+- missing edge cases or failure-mode handling
+- unclear acceptance criteria or weak verification scope
+- rollout/rollback gaps
+- migration/backfill/data integrity gaps
+- security hardening and tenant-isolation gaps
+- backward-compatibility and regression-risk gaps
+- observability/monitoring/alerting gaps
+
+For each uplift item include:
+- severity (`high` / `medium` / `low`)
+- impact (`high-impact` / `low-impact`)
+- rationale
+- concrete plan delta to apply
+
+Then present uplift items to user and ask whether to apply:
+1. `Apply all recommended uplifts`
+2. `Select uplifts to apply`
+3. `Keep current plan`
+
+This is Stage B question flow:
+- show recommended uplift items first (short list)
+- then ask the single adoption decision
+- only ask follow-up selection details if user chose option 2
+
+Write decision and applied changes to:
+- `<planning_dir>/plan-uplift-decisions.md`
+
+If user accepts any item, update:
+- `<planning_dir>/implementation-plan.md`
+
+### 12) Context Check (Pre-Automated Review)
 
 Run:
+
 ```bash
 uv run {plugin_root}/scripts/checks/check-context-decision.py \
   --planning-dir "<planning_dir>" \
-  --upcoming-operation "External LLM Review"
+  --upcoming-operation "Automated Review"
 ```
 
-Read `{plugin_root}/skills/deep-plan/references/context-check.md` for handling the output.
+If response action is `prompt`, ask user:
+1. Continue
+2. `/clear + re-run`
 
-- If user chooses "Continue", proceed to step 13
-- If user chooses "/clear + re-run", they will restart with fresh context (file-based recovery resumes here)
+If user chooses clear/re-run, stop here.
 
-### 13. External LLM Review
+### 13) Automated Review (Always Required)
 
-Read `{plugin_root}/skills/deep-plan/references/external-review.md` for the full protocol.
+Read `references/external-review.md`.
 
-Check `review_mode` from task with subject `review_mode=...` and follow the appropriate path:
-- `external_llm` → Run review.py script
-- `opus_subagent` → Launch opus-plan-reviewer subagent
-- `skip` → Skip to step 16
+Follow `review_mode`:
+- `external_llm`:
+  - run:
+    ```bash
+    uv run {plugin_root}/scripts/llm_clients/review.py --planning-dir "<planning_dir>" --iteration 1
+    ```
+  - collect files in `<planning_dir>/reviews/`
+  - if external review execution fails or produces no usable review file, fallback immediately to `self_review`
+- `self_review`:
+  - produce `<planning_dir>/reviews/iteration-1-self-review.md`
 
-### 14. Integrate External Feedback
+After review generation, always produce:
+- `<planning_dir>/reviews/iteration-1-summary.md`
 
-Analyze the suggestions in `<planning_dir>/reviews/`.
+Summary requirements:
+- list concrete improvements (severity: `high` / `medium` / `low`)
+- include rationale and affected area
+- include recommended action
+- mark each item as `high-impact` or `low-impact` for decision handling
 
-Remember that you are the authority on what to integrate or not. It's OK if you decide to not integrate anything.
+### 14) Integrate Review Feedback
 
-**Step 1:** Write `<planning_dir>/claude-integration-notes.md` documenting:
-- What suggestions you're integrating and why
-- What suggestions you're NOT integrating and why
+Create:
+- `<planning_dir>/integration-notes.md`
+- `<planning_dir>/review-actions.md`
 
-**Step 2:** Update `<planning_dir>/claude-plan.md` with the integrated changes.
+Document:
+- accepted suggestions and rationale
+- rejected suggestions and rationale
 
-### 15. User Review of Integrated Plan
+For each review improvement item, apply decision handling via `decision_mode`:
+- `ask_every_choice`: ask user for every item.
+- `smart_auto`: ask user for `high-impact` items, auto-decide `low-impact` items with rationale.
+- `auto_by_default`: auto-decide all items unless destructive/irreversible risk exists.
 
-Use AskUserQuestion:
-```
-The plan has been updated with external feedback. You can now review and edit claude-plan.md.
+Always present review improvement summary to user before proceeding, including:
+- what was auto-applied
+- what needs user decision
+- what was deferred and why
 
-If you want Claude's help editing the plan, open a separate Claude session - this session
-is mid-workflow and can't assist with edits until the workflow completes.
+Update:
+- `<planning_dir>/implementation-plan.md`
 
-When you're done reviewing, select "Done" to continue.
-```
+### 15) User Review Checkpoint
 
-Options: "Done reviewing"
+Ask user to review `implementation-plan.md` and confirm:
+- `Done reviewing`
 
-Wait for user confirmation before proceeding.
+Wait for confirmation before continuing.
 
-### 16. Apply TDD Approach
+### 16) Apply TDD Approach
 
-Read `{plugin_root}/skills/deep-plan/references/tdd-approach.md` for details.
+Read `references/tdd-approach.md`.
 
-Verify testing context exists in `claude-research.md`. If missing, research (existing codebase) or recommend (new project). 
+Create:
+- `<planning_dir>/implementation-plan-tdd.md`
 
-Create `claude-plan-tdd.md` mirroring the plan structure with test stubs for each section.
+Mirror plan structure with test stubs and verification criteria.
 
-### 17. Context Check (Pre-Section Split)
+### 17) Context Check (Pre-Section Split)
 
 Run:
+
 ```bash
 uv run {plugin_root}/scripts/checks/check-context-decision.py \
   --planning-dir "<planning_dir>" \
   --upcoming-operation "Section splitting"
 ```
 
-Read `{plugin_root}/skills/deep-plan/references/context-check.md` for handling the output.
+If prompted, ask user Continue vs `/clear + re-run`.
 
-- If user chooses "Continue", proceed to step 18
-- If user chooses "/clear + re-run", they will restart with fresh context (file-based recovery resumes here)
+### 18) Create Section Index
 
-### 18. Create Section Index
+Read `references/section-index.md`.
 
-Read `{plugin_root}/skills/deep-plan/references/section-index.md` for details.
+Create:
+- `<planning_dir>/sections/index.md`
 
-Read `claude-plan.md` and `claude-plan-tdd.md`. Identify natural section boundaries and create `<planning_dir>/sections/index.md`.
+Must start with a valid `SECTION_MANIFEST` block.
 
-**CRITICAL:** index.md MUST start with a SECTION_MANIFEST block. See the reference for format requirements and examples.
+### 19) Prepare Section Execution (Codex)
 
-Write `index.md` before proceeding to section file creation.
+In Codex mode, skip task-list generation and execute directly from manifest:
+- parse section list from `sections/index.md`
+- verify order and dependencies
 
-### 19. Generate and Write Section Tasks
+### 20) Write Section Files
 
-Run generate-section-tasks.py to write section tasks directly to disk:
-```bash
-uv run {plugin_root}/scripts/checks/generate-section-tasks.py \
-  --planning-dir "<planning_dir>" \
-  --session-id "{DEEP_SESSION_ID}"
-```
+Read `references/section-splitting.md`.
 
-**IMPORTANT:** If `DEEP_SESSION_ID` is in your context, you MUST pass it via
-`--session-id`. This ensures tasks work correctly after `/clear` commands.
-If it's not in your context, omit `--session-id` (fallback to env var).
+For each section in manifest, write:
+- `<planning_dir>/sections/<section-name>.md`
 
-**What this script does:**
-1. Reads sections/index.md to get the section list
-2. **INSERTs** batch and section tasks starting at position 19
-3. **SHIFTS** Final Verification and Output Summary to positions after section tasks
-4. Updates all dependencies to reflect new positions
-
-**Handle based on result:**
-- If `success == false`: Read `error` and fix the issue (common: missing/invalid SECTION_MANIFEST in index.md, no DEEP_SESSION_ID). Re-run until successful.
-- If `state == "complete"`: All sections already written, skip to Final Verification.
-- Otherwise: Tasks were written successfully.
-
-**Verify section tasks are visible:**
-
-After the script completes successfully, run `TaskList` to see the updated task structure. The output `tasks_written` shows how many task files were written (section tasks + Final Verification + Output Summary).
-
-Task positions after insertion:
-- Position 19+: Batch and section tasks
-- Final Verification: Position `19 + section_task_count`
-- Output Summary: Position `19 + section_task_count + 1`
-
-Task list includes batch coordination tasks (subjects like "Run batch 1 section subagents") and section tasks (subjects like "Write section-01-setup.md"). Sections are blocked by their batch task, enabling parallel execution within each batch.
-
-### 20. Write Section Files (Parallel Subagents)
-
-Read `{plugin_root}/skills/deep-plan/references/section-splitting.md` for the batch execution loop.
-
-**For each batch:**
-1. Mark batch task in_progress (find by subject "Run batch N section subagents")
-2. Run `generate-batch-tasks.py --batch-num N` → get JSON with `prompt_files` array
-3. Launch Task calls for ALL prompt files in a single message (parallel execution)
-4. Each Task: `subagent_type="section-writer"`, `prompt="Read {prompt_file} and execute the instructions."`
-5. **Wait for all subagents to complete**
-6. **Verify section files were written** (SubagentStop hook writes them automatically)
-7. Mark each section task completed (find by subject "Write {filename}")
-8. Mark batch task completed
-9. If more batches remain, repeat from step 1 with next batch number
-
-**Validation After Each Batch:**
-
-Hooks execute in isolation - Claude doesn't see success/failure. After subagents complete:
+After writing all sections, verify count:
 
 ```bash
-ls {planning_dir}/sections/section-*.md | wc -l
+ls <planning_dir>/sections/section-*.md | wc -l
 ```
 
-Compare count to expected sections. If any files are missing:
-1. Re-run the missing section's subagent
-2. If still failing, fall back to manual: parse subagent response JSON and Write the file
+### 21) Final Status & Cleanup
 
-### 21. Final Status & Cleanup
+Run:
 
-Verify all section files were created successfully by running `check-sections.py` one final time. Confirm state is "complete".
+```bash
+uv run {plugin_root}/scripts/checks/check-sections.py --planning-dir "<planning_dir>"
+```
 
-### 22. Output Summary
+Confirm section state is complete.
 
-Print generated files and next steps.
+### 22) Output Summary
 
----
+List generated files and next steps.
 
 ## Resuming After Compaction
 
-**CRITICAL:** When resuming this workflow after context compaction, the detailed instructions from this file are lost. The task list is preserved but may not have enough detail. Follow these rules:
+When resuming:
+1. Load `deep_plan_config.json` from planning directory
+2. Re-check generated files and infer current step
+3. Check `<planning_dir>/planning-intent.md` if present; otherwise ask planning intent again when existing plan artifacts are found
+4. Continue from the earliest missing prerequisite step
+5. If prerequisites are missing but downstream files exist, regenerate downstream files
+6. If intent is `improve_existing_plan`, re-run interview refresh and regenerate from step 10 onward
 
-1. **ALWAYS read the reference file for your current step before proceeding**
-   - Task descriptions include hints like "(read section-index.md)" - follow them
-   - Reference files are in `{plugin_root}/skills/deep-plan/references/`
-   - Get `plugin_root` from task with subject `plugin_root=...`
-
-2. **NEVER skip steps** - follow the task list exactly in order
-   - If a task says "Run generate-section-tasks.py", run the script
-   - If a task says "use section-writer subagents", use subagents (don't write files directly)
-   - You can always re-read in the /deep-plan skill if unsure
-
-3. **If message says "MISSING PREREQUISITE"** - a required file is missing but later files exist
-   - This means a step was skipped but later steps ran anyway
-   - Resume from the indicated step and **OVERWRITE any subsequent files**
-   - Example: if `claude-plan-tdd.md` is missing but `sections/index.md` exists, create the TDD plan, then recreate the index (the old index was made without TDD context)
-
-4. **Key reference files by step:**
-   - Step 6-7: `research-protocol.md`
-   - Step 8: `interview-protocol.md`
-   - Step 11: `plan-writing.md`
-   - Step 13: `external-review.md`
-   - Step 16: `tdd-approach.md`
-   - Step 18: `section-index.md` (CRITICAL - has required format)
-   - Step 20: `section-splitting.md` (subagent workflow)
+Priority reference files:
+- `references/research-protocol.md`
+- `references/interview-protocol.md`
+- `references/plan-writing.md`
+- `references/external-review.md`
+- `references/tdd-approach.md`
+- `references/section-index.md`
+- `references/section-splitting.md`
