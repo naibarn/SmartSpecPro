@@ -24,6 +24,7 @@ export default defineConfig({
       ["client/src/**/*.test.tsx", "jsdom"],
     ],
     include: [
+      "drizzle/*.test.ts",
       "server/**/*.test.ts",
       "server/**/*.spec.ts",
       "client/src/**/*.test.ts",

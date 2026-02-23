@@ -246,6 +246,20 @@
       "when": 1771741705208,
       "tag": "0034_parched_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1771855228514,
+      "tag": "0035_round_preak",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1771855984106,
+      "tag": "0036_nosy_timeslip",
+      "breakpoints": true
     }
   ]
 }

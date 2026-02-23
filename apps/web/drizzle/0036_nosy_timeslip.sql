@@ -1,0 +1,2 @@
+ALTER TABLE "presentation_exports" ALTER COLUMN "format" SET DATA TYPE varchar(16);--> statement-breakpoint
+CREATE INDEX "presentation_exports_tenant_status_idx" ON "presentation_exports" USING btree ("tenant_id","status");

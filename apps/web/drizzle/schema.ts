@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -1720,6 +1720,22 @@ export type InsertLibraryIndexJob = typeof libraryIndexJobs.$inferInsert;
 // Presentation Editing Tables
 // ============================================================
 
+// Audio track shapes stored in JSON columns.
+// Zod validation is in shared/presentation/contracts.ts (Section 02).
+export type SlideAudioTrackJson = {
+  libraryItemId: number;
+  volume: number;       // 0.0 – 1.0
+  startAtMs: number;    // default 0
+  endAtMs: number | null; // null = play to natural end
+};
+
+export type DeckAudioTrackJson = {
+  libraryItemId: number;
+  volume: number;       // 0.0 – 1.0
+  loop: boolean;
+  fadeOutMs: number | null;
+};
+
 export const presentationDecks = pgTable("presentation_decks", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
@@ -1729,6 +1745,7 @@ export const presentationDecks = pgTable("presentation_decks", {
   version: integer("version").notNull().default(1),
   slideCount: integer("slide_count").notNull().default(0),
   totalAssetBytes: integer("total_asset_bytes").notNull().default(0),
+  projectAudioTrack: json("project_audio_track").$type<DeckAudioTrackJson | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -1748,6 +1765,7 @@ export const presentationSlides = pgTable("presentation_slides", {
   version: integer("version").notNull().default(1),
   title: varchar("title", { length: 255 }).notNull().default("Slide"),
   slideContent: json("slide_content").$type<Record<string, any>>().notNull().default({}),
+  audioTrack: json("audio_track").$type<SlideAudioTrackJson | null>(),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -1848,6 +1866,62 @@ export const presentationConversionLocks = pgTable("presentation_conversion_lock
 
 export type PresentationConversionLock = typeof presentationConversionLocks.$inferSelect;
 export type InsertPresentationConversionLock = typeof presentationConversionLocks.$inferInsert;
+
+// ============================================================
+// Presentation Export Jobs
+// ============================================================
+
+export const presentationExports = pgTable("presentation_exports", {
+  id: serial("id").primaryKey(),
+
+  // FK to deck — cascade delete (export history gone when deck is deleted)
+  deckId: integer("deck_id")
+    .notNull()
+    .references(() => presentationDecks.id, { onDelete: "cascade" }),
+
+  // FK to user — set null (preserve export audit trail if user is deleted)
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+
+  tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+
+  // Export parameters
+  format: varchar("format", { length: 16 }).notNull(),         // png | jpg | pdf | mp4
+  quality: varchar("quality", { length: 12 }),                 // draft | standard | high
+  width: integer("width").notNull().default(1920),
+  height: integer("height").notNull().default(1080),
+  fps: integer("fps"),                                         // MP4 only; default 30 in Python task
+
+  // Job lifecycle
+  status: varchar("status", { length: 16 }).notNull().default("queued"),
+  // queued | processing | done | error | cancelled
+  progressPct: integer("progress_pct").notNull().default(0),   // 0 – 100
+  stage: varchar("stage", { length: 64 }),                     // e.g. "rendering", "encoding", "uploading"
+  errorMessage: text("error_message"),
+
+  // Output
+  outputUrl: text("output_url"),                               // 24-hour presigned S3/R2 download URL
+  outputStorageKey: text("output_storage_key"),                // raw S3 key; used to re-presign if expired
+  outputBytes: bigint("output_bytes", { mode: "number" }),
+
+  // Celery bridge
+  celeryTaskId: varchar("celery_task_id", { length: 255 }),
+
+  // Deduplication (unique constraint enforced below)
+  idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("presentation_exports_idempotency_key_unique").on(t.idempotencyKey),
+  index("presentation_exports_deck_idx").on(t.deckId),
+  index("presentation_exports_user_idx").on(t.userId),
+  index("presentation_exports_tenant_idx").on(t.tenantId),
+  index("presentation_exports_celery_task_idx").on(t.celeryTaskId),
+  index("presentation_exports_tenant_status_idx").on(t.tenantId, t.status),
+]);
+
+export type PresentationExport = typeof presentationExports.$inferSelect;
+export type InsertPresentationExport = typeof presentationExports.$inferInsert;
 
 // ============================================================
 // Google Drive Integration Tables
