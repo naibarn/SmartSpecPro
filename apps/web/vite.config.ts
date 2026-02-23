@@ -81,6 +81,18 @@ export default defineConfig({
           ) {
             return "vendor-canvas";
           }
+          // CodeMirror editor + language extensions (pulled in by DocumentManagement)
+          if (
+            id.includes("node_modules/@uiw/react-codemirror/") ||
+            id.includes("node_modules/@codemirror/") ||
+            id.includes("node_modules/codemirror/")
+          ) {
+            return "vendor-codemirror";
+          }
+          // Excel processing (xlsx is large — ~600 kB)
+          if (id.includes("node_modules/xlsx/")) {
+            return "vendor-xlsx";
+          }
         },
       },
     },

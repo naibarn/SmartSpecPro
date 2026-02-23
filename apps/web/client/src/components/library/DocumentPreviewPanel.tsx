@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,11 +6,12 @@ import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentMan
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { trpc } from "@/lib/trpc";
 import { Check, ExternalLink, Pencil, X } from "lucide-react";
-import MarkdownFileEditor from "./MarkdownFileEditor";
-import CodeViewer from "./CodeViewer";
-import CSVViewer from "./CSVViewer";
-import JSONViewer from "./JSONViewer";
-import ExcelViewer from "./ExcelViewer";
+// Heavy viewer components — lazy-loaded so they don't bloat the initial DocumentManagement chunk
+const MarkdownFileEditor = lazy(() => import("./MarkdownFileEditor"));
+const CodeViewer = lazy(() => import("./CodeViewer"));
+const CSVViewer = lazy(() => import("./CSVViewer"));
+const JSONViewer = lazy(() => import("./JSONViewer"));
+const ExcelViewer = lazy(() => import("./ExcelViewer"));
 import { ShareButton } from "./ShareButton";
 import { ShareDialog } from "./ShareDialog";
 
@@ -237,18 +238,20 @@ export default function DocumentPreviewPanel({
       </div>
 
       {previewType === "markdown" ? (
-        <MarkdownFileEditor
-          value={markdownValue || ""}
-          onChange={(value) => onMarkdownChange?.(value)}
-          onSave={() => onMarkdownSave?.()}
-          onVersionRestore={onVersionRestore}
-          updatedAt={markdownUpdatedAt}
-          isSaving={isMarkdownSaving}
-          errorMessage={markdownError}
-          fullHeight={markdownFullHeight}
-          editorOnly={markdownEditorOnly}
-          documentId={documentId}
-        />
+        <Suspense fallback={null}>
+          <MarkdownFileEditor
+            value={markdownValue || ""}
+            onChange={(value) => onMarkdownChange?.(value)}
+            onSave={() => onMarkdownSave?.()}
+            onVersionRestore={onVersionRestore}
+            updatedAt={markdownUpdatedAt}
+            isSaving={isMarkdownSaving}
+            errorMessage={markdownError}
+            fullHeight={markdownFullHeight}
+            editorOnly={markdownEditorOnly}
+            documentId={documentId}
+          />
+        </Suspense>
       ) : null}
 
       {previewType === "image" && sourceUrl ? (
@@ -312,10 +315,12 @@ export default function DocumentPreviewPanel({
       ) : null}
 
       {previewType === "excel" && sourceUrl ? (
-        <ExcelViewer
-          fileUrl={sourceUrl}
-          fileName={item.title}
-        />
+        <Suspense fallback={null}>
+          <ExcelViewer
+            fileUrl={sourceUrl}
+            fileName={item.title}
+          />
+        </Suspense>
       ) : null}
 
       {previewType === "office" && sourceUrl ? (
@@ -346,33 +351,41 @@ export default function DocumentPreviewPanel({
       ) : null}
 
       {previewType === "code" && previewText ? (
-        <CodeViewer
-          code={previewText}
-          language=""
-          fileName={item.title}
-        />
+        <Suspense fallback={null}>
+          <CodeViewer
+            code={previewText}
+            language=""
+            fileName={item.title}
+          />
+        </Suspense>
       ) : null}
 
       {previewType === "csv" && previewText ? (
-        <CSVViewer
-          csvData={previewText}
-          fileName={item.title}
-        />
+        <Suspense fallback={null}>
+          <CSVViewer
+            csvData={previewText}
+            fileName={item.title}
+          />
+        </Suspense>
       ) : null}
 
       {previewType === "json" && previewText ? (
-        <JSONViewer
-          jsonData={previewText}
-          fileName={item.title}
-        />
+        <Suspense fallback={null}>
+          <JSONViewer
+            jsonData={previewText}
+            fileName={item.title}
+          />
+        </Suspense>
       ) : null}
 
       {previewType === "xml" && previewText ? (
-        <CodeViewer
-          code={previewText}
-          language="xml"
-          fileName={item.title}
-        />
+        <Suspense fallback={null}>
+          <CodeViewer
+            code={previewText}
+            language="xml"
+            fileName={item.title}
+          />
+        </Suspense>
       ) : null}
 
       {previewType !== "markdown" &&
