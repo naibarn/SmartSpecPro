@@ -15,9 +15,25 @@ import {
   type PresentationExportStatusResult,
   type PresentationRenderSpec,
   type PresentationSlideshowPayload,
+  type ResolvedAudioTrack,
+  type ResolvedProjectAudioTrack,
 } from "@shared/presentation/contracts";
+import { eq } from "drizzle-orm";
 import type { PresentationDeck, PresentationSlide } from "../../drizzle/schema";
+import { libraryItems } from "../../drizzle/schema";
 
+import { getDb } from "../db";
+import type { DrizzleDB } from "../db";
+import { ENV } from "../_core/env";
+import { signBearerToken } from "../_core/tokens";
+import { storagePresignGet } from "../storage";
+import {
+  createExportRecord,
+  updateExportRecord,
+  getExportRecord,
+  getExportRecordByIdempotencyKey,
+  type CreateExportRecordInput,
+} from "./presentationExportService";
 import {
   getPresentationDeckDetail,
   type PresentationActor,
@@ -61,7 +77,11 @@ interface PresentationExportResultStateRecord {
 
 interface TriggerPresentationExportDependencies {
   getDeckDetail?: (deckId: number, actor: PresentationActor) => Promise<PresentationDeckDetail>;
-  enqueueExportJob?: (renderSpec: PresentationRenderSpec, format: "png" | "mp4") => Promise<{ jobId: string }>;
+  enqueueExportJob?: (
+    renderSpec: PresentationRenderSpec,
+    format: "png" | "jpg" | "pdf" | "mp4",
+    quality?: "draft" | "standard" | "high",
+  ) => Promise<{ jobId: string }>;
   now?: () => number;
   dedupeWindowMs?: number;
   throttleWindowMs?: number;
@@ -88,7 +108,7 @@ interface BuildSlideshowOptions {
 interface BuildRenderSpecInput {
   deck: Pick<PresentationDeck, "id">;
   slides: PresentationSlide[];
-  format: "png" | "mp4";
+  format: "png" | "jpg" | "pdf" | "mp4";
   width?: number;
   height?: number;
   fps?: number;
@@ -96,8 +116,11 @@ interface BuildRenderSpecInput {
 
 export interface TriggerPresentationExportInput {
   deckId: number;
-  format: "png" | "mp4";
-  idempotencyKey?: string;
+  format: "png" | "jpg" | "pdf" | "mp4";
+  quality?: "draft" | "standard" | "high";
+  idempotencyKey: string;
+  width?: number;
+  height?: number;
 }
 
 const dedupeRegistry = new Map<string, PresentationExportStateRecord>();
@@ -110,8 +133,7 @@ function nextId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
-// TODO(section-03): Replace with DB primary key from presentation_exports table.
-// This counter is a stub — IDs reset on server restart and are not persisted.
+// Fallback in-memory ID counter for test environments without a DB connection.
 let exportIdSequence = 0;
 function nextExportId(): number {
   exportIdSequence += 1;
@@ -310,14 +332,124 @@ function resolveDependencies(
   };
 }
 
+/**
+ * Resolve libraryItemId references in audio tracks to presigned GET URLs.
+ * Returns a new render spec with audioTrack.url populated on each slide
+ * and on the projectAudioTrack (if present). The libraryItemId field is
+ * removed from the resolved track.
+ *
+ * Uses 1-hour presigned URLs — sufficient for the 12-minute Celery task limit.
+ */
+async function resolveAudioUrls(
+  renderSpec: PresentationRenderSpec,
+  db: DrizzleDB,
+): Promise<PresentationRenderSpec> {
+  async function resolveUrl(sourceUrl: string | null): Promise<string | null> {
+    if (!sourceUrl) return null;
+    const presigned = await storagePresignGet(sourceUrl, 3600);
+    return presigned?.url ?? sourceUrl;
+  }
+
+  const resolvedSlides = await Promise.all(
+    renderSpec.slides.map(async (slide) => {
+      if (!slide.audioTrack) return slide;
+      // Audio tracks stored in DB may carry a libraryItemId (from AudioTrackInput) before
+      // resolution. The render spec schema types this field as ResolvedAudioTrack (has `url`)
+      // but at runtime an unresolved track will have `libraryItemId` instead.
+      // This mismatch will be fully typed once section-09 finalises the slide audio data model.
+      const hasLibraryItemId =
+        "libraryItemId" in slide.audioTrack &&
+        typeof (slide.audioTrack as Record<string, unknown>).libraryItemId === "number";
+      if (!hasLibraryItemId) return slide;
+      const libraryItemId = (slide.audioTrack as Record<string, unknown>).libraryItemId as number;
+      const [item] = await db
+        .select()
+        .from(libraryItems)
+        .where(eq(libraryItems.id, libraryItemId))
+        .limit(1);
+      const url = await resolveUrl(item?.sourceUrl ?? null);
+      if (!url) return slide;
+      const resolved: ResolvedAudioTrack = {
+        url,
+        volume: slide.audioTrack.volume,
+        startAtMs: slide.audioTrack.startAtMs,
+        endAtMs: slide.audioTrack.endAtMs,
+      };
+      return { ...slide, audioTrack: resolved };
+    }),
+  );
+
+  let resolvedProjectAudioTrack = renderSpec.projectAudioTrack;
+  if (resolvedProjectAudioTrack) {
+    // Same libraryItemId resolution pattern as per-slide tracks above.
+    const hasLibraryItemId =
+      "libraryItemId" in resolvedProjectAudioTrack &&
+      typeof (resolvedProjectAudioTrack as Record<string, unknown>).libraryItemId === "number";
+    if (hasLibraryItemId) {
+      const libraryItemId = (resolvedProjectAudioTrack as Record<string, unknown>)
+        .libraryItemId as number;
+      const [item] = await db
+        .select()
+        .from(libraryItems)
+        .where(eq(libraryItems.id, libraryItemId))
+        .limit(1);
+      const url = await resolveUrl(item?.sourceUrl ?? null);
+      if (url) {
+        resolvedProjectAudioTrack = {
+          url,
+          volume: resolvedProjectAudioTrack.volume,
+          loop: resolvedProjectAudioTrack.loop,
+          fadeOutMs: resolvedProjectAudioTrack.fadeOutMs,
+        } satisfies ResolvedProjectAudioTrack;
+      }
+    }
+  }
+
+  return { ...renderSpec, slides: resolvedSlides, projectAudioTrack: resolvedProjectAudioTrack };
+}
+
 async function defaultEnqueueExportJob(
   renderSpec: PresentationRenderSpec,
-  format: "png" | "mp4",
+  format: "png" | "jpg" | "pdf" | "mp4",
+  quality?: "draft" | "standard" | "high",
 ): Promise<{ jobId: string }> {
-  const jobId = nextId("presentation-job");
-  void renderSpec;
-  void format;
-  return { jobId };
+  const db = await getDb();
+  if (!db) {
+    // No DB configured — return a stub job ID (test/local environment)
+    return { jobId: nextId("presentation-job") };
+  }
+
+  const resolvedSpec = await resolveAudioUrls(renderSpec, db);
+
+  const requestBody = {
+    render_spec: resolvedSpec,
+    format,
+    quality: quality ?? "standard",
+  };
+
+  const token = signBearerToken(
+    { sub: "internal-render-service", scopes: ["internal:render"] },
+    "30m",
+  );
+
+  const response = await fetch(`${ENV.pythonBackendUrl}/api/v1/presentations/export`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: Python export bridge returned HTTP ${response.status}`,
+    );
+  }
+
+  const json = (await response.json()) as { celery_task_id: string };
+  return { jobId: json.celery_task_id };
 }
 
 function ensureRenderSchemaAccepted(
@@ -393,6 +525,7 @@ export async function triggerPresentationExport(
     maxThrottleWindowEntriesPerKey: resolved.maxThrottleWindowEntriesPerKey,
   });
   try {
+    const db = await getDb(); // resolved once and reused throughout this call
     const dedupeKey = resolveDedupeKey(input, actor);
     const dedupeHit = dedupeRegistry.get(dedupeKey);
     if (dedupeHit && nowMs - dedupeHit.createdAtMs <= resolved.dedupeWindowMs) {
@@ -415,6 +548,39 @@ export async function triggerPresentationExport(
       }
 
       dedupeRegistry.delete(dedupeKey);
+    }
+
+    // DB-backed durable deduplication (catches duplicates across server restarts)
+    {
+      if (db) {
+        const existingRecord = await getExportRecordByIdempotencyKey(dedupeKey, db);
+        if (
+          existingRecord &&
+          (existingRecord.status === "queued" || existingRecord.status === "processing")
+        ) {
+          resolved.recordMetric("presentation.export.deduped", { format: input.format });
+          const detail = await resolved.getDeckDetail(input.deckId, actor);
+          const renderSpec = buildPresentationRenderSpec({
+            deck: detail.deck,
+            slides: detail.slides,
+            format: input.format,
+            width: input.width,
+            height: input.height,
+          });
+          return presentationExportResultSchema.parse({
+            schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
+            exportId: existingRecord.id,
+            jobId: existingRecord.celeryTaskId ?? existingRecord.id.toString(),
+            deckId: input.deckId,
+            format: input.format,
+            deduped: true,
+            status: existingRecord.status,
+            message: "Duplicate export suppressed. Existing job is still active.",
+            renderSpec,
+            warnings: [],
+          });
+        }
+      }
     }
 
     enforceThrottle(
@@ -441,6 +607,8 @@ export async function triggerPresentationExport(
       deck: detail.deck,
       slides: detail.slides,
       format: input.format,
+      width: input.width,
+      height: input.height,
     });
     if (renderSpec.warnings.length > 0) {
       resolved.recordMetric("presentation.export.degradation_warning.total", {
@@ -457,8 +625,55 @@ export async function triggerPresentationExport(
     }
     ensureRenderSchemaAccepted(renderSpec, resolved.acceptedRenderSchemaVersions);
 
-    const queued = await resolved.enqueueExportJob(renderSpec, input.format);
-    const exportId = nextExportId();
+    // Create DB record before enqueueing (so we have an ID to return)
+    let exportId: number;
+    let dbRecordId: number | null = null;
+    {
+      if (db) {
+        const record = await createExportRecord(
+          {
+            deckId: input.deckId,
+            userId: actor.userId,
+            tenantId: actor.tenantId,
+            format: input.format,
+            quality: input.quality,
+            width: input.width ?? 1920,
+            height: input.height ?? 1080,
+            idempotencyKey: dedupeKey,
+          },
+          db,
+        );
+        exportId = record.id;
+        dbRecordId = record.id;
+      } else {
+        exportId = nextExportId();
+      }
+    }
+
+    let queued: { jobId: string };
+    try {
+      queued = await resolved.enqueueExportJob(renderSpec, input.format, input.quality);
+    } catch (enqueueError) {
+      // Mark DB record as error if enqueue fails
+      if (dbRecordId !== null && db) {
+        await updateExportRecord(
+          dbRecordId,
+          {
+            status: "error",
+            errorMessage:
+              enqueueError instanceof Error ? enqueueError.message : "Enqueue failed",
+          },
+          db,
+        );
+      }
+      throw enqueueError;
+    }
+
+    // Update DB record with celery task ID
+    if (dbRecordId !== null && db) {
+      await updateExportRecord(dbRecordId, { celeryTaskId: queued.jobId }, db);
+    }
+
     const status = presentationExportStatusResultSchema.parse({
       schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
       exportId,
@@ -533,13 +748,98 @@ export async function triggerPresentationExport(
   }
 }
 
-export function getPresentationExportStatus(
+export async function getPresentationExportStatus(
   exportId: number,
   actor?: PresentationActor,
-): PresentationExportStatusResult {
+): Promise<PresentationExportStatusResult> {
   const defaults = getDefaultStateOptions(Date.now());
   compactExportState(defaults.nowMs, defaults);
 
+  // DB-backed path: query live status from DB and Python if task is in-flight
+  const db = await getDb();
+  if (db) {
+    const record = await getExportRecord(exportId, db);
+    if (!record) {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.NOT_FOUND,
+        `${PRESENTATION_ERROR_CODE.NOT_FOUND}: export ${exportId} was not found`,
+      );
+    }
+    if (actor && (record.tenantId !== actor.tenantId || record.userId !== actor.userId)) {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.PERMISSION_DENIED,
+        `${PRESENTATION_ERROR_CODE.PERMISSION_DENIED}: export status is tenant/user scoped`,
+      );
+    }
+
+    let current = record;
+
+    // Poll Python for live progress if the task is still in-flight
+    if (record.celeryTaskId && (record.status === "queued" || record.status === "processing")) {
+      try {
+        const token = signBearerToken(
+          { sub: "internal-render-service", scopes: ["internal:render"] },
+          "30m",
+        );
+        const response = await fetch(
+          `${ENV.pythonBackendUrl}/api/v1/presentations/export/${record.celeryTaskId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (response.ok) {
+          const json = (await response.json()) as {
+            state?: string;
+            output_url?: string;
+            error_message?: string;
+            percent?: number;
+            stage?: string;
+          };
+          if (json.state === "done" && json.output_url) {
+            const updated = await updateExportRecord(
+              record.id,
+              { status: "done", outputUrl: json.output_url, progressPct: 100 },
+              db,
+            );
+            if (updated) current = updated;
+          } else if (json.state === "error") {
+            const updated = await updateExportRecord(
+              record.id,
+              { status: "error", errorMessage: json.error_message ?? "Task failed" },
+              db,
+            );
+            if (updated) current = updated;
+          } else if (json.percent != null || json.stage != null) {
+            const updated = await updateExportRecord(
+              record.id,
+              {
+                status: "processing",
+                progressPct: json.percent ?? record.progressPct,
+                stage: json.stage ?? record.stage,
+              },
+              db,
+            );
+            if (updated) current = updated;
+          }
+        }
+      } catch {
+        // Python call failed — use existing DB state; do not throw
+      }
+    }
+
+    return presentationExportStatusResultSchema.parse({
+      schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
+      exportId: current.id,
+      status: current.status,
+      format: current.format,
+      progressPct: current.progressPct,
+      stage: current.stage,
+      downloadUrl: current.outputUrl,
+      errorMessage: current.errorMessage,
+      updatedAt: current.updatedAt,
+      warnings: [],
+    });
+  }
+
+  // In-memory fallback (test environments without a DB connection)
   const status = statusRegistry.get(exportId)?.value;
   if (!status) {
     throw new PresentationServiceError(

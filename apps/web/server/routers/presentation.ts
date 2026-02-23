@@ -270,8 +270,11 @@ export const presentationRouter = router({
   triggerExport: protectedProcedure
     .input(z.object({
       deckId: z.number().int().positive(),
-      format: z.enum(["png", "mp4"]),
-      idempotencyKey: z.string().min(1).max(128).optional(),
+      format: z.enum(["png", "jpg", "pdf", "mp4"]),
+      quality: z.enum(["draft", "standard", "high"]).optional(),
+      idempotencyKey: z.string().min(1).max(128),
+      width: z.number().int().positive().optional(),
+      height: z.number().int().positive().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -293,7 +296,7 @@ export const presentationRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         ensureFeatureEnabled();
-        return getPresentationExportStatus(input.exportId, toPresentationActor(ctx));
+        return await getPresentationExportStatus(input.exportId, toPresentationActor(ctx));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

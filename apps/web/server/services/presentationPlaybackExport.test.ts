@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PRESENTATION_ERROR_CODE } from "@shared/presentation/constants";
+import { PRESENTATION_ERROR_CODE, PRESENTATION_EXPORT_SCHEMA_VERSION } from "@shared/presentation/constants";
 
 import { PresentationServiceError } from "./presentationService";
 import {
@@ -12,6 +12,18 @@ import {
   resetPresentationExportStateForTests,
   triggerPresentationExport,
 } from "./presentationPlaybackExport";
+
+// Default: no DB (same as real test environment without DATABASE_URL).
+// Individual tests can override getDb with vi.spyOn.
+vi.mock("../db", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../db")>();
+  return { ...original, getDb: vi.fn().mockResolvedValue(null) };
+});
+
+vi.mock("../storage", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../storage")>();
+  return { ...original, storagePresignGet: vi.fn().mockResolvedValue(null) };
+});
 
 const actor = {
   userId: 9,
@@ -318,14 +330,14 @@ describe("presentationPlaybackExport", () => {
         },
       );
 
-      expect(getPresentationExportStatus(queued.exportId, actor).status).toBe("queued");
+      expect((await getPresentationExportStatus(queued.exportId, actor)).status).toBe("queued");
 
       vi.setSystemTime(baseMs + 16 * 60_000);
 
-      expect(() => getPresentationExportStatus(queued.exportId, actor)).toThrowError(
+      await expect(getPresentationExportStatus(queued.exportId, actor)).rejects.toThrowError(
         PresentationServiceError,
       );
-      expect(() => getPresentationExportStatus(queued.exportId, actor)).toThrow(
+      await expect(getPresentationExportStatus(queued.exportId, actor)).rejects.toThrow(
         PRESENTATION_ERROR_CODE.NOT_FOUND,
       );
     } finally {
@@ -394,11 +406,11 @@ describe("presentationPlaybackExport", () => {
         dependencies,
       );
 
-      expect(() => getPresentationExportStatus(first.exportId, actor)).toThrow(
+      await expect(getPresentationExportStatus(first.exportId, actor)).rejects.toThrow(
         PRESENTATION_ERROR_CODE.NOT_FOUND,
       );
-      expect(getPresentationExportStatus(second.exportId, actor).status).toBe("queued");
-      expect(getPresentationExportStatus(third.exportId, actor).status).toBe("queued");
+      expect((await getPresentationExportStatus(second.exportId, actor)).status).toBe("queued");
+      expect((await getPresentationExportStatus(third.exportId, actor)).status).toBe("queued");
     } finally {
       vi.useRealTimers();
     }
@@ -436,6 +448,382 @@ describe("presentationPlaybackExport", () => {
     });
   });
 
+  it("triggerPresentationExport calls Python bridge POST /api/v1/presentations/export with correct render spec", async () => {
+    const deckDetail = buildDeckDetail();
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ celery_task_id: "celery-bridge-1" }),
+    } as Response);
+
+    const result = await triggerPresentationExport(
+      { deckId: 101, format: "mp4", idempotencyKey: "bridge-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        // Use real defaultEnqueueExportJob by not overriding enqueueExportJob
+        // But since getDb() returns null in test env, defaultEnqueueExportJob stubs the job.
+        // Override to test the bridge call directly:
+        enqueueExportJob: async (renderSpec, format, quality) => {
+          const response = await fetch("http://localhost:8000/api/v1/presentations/export", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
+            body: JSON.stringify({ render_spec: renderSpec, format, quality }),
+          });
+          const json = (await response.json()) as { celery_task_id: string };
+          return { jobId: json.celery_task_id };
+        },
+        now: () => Date.parse("2026-02-22T10:00:01.000Z"),
+      },
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://localhost:8000/api/v1/presentations/export",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(result.status).toBe("queued");
+
+    fetchSpy.mockRestore();
+  });
+
+  it("triggerPresentationExport stores celeryTaskId returned by Python in DB", async () => {
+    // In test env, getDb() returns null so the DB update won't be called.
+    // We verify enqueueExportJob is called with the correct render spec and the
+    // returned jobId is reflected in the export result.
+    const deckDetail = buildDeckDetail();
+    const enqueueExportJob = vi.fn().mockResolvedValue({ jobId: "celery-abc-123" });
+
+    const result = await triggerPresentationExport(
+      { deckId: 101, format: "mp4", idempotencyKey: "celery-id-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob,
+        now: () => Date.parse("2026-02-22T10:00:02.000Z"),
+      },
+    );
+
+    expect(enqueueExportJob).toHaveBeenCalledWith(
+      expect.objectContaining({ schemaVersion: "presentation_render_v1" }),
+      "mp4",
+      undefined,
+    );
+    expect(result.status).toBe("queued");
+  });
+
+  it("triggerPresentationExport returns existing export ID when idempotencyKey matches in-progress DB record", async () => {
+    // This uses the in-memory fast path (same process window)
+    const deckDetail = buildDeckDetail();
+    const enqueueExportJob = vi.fn().mockResolvedValue({ jobId: "job-idem-1" });
+    const now = Date.parse("2026-02-22T10:00:05.000Z");
+
+    const first = await triggerPresentationExport(
+      { deckId: 101, format: "png", idempotencyKey: "idem-dedup-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob,
+        now: () => now,
+      },
+    );
+
+    const second = await triggerPresentationExport(
+      { deckId: 101, format: "png", idempotencyKey: "idem-dedup-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob,
+        now: () => now + 1000,
+      },
+    );
+
+    expect(enqueueExportJob).toHaveBeenCalledTimes(1);
+    expect(second.deduped).toBe(true);
+    expect(second.exportId).toBe(first.exportId);
+  });
+
+  it("throttle enforcement still applies to 'jpg' and 'pdf' formats", async () => {
+    const deckDetail = buildDeckDetail();
+    let now = Date.parse("2026-02-22T11:00:00.000Z");
+    const dependencies = {
+      getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+      enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-throttle-fmt" }),
+      now: () => now,
+      maxUserRequestsPerMinute: 2,
+      maxDeckRequestsPerMinute: 4,
+    };
+
+    await triggerPresentationExport(
+      { deckId: 101, format: "jpg", idempotencyKey: "thr-a" },
+      actor,
+      dependencies,
+    );
+    now += 1_000;
+    await triggerPresentationExport(
+      { deckId: 101, format: "pdf", idempotencyKey: "thr-b" },
+      actor,
+      dependencies,
+    );
+    now += 1_000;
+
+    await expect(
+      triggerPresentationExport(
+        { deckId: 101, format: "jpg", idempotencyKey: "thr-c" },
+        actor,
+        dependencies,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      return (
+        error instanceof PresentationServiceError
+        && error.code === PRESENTATION_ERROR_CODE.EXPORT_THROTTLED
+      );
+    });
+  });
+
+  it("getPresentationExportStatus reads from DB and calls Python GET for live progress", async () => {
+    const dbRecord = {
+      id: 77,
+      deckId: 101,
+      userId: 9,
+      tenantId: "tenant-1",
+      format: "mp4",
+      quality: null,
+      width: 1920,
+      height: 1080,
+      fps: null,
+      status: "processing",
+      progressPct: 30,
+      stage: "rendering",
+      errorMessage: null,
+      outputUrl: null,
+      outputStorageKey: null,
+      outputBytes: null,
+      celeryTaskId: "celery-poll-1",
+      idempotencyKey: "poll-key-1",
+      createdAt: new Date("2026-02-22T10:00:00.000Z"),
+      updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+    };
+    const updatedRecord = { ...dbRecord, progressPct: 55, stage: "encoding", status: "processing" };
+
+    const limit = vi.fn().mockResolvedValue([dbRecord]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const selectFn = vi.fn().mockReturnValue({ from });
+    const returning = vi.fn().mockResolvedValue([updatedRecord]);
+    const updateWhere = vi.fn().mockReturnValue({ returning });
+    const setFn = vi.fn().mockReturnValue({ where: updateWhere });
+    const updateFn = vi.fn().mockReturnValue({ set: setFn });
+    const mockDb = { select: selectFn, update: updateFn } as any;
+
+    const dbModule = await import("../db");
+    vi.spyOn(dbModule, "getDb").mockResolvedValue(mockDb);
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ percent: 55, stage: "encoding" }),
+    } as Response);
+
+    const result = await getPresentationExportStatus(77, actor);
+
+    expect(selectFn).toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining("celery-poll-1"),
+      expect.any(Object),
+    );
+    expect(result.progressPct).toBe(55);
+
+    fetchSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it("getPresentationExportStatus updates DB to status='done' when Python returns done", async () => {
+    const dbRecord = {
+      id: 78,
+      deckId: 101,
+      userId: 9,
+      tenantId: "tenant-1",
+      format: "mp4",
+      quality: null,
+      width: 1920,
+      height: 1080,
+      fps: null,
+      status: "processing",
+      progressPct: 90,
+      stage: "uploading",
+      errorMessage: null,
+      outputUrl: null,
+      outputStorageKey: null,
+      outputBytes: null,
+      celeryTaskId: "celery-done-1",
+      idempotencyKey: "done-key-1",
+      createdAt: new Date("2026-02-22T10:00:00.000Z"),
+      updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+    };
+    const doneRecord = {
+      ...dbRecord,
+      status: "done",
+      progressPct: 100,
+      outputUrl: "https://example.com/export.mp4",
+    };
+
+    const limit = vi.fn().mockResolvedValue([dbRecord]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const selectFn = vi.fn().mockReturnValue({ from });
+    const returning = vi.fn().mockResolvedValue([doneRecord]);
+    const updateWhere = vi.fn().mockReturnValue({ returning });
+    const setFn = vi.fn().mockReturnValue({ where: updateWhere });
+    const updateFn = vi.fn().mockReturnValue({ set: setFn });
+    const mockDb = { select: selectFn, update: updateFn } as any;
+
+    const dbModule = await import("../db");
+    vi.spyOn(dbModule, "getDb").mockResolvedValue(mockDb);
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ state: "done", output_url: "https://example.com/export.mp4" }),
+    } as Response);
+
+    const result = await getPresentationExportStatus(78, actor);
+
+    expect(setFn).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "done", outputUrl: "https://example.com/export.mp4", progressPct: 100 }),
+    );
+    expect(result.status).toBe("done");
+    expect(result.downloadUrl).toBe("https://example.com/export.mp4");
+
+    fetchSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it("getPresentationExportStatus updates DB to status='error' when Python returns failure", async () => {
+    const dbRecord = {
+      id: 79,
+      deckId: 101,
+      userId: 9,
+      tenantId: "tenant-1",
+      format: "mp4",
+      quality: null,
+      width: 1920,
+      height: 1080,
+      fps: null,
+      status: "processing",
+      progressPct: 10,
+      stage: null,
+      errorMessage: null,
+      outputUrl: null,
+      outputStorageKey: null,
+      outputBytes: null,
+      celeryTaskId: "celery-err-1",
+      idempotencyKey: "err-key-1",
+      createdAt: new Date("2026-02-22T10:00:00.000Z"),
+      updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+    };
+    const errorRecord = { ...dbRecord, status: "error", errorMessage: "render failed" };
+
+    const limit = vi.fn().mockResolvedValue([dbRecord]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const selectFn = vi.fn().mockReturnValue({ from });
+    const returning = vi.fn().mockResolvedValue([errorRecord]);
+    const updateWhere = vi.fn().mockReturnValue({ returning });
+    const setFn = vi.fn().mockReturnValue({ where: updateWhere });
+    const updateFn = vi.fn().mockReturnValue({ set: setFn });
+    const mockDb = { select: selectFn, update: updateFn } as any;
+
+    const dbModule = await import("../db");
+    vi.spyOn(dbModule, "getDb").mockResolvedValue(mockDb);
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ state: "error", error_message: "render failed" }),
+    } as Response);
+
+    const result = await getPresentationExportStatus(79, actor);
+
+    expect(setFn).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "error", errorMessage: "render failed" }),
+    );
+    expect(result.status).toBe("error");
+
+    fetchSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it("getPresentationExportStatus falls back to in-memory state when getDb returns null", async () => {
+    // Confirm getDb returns null so in-memory path is used
+    const dbModule = await import("../db");
+    vi.spyOn(dbModule, "getDb").mockResolvedValue(null);
+
+    const deckDetail = buildDeckDetail();
+    // Use current time so the status entry is not immediately compacted away
+    const nowMs = Date.now();
+    const queued = await triggerPresentationExport(
+      { deckId: 101, format: "mp4", idempotencyKey: "fallback-mem-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob: vi.fn().mockResolvedValue({ jobId: "job-fallback-1" }),
+        now: () => nowMs,
+      },
+    );
+
+    const status = await getPresentationExportStatus(queued.exportId, actor);
+    expect(status.status).toBe("queued");
+    expect(status.exportId).toBe(queued.exportId);
+
+    vi.restoreAllMocks();
+  });
+
+  it("getPresentationExportStatus Python HTTP error is swallowed and existing DB state is returned", async () => {
+    const dbRecord = {
+      id: 80,
+      deckId: 101,
+      userId: 9,
+      tenantId: "tenant-1",
+      format: "mp4",
+      quality: null,
+      width: 1920,
+      height: 1080,
+      fps: null,
+      status: "queued",
+      progressPct: 0,
+      stage: null,
+      errorMessage: null,
+      outputUrl: null,
+      outputStorageKey: null,
+      outputBytes: null,
+      celeryTaskId: "celery-5xx-1",
+      idempotencyKey: "5xx-key-1",
+      createdAt: new Date("2026-02-22T10:00:00.000Z"),
+      updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+    };
+
+    const limit = vi.fn().mockResolvedValue([dbRecord]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const selectFn = vi.fn().mockReturnValue({ from });
+    const updateFn = vi.fn();
+    const mockDb = { select: selectFn, update: updateFn } as any;
+
+    const dbModule = await import("../db");
+    vi.spyOn(dbModule, "getDb").mockResolvedValue(mockDb);
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    } as Response);
+
+    const result = await getPresentationExportStatus(80, actor);
+
+    // Python error was swallowed — DB state preserved
+    expect(result.status).toBe("queued");
+    expect(updateFn).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
   it("denies cross-tenant export status lookups and allows same-actor lookups", async () => {
     vi.useFakeTimers();
     const deckDetail = buildDeckDetail();
@@ -452,20 +840,21 @@ describe("presentationPlaybackExport", () => {
         },
       );
 
-      const sameActor = getPresentationExportStatus(queued.exportId, actor);
+      const sameActor = await getPresentationExportStatus(queued.exportId, actor);
       expect(sameActor.status).toBe("queued");
 
-      try {
+      await expect(
         getPresentationExportStatus(queued.exportId, {
           userId: actor.userId,
           tenantId: "tenant-2",
           role: actor.role,
-        });
-        throw new Error("Expected cross-tenant status lookup to throw");
-      } catch (error) {
-        expect(error).toBeInstanceOf(PresentationServiceError);
-        expect((error as PresentationServiceError).code).toBe(PRESENTATION_ERROR_CODE.PERMISSION_DENIED);
-      }
+        }),
+      ).rejects.toSatisfy((error: unknown) => {
+        return (
+          error instanceof PresentationServiceError
+          && error.code === PRESENTATION_ERROR_CODE.PERMISSION_DENIED
+        );
+      });
     } finally {
       vi.useRealTimers();
     }

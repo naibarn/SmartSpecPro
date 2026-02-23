@@ -154,7 +154,7 @@ describe("presentation workflow regression", () => {
         },
       );
 
-      const exportStatus = getPresentationExportStatus(exportResult.exportId, actor);
+      const exportStatus = await getPresentationExportStatus(exportResult.exportId, actor);
       const reopenedSlideshow = buildSlideshowPayload(editedSlides as any, { deckId });
 
       expect(exportStatus.status).toBe("queued");
