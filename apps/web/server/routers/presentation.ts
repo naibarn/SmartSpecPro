@@ -685,9 +685,8 @@ export const presentationRouter = router({
             `${PRESENTATION_ERROR_CODE.NOT_FOUND}: no presentation deck for library item ${input.itemId}`,
           );
         }
-        const detail = await getPresentationDeckDetail(deck.id, actor);
-        const slideshowPayload = buildSlideshowPayload(detail.slides, { deckId: detail.deck.id });
-        return await buildPlayDeckPayload(detail, slideshowPayload);
+        const slideshowPayload = buildSlideshowPayload(deck.slides, { deckId: deck.deck.id });
+        return await buildPlayDeckPayload(deck, slideshowPayload);
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

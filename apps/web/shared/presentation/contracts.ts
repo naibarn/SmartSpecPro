@@ -368,6 +368,8 @@ export const presentationExportStatusResultSchema = z.object({
   downloadUrl: z.string().url().startsWith("https://").nullable().optional(),
   /** Error description. Only present when status is "error". */
   errorMessage: z.string().max(1000).nullable().optional(),
+  /** Output file size in bytes. Only present when status is "done". */
+  outputBytes: z.number().nonnegative().nullable().optional(),
   updatedAt: z.coerce.date(),
   warnings: presentationExportWarningsSchema.default([]),
 });

@@ -922,6 +922,7 @@ export async function getPresentationExportStatus(
       stage: current.stage,
       downloadUrl: current.outputUrl,
       errorMessage: current.errorMessage,
+      outputBytes: current.outputBytes,
       updatedAt: current.updatedAt,
       warnings: [],
     });

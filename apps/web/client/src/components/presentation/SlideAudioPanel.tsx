@@ -173,7 +173,7 @@ export function SlideAudioPanel({
   }, [deckAudioTrack]);
 
   // M3: Detect version conflict errors and offer clearer message
-  function onSlideAudioError(err: { message: string; data?: { code?: string } }) {
+  function onSlideAudioError(err: { message: string; data?: { code?: string } | null }) {
     if (err.data?.code === "CONFLICT") {
       toast.error("Slide was modified by another session. Please reload and try again.");
     } else {
@@ -181,7 +181,7 @@ export function SlideAudioPanel({
     }
   }
 
-  function onDeckAudioError(err: { message: string; data?: { code?: string } }) {
+  function onDeckAudioError(err: { message: string; data?: { code?: string } | null }) {
     if (err.data?.code === "CONFLICT") {
       toast.error("Deck was modified by another session. Please reload and try again.");
     } else {
