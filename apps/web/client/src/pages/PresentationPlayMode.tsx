@@ -68,14 +68,16 @@ export default function PresentationPlayMode() {
         setPlaybackState(newState);
         setCurrentIndex(newIndex);
         if (newState === "SLIDE_TRANSITIONING") {
+          // Exit the current slide (newIndex is still the old slide at this point)
           audioRef.current?.onSlideExit();
+        }
+        if (newState === "PLAYING") {
+          // Enter the new slide (newIndex is now the new slide)
           audioRef.current?.onSlideEnter((playDeck.slides[newIndex] as any)?.audioTrack ?? null);
+          audioRef.current?.resume();
         }
         if (newState === "PAUSED") {
           audioRef.current?.pause();
-        }
-        if (newState === "PLAYING") {
-          audioRef.current?.resume();
         }
       },
     );
