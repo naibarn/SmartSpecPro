@@ -17,6 +17,7 @@ import type { ResolvedAudioTrack, ResolvedProjectAudioTrack } from "@shared/pres
 export class AudioTrackPlayer {
   private slideAudio: HTMLAudioElement | null = null;
   private projectAudio: HTMLAudioElement | null = null;
+  private slideAudioEndTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(projectAudioTrack: ResolvedProjectAudioTrack | null) {
     if (projectAudioTrack !== null) {
@@ -37,6 +38,10 @@ export class AudioTrackPlayer {
    */
   onSlideEnter(slideAudioTrack: ResolvedAudioTrack | null): void {
     // Stop any existing slide audio immediately (no fade — new slide takes priority)
+    if (this.slideAudioEndTimer !== null) {
+      clearTimeout(this.slideAudioEndTimer);
+      this.slideAudioEndTimer = null;
+    }
     if (this.slideAudio !== null) {
       this.slideAudio.pause();
       this.slideAudio.currentTime = 0;
@@ -48,9 +53,23 @@ export class AudioTrackPlayer {
     const audio = new Audio(slideAudioTrack.url);
     audio.volume = slideAudioTrack.volume;
     audio.currentTime = slideAudioTrack.startAtMs / 1000;
-    // TODO: honour slideAudioTrack.endAtMs by scheduling a stop timeout
     audio.play().catch(() => {});
     this.slideAudio = audio;
+
+    // Honour endAtMs: stop the clip at the specified offset (relative to audio start)
+    if (slideAudioTrack.endAtMs != null) {
+      const playDurationMs = slideAudioTrack.endAtMs - slideAudioTrack.startAtMs;
+      if (playDurationMs > 0) {
+        this.slideAudioEndTimer = setTimeout(() => {
+          this.slideAudioEndTimer = null;
+          if (this.slideAudio === audio) {
+            audio.pause();
+            audio.currentTime = 0;
+            this.slideAudio = null;
+          }
+        }, playDurationMs);
+      }
+    }
   }
 
   /**
@@ -61,6 +80,10 @@ export class AudioTrackPlayer {
    * and is deferred to a future enhancement.
    */
   onSlideExit(): void {
+    if (this.slideAudioEndTimer !== null) {
+      clearTimeout(this.slideAudioEndTimer);
+      this.slideAudioEndTimer = null;
+    }
     if (this.slideAudio === null) return;
     const audio = this.slideAudio;
     this.slideAudio = null;
@@ -91,6 +114,10 @@ export class AudioTrackPlayer {
    * to allow garbage collection. Called on PresentationPlayMode unmount.
    */
   destroy(): void {
+    if (this.slideAudioEndTimer !== null) {
+      clearTimeout(this.slideAudioEndTimer);
+      this.slideAudioEndTimer = null;
+    }
     this.pause();
     this.slideAudio = null;
     this.projectAudio = null;

@@ -20,10 +20,14 @@ export default function PresentationPlayMode() {
   // Data
   // -------------------------------------------------------------------------
 
-  const { data: playDeck, isLoading, isError } = trpc.presentation.getPlayDeck.useQuery(
+  const { data: playDeck, isLoading, isError, error } = trpc.presentation.getPlayDeck.useQuery(
     { itemId: validItemId! },
     { enabled: Boolean(validItemId) },
   );
+
+  // Detect feature-disabled errors (FORBIDDEN with FEATURE_DISABLED code)
+  const isFeatureDisabled =
+    isError && (error as { data?: { code?: string } } | null)?.data?.code === "FORBIDDEN";
 
   // -------------------------------------------------------------------------
   // Playback state (driven by PlaybackEngine callbacks)
@@ -153,6 +157,22 @@ export default function PresentationPlayMode() {
   // -------------------------------------------------------------------------
   // Error / invalid state
   // -------------------------------------------------------------------------
+
+  if (isFeatureDisabled) {
+    return (
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-4">
+        <p className="text-white text-lg">Presentation play mode is not available.</p>
+        <p className="text-gray-400 text-sm">This feature has not been enabled for your account.</p>
+        <button
+          className="text-white underline"
+          onClick={() => setLocation("/presentations")}
+          aria-label="Go back to presentations"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   if (isError || !validItemId || !playDeck) {
     return (

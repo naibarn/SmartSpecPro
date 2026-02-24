@@ -20,6 +20,8 @@ import {
   type PresentationRouteBlockedResult,
   type PresentationRouteGuardResult,
 } from "@shared/presentation/contracts";
+import { getDb } from "../db";
+import { getExportsByDeckId } from "../services/presentationExportService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   PresentationServiceError,
@@ -51,6 +53,7 @@ import {
 import {
   buildPlayDeckPayload,
   buildSlideshowPayload,
+  cancelPresentationExport,
   getPresentationExportStatus,
   triggerPresentationExport,
 } from "../services/presentationPlaybackExport";
@@ -302,6 +305,50 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         return await getPresentationExportStatus(input.exportId, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  cancelExport: protectedProcedure
+    .input(z.object({ exportId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        const actor = toPresentationActor(ctx);
+        return await cancelPresentationExport(input.exportId, actor);
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  listExports: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      limit: z.number().int().min(1).max(20).default(10),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        const actor = toPresentationActor(ctx);
+        const db = await getDb();
+        if (!db) return [];
+        const exports = await getExportsByDeckId(input.deckId, actor.tenantId, input.limit, db);
+        return exports.map((r) => ({
+          exportId: r.id,
+          format: r.format,
+          status: r.status,
+          downloadUrl: r.outputUrl ?? null,
+          createdAt: r.createdAt,
+          progressPct: r.progressPct,
+          errorMessage: r.errorMessage ?? null,
+        }));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

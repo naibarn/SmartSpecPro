@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import type { DrizzleDB } from "../db";
 import { presentationExports } from "../../drizzle/schema";
@@ -121,4 +121,28 @@ export async function getExportRecordByCeleryTaskId(
     .where(eq(presentationExports.celeryTaskId, taskId))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * Fetch recent export records for a given deck, scoped to a tenant.
+ * Results are ordered newest-first and capped by `limit`.
+ * @returns Array of export records (may be empty).
+ */
+export async function getExportsByDeckId(
+  deckId: number,
+  tenantId: string,
+  limit: number,
+  db: DrizzleDB,
+): Promise<PresentationExport[]> {
+  return db
+    .select()
+    .from(presentationExports)
+    .where(
+      and(
+        eq(presentationExports.deckId, deckId),
+        eq(presentationExports.tenantId, tenantId),
+      ),
+    )
+    .orderBy(desc(presentationExports.createdAt))
+    .limit(limit);
 }

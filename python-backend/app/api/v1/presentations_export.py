@@ -130,6 +130,31 @@ async def create_export_job(
     return PresentationExportJobResponse(celery_task_id=task.id, status="queued")
 
 
+@router.post("/export/{task_id}/cancel")
+async def cancel_presentation_export(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Revoke a Celery presentation export task.
+    Called by Node.js cancelExport service.
+
+    Returns success=True when the revocation signal was sent, or success=False
+    when it could not be delivered (e.g. broker unavailable).  In either case
+    Node.js is expected to mark the DB row as cancelled independently.
+    """
+    try:
+        from app.core.celery_app import celery_app
+
+        celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
+        logger.info("presentation_export_cancel_requested", task_id=task_id, user_id=current_user.id)
+        return {"success": True, "task_id": task_id, "message": "Task revocation requested"}
+    except Exception as exc:
+        logger.warning("presentation_export_cancel_failed", task_id=task_id, error=str(exc))
+        # Return success=False but do not raise — Node.js will still mark DB as cancelled
+        return {"success": False, "task_id": task_id, "message": str(exc)}
+
+
 @router.get("/export/{celery_task_id}", response_model=PresentationExportStatusResponse)
 async def get_export_status(
     celery_task_id: str,

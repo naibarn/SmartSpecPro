@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Clock, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -37,11 +37,11 @@ type DialogPhase = "selecting" | "exporting" | "done" | "error";
 // Constants
 // ---------------------------------------------------------------------------
 
-const STAGE_LABELS: Record<string, string> = {
-  rendering: "Rendering slides...",
-  encoding: "Encoding video...",
-  uploading: "Uploading file...",
-};
+// Falls back to the raw stage string (already human-readable, e.g. "Rendering slide 3 of 10").
+function resolveStageLabel(stage: string | null): string {
+  if (!stage) return "Processing...";
+  return stage;
+}
 
 const FORMAT_OPTIONS: Array<{ value: ExportFormat; label: string; description: string }> = [
   { value: "mp4", label: "MP4", description: "Video file, suitable for sharing and embedding" },
@@ -58,6 +58,13 @@ const QUALITY_OPTIONS: Array<{ value: ExportQuality; label: string; description:
 
 // Formats for which the quality picker is shown
 const QUALITY_APPLICABLE_FORMATS: ExportFormat[] = ["mp4", "jpg"];
+
+const FORMAT_LABELS: Record<string, string> = {
+  mp4: "MP4",
+  png: "PNG",
+  jpg: "JPG",
+  pdf: "PDF",
+};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -78,7 +85,7 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   // -------------------------------------------------------------------------
-  // tRPC mutation
+  // tRPC: trigger export
   // -------------------------------------------------------------------------
 
   const triggerExportMutation = trpc.presentation.triggerExport.useMutation({
@@ -101,7 +108,7 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
   }
 
   // -------------------------------------------------------------------------
-  // tRPC polling query
+  // tRPC: poll export status
   // -------------------------------------------------------------------------
 
   const exportStatusQuery = trpc.presentation.getExportStatus.useQuery(
@@ -110,20 +117,62 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
       enabled: exportId !== null && dialogPhase === "exporting",
       refetchInterval: (query) => {
         const status = query.state.data?.status;
-        if (status === "done" || status === "error") return false;
-        return 2000; // Poll every 2 seconds
+        if (status === "done" || status === "error" || status === "cancelled") return false;
+        return 2000;
       },
       refetchIntervalInBackground: false,
     },
   );
 
+  // -------------------------------------------------------------------------
+  // tRPC: cancel export
+  // -------------------------------------------------------------------------
+
+  const cancelExportMutation = trpc.presentation.cancelExport.useMutation({
+    onSuccess(data) {
+      if (data.success) {
+        toast.info("Export cancelled.");
+        setExportId(null);
+        setDialogPhase("selecting");
+        listExportsQuery.refetch();
+      } else {
+        toast.info(data.message ?? "Export could not be cancelled — it may have already finished.");
+        setDialogPhase("selecting");
+      }
+    },
+    onError(err) {
+      toast.error(`Failed to cancel: ${err.message}`);
+    },
+  });
+
+  function handleCancel() {
+    if (exportId !== null) {
+      cancelExportMutation.mutate({ exportId });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // tRPC: list past exports (for history panel)
+  // -------------------------------------------------------------------------
+
+  const listExportsQuery = trpc.presentation.listExports.useQuery(
+    { deckId, limit: 5 },
+    { enabled: open },
+  );
+
+  // -------------------------------------------------------------------------
+  // Reset on dialog open
   // M1: Reset idempotency key and state when dialog is reopened
+  // -------------------------------------------------------------------------
+
   useEffect(() => {
     if (open) {
       idempotencyKeyRef.current = crypto.randomUUID();
       setExportId(null);
       setDialogPhase("selecting");
+      listExportsQuery.refetch();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Transition phase when query resolves to terminal state
@@ -134,6 +183,10 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
     const status = exportStatusQuery.data?.status;
     if (status === "done") setDialogPhase("done");
     if (status === "error") setDialogPhase("error");
+    if (status === "cancelled") {
+      setExportId(null);
+      setDialogPhase("selecting");
+    }
   }, [exportId, exportStatusQuery.data?.status, dialogPhase]);
 
   // -------------------------------------------------------------------------
@@ -161,6 +214,9 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
   const downloadUrl = statusData?.downloadUrl ?? null;
   const errorMessage = statusData?.errorMessage ?? null;
   const outputBytes = statusData?.outputBytes ?? null;
+
+  const pastExports = listExportsQuery.data ?? [];
+  const hasPastExports = pastExports.some((e) => e.status === "done" && e.downloadUrl);
 
   // -------------------------------------------------------------------------
   // Phase: selecting
@@ -233,6 +289,44 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
               </RadioGroup>
             </div>
           )}
+
+          {/* Recent exports history */}
+          {hasPastExports && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                Recent exports
+              </p>
+              <div className="space-y-1">
+                {pastExports
+                  .filter((e) => e.status === "done" && e.downloadUrl)
+                  .map((e) => (
+                    <div
+                      key={e.exportId}
+                      className="flex items-center justify-between rounded-md border px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase">
+                          {FORMAT_LABELS[e.format] ?? e.format}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(e.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => window.open(e.downloadUrl!, "_blank", "noopener")}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -264,21 +358,20 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
             aria-valuenow={progressPct}
             className="w-full"
           />
-          {stage && (
-            <p className="text-sm text-muted-foreground text-center">
-              {STAGE_LABELS[stage] ?? "Processing..."}
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground text-center" data-testid="stage-label">
+            {resolveStageLabel(stage)}
+          </p>
         </div>
 
         <DialogFooter>
           <Button
             variant="outline"
-            disabled
-            title="Cancellation not yet supported"
-            aria-label="Cancellation not yet supported"
+            onClick={handleCancel}
+            disabled={cancelExportMutation.isPending}
+            data-testid="cancel-export-button"
           >
-            Cancel
+            <X className="h-4 w-4 mr-1.5" />
+            {cancelExportMutation.isPending ? "Cancelling..." : "Cancel Export"}
           </Button>
         </DialogFooter>
       </>
@@ -313,6 +406,9 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
         </div>
 
         <DialogFooter>
+          <Button variant="outline" onClick={() => { handleTryAgain(); }}>
+            Export Again
+          </Button>
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>

@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import urllib.request
 import zipfile
 from typing import Any
 
@@ -248,11 +249,43 @@ def _write_concat_file(screenshot_paths: list[str], durations_ms: list[int], con
         f.write("\n".join(lines) + "\n")
 
 
+def _download_audio(url: str, dest_dir: str, idx: int) -> str:
+    """
+    Download an audio file from a presigned URL to dest_dir/audio_{idx}.<ext>.
+
+    The file extension is inferred from the URL path (defaulting to .mp3).
+    Raises urllib.error.HTTPError on HTTP errors.
+
+    Returns the absolute path to the downloaded file.
+    """
+    # Infer extension from URL path component (strip query string first)
+    url_path = url.split("?")[0]
+    ext = os.path.splitext(url_path)[1]
+    if not ext:
+        ext = ".mp3"
+    dest_path = os.path.join(dest_dir, f"audio_{idx}{ext}")
+    urllib.request.urlretrieve(url, dest_path)
+    return dest_path
+
+
 def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp_dir: str) -> str:
-    """Encode slides to MP4 using FFmpeg concat demuxer."""
+    """
+    Encode slides to MP4 using FFmpeg concat demuxer.
+
+    Audio mixing strategy:
+    - Case A: No audio at all — video-only output (original behaviour).
+    - Case B: Project background audio only — mix via volume+apad filters.
+    - Case C: Per-slide audio tracks only — position each track with adelay/atrim, mix with amix.
+    - Case D: Both project audio + per-slide audio — mix all tracks with amix.
+
+    Audio download failures are treated as non-fatal: a warning is logged and the export
+    continues without that track.
+    """
     slides = render_spec["slides"]
     fps = render_spec.get("fps", 30)
     preset = QUALITY_PRESETS.get(quality, QUALITY_PRESETS["standard"])
+    crf = preset["crf"]
+    preset_name = preset["preset"]
 
     durations_ms = [s.get("durationMs", 3000) for s in slides]
     concat_path = os.path.join(tmp_dir, "concat_list.txt")
@@ -260,16 +293,153 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
 
     _write_concat_file(screenshot_paths, durations_ms, concat_path)
 
-    # M-4: fps controlled by -vf filter only; removed duplicate hardcoded -r 30
+    # ------------------------------------------------------------------
+    # Download project audio (background track)
+    # ------------------------------------------------------------------
+    project_audio_spec = render_spec.get("projectAudioTrack")
+    project_audio_path: str | None = None
+    project_volume: float = 1.0
+
+    if project_audio_spec and project_audio_spec.get("url"):
+        try:
+            project_audio_path = _download_audio(project_audio_spec["url"], tmp_dir, 0)
+            project_volume = project_audio_spec.get("volume", 1.0)
+        except Exception as exc:
+            logger.warning(
+                "audio_download_failed_project_track",
+                error=str(exc),
+            )
+            project_audio_path = None
+
+    # ------------------------------------------------------------------
+    # Download per-slide audio tracks
+    # ------------------------------------------------------------------
+    # slide_audio_tracks: list of {path, start_ms, end_ms|None, volume}
+    slide_audio_tracks: list[dict] = []
+    cumulative_ms = 0
+
+    for i, slide in enumerate(slides):
+        duration_ms = slide.get("durationMs", 3000)
+        if i < len(screenshot_paths):
+            audio_spec = slide.get("audioTrack")
+            if audio_spec and audio_spec.get("url"):
+                start_ms = cumulative_ms + audio_spec.get("startAtMs", 0)
+                end_ms_in_slide = audio_spec.get("endAtMs")
+                abs_end_ms = (cumulative_ms + end_ms_in_slide) if end_ms_in_slide is not None else None
+                try:
+                    # Use index i+1 so it never collides with the project audio (index 0)
+                    dl_path = _download_audio(audio_spec["url"], tmp_dir, i + 1)
+                    slide_audio_tracks.append(
+                        {
+                            "path": dl_path,
+                            "start_ms": start_ms,
+                            "end_ms": abs_end_ms,
+                            "volume": audio_spec.get("volume", 1.0),
+                        }
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "audio_download_failed_slide_track",
+                        slide_index=i,
+                        error=str(exc),
+                    )
+        cumulative_ms += duration_ms
+
+    has_project = project_audio_path is not None
+    has_slide_audio = len(slide_audio_tracks) > 0
+
+    # ------------------------------------------------------------------
+    # Case A: No audio — video only
+    # ------------------------------------------------------------------
+    if not has_project and not has_slide_audio:
+        # M-4: fps controlled by -vf filter only; removed duplicate hardcoded -r 30
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0", "-i", concat_path,
+            "-vf", f"fps={fps}",
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-crf", str(crf),
+            "-preset", preset_name,
+            "-movflags", "+faststart",
+            output_path,
+        ]
+        # M-2: timeout prevents subprocess blocking past Celery SoftTimeLimitExceeded
+        subprocess.run(cmd, check=True, capture_output=True, timeout=540)
+        return output_path
+
+    # ------------------------------------------------------------------
+    # Build FFmpeg inputs and filter_complex for audio cases B / C / D
+    # ------------------------------------------------------------------
+    # Input 0 is always the video concat.
+    # Inputs 1..N are audio files in the order: [project_audio?, *slide_audios]
+    ffmpeg_inputs: list[str] = []
+    if has_project:
+        ffmpeg_inputs.append(project_audio_path)  # type: ignore[arg-type]
+    for track in slide_audio_tracks:
+        ffmpeg_inputs.append(track["path"])
+
+    # Build filter_complex parts
+    filter_parts: list[str] = []
+    mix_labels: list[str] = []
+
+    audio_input_idx = 1  # 0 is the video concat
+
+    if has_project:
+        pa_label = "[pa]"
+        filter_parts.append(f"[{audio_input_idx}:a]volume={project_volume}[pa]")
+        mix_labels.append(pa_label)
+        audio_input_idx += 1
+
+    for si, track in enumerate(slide_audio_tracks):
+        label = f"[s{si}]"
+        delay_ms = int(track["start_ms"])
+        vol = track["volume"]
+        filter_chain = f"[{audio_input_idx}:a]adelay={delay_ms}|{delay_ms},volume={vol}"
+        if track["end_ms"] is not None:
+            # atrim start/end are relative to the input stream (before adelay),
+            # so trim first then delay — reorder: trim → volume → delay
+            filter_chain = (
+                f"[{audio_input_idx}:a]"
+                f"atrim=start=0:end={(track['end_ms'] - track['start_ms'] + delay_ms) / 1000.0:.3f},"
+                f"adelay={delay_ms}|{delay_ms},"
+                f"volume={vol}"
+            )
+        filter_chain += label
+        filter_parts.append(filter_chain)
+        mix_labels.append(label)
+        audio_input_idx += 1
+
+    total_mix_inputs = len(mix_labels)
+    if total_mix_inputs == 1:
+        # Single audio source — no amix needed, just use apad to extend to video length
+        solo_label = mix_labels[0]
+        filter_parts.append(f"{solo_label}apad[aout]")
+    else:
+        inputs_concat = "".join(mix_labels)
+        filter_parts.append(f"{inputs_concat}amix=inputs={total_mix_inputs}:duration=longest[aout]")
+
+    filter_complex = ";".join(filter_parts)
+
+    # Assemble inputs section: concat video + all audio files
+    input_args: list[str] = ["-f", "concat", "-safe", "0", "-i", concat_path]
+    for audio_path in ffmpeg_inputs:
+        input_args += ["-i", audio_path]
+
     cmd = [
         "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0", "-i", concat_path,
+        *input_args,
+        "-filter_complex", filter_complex,
+        "-map", "0:v",
+        "-map", "[aout]",
         "-vf", f"fps={fps}",
         "-c:v", "libx264",
         "-pix_fmt", "yuv420p",
-        "-crf", str(preset["crf"]),
-        "-preset", preset["preset"],
+        "-c:a", "aac", "-b:a", "192k",
+        "-crf", str(crf),
+        "-preset", preset_name,
         "-movflags", "+faststart",
+        "-shortest",
         output_path,
     ]
     # M-2: timeout prevents subprocess blocking past Celery SoftTimeLimitExceeded

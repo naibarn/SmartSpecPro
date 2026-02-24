@@ -114,6 +114,18 @@ interface BuildRenderSpecInput {
   width?: number;
   height?: number;
   fps?: number;
+  /**
+   * Per-slide resolved audio tracks, keyed by slide ID.
+   * When present, the corresponding audioTrack is embedded into the render spec
+   * so that `resolveAudioUrls` can resolve libraryItemId → presigned URL.
+   * Populated by `resolveSlideAudioData` before calling `buildPresentationRenderSpec`.
+   */
+  slideAudioMap?: Map<number, ResolvedAudioTrack>;
+  /**
+   * Deck-level background audio track.
+   * Contains either a resolved URL or a libraryItemId that `resolveAudioUrls` will resolve.
+   */
+  resolvedProjectAudioTrack?: ResolvedProjectAudioTrack | null;
 }
 
 export interface TriggerPresentationExportInput {
@@ -573,13 +585,106 @@ export async function buildPlayDeckPayload(
   });
 }
 
+/**
+ * Resolve libraryItemId references on a deck detail into audio track maps for render spec assembly.
+ *
+ * Performs a single batch DB query for all distinct libraryItemIds, then fetches
+ * presigned URLs in parallel — the same pattern used by `buildPlayDeckPayload`.
+ *
+ * @returns slideAudioMap  — per-slide resolved audio track keyed by slideId
+ * @returns resolvedProjectAudioTrack — deck-level background track, or null if absent/unresolvable
+ */
+async function resolveSlideAudioData(
+  detail: PresentationDeckDetail,
+  db: DrizzleDB,
+): Promise<{
+  slideAudioMap: Map<number, ResolvedAudioTrack>;
+  resolvedProjectAudioTrack: ResolvedProjectAudioTrack | null;
+}> {
+  async function resolveUrl(sourceUrl: string | null): Promise<string | null> {
+    if (!sourceUrl) return null;
+    const presigned = await storagePresignGet(sourceUrl, 3600);
+    return presigned?.url ?? sourceUrl;
+  }
+
+  // Collect all distinct libraryItemIds needed in one batch query.
+  const slideItemIds = detail.slides
+    .map((s) => s.audioTrack?.libraryItemId)
+    .filter((id): id is number => id !== undefined && id !== null);
+  const projectItemId = detail.deck.projectAudioTrack?.libraryItemId;
+  const allItemIds = Array.from(
+    new Set([...slideItemIds, ...(projectItemId !== undefined && projectItemId !== null ? [projectItemId] : [])]),
+  );
+
+  const itemRows =
+    allItemIds.length > 0
+      ? await db.select().from(libraryItems).where(inArray(libraryItems.id, allItemIds))
+      : [];
+  const itemMap = new Map(itemRows.map((r) => [r.id, r]));
+
+  // Resolve presigned URLs in parallel — one per distinct item.
+  const urlCache = new Map<number, string | null>();
+  await Promise.all(
+    allItemIds.map(async (id) => {
+      const item = itemMap.get(id);
+      urlCache.set(id, await resolveUrl(item?.sourceUrl ?? null));
+    }),
+  );
+
+  // Build per-slide audio track map.
+  const slideAudioMap = new Map<number, ResolvedAudioTrack>();
+  for (const slide of detail.slides) {
+    const audioJson = slide.audioTrack;
+    if (!audioJson) continue;
+    const url = urlCache.get(audioJson.libraryItemId);
+    if (!url) continue;
+    slideAudioMap.set(slide.id, {
+      url,
+      volume: audioJson.volume,
+      startAtMs: audioJson.startAtMs,
+      endAtMs: audioJson.endAtMs ?? undefined,
+    });
+  }
+
+  // Resolve deck-level project audio track.
+  let resolvedProjectAudioTrack: ResolvedProjectAudioTrack | null = null;
+  const dbProjectAudio = detail.deck.projectAudioTrack;
+  if (dbProjectAudio) {
+    const url = urlCache.get(dbProjectAudio.libraryItemId);
+    if (url) {
+      resolvedProjectAudioTrack = {
+        url,
+        volume: dbProjectAudio.volume,
+        loop: dbProjectAudio.loop,
+        fadeOutMs: dbProjectAudio.fadeOutMs ?? undefined,
+      };
+    }
+  }
+
+  return { slideAudioMap, resolvedProjectAudioTrack };
+}
+
 export function buildPresentationRenderSpec(input: BuildRenderSpecInput): PresentationRenderSpec {
   const degraded = degradeSlidesForExport(input.slides, DEFAULT_DURATION_MS);
+
+  // Enrich degraded slides with resolved audio tracks when available.
+  // The slideAudioMap is keyed by slideId and contains already-resolved tracks
+  // (url present) or tracks that still carry libraryItemId (resolved later by
+  // resolveAudioUrls inside defaultEnqueueExportJob).
+  const enrichedSlides = degraded.slides.map((slide) => {
+    const audioTrack = input.slideAudioMap?.get(slide.slideId);
+    if (!audioTrack) return slide;
+    return { ...slide, audioTrack };
+  });
+
   const slideshowPayload = presentationSlideshowPayloadSchema.parse({
     schemaVersion: PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
     deckId: input.deck.id,
     generatedAt: new Date(),
-    slides: degraded.slides,
+    slides: enrichedSlides,
+    ...(input.resolvedProjectAudioTrack !== undefined && {
+      projectAudioTrack: input.resolvedProjectAudioTrack,
+    }),
   });
 
   return presentationRenderSpecSchema.parse({
@@ -590,6 +695,7 @@ export function buildPresentationRenderSpec(input: BuildRenderSpecInput): Presen
     height: input.height ?? 1080,
     fps: input.fps ?? 30,
     slides: slideshowPayload.slides,
+    projectAudioTrack: slideshowPayload.projectAudioTrack,
     warnings: degraded.warnings,
   });
 }
@@ -648,12 +754,15 @@ export async function triggerPresentationExport(
         ) {
           resolved.recordMetric("presentation.export.deduped", { format: input.format });
           const detail = await resolved.getDeckDetail(input.deckId, actor);
+          const audioData = db ? await resolveSlideAudioData(detail, db) : { slideAudioMap: new Map(), resolvedProjectAudioTrack: null };
           const renderSpec = buildPresentationRenderSpec({
             deck: detail.deck,
             slides: detail.slides,
             format: input.format,
             width: input.width,
             height: input.height,
+            slideAudioMap: audioData.slideAudioMap,
+            resolvedProjectAudioTrack: audioData.resolvedProjectAudioTrack,
           });
           return presentationExportResultSchema.parse({
             schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
@@ -691,12 +800,15 @@ export async function triggerPresentationExport(
     );
 
     const detail = await resolved.getDeckDetail(input.deckId, actor);
+    const audioData = db ? await resolveSlideAudioData(detail, db) : { slideAudioMap: new Map(), resolvedProjectAudioTrack: null };
     const renderSpec = buildPresentationRenderSpec({
       deck: detail.deck,
       slides: detail.slides,
       format: input.format,
       width: input.width,
       height: input.height,
+      slideAudioMap: audioData.slideAudioMap,
+      resolvedProjectAudioTrack: audioData.resolvedProjectAudioTrack,
     });
     if (renderSpec.warnings.length > 0) {
       resolved.recordMetric("presentation.export.degradation_warning.total", {
@@ -953,4 +1065,76 @@ export function resetPresentationExportStateForTests(): void {
   userWindowRegistry.clear();
   deckWindowRegistry.clear();
   exportIdSequence = 0;
+}
+
+/**
+ * Cancel an in-flight presentation export.
+ *
+ * Steps:
+ * 1. Load the export record and verify tenant + user ownership.
+ * 2. If the export is already in a terminal state (done/error/cancelled),
+ *    return a failure result without modifying DB state.
+ * 3. If a Celery task ID is present, call the Python backend to revoke the task.
+ *    Python failure is non-fatal — we continue to mark the record cancelled.
+ * 4. Update the DB record to status='cancelled'.
+ * 5. Return { success: true, exportId }.
+ */
+export async function cancelPresentationExport(
+  exportId: number,
+  actor: PresentationActor,
+): Promise<{ success: boolean; exportId: number; message?: string }> {
+  const db = await getDb();
+  if (!db) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: database unavailable — cannot cancel export`,
+    );
+  }
+
+  const record = await getExportRecord(exportId, db);
+  if (!record) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: export ${exportId} was not found`,
+    );
+  }
+
+  if (record.tenantId !== actor.tenantId || record.userId !== actor.userId) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.PERMISSION_DENIED,
+      `${PRESENTATION_ERROR_CODE.PERMISSION_DENIED}: export cancellation is tenant/user scoped`,
+    );
+  }
+
+  const terminalStatuses = new Set(["done", "error", "cancelled"]);
+  if (terminalStatuses.has(record.status)) {
+    return {
+      success: false,
+      exportId,
+      message: "Export already completed",
+    };
+  }
+
+  // Attempt to revoke the Celery task. Non-fatal if Python is unavailable.
+  if (record.celeryTaskId) {
+    try {
+      const token = signBearerToken(
+        { sub: "internal-render-service", scopes: ["internal:render"] },
+        "30m",
+      );
+      await fetch(
+        `${ENV.pythonBackendUrl}/api/v1/presentations/export/${record.celeryTaskId}/cancel`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+    } catch {
+      // Python revocation failed — proceed with local cancellation anyway.
+    }
+  }
+
+  await updateExportRecord(exportId, { status: "cancelled" }, db);
+
+  return { success: true, exportId };
 }
