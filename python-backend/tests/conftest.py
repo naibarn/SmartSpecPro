@@ -308,3 +308,80 @@ def mock_stripe(monkeypatch):
     monkeypatch.setattr(stripe.checkout.Session, "retrieve", MockCheckout.Session.retrieve)
     
     return MockStripe()
+
+
+# ---------------------------------------------------------------------------
+# Presentation Export Fixtures (Section 15)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def three_slide_render_spec():
+    """Minimal 3-slide render spec for presentation render task tests."""
+    return {
+        "schemaVersion": "presentation_render_v1",
+        "deckId": 42,
+        "tenantId": "tenant-test",
+        "format": "png",
+        "quality": "standard",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "slides": [
+            {
+                "slideId": 1,
+                "orderIndex": 0,
+                "durationMs": 3000,
+                "transition": "cut",
+                "elements": [],
+                "audioTrack": None,
+            },
+            {
+                "slideId": 2,
+                "orderIndex": 1,
+                "durationMs": 4000,
+                "transition": "fade",
+                "elements": [],
+                "audioTrack": None,
+            },
+            {
+                "slideId": 3,
+                "orderIndex": 2,
+                "durationMs": 2500,
+                "transition": "cut",
+                "elements": [],
+                "audioTrack": None,
+            },
+        ],
+        "projectAudioTrack": None,
+    }
+
+
+@pytest.fixture
+def three_slide_render_spec_with_audio(three_slide_render_spec):
+    """3-slide render spec with per-slide and project audio configured."""
+    spec = dict(three_slide_render_spec)
+    spec["slides"] = [dict(s) for s in spec["slides"]]
+    spec["slides"][0]["audioTrack"] = {
+        "url": "https://cdn.example.com/audio/slide1.mp3",
+        "volume": 0.8,
+        "startAtMs": 0,
+        "endAtMs": None,
+    }
+    spec["projectAudioTrack"] = {
+        "url": "https://cdn.example.com/audio/background.mp3",
+        "volume": 0.4,
+        "loop": True,
+        "fadeOutMs": 1000,
+    }
+    return spec
+
+
+@pytest.fixture
+def white_png_1920x1080():
+    """1920x1080 white PNG bytes — used as a mock Playwright screenshot."""
+    from PIL import Image
+    import io
+    img = Image.new("RGB", (1920, 1080), color=(255, 255, 255))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
